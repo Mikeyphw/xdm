@@ -16,6 +16,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.Core.Tests", "src\XDM.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.DownloadEngine.Tests", "src\XDM.DownloadEngine.Tests\XDM.DownloadEngine.Tests.csproj", "{CDA08712-AAD2-4A36-B93D-C81979419FC5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.BrowserIntegration", "src\XDM.BrowserIntegration\XDM.BrowserIntegration.csproj", "{58B85474-5DE3-4D8B-8A67-522A3AB94A80}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.Media", "src\XDM.Media\XDM.Media.csproj", "{0E47F14B-2313-4E75-B39B-5B3DB51DA4CE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.BrowserMedia.Tests", "src\XDM.BrowserMedia.Tests\XDM.BrowserMedia.Tests.csproj", "{7C9A231D-FD1B-4E27-A0E9-FA4F16509549}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,5 +56,18 @@ Global
 		{CDA08712-AAD2-4A36-B93D-C81979419FC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CDA08712-AAD2-4A36-B93D-C81979419FC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CDA08712-AAD2-4A36-B93D-C81979419FC5}.Release|Any CPU.Build.0 = Release|Any CPU
+
+		{58B85474-5DE3-4D8B-8A67-522A3AB94A80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58B85474-5DE3-4D8B-8A67-522A3AB94A80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58B85474-5DE3-4D8B-8A67-522A3AB94A80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58B85474-5DE3-4D8B-8A67-522A3AB94A80}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E47F14B-2313-4E75-B39B-5B3DB51DA4CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E47F14B-2313-4E75-B39B-5B3DB51DA4CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E47F14B-2313-4E75-B39B-5B3DB51DA4CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E47F14B-2313-4E75-B39B-5B3DB51DA4CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C9A231D-FD1B-4E27-A0E9-FA4F16509549}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C9A231D-FD1B-4E27-A0E9-FA4F16509549}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C9A231D-FD1B-4E27-A0E9-FA4F16509549}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C9A231D-FD1B-4E27-A0E9-FA4F16509549}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

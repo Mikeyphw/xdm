@@ -1,12 +1,14 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using XDM.BrowserIntegration;
 using XDM.Core.Abstractions;
 using XDM.Core.Downloads;
 using XDM.Core.Queues;
 using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.DownloadEngine;
+using XDM.Media;
 using XDM.Platform;
 
 namespace XDM.App.ViewModels;
@@ -17,6 +19,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IDownloadManager _downloadManager;
     private readonly ISettingsService _settingsService;
     private readonly IUiDispatcher _dispatcher;
+    private readonly IBrowserIntegrationService _browserIntegrationService;
+    private readonly IMediaProbeService _mediaProbeService;
     private bool _disposed;
 
     public MainWindowViewModel(
@@ -24,12 +28,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IPlatformInfo platformInfo,
         IDownloadManager downloadManager,
         ISettingsService settingsService,
-        IUiDispatcher dispatcher)
+        IUiDispatcher dispatcher,
+        IBrowserIntegrationService browserIntegrationService,
+        IMediaProbeService mediaProbeService)
     {
         _applicationState = applicationState;
         _downloadManager = downloadManager;
         _settingsService = settingsService;
         _dispatcher = dispatcher;
+        _browserIntegrationService = browserIntegrationService;
+        _mediaProbeService = mediaProbeService;
         PlatformDescription = platformInfo.DisplayName;
         RuntimeDescription = platformInfo.Runtime;
 
@@ -48,9 +56,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         ApplySettings(settingsService.Current);
         ApplySnapshot(applicationState.Current);
         ApplyQueueRuntime(downloadManager.QueueRuntime);
+        ApplyBrowserStatus(browserIntegrationService.Current);
         applicationState.Changed += OnApplicationStateChanged;
         settingsService.Changed += OnSettingsChanged;
         downloadManager.QueueRuntimeChanged += OnQueueRuntimeChanged;
+        browserIntegrationService.StatusChanged += OnBrowserStatusChanged;
+        browserIntegrationService.CaptureReceived += OnBrowserCaptureReceived;
     }
 
     public ObservableCollection<NavigationItem> Sections { get; }
@@ -169,6 +180,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string queueRuntimeStatus = "No active queues";
 
+    [ObservableProperty]
+    private string browserIntegrationStatus = "Stopped";
+
+    [ObservableProperty]
+    private string browserEndpoint = "http://127.0.0.1:9614";
+
+    [ObservableProperty]
+    private string browserAuthenticationToken = string.Empty;
+
+    [ObservableProperty]
+    private string lastBrowserCapture = "No browser captures yet";
+
+    [ObservableProperty]
+    private string lastMediaProbe = "No media probe yet";
+
     public bool IsSelectedQueueActive
         => SelectedQueue is not null && _downloadManager.QueueRuntime.IsActive(SelectedQueue.Id);
 
@@ -181,11 +207,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsSchedulerVisible
         => string.Equals(SelectedSection?.Title, "Scheduler", StringComparison.Ordinal);
 
+    public bool IsBrowserIntegrationVisible
+        => string.Equals(SelectedSection?.Title, "Browser Integration", StringComparison.Ordinal);
+
     public bool IsSettingsVisible
         => string.Equals(SelectedSection?.Title, "Settings", StringComparison.Ordinal);
 
     public bool IsPlaceholderVisible
-        => !IsDownloadsVisible && !IsQueuesVisible && !IsSchedulerVisible && !IsSettingsVisible;
+        => !IsDownloadsVisible
+            && !IsQueuesVisible
+            && !IsSchedulerVisible
+            && !IsBrowserIntegrationVisible
+            && !IsSettingsVisible;
 
     partial void OnSelectedSectionChanged(NavigationItem? value)
     {
@@ -194,6 +227,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsDownloadsVisible));
         OnPropertyChanged(nameof(IsQueuesVisible));
         OnPropertyChanged(nameof(IsSchedulerVisible));
+        OnPropertyChanged(nameof(IsBrowserIntegrationVisible));
         OnPropertyChanged(nameof(IsSettingsVisible));
         OnPropertyChanged(nameof(IsPlaceholderVisible));
     }
@@ -465,6 +499,39 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private async Task RestartBrowserIntegrationAsync()
+    {
+        await _browserIntegrationService.StopAsync();
+        await _browserIntegrationService.InitializeAsync();
+        ApplyBrowserStatus(_browserIntegrationService.Current);
+    }
+
+    [RelayCommand]
+    private async Task ProbeEnteredUrlAsync()
+    {
+        Uri? source = DownloadInputParser.ParseUrls(NewDownloadUrls).FirstOrDefault();
+        if (source is null)
+        {
+            LastMediaProbe = "Enter a valid HTTP or HTTPS URL first.";
+            return;
+        }
+
+        try
+        {
+            MediaProbeResult result = await _mediaProbeService.ProbeAsync(source);
+            LastMediaProbe = FormatMediaProbe(result);
+        }
+        catch (HttpRequestException exception)
+        {
+            LastMediaProbe = $"Probe failed: {exception.Message}";
+        }
+        catch (InvalidOperationException exception)
+        {
+            LastMediaProbe = $"Probe failed: {exception.Message}";
+        }
+    }
+
+    [RelayCommand]
     private void AddCategory()
     {
         string name = NewCategoryName.Trim();
@@ -520,6 +587,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _applicationState.Changed -= OnApplicationStateChanged;
         _settingsService.Changed -= OnSettingsChanged;
         _downloadManager.QueueRuntimeChanged -= OnQueueRuntimeChanged;
+        _browserIntegrationService.StatusChanged -= OnBrowserStatusChanged;
+        _browserIntegrationService.CaptureReceived -= OnBrowserCaptureReceived;
         GC.SuppressFinalize(this);
     }
 
@@ -544,6 +613,78 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         else
         {
             _dispatcher.Post(() => ApplyQueueRuntime(snapshot));
+        }
+    }
+
+    private void OnBrowserStatusChanged(object? sender, BrowserStatusChangedEventArgs eventArgs)
+    {
+        if (_dispatcher.CheckAccess())
+        {
+            ApplyBrowserStatus(eventArgs.Status);
+        }
+        else
+        {
+            _dispatcher.Post(() => ApplyBrowserStatus(eventArgs.Status));
+        }
+    }
+
+    private void OnBrowserCaptureReceived(object? sender, BrowserCaptureEventArgs eventArgs)
+        => _ = HandleBrowserCaptureAsync(eventArgs.Request);
+
+    private async Task HandleBrowserCaptureAsync(BrowserCaptureRequest request)
+    {
+        MediaProbeResult? probe = null;
+        try
+        {
+            probe = await _mediaProbeService.ProbeAsync(request.Url).ConfigureAwait(false);
+        }
+        catch (HttpRequestException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        try
+        {
+            ApplicationSettings settings = _settingsService.Current;
+            DownloadRequest downloadRequest = new(
+                request.Url,
+                settings.DefaultDownloadDirectory,
+                request.FileName,
+                request.Headers,
+                Cookie: request.Cookie,
+                Referer: request.Referer,
+                UserAgent: request.UserAgent,
+                QueueId: request.QueueId,
+                CategoryId: request.CategoryId);
+            await _downloadManager.AddAsync(downloadRequest).ConfigureAwait(false);
+            _dispatcher.Post(() =>
+            {
+                LastBrowserCapture = $"{request.Browser ?? "Browser"}: {request.Url}";
+                if (probe is not null)
+                {
+                    LastMediaProbe = FormatMediaProbe(probe);
+                }
+
+                OperationMessage = "Browser capture accepted.";
+            });
+        }
+        catch (IOException exception)
+        {
+            SetBrowserCaptureFailure(exception.Message);
+        }
+        catch (ArgumentException exception)
+        {
+            SetBrowserCaptureFailure(exception.Message);
+        }
+        catch (InvalidOperationException exception)
+        {
+            SetBrowserCaptureFailure(exception.Message);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            SetBrowserCaptureFailure(exception.Message);
         }
     }
 
@@ -597,6 +738,33 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             : string.Join(" • ", active);
         OnPropertyChanged(nameof(IsSelectedQueueActive));
     }
+
+    private void ApplyBrowserStatus(BrowserIntegrationStatus status)
+    {
+        BrowserIntegrationStatus = status.IsListening
+            ? $"Listening • protocol {status.ProtocolVersion}"
+            : status.LastError is null
+                ? "Stopped"
+                : $"Unavailable: {status.LastError}";
+        BrowserEndpoint = $"{status.Endpoint}/capture";
+        BrowserAuthenticationToken = status.AuthenticationToken;
+        if (status.LastCapturedUrl is not null)
+        {
+            LastBrowserCapture = $"{status.LastBrowser ?? "Browser"}: {status.LastCapturedUrl}";
+        }
+    }
+
+    private void SetBrowserCaptureFailure(string message)
+        => _dispatcher.Post(() =>
+        {
+            OperationMessage = $"Browser capture failed: {message}";
+            LastBrowserCapture = OperationMessage;
+        });
+
+    private static string FormatMediaProbe(MediaProbeResult result)
+        => result.IsMedia
+            ? $"{result.Kind} • {result.VariantCount} stream/variant(s) • {result.Description}"
+            : result.Description;
 
     private void ApplySettings(ApplicationSettings settings)
     {

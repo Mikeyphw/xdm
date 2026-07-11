@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>XDM.Media</AssemblyName>
+    <RootNamespace>XDM.Media</RootNamespace>
+  </PropertyGroup>
+</Project>

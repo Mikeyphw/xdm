@@ -25,8 +25,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../XDM.BrowserIntegration/XDM.BrowserIntegration.csproj" />
     <ProjectReference Include="../XDM.Core/XDM.Core.csproj" />
     <ProjectReference Include="../XDM.DownloadEngine/XDM.DownloadEngine.csproj" />
+    <ProjectReference Include="../XDM.Media/XDM.Media.csproj" />
     <ProjectReference Include="../XDM.Persistence/XDM.Persistence.csproj" />
     <ProjectReference Include="../XDM.Platform/XDM.Platform.csproj" />
   </ItemGroup>

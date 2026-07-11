@@ -6,12 +6,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using XDM.App.Services;
 using XDM.App.ViewModels;
+using XDM.BrowserIntegration;
 using XDM.Core.Abstractions;
 using XDM.Core.Persistence;
 using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.DownloadEngine;
 using XDM.DownloadEngine.Queues;
+using XDM.Media;
 using XDM.Persistence;
 using XDM.Platform;
 
@@ -38,6 +40,10 @@ public partial class App : Application
             .GetAwaiter()
             .GetResult();
         _services.GetRequiredService<IQueueSchedulerRuntime>()
+            .InitializeAsync()
+            .GetAwaiter()
+            .GetResult();
+        _services.GetRequiredService<IBrowserIntegrationService>()
             .InitializeAsync()
             .GetAwaiter()
             .GetResult();
@@ -73,6 +79,8 @@ public partial class App : Application
             Timeout = Timeout.InfiniteTimeSpan
         });
 
+        services.AddSingleton<IBrowserIntegrationService, LoopbackBrowserIntegrationService>();
+        services.AddSingleton<IMediaProbeService, MediaProbeService>();
         services.AddSingleton<IApplicationState, ApplicationState>();
         services.AddSingleton<IDownloadHistoryStore, JsonDownloadHistoryStore>();
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();

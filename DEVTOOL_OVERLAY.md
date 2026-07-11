@@ -1,10 +1,10 @@
-# XDM Avalonia queue and scheduler runtime overlay
+# XDM Avalonia browser and media overlay
 
-Base commit: `84a0e06`
+Apply after `xdm_avalonia_queue_scheduler_runtime_overlay.zip`.
 
 Target: `xdm_modern`
 
-This overlay makes queues and schedules executable. It persists queue membership/order, supports simultaneous active queues, enforces global and per-queue concurrency and bandwidth policies, and evaluates the configured schedule at startup and while XDM is running.
+This overlay introduces an authenticated loopback browser capture service, a real Browser Integration status page, and direct/HLS/DASH media probing.
 
 Validation:
 
@@ -15,5 +15,5 @@ Validation:
 Commit message:
 
 ```text
-Add queue execution and scheduler runtime
+Add browser capture and media probing
 ```

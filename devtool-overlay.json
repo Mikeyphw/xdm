@@ -1,11 +1,12 @@
 {
-  "name": "xdm_avalonia_queue_scheduler_runtime_overlay",
+  "name": "xdm_avalonia_browser_media_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
   "baseCommit": "84a0e06",
+  "requires": ["xdm_avalonia_queue_scheduler_runtime_overlay"],
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": 5,
-  "description": "Activates persistent queue membership, simultaneous queue execution, per-queue concurrency and speed limits, ordering controls, and the live timezone-aware scheduler runtime.",
+  "phase": 6,
+  "description": "Adds authenticated loopback browser capture, browser health UI, direct/HLS/DASH probing, and browser/media tests.",
   "validation": {
     "linux": "app/XDM/eng/validate-modern.sh",
     "windows": "app/XDM/eng/validate-modern.ps1",
@@ -13,5 +14,5 @@
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
     "smoke": "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap"
   },
-  "commitMessage": "Add queue execution and scheduler runtime"
+  "commitMessage": "Add browser capture and media probing"
 }

@@ -186,6 +186,25 @@
       },
       "manifest": {},
       "history_id": "2d0ee9d2a8c8470d9e7ec8416631df85"
+    },
+    {
+      "applied_at": "2026-07-11T19:57:34.406101Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_browser_media_overlay.zip",
+      "artifact_name": "xdm_avalonia_browser_media_overlay.zip",
+      "type": "overlay",
+      "sha256": "9b76776f8e958329e3d74e2c538fec7ef255a835c5a7b7a3a6cf459c7a672c6e",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add browser capture and media probing",
+      "commit_hash": "",
+      "file_count": 26,
+      "change_counts": {
+        "add": 18,
+        "modify": 7,
+        "unchanged": 1
+      },
+      "manifest": {},
+      "history_id": "88f3ee3442774ef79f825497ab4d2996"
     }
   ]
 }
