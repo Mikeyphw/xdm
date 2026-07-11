@@ -4,6 +4,8 @@ using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using XDM.App.ViewModels;
+using XDM.Core.State;
+using XDM.Platform;
 
 namespace XDM.App;
 
@@ -29,7 +31,7 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static ServiceProvider ConfigureServices()
+    internal static ServiceProvider ConfigureServices()
     {
         ServiceCollection services = new();
 
@@ -40,6 +42,8 @@ public partial class App : Application
             builder.SetMinimumLevel(LogLevel.Information);
         });
 
+        services.AddSingleton<IApplicationState, ApplicationState>();
+        services.AddSingleton<IPlatformInfo, PlatformInfo>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
 

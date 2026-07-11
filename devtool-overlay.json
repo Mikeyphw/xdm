@@ -1,18 +1,17 @@
 {
-  "name": "xdm_avalonia_direct_bootstrap_overlay",
+  "name": "xdm_avalonia_core_port_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseBranch": "master",
+  "baseCommit": "3072002",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "minimumSdk": "10.0.300",
-  "avaloniaVersion": "12.1.0",
-  "phase": 1,
-  "description": "Creates the new .NET 10 Avalonia application and makes it the only devtool build target. Legacy WPF, GTK, WinForms, MSIX, and XDM_CoreFx.sln projects are not restored or built.",
+  "phase": 2,
+  "description": "Adds the first UI-independent modern core and platform projects, connects them to the Avalonia shell, introduces unit tests, and fixes the CA1848 and AVLN3001 bootstrap warnings.",
   "validation": {
     "linux": "app/XDM/eng/validate-modern.sh",
     "windows": "app/XDM/eng/validate-modern.ps1",
     "solution": "app/XDM/XDM.Modern.sln",
+    "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
     "smoke": "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap"
   },
-  "commitMessage": "Bootstrap the .NET 10 Avalonia application"
+  "commitMessage": "Port initial XDM core services to .NET 10"
 }

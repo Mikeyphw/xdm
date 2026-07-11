@@ -9,4 +9,5 @@ cd "$ROOT"
 dotnet --version
 dotnet restore "$SOLUTION"
 dotnet build "$SOLUTION" --configuration Release --no-restore
+dotnet test "$SOLUTION" --configuration Release --no-build
 dotnet run --project "$PROJECT" --configuration Release --no-build -- --validate-bootstrap

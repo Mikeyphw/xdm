@@ -12,7 +12,7 @@ python = ""
 run_module = ""
 restore_command = "dotnet restore app/XDM/XDM.Modern.sln"
 build_command = "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore"
-test_command = "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap"
+test_command = "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build"
 run_command = "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj"
 package_command = "dotnet publish app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --runtime linux-x64 --self-contained true"
 

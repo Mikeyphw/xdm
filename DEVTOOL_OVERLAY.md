@@ -1,21 +1,18 @@
-# XDM direct Avalonia bootstrap overlay
+# XDM Avalonia Core Port Overlay
 
-Repository: `https://github.com/Mikeyphw/xdm`
+Base: commit `3072002`
 
-This overlay starts the direct UI cutover. It creates a new .NET 10/Avalonia 12.1 application and makes `app/XDM/XDM.Modern.sln` the only devtool target.
+This overlay adds the first active UI-independent projects to `XDM.Modern.sln`:
 
-## Included
+- `XDM.Core`
+- `XDM.Platform`
+- `XDM.Core.Tests`
 
-- Dark, border-light XDM application shell.
-- Downloads, Queues, Scheduler, Browser Integration, Settings, and Diagnostics navigation.
-- CommunityToolkit MVVM view model.
-- Microsoft.Extensions dependency injection and console logging.
-- Headless `--validate-bootstrap` smoke check.
-- Linux and Windows validation scripts.
-- Repository-root `.devtool.toml` targeting only `xdm_modern`.
+It introduces modern category, queue, schedule, download snapshot, application state, platform information, and UI/platform abstraction types. The Avalonia shell now resolves these services through dependency injection and displays actual core/runtime state.
 
-## Deliberately excluded
+It also fixes both warnings from the bootstrap validation:
 
-The overlay does not restore, build, test, run, or package the existing WPF, GTK, WinForms, MSIX, or `XDM_CoreFx.sln` projects.
+- CA1848 by using a source-generated `LoggerMessage` method.
+- AVLN3001 by adding a public parameterless `MainWindow` constructor while retaining DI construction.
 
-Suggested commit message: `Bootstrap the .NET 10 Avalonia application`.
+Legacy WPF, GTK, WinForms, MSIX, and `XDM_CoreFx.sln` projects remain excluded.

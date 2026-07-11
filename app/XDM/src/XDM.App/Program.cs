@@ -1,5 +1,8 @@
 using Avalonia;
+using Microsoft.Extensions.DependencyInjection;
 using XDM.App.ViewModels;
+using XDM.Core.Categories;
+using XDM.Core.State;
 
 namespace XDM.App;
 
@@ -27,15 +30,31 @@ internal static class Program
 
     private static int ValidateBootstrap()
     {
-        MainWindowViewModel viewModel = new();
+        using ServiceProvider services = App.ConfigureServices();
+        MainWindowViewModel viewModel = services.GetRequiredService<MainWindowViewModel>();
+        IApplicationState state = services.GetRequiredService<IApplicationState>();
 
-        if (viewModel.Sections.Count != 6 || viewModel.SelectedSection is null)
+        DownloadCategory archiveCategory = new(
+            "archives",
+            "Archives",
+            ["zip", ".7z", "tar.zst"],
+            Path.GetTempPath(),
+            isPredefined: true);
+
+        bool valid = viewModel.Sections.Count == 6
+            && viewModel.SelectedSection is not null
+            && state.Current.CoreReady
+            && viewModel.CoreStatus == "Ready"
+            && archiveCategory.MatchesFileName("release.zip");
+
+        if (!valid)
         {
-            Console.Error.WriteLine("XDM Avalonia bootstrap validation failed.");
+            Console.Error.WriteLine("XDM modern core bootstrap validation failed.");
             return 1;
         }
 
-        Console.WriteLine($"XDM Avalonia bootstrap validated: {viewModel.Sections.Count} navigation sections.");
+        Console.WriteLine(
+            $"XDM modern core validated: {viewModel.Sections.Count} sections, {viewModel.CoreStatus}, {viewModel.RuntimeDescription}.");
         return 0;
     }
 }

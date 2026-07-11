@@ -1,10 +1,12 @@
 $ErrorActionPreference = "Stop"
-$root = (Resolve-Path (Join-Path $PSScriptRoot "../../..")).Path
-$solution = Join-Path $root "app/XDM/XDM.Modern.sln"
-$project = Join-Path $root "app/XDM/src/XDM.App/XDM.App.csproj"
 
-Set-Location $root
+$Root = (Resolve-Path (Join-Path $PSScriptRoot "../../..")).Path
+$Solution = Join-Path $Root "app/XDM/XDM.Modern.sln"
+$Project = Join-Path $Root "app/XDM/src/XDM.App/XDM.App.csproj"
+
+Set-Location $Root
 dotnet --version
-dotnet restore $solution
-dotnet build $solution --configuration Release --no-restore
-dotnet run --project $project --configuration Release --no-build -- --validate-bootstrap
+dotnet restore $Solution
+dotnet build $Solution --configuration Release --no-restore
+dotnet test $Solution --configuration Release --no-build
+dotnet run --project $Project --configuration Release --no-build -- --validate-bootstrap

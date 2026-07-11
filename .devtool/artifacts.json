@@ -73,6 +73,24 @@
       },
       "manifest": {},
       "history_id": "f47027627bd74b1cb9455556acf6d5d3"
+    },
+    {
+      "applied_at": "2026-07-11T18:36:36.583599Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_core_port_overlay.zip",
+      "artifact_name": "xdm_avalonia_core_port_overlay.zip",
+      "type": "overlay",
+      "sha256": "3e36bf8cd2442e25e2a83a67801523a6962e2abae9fa394ebdd9af834692fcda",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Port initial XDM core services to .NET 10",
+      "commit_hash": "",
+      "file_count": 38,
+      "change_counts": {
+        "add": 25,
+        "modify": 13
+      },
+      "manifest": {},
+      "history_id": "8a065be6daf84948b8247a7b5d19eb61"
     }
   ]
 }

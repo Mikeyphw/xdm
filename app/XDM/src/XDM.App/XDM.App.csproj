@@ -23,4 +23,9 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../XDM.Core/XDM.Core.csproj" />
+    <ProjectReference Include="../XDM.Platform/XDM.Platform.csproj" />
+  </ItemGroup>
 </Project>
