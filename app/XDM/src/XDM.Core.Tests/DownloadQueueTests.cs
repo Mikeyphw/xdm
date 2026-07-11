@@ -5,9 +5,9 @@ namespace XDM.Core.Tests;
 public sealed class DownloadQueueTests
 {
     [Fact]
-    public void Add_is_idempotent()
+    public void AddIsIdempotent()
     {
-        DownloadQueue queue = new("default", "Default");
+        DownloadQueueModel queue = new("default", "Default");
 
         Assert.True(queue.Add("download-1"));
         Assert.False(queue.Add("download-1"));

@@ -5,7 +5,7 @@ namespace XDM.Core.Tests;
 public sealed class DownloadScheduleTests
 {
     [Fact]
-    public void Overnight_schedule_carries_into_the_next_day()
+    public void OvernightScheduleCarriesIntoTheNextDay()
     {
         DownloadSchedule schedule = new(
             new TimeOnly(22, 0),

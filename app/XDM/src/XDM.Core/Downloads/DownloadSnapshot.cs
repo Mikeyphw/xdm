@@ -9,7 +9,8 @@ public sealed record DownloadSnapshot(
     long? TotalBytes,
     double BytesPerSecond,
     DownloadState State,
-    DateTimeOffset UpdatedAt)
+    DateTimeOffset UpdatedAt,
+    string? ErrorMessage = null)
 {
     public double? ProgressFraction
         => TotalBytes is > 0

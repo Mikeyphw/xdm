@@ -8,7 +8,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.Core", "src\XDM.Core\XD
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.Platform", "src\XDM.Platform\XDM.Platform.csproj", "{E3E89619-70D0-4EC9-B741-186D90854499}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.Persistence", "src\XDM.Persistence\XDM.Persistence.csproj", "{B8D36E63-3558-459A-823A-46D9A126F860}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.DownloadEngine", "src\XDM.DownloadEngine\XDM.DownloadEngine.csproj", "{F864CE4C-21B5-4C5D-9D86-0E09B828A9E5}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.Core.Tests", "src\XDM.Core.Tests\XDM.Core.Tests.csproj", "{8D5567F1-8684-4D9C-AC36-7BD07CCFF309}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.DownloadEngine.Tests", "src\XDM.DownloadEngine.Tests\XDM.DownloadEngine.Tests.csproj", "{CDA08712-AAD2-4A36-B93D-C81979419FC5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -28,9 +34,21 @@ Global
 		{E3E89619-70D0-4EC9-B741-186D90854499}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E3E89619-70D0-4EC9-B741-186D90854499}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E3E89619-70D0-4EC9-B741-186D90854499}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8D36E63-3558-459A-823A-46D9A126F860}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8D36E63-3558-459A-823A-46D9A126F860}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8D36E63-3558-459A-823A-46D9A126F860}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8D36E63-3558-459A-823A-46D9A126F860}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F864CE4C-21B5-4C5D-9D86-0E09B828A9E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F864CE4C-21B5-4C5D-9D86-0E09B828A9E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F864CE4C-21B5-4C5D-9D86-0E09B828A9E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F864CE4C-21B5-4C5D-9D86-0E09B828A9E5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8D5567F1-8684-4D9C-AC36-7BD07CCFF309}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8D5567F1-8684-4D9C-AC36-7BD07CCFF309}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8D5567F1-8684-4D9C-AC36-7BD07CCFF309}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8D5567F1-8684-4D9C-AC36-7BD07CCFF309}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CDA08712-AAD2-4A36-B93D-C81979419FC5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDA08712-AAD2-4A36-B93D-C81979419FC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDA08712-AAD2-4A36-B93D-C81979419FC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CDA08712-AAD2-4A36-B93D-C81979419FC5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

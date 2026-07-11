@@ -3,14 +3,14 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        d:DesignWidth="1180"
-        d:DesignHeight="760"
+        d:DesignWidth="1240"
+        d:DesignHeight="800"
         x:Class="XDM.App.MainWindow"
         Title="Xtreme Download Manager"
-        Width="1180"
-        Height="760"
-        MinWidth="900"
-        MinHeight="600"
+        Width="1240"
+        Height="800"
+        MinWidth="980"
+        MinHeight="640"
         Background="#0E1116">
 
   <Window.Styles>
@@ -18,7 +18,7 @@
       <Setter Property="Background" Value="#4F8CFF" />
       <Setter Property="Foreground" Value="White" />
       <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="Padding" Value="18,10" />
+      <Setter Property="Padding" Value="16,9" />
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
@@ -26,8 +26,15 @@
       <Setter Property="Background" Value="#1B212A" />
       <Setter Property="Foreground" Value="#DDE5F2" />
       <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="Padding" Value="14,9" />
+      <Setter Property="Padding" Value="13,8" />
       <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#171D25" />
+      <Setter Property="Foreground" Value="#E8EEF7" />
+      <Setter Property="BorderBrush" Value="#273240" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="11,8" />
     </Style>
     <Style Selector="ListBoxItem">
       <Setter Property="Padding" Value="12,11" />
@@ -47,13 +54,8 @@
             Padding="16">
       <Grid RowDefinitions="Auto,*,Auto">
         <StackPanel Spacing="2" Margin="8,8,8,20">
-          <TextBlock Text="XDM"
-                     FontSize="28"
-                     FontWeight="Bold"
-                     Foreground="#F3F7FC" />
-          <TextBlock Text="Modern core"
-                     FontSize="12"
-                     Foreground="#7F8B9B" />
+          <TextBlock Text="XDM" FontSize="28" FontWeight="Bold" Foreground="#F3F7FC" />
+          <TextBlock Text="Avalonia downloader" FontSize="12" Foreground="#7F8B9B" />
         </StackPanel>
 
         <ListBox Grid.Row="1"
@@ -64,119 +66,115 @@
           <ListBox.ItemTemplate>
             <DataTemplate>
               <Grid ColumnDefinitions="28,*">
-                <TextBlock Grid.Column="0"
-                           Text="{Binding Glyph}"
-                           FontSize="17"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Foreground="#8FB5FF" />
-                <TextBlock Grid.Column="1"
-                           Text="{Binding Title}"
-                           VerticalAlignment="Center"
-                           FontWeight="SemiBold"
-                           Foreground="#DDE5F2" />
+                <TextBlock Text="{Binding Glyph}" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#8FB5FF" />
+                <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#DDE5F2" />
               </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
 
-        <Border Grid.Row="2"
-                Background="#171D25"
-                CornerRadius="8"
-                Padding="12"
-                Margin="0,14,0,0">
+        <Border Grid.Row="2" Background="#171D25" CornerRadius="8" Padding="12" Margin="0,14,0,0">
           <StackPanel Spacing="4">
-            <TextBlock Text="Direct cutover"
-                       FontWeight="SemiBold"
-                       Foreground="#DDE5F2" />
-            <TextBlock Text="Only the .NET 10 Avalonia solution is active."
-                       TextWrapping="Wrap"
-                       FontSize="11"
-                       Foreground="#7F8B9B" />
+            <TextBlock Text="Functional milestone" FontWeight="SemiBold" Foreground="#DDE5F2" />
+            <TextBlock Text="HTTP downloads, resume, history, and live progress are active." TextWrapping="Wrap" FontSize="11" Foreground="#7F8B9B" />
           </StackPanel>
         </Border>
       </Grid>
     </Border>
 
-    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" Margin="30,24,30,20">
-      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,22">
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" Margin="28,22,28,18">
+      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,18">
         <StackPanel Spacing="5">
-          <TextBlock Text="{Binding CurrentTitle}"
-                     FontSize="27"
-                     FontWeight="Bold"
-                     Foreground="#F3F7FC" />
-          <TextBlock Text="{Binding CurrentSummary}"
-                     Foreground="#8794A5" />
+          <TextBlock Text="{Binding CurrentTitle}" FontSize="27" FontWeight="Bold" Foreground="#F3F7FC" />
+          <TextBlock Text="{Binding CurrentSummary}" Foreground="#8794A5" />
         </StackPanel>
-
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-          <Button Classes="secondary" Content="Paste URL" IsEnabled="False" />
-          <Button Classes="primary" Content="+ Add download" IsEnabled="False" />
-        </StackPanel>
+        <TextBlock Grid.Column="1" Text="{Binding OperationMessage}" Foreground="#8FB5FF" VerticalAlignment="Center" />
       </Grid>
 
       <Grid Grid.Row="1" RowDefinitions="Auto,*">
         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
-          <Border Grid.Column="0" Background="#151B23" CornerRadius="10" Padding="16">
-            <StackPanel Spacing="7">
+          <Border Background="#151B23" CornerRadius="10" Padding="15">
+            <StackPanel Spacing="6">
               <TextBlock Text="ACTIVE" FontSize="11" FontWeight="Bold" Foreground="#7F8B9B" />
-              <TextBlock Text="{Binding ActiveDownloadCount}" FontSize="26" FontWeight="Bold" Foreground="#F3F7FC" />
-              <TextBlock Text="Modern application-state snapshot." FontSize="11" Foreground="#7F8B9B" />
+              <TextBlock Text="{Binding ActiveDownloadCount}" FontSize="25" FontWeight="Bold" Foreground="#F3F7FC" />
             </StackPanel>
           </Border>
-          <Border Grid.Column="1" Background="#151B23" CornerRadius="10" Padding="16">
-            <StackPanel Spacing="7">
+          <Border Grid.Column="1" Background="#151B23" CornerRadius="10" Padding="15">
+            <StackPanel Spacing="6">
               <TextBlock Text="SPEED" FontSize="11" FontWeight="Bold" Foreground="#7F8B9B" />
-              <TextBlock Text="{Binding AggregateSpeed}" FontSize="26" FontWeight="Bold" Foreground="#F3F7FC" />
-              <TextBlock Text="Aggregate throughput from core state." FontSize="11" Foreground="#7F8B9B" />
+              <TextBlock Text="{Binding AggregateSpeed}" FontSize="25" FontWeight="Bold" Foreground="#F3F7FC" />
             </StackPanel>
           </Border>
-          <Border Grid.Column="2" Background="#151B23" CornerRadius="10" Padding="16">
-            <StackPanel Spacing="7">
+          <Border Grid.Column="2" Background="#151B23" CornerRadius="10" Padding="15">
+            <StackPanel Spacing="6">
               <TextBlock Text="CORE" FontSize="11" FontWeight="Bold" Foreground="#7F8B9B" />
-              <TextBlock Text="{Binding CoreStatus}" FontSize="26" FontWeight="Bold" Foreground="#F3F7FC" />
-              <TextBlock Text="UI-independent services are loaded." FontSize="11" Foreground="#7F8B9B" />
+              <TextBlock Text="{Binding CoreStatus}" FontSize="25" FontWeight="Bold" Foreground="#F3F7FC" />
             </StackPanel>
           </Border>
         </Grid>
 
-        <Border Grid.Row="1"
-                Margin="0,14,0,0"
-                Background="#12171E"
-                CornerRadius="10"
-                BorderBrush="#202833"
-                BorderThickness="1">
-          <StackPanel HorizontalAlignment="Center"
-                      VerticalAlignment="Center"
-                      Spacing="10"
-                      Margin="30">
-            <TextBlock Text="◇" FontSize="38" Foreground="#4F8CFF" HorizontalAlignment="Center" />
-            <TextBlock Text="Modern core is connected"
-                       FontSize="19"
-                       FontWeight="SemiBold"
-                       Foreground="#E9EEF6"
-                       HorizontalAlignment="Center" />
-            <TextBlock Text="Category, queue, schedule, download snapshot, application state,&#x0a;and platform services now live outside the Avalonia UI."
-                       TextAlignment="Center"
-                       TextWrapping="Wrap"
-                       Foreground="#7F8B9B"
-                       MaxWidth="560" />
-            <TextBlock Text="{Binding PlatformDescription}"
-                       FontSize="12"
-                       Foreground="#8FB5FF"
-                       HorizontalAlignment="Center" />
-          </StackPanel>
-        </Border>
+        <Grid Grid.Row="1" Margin="0,14,0,0">
+          <Grid IsVisible="{Binding IsDownloadsVisible}" RowDefinitions="Auto,Auto,*">
+            <Border Background="#12171E" CornerRadius="10" Padding="14" BorderBrush="#202833" BorderThickness="1">
+              <Grid ColumnDefinitions="2*,*,Auto,Auto" ColumnSpacing="9">
+                <TextBox Watermark="https://example.com/file.zip" Text="{Binding NewDownloadUrl}" />
+                <TextBox Grid.Column="1" Watermark="Destination folder" Text="{Binding DestinationFolder}" />
+                <Button Grid.Column="2" Classes="secondary" Content="Browse" Click="BrowseDestination_Click" />
+                <Button Grid.Column="3" Classes="primary" Content="Add download" Command="{Binding AddDownloadCommand}" />
+              </Grid>
+            </Border>
+
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,10">
+              <Button Classes="secondary" Content="Pause" Command="{Binding PauseSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanPause}" />
+              <Button Classes="secondary" Content="Resume" Command="{Binding ResumeSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
+              <Button Classes="secondary" Content="Cancel" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanCancel}" />
+              <Button Classes="secondary" Content="Retry" Command="{Binding RetrySelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
+              <Button Classes="secondary" Content="Remove" Command="{Binding RemoveSelectedCommand}" />
+            </StackPanel>
+
+            <Border Grid.Row="2" Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
+              <ListBox ItemsSource="{Binding Downloads}"
+                       SelectedItem="{Binding SelectedDownload}"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       Padding="7">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <Border Padding="12" Background="#151B23" CornerRadius="8">
+                      <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="16">
+                        <StackPanel>
+                          <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                          <TextBlock Text="{Binding Source}" FontSize="11" Foreground="#718095" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding StatusText}" Foreground="#8FB5FF" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding SpeedText}" Foreground="#C8D1DE" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="{Binding RemainingText}" Foreground="#7F8B9B" VerticalAlignment="Center" />
+
+                        <ProgressBar Grid.Row="1" Grid.ColumnSpan="4" Margin="0,10,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" />
+
+                        <TextBlock Grid.Row="2" Text="{Binding ProgressText}" FontSize="11" Foreground="#7F8B9B" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding ErrorMessage}" FontSize="11" Foreground="#FF8F8F" HorizontalAlignment="Right" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Border>
+          </Grid>
+
+          <Border IsVisible="{Binding !IsDownloadsVisible}" Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Margin="30">
+              <TextBlock Text="◇" FontSize="38" Foreground="#4F8CFF" HorizontalAlignment="Center" />
+              <TextBlock Text="This section is next" FontSize="19" FontWeight="SemiBold" Foreground="#E9EEF6" HorizontalAlignment="Center" />
+              <TextBlock Text="The downloader is functional first; queues, scheduling, browser capture, and settings follow in later overlays." TextAlignment="Center" TextWrapping="Wrap" Foreground="#7F8B9B" MaxWidth="560" />
+            </StackPanel>
+          </Border>
+        </Grid>
       </Grid>
 
-      <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,16,0,0">
-        <TextBlock Text="{Binding RuntimeDescription}"
-                   FontSize="11"
-                   Foreground="#687586" />
-        <TextBlock Grid.Column="1"
-                   Text="Core port • phase 2"
-                   FontSize="11"
-                   Foreground="#8FB5FF" />
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+        <TextBlock Text="{Binding RuntimeDescription}" FontSize="11" Foreground="#687586" />
+        <TextBlock Grid.Column="1" Text="Functional downloader • phase 3" FontSize="11" Foreground="#8FB5FF" />
       </Grid>
     </Grid>
   </Grid>

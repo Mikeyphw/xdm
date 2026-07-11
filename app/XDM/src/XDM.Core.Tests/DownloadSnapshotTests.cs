@@ -5,7 +5,7 @@ namespace XDM.Core.Tests;
 public sealed class DownloadSnapshotTests
 {
     [Fact]
-    public void Calculates_progress_and_remaining_time()
+    public void CalculatesProgressAndRemainingTime()
     {
         DownloadSnapshot snapshot = new(
             "download-1",

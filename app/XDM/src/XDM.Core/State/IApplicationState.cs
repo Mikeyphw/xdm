@@ -9,4 +9,8 @@ public interface IApplicationState
     event EventHandler<ApplicationSnapshot>? Changed;
 
     void ReplaceDownloads(IEnumerable<DownloadSnapshot> downloads);
+
+    void UpsertDownload(DownloadSnapshot download);
+
+    bool RemoveDownload(string downloadId);
 }

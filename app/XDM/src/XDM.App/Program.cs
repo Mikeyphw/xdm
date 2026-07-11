@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using XDM.App.ViewModels;
 using XDM.Core.Categories;
 using XDM.Core.State;
+using XDM.DownloadEngine;
 
 namespace XDM.App;
 
@@ -33,6 +34,7 @@ internal static class Program
         using ServiceProvider services = App.ConfigureServices();
         MainWindowViewModel viewModel = services.GetRequiredService<MainWindowViewModel>();
         IApplicationState state = services.GetRequiredService<IApplicationState>();
+        IDownloadManager downloadManager = services.GetRequiredService<IDownloadManager>();
 
         DownloadCategory archiveCategory = new(
             "archives",
@@ -45,16 +47,17 @@ internal static class Program
             && viewModel.SelectedSection is not null
             && state.Current.CoreReady
             && viewModel.CoreStatus == "Ready"
-            && archiveCategory.MatchesFileName("release.zip");
+            && archiveCategory.MatchesFileName("release.zip")
+            && downloadManager is DownloadManager;
 
         if (!valid)
         {
-            Console.Error.WriteLine("XDM modern core bootstrap validation failed.");
+            Console.Error.WriteLine("XDM functional downloader bootstrap validation failed.");
             return 1;
         }
 
         Console.WriteLine(
-            $"XDM modern core validated: {viewModel.Sections.Count} sections, {viewModel.CoreStatus}, {viewModel.RuntimeDescription}.");
+            $"XDM downloader validated: {viewModel.Sections.Count} sections, {viewModel.CoreStatus}, {viewModel.RuntimeDescription}.");
         return 0;
     }
 }

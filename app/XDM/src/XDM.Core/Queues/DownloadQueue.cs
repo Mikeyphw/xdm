@@ -2,11 +2,11 @@ using XDM.Core.Scheduling;
 
 namespace XDM.Core.Queues;
 
-public sealed class DownloadQueue
+public sealed class DownloadQueueModel
 {
     private readonly List<string> _downloadIds = [];
 
-    public DownloadQueue(string id, string name)
+    public DownloadQueueModel(string id, string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);

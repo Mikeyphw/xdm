@@ -1,11 +1,11 @@
 {
-  "name": "xdm_avalonia_core_port_overlay",
+  "name": "xdm_avalonia_functional_downloader_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "3072002",
+  "baseCommit": "55a0dd0",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": 2,
-  "description": "Adds the first UI-independent modern core and platform projects, connects them to the Avalonia shell, introduces unit tests, and fixes the CA1848 and AVLN3001 bootstrap warnings.",
+  "phase": 3,
+  "description": "Adds the first functional HTTP download engine, live Avalonia progress, pause/resume/cancel/retry, atomic JSON history, resume tests, and fixes all six phase-2 analyzer warnings.",
   "validation": {
     "linux": "app/XDM/eng/validate-modern.sh",
     "windows": "app/XDM/eng/validate-modern.ps1",
@@ -13,5 +13,5 @@
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
     "smoke": "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap"
   },
-  "commitMessage": "Port initial XDM core services to .NET 10"
+  "commitMessage": "Add the functional Avalonia download engine"
 }

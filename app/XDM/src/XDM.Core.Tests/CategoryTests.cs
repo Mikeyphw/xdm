@@ -8,7 +8,7 @@ public sealed class CategoryTests
     [InlineData("archive.zip")]
     [InlineData("ARCHIVE.7Z")]
     [InlineData("backup.tar.zst")]
-    public void MatchesFileName_normalizes_extensions(string fileName)
+    public void MatchesFileNameNormalizesExtensions(string fileName)
     {
         DownloadCategory category = new(
             "archives",
@@ -20,7 +20,7 @@ public sealed class CategoryTests
     }
 
     [Fact]
-    public void MatchesFileName_rejects_unknown_extension()
+    public void MatchesFileNameRejectsUnknownExtension()
     {
         DownloadCategory category = new(
             "documents",

@@ -1,0 +1,19 @@
+{
+  "applied_at": "2026-07-11T18:47:44.093601Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_functional_downloader_overlay(1).zip",
+  "artifact_name": "xdm_avalonia_functional_downloader_overlay(1).zip",
+  "type": "overlay",
+  "sha256": "23eb612118aba9eae38e3be61a7b1f111bdc7a4689c4fff0c86592fe624609a1",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Add the functional Avalonia download engine",
+  "commit_hash": "",
+  "file_count": 37,
+  "change_counts": {
+    "add": 16,
+    "modify": 19,
+    "unchanged": 2
+  },
+  "manifest": {},
+  "history_id": "7b0b63ceb9f24c62bf1ea2b75ed1c98e"
+}

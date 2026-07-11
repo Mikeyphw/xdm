@@ -91,6 +91,44 @@
       },
       "manifest": {},
       "history_id": "8a065be6daf84948b8247a7b5d19eb61"
+    },
+    {
+      "applied_at": "2026-07-11T18:45:48.067108Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_functional_downloader_overlay.zip",
+      "artifact_name": "xdm_avalonia_functional_downloader_overlay.zip",
+      "type": "overlay",
+      "sha256": "8031352da24d6384033ecd47a05f214d62e17dce4fd76870b12be377e868965d",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add the functional Avalonia download engine",
+      "commit_hash": "",
+      "file_count": 37,
+      "change_counts": {
+        "add": 16,
+        "modify": 19,
+        "unchanged": 2
+      },
+      "manifest": {},
+      "history_id": "021d84587c0c4b019f4afd15e6dcaf2c"
+    },
+    {
+      "applied_at": "2026-07-11T18:47:44.093601Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_functional_downloader_overlay(1).zip",
+      "artifact_name": "xdm_avalonia_functional_downloader_overlay(1).zip",
+      "type": "overlay",
+      "sha256": "23eb612118aba9eae38e3be61a7b1f111bdc7a4689c4fff0c86592fe624609a1",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add the functional Avalonia download engine",
+      "commit_hash": "",
+      "file_count": 37,
+      "change_counts": {
+        "add": 16,
+        "modify": 19,
+        "unchanged": 2
+      },
+      "manifest": {},
+      "history_id": "7b0b63ceb9f24c62bf1ea2b75ed1c98e"
     }
   ]
 }
