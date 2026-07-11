@@ -1,17 +1,22 @@
 {
-  "name": "xdm_segmented_acceleration_overlay",
+  "name": "xdm_browser_takeover_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "master plus functional parity audit",
+  "baseCommit": "188d2a3",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "functional-parity-13",
-  "description": "Adds resumable concurrent byte-range acceleration with deterministic merge, safe fallback, and preserves single-stream retry regression coverage.",
+  "phase": "functional-parity-14",
+  "description": "Adds acknowledged browser takeover, protocol 2.0 native messaging, request metadata, capture rules, context commands, Firefox/Chromium-family parity, host lifecycle health and deterministic fixtures.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
+    "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore",
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
-    "focusedTests": "dotnet test app/XDM/src/XDM.DownloadEngine.Tests/XDM.DownloadEngine.Tests.csproj --configuration Release --no-build"
+    "focusedTests": "dotnet test app/XDM/src/XDM.BrowserMedia.Tests/XDM.BrowserMedia.Tests.csproj --configuration Release --no-build"
   },
-  "commitMessage": "Add segmented multi-connection download acceleration",
-  "regressionFix": "The truncated-response checkpoint test opts into one connection so its stateful handler continues to exercise the legacy single-stream retry path."
+  "commitMessage": "Add acknowledged browser takeover and extension parity",
+  "constraints": [
+    "Validate only app/XDM/XDM.Modern.sln",
+    "Do not restore or build WPF, GTK, WinForms or MSIX targets",
+    "Browser cancellation requires an accepted XDM queue acknowledgement"
+  ]
 }

@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-11T23:43:36.513249Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_browser_takeover_overlay.zip",
+  "artifact_name": "xdm_browser_takeover_overlay.zip",
+  "type": "overlay",
+  "sha256": "875c3a649a179a8bda2ea108e03bd82b60a01d6c0d3773458ab0195d35a66660",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Add acknowledged browser takeover and extension parity",
+  "commit_hash": "",
+  "file_count": 55,
+  "change_counts": {
+    "add": 18,
+    "modify": 37
+  },
+  "manifest": {},
+  "history_id": "562f0653f1ad4af083a6d6c377f95370"
+}

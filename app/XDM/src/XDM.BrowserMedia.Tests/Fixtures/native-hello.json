@@ -1,0 +1,11 @@
+{
+  "protocolVersion": "2.0",
+  "requestId": "fixture-hello-1",
+  "type": "hello",
+  "client": {
+    "name": "Firefox",
+    "version": "152.0",
+    "extensionVersion": "4.0.0",
+    "platform": "Linux x86_64"
+  }
+}

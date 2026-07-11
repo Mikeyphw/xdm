@@ -13,7 +13,7 @@ This ledger is executable through `XDM.Parity.Tests`. The source of truth is
 
 ## Current baseline
 
-The manifest inventories 47 feature contracts across the download engine,
+The manifest inventories 50 feature contracts across the download engine,
 browser integration, media, conversion, queues, settings, desktop integration,
 diagnostics, localization, packaging and migration.
 
@@ -40,3 +40,13 @@ range support, split the remote object into bounded non-overlapping ranges,
 resume each segment from its own durable file, merge in deterministic order,
 and fall back to the established single-stream path when the server ignores the
 probe range.
+
+## Overlay 14 result
+
+Browser takeover parity is complete. The Firefox and Chromium-family extensions
+now use the versioned native-message protocol, forward bounded request metadata,
+apply shared capture rules, expose manual and download-all context commands, and
+cancel the browser transfer only after the modern app queues it. Native-host
+installation now supports compatibility inspection, repair and uninstall.
+Security and deterministic fixture coverage are documented in
+`docs/parity/BROWSER-TAKEOVER.md`.

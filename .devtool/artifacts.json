@@ -424,6 +424,42 @@
       },
       "manifest": {},
       "history_id": "5e6f6f9833e545d78652492aae81a742"
+    },
+    {
+      "applied_at": "2026-07-11T23:43:36.513249Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_browser_takeover_overlay.zip",
+      "artifact_name": "xdm_browser_takeover_overlay.zip",
+      "type": "overlay",
+      "sha256": "875c3a649a179a8bda2ea108e03bd82b60a01d6c0d3773458ab0195d35a66660",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add acknowledged browser takeover and extension parity",
+      "commit_hash": "",
+      "file_count": 55,
+      "change_counts": {
+        "add": 18,
+        "modify": 37
+      },
+      "manifest": {},
+      "history_id": "562f0653f1ad4af083a6d6c377f95370"
+    },
+    {
+      "applied_at": "2026-07-11T23:45:56.474434Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_browser_takeover_overlay(1).zip",
+      "artifact_name": "xdm_browser_takeover_overlay(1).zip",
+      "type": "overlay",
+      "sha256": "2d6d5561f9e23d5afa85c4d3345f6a1eb83b47aca781d9b907e28c6c4ac1f47c",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add acknowledged browser takeover and extension parity",
+      "commit_hash": "",
+      "file_count": 55,
+      "change_counts": {
+        "add": 18,
+        "modify": 37
+      },
+      "manifest": {},
+      "history_id": "b404a79b2ddc4f2580f9a70a6830aba4"
     }
   ]
 }

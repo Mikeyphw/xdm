@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseline": "XDM 8.0.29 legacy WPF/GTK behavior and public feature contract",
-  "updatedAt": "2026-07-11T23:00:00Z",
+  "updatedAt": "2026-07-12T02:45:00Z",
   "features": [
     {
       "id": "download.http-single-stream",
@@ -344,13 +344,15 @@
         "app/XDM/XDM.Core/Messaging/"
       ],
       "implementationPaths": [
-        "app/XDM/src/XDM.BrowserIntegration/LoopbackBrowserIntegrationService.cs"
+        "app/XDM/src/XDM.BrowserIntegration/LoopbackBrowserIntegrationService.cs",
+        "app/XDM/src/XDM.BrowserIntegration/BrowserCaptureEventArgs.cs"
       ],
       "automatedTests": [
-        "XDM.BrowserMedia.Tests.BrowserCaptureProtocolTests"
+        "XDM.BrowserMedia.Tests.LoopbackAcknowledgementTests",
+        "XDM.BrowserMedia.Tests.BrowserCaptureAcknowledgementTests"
       ],
       "targetOverlay": "14",
-      "notes": "Authenticated capture and health endpoints exist."
+      "notes": "Authenticated loopback capture waits for an explicit queue decision and redacts URL query/fragment data from status."
     },
     {
       "id": "browser.native-host",
@@ -363,59 +365,82 @@
       ],
       "implementationPaths": [
         "app/XDM/src/XDM.NativeHost/Program.cs",
-        "app/XDM/src/XDM.BrowserIntegration/BrowserHostInstaller.cs"
+        "app/XDM/src/XDM.BrowserIntegration/BrowserHostInstaller.cs",
+        "app/XDM/src/XDM.BrowserIntegration/BrowserNativeProtocol.cs"
       ],
       "automatedTests": [
-        "XDM.BrowserMedia.Tests.BrowserHostInstallerTests"
+        "XDM.BrowserMedia.Tests.BrowserHostInstallerTests",
+        "XDM.BrowserMedia.Tests.BrowserNativeProtocolTests",
+        "XDM.BrowserMedia.Tests.NativeMessageFramingTests"
       ],
       "targetOverlay": "14",
-      "notes": "Modern native host and repair logic are packaged."
+      "notes": "Protocol 2.0 host supports install/repair/uninstall, health and compatibility inspection for Firefox and Chromium-family browsers."
     },
     {
       "id": "browser.takeover",
       "area": "browser-integration",
       "name": "Cancel browser download after XDM acceptance",
       "priority": "critical",
-      "status": "partial",
+      "status": "complete",
       "legacySources": [
         "browser-extension/",
         "app/XDM/XDM.Core/Messaging/"
       ],
       "implementationPaths": [
-        "app/XDM/src/XDM.BrowserIntegration/BrowserCaptureProtocol.cs"
+        "app/XDM/chrome-extension/app.js",
+        "app/XDM/firefox-amo/app/app.js",
+        "app/XDM/src/XDM.NativeHost/Program.cs",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.cs"
       ],
-      "automatedTests": [],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.LoopbackAcknowledgementTests.DoesNotAcknowledgeUntilCaptureHandlerAccepts",
+        "XDM.BrowserMedia.Tests.BrowserCaptureAcknowledgementTests",
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.SendsCapturedPostBodyWithoutSegmentingOrRetrying"
+      ],
       "targetOverlay": "14",
-      "notes": "Protocol exists; shipped extensions still need acceptance acknowledgement behavior."
+      "notes": "Automatic browser downloads are cancelled and erased only after the native host receives XDM queue acceptance."
     },
     {
       "id": "browser.download-all",
       "area": "browser-integration",
       "name": "Download all links workflow",
       "priority": "high",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
         "browser-extension/"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/chrome-extension/app.js",
+        "app/XDM/firefox-amo/app/app.js",
+        "app/XDM/src/XDM.BrowserIntegration/BrowserNativeProtocol.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.BrowserNativeProtocolTests.ParsesRecordedBatchFixture"
+      ],
       "targetOverlay": "14",
-      "notes": "Extension UI and batch selection are not ported."
+      "notes": "Context menus provide Download with XDM, media capture and bounded Download all links batches."
     },
     {
       "id": "browser.rules",
       "area": "browser-integration",
       "name": "Per-site, MIME and size interception rules",
       "priority": "high",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
         "browser-extension/",
         "app/XDM/XDM.Core/Config.cs"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.BrowserIntegration/BrowserCaptureRules.cs",
+        "app/XDM/src/XDM.BrowserIntegration/BrowserCaptureRuleEvaluator.cs",
+        "app/XDM/chrome-extension/popup.js",
+        "app/XDM/firefox-amo/app/popup.js"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.BrowserCaptureRuleEvaluatorTests"
+      ],
       "targetOverlay": "14",
-      "notes": "Requires shared rule model and extension parity."
+      "notes": "Shared deterministic rules cover enable/temporary disable, minimum size, MIME, extension, included/excluded sites and incognito policy."
     },
     {
       "id": "media.direct",
@@ -797,6 +822,75 @@
       "automatedTests": [],
       "targetOverlay": "21",
       "notes": "Requires signed release metadata and preview/stable channels."
+    },
+    {
+      "id": "browser.protocol-security",
+      "area": "browser-integration",
+      "name": "Versioned and constrained native messaging protocol",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "browser-extension/",
+        "app/XDM/XDM.Core/Messaging/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.BrowserIntegration/BrowserNativeProtocol.cs",
+        "app/XDM/src/XDM.BrowserIntegration/NativeMessageFraming.cs",
+        "app/XDM/src/XDM.NativeHost/Program.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.BrowserNativeProtocolTests",
+        "XDM.BrowserMedia.Tests.NativeMessageFramingTests"
+      ],
+      "targetOverlay": "14",
+      "notes": "Strict schemas, fixed message and batch limits, per-connection session authentication and an explicit command allow-list prevent arbitrary command execution."
+    },
+    {
+      "id": "browser.request-metadata",
+      "area": "browser-integration",
+      "name": "Safe browser request metadata forwarding",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "browser-extension/",
+        "app/XDM/XDM.Core/Messaging/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.BrowserIntegration/BrowserCaptureRequest.cs",
+        "app/XDM/chrome-extension/app.js",
+        "app/XDM/firefox-amo/app/app.js",
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.BrowserNativeProtocolTests.ParsesRecordedCaptureMetadata",
+        "XDM.BrowserMedia.Tests.BrowserNativeProtocolTests.ParsesRecordedPostCaptureAndDecodesBody",
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.SendsCapturedPostBodyWithoutSegmentingOrRetrying"
+      ],
+      "targetOverlay": "14",
+      "notes": "Cookies, referer, user agent, filename, MIME, size, bounded safe headers and bounded POST metadata are validated end to end."
+    },
+    {
+      "id": "browser.cross-browser",
+      "area": "browser-integration",
+      "name": "Firefox and Chromium-family extension parity",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "browser-extension/",
+        "app/XDM/firefox-amo/"
+      ],
+      "implementationPaths": [
+        "app/XDM/chrome-extension/manifest.json",
+        "app/XDM/chrome-extension/app.js",
+        "app/XDM/firefox-amo/manifest.json",
+        "app/XDM/firefox-amo/app/app.js",
+        "app/XDM/src/XDM.BrowserIntegration/BrowserHostInstaller.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.BrowserHostInstallerTests.RepairsAndUninstallsFirefoxAndChromiumFamilyManifests"
+      ],
+      "targetOverlay": "14",
+      "notes": "Firefox and Chromium-compatible builds cover Chrome/Chromium, Edge, Brave, Vivaldi and Opera-compatible native-host locations."
     }
   ]
 }

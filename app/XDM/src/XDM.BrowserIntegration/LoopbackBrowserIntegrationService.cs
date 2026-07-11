@@ -8,6 +8,7 @@ namespace XDM.BrowserIntegration;
 public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationService
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+    private static readonly TimeSpan CaptureDecisionTimeout = TimeSpan.FromSeconds(20);
     private readonly object _sync = new();
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private readonly int _port;
@@ -197,6 +198,9 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
             await WriteJsonAsync(context.Response, HttpStatusCode.BadRequest, new { error = exception.Message }, cancellationToken)
                 .ConfigureAwait(false);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (IOException exception)
         {
             UpdateStatus(status => status with { LastError = exception.Message });
@@ -211,6 +215,15 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
     private async Task HandleContextAsync(HttpListenerContext context, CancellationToken cancellationToken)
     {
         string path = context.Request.Url?.AbsolutePath ?? "/";
+        bool protectedEndpoint = string.Equals(path, "/health", StringComparison.Ordinal)
+            || string.Equals(path, "/capture", StringComparison.Ordinal);
+        if (protectedEndpoint && !IsAuthenticated(context.Request))
+        {
+            await WriteJsonAsync(context.Response, HttpStatusCode.Unauthorized, new { error = "unauthorized" }, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
         if (context.Request.HttpMethod == "GET" && string.Equals(path, "/health", StringComparison.Ordinal))
         {
             BrowserIntegrationStatus status = Current;
@@ -235,35 +248,68 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
             return;
         }
 
-        string? token = context.Request.Headers["X-XDM-Token"];
-        if (!CryptographicOperations.FixedTimeEquals(
-            Encoding.UTF8.GetBytes(token ?? string.Empty),
-            Encoding.UTF8.GetBytes(Current.AuthenticationToken)))
-        {
-            await WriteJsonAsync(context.Response, HttpStatusCode.Unauthorized, new { error = "unauthorized" }, cancellationToken)
-                .ConfigureAwait(false);
-            return;
-        }
-
         if (context.Request.ContentLength64 is <= 0 or > BrowserCaptureProtocol.MaximumPayloadBytes)
         {
-            throw new InvalidDataException("Browser capture payload is empty or exceeds 64 KiB.");
+            throw new InvalidDataException("Browser capture payload is empty or exceeds 128 KiB.");
         }
 
         byte[] payload = new byte[checked((int)context.Request.ContentLength64)];
         await context.Request.InputStream.ReadExactlyAsync(payload, cancellationToken).ConfigureAwait(false);
         BrowserCaptureRequest request = BrowserCaptureProtocol.Parse(payload);
 
+        BrowserCaptureEventArgs captureEvent = new(request);
+        EventHandler<BrowserCaptureEventArgs>? handlers = CaptureReceived;
+        if (handlers is null)
+        {
+            await WriteJsonAsync(
+                context.Response,
+                HttpStatusCode.ServiceUnavailable,
+                new BrowserCaptureAcknowledgement(request.RequestId, false, "capture_handler_unavailable"),
+                cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         UpdateStatus(status => status with
         {
             LastMessageAt = DateTimeOffset.UtcNow,
             LastBrowser = request.Browser,
-            LastCapturedUrl = request.Url.AbsoluteUri,
+            LastCapturedUrl = request.Url.GetLeftPart(UriPartial.Path),
             LastError = null
         });
-        CaptureReceived?.Invoke(this, new BrowserCaptureEventArgs(request));
-        await WriteJsonAsync(context.Response, HttpStatusCode.Accepted, new { accepted = true }, cancellationToken)
-            .ConfigureAwait(false);
+
+        handlers.Invoke(this, captureEvent);
+        BrowserCaptureDecision decision;
+        try
+        {
+            decision = await captureEvent
+                .WaitForDecisionAsync(CaptureDecisionTimeout, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            decision = BrowserCaptureDecision.Reject("capture_acknowledgement_timeout");
+        }
+
+        HttpStatusCode statusCode = decision.Accepted
+            ? HttpStatusCode.Accepted
+            : HttpStatusCode.Conflict;
+        await WriteJsonAsync(
+            context.Response,
+            statusCode,
+            new BrowserCaptureAcknowledgement(
+                request.RequestId,
+                decision.Accepted,
+                decision.Reason,
+                decision.DownloadId),
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private bool IsAuthenticated(HttpListenerRequest request)
+    {
+        byte[] supplied = Encoding.UTF8.GetBytes(request.Headers["X-XDM-Token"] ?? string.Empty);
+        byte[] expected = Encoding.UTF8.GetBytes(Current.AuthenticationToken);
+        return supplied.Length == expected.Length
+            && CryptographicOperations.FixedTimeEquals(supplied, expected);
     }
 
     private static async Task WriteJsonAsync(
@@ -301,7 +347,8 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
             if (File.Exists(path))
             {
                 string existing = File.ReadAllText(path).Trim();
-                if (existing.Length >= 32)
+                if (existing.Length == 64
+                    && existing.All(static character => char.IsAsciiHexDigit(character)))
                 {
                     return existing;
                 }

@@ -1,0 +1,36 @@
+{
+  "protocolVersion": "2.0",
+  "requestId": "fixture-capture-1",
+  "type": "capture",
+  "sessionId": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "capture": {
+    "url": "https://downloads.example.test/archive.zip?token=secret",
+    "requestId": "download-44",
+    "fileName": "archive.zip",
+    "headers": {
+      "Accept": "application/zip"
+    },
+    "cookie": "session=secret",
+    "referer": "https://example.test/files",
+    "userAgent": "Fixture Browser/4.0",
+    "browser": "Firefox",
+    "mimeType": "application/zip",
+    "fileSize": 8388608,
+    "method": "GET",
+    "sourcePage": "https://example.test/files",
+    "operation": "automatic",
+    "isIncognito": false,
+    "bypassRules": false
+  },
+  "rules": {
+    "enabled": true,
+    "captureIncognito": false,
+    "minimumSizeBytes": 1048576,
+    "blockedMimeTypes": [
+      "text/html"
+    ],
+    "excludedSites": [
+      "ads.example.test"
+    ]
+  }
+}

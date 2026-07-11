@@ -96,11 +96,21 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         string fallbackQueueId = configuredQueues.Count > 0 ? configuredQueues[0].Id : "default";
         foreach (PersistedDownload item in persisted)
         {
+            string restoredMethod = string.Equals(item.Method, "POST", StringComparison.OrdinalIgnoreCase)
+                ? "POST"
+                : "GET";
             DownloadState restoredState = item.State is DownloadState.Connecting
                 or DownloadState.Downloading
                 or DownloadState.Finalizing
                     ? DownloadState.Paused
                     : item.State;
+            string? restoredError = item.ErrorMessage;
+            if (restoredMethod == "POST"
+                && restoredState is (DownloadState.Queued or DownloadState.Paused or DownloadState.Failed))
+            {
+                restoredState = DownloadState.Failed;
+                restoredError = "Captured POST data is intentionally not persisted and cannot be replayed after restart.";
+            }
 
             DownloadSession session = new(
                 item.Id,
@@ -109,7 +119,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 restoredState,
                 item.DownloadedBytes,
                 item.TotalBytes,
-                item.ErrorMessage,
+                restoredError,
                 null,
                 null,
                 null,
@@ -122,7 +132,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 Math.Max(0, item.QueueOrder),
                 item.EntityTag,
                 item.LastModified,
-                item.ConnectionCount);
+                item.ConnectionCount,
+                restoredMethod);
 
             try
             {
@@ -162,6 +173,28 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         if (!request.Source.IsAbsoluteUri || request.Source.Scheme is not ("http" or "https"))
         {
             throw new ArgumentException("Only absolute HTTP and HTTPS URLs are supported.", nameof(request));
+        }
+
+        string method = string.IsNullOrWhiteSpace(request.Method) ? "GET" : request.Method.Trim().ToUpperInvariant();
+        if (method is not ("GET" or "POST"))
+        {
+            throw new ArgumentException("Only GET and POST download requests are supported.", nameof(request));
+        }
+
+        if (request.RequestBody is { Length: > 16 * 1024 })
+        {
+            throw new ArgumentException("The request body exceeds 16 KiB.", nameof(request));
+        }
+
+        if (request.RequestBody is not null && method != "POST")
+        {
+            throw new ArgumentException("Request bodies are only supported for POST downloads.", nameof(request));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.RequestBodyContentType) &&
+            (method != "POST" || !MediaTypeHeaderValue.TryParse(request.RequestBodyContentType, out _)))
+        {
+            throw new ArgumentException("The request body content type is invalid or is not associated with a POST request.", nameof(request));
         }
 
         ArgumentException.ThrowIfNullOrWhiteSpace(request.DestinationDirectory);
@@ -221,7 +254,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             queueOrder,
             null,
             null,
-            Math.Clamp(request.ConnectionCount, 1, 32));
+            method == "GET" ? Math.Clamp(request.ConnectionCount, 1, 32) : 1,
+            method,
+            request.RequestBody?.ToArray(),
+            request.RequestBodyContentType);
 
         if (!_sessions.TryAdd(session.Id, session))
         {
@@ -269,6 +305,14 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         {
             if (session.State is not (DownloadState.Paused or DownloadState.Cancelled or DownloadState.Failed))
             {
+                return Task.CompletedTask;
+            }
+
+            if (session.Method != "GET" && session.RequestBody is null)
+            {
+                session.State = DownloadState.Failed;
+                session.ErrorMessage = "Captured POST data is no longer available and cannot be replayed.";
+                Publish(session, forcePersist: true);
                 return Task.CompletedTask;
             }
 
@@ -514,7 +558,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             await queueGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             queueConcurrencyAcquired = true;
 
-            for (int attempt = 1; attempt <= _retryPolicy.MaximumAttempts; attempt++)
+            int maximumAttempts = session.Method == "GET" ? _retryPolicy.MaximumAttempts : 1;
+            for (int attempt = 1; attempt <= maximumAttempts; attempt++)
             {
                 try
                 {
@@ -527,7 +572,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 }
                 catch (Exception exception) when (
                     DownloadRetryPolicy.IsTransient(exception)
-                    && attempt < _retryPolicy.MaximumAttempts)
+                    && attempt < maximumAttempts)
                 {
                     TimeSpan delay = _retryPolicy.GetDelay(attempt);
                     lock (session.Sync)
@@ -542,7 +587,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                         _logger,
                         session.Id,
                         attempt + 1,
-                        _retryPolicy.MaximumAttempts,
+                        maximumAttempts,
                         delay.TotalMilliseconds,
                         exception.Message);
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
@@ -603,8 +648,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     {
         Directory.CreateDirectory(Path.GetDirectoryName(session.DestinationPath)!);
         long existingLength = File.Exists(partialPath) ? new FileInfo(partialPath).Length : 0;
+        if (session.Method != "GET" && existingLength > 0)
+        {
+            File.Delete(partialPath);
+            existingLength = 0;
+        }
 
-        if (existingLength == 0 && session.ConnectionCount > 1)
+        if (session.Method == "GET" && existingLength == 0 && session.ConnectionCount > 1)
         {
             SegmentedDownloadContext context = new(
                 session.Source,
@@ -660,9 +710,18 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
         }
 
-        using HttpRequestMessage request = new(HttpMethod.Get, session.Source);
+        using HttpRequestMessage request = new(new HttpMethod(session.Method), session.Source);
+        if (session.RequestBody is not null)
+        {
+            request.Content = new ByteArrayContent(session.RequestBody);
+            if (!string.IsNullOrWhiteSpace(session.RequestBodyContentType))
+            {
+                request.Content.Headers.ContentType = new MediaTypeHeaderValue(session.RequestBodyContentType);
+            }
+        }
+
         ApplyRequestMetadata(request, session);
-        if (existingLength > 0)
+        if (session.Method == "GET" && existingLength > 0)
         {
             request.Headers.Range = new RangeHeaderValue(existingLength, null);
             ApplyIfRangeValidator(request, session);
@@ -1220,7 +1279,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.QueueOrder,
                 session.EntityTag,
                 session.LastModified,
-                session.ConnectionCount);
+                session.ConnectionCount,
+                session.Method);
         }
     }
 
@@ -1249,7 +1309,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             int queueOrder = 0,
             string? entityTag = null,
             DateTimeOffset? lastModified = null,
-            int connectionCount = 4)
+            int connectionCount = 4,
+            string method = "GET",
+            byte[]? requestBody = null,
+            string? requestBodyContentType = null)
         {
             Id = id;
             Source = source;
@@ -1271,6 +1334,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             EntityTag = entityTag;
             LastModified = lastModified;
             ConnectionCount = Math.Clamp(connectionCount, 1, 32);
+            Method = method;
+            RequestBody = requestBody;
+            RequestBodyContentType = requestBodyContentType;
         }
 
         public object Sync { get; } = new();
@@ -1316,6 +1382,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         public DateTimeOffset? LastModified { get; set; }
 
         public int ConnectionCount { get; }
+
+        public string Method { get; }
+
+        public byte[]? RequestBody { get; }
+
+        public string? RequestBodyContentType { get; }
 
         public bool PauseRequested { get; set; }
 

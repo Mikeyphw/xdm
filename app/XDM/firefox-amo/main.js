@@ -1,4 +1,3 @@
 "use strict";
-
 const app = new App();
-app.start();
+void app.start();

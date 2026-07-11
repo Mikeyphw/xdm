@@ -1,28 +1,35 @@
 {
-    "name": "XDM Integration Module",
-    "action": {},
-    "manifest_version": 3,
-    "version": "3.3",
-    "description": "Download with Xtreme Download Manager.",
-    "host_permissions": [
-        "*://*/*"
-    ],
-    "permissions": [
-        "downloads",
-        "cookies",
-        "webRequest",
-        "tabs",
-        "storage",
-        "contextMenus",
-        "alarms"
-    ],
-    "background": {
-        "service_worker": "main.js",
-        "type": "module"
-    },
-    "icons": {
-        "16": "icon16.png",
-        "48": "icon48.png",
-        "128": "icon128.png"
-    }
+  "name": "XDM Integration Module",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "XDM browser integration"
+  },
+  "manifest_version": 3,
+  "version": "4.0.0",
+  "description": "Secure, acknowledged browser download takeover for Xtreme Download Manager.",
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "contextMenus",
+    "cookies",
+    "downloads",
+    "nativeMessaging",
+    "scripting",
+    "storage",
+    "tabs",
+    "webRequest"
+  ],
+  "background": {
+    "service_worker": "main.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
 }

@@ -664,6 +664,32 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             BrowserHostStatus = $"Repair failed: {exception.Message}";
             OperationMessage = BrowserHostStatus;
         }
+        catch (InvalidDataException exception)
+        {
+            BrowserHostStatus = $"Repair failed: {exception.Message}";
+            OperationMessage = BrowserHostStatus;
+        }
+    }
+
+    [RelayCommand]
+    private async Task UninstallBrowserHostAsync()
+    {
+        try
+        {
+            BrowserHostInstallationStatus status = await _browserHostInstaller.UninstallAsync();
+            BrowserHostStatus = status.Message;
+            OperationMessage = "Browser native-host registrations removed.";
+        }
+        catch (IOException exception)
+        {
+            BrowserHostStatus = $"Uninstall failed: {exception.Message}";
+            OperationMessage = BrowserHostStatus;
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            BrowserHostStatus = $"Uninstall failed: {exception.Message}";
+            OperationMessage = BrowserHostStatus;
+        }
     }
 
     [RelayCommand]
@@ -859,22 +885,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     private void OnBrowserCaptureReceived(object? sender, BrowserCaptureEventArgs eventArgs)
-        => _ = HandleBrowserCaptureAsync(eventArgs.Request);
+        => _ = HandleBrowserCaptureAsync(eventArgs);
 
-    private async Task HandleBrowserCaptureAsync(BrowserCaptureRequest request)
+    private async Task HandleBrowserCaptureAsync(BrowserCaptureEventArgs eventArgs)
     {
-        MediaProbeResult? probe = null;
-        try
-        {
-            probe = await _mediaProbeService.ProbeAsync(request.Url).ConfigureAwait(false);
-        }
-        catch (HttpRequestException)
-        {
-        }
-        catch (InvalidOperationException)
-        {
-        }
-
+        BrowserCaptureRequest request = eventArgs.Request;
+        string downloadId;
         try
         {
             ApplicationSettings settings = _settingsService.Current;
@@ -887,35 +903,64 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 Referer: request.Referer,
                 UserAgent: request.UserAgent,
                 QueueId: request.QueueId,
-                CategoryId: request.CategoryId);
-            await _downloadManager.AddAsync(downloadRequest).ConfigureAwait(false);
-            _dispatcher.Post(() =>
-            {
-                LastBrowserCapture = $"{request.Browser ?? "Browser"}: {request.Url}";
-                if (probe is not null)
-                {
-                    LastMediaProbe = FormatMediaProbe(probe);
-                }
-
-                OperationMessage = "Browser capture accepted.";
-            });
+                CategoryId: request.CategoryId,
+                ConnectionCount: request.Method == "GET" ? 4 : 1,
+                Method: request.Method,
+                RequestBody: request.GetRequestBody(),
+                RequestBodyContentType: request.RequestBodyContentType);
+            downloadId = await _downloadManager.AddAsync(downloadRequest).ConfigureAwait(false);
+            eventArgs.Accept(downloadId);
         }
         catch (IOException exception)
         {
+            eventArgs.Reject(exception.Message);
             SetBrowserCaptureFailure(exception.Message);
+            return;
         }
         catch (ArgumentException exception)
         {
+            eventArgs.Reject(exception.Message);
             SetBrowserCaptureFailure(exception.Message);
+            return;
         }
         catch (InvalidOperationException exception)
         {
+            eventArgs.Reject(exception.Message);
             SetBrowserCaptureFailure(exception.Message);
+            return;
         }
         catch (UnauthorizedAccessException exception)
         {
+            eventArgs.Reject(exception.Message);
             SetBrowserCaptureFailure(exception.Message);
+            return;
         }
+
+        MediaProbeResult? probe = null;
+        if (request.Method == "GET")
+        {
+            try
+            {
+                probe = await _mediaProbeService.ProbeAsync(request.Url).ConfigureAwait(false);
+            }
+            catch (HttpRequestException)
+            {
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        _dispatcher.Post(() =>
+        {
+            LastBrowserCapture = $"{request.Browser ?? "Browser"}: {request.Url.GetLeftPart(UriPartial.Path)}";
+            if (probe is not null)
+            {
+                LastMediaProbe = FormatMediaProbe(probe);
+            }
+
+            OperationMessage = $"Browser capture accepted as {downloadId}.";
+        });
     }
 
     private void OnSettingsChanged(object? sender, ApplicationSettings settings)
@@ -996,12 +1041,15 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 ? "Stopped"
                 : $"Unavailable: {status.LastError}";
         BrowserEndpoint = $"{status.Endpoint}/capture";
-        BrowserAuthenticationToken = status.AuthenticationToken;
+        BrowserAuthenticationToken = RedactToken(status.AuthenticationToken);
         if (status.LastCapturedUrl is not null)
         {
             LastBrowserCapture = $"{status.LastBrowser ?? "Browser"}: {status.LastCapturedUrl}";
         }
     }
+
+    private static string RedactToken(string token)
+        => token.Length <= 8 ? "••••••••" : $"{token[..8]}…{token[^4..]}";
 
     private void SetBrowserCaptureFailure(string message)
         => _dispatcher.Post(() =>

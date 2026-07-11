@@ -349,13 +349,14 @@
                     <StackPanel Spacing="8">
                       <TextBlock Text="NATIVE HOST" Classes="label" />
                       <TextBlock Text="{Binding BrowserHostStatus}" TextWrapping="Wrap" Foreground="#BAC7D8" />
-                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <TextBox PlaceholderText="Chromium extension ID (Firefox is automatic)" Text="{Binding BrowserExtensionId}" />
+                      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <TextBox PlaceholderText="Chromium extension ID(s), comma-separated; Firefox is automatic" Text="{Binding BrowserExtensionId}" />
                         <Button Grid.Column="1" Classes="secondary" Content="Install / repair" Command="{Binding RepairBrowserHostCommand}" />
+                        <Button Grid.Column="2" Classes="secondary" Content="Uninstall" Command="{Binding UninstallBrowserHostCommand}" />
                       </Grid>
                     </StackPanel>
                   </Border>
-                  <TextBlock Text="Extensions POST JSON to /capture and send the token in the X-XDM-Token header. The loopback listener accepts only HTTP and HTTPS URLs and limits payloads to 64 KiB." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  <TextBlock Text="Browser extensions use the versioned native-messaging protocol. The host authenticates a per-connection session, validates capture rules and metadata, then waits for XDM to queue the download before acknowledging browser cancellation." TextWrapping="Wrap" Foreground="#7F8B9B" />
                 </StackPanel>
               </Border>
               <Grid ColumnDefinitions="*,*" ColumnSpacing="14">

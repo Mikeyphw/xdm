@@ -1,0 +1,28 @@
+{
+  "protocolVersion": "2.0",
+  "requestId": "fixture-batch-1",
+  "type": "capture-batch",
+  "sessionId": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "captures": [
+    {
+      "url": "https://example.test/a.zip",
+      "requestId": "batch-a",
+      "fileName": "a.zip",
+      "browser": "Vivaldi",
+      "operation": "download-all",
+      "bypassRules": true
+    },
+    {
+      "url": "https://example.test/b.pdf",
+      "requestId": "batch-b",
+      "fileName": "b.pdf",
+      "browser": "Vivaldi",
+      "operation": "download-all",
+      "bypassRules": true
+    }
+  ],
+  "rules": {
+    "enabled": true,
+    "captureIncognito": false
+  }
+}

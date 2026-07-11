@@ -1,30 +1,38 @@
 {
-    "name": "XDM v8+ Browser Helper",
-    "browser_action": {},
-    "manifest_version": 2,
-    "version": "1.4",
-    "description": "Download files with XDM v8+",
-    "permissions": [
-        "tabs",
-        "cookies",
-        "contextMenus",
-        "menus",
-        "activeTab",
-        "webRequest",
-        "webRequestBlocking",
-        "*://*/*"
-    ],
-    "background": {
-        "page": "main.html"
-    },
-    "icons": {
-        "16": "icon16.png",
-        "48": "icon48.png",
-        "128": "icon128.png"
-    },
-    "browser_specific_settings": {
-        "gecko": {
-            "id": "xdm-v8-browser-helper@subhra74.github.io"
-        }
+  "name": "XDM Browser Helper",
+  "browser_action": {
+    "default_popup": "app/popup.html",
+    "default_title": "XDM browser integration"
+  },
+  "manifest_version": 2,
+  "version": "4.0.0",
+  "description": "Secure, acknowledged browser download takeover for Xtreme Download Manager.",
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "contextMenus",
+    "cookies",
+    "downloads",
+    "nativeMessaging",
+    "storage",
+    "tabs",
+    "webRequest",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "page": "main.html",
+    "persistent": true
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "xdm-v8-browser-helper@subhra74.github.io",
+      "strict_min_version": "109.0"
     }
+  }
 }

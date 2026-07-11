@@ -1,0 +1,7 @@
+{
+  "protocolVersion": "2.0",
+  "requestId": "fixture-command-1",
+  "type": "execute",
+  "sessionId": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "command": "rm -rf /"
+}

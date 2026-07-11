@@ -281,6 +281,65 @@ public sealed class DownloadManagerTests
         Assert.Equal("session=abc", handler.LastCookie);
     }
 
+    [Fact]
+    public async Task RestoredPostCaptureIsNotReplayedWithoutEphemeralBody()
+    {
+        using TemporaryDirectory directory = new();
+        PersistedDownload persisted = new(
+            "post-restored",
+            new Uri("https://example.test/export"),
+            Path.Combine(directory.Path, "export.bin"),
+            0,
+            null,
+            DownloadState.Queued,
+            DateTimeOffset.UtcNow,
+            Method: "POST");
+        PostHandler handler = new([1, 2, 3]);
+        using HttpClient client = new(handler);
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore([persisted]));
+
+        await manager.InitializeAsync();
+        DownloadSnapshot restored = Assert.Single(state.Current.Downloads);
+        await manager.RetryAsync(restored.Id);
+        await Task.Delay(50);
+
+        DownloadSnapshot current = Assert.Single(state.Current.Downloads);
+        Assert.Equal(DownloadState.Failed, current.State);
+        Assert.NotNull(current.ErrorMessage);
+        Assert.Contains("cannot be replayed", current.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, handler.RequestCount);
+    }
+
+    [Fact]
+    public async Task SendsCapturedPostBodyWithoutSegmentingOrRetrying()
+    {
+        byte[] responsePayload = [9, 8, 7, 6];
+        byte[] requestBody = System.Text.Encoding.UTF8.GetBytes("token=abc&format=zip");
+        using TemporaryDirectory directory = new();
+        PostHandler handler = new(responsePayload);
+        using HttpClient client = new(handler);
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/export"),
+            directory.Path,
+            "export.bin",
+            ConnectionCount: 8,
+            Method: "POST",
+            RequestBody: requestBody,
+            RequestBodyContentType: "application/x-www-form-urlencoded"));
+
+        await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        Assert.Equal(HttpMethod.Post, handler.Method);
+        Assert.Equal(requestBody, handler.Body);
+        Assert.Equal("application/x-www-form-urlencoded", handler.ContentType);
+        Assert.Null(handler.RangeStart);
+        Assert.Equal(1, handler.RequestCount);
+    }
+
     private static DownloadManager CreateManager(
         HttpClient client,
         ApplicationState state,
@@ -369,6 +428,29 @@ public sealed class DownloadManagerTests
             }
 
             return Task.FromResult(response);
+        }
+    }
+
+    private sealed class PostHandler(byte[] payload) : HttpMessageHandler
+    {
+        public int RequestCount { get; private set; }
+        public HttpMethod? Method { get; private set; }
+        public byte[]? Body { get; private set; }
+        public string? ContentType { get; private set; }
+        public long? RangeStart { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            Method = request.Method;
+            Body = request.Content is null ? null : await request.Content.ReadAsByteArrayAsync(cancellationToken);
+            ContentType = request.Content?.Headers.ContentType?.MediaType;
+            RangeStart = request.Headers.Range?.Ranges.FirstOrDefault()?.From;
+            ByteArrayContent content = new(payload);
+            content.Headers.ContentLength = payload.Length;
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
         }
     }
 

@@ -14,7 +14,10 @@ public sealed record DownloadRequest(
     string? CategoryId = null,
     long? SpeedLimitBytesPerSecond = null,
     DuplicateFileBehavior DuplicateBehavior = DuplicateFileBehavior.AutoRename,
-    int ConnectionCount = 4)
+    int ConnectionCount = 4,
+    string Method = "GET",
+    byte[]? RequestBody = null,
+    string? RequestBodyContentType = null)
 {
     public string ResolveFileName()
     {

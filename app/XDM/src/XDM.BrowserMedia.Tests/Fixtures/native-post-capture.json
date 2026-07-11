@@ -1,0 +1,20 @@
+{
+  "protocolVersion": "2.0",
+  "requestId": "fixture-post-1",
+  "type": "capture",
+  "sessionId": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "capture": {
+    "url": "https://example.test/export",
+    "requestId": "post-1",
+    "fileName": "export.bin",
+    "headers": {
+      "Accept": "application/octet-stream"
+    },
+    "browser": "Chrome",
+    "method": "POST",
+    "requestBodyBase64": "dG9rZW49YWJjJmZvcm1hdD16aXA=",
+    "requestBodyContentType": "application/x-www-form-urlencoded",
+    "operation": "context",
+    "bypassRules": true
+  }
+}
