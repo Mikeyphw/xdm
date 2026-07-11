@@ -8,6 +8,7 @@ using XDM.App.Services;
 using XDM.App.ViewModels;
 using XDM.Core.Abstractions;
 using XDM.Core.Persistence;
+using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.DownloadEngine;
 using XDM.Persistence;
@@ -27,6 +28,10 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         _services = ConfigureServices();
+        _services.GetRequiredService<ISettingsService>()
+            .InitializeAsync()
+            .GetAwaiter()
+            .GetResult();
         _services.GetRequiredService<IDownloadManager>()
             .InitializeAsync()
             .GetAwaiter()
@@ -65,6 +70,8 @@ public partial class App : Application
 
         services.AddSingleton<IApplicationState, ApplicationState>();
         services.AddSingleton<IDownloadHistoryStore, JsonDownloadHistoryStore>();
+        services.AddSingleton<ISettingsStore, JsonSettingsStore>();
+        services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IDownloadManager, DownloadManager>();
         services.AddSingleton<IPlatformInfo, PlatformInfo>();
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();

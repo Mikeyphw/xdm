@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using Microsoft.Extensions.Logging.Abstractions;
 using XDM.Core.Downloads;
 using XDM.Core.Persistence;
+using XDM.Core.Settings;
 using XDM.Core.State;
 
 namespace XDM.DownloadEngine.Tests;
@@ -17,7 +18,7 @@ public sealed class DownloadManagerTests
         using HttpClient client = new(new RangeHandler(payload));
         ApplicationState state = new();
         InMemoryHistoryStore history = new();
-        using DownloadManager manager = new(client, state, history, NullLogger<DownloadManager>.Instance);
+        using DownloadManager manager = new(client, state, history, new TestSettingsService(), NullLogger<DownloadManager>.Instance);
 
         string id = await manager.AddAsync(new DownloadRequest(
             new Uri("https://example.test/payload.bin"),
@@ -42,7 +43,7 @@ public sealed class DownloadManagerTests
         RangeHandler handler = new(payload);
         using HttpClient client = new(handler);
         ApplicationState state = new();
-        using DownloadManager manager = new(client, state, new InMemoryHistoryStore(), NullLogger<DownloadManager>.Instance);
+        using DownloadManager manager = new(client, state, new InMemoryHistoryStore(), new TestSettingsService(), NullLogger<DownloadManager>.Instance);
 
         string id = await manager.AddAsync(new DownloadRequest(
             new Uri("https://example.test/resume.bin"),
@@ -53,6 +54,42 @@ public sealed class DownloadManagerTests
 
         Assert.Equal(partialLength, handler.LastRangeStart);
         Assert.Equal(payload, await File.ReadAllBytesAsync(destination));
+    }
+
+
+    [Fact]
+    public async Task AppliesRequestMetadataAndRenamesCollisions()
+    {
+        byte[] payload = [1, 2, 3, 4];
+        using TemporaryDirectory directory = new();
+        await File.WriteAllTextAsync(Path.Combine(directory.Path, "payload.bin"), "existing");
+        RangeHandler handler = new(payload);
+        using HttpClient client = new(handler);
+        ApplicationState state = new();
+        using DownloadManager manager = new(
+            client,
+            state,
+            new InMemoryHistoryStore(),
+            new TestSettingsService(),
+            NullLogger<DownloadManager>.Instance);
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/payload.bin"),
+            directory.Path,
+            "payload.bin",
+            new Dictionary<string, string> { ["X-Test"] = "value" },
+            "user",
+            "password",
+            "session=abc",
+            "https://example.test/page",
+            "XDM-Test"));
+
+        DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        Assert.Equal("payload (1).bin", completed.FileName);
+        Assert.Equal("value", handler.LastTestHeader);
+        Assert.Equal("Basic", handler.LastAuthorizationScheme);
+        Assert.Equal("session=abc", handler.LastCookie);
     }
 
     private static async Task<DownloadSnapshot> WaitForStateAsync(
@@ -84,11 +121,24 @@ public sealed class DownloadManagerTests
     {
         public long? LastRangeStart { get; private set; }
 
+        public string? LastTestHeader { get; private set; }
+
+        public string? LastAuthorizationScheme { get; private set; }
+
+        public string? LastCookie { get; private set; }
+
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            LastTestHeader = request.Headers.TryGetValues("X-Test", out IEnumerable<string>? testValues)
+                ? testValues.Single()
+                : null;
+            LastAuthorizationScheme = request.Headers.Authorization?.Scheme;
+            LastCookie = request.Headers.TryGetValues("Cookie", out IEnumerable<string>? cookieValues)
+                ? cookieValues.Single()
+                : null;
             LastRangeStart = request.Headers.Range?.Ranges.FirstOrDefault()?.From;
             int offset = checked((int)(LastRangeStart ?? 0));
             ByteArrayContent content = new(payload[offset..]);
@@ -123,6 +173,23 @@ public sealed class DownloadManagerTests
             CancellationToken cancellationToken = default)
         {
             Downloads = downloads.ToArray();
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class TestSettingsService : ISettingsService
+    {
+        public ApplicationSettings Current { get; private set; } = ApplicationSettings.CreateDefault();
+
+        public event EventHandler<ApplicationSettings>? Changed;
+
+        public Task InitializeAsync(CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task UpdateAsync(ApplicationSettings settings, CancellationToken cancellationToken = default)
+        {
+            Current = settings.Normalize();
+            Changed?.Invoke(this, Current);
             return Task.CompletedTask;
         }
     }

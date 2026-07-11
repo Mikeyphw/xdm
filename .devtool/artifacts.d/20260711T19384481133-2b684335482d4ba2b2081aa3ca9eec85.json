@@ -1,0 +1,19 @@
+{
+  "applied_at": "2026-07-11T19:38:44.811338Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_essential_workflows_overlay(1).zip",
+  "artifact_name": "xdm_avalonia_essential_workflows_overlay(1).zip",
+  "type": "overlay",
+  "sha256": "541662774737643591bf2efcf789a952530a9518fd81722384b3845ec4c4dc40",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Add essential Avalonia download workflows",
+  "commit_hash": "",
+  "file_count": 22,
+  "change_counts": {
+    "add": 10,
+    "modify": 9,
+    "unchanged": 3
+  },
+  "manifest": {},
+  "history_id": "2b684335482d4ba2b2081aa3ca9eec85"
+}

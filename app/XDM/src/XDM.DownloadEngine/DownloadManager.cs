@@ -2,9 +2,11 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using XDM.Core.Downloads;
 using XDM.Core.Persistence;
+using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.DownloadEngine.Logging;
 
@@ -20,6 +22,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private readonly IApplicationState _applicationState;
     private readonly IDownloadHistoryStore _historyStore;
     private readonly ILogger<DownloadManager> _logger;
+    private readonly ISettingsService _settingsService;
+    private readonly SemaphoreSlim _concurrencyGate;
     private readonly ConcurrentDictionary<string, DownloadSession> _sessions = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _persistenceGate = new(1, 1);
     private DateTimeOffset _lastPersistence = DateTimeOffset.MinValue;
@@ -29,12 +33,15 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         HttpClient httpClient,
         IApplicationState applicationState,
         IDownloadHistoryStore historyStore,
+        ISettingsService settingsService,
         ILogger<DownloadManager> logger)
     {
         _httpClient = httpClient;
         _applicationState = applicationState;
         _historyStore = historyStore;
+        _settingsService = settingsService;
         _logger = logger;
+        _concurrencyGate = new SemaphoreSlim(settingsService.Current.MaxConcurrentDownloads);
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -59,7 +66,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 restoredState,
                 item.DownloadedBytes,
                 item.TotalBytes,
-                item.ErrorMessage);
+                item.ErrorMessage,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
 
             _sessions[item.Id] = session;
             _applicationState.UpsertDownload(CreateSnapshot(session));
@@ -81,7 +94,16 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         Directory.CreateDirectory(request.DestinationDirectory);
 
         string fileName = request.ResolveFileName();
-        string destinationPath = Path.Combine(request.DestinationDirectory, fileName);
+        string destinationPath = ResolveDestinationPath(request, fileName);
+        if (request.DuplicateBehavior == DuplicateFileBehavior.Overwrite)
+        {
+            string overwritePartialPath = GetPartialPath(destinationPath);
+            if (File.Exists(overwritePartialPath))
+            {
+                File.Delete(overwritePartialPath);
+            }
+        }
+
         DownloadSession session = new(
             Guid.NewGuid().ToString("N"),
             request.Source,
@@ -89,7 +111,14 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             DownloadState.Queued,
             0,
             null,
-            null);
+            null,
+            request.Headers,
+            request.Username,
+            request.Password,
+            request.Cookie,
+            request.Referer,
+            request.UserAgent,
+            request.SpeedLimitBytesPerSecond);
 
         if (!_sessions.TryAdd(session.Id, session))
         {
@@ -214,6 +243,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         _persistenceGate.Dispose();
+        _concurrencyGate.Dispose();
     }
 
     private void Start(DownloadSession session)
@@ -243,12 +273,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     {
         string partialPath = GetPartialPath(session.DestinationPath);
 
+        bool concurrencyAcquired = false;
         try
         {
+            await _concurrencyGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            concurrencyAcquired = true;
+
             Directory.CreateDirectory(Path.GetDirectoryName(session.DestinationPath)!);
             long existingLength = File.Exists(partialPath) ? new FileInfo(partialPath).Length : 0;
 
             using HttpRequestMessage request = new(HttpMethod.Get, session.Source);
+            ApplyRequestMetadata(request, session);
             if (existingLength > 0)
             {
                 request.Headers.Range = new RangeHeaderValue(existingLength, null);
@@ -329,6 +364,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     session.BytesPerSecond = (session.DownloadedBytes - speedStartBytes) / elapsedSeconds;
                 }
 
+                await ApplySpeedLimitAsync(
+                    session,
+                    speedWatch,
+                    existingLength,
+                    cancellationToken).ConfigureAwait(false);
+
                 DateTimeOffset now = DateTimeOffset.UtcNow;
                 if (now - lastProgress >= ProgressInterval)
                 {
@@ -374,6 +415,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         catch (InvalidOperationException exception)
         {
             Fail(session, exception);
+        }
+        finally
+        {
+            if (concurrencyAcquired)
+            {
+                _concurrencyGate.Release();
+            }
         }
     }
 
@@ -469,6 +517,114 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             : throw new KeyNotFoundException($"Download '{downloadId}' was not found.");
     }
 
+    private string ResolveDestinationPath(DownloadRequest request, string fileName)
+    {
+        string candidate = Path.Combine(request.DestinationDirectory, fileName);
+        bool activeCollision = _sessions.Values.Any(session =>
+            string.Equals(session.DestinationPath, candidate, StringComparison.OrdinalIgnoreCase));
+        if (activeCollision)
+        {
+            throw new IOException($"A download already uses '{candidate}'.");
+        }
+
+        // A matching .part file is resumable state, not a destination collision.
+        // Overwrite handling removes it after this method returns; the normal
+        // auto-rename path must preserve the established resume behavior.
+        if (!File.Exists(candidate))
+        {
+            return candidate;
+        }
+
+        if (request.DuplicateBehavior == DuplicateFileBehavior.Skip)
+        {
+            throw new IOException($"The destination file already exists: '{candidate}'.");
+        }
+
+        if (request.DuplicateBehavior == DuplicateFileBehavior.Overwrite)
+        {
+            return candidate;
+        }
+
+        string directory = Path.GetDirectoryName(candidate)!;
+        string extension = Path.GetExtension(candidate);
+        string stem = Path.GetFileNameWithoutExtension(candidate);
+        for (int index = 1; index < 10_000; index++)
+        {
+            string renamed = Path.Combine(directory, $"{stem} ({index}){extension}");
+            bool isUsed = File.Exists(renamed)
+                || File.Exists(GetPartialPath(renamed))
+                || _sessions.Values.Any(session =>
+                    string.Equals(session.DestinationPath, renamed, StringComparison.OrdinalIgnoreCase));
+            if (!isUsed)
+            {
+                return renamed;
+            }
+        }
+
+        throw new IOException("Could not find an available destination filename.");
+    }
+
+    private static void ApplyRequestMetadata(HttpRequestMessage request, DownloadSession session)
+    {
+        if (session.Headers is not null)
+        {
+            foreach ((string name, string value) in session.Headers)
+            {
+                request.Headers.TryAddWithoutValidation(name, value);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(session.Username))
+        {
+            string credentials = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes($"{session.Username}:{session.Password ?? string.Empty}"));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+        }
+
+        if (!string.IsNullOrWhiteSpace(session.Cookie))
+        {
+            request.Headers.TryAddWithoutValidation("Cookie", session.Cookie);
+        }
+
+        if (!string.IsNullOrWhiteSpace(session.Referer))
+        {
+            request.Headers.TryAddWithoutValidation("Referer", session.Referer);
+        }
+
+        if (!string.IsNullOrWhiteSpace(session.UserAgent))
+        {
+            request.Headers.TryAddWithoutValidation("User-Agent", session.UserAgent);
+        }
+    }
+
+    private async Task ApplySpeedLimitAsync(
+        DownloadSession session,
+        Stopwatch elapsed,
+        long startingBytes,
+        CancellationToken cancellationToken)
+    {
+        long speedLimit = session.SpeedLimitBytesPerSecond is > 0
+            ? session.SpeedLimitBytesPerSecond.Value
+            : _settingsService.Current.DefaultSpeedLimitBytesPerSecond;
+        if (speedLimit <= 0)
+        {
+            return;
+        }
+
+        long downloadedThisRun;
+        lock (session.Sync)
+        {
+            downloadedThisRun = Math.Max(0, session.DownloadedBytes - startingBytes);
+        }
+
+        TimeSpan expected = TimeSpan.FromSeconds((double)downloadedThisRun / speedLimit);
+        TimeSpan delay = expected - elapsed.Elapsed;
+        if (delay > TimeSpan.FromMilliseconds(2))
+        {
+            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private static string GetPartialPath(string destinationPath)
         => $"{destinationPath}.part";
 
@@ -518,7 +674,14 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             DownloadState state,
             long downloadedBytes,
             long? totalBytes,
-            string? errorMessage)
+            string? errorMessage,
+            IReadOnlyDictionary<string, string>? headers,
+            string? username,
+            string? password,
+            string? cookie,
+            string? referer,
+            string? userAgent,
+            long? speedLimitBytesPerSecond = null)
         {
             Id = id;
             Source = source;
@@ -527,6 +690,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             DownloadedBytes = downloadedBytes;
             TotalBytes = totalBytes;
             ErrorMessage = errorMessage;
+            Headers = headers;
+            Username = username;
+            Password = password;
+            Cookie = cookie;
+            Referer = referer;
+            UserAgent = userAgent;
+            SpeedLimitBytesPerSecond = speedLimitBytesPerSecond;
         }
 
         public object Sync { get; } = new();
@@ -546,6 +716,20 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         public double BytesPerSecond { get; set; }
 
         public string? ErrorMessage { get; set; }
+
+        public IReadOnlyDictionary<string, string>? Headers { get; }
+
+        public string? Username { get; }
+
+        public string? Password { get; }
+
+        public string? Cookie { get; }
+
+        public string? Referer { get; }
+
+        public string? UserAgent { get; }
+
+        public long? SpeedLimitBytesPerSecond { get; }
 
         public bool PauseRequested { get; set; }
 

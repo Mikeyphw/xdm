@@ -1,6 +1,19 @@
 namespace XDM.DownloadEngine;
 
-public sealed record DownloadRequest(Uri Source, string DestinationDirectory, string? FileName = null)
+public sealed record DownloadRequest(
+    Uri Source,
+    string DestinationDirectory,
+    string? FileName = null,
+    IReadOnlyDictionary<string, string>? Headers = null,
+    string? Username = null,
+    string? Password = null,
+    string? Cookie = null,
+    string? Referer = null,
+    string? UserAgent = null,
+    string? QueueId = null,
+    string? CategoryId = null,
+    long? SpeedLimitBytesPerSecond = null,
+    DuplicateFileBehavior DuplicateBehavior = DuplicateFileBehavior.AutoRename)
 {
     public string ResolveFileName()
     {
