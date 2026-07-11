@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XDM.Core.Abstractions;
 using XDM.Core.Downloads;
+using XDM.Core.Queues;
 using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.DownloadEngine;
@@ -46,8 +47,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         SelectedSection = Sections[0];
         ApplySettings(settingsService.Current);
         ApplySnapshot(applicationState.Current);
+        ApplyQueueRuntime(downloadManager.QueueRuntime);
         applicationState.Changed += OnApplicationStateChanged;
         settingsService.Changed += OnSettingsChanged;
+        downloadManager.QueueRuntimeChanged += OnQueueRuntimeChanged;
     }
 
     public ObservableCollection<NavigationItem> Sections { get; }
@@ -163,6 +166,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private DownloadQueueDefinition? schedulerQueue;
 
+    [ObservableProperty]
+    private string queueRuntimeStatus = "No active queues";
+
+    public bool IsSelectedQueueActive
+        => SelectedQueue is not null && _downloadManager.QueueRuntime.IsActive(SelectedQueue.Id);
+
     public bool IsDownloadsVisible
         => string.Equals(SelectedSection?.Title, "Downloads", StringComparison.Ordinal);
 
@@ -187,6 +196,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsSchedulerVisible));
         OnPropertyChanged(nameof(IsSettingsVisible));
         OnPropertyChanged(nameof(IsPlaceholderVisible));
+    }
+
+    partial void OnSelectedQueueChanged(DownloadQueueDefinition? value)
+    {
+        OnPropertyChanged(nameof(IsSelectedQueueActive));
     }
 
     partial void OnSelectedCategoryChanged(DownloadCategoryDefinition? value)
@@ -384,6 +398,73 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private async Task StartSelectedQueueAsync()
+    {
+        if (SelectedQueue is null)
+        {
+            OperationMessage = "Select a queue first.";
+            return;
+        }
+
+        await _downloadManager.StartQueueAsync(SelectedQueue.Id);
+        OperationMessage = $"Queue '{SelectedQueue.Name}' started.";
+    }
+
+    [RelayCommand]
+    private async Task StopSelectedQueueAsync()
+    {
+        if (SelectedQueue is null)
+        {
+            OperationMessage = "Select a queue first.";
+            return;
+        }
+
+        await _downloadManager.StopQueueAsync(SelectedQueue.Id);
+        OperationMessage = $"Queue '{SelectedQueue.Name}' stopped.";
+    }
+
+    [RelayCommand]
+    private async Task MoveSelectedDownloadToQueueAsync()
+    {
+        if (SelectedDownload is null || SelectedQueue is null)
+        {
+            OperationMessage = "Select both a download and a queue.";
+            return;
+        }
+
+        await _downloadManager.MoveToQueueAsync(SelectedDownload.Id, SelectedQueue.Id);
+        OperationMessage = $"Moved '{SelectedDownload.FileName}' to '{SelectedQueue.Name}'.";
+    }
+
+    [RelayCommand]
+    private async Task MoveSelectedDownloadEarlierAsync()
+    {
+        if (SelectedDownload is null)
+        {
+            return;
+        }
+
+        await _downloadManager.MoveToQueueAsync(
+            SelectedDownload.Id,
+            SelectedDownload.QueueId,
+            Math.Max(0, SelectedDownload.QueueOrder - 1));
+    }
+
+    [RelayCommand]
+    private async Task MoveSelectedDownloadLaterAsync()
+    {
+        if (SelectedDownload is null)
+        {
+            return;
+        }
+
+        await _downloadManager.MoveToQueueAsync(
+            SelectedDownload.Id,
+            SelectedDownload.QueueId,
+            SelectedDownload.QueueOrder + 1);
+    }
+
+    [RelayCommand]
     private void AddCategory()
     {
         string name = NewCategoryName.Trim();
@@ -438,6 +519,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _disposed = true;
         _applicationState.Changed -= OnApplicationStateChanged;
         _settingsService.Changed -= OnSettingsChanged;
+        _downloadManager.QueueRuntimeChanged -= OnQueueRuntimeChanged;
         GC.SuppressFinalize(this);
     }
 
@@ -450,6 +532,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         else
         {
             _dispatcher.Post(() => ApplySnapshot(snapshot));
+        }
+    }
+
+    private void OnQueueRuntimeChanged(object? sender, QueueRuntimeSnapshot snapshot)
+    {
+        if (_dispatcher.CheckAccess())
+        {
+            ApplyQueueRuntime(snapshot);
+        }
+        else
+        {
+            _dispatcher.Post(() => ApplyQueueRuntime(snapshot));
         }
     }
 
@@ -492,6 +586,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void ApplyQueueRuntime(QueueRuntimeSnapshot snapshot)
+    {
+        string[] active = QueueDefinitions
+            .Where(queue => snapshot.IsActive(queue.Id))
+            .Select(queue => $"{queue.Name} ({snapshot.GetRunningCount(queue.Id)} running)")
+            .ToArray();
+        QueueRuntimeStatus = active.Length == 0
+            ? "No active queues"
+            : string.Join(" • ", active);
+        OnPropertyChanged(nameof(IsSelectedQueueActive));
+    }
+
     private void ApplySettings(ApplicationSettings settings)
     {
         DestinationFolder = settings.DefaultDownloadDirectory;
@@ -527,6 +633,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         SchedulerQueue = QueueDefinitions.FirstOrDefault(queue =>
             string.Equals(queue.Id, settings.Scheduler.QueueId, StringComparison.Ordinal))
             ?? QueueDefinitions.FirstOrDefault();
+        ApplyQueueRuntime(_downloadManager.QueueRuntime);
     }
 
     private static long? ParseKilobytesPerSecond(string value)

@@ -1,11 +1,11 @@
 {
-  "name": "xdm_avalonia_essential_workflows_overlay",
+  "name": "xdm_avalonia_queue_scheduler_runtime_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "5fcc69c",
+  "baseCommit": "84a0e06",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": 4,
-  "description": "Adds batch input, request metadata and authentication, duplicate handling, atomic settings, category and queue definitions, scheduler configuration, clipboard URL capture, concurrency limits, speed limits, tests, and fixes the Avalonia PlaceholderText warning.",
+  "phase": 5,
+  "description": "Activates persistent queue membership, simultaneous queue execution, per-queue concurrency and speed limits, ordering controls, and the live timezone-aware scheduler runtime.",
   "validation": {
     "linux": "app/XDM/eng/validate-modern.sh",
     "windows": "app/XDM/eng/validate-modern.ps1",
@@ -13,5 +13,5 @@
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
     "smoke": "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap"
   },
-  "commitMessage": "Add essential Avalonia download workflows"
+  "commitMessage": "Add queue execution and scheduler runtime"
 }

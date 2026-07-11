@@ -10,4 +10,7 @@ public sealed record PersistedDownload(
     long? TotalBytes,
     DownloadState State,
     DateTimeOffset UpdatedAt,
-    string? ErrorMessage = null);
+    string? ErrorMessage = null,
+    string QueueId = "default",
+    string? CategoryId = null,
+    int QueueOrder = 0);

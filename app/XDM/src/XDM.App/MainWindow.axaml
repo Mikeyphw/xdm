@@ -87,8 +87,8 @@
 
         <Border Grid.Row="2" Background="#171D25" CornerRadius="8" Padding="12" Margin="0,14,0,0">
           <StackPanel Spacing="4">
-            <TextBlock Text="Essential workflows" FontWeight="SemiBold" Foreground="#DDE5F2" />
-            <TextBlock Text="Batch input, request metadata, settings, queues, scheduler, and clipboard capture." TextWrapping="Wrap" FontSize="11" Foreground="#7F8B9B" />
+            <TextBlock Text="Runtime queues" FontWeight="SemiBold" Foreground="#DDE5F2" />
+            <TextBlock Text="Persistent membership, concurrent queue execution, ordering, speed policy, and live scheduling." TextWrapping="Wrap" FontSize="11" Foreground="#7F8B9B" />
           </StackPanel>
         </Border>
       </Grid>
@@ -169,6 +169,8 @@
               <Button Classes="secondary" Content="Cancel" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanCancel}" />
               <Button Classes="secondary" Content="Retry" Command="{Binding RetrySelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
               <Button Classes="secondary" Content="Remove" Command="{Binding RemoveSelectedCommand}" />
+              <Button Classes="secondary" Content="Earlier" Command="{Binding MoveSelectedDownloadEarlierCommand}" />
+              <Button Classes="secondary" Content="Later" Command="{Binding MoveSelectedDownloadLaterCommand}" />
             </StackPanel>
 
             <Border Grid.Row="2" Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
@@ -184,6 +186,7 @@
                         <StackPanel>
                           <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" Foreground="#F1F5FA" />
                           <TextBlock Text="{Binding Source}" FontSize="11" Foreground="#718095" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding QueueId}" FontSize="10" Foreground="#58739A" />
                         </StackPanel>
                         <TextBlock Grid.Column="1" Text="{Binding StatusText}" Foreground="#8FB5FF" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Text="{Binding SpeedText}" Foreground="#C8D1DE" VerticalAlignment="Center" />
@@ -223,11 +226,20 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
+                  <TextBlock Text="{Binding QueueRuntimeStatus}" Foreground="#8FB5FF" TextWrapping="Wrap" />
+                  <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="9">
+                    <ComboBox ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedQueue}">
+                      <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Grid.Column="1" Classes="primary" Content="Start" Command="{Binding StartSelectedQueueCommand}" />
+                    <Button Grid.Column="2" Classes="secondary" Content="Stop" Command="{Binding StopSelectedQueueCommand}" />
+                    <Button Grid.Column="3" Classes="secondary" Content="Move selected download" Command="{Binding MoveSelectedDownloadToQueueCommand}" />
+                  </Grid>
                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
                     <TextBox PlaceholderText="New queue name" Text="{Binding NewQueueName}" />
                     <Button Grid.Column="1" Classes="primary" Content="Add queue" Command="{Binding AddQueueCommand}" />
                   </Grid>
-                  <TextBlock Text="Queue definitions are persisted now; queue-specific execution will be connected in the browser/media milestone." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  <TextBlock Text="Queues execute independently. Global and per-queue concurrency and speed limits are enforced while multiple queues are active." TextWrapping="Wrap" Foreground="#7F8B9B" />
                 </StackPanel>
               </Border>
 
@@ -269,7 +281,7 @@
                   <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
                 </ComboBox>
               </Grid>
-              <TextBlock Text="The schedule is timezone-aware and currently uses the all-days policy from the core model." TextWrapping="Wrap" Foreground="#7F8B9B" />
+              <TextBlock Text="The scheduler is live, timezone-aware, supports overnight windows, and evaluates immediately at startup and after settings changes." TextWrapping="Wrap" Foreground="#7F8B9B" />
               <Button HorizontalAlignment="Left" Classes="primary" Content="Save schedule" Command="{Binding SaveSettingsCommand}" />
             </StackPanel>
           </Border>
@@ -306,7 +318,7 @@
 
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
         <TextBlock Text="{Binding RuntimeDescription}" FontSize="11" Foreground="#687586" />
-        <TextBlock Grid.Column="1" Text="Essential workflows • phase 4" FontSize="11" Foreground="#8FB5FF" />
+        <TextBlock Grid.Column="1" Text="Queue runtime • phase 5" FontSize="11" Foreground="#8FB5FF" />
       </Grid>
     </Grid>
   </Grid>

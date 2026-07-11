@@ -23,7 +23,10 @@ public sealed class JsonDownloadHistoryStoreTests
                 128,
                 512,
                 DownloadState.Paused,
-                DateTimeOffset.UtcNow);
+                DateTimeOffset.UtcNow,
+                QueueId: "night",
+                CategoryId: "archives",
+                QueueOrder: 3);
 
             await store.SaveAsync([expected]);
             IReadOnlyList<PersistedDownload> loaded = await store.LoadAsync();
@@ -32,6 +35,9 @@ public sealed class JsonDownloadHistoryStoreTests
             Assert.Equal(expected.Id, actual.Id);
             Assert.Equal(expected.Source, actual.Source);
             Assert.Equal(expected.DownloadedBytes, actual.DownloadedBytes);
+            Assert.Equal("night", actual.QueueId);
+            Assert.Equal("archives", actual.CategoryId);
+            Assert.Equal(3, actual.QueueOrder);
             Assert.False(File.Exists($"{path}.tmp"));
         }
         finally

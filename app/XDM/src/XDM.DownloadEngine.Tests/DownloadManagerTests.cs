@@ -58,6 +58,37 @@ public sealed class DownloadManagerTests
 
 
     [Fact]
+    public async Task StartsNonDefaultQueueOnlyWhenActivated()
+    {
+        byte[] payload = [7, 8, 9, 10];
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        InMemoryHistoryStore history = new();
+        using DownloadManager manager = new(
+            client,
+            state,
+            history,
+            new TestSettingsService(),
+            NullLogger<DownloadManager>.Instance);
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/queued.bin"),
+            directory.Path,
+            "queued.bin",
+            QueueId: "night"));
+
+        Assert.Equal(DownloadState.Queued, state.Current.Downloads.Single(item => item.Id == id).State);
+        Assert.Equal("night", state.Current.Downloads.Single(item => item.Id == id).QueueId);
+
+        await manager.StartQueueAsync("night");
+        DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        Assert.Equal("night", completed.QueueId);
+        Assert.Contains("night", manager.QueueRuntime.ActiveQueueIds);
+    }
+
+    [Fact]
     public async Task AppliesRequestMetadataAndRenamesCollisions()
     {
         byte[] payload = [1, 2, 3, 4];

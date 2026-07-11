@@ -10,7 +10,10 @@ public sealed record DownloadSnapshot(
     double BytesPerSecond,
     DownloadState State,
     DateTimeOffset UpdatedAt,
-    string? ErrorMessage = null)
+    string? ErrorMessage = null,
+    string QueueId = "default",
+    string? CategoryId = null,
+    int QueueOrder = 0)
 {
     public double? ProgressFraction
         => TotalBytes is > 0

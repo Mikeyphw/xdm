@@ -11,6 +11,7 @@ using XDM.Core.Persistence;
 using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.DownloadEngine;
+using XDM.DownloadEngine.Queues;
 using XDM.Persistence;
 using XDM.Platform;
 
@@ -33,6 +34,10 @@ public partial class App : Application
             .GetAwaiter()
             .GetResult();
         _services.GetRequiredService<IDownloadManager>()
+            .InitializeAsync()
+            .GetAwaiter()
+            .GetResult();
+        _services.GetRequiredService<IQueueSchedulerRuntime>()
             .InitializeAsync()
             .GetAwaiter()
             .GetResult();
@@ -73,6 +78,7 @@ public partial class App : Application
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IDownloadManager, DownloadManager>();
+        services.AddSingleton<IQueueSchedulerRuntime, QueueSchedulerRuntime>();
         services.AddSingleton<IPlatformInfo, PlatformInfo>();
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
         services.AddSingleton<MainWindowViewModel>();

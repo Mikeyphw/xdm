@@ -167,6 +167,25 @@
       },
       "manifest": {},
       "history_id": "2b684335482d4ba2b2081aa3ca9eec85"
+    },
+    {
+      "applied_at": "2026-07-11T19:54:50.316785Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_queue_scheduler_runtime_overlay.zip",
+      "artifact_name": "xdm_avalonia_queue_scheduler_runtime_overlay.zip",
+      "type": "overlay",
+      "sha256": "d37358ba81f159cab8792b77fe828622e52536eb408f4d98c2556e43a202ddc1",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add queue execution and scheduler runtime",
+      "commit_hash": "",
+      "file_count": 17,
+      "change_counts": {
+        "add": 4,
+        "modify": 12,
+        "unchanged": 1
+      },
+      "manifest": {},
+      "history_id": "2d0ee9d2a8c8470d9e7ec8416631df85"
     }
   ]
 }

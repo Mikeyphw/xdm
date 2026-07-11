@@ -1,10 +1,10 @@
-# XDM Avalonia essential workflows overlay
+# XDM Avalonia queue and scheduler runtime overlay
 
-Base commit: `5fcc69c`
+Base commit: `84a0e06`
 
 Target: `xdm_modern`
 
-This overlay adds multiline batch downloads, request headers and authentication, duplicate-file policies, persisted settings, category and queue definitions, scheduler configuration, clipboard URL capture, startup concurrency limits, and default/per-download speed limits.
+This overlay makes queues and schedules executable. It persists queue membership/order, supports simultaneous active queues, enforces global and per-queue concurrency and bandwidth policies, and evaluates the configured schedule at startup and while XDM is running.
 
 Validation:
 
@@ -15,16 +15,5 @@ Validation:
 Commit message:
 
 ```text
-Add essential Avalonia download workflows
+Add queue execution and scheduler runtime
 ```
-
-Known transitional limits:
-
-- Queue and scheduler definitions are persisted, but execution gating is deferred to the next engine integration pass.
-- Authentication and custom headers are intentionally not persisted in download history.
-- Changing maximum concurrency takes effect after restarting XDM; speed-limit changes are read live.
-
-Retry fixes included:
-
-- Treat an existing `.part` file as resumable state instead of an auto-rename collision.
-- Guard Avalonia clipboard access when the platform clipboard is unavailable.
