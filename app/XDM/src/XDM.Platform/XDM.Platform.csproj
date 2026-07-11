@@ -3,4 +3,7 @@
     <AssemblyName>XDM.Platform</AssemblyName>
     <RootNamespace>XDM.Platform</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../XDM.Core/XDM.Core.csproj" />
+  </ItemGroup>
 </Project>

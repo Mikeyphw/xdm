@@ -1,25 +1,24 @@
-# XDM Avalonia release UX overlay
+# XDM Avalonia desktop completion overlay
 
-Apply after `xdm_avalonia_engine_hardening_overlay.zip` / commit `8a78305`.
-
+Base commit: `a69a6e7`
 Target: `xdm_modern`
+Framework: `.NET 10`
 
-This overlay fixes the three remaining analyzer warnings and adds single-instance activation, persisted window placement, download search/status filters, checkbox-based bulk actions, and package smoke-test scripts.
+## Scope
 
-Validation:
+- Clears the remaining CA1859 warning.
+- Adds tray/background behavior and explicit tray exit.
+- Adds best-effort native desktop completion/failure notifications.
+- Adds a virtualized downloads list, selected-download details, and a bounded event timeline.
+- Adds `XDM.NativeHost` and user-level browser native-host manifest repair.
+- Publishes the native host beside XDM for Linux and Windows.
+- Adds tests for notification command selection and browser-host manifest repair.
+- Adds an explicit legacy UI cleanup script.
+
+## Validation
 
 ```bash
-./app/XDM/eng/validate-modern.sh
-```
-
-Optional full Linux package qualification:
-
-```bash
-./app/XDM/eng/qualify-modern.sh
-```
-
-Commit message:
-
-```text
-Add single instance release UX and package qualification
+dotnet restore app/XDM/XDM.Modern.sln
+dotnet build app/XDM/XDM.Modern.sln --no-restore
+dotnet test app/XDM/XDM.Modern.sln --no-build
 ```

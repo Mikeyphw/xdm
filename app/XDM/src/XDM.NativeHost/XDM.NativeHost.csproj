@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>XDM.NativeHost</AssemblyName>
+    <RootNamespace>XDM.NativeHost</RootNamespace>
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../XDM.BrowserIntegration/XDM.BrowserIntegration.csproj" />
+  </ItemGroup>
+</Project>

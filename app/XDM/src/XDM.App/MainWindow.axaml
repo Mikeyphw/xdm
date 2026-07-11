@@ -185,34 +185,64 @@
               </WrapPanel>
             </Grid>
 
-            <Border Grid.Row="2" Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
-              <ListBox ItemsSource="{Binding FilteredDownloads}"
-                       SelectedItem="{Binding SelectedDownload}"
-                       Background="Transparent"
-                       BorderThickness="0"
-                       Padding="7">
-                <ListBox.ItemTemplate>
-                  <DataTemplate>
-                    <Border Padding="12" Background="#151B23" CornerRadius="8">
-                      <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="16">
-                        <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" />
-                        <StackPanel Grid.Column="1">
-                          <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" Foreground="#F1F5FA" />
-                          <TextBlock Text="{Binding Source}" FontSize="11" Foreground="#718095" TextTrimming="CharacterEllipsis" />
-                          <TextBlock Text="{Binding QueueId}" FontSize="10" Foreground="#58739A" />
-                        </StackPanel>
-                        <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="#8FB5FF" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="3" Text="{Binding SpeedText}" Foreground="#C8D1DE" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="4" Text="{Binding RemainingText}" Foreground="#7F8B9B" VerticalAlignment="Center" />
-                        <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Margin="0,10,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" />
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ProgressText}" FontSize="11" Foreground="#7F8B9B" />
-                        <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Text="{Binding ErrorMessage}" FontSize="11" Foreground="#FF8F8F" HorizontalAlignment="Right" />
-                      </Grid>
-                    </Border>
-                  </DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-            </Border>
+            <Grid Grid.Row="2" ColumnDefinitions="2*,*" ColumnSpacing="12">
+              <Border Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
+                <ListBox ItemsSource="{Binding FilteredDownloads}"
+                         SelectedItem="{Binding SelectedDownload}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="7">
+                  <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                  </ListBox.ItemsPanel>
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <Border Padding="12" Background="#151B23" CornerRadius="8">
+                        <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="16">
+                          <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" />
+                          <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                            <TextBlock Text="{Binding Source}" FontSize="11" Foreground="#718095" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding QueueId}" FontSize="10" Foreground="#58739A" />
+                          </StackPanel>
+                          <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="#8FB5FF" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="3" Text="{Binding SpeedText}" Foreground="#C8D1DE" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="4" Text="{Binding RemainingText}" Foreground="#7F8B9B" VerticalAlignment="Center" />
+                          <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Margin="0,10,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" />
+                          <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ProgressText}" FontSize="11" Foreground="#7F8B9B" />
+                          <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Text="{Binding ErrorMessage}" FontSize="11" Foreground="#FF8F8F" HorizontalAlignment="Right" />
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Border>
+              <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="16" BorderBrush="#202833" BorderThickness="1">
+                <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
+                  <TextBlock Text="DOWNLOAD DETAILS" Classes="label" />
+                  <StackPanel Grid.Row="1" Spacing="4">
+                    <TextBlock Text="{Binding SelectedDownload.FileName}" FontWeight="SemiBold" Foreground="#F1F5FA" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedDownload.Source}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedDownload.DestinationPath}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <TextBlock Grid.Row="2" Text="EVENT TIMELINE" Classes="label" />
+                  <ListBox Grid.Row="3" ItemsSource="{Binding SelectedDownloadTimeline}" Background="Transparent" BorderThickness="0">
+                    <ListBox.ItemsPanel>
+                      <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto" Margin="0,3">
+                          <TextBlock Text="{Binding Status}" Foreground="#8FB5FF" FontSize="11" />
+                          <TextBlock Grid.Column="1" Text="{Binding Timestamp}" Foreground="#687586" FontSize="10" HorizontalAlignment="Right" />
+                          <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Message}" Foreground="#C8D1DE" FontSize="11" TextWrapping="Wrap" />
+                        </Grid>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </Grid>
+              </Border>
+            </Grid>
           </Grid>
 
           <ScrollViewer IsVisible="{Binding IsQueuesVisible}">
@@ -315,6 +345,16 @@
                     <Button Classes="primary" Content="Restart capture service" Command="{Binding RestartBrowserIntegrationCommand}" />
                     <Button Classes="secondary" Content="Probe URL from Downloads" Command="{Binding ProbeEnteredUrlCommand}" />
                   </StackPanel>
+                  <Border Background="#171D25" CornerRadius="8" Padding="12">
+                    <StackPanel Spacing="8">
+                      <TextBlock Text="NATIVE HOST" Classes="label" />
+                      <TextBlock Text="{Binding BrowserHostStatus}" TextWrapping="Wrap" Foreground="#BAC7D8" />
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBox PlaceholderText="Chromium extension ID (Firefox is automatic)" Text="{Binding BrowserExtensionId}" />
+                        <Button Grid.Column="1" Classes="secondary" Content="Install / repair" Command="{Binding RepairBrowserHostCommand}" />
+                      </Grid>
+                    </StackPanel>
+                  </Border>
                   <TextBlock Text="Extensions POST JSON to /capture and send the token in the X-XDM-Token header. The loopback listener accepts only HTTP and HTTPS URLs and limits payloads to 64 KiB." TextWrapping="Wrap" Foreground="#7F8B9B" />
                 </StackPanel>
               </Border>
@@ -408,7 +448,7 @@
 
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
         <TextBlock Text="{Binding RuntimeDescription}" FontSize="11" Foreground="#687586" />
-        <TextBlock Grid.Column="1" Text="Release UX • phase 9" FontSize="11" Foreground="#8FB5FF" />
+        <TextBlock Grid.Column="1" Text="Desktop integration • phase 10" FontSize="11" Foreground="#8FB5FF" />
       </Grid>
     </Grid>
   </Grid>

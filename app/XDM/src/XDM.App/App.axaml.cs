@@ -23,6 +23,7 @@ namespace XDM.App;
 
 public partial class App : Application
 {
+    internal static bool ExitRequested { get; private set; }
     internal static StartupOptions LaunchOptions { get; set; } = StartupOptions.Default;
 
     internal static SingleInstanceCoordinator? InstanceCoordinator { get; set; }
@@ -78,6 +79,7 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
             MainWindow mainWindow = services.GetRequiredService<MainWindow>();
             desktop.MainWindow = mainWindow;
             if (InstanceCoordinator is not null)
@@ -129,6 +131,24 @@ public partial class App : Application
 
 #pragma warning restore CA1031
 
+
+    private void TrayOpen_Click(object? sender, EventArgs eventArgs)
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: MainWindow window })
+        {
+            window.RestoreAndActivate();
+        }
+    }
+
+    private void TrayExit_Click(object? sender, EventArgs eventArgs)
+    {
+        ExitRequested = true;
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.Shutdown();
+        }
+    }
+
     internal static ServiceProvider ConfigureServices()
     {
         ServiceCollection services = new();
@@ -163,6 +183,8 @@ public partial class App : Application
         services.AddSingleton<IDownloadManager, DownloadManager>();
         services.AddSingleton<IQueueSchedulerRuntime, QueueSchedulerRuntime>();
         services.AddSingleton<IPlatformInfo, PlatformInfo>();
+        services.AddSingleton<IDesktopNotificationService, DesktopNotificationService>();
+        services.AddSingleton<IBrowserHostInstaller, BrowserHostInstaller>();
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
         services.AddSingleton<WindowStateStore>();
         services.AddSingleton<MainWindowViewModel>();

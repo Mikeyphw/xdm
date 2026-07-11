@@ -24,6 +24,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IMediaProbeService _mediaProbeService;
     private readonly IDiagnosticEventStore _diagnosticEvents;
     private readonly IDiagnosticBundleService _diagnosticBundleService;
+    private readonly IDesktopNotificationService _desktopNotifications;
+    private readonly IBrowserHostInstaller _browserHostInstaller;
+    private readonly Dictionary<string, DownloadState> _lastDownloadStates = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<DownloadTimelineEntry>> _downloadTimelines = new(StringComparer.Ordinal);
     private bool _disposed;
 
     public MainWindowViewModel(
@@ -36,7 +40,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IMediaProbeService mediaProbeService,
         IDiagnosticEventStore diagnosticEvents,
         IDiagnosticBundleService diagnosticBundleService,
-        IRecoveryService recoveryService)
+        IRecoveryService recoveryService,
+        IDesktopNotificationService desktopNotifications,
+        IBrowserHostInstaller browserHostInstaller)
     {
         _applicationState = applicationState;
         _downloadManager = downloadManager;
@@ -46,6 +52,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _mediaProbeService = mediaProbeService;
         _diagnosticEvents = diagnosticEvents;
         _diagnosticBundleService = diagnosticBundleService;
+        _desktopNotifications = desktopNotifications;
+        _browserHostInstaller = browserHostInstaller;
         PlatformDescription = platformInfo.DisplayName;
         RuntimeDescription = platformInfo.Runtime;
 
@@ -65,6 +73,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         ApplySnapshot(applicationState.Current);
         ApplyQueueRuntime(downloadManager.QueueRuntime);
         ApplyBrowserStatus(browserIntegrationService.Current);
+        BrowserHostStatus = browserHostInstaller.GetStatus().Message;
         ApplyDiagnostics();
         RecoveryStatus = recoveryService.SafeMode
             ? "Safe mode is active; browser integration and scheduler startup were skipped."
@@ -90,6 +99,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public ObservableCollection<DownloadQueueDefinition> QueueDefinitions { get; } = [];
 
     public ObservableCollection<DiagnosticEvent> DiagnosticEvents { get; } = [];
+
+    public ObservableCollection<DownloadTimelineEntry> SelectedDownloadTimeline { get; } = [];
 
     public IReadOnlyList<string> DuplicateBehaviors { get; }
 
@@ -218,6 +229,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string browserAuthenticationToken = string.Empty;
 
     [ObservableProperty]
+    private string browserExtensionId = string.Empty;
+
+    [ObservableProperty]
+    private string browserHostStatus = "Native host status has not been checked.";
+
+    [ObservableProperty]
     private string lastBrowserCapture = "No browser captures yet";
 
     [ObservableProperty]
@@ -277,6 +294,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     partial void OnSelectedDownloadStatusChanged(string value)
         => RefreshFilteredDownloads();
+
+    partial void OnSelectedDownloadChanged(DownloadItemViewModel? value)
+        => RefreshSelectedDownloadTimeline(value?.Id);
 
     partial void OnSelectedQueueChanged(DownloadQueueDefinition? value)
     {
@@ -431,49 +451,49 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task PauseBulkAsync()
     {
-        IReadOnlyList<DownloadItemViewModel> targets = GetActionTargets();
+        DownloadItemViewModel[] targets = GetActionTargets();
         foreach (DownloadItemViewModel download in targets.Where(static item => item.CanPause))
         {
             await _downloadManager.PauseAsync(download.Id);
         }
 
-        OperationMessage = $"Pause requested for {targets.Count} download(s).";
+        OperationMessage = $"Pause requested for {targets.Length} download(s).";
     }
 
     [RelayCommand]
     private async Task ResumeBulkAsync()
     {
-        IReadOnlyList<DownloadItemViewModel> targets = GetActionTargets();
+        DownloadItemViewModel[] targets = GetActionTargets();
         foreach (DownloadItemViewModel download in targets.Where(static item => item.CanResume))
         {
             await _downloadManager.ResumeAsync(download.Id);
         }
 
-        OperationMessage = $"Resume requested for {targets.Count} download(s).";
+        OperationMessage = $"Resume requested for {targets.Length} download(s).";
     }
 
     [RelayCommand]
     private async Task CancelBulkAsync()
     {
-        IReadOnlyList<DownloadItemViewModel> targets = GetActionTargets();
+        DownloadItemViewModel[] targets = GetActionTargets();
         foreach (DownloadItemViewModel download in targets.Where(static item => item.CanCancel))
         {
             await _downloadManager.CancelAsync(download.Id);
         }
 
-        OperationMessage = $"Cancel requested for {targets.Count} download(s).";
+        OperationMessage = $"Cancel requested for {targets.Length} download(s).";
     }
 
     [RelayCommand]
     private async Task RemoveBulkAsync()
     {
-        IReadOnlyList<DownloadItemViewModel> targets = GetActionTargets();
+        DownloadItemViewModel[] targets = GetActionTargets();
         foreach (DownloadItemViewModel download in targets)
         {
             await _downloadManager.RemoveAsync(download.Id);
         }
 
-        OperationMessage = $"Removed {targets.Count} download(s) from history.";
+        OperationMessage = $"Removed {targets.Length} download(s) from history.";
     }
 
     [RelayCommand]
@@ -620,6 +640,30 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         await _browserIntegrationService.StopAsync();
         await _browserIntegrationService.InitializeAsync();
         ApplyBrowserStatus(_browserIntegrationService.Current);
+    }
+
+    [RelayCommand]
+    private async Task RepairBrowserHostAsync()
+    {
+        try
+        {
+            BrowserHostInstallationStatus status = await _browserHostInstaller
+                .RepairAsync(EmptyToNull(BrowserExtensionId));
+            BrowserHostStatus = status.Message;
+            OperationMessage = status.NativeHostExists
+                ? "Browser native-host registration repaired."
+                : "Native-host executable is not present in the application directory.";
+        }
+        catch (IOException exception)
+        {
+            BrowserHostStatus = $"Repair failed: {exception.Message}";
+            OperationMessage = BrowserHostStatus;
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            BrowserHostStatus = $"Repair failed: {exception.Message}";
+            OperationMessage = BrowserHostStatus;
+        }
     }
 
     [RelayCommand]
@@ -897,6 +941,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         foreach (DownloadSnapshot download in snapshot.Downloads)
         {
+            bool stateChanged = !_lastDownloadStates.TryGetValue(download.Id, out DownloadState previousState)
+                || previousState != download.State;
+            _lastDownloadStates[download.Id] = download.State;
+
             if (existing.Remove(download.Id, out DownloadItemViewModel? item))
             {
                 item.Apply(download);
@@ -904,6 +952,19 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             else
             {
                 Downloads.Add(new DownloadItemViewModel(download));
+            }
+
+            if (stateChanged)
+            {
+                AppendTimeline(download);
+                if (download.State == DownloadState.Completed)
+                {
+                    _ = _desktopNotifications.ShowAsync("Download completed", download.FileName);
+                }
+                else if (download.State == DownloadState.Failed)
+                {
+                    _ = _desktopNotifications.ShowAsync("Download failed", download.FileName);
+                }
             }
         }
 
@@ -993,7 +1054,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
 
-    private IReadOnlyList<DownloadItemViewModel> GetActionTargets()
+    private DownloadItemViewModel[] GetActionTargets()
     {
         DownloadItemViewModel[] checkedDownloads = Downloads
             .Where(static download => download.IsSelected)
@@ -1004,6 +1065,43 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         return SelectedDownload is null ? [] : [SelectedDownload];
+    }
+
+    private void AppendTimeline(DownloadSnapshot download)
+    {
+        if (!_downloadTimelines.TryGetValue(download.Id, out List<DownloadTimelineEntry>? entries))
+        {
+            entries = [];
+            _downloadTimelines.Add(download.Id, entries);
+        }
+
+        string message = download.ErrorMessage is null
+            ? download.DownloadedBytes.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " bytes received."
+            : download.ErrorMessage;
+        entries.Add(new DownloadTimelineEntry(DateTimeOffset.Now, download.State.ToString(), message));
+        if (entries.Count > 100)
+        {
+            entries.RemoveRange(0, entries.Count - 100);
+        }
+
+        if (string.Equals(SelectedDownload?.Id, download.Id, StringComparison.Ordinal))
+        {
+            RefreshSelectedDownloadTimeline(download.Id);
+        }
+    }
+
+    private void RefreshSelectedDownloadTimeline(string? downloadId)
+    {
+        SelectedDownloadTimeline.Clear();
+        if (downloadId is null || !_downloadTimelines.TryGetValue(downloadId, out List<DownloadTimelineEntry>? entries))
+        {
+            return;
+        }
+
+        foreach (DownloadTimelineEntry entry in entries.AsEnumerable().Reverse())
+        {
+            SelectedDownloadTimeline.Add(entry);
+        }
     }
 
     private void RefreshFilteredDownloads()

@@ -5,4 +5,17 @@
   <Application.Styles>
     <FluentTheme />
   </Application.Styles>
+  <TrayIcon.Icons>
+    <TrayIcons>
+      <TrayIcon Icon="/Assets/xdm-logo.ico" ToolTipText="Xtreme Download Manager">
+        <TrayIcon.Menu>
+          <NativeMenu>
+            <NativeMenuItem Header="Open XDM" Click="TrayOpen_Click" />
+            <NativeMenuItemSeparator />
+            <NativeMenuItem Header="Exit" Click="TrayExit_Click" />
+          </NativeMenu>
+        </TrayIcon.Menu>
+      </TrayIcon>
+    </TrayIcons>
+  </TrayIcon.Icons>
 </Application>

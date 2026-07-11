@@ -11,6 +11,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <AvaloniaResource Include="../../xdm-logo.ico" Link="Assets/xdm-logo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Fonts.Inter" />

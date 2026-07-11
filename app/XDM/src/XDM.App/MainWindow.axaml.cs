@@ -45,6 +45,7 @@ public partial class MainWindow : Window
     {
         if (!IsVisible)
         {
+            ShowInTaskbar = true;
             Show();
         }
 
@@ -83,6 +84,12 @@ public partial class MainWindow : Window
 
     private async void MainWindow_Closing(object? sender, WindowClosingEventArgs eventArgs)
     {
+        bool hideToTray = !App.ExitRequested;
+        if (hideToTray)
+        {
+            eventArgs.Cancel = true;
+        }
+
         WindowPlacementState state = new(
             Position.X,
             Position.Y,
@@ -90,6 +97,15 @@ public partial class MainWindow : Window
             Math.Max(MinHeight, Bounds.Height),
             WindowState == Avalonia.Controls.WindowState.Maximized);
         await _windowStateStore.SaveAsync(state);
+        if (hideToTray)
+        {
+            Hide();
+            ShowInTaskbar = false;
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                viewModel.OperationMessage = "XDM is still running in the system tray.";
+            }
+        }
     }
 
     private async void BrowseDestination_Click(object? sender, RoutedEventArgs e)

@@ -1,22 +1,18 @@
 {
-  "name": "xdm_avalonia_release_ux_overlay",
+  "name": "xdm_avalonia_desktop_completion_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "8a78305",
-  "requires": [
-    "xdm_avalonia_engine_hardening_overlay"
-  ],
+  "baseCommit": "a69a6e7",
+  "requires": ["xdm_avalonia_release_ux_overlay"],
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": 9,
-  "description": "Adds single-instance activation, persisted window placement, download filtering and bulk actions, warning cleanup, and self-contained package smoke tests.",
+  "phase": 10,
+  "description": "Adds tray/background behavior, desktop notifications, download details and timeline, native browser-host repair, virtualization, and native-host packaging.",
   "validation": {
     "linux": "app/XDM/eng/validate-modern.sh",
     "windows": "app/XDM/eng/validate-modern.ps1",
     "solution": "app/XDM/XDM.Modern.sln",
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
-    "smoke": "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap",
-    "packageSmokeLinux": "app/XDM/eng/smoke-package.sh linux-x64",
-    "packageSmokeWindows": "app/XDM/eng/smoke-package.ps1"
+    "smoke": "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap"
   },
-  "commitMessage": "Add single instance release UX and package qualification"
+  "commitMessage": "Complete Avalonia desktop integration and native browser host"
 }
