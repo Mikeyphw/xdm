@@ -1,24 +1,24 @@
-# XDM Avalonia desktop completion overlay
+# XDM Avalonia prerelease cutover overlay
 
-Base commit: `a69a6e7`
+Base commit: `96ab637`
 Target: `xdm_modern`
 Framework: `.NET 10`
+Version: `9.0.0-preview.1`
 
 ## Scope
 
-- Clears the remaining CA1859 warning.
-- Adds tray/background behavior and explicit tray exit.
-- Adds best-effort native desktop completion/failure notifications.
-- Adds a virtualized downloads list, selected-download details, and a bounded event timeline.
-- Adds `XDM.NativeHost` and user-level browser native-host manifest repair.
-- Publishes the native host beside XDM for Linux and Windows.
-- Adds tests for notification command selection and browser-host manifest repair.
-- Adds an explicit legacy UI cleanup script.
+- Establishes modern-only CI and disables the old WPF workflow.
+- Adds preview versioning, changelog, migration guide, and release checklist.
+- Adds large-history performance regression tests and bootstrap benchmark output.
+- Adds Linux and Windows packaged-build qualification scripts.
+- Makes devtool packaging execute full prerelease qualification.
+- Expands the explicit legacy cleanup script without deleting files during overlay validation.
 
 ## Validation
 
 ```bash
 dotnet restore app/XDM/XDM.Modern.sln
-dotnet build app/XDM/XDM.Modern.sln --no-restore
-dotnet test app/XDM/XDM.Modern.sln --no-build
+dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore
+dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build
+dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap
 ```

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-version="${1:-0.1.0-dev}"
+version="${1:-$(tr -d '[:space:]' < "$repo_root/VERSION")}"
 artifacts="$repo_root/artifacts"
 "$repo_root/app/XDM/eng/publish-modern.sh" "$artifacts/publish"
 mkdir -p "$artifacts/packages"
@@ -16,14 +16,14 @@ if command -v dpkg-deb >/dev/null 2>&1; then
   cp -a "$artifacts/publish/linux-x64/." "$stage/opt/xdm/"
   ln -s /opt/xdm/XDM "$stage/usr/bin/xdm-modern"
   cp "$repo_root/app/XDM/packaging/linux/xdm-modern.desktop" "$stage/usr/share/applications/xdm-modern.desktop"
-  cat > "$stage/DEBIAN/control" <<EOF
+  cat > "$stage/DEBIAN/control" <<CONTROL
 Package: xdm-modern
 Version: $version
 Section: net
 Priority: optional
 Architecture: amd64
 Maintainer: XDM Modern contributors
-Description: Avalonia-based Xtreme Download Manager
-EOF
+Description: Avalonia-based Xtreme Download Manager preview
+CONTROL
   dpkg-deb --build "$stage" "$artifacts/packages/xdm-modern_${version}_amd64.deb"
 fi

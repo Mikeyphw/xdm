@@ -1,6 +1,9 @@
-param([string]$Version = "0.1.0-dev")
+param([string]$Version = "")
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "../../..")).Path
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $Version = (Get-Content (Join-Path $RepoRoot "VERSION") -Raw).Trim()
+}
 $PublishRoot = Join-Path $RepoRoot "artifacts/publish"
 & (Join-Path $PSScriptRoot "publish-modern.ps1") -OutputRoot $PublishRoot -Runtime "win-x64"
 $Packages = Join-Path $RepoRoot "artifacts/packages"

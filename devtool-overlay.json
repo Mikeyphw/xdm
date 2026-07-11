@@ -1,12 +1,13 @@
 {
-  "name": "xdm_avalonia_desktop_completion_overlay",
+  "name": "xdm_avalonia_prerelease_cutover_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "a69a6e7",
-  "requires": ["xdm_avalonia_release_ux_overlay"],
+  "baseCommit": "96ab637",
+  "requires": ["xdm_avalonia_desktop_completion_overlay"],
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": 10,
-  "description": "Adds tray/background behavior, desktop notifications, download details and timeline, native browser-host repair, virtualization, and native-host packaging.",
+  "phase": 11,
+  "version": "9.0.0-preview.1",
+  "description": "Adds modern-only CI, prerelease metadata, migration documentation, performance gates, package qualification, and safe legacy cleanup tooling.",
   "validation": {
     "linux": "app/XDM/eng/validate-modern.sh",
     "windows": "app/XDM/eng/validate-modern.ps1",
@@ -14,5 +15,5 @@
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
     "smoke": "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap"
   },
-  "commitMessage": "Complete Avalonia desktop integration and native browser host"
+  "commitMessage": "Prepare the first modern Avalonia prerelease"
 }

@@ -1,0 +1,42 @@
+name: XDM Modern Prerelease
+
+on:
+  workflow_dispatch:
+  push:
+    tags: [modern-v*]
+
+permissions:
+  contents: read
+
+jobs:
+  linux-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: app/XDM/eng/qualify-prerelease.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xdm-modern-linux
+          path: |
+            artifacts/packages/*linux*.tar.gz
+            artifacts/packages/*.deb
+            artifacts/packages/SHA256SUMS
+
+  windows-package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - shell: pwsh
+        run: app/XDM/eng/qualify-prerelease.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xdm-modern-windows
+          path: |
+            artifacts/packages/*.zip
+            artifacts/packages/SHA256SUMS.windows.txt

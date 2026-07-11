@@ -9,5 +9,11 @@
     <DebugType>portable</DebugType>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <VersionPrefix>9.0.0</VersionPrefix>
+    <VersionSuffix>preview.1</VersionSuffix>
+    <Product>Xtreme Download Manager</Product>
+    <Authors>XDM Modern contributors</Authors>
+    <RepositoryUrl>https://github.com/Mikeyphw/xdm</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 </Project>
