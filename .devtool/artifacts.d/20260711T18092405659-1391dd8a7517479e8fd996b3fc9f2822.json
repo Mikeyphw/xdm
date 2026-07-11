@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-11T18:09:24.056590Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_net8_build_baseline_overlay.zip",
+  "artifact_name": "xdm_net8_build_baseline_overlay.zip",
+  "type": "overlay",
+  "sha256": "785c53f4a77202026569a030772e050bc88502d49cbad1d7a70a6d010918c692",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Migrate XDM build baseline to .NET 8",
+  "commit_hash": "",
+  "file_count": 15,
+  "change_counts": {
+    "add": 7,
+    "modify": 8
+  },
+  "manifest": {},
+  "history_id": "1391dd8a7517479e8fd996b3fc9f2822"
+}

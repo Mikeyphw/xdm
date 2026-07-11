@@ -1,0 +1,78 @@
+{
+  "schema_version": 2,
+  "artifacts": [
+    {
+      "applied_at": "2026-07-11T18:09:24.056590Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_net8_build_baseline_overlay.zip",
+      "artifact_name": "xdm_net8_build_baseline_overlay.zip",
+      "type": "overlay",
+      "sha256": "785c53f4a77202026569a030772e050bc88502d49cbad1d7a70a6d010918c692",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Migrate XDM build baseline to .NET 8",
+      "commit_hash": "",
+      "file_count": 15,
+      "change_counts": {
+        "add": 7,
+        "modify": 8
+      },
+      "manifest": {},
+      "history_id": "1391dd8a7517479e8fd996b3fc9f2822"
+    },
+    {
+      "applied_at": "2026-07-11T18:20:39.600677Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_net10_build_baseline_overlay.zip",
+      "artifact_name": "xdm_net10_build_baseline_overlay.zip",
+      "type": "overlay",
+      "sha256": "70ec16b827175d216dd49ccd277f4d186d7ac15214f92e171a2c7af5d7f8b5ec",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Migrate XDM build baseline to .NET 10",
+      "commit_hash": "",
+      "file_count": 16,
+      "change_counts": {
+        "add": 7,
+        "modify": 8,
+        "unchanged": 1
+      },
+      "manifest": {},
+      "history_id": "3e84377c711a42939a3965ffd9ae7916"
+    },
+    {
+      "applied_at": "2026-07-11T18:24:11.390196Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_net10_build_baseline_overlay.zip",
+      "artifact_name": "xdm_net10_build_baseline_overlay.zip",
+      "type": "overlay",
+      "sha256": "b289280160d30cf3d22046fe60367559cff778c8de477e360ec2e8904b889c28",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Migrate XDM build baseline to .NET 10",
+      "commit_hash": "",
+      "file_count": 16,
+      "change_counts": {
+        "add": 7,
+        "modify": 9
+      },
+      "manifest": {},
+      "history_id": "97baccc7089c466d8bc59125573e854b"
+    },
+    {
+      "applied_at": "2026-07-11T18:30:16.579347Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_direct_bootstrap_overlay.zip",
+      "artifact_name": "xdm_avalonia_direct_bootstrap_overlay.zip",
+      "type": "overlay",
+      "sha256": "4e29c818348b59f5f0e7a4896fce2f34d0dcc5d1700ffd2a53bac0cb48852982",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Bootstrap the .NET 10 Avalonia application",
+      "commit_hash": "",
+      "file_count": 18,
+      "change_counts": {
+        "add": 17,
+        "modify": 1
+      },
+      "manifest": {},
+      "history_id": "f47027627bd74b1cb9455556acf6d5d3"
+    }
+  ]
+}

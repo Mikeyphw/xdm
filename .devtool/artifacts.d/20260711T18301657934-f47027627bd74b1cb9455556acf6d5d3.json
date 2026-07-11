@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-11T18:30:16.579347Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_direct_bootstrap_overlay.zip",
+  "artifact_name": "xdm_avalonia_direct_bootstrap_overlay.zip",
+  "type": "overlay",
+  "sha256": "4e29c818348b59f5f0e7a4896fce2f34d0dcc5d1700ffd2a53bac0cb48852982",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Bootstrap the .NET 10 Avalonia application",
+  "commit_hash": "",
+  "file_count": 18,
+  "change_counts": {
+    "add": 17,
+    "modify": 1
+  },
+  "manifest": {},
+  "history_id": "f47027627bd74b1cb9455556acf6d5d3"
+}

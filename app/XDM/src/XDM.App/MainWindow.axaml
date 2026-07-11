@@ -1,0 +1,179 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="1180"
+        d:DesignHeight="760"
+        x:Class="XDM.App.MainWindow"
+        Title="Xtreme Download Manager"
+        Width="1180"
+        Height="760"
+        MinWidth="900"
+        MinHeight="600"
+        Background="#0E1116">
+
+  <Window.Styles>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="#4F8CFF" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="18,10" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.secondary">
+      <Setter Property="Background" Value="#1B212A" />
+      <Setter Property="Foreground" Value="#DDE5F2" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="14,9" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="12,11" />
+      <Setter Property="Margin" Value="0,2" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="ListBoxItem:selected">
+      <Setter Property="Background" Value="#26354A" />
+    </Style>
+  </Window.Styles>
+
+  <Grid ColumnDefinitions="228,*">
+    <Border Grid.Column="0"
+            Background="#12171E"
+            BorderBrush="#202833"
+            BorderThickness="0,0,1,0"
+            Padding="16">
+      <Grid RowDefinitions="Auto,*,Auto">
+        <StackPanel Spacing="2" Margin="8,8,8,20">
+          <TextBlock Text="XDM"
+                     FontSize="28"
+                     FontWeight="Bold"
+                     Foreground="#F3F7FC" />
+          <TextBlock Text="Avalonia preview"
+                     FontSize="12"
+                     Foreground="#7F8B9B" />
+        </StackPanel>
+
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding Sections}"
+                 SelectedItem="{Binding SelectedSection}"
+                 Background="Transparent"
+                 BorderThickness="0">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="28,*">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Glyph}"
+                           FontSize="17"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="#8FB5FF" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Title}"
+                           VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           Foreground="#DDE5F2" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Border Grid.Row="2"
+                Background="#171D25"
+                CornerRadius="8"
+                Padding="12"
+                Margin="0,14,0,0">
+          <StackPanel Spacing="4">
+            <TextBlock Text="Direct cutover"
+                       FontWeight="SemiBold"
+                       Foreground="#DDE5F2" />
+            <TextBlock Text="WPF and GTK are not part of this build."
+                       TextWrapping="Wrap"
+                       FontSize="11"
+                       Foreground="#7F8B9B" />
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" Margin="30,24,30,20">
+      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,22">
+        <StackPanel Spacing="5">
+          <TextBlock Text="{Binding CurrentTitle}"
+                     FontSize="27"
+                     FontWeight="Bold"
+                     Foreground="#F3F7FC" />
+          <TextBlock Text="{Binding CurrentSummary}"
+                     Foreground="#8794A5" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+          <Button Classes="secondary" Content="Paste URL" IsEnabled="False" />
+          <Button Classes="primary" Content="+ Add download" IsEnabled="False" />
+        </StackPanel>
+      </Grid>
+
+      <Grid Grid.Row="1" RowDefinitions="Auto,*">
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+          <Border Grid.Column="0" Background="#151B23" CornerRadius="10" Padding="16">
+            <StackPanel Spacing="7">
+              <TextBlock Text="ACTIVE" FontSize="11" FontWeight="Bold" Foreground="#7F8B9B" />
+              <TextBlock Text="0" FontSize="26" FontWeight="Bold" Foreground="#F3F7FC" />
+              <TextBlock Text="Downloader engine connects in the next overlay." FontSize="11" Foreground="#7F8B9B" />
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="1" Background="#151B23" CornerRadius="10" Padding="16">
+            <StackPanel Spacing="7">
+              <TextBlock Text="SPEED" FontSize="11" FontWeight="Bold" Foreground="#7F8B9B" />
+              <TextBlock Text="0 B/s" FontSize="26" FontWeight="Bold" Foreground="#F3F7FC" />
+              <TextBlock Text="Live aggregate throughput." FontSize="11" Foreground="#7F8B9B" />
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="2" Background="#151B23" CornerRadius="10" Padding="16">
+            <StackPanel Spacing="7">
+              <TextBlock Text="BROWSER" FontSize="11" FontWeight="Bold" Foreground="#7F8B9B" />
+              <TextBlock Text="Offline" FontSize="26" FontWeight="Bold" Foreground="#F3F7FC" />
+              <TextBlock Text="Native host health will appear here." FontSize="11" Foreground="#7F8B9B" />
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <Border Grid.Row="1"
+                Margin="0,14,0,0"
+                Background="#12171E"
+                CornerRadius="10"
+                BorderBrush="#202833"
+                BorderThickness="1">
+          <StackPanel HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Spacing="10"
+                      Margin="30">
+            <TextBlock Text="↓" FontSize="38" Foreground="#4F8CFF" HorizontalAlignment="Center" />
+            <TextBlock Text="Avalonia shell is ready"
+                       FontSize="19"
+                       FontWeight="SemiBold"
+                       Foreground="#E9EEF6"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="This overlay intentionally contains no legacy WPF or GTK project references.&#x0a;The next overlay ports the existing XDM core and download engine."
+                       TextAlignment="Center"
+                       TextWrapping="Wrap"
+                       Foreground="#7F8B9B"
+                       MaxWidth="520" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,16,0,0">
+        <TextBlock Text="XDM Modern • .NET 10 • Avalonia 12.1"
+                   FontSize="11"
+                   Foreground="#687586" />
+        <TextBlock Grid.Column="1"
+                   Text="Bootstrap"
+                   FontSize="11"
+                   Foreground="#8FB5FF" />
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>

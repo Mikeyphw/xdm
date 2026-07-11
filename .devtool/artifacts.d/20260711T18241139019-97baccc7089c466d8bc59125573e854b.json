@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-11T18:24:11.390196Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_net10_build_baseline_overlay.zip",
+  "artifact_name": "xdm_net10_build_baseline_overlay.zip",
+  "type": "overlay",
+  "sha256": "b289280160d30cf3d22046fe60367559cff778c8de477e360ec2e8904b889c28",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Migrate XDM build baseline to .NET 10",
+  "commit_hash": "",
+  "file_count": 16,
+  "change_counts": {
+    "add": 7,
+    "modify": 9
+  },
+  "manifest": {},
+  "history_id": "97baccc7089c466d8bc59125573e854b"
+}
