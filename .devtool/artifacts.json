@@ -370,6 +370,24 @@
       },
       "manifest": {},
       "history_id": "2bafd40e8d664074b7e16af884c671ed"
+    },
+    {
+      "applied_at": "2026-07-11T22:50:43.495024Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_functional_parity_audit_overlay.zip",
+      "artifact_name": "xdm_functional_parity_audit_overlay.zip",
+      "type": "overlay",
+      "sha256": "ebabdec9bbdcd3e2dfcc77c5df61e848585c9351e604c4c6814bf4dd5eb7f892",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add executable XDM 8 functional parity audit",
+      "commit_hash": "",
+      "file_count": 15,
+      "change_counts": {
+        "add": 12,
+        "modify": 3
+      },
+      "manifest": {},
+      "history_id": "8106f4b824d441889386948eacd29776"
     }
   ]
 }

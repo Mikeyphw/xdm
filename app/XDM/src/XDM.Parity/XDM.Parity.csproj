@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>XDM.Parity</AssemblyName>
+    <RootNamespace>XDM.Parity</RootNamespace>
+  </PropertyGroup>
+</Project>

@@ -1,20 +1,14 @@
-# XDM Windows file-lock CI hotfix
+# XDM functional parity audit overlay
 
-Base: merged Avalonia modernization on `master`
-Target: `xdm_modern`
+Target: `xdm_modern`  
 Framework: `.NET 10`
 
-## Root cause
+## Scope
 
-`ExecuteDownloadAttemptAsync` called `CompleteFromPartial` while the partial-file
-`FileStream` was still alive in an `await using` declaration. Linux allows a rename
-of an open file, but Windows rejects the move with a sharing violation.
-
-## Fix
-
-The destination stream now has an explicit nested scope. Flush, expected-length
-validation, and byte accounting happen inside that scope. Finalization and the
-atomic `.part` move happen only after asynchronous disposal has completed.
+- Adds a machine-readable XDM 8 parity manifest.
+- Adds a reusable parity loader, validator and summary model.
+- Adds executable tests for schema validity, unique IDs, ownership and complete-feature evidence.
+- Establishes Overlay 13 as the owner of segmented multi-connection downloading.
 
 ## Validation
 
@@ -23,7 +17,3 @@ dotnet restore app/XDM/XDM.Modern.sln
 dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore
 dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build
 ```
-
-The existing downloader tests already exercise normal completion, resume,
-range-ignore restart, retry/checkpoint recovery, queue activation, ETag resume,
-and collision renaming—the seven Windows CI failures caused by this handle bug.

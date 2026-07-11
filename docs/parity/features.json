@@ -1,0 +1,794 @@
+{
+  "schemaVersion": 1,
+  "baseline": "XDM 8.0.29 legacy WPF/GTK behavior and public feature contract",
+  "updatedAt": "2026-07-11T00:00:00Z",
+  "features": [
+    {
+      "id": "download.http-single-stream",
+      "area": "download-engine",
+      "name": "HTTP/HTTPS single-stream downloads",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/HttpDownloader.cs",
+        "README.md"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.CompletesDownloadAndPublishesState"
+      ],
+      "targetOverlay": "13",
+      "notes": "Modern engine downloads HTTP/HTTPS resources and publishes progress."
+    },
+    {
+      "id": "download.resume",
+      "area": "download-engine",
+      "name": "Resume partial downloads",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/HttpDownloader.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.ResumesFromExistingPartialFile"
+      ],
+      "targetOverlay": "13",
+      "notes": "Uses Range and If-Range with persisted validators."
+    },
+    {
+      "id": "download.segmented-transfer",
+      "area": "download-engine",
+      "name": "Multi-connection segmented acceleration",
+      "priority": "critical",
+      "status": "missing",
+      "legacySources": [
+        "app/XDM/XDM.Core/HttpDownloader.cs",
+        "README.md"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "13",
+      "notes": "Requires concurrent bounded ranges, segment checkpoints and deterministic merge."
+    },
+    {
+      "id": "download.range-fallback",
+      "area": "download-engine",
+      "name": "Fallback when Range is ignored",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/HttpDownloader.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.RestartsSafelyWhenServerIgnoresRange"
+      ],
+      "targetOverlay": "13",
+      "notes": "Restarts safely as a single stream."
+    },
+    {
+      "id": "download.retry",
+      "area": "download-engine",
+      "name": "Retry transient failures",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/HttpDownloader.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/DownloadRetryPolicy.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.RetriesTruncatedResponseAndResumesFromCheckpoint"
+      ],
+      "targetOverlay": "13",
+      "notes": "Bounded exponential retry with jitter."
+    },
+    {
+      "id": "download.integrity",
+      "area": "download-engine",
+      "name": "Validator and content-range integrity checks",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/HttpDownloader.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.UsesPersistedEntityTagAsIfRangeValidator"
+      ],
+      "targetOverlay": "13",
+      "notes": "ETag, Last-Modified and Content-Range are validated."
+    },
+    {
+      "id": "download.disk-preflight",
+      "area": "download-engine",
+      "name": "Disk space preflight",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/HttpDownloader.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/SystemDiskSpaceProvider.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.FailsBeforeWritingWhenDiskSpaceIsInsufficient"
+      ],
+      "targetOverlay": "13",
+      "notes": "Checks expected remaining size with a safety margin."
+    },
+    {
+      "id": "download.finalization-recovery",
+      "area": "download-engine",
+      "name": "Crash-safe finalization",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/HttpDownloader.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.RecoversInterruptedFinalizationOnStartup"
+      ],
+      "targetOverlay": "13",
+      "notes": "Uses durable finalization markers."
+    },
+    {
+      "id": "download.unknown-length",
+      "area": "download-engine",
+      "name": "Unknown-length response support",
+      "priority": "high",
+      "status": "partial",
+      "legacySources": [
+        "app/XDM/XDM.Core/HttpDownloader.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
+      ],
+      "automatedTests": [],
+      "targetOverlay": "13",
+      "notes": "Single stream works; segmented mode must fall back."
+    },
+    {
+      "id": "download.proxy",
+      "area": "network",
+      "name": "HTTP proxy and proxy authentication",
+      "priority": "critical",
+      "status": "missing",
+      "legacySources": [
+        "app/XDM/XDM.Core/ProxyConfig.cs"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "17",
+      "notes": "Modern HttpClient construction does not expose complete proxy configuration."
+    },
+    {
+      "id": "download.ftp",
+      "area": "network",
+      "name": "FTP/FTPS downloads",
+      "priority": "medium",
+      "status": "missing",
+      "legacySources": [
+        "README.md",
+        "app/XDM/XDM.Core/FtpDownloader.cs"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "21",
+      "notes": "Decision required: implement or mark intentionally replaced."
+    },
+    {
+      "id": "workflow.add-single",
+      "area": "workflows",
+      "name": "Add a single download",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Wpf.UI/AddDownloadDialog.xaml"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.CompletesDownloadAndPublishesState"
+      ],
+      "targetOverlay": "18",
+      "notes": "Avalonia form creates normal downloads."
+    },
+    {
+      "id": "workflow.add-batch",
+      "area": "workflows",
+      "name": "Batch URL input",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Wpf.UI/BatchDownloadDialog.xaml"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Downloads/DownloadInputParser.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.DownloadInputParserTests"
+      ],
+      "targetOverlay": "18",
+      "notes": "Multiline parsing is implemented."
+    },
+    {
+      "id": "workflow.headers-auth",
+      "area": "workflows",
+      "name": "Headers, cookies, referer and basic authentication",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Wpf.UI/AddDownloadDialog.xaml"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.AppliesRequestMetadataAndRenamesCollisions"
+      ],
+      "targetOverlay": "18",
+      "notes": "Request metadata is applied without shelling out."
+    },
+    {
+      "id": "workflow.duplicate-policy",
+      "area": "workflows",
+      "name": "Duplicate destination policy",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Wpf.UI/AddDownloadDialog.xaml"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/DuplicateFileBehavior.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.AppliesRequestMetadataAndRenamesCollisions"
+      ],
+      "targetOverlay": "18",
+      "notes": "Auto-rename, overwrite and skip are represented."
+    },
+    {
+      "id": "queue.runtime",
+      "area": "queues-scheduler",
+      "name": "Queue execution and ordering",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/QueueManager.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.QueueSchedulerRuntimeTests"
+      ],
+      "targetOverlay": "17",
+      "notes": "Queue membership, ordering and runtime controls are active."
+    },
+    {
+      "id": "queue.priority",
+      "area": "queues-scheduler",
+      "name": "Per-download priority",
+      "priority": "high",
+      "status": "missing",
+      "legacySources": [
+        "app/XDM/XDM.Core/QueueManager.cs"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "17",
+      "notes": "Queue ordering exists but explicit priority classes are absent."
+    },
+    {
+      "id": "scheduler.windows",
+      "area": "queues-scheduler",
+      "name": "Day/time scheduling including overnight windows",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Scheduler.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Scheduling/DownloadSchedule.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.DownloadScheduleTests"
+      ],
+      "targetOverlay": "17",
+      "notes": "Timezone-aware schedule evaluation is implemented."
+    },
+    {
+      "id": "scheduler.completion-actions",
+      "area": "queues-scheduler",
+      "name": "Shutdown, sleep, exit and command completion actions",
+      "priority": "high",
+      "status": "missing",
+      "legacySources": [
+        "app/XDM/XDM.Core/Scheduler.cs"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "17",
+      "notes": "Requires confirmation and cancellable countdown."
+    },
+    {
+      "id": "browser.loopback",
+      "area": "browser-integration",
+      "name": "Authenticated loopback capture service",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Messaging/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.BrowserIntegration/LoopbackBrowserIntegrationService.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.BrowserCaptureProtocolTests"
+      ],
+      "targetOverlay": "14",
+      "notes": "Authenticated capture and health endpoints exist."
+    },
+    {
+      "id": "browser.native-host",
+      "area": "browser-integration",
+      "name": "Native messaging host installation and repair",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Messaging/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.NativeHost/Program.cs",
+        "app/XDM/src/XDM.BrowserIntegration/BrowserHostInstaller.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.BrowserHostInstallerTests"
+      ],
+      "targetOverlay": "14",
+      "notes": "Modern native host and repair logic are packaged."
+    },
+    {
+      "id": "browser.takeover",
+      "area": "browser-integration",
+      "name": "Cancel browser download after XDM acceptance",
+      "priority": "critical",
+      "status": "partial",
+      "legacySources": [
+        "browser-extension/",
+        "app/XDM/XDM.Core/Messaging/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.BrowserIntegration/BrowserCaptureProtocol.cs"
+      ],
+      "automatedTests": [],
+      "targetOverlay": "14",
+      "notes": "Protocol exists; shipped extensions still need acceptance acknowledgement behavior."
+    },
+    {
+      "id": "browser.download-all",
+      "area": "browser-integration",
+      "name": "Download all links workflow",
+      "priority": "high",
+      "status": "missing",
+      "legacySources": [
+        "browser-extension/"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "14",
+      "notes": "Extension UI and batch selection are not ported."
+    },
+    {
+      "id": "browser.rules",
+      "area": "browser-integration",
+      "name": "Per-site, MIME and size interception rules",
+      "priority": "high",
+      "status": "missing",
+      "legacySources": [
+        "browser-extension/",
+        "app/XDM/XDM.Core/Config.cs"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "14",
+      "notes": "Requires shared rule model and extension parity."
+    },
+    {
+      "id": "media.direct",
+      "area": "media",
+      "name": "Direct media URL probing",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Video/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/MediaProbeService.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.MediaProbeServiceTests"
+      ],
+      "targetOverlay": "15",
+      "notes": "Direct media types are recognized."
+    },
+    {
+      "id": "media.hls",
+      "area": "media",
+      "name": "HLS discovery and download",
+      "priority": "critical",
+      "status": "partial",
+      "legacySources": [
+        "app/XDM/XDM.Core/Video/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/MediaProbeService.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.MediaProbeServiceTests"
+      ],
+      "targetOverlay": "15",
+      "notes": "Playlist probing exists; fragment acquisition and merge are missing."
+    },
+    {
+      "id": "media.dash",
+      "area": "media",
+      "name": "DASH discovery and download",
+      "priority": "critical",
+      "status": "partial",
+      "legacySources": [
+        "app/XDM/XDM.Core/Video/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/MediaProbeService.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.MediaProbeServiceTests"
+      ],
+      "targetOverlay": "15",
+      "notes": "MPD probing exists; representation download and merge are missing."
+    },
+    {
+      "id": "media.ytdlp",
+      "area": "media",
+      "name": "yt-dlp extractor provider",
+      "priority": "high",
+      "status": "missing",
+      "legacySources": [
+        "app/XDM/XDM.Core/YDLWrapper/"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "15",
+      "notes": "Requires verified external tool lifecycle and structured parsing."
+    },
+    {
+      "id": "media.ffmpeg",
+      "area": "media",
+      "name": "FFmpeg discovery and diagnostics",
+      "priority": "critical",
+      "status": "missing",
+      "legacySources": [
+        "app/XDM/XDM.Core/FFmpeg/"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "15",
+      "notes": "Required for merge and conversion parity."
+    },
+    {
+      "id": "conversion.audio",
+      "area": "conversion",
+      "name": "Audio extraction and MP3 conversion",
+      "priority": "high",
+      "status": "missing",
+      "legacySources": [
+        "app/XDM/XDM.Core/Conversion/"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "16",
+      "notes": "Replace device-specific presets with capability presets."
+    },
+    {
+      "id": "conversion.video",
+      "area": "conversion",
+      "name": "MP4 remux/transcode",
+      "priority": "high",
+      "status": "missing",
+      "legacySources": [
+        "app/XDM/XDM.Core/Conversion/"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "16",
+      "notes": "Requires codec/container checks and cancellable progress."
+    },
+    {
+      "id": "settings.persistence",
+      "area": "settings-migration",
+      "name": "Atomic settings persistence",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Config.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Persistence/JsonSettingsStore.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.JsonSettingsStoreTests"
+      ],
+      "targetOverlay": "18",
+      "notes": "Atomic save, backup and corrupt-file quarantine are implemented."
+    },
+    {
+      "id": "settings.migration",
+      "area": "settings-migration",
+      "name": "Import XDM 8 settings and queues",
+      "priority": "critical",
+      "status": "missing",
+      "legacySources": [
+        "app/XDM/XDM.Core/Config.cs"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "21",
+      "notes": "Requires real legacy fixtures."
+    },
+    {
+      "id": "history.persistence",
+      "area": "history-files",
+      "name": "Download history persistence",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/DownloadList.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Persistence/JsonDownloadHistoryStore.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.JsonDownloadHistoryStoreTests"
+      ],
+      "targetOverlay": "19",
+      "notes": "History has atomic persistence and backup recovery."
+    },
+    {
+      "id": "history.file-actions",
+      "area": "history-files",
+      "name": "Move, rename, delete and re-download actions",
+      "priority": "high",
+      "status": "partial",
+      "legacySources": [
+        "app/XDM/XDM.Wpf.UI/MainWindow.xaml"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.cs"
+      ],
+      "automatedTests": [],
+      "targetOverlay": "19",
+      "notes": "Open/reveal/remove exist; full move/rename/re-download parity remains."
+    },
+    {
+      "id": "categories.rules",
+      "area": "history-files",
+      "name": "Category and compound-extension rules",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Category.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Settings/ApplicationSettings.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.CategoryTests"
+      ],
+      "targetOverlay": "19",
+      "notes": "Configurable categories and compound extensions are supported."
+    },
+    {
+      "id": "clipboard.monitoring",
+      "area": "desktop",
+      "name": "Clipboard URL monitoring",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/ClipboardMonitor.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.App/MainWindow.axaml.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.DownloadInputParserTests"
+      ],
+      "targetOverlay": "18",
+      "notes": "Monitoring and optional auto-add are available."
+    },
+    {
+      "id": "desktop.single-instance",
+      "area": "desktop",
+      "name": "Single-instance activation",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Wpf.UI/App.xaml.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Platform/SingleInstanceCoordinator.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.SingleInstanceCoordinatorTests"
+      ],
+      "targetOverlay": "9",
+      "notes": "Second launches activate the existing window."
+    },
+    {
+      "id": "desktop.tray",
+      "area": "desktop",
+      "name": "Tray/background lifecycle",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Wpf.UI/Tray/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.App/App.axaml.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.DesktopNotificationServiceTests"
+      ],
+      "targetOverlay": "10",
+      "notes": "Window close keeps downloads running; tray can restore or exit."
+    },
+    {
+      "id": "desktop.notifications",
+      "area": "desktop",
+      "name": "Completion and failure notifications",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Wpf.UI/Notifications/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Platform/DesktopNotificationService.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.DesktopNotificationServiceTests"
+      ],
+      "targetOverlay": "10",
+      "notes": "Desktop notifications are abstracted and tested."
+    },
+    {
+      "id": "diagnostics.bundle",
+      "area": "diagnostics",
+      "name": "Redacted diagnostic bundle",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Logging/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Diagnostics/DiagnosticBundleService.cs"
+      ],
+      "automatedTests": [
+        "XDM.Diagnostics.Tests.DiagnosticEventStoreTests",
+        "XDM.Diagnostics.Tests.SecretRedactorTests"
+      ],
+      "targetOverlay": "7",
+      "notes": "Bounded structured diagnostics with redaction."
+    },
+    {
+      "id": "diagnostics.safe-mode",
+      "area": "diagnostics",
+      "name": "Safe mode and crash recovery",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Wpf.UI/App.xaml.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Diagnostics/RecoveryService.cs"
+      ],
+      "automatedTests": [
+        "XDM.Diagnostics.Tests.RecoveryServiceTests"
+      ],
+      "targetOverlay": "7",
+      "notes": "Unclean shutdown detection and safe mode exist."
+    },
+    {
+      "id": "security.antivirus",
+      "area": "security",
+      "name": "Automatic antivirus scanning",
+      "priority": "medium",
+      "status": "missing",
+      "legacySources": [
+        "app/XDM/XDM.Core/Antivirus.cs"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "17",
+      "notes": "Needs explicit executable allow-listing and timeout."
+    },
+    {
+      "id": "localization.resources",
+      "area": "localization-accessibility",
+      "name": "Legacy translation migration",
+      "priority": "high",
+      "status": "missing",
+      "legacySources": [
+        "app/XDM/XDM.Wpf.UI/Translations/",
+        "app/XDM/XDM.Gtk.UI/Translations/"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "20",
+      "notes": "Existing translations must be mapped to stable resource keys."
+    },
+    {
+      "id": "accessibility.keyboard",
+      "area": "localization-accessibility",
+      "name": "Keyboard and screen-reader navigation",
+      "priority": "high",
+      "status": "partial",
+      "legacySources": [
+        "app/XDM/XDM.Wpf.UI/MainWindow.xaml"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [],
+      "targetOverlay": "20",
+      "notes": "Basic Avalonia navigation exists; complete accessible names and shortcuts need audit."
+    },
+    {
+      "id": "packaging.self-contained",
+      "area": "packaging",
+      "name": "Self-contained Windows and Linux packages",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/packaging/"
+      ],
+      "implementationPaths": [
+        "app/XDM/eng/publish-modern.sh",
+        "app/XDM/eng/publish-modern.ps1"
+      ],
+      "automatedTests": [
+        "package smoke validation"
+      ],
+      "targetOverlay": "11",
+      "notes": "Linux and Windows publish/qualification scripts exist."
+    },
+    {
+      "id": "updates.in-app",
+      "area": "packaging",
+      "name": "In-app update channel",
+      "priority": "medium",
+      "status": "missing",
+      "legacySources": [
+        "app/XDM/XDM.Core/Updater.cs"
+      ],
+      "implementationPaths": [],
+      "automatedTests": [],
+      "targetOverlay": "21",
+      "notes": "Requires signed release metadata and preview/stable channels."
+    }
+  ]
+}
