@@ -15,5 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../XDM.Core/XDM.Core.csproj" />
+    <ProjectReference Include="../XDM.Platform/XDM.Platform.csproj" />
   </ItemGroup>
 </Project>

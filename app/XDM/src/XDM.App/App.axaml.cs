@@ -2,6 +2,7 @@ using System.Net;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using XDM.App.Services;
@@ -23,6 +24,8 @@ namespace XDM.App;
 public partial class App : Application
 {
     internal static StartupOptions LaunchOptions { get; set; } = StartupOptions.Default;
+
+    internal static SingleInstanceCoordinator? InstanceCoordinator { get; set; }
 
     public override void Initialize()
     {
@@ -75,7 +78,21 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = services.GetRequiredService<MainWindow>();
+            MainWindow mainWindow = services.GetRequiredService<MainWindow>();
+            desktop.MainWindow = mainWindow;
+            if (InstanceCoordinator is not null)
+            {
+                InstanceCoordinator.ActivationRequested += (_, _) =>
+                    Dispatcher.UIThread.Post(mainWindow.RestoreAndActivate);
+                if (!InstanceCoordinator.StartListening())
+                {
+                    diagnostics.Record(
+                        DiagnosticSeverity.Warning,
+                        "XDM-STARTUP-SINGLE-INSTANCE",
+                        "The activation listener could not be started; duplicate launches will still be blocked.");
+                }
+            }
+
             desktop.Exit += (_, _) =>
             {
                 recovery.MarkCleanShutdown();
@@ -147,6 +164,7 @@ public partial class App : Application
         services.AddSingleton<IQueueSchedulerRuntime, QueueSchedulerRuntime>();
         services.AddSingleton<IPlatformInfo, PlatformInfo>();
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
+        services.AddSingleton<WindowStateStore>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
 

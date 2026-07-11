@@ -1,10 +1,10 @@
-# XDM Avalonia engine-hardening overlay
+# XDM Avalonia release UX overlay
 
-Apply after `xdm_avalonia_diagnostics_recovery_packaging_overlay.zip` / commit `0298638`.
+Apply after `xdm_avalonia_engine_hardening_overlay.zip` / commit `8a78305`.
 
 Target: `xdm_modern`
 
-This overlay fixes the remaining diagnostics analyzer warning and adds validated resume, retry/backoff, disk preflight, atomic checkpoints, and crash-safe finalization recovery.
+This overlay fixes the three remaining analyzer warnings and adds single-instance activation, persisted window placement, download search/status filters, checkbox-based bulk actions, and package smoke-test scripts.
 
 Validation:
 
@@ -12,8 +12,14 @@ Validation:
 ./app/XDM/eng/validate-modern.sh
 ```
 
+Optional full Linux package qualification:
+
+```bash
+./app/XDM/eng/qualify-modern.sh
+```
+
 Commit message:
 
 ```text
-Harden download resume recovery and finalization
+Add single instance release UX and package qualification
 ```

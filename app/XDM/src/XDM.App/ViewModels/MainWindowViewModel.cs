@@ -83,6 +83,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<DownloadItemViewModel> Downloads { get; } = [];
 
+    public ObservableCollection<DownloadItemViewModel> FilteredDownloads { get; } = [];
+
     public ObservableCollection<DownloadCategoryDefinition> CategoryDefinitions { get; } = [];
 
     public ObservableCollection<DownloadQueueDefinition> QueueDefinitions { get; } = [];
@@ -90,6 +92,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public ObservableCollection<DiagnosticEvent> DiagnosticEvents { get; } = [];
 
     public IReadOnlyList<string> DuplicateBehaviors { get; }
+
+    public IReadOnlyList<string> DownloadStatusFilters { get; } =
+        ["All", "Queued", "Connecting", "Downloading", "Paused", "Finalizing", "Completed", "Failed", "Cancelled"];
 
     public string PlatformDescription { get; }
 
@@ -100,6 +105,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private DownloadItemViewModel? selectedDownload;
+
+    [ObservableProperty]
+    private string downloadSearchText = string.Empty;
+
+    [ObservableProperty]
+    private string selectedDownloadStatus = "All";
 
     [ObservableProperty]
     private DownloadCategoryDefinition? selectedCategory;
@@ -260,6 +271,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsPlaceholderVisible));
     }
 
+
+    partial void OnDownloadSearchTextChanged(string value)
+        => RefreshFilteredDownloads();
+
+    partial void OnSelectedDownloadStatusChanged(string value)
+        => RefreshFilteredDownloads();
+
     partial void OnSelectedQueueChanged(DownloadQueueDefinition? value)
     {
         OnPropertyChanged(nameof(IsSelectedQueueActive));
@@ -385,6 +403,77 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         string id = SelectedDownload.Id;
         await _downloadManager.RemoveAsync(id);
         OperationMessage = "Download removed from history.";
+    }
+
+
+    [RelayCommand]
+    private void SelectAllVisible()
+    {
+        foreach (DownloadItemViewModel download in FilteredDownloads)
+        {
+            download.IsSelected = true;
+        }
+
+        OperationMessage = $"Selected {FilteredDownloads.Count} visible download(s).";
+    }
+
+    [RelayCommand]
+    private void ClearBulkSelection()
+    {
+        foreach (DownloadItemViewModel download in Downloads)
+        {
+            download.IsSelected = false;
+        }
+
+        OperationMessage = "Bulk selection cleared.";
+    }
+
+    [RelayCommand]
+    private async Task PauseBulkAsync()
+    {
+        IReadOnlyList<DownloadItemViewModel> targets = GetActionTargets();
+        foreach (DownloadItemViewModel download in targets.Where(static item => item.CanPause))
+        {
+            await _downloadManager.PauseAsync(download.Id);
+        }
+
+        OperationMessage = $"Pause requested for {targets.Count} download(s).";
+    }
+
+    [RelayCommand]
+    private async Task ResumeBulkAsync()
+    {
+        IReadOnlyList<DownloadItemViewModel> targets = GetActionTargets();
+        foreach (DownloadItemViewModel download in targets.Where(static item => item.CanResume))
+        {
+            await _downloadManager.ResumeAsync(download.Id);
+        }
+
+        OperationMessage = $"Resume requested for {targets.Count} download(s).";
+    }
+
+    [RelayCommand]
+    private async Task CancelBulkAsync()
+    {
+        IReadOnlyList<DownloadItemViewModel> targets = GetActionTargets();
+        foreach (DownloadItemViewModel download in targets.Where(static item => item.CanCancel))
+        {
+            await _downloadManager.CancelAsync(download.Id);
+        }
+
+        OperationMessage = $"Cancel requested for {targets.Count} download(s).";
+    }
+
+    [RelayCommand]
+    private async Task RemoveBulkAsync()
+    {
+        IReadOnlyList<DownloadItemViewModel> targets = GetActionTargets();
+        foreach (DownloadItemViewModel download in targets)
+        {
+            await _downloadManager.RemoveAsync(download.Id);
+        }
+
+        OperationMessage = $"Removed {targets.Count} download(s) from history.";
     }
 
     [RelayCommand]
@@ -822,6 +911,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             Downloads.Remove(removed);
         }
+
+        RefreshFilteredDownloads();
     }
 
     private void ApplyQueueRuntime(QueueRuntimeSnapshot snapshot)
@@ -899,6 +990,46 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             string.Equals(queue.Id, settings.Scheduler.QueueId, StringComparison.Ordinal))
             ?? (QueueDefinitions.Count > 0 ? QueueDefinitions[0] : null);
         ApplyQueueRuntime(_downloadManager.QueueRuntime);
+    }
+
+
+    private IReadOnlyList<DownloadItemViewModel> GetActionTargets()
+    {
+        DownloadItemViewModel[] checkedDownloads = Downloads
+            .Where(static download => download.IsSelected)
+            .ToArray();
+        if (checkedDownloads.Length > 0)
+        {
+            return checkedDownloads;
+        }
+
+        return SelectedDownload is null ? [] : [SelectedDownload];
+    }
+
+    private void RefreshFilteredDownloads()
+    {
+        string search = DownloadSearchText.Trim();
+        string status = SelectedDownloadStatus;
+        FilteredDownloads.Clear();
+        foreach (DownloadItemViewModel download in Downloads)
+        {
+            bool statusMatches = string.Equals(status, "All", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(download.StatusText, status, StringComparison.OrdinalIgnoreCase);
+            bool searchMatches = search.Length == 0
+                || download.FileName.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || download.Source.AbsoluteUri.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || download.DestinationPath.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || download.QueueId.Contains(search, StringComparison.OrdinalIgnoreCase);
+            if (statusMatches && searchMatches)
+            {
+                FilteredDownloads.Add(download);
+            }
+        }
+
+        if (SelectedDownload is not null && !FilteredDownloads.Contains(SelectedDownload))
+        {
+            SelectedDownload = FilteredDownloads.Count > 0 ? FilteredDownloads[0] : null;
+        }
     }
 
     private static long? ParseKilobytesPerSecond(string value)

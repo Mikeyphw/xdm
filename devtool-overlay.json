@@ -1,20 +1,22 @@
 {
-  "name": "xdm_avalonia_engine_hardening_overlay",
+  "name": "xdm_avalonia_release_ux_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "0298638",
+  "baseCommit": "8a78305",
   "requires": [
-    "xdm_avalonia_diagnostics_recovery_packaging_overlay"
+    "xdm_avalonia_engine_hardening_overlay"
   ],
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": 8,
-  "description": "Adds validated HTTP resume, retry/backoff, disk-space preflight, atomic history checkpoints, and crash-safe finalization recovery.",
+  "phase": 9,
+  "description": "Adds single-instance activation, persisted window placement, download filtering and bulk actions, warning cleanup, and self-contained package smoke tests.",
   "validation": {
     "linux": "app/XDM/eng/validate-modern.sh",
     "windows": "app/XDM/eng/validate-modern.ps1",
     "solution": "app/XDM/XDM.Modern.sln",
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
-    "smoke": "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap"
+    "smoke": "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap",
+    "packageSmokeLinux": "app/XDM/eng/smoke-package.sh linux-x64",
+    "packageSmokeWindows": "app/XDM/eng/smoke-package.ps1"
   },
-  "commitMessage": "Harden download resume recovery and finalization"
+  "commitMessage": "Add single instance release UX and package qualification"
 }

@@ -163,18 +163,30 @@
               </StackPanel>
             </Border>
 
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,10">
-              <Button Classes="secondary" Content="Pause" Command="{Binding PauseSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanPause}" />
-              <Button Classes="secondary" Content="Resume" Command="{Binding ResumeSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
-              <Button Classes="secondary" Content="Cancel" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanCancel}" />
-              <Button Classes="secondary" Content="Retry" Command="{Binding RetrySelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
-              <Button Classes="secondary" Content="Remove" Command="{Binding RemoveSelectedCommand}" />
-              <Button Classes="secondary" Content="Earlier" Command="{Binding MoveSelectedDownloadEarlierCommand}" />
-              <Button Classes="secondary" Content="Later" Command="{Binding MoveSelectedDownloadLaterCommand}" />
-            </StackPanel>
+            <Grid Grid.Row="1" RowDefinitions="Auto,Auto" RowSpacing="8" Margin="0,10">
+              <Grid ColumnDefinitions="*,220" ColumnSpacing="9">
+                <TextBox PlaceholderText="Search filename, URL, destination, or queue" Text="{Binding DownloadSearchText}" />
+                <ComboBox Grid.Column="1" ItemsSource="{Binding DownloadStatusFilters}" SelectedItem="{Binding SelectedDownloadStatus}" />
+              </Grid>
+              <WrapPanel Grid.Row="1" Orientation="Horizontal">
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Pause" Command="{Binding PauseSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanPause}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Resume" Command="{Binding ResumeSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Cancel" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanCancel}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Retry" Command="{Binding RetrySelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Remove" Command="{Binding RemoveSelectedCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Earlier" Command="{Binding MoveSelectedDownloadEarlierCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Later" Command="{Binding MoveSelectedDownloadLaterCommand}" />
+                <Button Margin="12,0,8,0" Classes="secondary" Content="Select visible" Command="{Binding SelectAllVisibleCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Clear selection" Command="{Binding ClearBulkSelectionCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Pause selected" Command="{Binding PauseBulkCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Resume selected" Command="{Binding ResumeBulkCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Cancel selected" Command="{Binding CancelBulkCommand}" />
+                <Button Classes="secondary" Content="Remove selected" Command="{Binding RemoveBulkCommand}" />
+              </WrapPanel>
+            </Grid>
 
             <Border Grid.Row="2" Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
-              <ListBox ItemsSource="{Binding Downloads}"
+              <ListBox ItemsSource="{Binding FilteredDownloads}"
                        SelectedItem="{Binding SelectedDownload}"
                        Background="Transparent"
                        BorderThickness="0"
@@ -182,18 +194,19 @@
                 <ListBox.ItemTemplate>
                   <DataTemplate>
                     <Border Padding="12" Background="#151B23" CornerRadius="8">
-                      <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="16">
-                        <StackPanel>
+                      <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="16">
+                        <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1">
                           <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" Foreground="#F1F5FA" />
                           <TextBlock Text="{Binding Source}" FontSize="11" Foreground="#718095" TextTrimming="CharacterEllipsis" />
                           <TextBlock Text="{Binding QueueId}" FontSize="10" Foreground="#58739A" />
                         </StackPanel>
-                        <TextBlock Grid.Column="1" Text="{Binding StatusText}" Foreground="#8FB5FF" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2" Text="{Binding SpeedText}" Foreground="#C8D1DE" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="3" Text="{Binding RemainingText}" Foreground="#7F8B9B" VerticalAlignment="Center" />
-                        <ProgressBar Grid.Row="1" Grid.ColumnSpan="4" Margin="0,10,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" />
-                        <TextBlock Grid.Row="2" Text="{Binding ProgressText}" FontSize="11" Foreground="#7F8B9B" />
-                        <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding ErrorMessage}" FontSize="11" Foreground="#FF8F8F" HorizontalAlignment="Right" />
+                        <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="#8FB5FF" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="{Binding SpeedText}" Foreground="#C8D1DE" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="4" Text="{Binding RemainingText}" Foreground="#7F8B9B" VerticalAlignment="Center" />
+                        <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Margin="0,10,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ProgressText}" FontSize="11" Foreground="#7F8B9B" />
+                        <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Text="{Binding ErrorMessage}" FontSize="11" Foreground="#FF8F8F" HorizontalAlignment="Right" />
                       </Grid>
                     </Border>
                   </DataTemplate>
@@ -395,7 +408,7 @@
 
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
         <TextBlock Text="{Binding RuntimeDescription}" FontSize="11" Foreground="#687586" />
-        <TextBlock Grid.Column="1" Text="Diagnostics + recovery • phase 7" FontSize="11" Foreground="#8FB5FF" />
+        <TextBlock Grid.Column="1" Text="Release UX • phase 9" FontSize="11" Foreground="#8FB5FF" />
       </Grid>
     </Grid>
   </Grid>

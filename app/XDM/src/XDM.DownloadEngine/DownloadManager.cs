@@ -753,7 +753,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         if (contentRange?.From != expectedStart)
         {
             throw new DownloadIntegrityException(
-                $"The server returned an invalid range start. Expected {expectedStart}; received {contentRange?.From?.ToString() ?? "none"}.");
+                $"The server returned an invalid range start. Expected {expectedStart.ToString(System.Globalization.CultureInfo.InvariantCulture)}; received {contentRange?.From?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "none"}.");
         }
     }
 

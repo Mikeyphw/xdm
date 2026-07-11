@@ -241,6 +241,24 @@
       },
       "manifest": {},
       "history_id": "a75b9eb996e643a890cd831f0805e730"
+    },
+    {
+      "applied_at": "2026-07-11T20:31:29.652961Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_release_ux_overlay.zip",
+      "artifact_name": "xdm_avalonia_release_ux_overlay.zip",
+      "type": "overlay",
+      "sha256": "f07a371a92894e82f0053bc2a8a89ec5bd6e597f41de05c32723b26cf2da99ce",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add single instance release UX and package qualification",
+      "commit_hash": "",
+      "file_count": 18,
+      "change_counts": {
+        "add": 7,
+        "modify": 11
+      },
+      "manifest": {},
+      "history_id": "74c548c80c7943158491569b23ca11e7"
     }
   ]
 }

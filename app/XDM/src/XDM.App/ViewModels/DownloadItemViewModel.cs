@@ -55,6 +55,9 @@ public sealed partial class DownloadItemViewModel : ObservableObject
     [ObservableProperty]
     private bool canCancel;
 
+    [ObservableProperty]
+    private bool isSelected;
+
     public void Apply(DownloadSnapshot snapshot)
     {
         FileName = snapshot.FileName;

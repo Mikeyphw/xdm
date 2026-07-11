@@ -5,11 +5,14 @@ using XDM.Core.Categories;
 using XDM.Core.State;
 using XDM.Diagnostics;
 using XDM.DownloadEngine;
+using XDM.Platform;
 
 namespace XDM.App;
 
 internal static class Program
 {
+    private const int ActivationPort = 49614;
+
     [STAThread]
     public static int Main(string[] args)
     {
@@ -19,7 +22,21 @@ internal static class Program
         }
 
         App.LaunchOptions = StartupOptions.Parse(args);
-        return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        using SingleInstanceCoordinator coordinator = new("xdm-modern", ActivationPort);
+        if (!coordinator.TryAcquire())
+        {
+            return coordinator.SignalPrimaryAsync().GetAwaiter().GetResult() ? 0 : 2;
+        }
+
+        App.InstanceCoordinator = coordinator;
+        try
+        {
+            return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+        finally
+        {
+            App.InstanceCoordinator = null;
+        }
     }
 
     public static AppBuilder BuildAvaloniaApp()
