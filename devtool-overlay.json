@@ -1,16 +1,17 @@
 {
-  "name": "xdm_functional_parity_audit_overlay",
+  "name": "xdm_segmented_acceleration_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "master",
+  "baseCommit": "master plus functional parity audit",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "functional-parity-12",
-  "description": "Adds the executable XDM 8 functional parity inventory and evidence gate.",
+  "phase": "functional-parity-13",
+  "description": "Adds resumable concurrent byte-range acceleration with deterministic merge, safe fallback, and preserves single-stream retry regression coverage.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "build": "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore",
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
-    "focusedTests": "dotnet test app/XDM/src/XDM.Parity.Tests/XDM.Parity.Tests.csproj --configuration Release --no-build"
+    "focusedTests": "dotnet test app/XDM/src/XDM.DownloadEngine.Tests/XDM.DownloadEngine.Tests.csproj --configuration Release --no-build"
   },
-  "commitMessage": "Add executable XDM 8 functional parity audit"
+  "commitMessage": "Add segmented multi-connection download acceleration",
+  "regressionFix": "The truncated-response checkpoint test opts into one connection so its stateful handler continues to exercise the legacy single-stream retry path."
 }

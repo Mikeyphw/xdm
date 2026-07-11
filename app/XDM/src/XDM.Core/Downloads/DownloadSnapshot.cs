@@ -13,7 +13,8 @@ public sealed record DownloadSnapshot(
     string? ErrorMessage = null,
     string QueueId = "default",
     string? CategoryId = null,
-    int QueueOrder = 0)
+    int QueueOrder = 0,
+    int ConnectionCount = 1)
 {
     public double? ProgressFraction
         => TotalBytes is > 0

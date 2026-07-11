@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseline": "XDM 8.0.29 legacy WPF/GTK behavior and public feature contract",
-  "updatedAt": "2026-07-11T00:00:00Z",
+  "updatedAt": "2026-07-11T23:00:00Z",
   "features": [
     {
       "id": "download.http-single-stream",
@@ -45,15 +45,23 @@
       "area": "download-engine",
       "name": "Multi-connection segmented acceleration",
       "priority": "critical",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/HttpDownloader.cs",
         "README.md"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/SegmentedDownloadExecutor.cs",
+        "app/XDM/src/XDM.DownloadEngine/SegmentedDownloadPlan.cs",
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.SegmentedDownloadTests.DownloadsConcurrentRangesAndMergesInOrder",
+        "XDM.DownloadEngine.Tests.SegmentedDownloadTests.ResumesExistingSegmentCheckpoint",
+        "XDM.DownloadEngine.Tests.SegmentedDownloadTests.FallsBackToSingleStreamWhenProbeRangeIsIgnored"
+      ],
       "targetOverlay": "13",
-      "notes": "Requires concurrent bounded ranges, segment checkpoints and deterministic merge."
+      "notes": "Concurrent bounded ranges, resumable segment files, deterministic merge and safe single-stream fallback are implemented."
     },
     {
       "id": "download.range-fallback",

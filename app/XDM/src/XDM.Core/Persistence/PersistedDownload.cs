@@ -15,4 +15,5 @@ public sealed record PersistedDownload(
     string? CategoryId = null,
     int QueueOrder = 0,
     string? EntityTag = null,
-    DateTimeOffset? LastModified = null);
+    DateTimeOffset? LastModified = null,
+    int ConnectionCount = 4);

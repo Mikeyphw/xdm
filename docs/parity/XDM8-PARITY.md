@@ -32,3 +32,11 @@ The test project enforces:
 
 The final parity gate will additionally require every critical and high feature
 to be complete, intentionally replaced, or explicitly not applicable.
+
+## Overlay 13 result
+
+`download.segmented-transfer` is now complete. Fresh eligible downloads probe
+range support, split the remote object into bounded non-overlapping ranges,
+resume each segment from its own durable file, merge in deterministic order,
+and fall back to the established single-stream path when the server ignores the
+probe range.

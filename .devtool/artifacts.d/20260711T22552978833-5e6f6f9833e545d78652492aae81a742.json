@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-11T22:55:29.788331Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_segmented_acceleration_overlay(1).zip",
+  "artifact_name": "xdm_segmented_acceleration_overlay(1).zip",
+  "type": "overlay",
+  "sha256": "7e04d8215fdb95f87df33eae4d52855e7ff09412d0ba6ca33d6d1fb67eed136b",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Add segmented multi-connection download acceleration",
+  "commit_hash": "",
+  "file_count": 18,
+  "change_counts": {
+    "add": 9,
+    "modify": 9
+  },
+  "manifest": {},
+  "history_id": "5e6f6f9833e545d78652492aae81a742"
+}

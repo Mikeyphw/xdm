@@ -13,7 +13,8 @@ public sealed record DownloadRequest(
     string? QueueId = null,
     string? CategoryId = null,
     long? SpeedLimitBytesPerSecond = null,
-    DuplicateFileBehavior DuplicateBehavior = DuplicateFileBehavior.AutoRename)
+    DuplicateFileBehavior DuplicateBehavior = DuplicateFileBehavior.AutoRename,
+    int ConnectionCount = 4)
 {
     public string ResolveFileName()
     {

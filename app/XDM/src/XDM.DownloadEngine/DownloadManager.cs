@@ -26,6 +26,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private readonly ILogger<DownloadManager> _logger;
     private readonly IDiskSpaceProvider _diskSpaceProvider;
     private readonly DownloadRetryPolicy _retryPolicy;
+    private readonly SegmentedDownloadExecutor _segmentedExecutor;
     private readonly ISettingsService _settingsService;
     private readonly SemaphoreSlim _concurrencyGate;
     private readonly ConcurrentDictionary<string, byte> _activeQueues = new(StringComparer.Ordinal);
@@ -63,7 +64,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         ISettingsService settingsService,
         ILogger<DownloadManager> logger,
         IDiskSpaceProvider diskSpaceProvider,
-        DownloadRetryPolicy retryPolicy)
+        DownloadRetryPolicy retryPolicy,
+        SegmentedDownloadOptions? segmentedOptions = null)
     {
         _httpClient = httpClient;
         _applicationState = applicationState;
@@ -72,6 +74,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         _logger = logger;
         _diskSpaceProvider = diskSpaceProvider;
         _retryPolicy = retryPolicy;
+        _segmentedExecutor = new SegmentedDownloadExecutor(
+            httpClient,
+            diskSpaceProvider,
+            retryPolicy,
+            segmentedOptions ?? new SegmentedDownloadOptions());
         _concurrencyGate = new SemaphoreSlim(settingsService.Current.MaxConcurrentDownloads);
         IReadOnlyList<DownloadQueueDefinition> configuredQueues = settingsService.Current.Queues;
         string defaultQueueId = configuredQueues.Count > 0 ? configuredQueues[0].Id : "default";
@@ -114,7 +121,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 item.CategoryId,
                 Math.Max(0, item.QueueOrder),
                 item.EntityTag,
-                item.LastModified);
+                item.LastModified,
+                item.ConnectionCount);
 
             try
             {
@@ -174,6 +182,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             {
                 File.Delete(overwriteMarkerPath);
             }
+
+            string overwriteSegmentDirectory = SegmentedDownloadExecutor.GetSegmentDirectory(destinationPath);
+            if (Directory.Exists(overwriteSegmentDirectory))
+            {
+                Directory.Delete(overwriteSegmentDirectory, recursive: true);
+            }
         }
 
         IReadOnlyList<DownloadQueueDefinition> configuredQueues = _settingsService.Current.Queues;
@@ -206,7 +220,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             request.CategoryId,
             queueOrder,
             null,
-            null);
+            null,
+            Math.Clamp(request.ConnectionCount, 1, 32));
 
         if (!_sessions.TryAdd(session.Id, session))
         {
@@ -317,6 +332,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             if (File.Exists(markerPath))
             {
                 File.Delete(markerPath);
+            }
+
+            string segmentDirectory = SegmentedDownloadExecutor.GetSegmentDirectory(session.DestinationPath);
+            if (Directory.Exists(segmentDirectory))
+            {
+                Directory.Delete(segmentDirectory, recursive: true);
             }
         }
 
@@ -582,6 +603,62 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     {
         Directory.CreateDirectory(Path.GetDirectoryName(session.DestinationPath)!);
         long existingLength = File.Exists(partialPath) ? new FileInfo(partialPath).Length : 0;
+
+        if (existingLength == 0 && session.ConnectionCount > 1)
+        {
+            SegmentedDownloadContext context = new(
+                session.Source,
+                session.DestinationPath,
+                session.Headers,
+                session.Username,
+                session.Password,
+                session.Cookie,
+                session.Referer,
+                session.UserAgent,
+                session.ConnectionCount,
+                ResolveSpeedLimit(session));
+            DateTimeOffset lastSegmentProgress = DateTimeOffset.MinValue;
+            SegmentedDownloadResult? segmentedResult = await _segmentedExecutor.TryDownloadAsync(
+                context,
+                (downloaded, total, speed) =>
+                {
+                    lock (session.Sync)
+                    {
+                        session.DownloadedBytes = downloaded;
+                        session.TotalBytes = total;
+                        session.BytesPerSecond = speed;
+                        session.State = DownloadState.Downloading;
+                        session.ErrorMessage = null;
+                    }
+
+                    DateTimeOffset now = DateTimeOffset.UtcNow;
+                    if (now - lastSegmentProgress >= ProgressInterval || downloaded == total)
+                    {
+                        lastSegmentProgress = now;
+                        Publish(session, forcePersist: downloaded == total);
+                    }
+
+                    return ValueTask.CompletedTask;
+                },
+                cancellationToken).ConfigureAwait(false);
+            if (segmentedResult is not null)
+            {
+                lock (session.Sync)
+                {
+                    session.DownloadedBytes = segmentedResult.TotalBytes;
+                    session.TotalBytes = segmentedResult.TotalBytes;
+                    session.BytesPerSecond = 0;
+                    session.EntityTag = segmentedResult.EntityTag;
+                    session.LastModified = segmentedResult.LastModified;
+                    session.State = DownloadState.Finalizing;
+                }
+
+                WriteFinalizationMarker(session.DestinationPath, segmentedResult.TotalBytes);
+                Publish(session, forcePersist: true);
+                CompleteFromPartial(session, partialPath, segmentedResult.TotalBytes);
+                return;
+            }
+        }
 
         using HttpRequestMessage request = new(HttpMethod.Get, session.Source);
         ApplyRequestMetadata(request, session);
@@ -998,6 +1075,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             string renamed = Path.Combine(directory, $"{stem} ({index}){extension}");
             bool isUsed = File.Exists(renamed)
                 || File.Exists(GetPartialPath(renamed))
+                || Directory.Exists(SegmentedDownloadExecutor.GetSegmentDirectory(renamed))
                 || _sessions.Values.Any(session =>
                     string.Equals(session.DestinationPath, renamed, StringComparison.OrdinalIgnoreCase));
             if (!isUsed)
@@ -1010,37 +1088,14 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     }
 
     private static void ApplyRequestMetadata(HttpRequestMessage request, DownloadSession session)
-    {
-        if (session.Headers is not null)
-        {
-            foreach ((string name, string value) in session.Headers)
-            {
-                request.Headers.TryAddWithoutValidation(name, value);
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(session.Username))
-        {
-            string credentials = Convert.ToBase64String(
-                Encoding.UTF8.GetBytes($"{session.Username}:{session.Password ?? string.Empty}"));
-            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
-        }
-
-        if (!string.IsNullOrWhiteSpace(session.Cookie))
-        {
-            request.Headers.TryAddWithoutValidation("Cookie", session.Cookie);
-        }
-
-        if (!string.IsNullOrWhiteSpace(session.Referer))
-        {
-            request.Headers.TryAddWithoutValidation("Referer", session.Referer);
-        }
-
-        if (!string.IsNullOrWhiteSpace(session.UserAgent))
-        {
-            request.Headers.TryAddWithoutValidation("User-Agent", session.UserAgent);
-        }
-    }
+        => HttpRequestMetadata.Apply(
+            request,
+            session.Headers,
+            session.Username,
+            session.Password,
+            session.Cookie,
+            session.Referer,
+            session.UserAgent);
 
     private async Task ApplySpeedLimitAsync(
         DownloadSession session,
@@ -1142,7 +1197,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.ErrorMessage,
                 session.QueueId,
                 session.CategoryId,
-                session.QueueOrder);
+                session.QueueOrder,
+                session.ConnectionCount);
         }
     }
 
@@ -1163,7 +1219,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.CategoryId,
                 session.QueueOrder,
                 session.EntityTag,
-                session.LastModified);
+                session.LastModified,
+                session.ConnectionCount);
         }
     }
 
@@ -1191,7 +1248,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             string? categoryId = null,
             int queueOrder = 0,
             string? entityTag = null,
-            DateTimeOffset? lastModified = null)
+            DateTimeOffset? lastModified = null,
+            int connectionCount = 4)
         {
             Id = id;
             Source = source;
@@ -1212,6 +1270,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             QueueOrder = queueOrder;
             EntityTag = entityTag;
             LastModified = lastModified;
+            ConnectionCount = Math.Clamp(connectionCount, 1, 32);
         }
 
         public object Sync { get; } = new();
@@ -1255,6 +1314,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         public string? EntityTag { get; set; }
 
         public DateTimeOffset? LastModified { get; set; }
+
+        public int ConnectionCount { get; }
 
         public bool PauseRequested { get; set; }
 

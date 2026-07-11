@@ -163,7 +163,8 @@ public sealed class DownloadManagerTests
         string id = await manager.AddAsync(new DownloadRequest(
             new Uri("https://example.test/retry.bin"),
             directory.Path,
-            "retry.bin"));
+            "retry.bin",
+            ConnectionCount: 1));
 
         await WaitForStateAsync(state, id, DownloadState.Completed);
 
