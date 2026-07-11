@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>XDM.Core.Modern</AssemblyName>
+    <RootNamespace>XDM.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

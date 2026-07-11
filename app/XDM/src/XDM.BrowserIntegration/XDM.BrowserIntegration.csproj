@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>XDM.BrowserIntegration</AssemblyName>
+    <RootNamespace>XDM.BrowserIntegration</RootNamespace>
+  </PropertyGroup>
+</Project>

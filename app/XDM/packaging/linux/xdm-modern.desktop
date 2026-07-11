@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Xtreme Download Manager
+Comment=Download files and capture browser media
+Exec=/opt/xdm/XDM
+Terminal=false
+Categories=Network;FileTransfer;
+StartupNotify=true

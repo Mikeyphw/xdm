@@ -1,0 +1,358 @@
+{
+  "schema_version": 2,
+  "artifacts": [
+    {
+      "applied_at": "2026-07-11T18:09:24.056590Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_net8_build_baseline_overlay.zip",
+      "artifact_name": "xdm_net8_build_baseline_overlay.zip",
+      "type": "overlay",
+      "sha256": "785c53f4a77202026569a030772e050bc88502d49cbad1d7a70a6d010918c692",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Migrate XDM build baseline to .NET 8",
+      "commit_hash": "",
+      "file_count": 15,
+      "change_counts": {
+        "add": 7,
+        "modify": 8
+      },
+      "manifest": {},
+      "history_id": "1391dd8a7517479e8fd996b3fc9f2822"
+    },
+    {
+      "applied_at": "2026-07-11T18:20:39.600677Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_net10_build_baseline_overlay.zip",
+      "artifact_name": "xdm_net10_build_baseline_overlay.zip",
+      "type": "overlay",
+      "sha256": "70ec16b827175d216dd49ccd277f4d186d7ac15214f92e171a2c7af5d7f8b5ec",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Migrate XDM build baseline to .NET 10",
+      "commit_hash": "",
+      "file_count": 16,
+      "change_counts": {
+        "add": 7,
+        "modify": 8,
+        "unchanged": 1
+      },
+      "manifest": {},
+      "history_id": "3e84377c711a42939a3965ffd9ae7916"
+    },
+    {
+      "applied_at": "2026-07-11T18:24:11.390196Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_net10_build_baseline_overlay.zip",
+      "artifact_name": "xdm_net10_build_baseline_overlay.zip",
+      "type": "overlay",
+      "sha256": "b289280160d30cf3d22046fe60367559cff778c8de477e360ec2e8904b889c28",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Migrate XDM build baseline to .NET 10",
+      "commit_hash": "",
+      "file_count": 16,
+      "change_counts": {
+        "add": 7,
+        "modify": 9
+      },
+      "manifest": {},
+      "history_id": "97baccc7089c466d8bc59125573e854b"
+    },
+    {
+      "applied_at": "2026-07-11T18:30:16.579347Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_direct_bootstrap_overlay.zip",
+      "artifact_name": "xdm_avalonia_direct_bootstrap_overlay.zip",
+      "type": "overlay",
+      "sha256": "4e29c818348b59f5f0e7a4896fce2f34d0dcc5d1700ffd2a53bac0cb48852982",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Bootstrap the .NET 10 Avalonia application",
+      "commit_hash": "",
+      "file_count": 18,
+      "change_counts": {
+        "add": 17,
+        "modify": 1
+      },
+      "manifest": {},
+      "history_id": "f47027627bd74b1cb9455556acf6d5d3"
+    },
+    {
+      "applied_at": "2026-07-11T18:36:36.583599Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_core_port_overlay.zip",
+      "artifact_name": "xdm_avalonia_core_port_overlay.zip",
+      "type": "overlay",
+      "sha256": "3e36bf8cd2442e25e2a83a67801523a6962e2abae9fa394ebdd9af834692fcda",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Port initial XDM core services to .NET 10",
+      "commit_hash": "",
+      "file_count": 38,
+      "change_counts": {
+        "add": 25,
+        "modify": 13
+      },
+      "manifest": {},
+      "history_id": "8a065be6daf84948b8247a7b5d19eb61"
+    },
+    {
+      "applied_at": "2026-07-11T18:45:48.067108Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_functional_downloader_overlay.zip",
+      "artifact_name": "xdm_avalonia_functional_downloader_overlay.zip",
+      "type": "overlay",
+      "sha256": "8031352da24d6384033ecd47a05f214d62e17dce4fd76870b12be377e868965d",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add the functional Avalonia download engine",
+      "commit_hash": "",
+      "file_count": 37,
+      "change_counts": {
+        "add": 16,
+        "modify": 19,
+        "unchanged": 2
+      },
+      "manifest": {},
+      "history_id": "021d84587c0c4b019f4afd15e6dcaf2c"
+    },
+    {
+      "applied_at": "2026-07-11T18:47:44.093601Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_functional_downloader_overlay(1).zip",
+      "artifact_name": "xdm_avalonia_functional_downloader_overlay(1).zip",
+      "type": "overlay",
+      "sha256": "23eb612118aba9eae38e3be61a7b1f111bdc7a4689c4fff0c86592fe624609a1",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add the functional Avalonia download engine",
+      "commit_hash": "",
+      "file_count": 37,
+      "change_counts": {
+        "add": 16,
+        "modify": 19,
+        "unchanged": 2
+      },
+      "manifest": {},
+      "history_id": "7b0b63ceb9f24c62bf1ea2b75ed1c98e"
+    },
+    {
+      "applied_at": "2026-07-11T19:12:42.601419Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_essential_workflows_overlay.zip",
+      "artifact_name": "xdm_avalonia_essential_workflows_overlay.zip",
+      "type": "overlay",
+      "sha256": "04aa1ecac9bb28c004e21e7ddb24d510a404a19cd788ef7dd2c52f65612b7762",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add essential Avalonia download workflows",
+      "commit_hash": "",
+      "file_count": 22,
+      "change_counts": {
+        "add": 10,
+        "modify": 9,
+        "unchanged": 3
+      },
+      "manifest": {},
+      "history_id": "d7f2bad8c03a46ad90a7ac3eb87c727c"
+    },
+    {
+      "applied_at": "2026-07-11T19:38:44.811338Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_essential_workflows_overlay(1).zip",
+      "artifact_name": "xdm_avalonia_essential_workflows_overlay(1).zip",
+      "type": "overlay",
+      "sha256": "541662774737643591bf2efcf789a952530a9518fd81722384b3845ec4c4dc40",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add essential Avalonia download workflows",
+      "commit_hash": "",
+      "file_count": 22,
+      "change_counts": {
+        "add": 10,
+        "modify": 9,
+        "unchanged": 3
+      },
+      "manifest": {},
+      "history_id": "2b684335482d4ba2b2081aa3ca9eec85"
+    },
+    {
+      "applied_at": "2026-07-11T19:54:50.316785Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_queue_scheduler_runtime_overlay.zip",
+      "artifact_name": "xdm_avalonia_queue_scheduler_runtime_overlay.zip",
+      "type": "overlay",
+      "sha256": "d37358ba81f159cab8792b77fe828622e52536eb408f4d98c2556e43a202ddc1",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add queue execution and scheduler runtime",
+      "commit_hash": "",
+      "file_count": 17,
+      "change_counts": {
+        "add": 4,
+        "modify": 12,
+        "unchanged": 1
+      },
+      "manifest": {},
+      "history_id": "2d0ee9d2a8c8470d9e7ec8416631df85"
+    },
+    {
+      "applied_at": "2026-07-11T19:57:34.406101Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_browser_media_overlay.zip",
+      "artifact_name": "xdm_avalonia_browser_media_overlay.zip",
+      "type": "overlay",
+      "sha256": "9b76776f8e958329e3d74e2c538fec7ef255a835c5a7b7a3a6cf459c7a672c6e",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add browser capture and media probing",
+      "commit_hash": "",
+      "file_count": 26,
+      "change_counts": {
+        "add": 18,
+        "modify": 7,
+        "unchanged": 1
+      },
+      "manifest": {},
+      "history_id": "88f3ee3442774ef79f825497ab4d2996"
+    },
+    {
+      "applied_at": "2026-07-11T20:14:38.923860Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_diagnostics_recovery_packaging_overlay.zip",
+      "artifact_name": "xdm_avalonia_diagnostics_recovery_packaging_overlay.zip",
+      "type": "overlay",
+      "sha256": "45b5af637370b0f5ada36d27ac3ec2ada67a36c19001dca901bf975a6fb5702c",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add diagnostics recovery and packaging",
+      "commit_hash": "",
+      "file_count": 32,
+      "change_counts": {
+        "add": 22,
+        "modify": 10
+      },
+      "manifest": {},
+      "history_id": "fb8cb134c38841cbb45a3a53f072fbd4"
+    },
+    {
+      "applied_at": "2026-07-11T20:22:41.872359Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_engine_hardening_overlay.zip",
+      "artifact_name": "xdm_avalonia_engine_hardening_overlay.zip",
+      "type": "overlay",
+      "sha256": "1912eacc5f762a77f646cf8cb29c4b00f812bda34912474f0b06448a8928dc76",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Harden download resume recovery and finalization",
+      "commit_hash": "",
+      "file_count": 16,
+      "change_counts": {
+        "add": 7,
+        "modify": 9
+      },
+      "manifest": {},
+      "history_id": "a75b9eb996e643a890cd831f0805e730"
+    },
+    {
+      "applied_at": "2026-07-11T20:31:29.652961Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_release_ux_overlay.zip",
+      "artifact_name": "xdm_avalonia_release_ux_overlay.zip",
+      "type": "overlay",
+      "sha256": "f07a371a92894e82f0053bc2a8a89ec5bd6e597f41de05c32723b26cf2da99ce",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add single instance release UX and package qualification",
+      "commit_hash": "",
+      "file_count": 18,
+      "change_counts": {
+        "add": 7,
+        "modify": 11
+      },
+      "manifest": {},
+      "history_id": "74c548c80c7943158491569b23ca11e7"
+    },
+    {
+      "applied_at": "2026-07-11T20:50:42.765314Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_desktop_completion_overlay.zip",
+      "artifact_name": "xdm_avalonia_desktop_completion_overlay.zip",
+      "type": "overlay",
+      "sha256": "ac6eb345ee3b2420104e56cf6066dfc5f6f54a9a22556670714fce5177026823",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Complete Avalonia desktop integration and native browser host",
+      "commit_hash": "",
+      "file_count": 28,
+      "change_counts": {
+        "add": 12,
+        "modify": 12,
+        "unchanged": 4
+      },
+      "manifest": {},
+      "history_id": "1b62238f0b1c4394af54a10590335575"
+    },
+    {
+      "applied_at": "2026-07-11T20:55:09.173521Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_desktop_completion_overlay.zip",
+      "artifact_name": "xdm_avalonia_desktop_completion_overlay.zip",
+      "type": "overlay",
+      "sha256": "fe4ac6967d8bcd21d6297687e8e7fd4c4525226d099b280913b45a871598f37a",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Complete Avalonia desktop integration and native browser host",
+      "commit_hash": "",
+      "file_count": 28,
+      "change_counts": {
+        "add": 12,
+        "modify": 12,
+        "unchanged": 4
+      },
+      "manifest": {},
+      "history_id": "40226952f0624a79bb6bd0b11504ed33"
+    },
+    {
+      "applied_at": "2026-07-11T21:00:42.287420Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_desktop_completion_overlay.zip",
+      "artifact_name": "xdm_avalonia_desktop_completion_overlay.zip",
+      "type": "overlay",
+      "sha256": "fe4ac6967d8bcd21d6297687e8e7fd4c4525226d099b280913b45a871598f37a",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Complete Avalonia desktop integration and native browser host",
+      "commit_hash": "",
+      "file_count": 28,
+      "change_counts": {
+        "add": 12,
+        "modify": 12,
+        "unchanged": 4
+      },
+      "manifest": {},
+      "history_id": "1d65be73c6a84d2aa8b27c699185db90"
+    },
+    {
+      "applied_at": "2026-07-11T21:04:13.445524Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_desktop_completion_overlay(2).zip",
+      "artifact_name": "xdm_avalonia_desktop_completion_overlay(2).zip",
+      "type": "overlay",
+      "sha256": "7353f859ff88efad32d9a2ff7af14ca0f4ec096581d59b2875f306a11e9443bc",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Complete Avalonia desktop integration and native browser host",
+      "commit_hash": "",
+      "file_count": 28,
+      "change_counts": {
+        "add": 12,
+        "modify": 12,
+        "unchanged": 4
+      },
+      "manifest": {},
+      "history_id": "94db7323444544fd97cb79df7c51ec89"
+    },
+    {
+      "applied_at": "2026-07-11T21:10:41.349422Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_prerelease_cutover_overlay.zip",
+      "artifact_name": "xdm_avalonia_prerelease_cutover_overlay.zip",
+      "type": "overlay",
+      "sha256": "96b459e67bc2353abb9ceb5b462902af9905740484757e3ce3c198703b608489",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Prepare the first modern Avalonia prerelease",
+      "commit_hash": "",
+      "file_count": 19,
+      "change_counts": {
+        "add": 10,
+        "modify": 9
+      },
+      "manifest": {},
+      "history_id": "0d0f7e9a1f2e49348bfacff4252ce053"
+    }
+  ]
+}

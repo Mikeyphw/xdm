@@ -1,0 +1,455 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="1280"
+        d:DesignHeight="840"
+        x:Class="XDM.App.MainWindow"
+        Title="Xtreme Download Manager"
+        Width="1280"
+        Height="840"
+        MinWidth="1000"
+        MinHeight="680"
+        Background="#0E1116">
+
+  <Window.Styles>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="#4F8CFF" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="16,9" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.secondary">
+      <Setter Property="Background" Value="#1B212A" />
+      <Setter Property="Foreground" Value="#DDE5F2" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="13,8" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#171D25" />
+      <Setter Property="Foreground" Value="#E8EEF7" />
+      <Setter Property="BorderBrush" Value="#273240" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="11,8" />
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="Background" Value="#171D25" />
+      <Setter Property="Foreground" Value="#E8EEF7" />
+      <Setter Property="BorderBrush" Value="#273240" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="8,5" />
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="12,11" />
+      <Setter Property="Margin" Value="0,2" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="ListBoxItem:selected">
+      <Setter Property="Background" Value="#26354A" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="#7F8B9B" />
+    </Style>
+  </Window.Styles>
+
+  <Grid ColumnDefinitions="228,*">
+    <Border Grid.Column="0"
+            Background="#12171E"
+            BorderBrush="#202833"
+            BorderThickness="0,0,1,0"
+            Padding="16">
+      <Grid RowDefinitions="Auto,*,Auto">
+        <StackPanel Spacing="2" Margin="8,8,8,20">
+          <TextBlock Text="XDM" FontSize="28" FontWeight="Bold" Foreground="#F3F7FC" />
+          <TextBlock Text="Avalonia downloader" FontSize="12" Foreground="#7F8B9B" />
+        </StackPanel>
+
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding Sections}"
+                 SelectedItem="{Binding SelectedSection}"
+                 Background="Transparent"
+                 BorderThickness="0">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="28,*">
+                <TextBlock Text="{Binding Glyph}" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#8FB5FF" />
+                <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#DDE5F2" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Border Grid.Row="2" Background="#171D25" CornerRadius="8" Padding="12" Margin="0,14,0,0">
+          <StackPanel Spacing="4">
+            <TextBlock Text="Browser capture" FontWeight="SemiBold" Foreground="#DDE5F2" />
+            <TextBlock Text="Authenticated loopback capture plus direct, HLS, and DASH media probing." TextWrapping="Wrap" FontSize="11" Foreground="#7F8B9B" />
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" Margin="28,22,28,18">
+      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,18">
+        <StackPanel Spacing="5">
+          <TextBlock Text="{Binding CurrentTitle}" FontSize="27" FontWeight="Bold" Foreground="#F3F7FC" />
+          <TextBlock Text="{Binding CurrentSummary}" Foreground="#8794A5" />
+        </StackPanel>
+        <TextBlock Grid.Column="1" Text="{Binding OperationMessage}" Foreground="#8FB5FF" VerticalAlignment="Center" MaxWidth="430" TextWrapping="Wrap" />
+      </Grid>
+
+      <Grid Grid.Row="1" RowDefinitions="Auto,*">
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+          <Border Background="#151B23" CornerRadius="10" Padding="15">
+            <StackPanel Spacing="6">
+              <TextBlock Text="ACTIVE" Classes="label" />
+              <TextBlock Text="{Binding ActiveDownloadCount}" FontSize="25" FontWeight="Bold" Foreground="#F3F7FC" />
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="1" Background="#151B23" CornerRadius="10" Padding="15">
+            <StackPanel Spacing="6">
+              <TextBlock Text="SPEED" Classes="label" />
+              <TextBlock Text="{Binding AggregateSpeed}" FontSize="25" FontWeight="Bold" Foreground="#F3F7FC" />
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="2" Background="#151B23" CornerRadius="10" Padding="15">
+            <StackPanel Spacing="6">
+              <TextBlock Text="CORE" Classes="label" />
+              <TextBlock Text="{Binding CoreStatus}" FontSize="25" FontWeight="Bold" Foreground="#F3F7FC" />
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="0,14,0,0">
+          <Grid IsVisible="{Binding IsDownloadsVisible}" RowDefinitions="Auto,Auto,*">
+            <Border Background="#12171E" CornerRadius="10" Padding="14" BorderBrush="#202833" BorderThickness="1">
+              <StackPanel Spacing="10">
+                <Grid ColumnDefinitions="2*,*,Auto,Auto" ColumnSpacing="9">
+                  <TextBox AcceptsReturn="True" MinHeight="62" PlaceholderText="One or more HTTP/HTTPS URLs" Text="{Binding NewDownloadUrls}" />
+                  <TextBox Grid.Column="1" PlaceholderText="Destination folder" Text="{Binding DestinationFolder}" />
+                  <Button Grid.Column="2" Classes="secondary" Content="Browse" Click="BrowseDestination_Click" />
+                  <Button Grid.Column="3" Classes="primary" Content="Add" Command="{Binding AddDownloadCommand}" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="9">
+                  <ComboBox ItemsSource="{Binding CategoryDefinitions}" SelectedItem="{Binding SelectedCategory}">
+                    <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <ComboBox Grid.Column="1" ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedQueue}">
+                    <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <ComboBox Grid.Column="2" ItemsSource="{Binding DuplicateBehaviors}" SelectedItem="{Binding SelectedDuplicateBehavior}" />
+                  <TextBox Grid.Column="3" PlaceholderText="Speed limit KB/s (0 = unlimited)" Text="{Binding SpeedLimitKbps}" />
+                </Grid>
+
+                <Expander Header="Request details and authentication">
+                  <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,*" ColumnSpacing="9" RowSpacing="9">
+                    <TextBox PlaceholderText="Custom filename (single URL only)" Text="{Binding CustomFileName}" />
+                    <TextBox Grid.Column="1" PlaceholderText="User-Agent" Text="{Binding UserAgent}" />
+                    <TextBox Grid.Row="1" PlaceholderText="Username" Text="{Binding Username}" />
+                    <TextBox Grid.Row="1" Grid.Column="1" PlaceholderText="Password" PasswordChar="●" Text="{Binding Password}" />
+                    <TextBox Grid.Row="2" AcceptsReturn="True" MinHeight="58" PlaceholderText="Headers, one per line: Name: value" Text="{Binding RequestHeaders}" />
+                    <StackPanel Grid.Row="2" Grid.Column="1" Spacing="9">
+                      <TextBox PlaceholderText="Cookie header" Text="{Binding Cookie}" />
+                      <TextBox PlaceholderText="Referer" Text="{Binding Referer}" />
+                    </StackPanel>
+                  </Grid>
+                </Expander>
+              </StackPanel>
+            </Border>
+
+            <Grid Grid.Row="1" RowDefinitions="Auto,Auto" RowSpacing="8" Margin="0,10">
+              <Grid ColumnDefinitions="*,220" ColumnSpacing="9">
+                <TextBox PlaceholderText="Search filename, URL, destination, or queue" Text="{Binding DownloadSearchText}" />
+                <ComboBox Grid.Column="1" ItemsSource="{Binding DownloadStatusFilters}" SelectedItem="{Binding SelectedDownloadStatus}" />
+              </Grid>
+              <WrapPanel Grid.Row="1" Orientation="Horizontal">
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Pause" Command="{Binding PauseSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanPause}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Resume" Command="{Binding ResumeSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Cancel" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanCancel}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Retry" Command="{Binding RetrySelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Remove" Command="{Binding RemoveSelectedCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Earlier" Command="{Binding MoveSelectedDownloadEarlierCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Later" Command="{Binding MoveSelectedDownloadLaterCommand}" />
+                <Button Margin="12,0,8,0" Classes="secondary" Content="Select visible" Command="{Binding SelectAllVisibleCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Clear selection" Command="{Binding ClearBulkSelectionCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Pause selected" Command="{Binding PauseBulkCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Resume selected" Command="{Binding ResumeBulkCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Cancel selected" Command="{Binding CancelBulkCommand}" />
+                <Button Classes="secondary" Content="Remove selected" Command="{Binding RemoveBulkCommand}" />
+              </WrapPanel>
+            </Grid>
+
+            <Grid Grid.Row="2" ColumnDefinitions="2*,*" ColumnSpacing="12">
+              <Border Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
+                <ListBox ItemsSource="{Binding FilteredDownloads}"
+                         SelectedItem="{Binding SelectedDownload}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="7">
+                  <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                  </ListBox.ItemsPanel>
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <Border Padding="12" Background="#151B23" CornerRadius="8">
+                        <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="16">
+                          <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" />
+                          <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                            <TextBlock Text="{Binding Source}" FontSize="11" Foreground="#718095" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding QueueId}" FontSize="10" Foreground="#58739A" />
+                          </StackPanel>
+                          <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="#8FB5FF" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="3" Text="{Binding SpeedText}" Foreground="#C8D1DE" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="4" Text="{Binding RemainingText}" Foreground="#7F8B9B" VerticalAlignment="Center" />
+                          <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Margin="0,10,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" />
+                          <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ProgressText}" FontSize="11" Foreground="#7F8B9B" />
+                          <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Text="{Binding ErrorMessage}" FontSize="11" Foreground="#FF8F8F" HorizontalAlignment="Right" />
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Border>
+              <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="16" BorderBrush="#202833" BorderThickness="1">
+                <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
+                  <TextBlock Text="DOWNLOAD DETAILS" Classes="label" />
+                  <StackPanel Grid.Row="1" Spacing="4">
+                    <TextBlock Text="{Binding SelectedDownload.FileName}" FontWeight="SemiBold" Foreground="#F1F5FA" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedDownload.Source}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedDownload.DestinationPath}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <TextBlock Grid.Row="2" Text="EVENT TIMELINE" Classes="label" />
+                  <ListBox Grid.Row="3" ItemsSource="{Binding SelectedDownloadTimeline}" Background="Transparent" BorderThickness="0">
+                    <ListBox.ItemsPanel>
+                      <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto" Margin="0,3">
+                          <TextBlock Text="{Binding Status}" Foreground="#8FB5FF" FontSize="11" />
+                          <TextBlock Grid.Column="1" Text="{Binding Timestamp}" Foreground="#687586" FontSize="10" HorizontalAlignment="Right" />
+                          <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Message}" Foreground="#C8D1DE" FontSize="11" TextWrapping="Wrap" />
+                        </Grid>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </Grid>
+              </Border>
+            </Grid>
+          </Grid>
+
+          <ScrollViewer IsVisible="{Binding IsQueuesVisible}">
+            <StackPanel Spacing="14">
+              <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="Queue definitions" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <ItemsControl ItemsSource="{Binding QueueDefinitions}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Background="#171D25" CornerRadius="8" Padding="12" Margin="0,0,0,7">
+                          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="18">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#E8EEF7" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                              <TextBlock Text="{Binding MaxConcurrentDownloads}" Foreground="#8FB5FF" />
+                              <TextBlock Text="concurrent" Foreground="#8FB5FF" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                              <TextBlock Text="{Binding SpeedLimitBytesPerSecond}" Foreground="#7F8B9B" />
+                              <TextBlock Text="B/s limit" Foreground="#7F8B9B" />
+                            </StackPanel>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="{Binding QueueRuntimeStatus}" Foreground="#8FB5FF" TextWrapping="Wrap" />
+                  <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="9">
+                    <ComboBox ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedQueue}">
+                      <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Grid.Column="1" Classes="primary" Content="Start" Command="{Binding StartSelectedQueueCommand}" />
+                    <Button Grid.Column="2" Classes="secondary" Content="Stop" Command="{Binding StopSelectedQueueCommand}" />
+                    <Button Grid.Column="3" Classes="secondary" Content="Move selected download" Command="{Binding MoveSelectedDownloadToQueueCommand}" />
+                  </Grid>
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="New queue name" Text="{Binding NewQueueName}" />
+                    <Button Grid.Column="1" Classes="primary" Content="Add queue" Command="{Binding AddQueueCommand}" />
+                  </Grid>
+                  <TextBlock Text="Queues execute independently. Global and per-queue concurrency and speed limits are enforced while multiple queues are active." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                </StackPanel>
+              </Border>
+
+              <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="Categories" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <ItemsControl ItemsSource="{Binding CategoryDefinitions}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Background="#171D25" CornerRadius="8" Padding="12" Margin="0,0,0,7">
+                          <Grid ColumnDefinitions="*,2*" ColumnSpacing="18">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#E8EEF7" />
+                            <TextBlock Grid.Column="1" Text="{Binding DestinationDirectory}" Foreground="#7F8B9B" TextTrimming="CharacterEllipsis" />
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Grid ColumnDefinitions="*,*,2*,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="Category name" Text="{Binding NewCategoryName}" />
+                    <TextBox Grid.Column="1" PlaceholderText="Extensions: zip, 7z, rar" Text="{Binding NewCategoryExtensions}" />
+                    <TextBox Grid.Column="2" PlaceholderText="Destination (blank = current)" Text="{Binding NewCategoryDestination}" />
+                    <Button Grid.Column="3" Classes="primary" Content="Add category" Command="{Binding AddCategoryCommand}" />
+                  </Grid>
+                  <Button HorizontalAlignment="Left" Classes="secondary" Content="Save definitions" Command="{Binding SaveSettingsCommand}" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+
+          <Border IsVisible="{Binding IsSchedulerVisible}" Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+            <StackPanel Spacing="14" MaxWidth="680" HorizontalAlignment="Left">
+              <TextBlock Text="Queue scheduler" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+              <CheckBox Content="Enable scheduled queue window" IsChecked="{Binding SchedulerEnabled}" />
+              <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                <TextBox PlaceholderText="Start HH:mm" Text="{Binding SchedulerStartTime}" />
+                <TextBox Grid.Column="1" PlaceholderText="End HH:mm" Text="{Binding SchedulerEndTime}" />
+                <ComboBox Grid.Column="2" ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SchedulerQueue}">
+                  <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+              </Grid>
+              <TextBlock Text="The scheduler is live, timezone-aware, supports overnight windows, and evaluates immediately at startup and after settings changes." TextWrapping="Wrap" Foreground="#7F8B9B" />
+              <Button HorizontalAlignment="Left" Classes="primary" Content="Save schedule" Command="{Binding SaveSettingsCommand}" />
+            </StackPanel>
+          </Border>
+
+          <ScrollViewer IsVisible="{Binding IsBrowserIntegrationVisible}">
+            <StackPanel Spacing="14">
+              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="13" MaxWidth="820" HorizontalAlignment="Left">
+                  <TextBlock Text="Browser capture service" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <TextBlock Text="{Binding BrowserIntegrationStatus}" Foreground="#8FB5FF" />
+                  <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="8">
+                    <TextBlock Text="Endpoint" Classes="label" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="1" Text="{Binding BrowserEndpoint}" IsReadOnly="True" />
+                    <TextBlock Grid.Row="1" Text="Token" Classes="label" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BrowserAuthenticationToken}" IsReadOnly="True" />
+                  </Grid>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Classes="primary" Content="Restart capture service" Command="{Binding RestartBrowserIntegrationCommand}" />
+                    <Button Classes="secondary" Content="Probe URL from Downloads" Command="{Binding ProbeEnteredUrlCommand}" />
+                  </StackPanel>
+                  <Border Background="#171D25" CornerRadius="8" Padding="12">
+                    <StackPanel Spacing="8">
+                      <TextBlock Text="NATIVE HOST" Classes="label" />
+                      <TextBlock Text="{Binding BrowserHostStatus}" TextWrapping="Wrap" Foreground="#BAC7D8" />
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBox PlaceholderText="Chromium extension ID (Firefox is automatic)" Text="{Binding BrowserExtensionId}" />
+                        <Button Grid.Column="1" Classes="secondary" Content="Install / repair" Command="{Binding RepairBrowserHostCommand}" />
+                      </Grid>
+                    </StackPanel>
+                  </Border>
+                  <TextBlock Text="Extensions POST JSON to /capture and send the token in the X-XDM-Token header. The loopback listener accepts only HTTP and HTTPS URLs and limits payloads to 64 KiB." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                </StackPanel>
+              </Border>
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="LAST CAPTURE" Classes="label" />
+                    <TextBlock Text="{Binding LastBrowserCapture}" TextWrapping="Wrap" Foreground="#E8EEF7" />
+                  </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="MEDIA PROBE" Classes="label" />
+                    <TextBlock Text="{Binding LastMediaProbe}" TextWrapping="Wrap" Foreground="#E8EEF7" />
+                  </StackPanel>
+                </Border>
+              </Grid>
+            </StackPanel>
+          </ScrollViewer>
+
+          <ScrollViewer IsVisible="{Binding IsSettingsVisible}">
+            <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+              <StackPanel Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
+                <TextBlock Text="Download behavior" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
+                  <TextBox PlaceholderText="Default download directory" Text="{Binding DestinationFolder}" />
+                  <Button Grid.Column="1" Classes="secondary" Content="Browse" Click="BrowseDestination_Click" />
+                </Grid>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
+                  <TextBox PlaceholderText="Maximum concurrent downloads" Text="{Binding MaxConcurrentDownloads}" />
+                  <TextBox Grid.Column="1" PlaceholderText="Default speed limit KB/s (0 = unlimited)" Text="{Binding DefaultSpeedLimitKbps}" />
+                </Grid>
+                <CheckBox Content="Monitor clipboard for HTTP/HTTPS links" IsChecked="{Binding ClipboardMonitoringEnabled}" />
+                <CheckBox Content="Automatically add links captured from clipboard" IsChecked="{Binding AutoAddClipboardLinks}" />
+                <TextBlock Text="Concurrency is initialized when XDM starts; changing it currently takes effect after restart. Speed-limit changes apply to active downloads." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                <Button HorizontalAlignment="Left" Classes="primary" Content="Save settings" Command="{Binding SaveSettingsCommand}" />
+              </StackPanel>
+            </Border>
+          </ScrollViewer>
+
+          <ScrollViewer IsVisible="{Binding IsDiagnosticsVisible}">
+            <StackPanel Spacing="14">
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="RECOVERY" Classes="label" />
+                    <TextBlock Text="{Binding RecoveryStatus}" TextWrapping="Wrap" Foreground="#E8EEF7" />
+                    <TextBlock Text="Launch with --safe-mode to skip browser and scheduler startup, or --reset-window-state to discard stored window placement." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="DIAGNOSTIC BUNDLE" Classes="label" />
+                    <TextBlock Text="{Binding DiagnosticBundlePath}" TextWrapping="Wrap" Foreground="#E8EEF7" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Button Classes="primary" Content="Export bundle" Command="{Binding ExportDiagnosticsCommand}" />
+                      <Button Classes="secondary" Content="Clear events" Command="{Binding ClearDiagnosticsCommand}" />
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </Grid>
+
+              <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="RECENT EVENTS" Classes="label" />
+                  <ItemsControl ItemsSource="{Binding DiagnosticEvents}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="150,100,180,*" ColumnSpacing="10" Margin="0,3">
+                          <TextBlock Text="{Binding Timestamp}" FontFamily="monospace" FontSize="11" Foreground="#7F8B9B" />
+                          <TextBlock Grid.Column="1" Text="{Binding Severity}" FontSize="11" Foreground="#8FB5FF" />
+                          <TextBlock Grid.Column="2" Text="{Binding Code}" FontFamily="monospace" FontSize="11" Foreground="#BAC7D8" />
+                          <TextBlock Grid.Column="3" Text="{Binding Message}" TextWrapping="Wrap" FontSize="11" Foreground="#E8EEF7" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+
+          <Border IsVisible="{Binding IsPlaceholderVisible}" Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Margin="30">
+              <TextBlock Text="◇" FontSize="38" Foreground="#4F8CFF" HorizontalAlignment="Center" />
+              <TextBlock Text="No page is available" FontSize="19" FontWeight="SemiBold" Foreground="#E9EEF6" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Grid>
+
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+        <TextBlock Text="{Binding RuntimeDescription}" FontSize="11" Foreground="#687586" />
+        <TextBlock Grid.Column="1" Text="Desktop integration • phase 10" FontSize="11" Foreground="#8FB5FF" />
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>

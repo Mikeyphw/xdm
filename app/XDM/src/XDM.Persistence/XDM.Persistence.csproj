@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>XDM.Persistence</AssemblyName>
+    <RootNamespace>XDM.Persistence</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../XDM.Core/XDM.Core.csproj" />
+  </ItemGroup>
+</Project>

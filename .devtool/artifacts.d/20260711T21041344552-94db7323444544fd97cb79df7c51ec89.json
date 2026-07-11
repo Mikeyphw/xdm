@@ -1,0 +1,19 @@
+{
+  "applied_at": "2026-07-11T21:04:13.445524Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_avalonia_desktop_completion_overlay(2).zip",
+  "artifact_name": "xdm_avalonia_desktop_completion_overlay(2).zip",
+  "type": "overlay",
+  "sha256": "7353f859ff88efad32d9a2ff7af14ca0f4ec096581d59b2875f306a11e9443bc",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Complete Avalonia desktop integration and native browser host",
+  "commit_hash": "",
+  "file_count": 28,
+  "change_counts": {
+    "add": 12,
+    "modify": 12,
+    "unchanged": 4
+  },
+  "manifest": {},
+  "history_id": "94db7323444544fd97cb79df7c51ec89"
+}

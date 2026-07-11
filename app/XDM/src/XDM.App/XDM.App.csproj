@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>XDM</AssemblyName>
+    <RootNamespace>XDM.App</RootNamespace>
+    <ApplicationIcon>../../xdm-logo.ico</ApplicationIcon>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="../../xdm-logo.ico" Link="Assets/xdm-logo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../XDM.BrowserIntegration/XDM.BrowserIntegration.csproj" />
+    <ProjectReference Include="../XDM.Core/XDM.Core.csproj" />
+    <ProjectReference Include="../XDM.Diagnostics/XDM.Diagnostics.csproj" />
+    <ProjectReference Include="../XDM.DownloadEngine/XDM.DownloadEngine.csproj" />
+    <ProjectReference Include="../XDM.Media/XDM.Media.csproj" />
+    <ProjectReference Include="../XDM.Persistence/XDM.Persistence.csproj" />
+    <ProjectReference Include="../XDM.Platform/XDM.Platform.csproj" />
+  </ItemGroup>
+</Project>
