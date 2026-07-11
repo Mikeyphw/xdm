@@ -1,12 +1,14 @@
 {
-  "name": "xdm_avalonia_browser_media_overlay",
+  "name": "xdm_avalonia_diagnostics_recovery_packaging_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "84a0e06",
-  "requires": ["xdm_avalonia_queue_scheduler_runtime_overlay"],
+  "baseCommit": "17087f0",
+  "requires": [
+    "xdm_avalonia_browser_media_overlay"
+  ],
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": 6,
-  "description": "Adds authenticated loopback browser capture, browser health UI, direct/HLS/DASH probing, and browser/media tests.",
+  "phase": 7,
+  "description": "Adds structured diagnostics, secret-redacted bundle export, safe-mode recovery, unclean-shutdown detection, and self-contained Linux/Windows packaging.",
   "validation": {
     "linux": "app/XDM/eng/validate-modern.sh",
     "windows": "app/XDM/eng/validate-modern.ps1",
@@ -14,5 +16,5 @@
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
     "smoke": "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap"
   },
-  "commitMessage": "Add browser capture and media probing"
+  "commitMessage": "Add diagnostics recovery and packaging"
 }

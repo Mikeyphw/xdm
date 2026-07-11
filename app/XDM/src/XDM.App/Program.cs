@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using XDM.App.ViewModels;
 using XDM.Core.Categories;
 using XDM.Core.State;
+using XDM.Diagnostics;
 using XDM.DownloadEngine;
 
 namespace XDM.App;
@@ -17,6 +18,7 @@ internal static class Program
             return ValidateBootstrap();
         }
 
+        App.LaunchOptions = StartupOptions.Parse(args);
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

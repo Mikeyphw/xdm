@@ -22,6 +22,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.Media", "src\XDM.Media\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.BrowserMedia.Tests", "src\XDM.BrowserMedia.Tests\XDM.BrowserMedia.Tests.csproj", "{7C9A231D-FD1B-4E27-A0E9-FA4F16509549}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.Diagnostics", "src\XDM.Diagnostics\XDM.Diagnostics.csproj", "{D7227C98-C85F-48CF-9B43-612B286BCFA2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.Diagnostics.Tests", "src\XDM.Diagnostics.Tests\XDM.Diagnostics.Tests.csproj", "{5FB0903C-81C8-4F32-AB3C-E367F7AE5FB4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,5 +73,13 @@ Global
 		{7C9A231D-FD1B-4E27-A0E9-FA4F16509549}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7C9A231D-FD1B-4E27-A0E9-FA4F16509549}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7C9A231D-FD1B-4E27-A0E9-FA4F16509549}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7227C98-C85F-48CF-9B43-612B286BCFA2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7227C98-C85F-48CF-9B43-612B286BCFA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7227C98-C85F-48CF-9B43-612B286BCFA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7227C98-C85F-48CF-9B43-612B286BCFA2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5FB0903C-81C8-4F32-AB3C-E367F7AE5FB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FB0903C-81C8-4F32-AB3C-E367F7AE5FB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FB0903C-81C8-4F32-AB3C-E367F7AE5FB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FB0903C-81C8-4F32-AB3C-E367F7AE5FB4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -1,10 +1,10 @@
-# XDM Avalonia browser and media overlay
+# XDM Avalonia diagnostics, recovery, and packaging overlay
 
-Apply after `xdm_avalonia_queue_scheduler_runtime_overlay.zip`.
+Apply after `xdm_avalonia_browser_media_overlay.zip` / commit `17087f0`.
 
 Target: `xdm_modern`
 
-This overlay introduces an authenticated loopback browser capture service, a real Browser Integration status page, and direct/HLS/DASH media probing.
+This overlay clears the four existing CA1826 warnings, adds structured diagnostics and redacted bundle export, crash-marker recovery with safe mode, and self-contained Linux/Windows packaging scripts.
 
 Validation:
 
@@ -15,5 +15,5 @@ Validation:
 Commit message:
 
 ```text
-Add browser capture and media probing
+Add diagnostics recovery and packaging
 ```

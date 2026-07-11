@@ -342,11 +342,52 @@
             </Border>
           </ScrollViewer>
 
+          <ScrollViewer IsVisible="{Binding IsDiagnosticsVisible}">
+            <StackPanel Spacing="14">
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="RECOVERY" Classes="label" />
+                    <TextBlock Text="{Binding RecoveryStatus}" TextWrapping="Wrap" Foreground="#E8EEF7" />
+                    <TextBlock Text="Launch with --safe-mode to skip browser and scheduler startup, or --reset-window-state to discard stored window placement." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="DIAGNOSTIC BUNDLE" Classes="label" />
+                    <TextBlock Text="{Binding DiagnosticBundlePath}" TextWrapping="Wrap" Foreground="#E8EEF7" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Button Classes="primary" Content="Export bundle" Command="{Binding ExportDiagnosticsCommand}" />
+                      <Button Classes="secondary" Content="Clear events" Command="{Binding ClearDiagnosticsCommand}" />
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </Grid>
+
+              <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="RECENT EVENTS" Classes="label" />
+                  <ItemsControl ItemsSource="{Binding DiagnosticEvents}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="150,100,180,*" ColumnSpacing="10" Margin="0,3">
+                          <TextBlock Text="{Binding Timestamp}" FontFamily="monospace" FontSize="11" Foreground="#7F8B9B" />
+                          <TextBlock Grid.Column="1" Text="{Binding Severity}" FontSize="11" Foreground="#8FB5FF" />
+                          <TextBlock Grid.Column="2" Text="{Binding Code}" FontFamily="monospace" FontSize="11" Foreground="#BAC7D8" />
+                          <TextBlock Grid.Column="3" Text="{Binding Message}" TextWrapping="Wrap" FontSize="11" Foreground="#E8EEF7" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+
           <Border IsVisible="{Binding IsPlaceholderVisible}" Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Margin="30">
               <TextBlock Text="◇" FontSize="38" Foreground="#4F8CFF" HorizontalAlignment="Center" />
-              <TextBlock Text="This section is next" FontSize="19" FontWeight="SemiBold" Foreground="#E9EEF6" HorizontalAlignment="Center" />
-              <TextBlock Text="Diagnostics export and recovery controls will be wired in the next overlay." TextAlignment="Center" TextWrapping="Wrap" Foreground="#7F8B9B" MaxWidth="560" />
+              <TextBlock Text="No page is available" FontSize="19" FontWeight="SemiBold" Foreground="#E9EEF6" HorizontalAlignment="Center" />
             </StackPanel>
           </Border>
         </Grid>
@@ -354,7 +395,7 @@
 
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
         <TextBlock Text="{Binding RuntimeDescription}" FontSize="11" Foreground="#687586" />
-        <TextBlock Grid.Column="1" Text="Browser + media • phase 6" FontSize="11" Foreground="#8FB5FF" />
+        <TextBlock Grid.Column="1" Text="Diagnostics + recovery • phase 7" FontSize="11" Foreground="#8FB5FF" />
       </Grid>
     </Grid>
   </Grid>

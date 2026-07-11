@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../XDM.BrowserIntegration/XDM.BrowserIntegration.csproj" />
+    <ProjectReference Include="../XDM.Core/XDM.Core.csproj" />
+    <ProjectReference Include="../XDM.Platform/XDM.Platform.csproj" />
+  </ItemGroup>
+</Project>

@@ -7,6 +7,7 @@ using XDM.Core.Downloads;
 using XDM.Core.Queues;
 using XDM.Core.Settings;
 using XDM.Core.State;
+using XDM.Diagnostics;
 using XDM.DownloadEngine;
 using XDM.Media;
 using XDM.Platform;
@@ -21,6 +22,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IUiDispatcher _dispatcher;
     private readonly IBrowserIntegrationService _browserIntegrationService;
     private readonly IMediaProbeService _mediaProbeService;
+    private readonly IDiagnosticEventStore _diagnosticEvents;
+    private readonly IDiagnosticBundleService _diagnosticBundleService;
     private bool _disposed;
 
     public MainWindowViewModel(
@@ -30,7 +33,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         ISettingsService settingsService,
         IUiDispatcher dispatcher,
         IBrowserIntegrationService browserIntegrationService,
-        IMediaProbeService mediaProbeService)
+        IMediaProbeService mediaProbeService,
+        IDiagnosticEventStore diagnosticEvents,
+        IDiagnosticBundleService diagnosticBundleService,
+        IRecoveryService recoveryService)
     {
         _applicationState = applicationState;
         _downloadManager = downloadManager;
@@ -38,6 +44,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _dispatcher = dispatcher;
         _browserIntegrationService = browserIntegrationService;
         _mediaProbeService = mediaProbeService;
+        _diagnosticEvents = diagnosticEvents;
+        _diagnosticBundleService = diagnosticBundleService;
         PlatformDescription = platformInfo.DisplayName;
         RuntimeDescription = platformInfo.Runtime;
 
@@ -57,11 +65,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         ApplySnapshot(applicationState.Current);
         ApplyQueueRuntime(downloadManager.QueueRuntime);
         ApplyBrowserStatus(browserIntegrationService.Current);
+        ApplyDiagnostics();
+        RecoveryStatus = recoveryService.SafeMode
+            ? "Safe mode is active; browser integration and scheduler startup were skipped."
+            : recoveryService.PreviousSessionWasUnclean
+                ? "The previous session did not shut down cleanly."
+                : "No recovery action is currently required.";
         applicationState.Changed += OnApplicationStateChanged;
         settingsService.Changed += OnSettingsChanged;
         downloadManager.QueueRuntimeChanged += OnQueueRuntimeChanged;
         browserIntegrationService.StatusChanged += OnBrowserStatusChanged;
         browserIntegrationService.CaptureReceived += OnBrowserCaptureReceived;
+        diagnosticEvents.Changed += OnDiagnosticsChanged;
     }
 
     public ObservableCollection<NavigationItem> Sections { get; }
@@ -71,6 +86,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public ObservableCollection<DownloadCategoryDefinition> CategoryDefinitions { get; } = [];
 
     public ObservableCollection<DownloadQueueDefinition> QueueDefinitions { get; } = [];
+
+    public ObservableCollection<DiagnosticEvent> DiagnosticEvents { get; } = [];
 
     public IReadOnlyList<string> DuplicateBehaviors { get; }
 
@@ -195,6 +212,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string lastMediaProbe = "No media probe yet";
 
+    [ObservableProperty]
+    private string recoveryStatus = "Checking recovery state";
+
+    [ObservableProperty]
+    private string diagnosticBundlePath = "No diagnostic bundle exported yet";
+
     public bool IsSelectedQueueActive
         => SelectedQueue is not null && _downloadManager.QueueRuntime.IsActive(SelectedQueue.Id);
 
@@ -213,12 +236,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsSettingsVisible
         => string.Equals(SelectedSection?.Title, "Settings", StringComparison.Ordinal);
 
+    public bool IsDiagnosticsVisible
+        => string.Equals(SelectedSection?.Title, "Diagnostics", StringComparison.Ordinal);
+
     public bool IsPlaceholderVisible
         => !IsDownloadsVisible
             && !IsQueuesVisible
             && !IsSchedulerVisible
             && !IsBrowserIntegrationVisible
-            && !IsSettingsVisible;
+            && !IsSettingsVisible
+            && !IsDiagnosticsVisible;
 
     partial void OnSelectedSectionChanged(NavigationItem? value)
     {
@@ -229,6 +256,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsSchedulerVisible));
         OnPropertyChanged(nameof(IsBrowserIntegrationVisible));
         OnPropertyChanged(nameof(IsSettingsVisible));
+        OnPropertyChanged(nameof(IsDiagnosticsVisible));
         OnPropertyChanged(nameof(IsPlaceholderVisible));
     }
 
@@ -388,8 +416,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 ? parsedEnd
                 : current.Scheduler.EndTime;
         string schedulerQueueId = SchedulerQueue?.Id
-            ?? QueueDefinitions.FirstOrDefault()?.Id
-            ?? "default";
+            ?? (QueueDefinitions.Count > 0 ? QueueDefinitions[0].Id : "default");
 
         ApplicationSettings updated = current with
         {
@@ -509,7 +536,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task ProbeEnteredUrlAsync()
     {
-        Uri? source = DownloadInputParser.ParseUrls(NewDownloadUrls).FirstOrDefault();
+        IReadOnlyList<Uri> enteredUrls = DownloadInputParser.ParseUrls(NewDownloadUrls);
+        Uri? source = enteredUrls.Count > 0 ? enteredUrls[0] : null;
         if (source is null)
         {
             LastMediaProbe = "Enter a valid HTTP or HTTPS URL first.";
@@ -555,6 +583,47 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OperationMessage = "Category added; save settings to persist it.";
     }
 
+    [RelayCommand]
+    private async Task ExportDiagnosticsAsync()
+    {
+        try
+        {
+            string destination = string.IsNullOrWhiteSpace(DestinationFolder)
+                ? _settingsService.Current.DefaultDownloadDirectory
+                : DestinationFolder;
+            DiagnosticBundlePath = await _diagnosticBundleService
+                .ExportAsync(destination);
+            _diagnosticEvents.Record(
+                DiagnosticSeverity.Information,
+                "XDM-DIAGNOSTICS-EXPORT",
+                $"Diagnostic bundle exported to {DiagnosticBundlePath}.");
+            OperationMessage = "Diagnostic bundle exported.";
+        }
+        catch (IOException exception)
+        {
+            DiagnosticBundlePath = $"Export failed: {exception.Message}";
+            _diagnosticEvents.Record(
+                DiagnosticSeverity.Error,
+                "XDM-DIAGNOSTICS-EXPORT",
+                DiagnosticBundlePath);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            DiagnosticBundlePath = $"Export failed: {exception.Message}";
+            _diagnosticEvents.Record(
+                DiagnosticSeverity.Error,
+                "XDM-DIAGNOSTICS-EXPORT",
+                DiagnosticBundlePath);
+        }
+    }
+
+    [RelayCommand]
+    private void ClearDiagnostics()
+    {
+        _diagnosticEvents.Clear();
+        OperationMessage = "Diagnostic event history cleared.";
+    }
+
     public async Task HandleClipboardTextAsync(string text)
     {
         if (!ClipboardMonitoringEnabled)
@@ -589,7 +658,31 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _downloadManager.QueueRuntimeChanged -= OnQueueRuntimeChanged;
         _browserIntegrationService.StatusChanged -= OnBrowserStatusChanged;
         _browserIntegrationService.CaptureReceived -= OnBrowserCaptureReceived;
+        _diagnosticEvents.Changed -= OnDiagnosticsChanged;
         GC.SuppressFinalize(this);
+    }
+
+    private void OnDiagnosticsChanged(object? sender, EventArgs eventArgs)
+    {
+        if (_dispatcher.CheckAccess())
+        {
+            ApplyDiagnostics();
+        }
+        else
+        {
+            _dispatcher.Post(ApplyDiagnostics);
+        }
+    }
+
+    private void ApplyDiagnostics()
+    {
+        DiagnosticEvents.Clear();
+        IReadOnlyList<DiagnosticEvent> snapshot = _diagnosticEvents.Snapshot();
+        int startIndex = Math.Max(0, snapshot.Count - 100);
+        for (int index = snapshot.Count - 1; index >= startIndex; index--)
+        {
+            DiagnosticEvents.Add(snapshot[index]);
+        }
     }
 
     private void OnApplicationStateChanged(object? sender, ApplicationSnapshot snapshot)
@@ -618,6 +711,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private void OnBrowserStatusChanged(object? sender, BrowserStatusChangedEventArgs eventArgs)
     {
+        _diagnosticEvents.Record(
+            eventArgs.Status.LastError is null ? DiagnosticSeverity.Information : DiagnosticSeverity.Warning,
+            "XDM-BROWSER-STATUS",
+            eventArgs.Status.LastError ?? (eventArgs.Status.IsListening ? "Browser integration is listening." : "Browser integration stopped."));
         if (_dispatcher.CheckAccess())
         {
             ApplyBrowserStatus(eventArgs.Status);
@@ -794,13 +891,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         SelectedCategory = CategoryDefinitions.FirstOrDefault(category =>
             string.Equals(category.Id, selectedCategoryId, StringComparison.Ordinal))
-            ?? CategoryDefinitions.FirstOrDefault();
+            ?? (CategoryDefinitions.Count > 0 ? CategoryDefinitions[0] : null);
         SelectedQueue = QueueDefinitions.FirstOrDefault(queue =>
             string.Equals(queue.Id, selectedQueueId, StringComparison.Ordinal))
-            ?? QueueDefinitions.FirstOrDefault();
+            ?? (QueueDefinitions.Count > 0 ? QueueDefinitions[0] : null);
         SchedulerQueue = QueueDefinitions.FirstOrDefault(queue =>
             string.Equals(queue.Id, settings.Scheduler.QueueId, StringComparison.Ordinal))
-            ?? QueueDefinitions.FirstOrDefault();
+            ?? (QueueDefinitions.Count > 0 ? QueueDefinitions[0] : null);
         ApplyQueueRuntime(_downloadManager.QueueRuntime);
     }
 

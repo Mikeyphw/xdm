@@ -49,7 +49,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         _settingsService = settingsService;
         _logger = logger;
         _concurrencyGate = new SemaphoreSlim(settingsService.Current.MaxConcurrentDownloads);
-        string defaultQueueId = settingsService.Current.Queues.FirstOrDefault()?.Id ?? "default";
+        IReadOnlyList<DownloadQueueDefinition> configuredQueues = settingsService.Current.Queues;
+        string defaultQueueId = configuredQueues.Count > 0 ? configuredQueues[0].Id : "default";
         _activeQueues.TryAdd(defaultQueueId, 0);
     }
 
@@ -60,7 +61,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             .LoadAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        string fallbackQueueId = _settingsService.Current.Queues.FirstOrDefault()?.Id ?? "default";
+        IReadOnlyList<DownloadQueueDefinition> configuredQueues = _settingsService.Current.Queues;
+        string fallbackQueueId = configuredQueues.Count > 0 ? configuredQueues[0].Id : "default";
         foreach (PersistedDownload item in persisted)
         {
             DownloadState restoredState = item.State is DownloadState.Connecting
@@ -127,8 +129,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
         }
 
+        IReadOnlyList<DownloadQueueDefinition> configuredQueues = _settingsService.Current.Queues;
+        string fallbackQueueId = configuredQueues.Count > 0 ? configuredQueues[0].Id : "default";
         string queueId = string.IsNullOrWhiteSpace(request.QueueId)
-            ? _settingsService.Current.Queues.FirstOrDefault()?.Id ?? "default"
+            ? fallbackQueueId
             : request.QueueId;
         int queueOrder = _sessions.Values
             .Where(session => string.Equals(session.QueueId, queueId, StringComparison.Ordinal))
