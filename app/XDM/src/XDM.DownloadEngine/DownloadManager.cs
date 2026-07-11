@@ -649,69 +649,74 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         await using Stream source = await response.Content
             .ReadAsStreamAsync(cancellationToken)
             .ConfigureAwait(false);
-        await using FileStream destination = new(
+
+        long downloadedBytes;
+        await using (FileStream destination = new(
             partialPath,
             append ? FileMode.Append : FileMode.Create,
             FileAccess.Write,
             FileShare.Read,
             BufferSize,
-            FileOptions.Asynchronous | FileOptions.SequentialScan);
-
-        byte[] buffer = new byte[BufferSize];
-        Stopwatch speedWatch = Stopwatch.StartNew();
-        long speedStartBytes = existingLength;
-        DateTimeOffset lastProgress = DateTimeOffset.MinValue;
-
-        while (true)
+            FileOptions.Asynchronous | FileOptions.SequentialScan))
         {
-            int read = await source
-                .ReadAsync(buffer, cancellationToken)
-                .ConfigureAwait(false);
-            if (read == 0)
+            byte[] buffer = new byte[BufferSize];
+            Stopwatch speedWatch = Stopwatch.StartNew();
+            long speedStartBytes = existingLength;
+            DateTimeOffset lastProgress = DateTimeOffset.MinValue;
+
+            while (true)
             {
-                break;
+                int read = await source
+                    .ReadAsync(buffer, cancellationToken)
+                    .ConfigureAwait(false);
+                if (read == 0)
+                {
+                    break;
+                }
+
+                await destination
+                    .WriteAsync(buffer.AsMemory(0, read), cancellationToken)
+                    .ConfigureAwait(false);
+
+                lock (session.Sync)
+                {
+                    session.DownloadedBytes += read;
+                    double elapsedSeconds = Math.Max(speedWatch.Elapsed.TotalSeconds, 0.001);
+                    session.BytesPerSecond = (session.DownloadedBytes - speedStartBytes) / elapsedSeconds;
+                }
+
+                await ApplySpeedLimitAsync(
+                    session,
+                    speedWatch,
+                    existingLength,
+                    cancellationToken).ConfigureAwait(false);
+
+                DateTimeOffset now = DateTimeOffset.UtcNow;
+                if (now - lastProgress >= ProgressInterval)
+                {
+                    lastProgress = now;
+                    Publish(session, forcePersist: false);
+                }
             }
 
-            await destination
-                .WriteAsync(buffer.AsMemory(0, read), cancellationToken)
-                .ConfigureAwait(false);
+            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+            destination.Flush(flushToDisk: true);
 
             lock (session.Sync)
             {
-                session.DownloadedBytes += read;
-                double elapsedSeconds = Math.Max(speedWatch.Elapsed.TotalSeconds, 0.001);
-                session.BytesPerSecond = (session.DownloadedBytes - speedStartBytes) / elapsedSeconds;
+                downloadedBytes = session.DownloadedBytes;
             }
 
-            await ApplySpeedLimitAsync(
-                session,
-                speedWatch,
-                existingLength,
-                cancellationToken).ConfigureAwait(false);
-
-            DateTimeOffset now = DateTimeOffset.UtcNow;
-            if (now - lastProgress >= ProgressInterval)
+            if (totalBytes is long expectedLength && downloadedBytes != expectedLength)
             {
-                lastProgress = now;
-                Publish(session, forcePersist: false);
+                throw new EndOfStreamException(
+                    $"The server ended the response at {downloadedBytes} bytes; {expectedLength} bytes were expected.");
             }
         }
 
-        await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
-        destination.Flush(flushToDisk: true);
-
-        long downloadedBytes;
-        lock (session.Sync)
-        {
-            downloadedBytes = session.DownloadedBytes;
-        }
-
-        if (totalBytes is long expectedLength && downloadedBytes != expectedLength)
-        {
-            throw new EndOfStreamException(
-                $"The server ended the response at {downloadedBytes} bytes; {expectedLength} bytes were expected.");
-        }
-
+        // Windows does not permit moving the partial file while its stream is open.
+        // Keep finalization outside the FileStream scope so all platforms observe
+        // the same handle-lifetime semantics.
         WriteFinalizationMarker(session.DestinationPath, downloadedBytes);
         lock (session.Sync)
         {

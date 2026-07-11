@@ -353,6 +353,23 @@
       },
       "manifest": {},
       "history_id": "0d0f7e9a1f2e49348bfacff4252ce053"
+    },
+    {
+      "applied_at": "2026-07-11T21:42:49.981006Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_windows_file_lock_fix_overlay.zip",
+      "artifact_name": "xdm_windows_file_lock_fix_overlay.zip",
+      "type": "overlay",
+      "sha256": "d6ca7681f4a8d90e6329e48d5fe0e56c17b528b157e1f0b089973c4d74daf438",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Fix Windows download finalization file locking",
+      "commit_hash": "",
+      "file_count": 3,
+      "change_counts": {
+        "modify": 3
+      },
+      "manifest": {},
+      "history_id": "2bafd40e8d664074b7e16af884c671ed"
     }
   ]
 }
