@@ -26,7 +26,9 @@ public sealed class JsonDownloadHistoryStoreTests
                 DateTimeOffset.UtcNow,
                 QueueId: "night",
                 CategoryId: "archives",
-                QueueOrder: 3);
+                QueueOrder: 3,
+                EntityTag: "\"version-1\"",
+                LastModified: DateTimeOffset.Parse("2026-07-11T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture));
 
             await store.SaveAsync([expected]);
             IReadOnlyList<PersistedDownload> loaded = await store.LoadAsync();
@@ -38,7 +40,44 @@ public sealed class JsonDownloadHistoryStoreTests
             Assert.Equal("night", actual.QueueId);
             Assert.Equal("archives", actual.CategoryId);
             Assert.Equal(3, actual.QueueOrder);
+            Assert.Equal("\"version-1\"", actual.EntityTag);
+            Assert.Equal(expected.LastModified, actual.LastModified);
             Assert.False(File.Exists($"{path}.tmp"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RecoversLastKnownGoodBackupWhenPrimaryIsCorrupt()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"xdm-history-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+
+        try
+        {
+            string path = Path.Combine(directory, "downloads.json");
+            JsonDownloadHistoryStore store = new(path);
+            PersistedDownload first = new(
+                "first",
+                new Uri("https://example.test/first.bin"),
+                Path.Combine(directory, "first.bin"),
+                10,
+                100,
+                DownloadState.Paused,
+                DateTimeOffset.UtcNow);
+            PersistedDownload second = first with { Id = "second" };
+
+            await store.SaveAsync([first]);
+            await store.SaveAsync([second]);
+            await File.WriteAllTextAsync(path, "{broken");
+
+            IReadOnlyList<PersistedDownload> recovered = await store.LoadAsync();
+
+            Assert.Equal("first", Assert.Single(recovered).Id);
+            Assert.Contains(Directory.EnumerateFiles(directory), file => file.Contains(".corrupt-", StringComparison.Ordinal));
         }
         finally
         {

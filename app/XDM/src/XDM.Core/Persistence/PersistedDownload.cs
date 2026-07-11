@@ -13,4 +13,6 @@ public sealed record PersistedDownload(
     string? ErrorMessage = null,
     string QueueId = "default",
     string? CategoryId = null,
-    int QueueOrder = 0);
+    int QueueOrder = 0,
+    string? EntityTag = null,
+    DateTimeOffset? LastModified = null);

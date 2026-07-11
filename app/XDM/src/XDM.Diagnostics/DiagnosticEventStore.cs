@@ -54,7 +54,7 @@ public sealed class DiagnosticEventStore : IDiagnosticEventStore
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private static IReadOnlyDictionary<string, string?> RedactContext(
+    private static Dictionary<string, string?> RedactContext(
         IReadOnlyDictionary<string, string?>? context)
     {
         if (context is null || context.Count == 0)

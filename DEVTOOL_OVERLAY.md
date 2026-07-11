@@ -1,10 +1,10 @@
-# XDM Avalonia diagnostics, recovery, and packaging overlay
+# XDM Avalonia engine-hardening overlay
 
-Apply after `xdm_avalonia_browser_media_overlay.zip` / commit `17087f0`.
+Apply after `xdm_avalonia_diagnostics_recovery_packaging_overlay.zip` / commit `0298638`.
 
 Target: `xdm_modern`
 
-This overlay clears the four existing CA1826 warnings, adds structured diagnostics and redacted bundle export, crash-marker recovery with safe mode, and self-contained Linux/Windows packaging scripts.
+This overlay fixes the remaining diagnostics analyzer warning and adds validated resume, retry/backoff, disk preflight, atomic checkpoints, and crash-safe finalization recovery.
 
 Validation:
 
@@ -15,5 +15,5 @@ Validation:
 Commit message:
 
 ```text
-Add diagnostics recovery and packaging
+Harden download resume recovery and finalization
 ```

@@ -16,6 +16,7 @@ namespace XDM.DownloadEngine;
 public sealed class DownloadManager : IDownloadManager, IDisposable
 {
     private const int BufferSize = 64 * 1024;
+    private const long DiskSafetyMarginBytes = 8L * 1024 * 1024;
     private static readonly TimeSpan ProgressInterval = TimeSpan.FromMilliseconds(150);
     private static readonly TimeSpan PersistenceInterval = TimeSpan.FromSeconds(2);
 
@@ -23,6 +24,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private readonly IApplicationState _applicationState;
     private readonly IDownloadHistoryStore _historyStore;
     private readonly ILogger<DownloadManager> _logger;
+    private readonly IDiskSpaceProvider _diskSpaceProvider;
+    private readonly DownloadRetryPolicy _retryPolicy;
     private readonly ISettingsService _settingsService;
     private readonly SemaphoreSlim _concurrencyGate;
     private readonly ConcurrentDictionary<string, byte> _activeQueues = new(StringComparer.Ordinal);
@@ -42,12 +45,33 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         IDownloadHistoryStore historyStore,
         ISettingsService settingsService,
         ILogger<DownloadManager> logger)
+        : this(
+            httpClient,
+            applicationState,
+            historyStore,
+            settingsService,
+            logger,
+            new SystemDiskSpaceProvider(),
+            new DownloadRetryPolicy())
+    {
+    }
+
+    public DownloadManager(
+        HttpClient httpClient,
+        IApplicationState applicationState,
+        IDownloadHistoryStore historyStore,
+        ISettingsService settingsService,
+        ILogger<DownloadManager> logger,
+        IDiskSpaceProvider diskSpaceProvider,
+        DownloadRetryPolicy retryPolicy)
     {
         _httpClient = httpClient;
         _applicationState = applicationState;
         _historyStore = historyStore;
         _settingsService = settingsService;
         _logger = logger;
+        _diskSpaceProvider = diskSpaceProvider;
+        _retryPolicy = retryPolicy;
         _concurrencyGate = new SemaphoreSlim(settingsService.Current.MaxConcurrentDownloads);
         IReadOnlyList<DownloadQueueDefinition> configuredQueues = settingsService.Current.Queues;
         string defaultQueueId = configuredQueues.Count > 0 ? configuredQueues[0].Id : "default";
@@ -88,7 +112,24 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 null,
                 string.IsNullOrWhiteSpace(item.QueueId) ? fallbackQueueId : item.QueueId,
                 item.CategoryId,
-                Math.Max(0, item.QueueOrder));
+                Math.Max(0, item.QueueOrder),
+                item.EntityTag,
+                item.LastModified);
+
+            try
+            {
+                RecoverInterruptedFinalization(session);
+            }
+            catch (IOException exception)
+            {
+                session.State = DownloadState.Failed;
+                session.ErrorMessage = $"Could not recover interrupted finalization: {exception.Message}";
+            }
+            catch (UnauthorizedAccessException exception)
+            {
+                session.State = DownloadState.Failed;
+                session.ErrorMessage = $"Could not recover interrupted finalization: {exception.Message}";
+            }
 
             _sessions[item.Id] = session;
             _applicationState.UpsertDownload(CreateSnapshot(session));
@@ -127,6 +168,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             {
                 File.Delete(overwritePartialPath);
             }
+
+            string overwriteMarkerPath = GetFinalizationMarkerPath(destinationPath);
+            if (File.Exists(overwriteMarkerPath))
+            {
+                File.Delete(overwriteMarkerPath);
+            }
         }
 
         IReadOnlyList<DownloadQueueDefinition> configuredQueues = _settingsService.Current.Queues;
@@ -157,7 +204,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             request.SpeedLimitBytesPerSecond,
             queueId,
             request.CategoryId,
-            queueOrder);
+            queueOrder,
+            null,
+            null);
 
         if (!_sessions.TryAdd(session.Id, session))
         {
@@ -262,6 +311,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             if (File.Exists(partialPath))
             {
                 File.Delete(partialPath);
+            }
+
+            string markerPath = GetFinalizationMarkerPath(session.DestinationPath);
+            if (File.Exists(markerPath))
+            {
+                File.Delete(markerPath);
             }
         }
 
@@ -438,114 +493,40 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             await queueGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             queueConcurrencyAcquired = true;
 
-            Directory.CreateDirectory(Path.GetDirectoryName(session.DestinationPath)!);
-            long existingLength = File.Exists(partialPath) ? new FileInfo(partialPath).Length : 0;
-
-            using HttpRequestMessage request = new(HttpMethod.Get, session.Source);
-            ApplyRequestMetadata(request, session);
-            if (existingLength > 0)
+            for (int attempt = 1; attempt <= _retryPolicy.MaximumAttempts; attempt++)
             {
-                request.Headers.Range = new RangeHeaderValue(existingLength, null);
-            }
-
-            DownloadEngineLog.DownloadStarted(_logger, session.Id, session.Source, existingLength);
-            using HttpResponseMessage response = await _httpClient
-                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (existingLength > 0 && response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
-            {
-                long? remoteLength = response.Content.Headers.ContentRange?.Length;
-                if (remoteLength == existingLength)
+                try
                 {
-                    CompleteFromPartial(session, partialPath, existingLength);
+                    await ExecuteDownloadAttemptAsync(session, partialPath, cancellationToken).ConfigureAwait(false);
                     return;
                 }
-            }
-
-            response.EnsureSuccessStatusCode();
-
-            bool append = existingLength > 0 && response.StatusCode == HttpStatusCode.PartialContent;
-            if (!append)
-            {
-                existingLength = 0;
-            }
-
-            long? totalBytes = response.Content.Headers.ContentRange?.Length;
-            if (totalBytes is null && response.Content.Headers.ContentLength is long contentLength)
-            {
-                totalBytes = existingLength + contentLength;
-            }
-
-            lock (session.Sync)
-            {
-                session.DownloadedBytes = existingLength;
-                session.TotalBytes = totalBytes;
-                session.State = DownloadState.Downloading;
-            }
-
-            Publish(session, forcePersist: false);
-
-            await using Stream source = await response.Content
-                .ReadAsStreamAsync(cancellationToken)
-                .ConfigureAwait(false);
-            await using FileStream destination = new(
-                partialPath,
-                append ? FileMode.Append : FileMode.Create,
-                FileAccess.Write,
-                FileShare.Read,
-                BufferSize,
-                FileOptions.Asynchronous | FileOptions.SequentialScan);
-
-            byte[] buffer = new byte[BufferSize];
-            Stopwatch speedWatch = Stopwatch.StartNew();
-            long speedStartBytes = existingLength;
-            DateTimeOffset lastProgress = DateTimeOffset.MinValue;
-
-            while (true)
-            {
-                int read = await source
-                    .ReadAsync(buffer, cancellationToken)
-                    .ConfigureAwait(false);
-                if (read == 0)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    break;
+                    throw;
                 }
-
-                await destination
-                    .WriteAsync(buffer.AsMemory(0, read), cancellationToken)
-                    .ConfigureAwait(false);
-
-                lock (session.Sync)
+                catch (Exception exception) when (
+                    DownloadRetryPolicy.IsTransient(exception)
+                    && attempt < _retryPolicy.MaximumAttempts)
                 {
-                    session.DownloadedBytes += read;
-                    double elapsedSeconds = Math.Max(speedWatch.Elapsed.TotalSeconds, 0.001);
-                    session.BytesPerSecond = (session.DownloadedBytes - speedStartBytes) / elapsedSeconds;
-                }
+                    TimeSpan delay = _retryPolicy.GetDelay(attempt);
+                    lock (session.Sync)
+                    {
+                        session.State = DownloadState.Connecting;
+                        session.BytesPerSecond = 0;
+                        session.ErrorMessage = $"Temporary failure. Retrying in {delay.TotalSeconds:0.0}s.";
+                    }
 
-                await ApplySpeedLimitAsync(
-                    session,
-                    speedWatch,
-                    existingLength,
-                    cancellationToken).ConfigureAwait(false);
-
-                DateTimeOffset now = DateTimeOffset.UtcNow;
-                if (now - lastProgress >= ProgressInterval)
-                {
-                    lastProgress = now;
-                    Publish(session, forcePersist: false);
+                    Publish(session, forcePersist: true);
+                    DownloadEngineLog.DownloadRetrying(
+                        _logger,
+                        session.Id,
+                        attempt + 1,
+                        _retryPolicy.MaximumAttempts,
+                        delay.TotalMilliseconds,
+                        exception.Message);
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                 }
             }
-
-            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
-            lock (session.Sync)
-            {
-                session.State = DownloadState.Finalizing;
-                session.BytesPerSecond = 0;
-            }
-
-            Publish(session, forcePersist: false);
-            CompleteFromPartial(session, partialPath, session.DownloadedBytes);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -594,9 +575,299 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
     }
 
+    private async Task ExecuteDownloadAttemptAsync(
+        DownloadSession session,
+        string partialPath,
+        CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(session.DestinationPath)!);
+        long existingLength = File.Exists(partialPath) ? new FileInfo(partialPath).Length : 0;
+
+        using HttpRequestMessage request = new(HttpMethod.Get, session.Source);
+        ApplyRequestMetadata(request, session);
+        if (existingLength > 0)
+        {
+            request.Headers.Range = new RangeHeaderValue(existingLength, null);
+            ApplyIfRangeValidator(request, session);
+        }
+
+        DownloadEngineLog.DownloadStarted(_logger, session.Id, session.Source, existingLength);
+        using HttpResponseMessage response = await _httpClient
+            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (existingLength > 0 && response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
+        {
+            long? remoteLength = response.Content.Headers.ContentRange?.Length;
+            if (remoteLength == existingLength)
+            {
+                CompleteFromPartial(session, partialPath, existingLength);
+                return;
+            }
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        bool append = false;
+        if (existingLength > 0 && response.StatusCode == HttpStatusCode.PartialContent)
+        {
+            ValidateContentRange(response, existingLength);
+            ValidateResumeValidators(response, session);
+            append = true;
+        }
+        else if (existingLength > 0)
+        {
+            DownloadEngineLog.RangeIgnored(_logger, session.Id, existingLength, response.StatusCode);
+            existingLength = 0;
+            lock (session.Sync)
+            {
+                session.EntityTag = null;
+                session.LastModified = null;
+            }
+        }
+
+        long? totalBytes = response.Content.Headers.ContentRange?.Length;
+        if (totalBytes is null && response.Content.Headers.ContentLength is long contentLength)
+        {
+            totalBytes = existingLength + contentLength;
+        }
+
+        EnsureDiskCapacity(session.DestinationPath, existingLength, totalBytes);
+
+        lock (session.Sync)
+        {
+            session.DownloadedBytes = existingLength;
+            session.TotalBytes = totalBytes;
+            session.EntityTag = response.Headers.ETag?.ToString() ?? session.EntityTag;
+            session.LastModified = response.Content.Headers.LastModified ?? session.LastModified;
+            session.State = DownloadState.Downloading;
+            session.ErrorMessage = null;
+        }
+
+        Publish(session, forcePersist: true);
+
+        await using Stream source = await response.Content
+            .ReadAsStreamAsync(cancellationToken)
+            .ConfigureAwait(false);
+        await using FileStream destination = new(
+            partialPath,
+            append ? FileMode.Append : FileMode.Create,
+            FileAccess.Write,
+            FileShare.Read,
+            BufferSize,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+        byte[] buffer = new byte[BufferSize];
+        Stopwatch speedWatch = Stopwatch.StartNew();
+        long speedStartBytes = existingLength;
+        DateTimeOffset lastProgress = DateTimeOffset.MinValue;
+
+        while (true)
+        {
+            int read = await source
+                .ReadAsync(buffer, cancellationToken)
+                .ConfigureAwait(false);
+            if (read == 0)
+            {
+                break;
+            }
+
+            await destination
+                .WriteAsync(buffer.AsMemory(0, read), cancellationToken)
+                .ConfigureAwait(false);
+
+            lock (session.Sync)
+            {
+                session.DownloadedBytes += read;
+                double elapsedSeconds = Math.Max(speedWatch.Elapsed.TotalSeconds, 0.001);
+                session.BytesPerSecond = (session.DownloadedBytes - speedStartBytes) / elapsedSeconds;
+            }
+
+            await ApplySpeedLimitAsync(
+                session,
+                speedWatch,
+                existingLength,
+                cancellationToken).ConfigureAwait(false);
+
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            if (now - lastProgress >= ProgressInterval)
+            {
+                lastProgress = now;
+                Publish(session, forcePersist: false);
+            }
+        }
+
+        await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+        destination.Flush(flushToDisk: true);
+
+        long downloadedBytes;
+        lock (session.Sync)
+        {
+            downloadedBytes = session.DownloadedBytes;
+        }
+
+        if (totalBytes is long expectedLength && downloadedBytes != expectedLength)
+        {
+            throw new EndOfStreamException(
+                $"The server ended the response at {downloadedBytes} bytes; {expectedLength} bytes were expected.");
+        }
+
+        WriteFinalizationMarker(session.DestinationPath, downloadedBytes);
+        lock (session.Sync)
+        {
+            session.State = DownloadState.Finalizing;
+            session.BytesPerSecond = 0;
+        }
+
+        Publish(session, forcePersist: true);
+        CompleteFromPartial(session, partialPath, downloadedBytes);
+    }
+
+    private static void ApplyIfRangeValidator(HttpRequestMessage request, DownloadSession session)
+    {
+        string? entityTag;
+        DateTimeOffset? lastModified;
+        lock (session.Sync)
+        {
+            entityTag = session.EntityTag;
+            lastModified = session.LastModified;
+        }
+
+        if (!string.IsNullOrWhiteSpace(entityTag)
+            && EntityTagHeaderValue.TryParse(entityTag, out EntityTagHeaderValue? parsedEntityTag)
+            && !parsedEntityTag.IsWeak)
+        {
+            request.Headers.IfRange = new RangeConditionHeaderValue(parsedEntityTag);
+            return;
+        }
+
+        if (lastModified is DateTimeOffset timestamp)
+        {
+            request.Headers.IfRange = new RangeConditionHeaderValue(timestamp);
+        }
+    }
+
+    private static void ValidateContentRange(HttpResponseMessage response, long expectedStart)
+    {
+        ContentRangeHeaderValue? contentRange = response.Content.Headers.ContentRange;
+        if (contentRange?.From != expectedStart)
+        {
+            throw new DownloadIntegrityException(
+                $"The server returned an invalid range start. Expected {expectedStart}; received {contentRange?.From?.ToString() ?? "none"}.");
+        }
+    }
+
+    private static void ValidateResumeValidators(HttpResponseMessage response, DownloadSession session)
+    {
+        string? expectedEntityTag;
+        DateTimeOffset? expectedLastModified;
+        lock (session.Sync)
+        {
+            expectedEntityTag = session.EntityTag;
+            expectedLastModified = session.LastModified;
+        }
+
+        string? responseEntityTag = response.Headers.ETag?.ToString();
+        if (!string.IsNullOrWhiteSpace(expectedEntityTag)
+            && !string.IsNullOrWhiteSpace(responseEntityTag)
+            && !string.Equals(expectedEntityTag, responseEntityTag, StringComparison.Ordinal))
+        {
+            throw new DownloadIntegrityException("The remote file entity tag changed while resuming.");
+        }
+
+        DateTimeOffset? responseLastModified = response.Content.Headers.LastModified;
+        if (expectedLastModified is DateTimeOffset expected
+            && responseLastModified is DateTimeOffset actual
+            && expected != actual)
+        {
+            throw new DownloadIntegrityException("The remote file modification date changed while resuming.");
+        }
+    }
+
+    private void EnsureDiskCapacity(string destinationPath, long existingLength, long? totalBytes)
+    {
+        if (totalBytes is not long total || total <= existingLength)
+        {
+            return;
+        }
+
+        long remainingBytes = total - existingLength;
+        long safetyMargin = Math.Min(
+            DiskSafetyMarginBytes,
+            Math.Max(64L * 1024, remainingBytes / 100));
+        long requiredBytes = checked(remainingBytes + safetyMargin);
+        long? availableBytes = _diskSpaceProvider.GetAvailableBytes(destinationPath);
+        if (availableBytes is long available && available < requiredBytes)
+        {
+            throw new InsufficientDiskSpaceException(requiredBytes, available, destinationPath);
+        }
+    }
+
+    private static void WriteFinalizationMarker(string destinationPath, long downloadedBytes)
+    {
+        string markerPath = GetFinalizationMarkerPath(destinationPath);
+        string temporaryPath = $"{markerPath}.tmp";
+        byte[] payload = Encoding.UTF8.GetBytes(downloadedBytes.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        using (FileStream stream = new(
+            temporaryPath,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            4096,
+            FileOptions.WriteThrough))
+        {
+            stream.Write(payload);
+            stream.Flush(flushToDisk: true);
+        }
+
+        File.Move(temporaryPath, markerPath, overwrite: true);
+    }
+
+    private static void RecoverInterruptedFinalization(DownloadSession session)
+    {
+        string markerPath = GetFinalizationMarkerPath(session.DestinationPath);
+        if (!File.Exists(markerPath))
+        {
+            return;
+        }
+
+        string partialPath = GetPartialPath(session.DestinationPath);
+        if (File.Exists(session.DestinationPath))
+        {
+            long completedLength = new FileInfo(session.DestinationPath).Length;
+            session.DownloadedBytes = completedLength;
+            session.TotalBytes ??= completedLength;
+            session.State = DownloadState.Completed;
+            session.ErrorMessage = null;
+            File.Delete(markerPath);
+            return;
+        }
+
+        if (File.Exists(partialPath))
+        {
+            long completedLength = new FileInfo(partialPath).Length;
+            File.Move(partialPath, session.DestinationPath, overwrite: true);
+            session.DownloadedBytes = completedLength;
+            session.TotalBytes ??= completedLength;
+            session.State = DownloadState.Completed;
+            session.ErrorMessage = null;
+            File.Delete(markerPath);
+            return;
+        }
+
+        session.State = DownloadState.Failed;
+        session.ErrorMessage = "Finalization was interrupted and the partial file is missing.";
+    }
+
     private void CompleteFromPartial(DownloadSession session, string partialPath, long downloadedBytes)
     {
         File.Move(partialPath, session.DestinationPath, overwrite: true);
+        string markerPath = GetFinalizationMarkerPath(session.DestinationPath);
+        if (File.Exists(markerPath))
+        {
+            File.Delete(markerPath);
+        }
+
         lock (session.Sync)
         {
             session.DownloadedBytes = downloadedBytes;
@@ -846,6 +1117,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private static string GetPartialPath(string destinationPath)
         => $"{destinationPath}.part";
 
+    private static string GetFinalizationMarkerPath(string destinationPath)
+        => $"{destinationPath}.finalizing";
+
     private static DownloadSnapshot CreateSnapshot(DownloadSession session)
     {
         lock (session.Sync)
@@ -882,7 +1156,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.ErrorMessage,
                 session.QueueId,
                 session.CategoryId,
-                session.QueueOrder);
+                session.QueueOrder,
+                session.EntityTag,
+                session.LastModified);
         }
     }
 
@@ -908,7 +1184,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             long? speedLimitBytesPerSecond = null,
             string queueId = "default",
             string? categoryId = null,
-            int queueOrder = 0)
+            int queueOrder = 0,
+            string? entityTag = null,
+            DateTimeOffset? lastModified = null)
         {
             Id = id;
             Source = source;
@@ -927,6 +1205,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             QueueId = queueId;
             CategoryId = categoryId;
             QueueOrder = queueOrder;
+            EntityTag = entityTag;
+            LastModified = lastModified;
         }
 
         public object Sync { get; } = new();
@@ -966,6 +1246,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         public string? CategoryId { get; }
 
         public int QueueOrder { get; set; }
+
+        public string? EntityTag { get; set; }
+
+        public DateTimeOffset? LastModified { get; set; }
 
         public bool PauseRequested { get; set; }
 

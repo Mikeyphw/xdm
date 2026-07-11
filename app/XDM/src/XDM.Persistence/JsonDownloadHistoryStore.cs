@@ -28,29 +28,17 @@ public sealed class JsonDownloadHistoryStore : IDownloadHistoryStore
     {
         if (!File.Exists(_historyPath))
         {
-            return [];
+            return await TryLoadBackupAsync(cancellationToken).ConfigureAwait(false);
         }
 
         try
         {
-            await using FileStream stream = new(
-                _historyPath,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read,
-                16 * 1024,
-                FileOptions.Asynchronous | FileOptions.SequentialScan);
-
-            PersistedDownload[]? downloads = await JsonSerializer
-                .DeserializeAsync<PersistedDownload[]>(stream, SerializerOptions, cancellationToken)
-                .ConfigureAwait(false);
-
-            return downloads ?? [];
+            return await LoadFileAsync(_historyPath, cancellationToken).ConfigureAwait(false);
         }
         catch (JsonException)
         {
             QuarantineCorruptHistory();
-            return [];
+            return await TryLoadBackupAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -67,6 +55,7 @@ public sealed class JsonDownloadHistoryStore : IDownloadHistoryStore
         }
 
         string temporaryPath = $"{_historyPath}.tmp";
+        string backupPath = GetBackupPath();
         await using (FileStream stream = new(
             temporaryPath,
             FileMode.Create,
@@ -79,9 +68,53 @@ public sealed class JsonDownloadHistoryStore : IDownloadHistoryStore
                 .SerializeAsync(stream, downloads, SerializerOptions, cancellationToken)
                 .ConfigureAwait(false);
             await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+            stream.Flush(flushToDisk: true);
+        }
+
+        if (File.Exists(_historyPath))
+        {
+            File.Copy(_historyPath, backupPath, overwrite: true);
         }
 
         File.Move(temporaryPath, _historyPath, overwrite: true);
+    }
+
+    private async Task<IReadOnlyList<PersistedDownload>> TryLoadBackupAsync(
+        CancellationToken cancellationToken)
+    {
+        string backupPath = GetBackupPath();
+        if (!File.Exists(backupPath))
+        {
+            return [];
+        }
+
+        try
+        {
+            return await LoadFileAsync(backupPath, cancellationToken).ConfigureAwait(false);
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static async Task<IReadOnlyList<PersistedDownload>> LoadFileAsync(
+        string path,
+        CancellationToken cancellationToken)
+    {
+        await using FileStream stream = new(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            16 * 1024,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+        PersistedDownload[]? downloads = await JsonSerializer
+            .DeserializeAsync<PersistedDownload[]>(stream, SerializerOptions, cancellationToken)
+            .ConfigureAwait(false);
+
+        return downloads ?? [];
     }
 
     private static string GetDefaultHistoryPath()
@@ -89,6 +122,9 @@ public sealed class JsonDownloadHistoryStore : IDownloadHistoryStore
         string baseDirectory = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         return Path.Combine(baseDirectory, "xdm-modern", "downloads.json");
     }
+
+    private string GetBackupPath()
+        => $"{_historyPath}.bak";
 
     private void QuarantineCorruptHistory()
     {

@@ -1,14 +1,14 @@
 {
-  "name": "xdm_avalonia_diagnostics_recovery_packaging_overlay",
+  "name": "xdm_avalonia_engine_hardening_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "17087f0",
+  "baseCommit": "0298638",
   "requires": [
-    "xdm_avalonia_browser_media_overlay"
+    "xdm_avalonia_diagnostics_recovery_packaging_overlay"
   ],
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": 7,
-  "description": "Adds structured diagnostics, secret-redacted bundle export, safe-mode recovery, unclean-shutdown detection, and self-contained Linux/Windows packaging.",
+  "phase": 8,
+  "description": "Adds validated HTTP resume, retry/backoff, disk-space preflight, atomic history checkpoints, and crash-safe finalization recovery.",
   "validation": {
     "linux": "app/XDM/eng/validate-modern.sh",
     "windows": "app/XDM/eng/validate-modern.ps1",
@@ -16,5 +16,5 @@
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
     "smoke": "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj --configuration Release --no-build -- --validate-bootstrap"
   },
-  "commitMessage": "Add diagnostics recovery and packaging"
+  "commitMessage": "Harden download resume recovery and finalization"
 }
