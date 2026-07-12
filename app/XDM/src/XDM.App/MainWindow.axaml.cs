@@ -187,6 +187,55 @@ public partial class MainWindow : Window
         }
     }
 
+
+    private async void BrowseRelocationDestination_Click(object? sender, RoutedEventArgs e)
+    {
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(
+            new FilePickerSaveOptions
+            {
+                Title = "Choose new download path",
+                SuggestedFileName = DataContext is MainWindowViewModel { SelectedDownload: { } selected }
+                    ? selected.FileName
+                    : "download.bin"
+            });
+        string? path = file?.TryGetLocalPath();
+        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.RelocationDestinationPath = path;
+        }
+    }
+
+    private async void BrowseHistoryImport_Click(object? sender, RoutedEventArgs e)
+    {
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(
+            new FilePickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = "Choose XDM download list or plain URL list"
+            });
+        string? path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
+        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.HistoryTransferPath = path;
+        }
+    }
+
+    private async void BrowseHistoryExport_Click(object? sender, RoutedEventArgs e)
+    {
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(
+            new FilePickerSaveOptions
+            {
+                Title = "Export XDM download list",
+                SuggestedFileName = "xdm-downloads.json",
+                DefaultExtension = "json"
+            });
+        string? path = file?.TryGetLocalPath();
+        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.HistoryTransferPath = path;
+        }
+    }
+
     private async void ClipboardTimer_Tick(object? sender, EventArgs e)
     {
         if (_clipboardReadInProgress

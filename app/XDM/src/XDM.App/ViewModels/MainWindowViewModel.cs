@@ -49,6 +49,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IDownloadManager downloadManager,
         ISettingsService settingsService,
         ISettingsTransferService settingsTransferService,
+        XDM.Core.Persistence.IDownloadListTransferService downloadListTransferService,
+        IPlatformService platformService,
         IQueueSchedulerRuntime queueSchedulerRuntime,
         ICompletionActionService completionActionService,
         IUiDispatcher dispatcher,
@@ -70,6 +72,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _downloadManager = downloadManager;
         _settingsService = settingsService;
         _settingsTransferService = settingsTransferService;
+        _downloadListTransferService = downloadListTransferService;
+        _platformService = platformService;
         _queueSchedulerRuntime = queueSchedulerRuntime;
         _completionActionService = completionActionService;
         _dispatcher = dispatcher;
@@ -465,6 +469,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         RefreshSelectedDownloadTimeline(value?.Id);
         SelectedDownloadPriority = value?.Priority ?? DownloadPriority.Normal;
+        ApplySelectedHistoryItem(value);
     }
 
     partial void OnSelectedMediaVideoFormatChanged(MediaFormatViewModel? value)
@@ -554,7 +559,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     speedLimit,
                     duplicateBehavior,
                     ConnectionCount: ParseInteger(DefaultConnectionCount, 4),
-                    Priority: NewDownloadPriority);
+                    Priority: NewDownloadPriority,
+                    SourcePage: ParseOptionalHttpUri(Referer));
 
                 await _downloadManager.AddAsync(request);
                 added++;
@@ -768,7 +774,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 antivirusTimeout),
             Network = editorSettings.Network,
             DownloadBehavior = editorSettings.DownloadBehavior,
-            Credentials = ServerCredentials.ToArray()
+            Credentials = ServerCredentials.ToArray(),
+            History = BuildHistoryRetentionSettings()
         };
 
         await _settingsService.UpdateAsync(updated);
@@ -1578,7 +1585,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 ConnectionCount: request.Method == "GET" ? network.DefaultConnectionCount : 1,
                 Method: request.Method,
                 RequestBody: request.GetRequestBody(),
-                RequestBodyContentType: request.RequestBodyContentType);
+                RequestBodyContentType: request.RequestBodyContentType,
+                SourcePage: ParseOptionalHttpUri(request.Referer));
             downloadId = await _downloadManager.AddAsync(downloadRequest).ConfigureAwait(false);
             eventArgs.Accept(downloadId);
         }
@@ -1878,6 +1886,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         AntivirusTimeoutSeconds = antivirus.TimeoutSeconds
             .ToString(System.Globalization.CultureInfo.InvariantCulture);
         ApplySettingsParity(settings);
+        ApplyHistorySettings(settings);
         ApplyQueueRuntime(_downloadManager.QueueRuntime);
         ApplySchedulerRuntime(_queueSchedulerRuntime.Current);
     }

@@ -89,12 +89,21 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
-        IReadOnlyList<PersistedDownload> persisted = await _historyStore
+        IReadOnlyList<PersistedDownload> loaded = await _historyStore
             .LoadAsync(cancellationToken)
             .ConfigureAwait(false);
+        IReadOnlyList<PersistedDownload> persisted = HistoryRetentionPolicy.Apply(
+            loaded,
+            _settingsService.Current.History ?? HistoryRetentionSettings.Default,
+            DateTimeOffset.UtcNow);
+        if (persisted.Count != loaded.Count)
+        {
+            await _historyStore.SaveAsync(persisted.ToArray(), cancellationToken).ConfigureAwait(false);
+        }
 
         IReadOnlyList<DownloadQueueDefinition> configuredQueues = _settingsService.Current.Queues;
         string fallbackQueueId = configuredQueues.Count > 0 ? configuredQueues[0].Id : "default";
+        List<DownloadSnapshot> restoredSnapshots = new(persisted.Count);
         foreach (PersistedDownload item in persisted)
         {
             string restoredMethod = string.Equals(item.Method, "POST", StringComparison.OrdinalIgnoreCase)
@@ -137,7 +146,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 restoredMethod,
                 null,
                 null,
-                item.Priority);
+                item.Priority,
+                item.SourcePage,
+                item.UpdatedAt);
 
             try
             {
@@ -155,8 +166,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
 
             _sessions[item.Id] = session;
-            _applicationState.UpsertDownload(CreateSnapshot(session));
+            restoredSnapshots.Add(CreateSnapshot(session));
         }
+
+        _applicationState.ReplaceDownloads(restoredSnapshots);
 
         foreach (DownloadSession session in _sessions.Values
             .Where(session => session.State == DownloadState.Queued && IsQueueActive(session.QueueId))
@@ -273,7 +286,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             method,
             request.RequestBody?.ToArray(),
             request.RequestBodyContentType,
-            request.Priority);
+            request.Priority,
+            request.SourcePage,
+            DateTimeOffset.UtcNow);
 
         if (!_sessions.TryAdd(session.Id, session))
         {
@@ -379,9 +394,20 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task RemoveAsync(
+    public Task RemoveAsync(
         string downloadId,
         bool deletePartialFile = false,
+        CancellationToken cancellationToken = default)
+        => DeleteAsync(
+            downloadId,
+            deletePartialFile
+                ? DownloadDeletionScope.HistoryAndPartialData
+                : DownloadDeletionScope.HistoryOnly,
+            cancellationToken);
+
+    public async Task DeleteAsync(
+        string downloadId,
+        DownloadDeletionScope scope,
         CancellationToken cancellationToken = default)
     {
         DownloadSession session = GetSession(downloadId);
@@ -393,31 +419,211 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.OperationCancellation?.Cancel();
         }
 
-        _sessions.TryRemove(downloadId, out _);
-        _applicationState.RemoveDownload(downloadId);
-
-        if (deletePartialFile)
+        if (session.ActiveTask is { IsCompleted: false } activeTask)
         {
-            string partialPath = GetPartialPath(session.DestinationPath);
-            if (File.Exists(partialPath))
+            try
             {
-                File.Delete(partialPath);
+                await activeTask.WaitAsync(cancellationToken).ConfigureAwait(false);
             }
-
-            string markerPath = GetFinalizationMarkerPath(session.DestinationPath);
-            if (File.Exists(markerPath))
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                File.Delete(markerPath);
-            }
-
-            string segmentDirectory = SegmentedDownloadExecutor.GetSegmentDirectory(session.DestinationPath);
-            if (Directory.Exists(segmentDirectory))
-            {
-                Directory.Delete(segmentDirectory, recursive: true);
+                // The operation was cancelled above so its files can be removed safely.
             }
         }
 
+        if (scope != DownloadDeletionScope.HistoryOnly)
+        {
+            DeleteTransferArtifacts(session.DestinationPath);
+        }
+
+        if (scope == DownloadDeletionScope.HistoryAndDownloadedFile
+            && File.Exists(session.DestinationPath))
+        {
+            File.Delete(session.DestinationPath);
+        }
+
+        _sessions.TryRemove(downloadId, out _);
+        _applicationState.RemoveDownload(downloadId);
         await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task RelocateAsync(
+        string downloadId,
+        string destinationPath,
+        bool overwrite = false,
+        CancellationToken cancellationToken = default)
+    {
+        DownloadSession session = GetSession(downloadId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        string sourcePath;
+        lock (session.Sync)
+        {
+            if (session.State != DownloadState.Completed)
+            {
+                throw new InvalidOperationException("Only completed downloads can be moved or renamed.");
+            }
+
+            sourcePath = session.DestinationPath;
+        }
+
+        if (!File.Exists(sourcePath))
+        {
+            throw new FileNotFoundException("The completed download file no longer exists.", sourcePath);
+        }
+
+        string targetPath = Path.GetFullPath(destinationPath);
+        if (string.Equals(Path.GetFullPath(sourcePath), targetPath, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        bool destinationInUse = _sessions.Values.Any(other =>
+            !ReferenceEquals(other, session)
+            && string.Equals(other.DestinationPath, targetPath, StringComparison.OrdinalIgnoreCase));
+        if (destinationInUse)
+        {
+            throw new IOException($"Another download already uses the destination path: {targetPath}");
+        }
+
+        string? targetDirectory = Path.GetDirectoryName(targetPath);
+        if (string.IsNullOrWhiteSpace(targetDirectory))
+        {
+            throw new DirectoryNotFoundException("The destination directory could not be resolved.");
+        }
+
+        Directory.CreateDirectory(targetDirectory);
+        if (File.Exists(targetPath) && !overwrite)
+        {
+            throw new IOException($"The destination file already exists: {targetPath}");
+        }
+
+        await MoveFileAsync(sourcePath, targetPath, overwrite, cancellationToken).ConfigureAwait(false);
+        lock (session.Sync)
+        {
+            session.DestinationPath = targetPath;
+            session.ErrorMessage = null;
+            session.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        _applicationState.UpsertDownload(CreateSnapshot(session));
+        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task<string> RedownloadAsync(
+        string downloadId,
+        DuplicateFileBehavior duplicateBehavior = DuplicateFileBehavior.AutoRename,
+        CancellationToken cancellationToken = default)
+    {
+        DownloadSession session = GetSession(downloadId);
+        DownloadRequest request;
+        lock (session.Sync)
+        {
+            if (session.Method != "GET")
+            {
+                throw new InvalidOperationException("Only GET downloads can be safely re-downloaded from history.");
+            }
+
+            request = new DownloadRequest(
+                session.Source,
+                Path.GetDirectoryName(session.DestinationPath)
+                    ?? _settingsService.Current.DefaultDownloadDirectory,
+                Path.GetFileName(session.DestinationPath),
+                session.Headers,
+                session.Username,
+                session.Password,
+                session.Cookie,
+                session.Referer,
+                session.UserAgent,
+                session.QueueId,
+                session.CategoryId,
+                session.SpeedLimitBytesPerSecond,
+                duplicateBehavior,
+                session.ConnectionCount,
+                Priority: session.Priority,
+                SourcePage: session.SourcePage);
+        }
+
+        return AddAsync(request, cancellationToken);
+    }
+
+    public async Task RefreshSourceAsync(
+        string downloadId,
+        Uri source,
+        Uri? sourcePage = null,
+        CancellationToken cancellationToken = default)
+    {
+        DownloadSession session = GetSession(downloadId);
+        ValidateHttpUri(source, nameof(source));
+        if (sourcePage is not null)
+        {
+            ValidateHttpUri(sourcePage, nameof(sourcePage));
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (session.Sync)
+        {
+            if (session.Method != "GET")
+            {
+                throw new InvalidOperationException("Only GET downloads can refresh their source URL.");
+            }
+
+            if (session.State == DownloadState.Completed)
+            {
+                throw new InvalidOperationException("Completed downloads should be queued again with Re-download.");
+            }
+
+            if (session.State is DownloadState.Connecting or DownloadState.Downloading or DownloadState.Finalizing)
+            {
+                throw new InvalidOperationException("Pause or cancel the download before refreshing its URL.");
+            }
+
+            session.Source = source;
+            session.SourcePage = sourcePage;
+            session.EntityTag = null;
+            session.LastModified = null;
+            session.ErrorMessage = null;
+            if (session.State is DownloadState.Failed or DownloadState.Cancelled)
+            {
+                session.State = DownloadState.Paused;
+            }
+            session.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        _applicationState.UpsertDownload(CreateSnapshot(session));
+        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<int> PruneHistoryAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        PersistedDownload[] current = _sessions.Values
+            .Select(CreatePersistedDownload)
+            .ToArray();
+        IReadOnlyList<PersistedDownload> retained = HistoryRetentionPolicy.Apply(
+            current,
+            _settingsService.Current.History ?? HistoryRetentionSettings.Default,
+            DateTimeOffset.UtcNow);
+        HashSet<string> retainedIds = retained
+            .Select(static item => item.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        string[] removeIds = current
+            .Where(item => !retainedIds.Contains(item.Id))
+            .Select(static item => item.Id)
+            .ToArray();
+        foreach (string id in removeIds)
+        {
+            _sessions.TryRemove(id, out _);
+            _applicationState.RemoveDownload(id);
+        }
+
+        if (removeIds.Length > 0)
+        {
+            await _historyStore.SaveAsync(retained.ToArray(), cancellationToken).ConfigureAwait(false);
+        }
+
+        return removeIds.Length;
     }
 
     public Task StartQueueAsync(string queueId, CancellationToken cancellationToken = default)
@@ -1070,6 +1276,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
     private void Publish(DownloadSession session, bool forcePersist)
     {
+        lock (session.Sync)
+        {
+            session.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
         _applicationState.UpsertDownload(CreateSnapshot(session));
         _ = PersistSafelyAsync(forcePersist);
     }
@@ -1134,28 +1345,32 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private string ResolveDestinationPath(DownloadRequest request, string fileName)
     {
         string candidate = Path.Combine(request.DestinationDirectory, fileName);
-        bool activeCollision = _sessions.Values.Any(session =>
+        bool sessionCollision = _sessions.Values.Any(session =>
             string.Equals(session.DestinationPath, candidate, StringComparison.OrdinalIgnoreCase));
-        if (activeCollision)
-        {
-            throw new IOException($"A download already uses '{candidate}'.");
-        }
+        bool fileCollision = File.Exists(candidate);
 
         // A matching .part file is resumable state, not a destination collision.
         // Overwrite handling removes it after this method returns; the normal
         // auto-rename path must preserve the established resume behavior.
-        if (!File.Exists(candidate))
+        if (!sessionCollision && !fileCollision)
         {
             return candidate;
         }
 
         if (request.DuplicateBehavior == DuplicateFileBehavior.Skip)
         {
-            throw new IOException($"The destination file already exists: '{candidate}'.");
+            throw new IOException(sessionCollision
+                ? $"A download already uses '{candidate}'."
+                : $"The destination file already exists: '{candidate}'.");
         }
 
         if (request.DuplicateBehavior == DuplicateFileBehavior.Overwrite)
         {
+            if (sessionCollision)
+            {
+                throw new IOException($"A download already uses '{candidate}'.");
+            }
+
             return candidate;
         }
 
@@ -1266,6 +1481,85 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private void PublishQueueRuntime()
         => QueueRuntimeChanged?.Invoke(this, CreateQueueRuntimeSnapshot());
 
+    private static void DeleteTransferArtifacts(string destinationPath)
+    {
+        string partialPath = GetPartialPath(destinationPath);
+        if (File.Exists(partialPath))
+        {
+            File.Delete(partialPath);
+        }
+
+        string markerPath = GetFinalizationMarkerPath(destinationPath);
+        if (File.Exists(markerPath))
+        {
+            File.Delete(markerPath);
+        }
+
+        string segmentDirectory = SegmentedDownloadExecutor.GetSegmentDirectory(destinationPath);
+        if (Directory.Exists(segmentDirectory))
+        {
+            Directory.Delete(segmentDirectory, recursive: true);
+        }
+    }
+
+    private static async Task MoveFileAsync(
+        string sourcePath,
+        string targetPath,
+        bool overwrite,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            File.Move(sourcePath, targetPath, overwrite);
+            return;
+        }
+        catch (IOException) when (!File.Exists(targetPath) || overwrite)
+        {
+            string temporaryPath = $"{targetPath}.xdm-moving";
+            try
+            {
+                await using (FileStream source = new(
+                    sourcePath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    BufferSize,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan))
+                await using (FileStream destination = new(
+                    temporaryPath,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None,
+                    BufferSize,
+                    FileOptions.Asynchronous | FileOptions.WriteThrough))
+                {
+                    await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
+                    await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+                    destination.Flush(flushToDisk: true);
+                }
+
+                File.Move(temporaryPath, targetPath, overwrite);
+                File.Delete(sourcePath);
+            }
+            finally
+            {
+                if (File.Exists(temporaryPath))
+                {
+                    File.Delete(temporaryPath);
+                }
+            }
+        }
+    }
+
+    private static void ValidateHttpUri(Uri uri, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(uri, parameterName);
+        if (!uri.IsAbsoluteUri || uri.Scheme is not ("http" or "https"))
+        {
+            throw new ArgumentException("Only absolute HTTP and HTTPS URLs are supported.", parameterName);
+        }
+    }
+
     private static string GetPartialPath(string destinationPath)
         => $"{destinationPath}.part";
 
@@ -1285,13 +1579,14 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.TotalBytes,
                 session.BytesPerSecond,
                 session.State,
-                DateTimeOffset.UtcNow,
+                session.UpdatedAt,
                 session.ErrorMessage,
                 session.QueueId,
                 session.CategoryId,
                 session.QueueOrder,
                 session.ConnectionCount,
-                session.Priority);
+                session.Priority,
+                session.SourcePage);
         }
     }
 
@@ -1306,7 +1601,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.DownloadedBytes,
                 session.TotalBytes,
                 session.State,
-                DateTimeOffset.UtcNow,
+                session.UpdatedAt,
                 session.ErrorMessage,
                 session.QueueId,
                 session.CategoryId,
@@ -1315,7 +1610,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.LastModified,
                 session.ConnectionCount,
                 session.Method,
-                session.Priority);
+                session.Priority,
+                session.SourcePage);
         }
     }
 
@@ -1365,7 +1661,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             string method = "GET",
             byte[]? requestBody = null,
             string? requestBodyContentType = null,
-            DownloadPriority priority = DownloadPriority.Normal)
+            DownloadPriority priority = DownloadPriority.Normal,
+            Uri? sourcePage = null,
+            DateTimeOffset? updatedAt = null)
         {
             Id = id;
             Source = source;
@@ -1391,15 +1689,21 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             RequestBody = requestBody;
             RequestBodyContentType = requestBodyContentType;
             Priority = priority;
+            SourcePage = sourcePage;
+            UpdatedAt = updatedAt ?? DateTimeOffset.UtcNow;
         }
 
         public object Sync { get; } = new();
 
         public string Id { get; }
 
-        public Uri Source { get; }
+        public Uri Source { get; set; }
 
-        public string DestinationPath { get; }
+        public Uri? SourcePage { get; set; }
+
+        public DateTimeOffset UpdatedAt { get; set; }
+
+        public string DestinationPath { get; set; }
 
         public DownloadState State { get; set; }
 

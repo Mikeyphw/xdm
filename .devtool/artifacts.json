@@ -652,6 +652,42 @@
       },
       "manifest": {},
       "history_id": "5b669c0772074312823bf9ad04a138ca"
+    },
+    {
+      "applied_at": "2026-07-12T04:01:07.334108Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_history_file_management_overlay.zip",
+      "artifact_name": "xdm_history_file_management_overlay.zip",
+      "type": "overlay",
+      "sha256": "b752d7b8b294ce71ccd72e296a84b41006c0c52ca08d31e701aecea3008fd55e",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add history and file management parity",
+      "commit_hash": "",
+      "file_count": 31,
+      "change_counts": {
+        "add": 11,
+        "modify": 20
+      },
+      "manifest": {},
+      "history_id": "20fbb8bf8a014d7787fe9cd1364ce6b8"
+    },
+    {
+      "applied_at": "2026-07-12T04:03:26.494269Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_history_file_management_overlay.zip",
+      "artifact_name": "xdm_history_file_management_overlay.zip",
+      "type": "overlay",
+      "sha256": "c84165e016dac7764ed65c21c2f8348e578bf41806bacf4fc8b2b892a131e794",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add history and file management parity",
+      "commit_hash": "",
+      "file_count": 31,
+      "change_counts": {
+        "add": 11,
+        "modify": 20
+      },
+      "manifest": {},
+      "history_id": "400a307f047d4aa2a8a007f7cbd70608"
     }
   ]
 }

@@ -177,6 +177,7 @@ public partial class App : Application
         services.AddSingleton<IMediaProbeService, MediaProbeService>();
         services.AddSingleton<IApplicationState, ApplicationState>();
         services.AddSingleton<IDownloadHistoryStore, JsonDownloadHistoryStore>();
+        services.AddSingleton<IDownloadListTransferService, DownloadListTransferService>();
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<ISettingsTransferService, SettingsTransferService>();
@@ -188,6 +189,7 @@ public partial class App : Application
         services.AddSingleton<IDownloadManager, DownloadManager>();
         services.AddSingleton<IQueueSchedulerRuntime, QueueSchedulerRuntime>();
         services.AddSingleton<IPlatformInfo, PlatformInfo>();
+        services.AddSingleton<IPlatformService, DesktopPlatformService>();
         services.AddSingleton<IDesktopNotificationService, DesktopNotificationService>();
         services.AddSingleton<IBrowserHostInstaller, BrowserHostInstaller>();
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();

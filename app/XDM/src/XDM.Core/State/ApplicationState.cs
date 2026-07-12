@@ -5,6 +5,7 @@ namespace XDM.Core.State;
 public sealed class ApplicationState : IApplicationState
 {
     private readonly object _sync = new();
+    private readonly Dictionary<string, int> _downloadIndexes = new(StringComparer.Ordinal);
     private ApplicationSnapshot _current = new(DateTimeOffset.UtcNow, true, []);
 
     public ApplicationSnapshot Current
@@ -23,34 +24,63 @@ public sealed class ApplicationState : IApplicationState
     public void ReplaceDownloads(IEnumerable<DownloadSnapshot> downloads)
     {
         ArgumentNullException.ThrowIfNull(downloads);
-        Publish(downloads.ToArray());
+        DownloadSnapshot[] ordered = downloads
+            .OrderByDescending(static item => item.UpdatedAt)
+            .ToArray();
+
+        ApplicationSnapshot next;
+        lock (_sync)
+        {
+            RebuildIndexes(ordered);
+            next = _current with { Downloads = ordered };
+            _current = next;
+        }
+
+        Changed?.Invoke(this, next);
     }
 
     public void UpsertDownload(DownloadSnapshot download)
     {
         ArgumentNullException.ThrowIfNull(download);
 
-        DownloadSnapshot[] next;
+        ApplicationSnapshot next;
         lock (_sync)
         {
-            List<DownloadSnapshot> downloads = [.. _current.Downloads];
-            int index = downloads.FindIndex(item =>
-                string.Equals(item.Id, download.Id, StringComparison.Ordinal));
-
-            if (index >= 0)
+            IReadOnlyList<DownloadSnapshot> currentDownloads = _current.Downloads;
+            DownloadSnapshot[] updated;
+            if (_downloadIndexes.TryGetValue(download.Id, out int existingIndex))
             {
-                downloads[index] = download;
+                updated = new DownloadSnapshot[currentDownloads.Count];
+                updated[0] = download;
+                if (existingIndex > 0)
+                {
+                    for (int index = 0; index < existingIndex; index++)
+                    {
+                        updated[index + 1] = currentDownloads[index];
+                    }
+                }
+
+                for (int index = existingIndex + 1; index < currentDownloads.Count; index++)
+                {
+                    updated[index] = currentDownloads[index];
+                }
             }
             else
             {
-                downloads.Add(download);
+                updated = new DownloadSnapshot[currentDownloads.Count + 1];
+                updated[0] = download;
+                for (int index = 0; index < currentDownloads.Count; index++)
+                {
+                    updated[index + 1] = currentDownloads[index];
+                }
             }
 
-            next = [.. downloads.OrderByDescending(static item => item.UpdatedAt)];
-            _current = _current with { Downloads = next };
+            RebuildIndexes(updated);
+            next = _current with { Downloads = updated };
+            _current = next;
         }
 
-        Changed?.Invoke(this, _current);
+        Changed?.Invoke(this, next);
     }
 
     public bool RemoveDownload(string downloadId)
@@ -60,15 +90,26 @@ public sealed class ApplicationState : IApplicationState
         ApplicationSnapshot next;
         lock (_sync)
         {
-            DownloadSnapshot[] downloads = _current.Downloads
-                .Where(item => !string.Equals(item.Id, downloadId, StringComparison.Ordinal))
-                .ToArray();
-
-            if (downloads.Length == _current.Downloads.Count)
+            if (!_downloadIndexes.TryGetValue(downloadId, out int removeIndex))
             {
                 return false;
             }
 
+            IReadOnlyList<DownloadSnapshot> currentDownloads = _current.Downloads;
+            DownloadSnapshot[] downloads = new DownloadSnapshot[currentDownloads.Count - 1];
+            int destinationIndex = 0;
+            for (int sourceIndex = 0; sourceIndex < currentDownloads.Count; sourceIndex++)
+            {
+                if (sourceIndex == removeIndex)
+                {
+                    continue;
+                }
+
+                downloads[destinationIndex] = currentDownloads[sourceIndex];
+                destinationIndex++;
+            }
+
+            RebuildIndexes(downloads);
             next = _current with { Downloads = downloads };
             _current = next;
         }
@@ -77,15 +118,12 @@ public sealed class ApplicationState : IApplicationState
         return true;
     }
 
-    private void Publish(IReadOnlyList<DownloadSnapshot> downloads)
+    private void RebuildIndexes(DownloadSnapshot[] downloads)
     {
-        ApplicationSnapshot next;
-        lock (_sync)
+        _downloadIndexes.Clear();
+        for (int index = 0; index < downloads.Length; index++)
         {
-            next = _current with { Downloads = downloads };
-            _current = next;
+            _downloadIndexes[downloads[index].Id] = index;
         }
-
-        Changed?.Invoke(this, next);
     }
 }

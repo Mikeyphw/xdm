@@ -1,3 +1,4 @@
+using XDM.Core.Downloads;
 using XDM.Core.Queues;
 
 namespace XDM.DownloadEngine;
@@ -22,10 +23,34 @@ public interface IDownloadManager
 
     Task SetPriorityAsync(
         string downloadId,
-        XDM.Core.Downloads.DownloadPriority priority,
+        DownloadPriority priority,
         CancellationToken cancellationToken = default);
 
     Task RemoveAsync(string downloadId, bool deletePartialFile = false, CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(
+        string downloadId,
+        DownloadDeletionScope scope,
+        CancellationToken cancellationToken = default);
+
+    Task RelocateAsync(
+        string downloadId,
+        string destinationPath,
+        bool overwrite = false,
+        CancellationToken cancellationToken = default);
+
+    Task<string> RedownloadAsync(
+        string downloadId,
+        DuplicateFileBehavior duplicateBehavior = DuplicateFileBehavior.AutoRename,
+        CancellationToken cancellationToken = default);
+
+    Task RefreshSourceAsync(
+        string downloadId,
+        Uri source,
+        Uri? sourcePage = null,
+        CancellationToken cancellationToken = default);
+
+    Task<int> PruneHistoryAsync(CancellationToken cancellationToken = default);
 
     Task StartQueueAsync(string queueId, CancellationToken cancellationToken = default);
 

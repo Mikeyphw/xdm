@@ -151,6 +151,35 @@ public sealed class QueueSchedulerRuntimeTests
         public Task RemoveAsync(string downloadId, bool deletePartialFile = false, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
 
+        public Task DeleteAsync(
+            string downloadId,
+            XDM.Core.Downloads.DownloadDeletionScope scope,
+            CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task RelocateAsync(
+            string downloadId,
+            string destinationPath,
+            bool overwrite = false,
+            CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task<string> RedownloadAsync(
+            string downloadId,
+            DuplicateFileBehavior duplicateBehavior = DuplicateFileBehavior.AutoRename,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(Guid.NewGuid().ToString("N"));
+
+        public Task RefreshSourceAsync(
+            string downloadId,
+            Uri source,
+            Uri? sourcePage = null,
+            CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task<int> PruneHistoryAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(0);
+
         public Task StartQueueAsync(string queueId, CancellationToken cancellationToken = default)
         {
             StartedQueues.Add(queueId);

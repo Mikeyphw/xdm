@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baseline": "overlay-18-settings-workflow",
+  "baseline": "overlay-19-history-files",
   "updatedAt": "2026-07-12",
   "features": [
     {
@@ -737,16 +737,113 @@
       "area": "history-files",
       "name": "Move, rename, delete and re-download actions",
       "priority": "high",
-      "status": "partial",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Wpf.UI/MainWindow.xaml"
       ],
       "implementationPaths": [
-        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.cs"
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs",
+        "app/XDM/src/XDM.Platform/DesktopPlatformService.cs",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.HistoryParity.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
       ],
-      "automatedTests": [],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.RelocatesCompletedDownloadAndPersistsNewPath",
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.DistinguishesHistoryRemovalFromDownloadedFileDeletion",
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.RedownloadCreatesNewEntryWithSourcePageAndAutoRename"
+      ],
       "targetOverlay": "19",
-      "notes": "Open/reveal/remove exist; full move/rename/re-download parity remains."
+      "notes": "History-only removal is distinct from destructive file deletion; completed files can be moved/renamed, opened/revealed, and safely queued again."
+    },
+    {
+      "id": "history.retention",
+      "area": "history-files",
+      "name": "Bounded history retention and pruning",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/DownloadList.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Persistence/HistoryRetentionPolicy.cs",
+        "app/XDM/src/XDM.Core/Settings/HistoryRetentionSettings.cs",
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.HistoryRetentionPolicyTests.DisabledPolicyPreservesAllEntries",
+        "XDM.Core.Tests.HistoryRetentionPolicyTests.EnabledPolicyExpiresTerminalEntriesButPreservesActiveWork",
+        "XDM.Core.Tests.HistoryRetentionPolicyTests.MaximumEntryLimitDropsOldestTerminalEntriesOnly"
+      ],
+      "targetOverlay": "19",
+      "notes": "Optional age/count retention prunes terminal history only; downloaded files are never deleted automatically."
+    },
+    {
+      "id": "history.url-refresh",
+      "area": "history-files",
+      "name": "Refresh expired URLs and source-page actions",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Wpf.UI/MainWindow.xaml"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs",
+        "app/XDM/src/XDM.Core/Persistence/PersistedDownload.cs",
+        "app/XDM/src/XDM.Platform/DesktopPlatformService.cs",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.HistoryParity.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.RefreshesExpiredUrlAndPreservesPartialDestination",
+        "XDM.Core.Tests.DesktopPlatformServiceTests.RejectsNonWebUrisWithoutLaunchingThem",
+        "XDM.Core.Tests.DesktopPlatformServiceTests.RejectsMissingFilesBeforeShellActivation"
+      ],
+      "targetOverlay": "19",
+      "notes": "Failed/paused entries can replace an expired HTTP(S) URL without discarding partial data; source pages and destinations are durable and actionable."
+    },
+    {
+      "id": "history.list-transfer",
+      "area": "history-files",
+      "name": "Download-list import and export",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/DownloadList.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Persistence/DownloadListTransferService.cs",
+        "app/XDM/src/XDM.Core/Persistence/DownloadListModels.cs",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.HistoryParity.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadListTransferServiceTests.ExportRoundTripsSafeHistoryMetadataWithoutSecrets",
+        "XDM.DownloadEngine.Tests.DownloadListTransferServiceTests.ImportsPlainUrlListsAndIgnoresUnsafeSchemes",
+        "XDM.DownloadEngine.Tests.DownloadListTransferServiceTests.RejectsUnknownJsonSchema"
+      ],
+      "targetOverlay": "19",
+      "notes": "Versioned JSON and plain URL lists are bounded to 8 MiB/50,000 entries; credentials, cookies, and authorization data are never exported."
+    },
+    {
+      "id": "history.large-scale",
+      "area": "history-files",
+      "name": "Large-history responsive loading and updates",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/DownloadList.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/State/ApplicationState.cs",
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.LargeHistoryPerformanceTests.ReplaceDownloadsHandlesLargeHistoryWithinBudget",
+        "XDM.Core.Tests.LargeHistoryPerformanceTests.RepeatedUpdatesUseIndexedLookupForLargeHistory",
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.RestoresLargeHistoryInSingleApplicationStatePublication"
+      ],
+      "targetOverlay": "19",
+      "notes": "Startup restores history in one state publication and indexed lookup avoids full sort/search work for every individual update."
     },
     {
       "id": "categories.rules",

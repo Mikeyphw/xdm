@@ -1,24 +1,24 @@
 {
-  "name": "xdm_settings_workflow_overlay",
+  "name": "xdm_history_file_management_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "1a0eb3a",
+  "baseCommit": "5d512e2",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "functional-parity-18",
-  "description": "Adds bounded network and download defaults, authenticated proxy support, host credentials, versioned settings transfer, and legacy XDM settings/category/queue migration.",
+  "phase": "functional-parity-19",
+  "description": "Adds bounded history retention, explicit entry/file deletion, safe relocation and re-download, expired-URL refresh, source/destination actions, download-list transfer, and large-history optimizations.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore",
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
-    "focusedTests": "dotnet test app/XDM/src/XDM.DownloadEngine.Tests/XDM.DownloadEngine.Tests.csproj --configuration Release --no-build"
+    "focusedTests": "dotnet test app/XDM/src/XDM.DownloadEngine.Tests/XDM.DownloadEngine.Tests.csproj app/XDM/src/XDM.Core.Tests/XDM.Core.Tests.csproj --configuration Release --no-build"
   },
-  "commitMessage": "Add settings workflow and legacy migration",
+  "commitMessage": "Add history and file management parity",
   "constraints": [
     "Validate only app/XDM/XDM.Modern.sln",
     "Do not restore or build WPF, GTK, WinForms or MSIX targets",
-    "Do not execute imported settings content",
-    "Redact proxy and server passwords from exports by default",
-    "Apply proxy and HTTP handler changes after restart"
+    "Never delete downloaded files through automatic retention",
+    "Never export credentials, cookies, authorization headers or POST bodies",
+    "Accept only absolute HTTP and HTTPS URLs in imported lists and source actions"
   ]
 }

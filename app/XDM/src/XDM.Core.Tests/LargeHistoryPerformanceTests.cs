@@ -45,6 +45,32 @@ public sealed class LargeHistoryPerformanceTests
             $"Aggregating {HistorySize} history entries took {stopwatch.Elapsed}.");
     }
 
+    [Fact]
+    public void RepeatedUpdatesUseIndexedLookupForLargeHistory()
+    {
+        DownloadSnapshot[] downloads = CreateDownloads();
+        ApplicationState state = new();
+        state.ReplaceDownloads(downloads);
+        DownloadSnapshot target = downloads[^1];
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        for (int index = 0; index < 250; index++)
+        {
+            state.UpsertDownload(target with
+            {
+                DownloadedBytes = index,
+                UpdatedAt = target.UpdatedAt.AddMilliseconds(index + 1)
+            });
+        }
+        stopwatch.Stop();
+
+        Assert.Equal(target.Id, state.Current.Downloads[0].Id);
+        Assert.Equal(249, state.Current.Downloads[0].DownloadedBytes);
+        Assert.True(
+            stopwatch.Elapsed < TimeSpan.FromSeconds(10),
+            $"Updating one entry in a {HistorySize:N0}-item history took {stopwatch.Elapsed}.");
+    }
+
     private static DownloadSnapshot[] CreateDownloads()
     {
         DateTimeOffset now = DateTimeOffset.UtcNow;

@@ -126,7 +126,7 @@
         </Grid>
 
         <Grid Grid.Row="1" Margin="0,14,0,0">
-          <Grid IsVisible="{Binding IsDownloadsVisible}" RowDefinitions="Auto,Auto,*">
+          <Grid IsVisible="{Binding IsDownloadsVisible}" RowDefinitions="Auto,Auto,Auto,*">
             <Border Background="#12171E" CornerRadius="10" Padding="14" BorderBrush="#202833" BorderThickness="1">
               <StackPanel Spacing="10">
                 <Grid ColumnDefinitions="2*,*,Auto,Auto" ColumnSpacing="9">
@@ -188,7 +188,46 @@
               </WrapPanel>
             </Grid>
 
-            <Grid Grid.Row="2" ColumnDefinitions="2*,*" ColumnSpacing="12">
+
+            <Expander Grid.Row="2" Header="History and file management" Margin="0,0,0,10">
+              <Border Background="#12171E" CornerRadius="10" Padding="14" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="9">
+                  <WrapPanel Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="Open file" Command="{Binding OpenSelectedFileCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="Open folder" Command="{Binding RevealSelectedDestinationCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="Open URL" Command="{Binding OpenSelectedSourceCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="Open source page" Command="{Binding OpenSelectedSourcePageCommand}" IsEnabled="{Binding SelectedDownload.HasSourcePage}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="Re-download" Command="{Binding RedownloadSelectedCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="Delete partial data" Command="{Binding DeleteSelectedPartialDataCommand}" />
+                    <Button Classes="secondary" Content="Delete file + history" Command="{Binding DeleteSelectedFileAndHistoryCommand}" />
+                  </WrapPanel>
+                  <Grid ColumnDefinitions="2*,2*,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="Replacement download URL" Text="{Binding RefreshedDownloadUrl}" />
+                    <TextBox Grid.Column="1" PlaceholderText="Source page URL (optional)" Text="{Binding RefreshedSourcePage}" />
+                    <Button Grid.Column="2" Classes="secondary" Content="Refresh URL" Command="{Binding RefreshSelectedDownloadUrlCommand}" />
+                  </Grid>
+                  <Grid ColumnDefinitions="2*,Auto,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="New full destination path" Text="{Binding RelocationDestinationPath}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="Choose path" Click="BrowseRelocationDestination_Click" />
+                    <Button Grid.Column="2" Classes="secondary" Content="Move / rename" Command="{Binding RelocateSelectedDownloadCommand}" />
+                  </Grid>
+                  <CheckBox Content="Allow replacing an existing destination file" IsChecked="{Binding OverwriteRelocationDestination}" />
+                  <Grid ColumnDefinitions="2*,Auto,Auto,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="Download-list JSON or plain URL-list path" Text="{Binding HistoryTransferPath}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="Choose import" Click="BrowseHistoryImport_Click" />
+                    <Button Grid.Column="2" Classes="secondary" Content="Choose export" Click="BrowseHistoryExport_Click" />
+                    <Button Grid.Column="3" Classes="secondary" Content="Import" Command="{Binding ImportDownloadListCommand}" />
+                  </Grid>
+                  <WrapPanel Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="Export visible" Command="{Binding ExportVisibleHistoryCommand}" />
+                    <Button Classes="secondary" Content="Prune now" Command="{Binding PruneHistoryCommand}" />
+                  </WrapPanel>
+                  <TextBlock Text="{Binding HistoryTransferStatus}" TextWrapping="Wrap" Foreground="#8FB5FF" />
+                </StackPanel>
+              </Border>
+            </Expander>
+
+            <Grid Grid.Row="3" ColumnDefinitions="2*,*" ColumnSpacing="12">
               <Border Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
                 <ListBox ItemsSource="{Binding FilteredDownloads}"
                          SelectedItem="{Binding SelectedDownload}"
@@ -655,6 +694,19 @@
                   <CheckBox Content="Remember the last request metadata in the download dialog" IsChecked="{Binding RememberLastRequestMetadata}" />
                   <CheckBox Content="Monitor clipboard for HTTP/HTTPS links" IsChecked="{Binding ClipboardMonitoringEnabled}" />
                   <CheckBox Content="Automatically add links captured from clipboard" IsChecked="{Binding AutoAddClipboardLinks}" />
+                </StackPanel>
+              </Border>
+
+
+              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="History retention" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <CheckBox Content="Automatically prune terminal history entries" IsChecked="{Binding HistoryRetentionEnabled}" />
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
+                    <TextBox PlaceholderText="Retention days" Text="{Binding HistoryRetentionDays}" />
+                    <TextBox Grid.Column="1" PlaceholderText="Maximum history entries" Text="{Binding HistoryMaximumEntries}" />
+                  </Grid>
+                  <TextBlock Text="Retention removes only history entries. Downloaded files are never deleted automatically." TextWrapping="Wrap" Foreground="#7F8B9B" />
                 </StackPanel>
               </Border>
 

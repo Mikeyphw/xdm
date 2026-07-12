@@ -364,6 +364,153 @@ public sealed class DownloadManagerTests
         Assert.Equal(1, handler.RequestCount);
     }
 
+    [Fact]
+    public async Task RelocatesCompletedDownloadAndPersistsNewPath()
+    {
+        byte[] payload = CreatePayload(2048, 127);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        InMemoryHistoryStore history = new();
+        using DownloadManager manager = CreateManager(client, state, history);
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/move.bin"),
+            directory.Path,
+            "move.bin",
+            SourcePage: new Uri("https://example.test/source-page")));
+        await WaitForStateAsync(state, id, DownloadState.Completed);
+        string target = Path.Combine(directory.Path, "renamed.bin");
+
+        await manager.RelocateAsync(id, target);
+
+        DownloadSnapshot snapshot = Assert.Single(state.Current.Downloads, item => item.Id == id);
+        Assert.Equal(target, snapshot.DestinationPath);
+        Assert.True(File.Exists(target));
+        Assert.Equal(target, Assert.Single(history.Downloads, item => item.Id == id).DestinationPath);
+    }
+
+    [Fact]
+    public async Task RefreshesExpiredUrlAndPreservesPartialDestination()
+    {
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "expired.bin");
+        byte[] partialPayload = [1, 2, 3];
+        await File.WriteAllBytesAsync($"{destination}.part", partialPayload);
+        PersistedDownload persisted = new(
+            "expired",
+            new Uri("https://old.example.test/file.bin"),
+            destination,
+            3,
+            100,
+            DownloadState.Failed,
+            DateTimeOffset.UtcNow,
+            ErrorMessage: "Expired");
+        ApplicationState state = new();
+        InMemoryHistoryStore history = new([persisted]);
+        using HttpClient client = new(new RangeHandler(CreatePayload(100, 73)));
+        using DownloadManager manager = CreateManager(client, state, history);
+        await manager.InitializeAsync();
+        Uri replacement = new("https://new.example.test/file.bin");
+        Uri sourcePage = new("https://new.example.test/page");
+
+        await manager.RefreshSourceAsync("expired", replacement, sourcePage);
+
+        DownloadSnapshot snapshot = Assert.Single(state.Current.Downloads);
+        Assert.Equal(replacement, snapshot.Source);
+        Assert.Equal(sourcePage, snapshot.SourcePage);
+        Assert.Equal(DownloadState.Paused, snapshot.State);
+        Assert.True(File.Exists($"{destination}.part"));
+    }
+
+    [Fact]
+    public async Task DistinguishesHistoryRemovalFromDownloadedFileDeletion()
+    {
+        byte[] payload = CreatePayload(1024, 61);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+        string keepId = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/keep.bin"),
+            directory.Path,
+            "keep.bin"));
+        await WaitForStateAsync(state, keepId, DownloadState.Completed);
+        string keepPath = Path.Combine(directory.Path, "keep.bin");
+
+        await manager.DeleteAsync(keepId, DownloadDeletionScope.HistoryOnly);
+
+        Assert.True(File.Exists(keepPath));
+        string deleteId = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/delete.bin"),
+            directory.Path,
+            "delete.bin"));
+        await WaitForStateAsync(state, deleteId, DownloadState.Completed);
+        string deletePath = Path.Combine(directory.Path, "delete.bin");
+
+        await manager.DeleteAsync(deleteId, DownloadDeletionScope.HistoryAndDownloadedFile);
+
+        Assert.False(File.Exists(deletePath));
+        Assert.DoesNotContain(state.Current.Downloads, item => item.Id == deleteId);
+    }
+
+    [Fact]
+    public async Task RedownloadCreatesNewEntryWithSourcePageAndAutoRename()
+    {
+        byte[] payload = CreatePayload(512, 41);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+        Uri sourcePage = new("https://example.test/page");
+        string originalId = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/repeat.bin"),
+            directory.Path,
+            "repeat.bin",
+            SourcePage: sourcePage));
+        await WaitForStateAsync(state, originalId, DownloadState.Completed);
+
+        string newId = await manager.RedownloadAsync(originalId);
+        DownloadSnapshot repeated = await WaitForStateAsync(state, newId, DownloadState.Completed);
+
+        Assert.NotEqual(originalId, newId);
+        Assert.Equal(sourcePage, repeated.SourcePage);
+        Assert.Equal(Path.Combine(directory.Path, "repeat (1).bin"), repeated.DestinationPath);
+        Assert.True(File.Exists(Path.Combine(directory.Path, "repeat.bin")));
+        Assert.True(File.Exists(repeated.DestinationPath));
+    }
+
+    [Fact]
+    public async Task RestoresLargeHistoryInSingleApplicationStatePublication()
+    {
+        const int historySize = 10_000;
+        using TemporaryDirectory directory = new();
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        PersistedDownload[] persisted = new PersistedDownload[historySize];
+        for (int index = 0; index < persisted.Length; index++)
+        {
+            persisted[index] = new PersistedDownload(
+                $"history-{index}",
+                new Uri($"https://example.test/{index}.bin"),
+                Path.Combine(directory.Path, $"{index}.bin"),
+                0,
+                null,
+                DownloadState.Paused,
+                now.AddSeconds(-index));
+        }
+
+        ApplicationState state = new();
+        int publicationCount = 0;
+        state.Changed += (_, _) => publicationCount++;
+        using HttpClient client = new(new RangeHandler(CreatePayload(32, 17)));
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore(persisted));
+
+        await manager.InitializeAsync();
+
+        Assert.Equal(historySize, state.Current.Downloads.Count);
+        Assert.Equal(1, publicationCount);
+        Assert.Equal("history-0", state.Current.Downloads[0].Id);
+    }
+
     private static DownloadManager CreateManager(
         HttpClient client,
         ApplicationState state,

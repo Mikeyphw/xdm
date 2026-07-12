@@ -29,7 +29,8 @@ public sealed class JsonDownloadHistoryStoreTests
                 QueueOrder: 3,
                 EntityTag: "\"version-1\"",
                 LastModified: DateTimeOffset.Parse("2026-07-11T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
-                Method: "POST");
+                Method: "POST",
+                SourcePage: new Uri("https://example.test/download-page"));
 
             await store.SaveAsync([expected]);
             IReadOnlyList<PersistedDownload> loaded = await store.LoadAsync();
@@ -44,6 +45,7 @@ public sealed class JsonDownloadHistoryStoreTests
             Assert.Equal("\"version-1\"", actual.EntityTag);
             Assert.Equal(expected.LastModified, actual.LastModified);
             Assert.Equal("POST", actual.Method);
+            Assert.Equal(expected.SourcePage, actual.SourcePage);
             Assert.False(File.Exists($"{path}.tmp"));
         }
         finally

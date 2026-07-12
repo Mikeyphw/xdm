@@ -8,16 +8,22 @@ public sealed partial class DownloadItemViewModel : ObservableObject
     public DownloadItemViewModel(DownloadSnapshot snapshot)
     {
         Id = snapshot.Id;
-        Source = snapshot.Source;
-        DestinationPath = snapshot.DestinationPath;
+        source = snapshot.Source;
+        destinationPath = snapshot.DestinationPath;
+        sourcePage = snapshot.SourcePage;
         Apply(snapshot);
     }
 
     public string Id { get; }
 
-    public Uri Source { get; }
+    [ObservableProperty]
+    private Uri source;
 
-    public string DestinationPath { get; }
+    [ObservableProperty]
+    private Uri? sourcePage;
+
+    [ObservableProperty]
+    private string destinationPath;
 
     [ObservableProperty]
     private string fileName = string.Empty;
@@ -61,8 +67,14 @@ public sealed partial class DownloadItemViewModel : ObservableObject
     [ObservableProperty]
     private bool isSelected;
 
+    public bool HasSourcePage => SourcePage is not null;
+
     public void Apply(DownloadSnapshot snapshot)
     {
+        Source = snapshot.Source;
+        SourcePage = snapshot.SourcePage;
+        DestinationPath = snapshot.DestinationPath;
+        OnPropertyChanged(nameof(HasSourcePage));
         FileName = snapshot.FileName;
         StatusText = snapshot.State.ToString();
         ProgressPercent = (snapshot.ProgressFraction ?? 0d) * 100d;

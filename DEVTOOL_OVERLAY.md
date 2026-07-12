@@ -1,6 +1,6 @@
-# XDM Overlay 18 — settings and workflow parity
+# XDM Overlay 19 — history and file management
 
-Base: confirmed successful commit `1a0eb3a`
+Base: confirmed successful commit `5d512e2`
 
 Target: `xdm_modern`
 
@@ -8,32 +8,28 @@ Active solution: `app/XDM/XDM.Modern.sln`
 
 ## Included
 
-- Schema-v3 bounded network and download behavior settings.
-- Connection and whole-request timeouts.
-- Retry attempts and exponential retry base delay.
-- Default/maximum segmented connections and minimum segmented file size.
-- System, direct, and manual authenticated proxy modes with bypass rules.
-- Exact-host and optional-subdomain server credential manager.
-- Default duplicate handling, category selection, directory creation, clipboard,
-  and request-metadata behavior.
-- Versioned atomic settings exports with passwords redacted by default.
-- Modern JSON plus legacy JSON, Java-properties, XML, and directory migration.
-- Recorded legacy settings/category/queue fixture and deterministic tests.
-- Settings, migration, and parity documentation updates.
-
-## Runtime behavior
-
-Settings are initialized before the shared HTTP client is created. Proxy,
-timeout, retry, and segmentation policy changes therefore apply to the next XDM
-process. New downloads use the saved default connection count immediately.
-Explicit request credentials always take precedence over saved host credentials.
+- Optional age/count history retention that preserves active work and all files.
+- True persisted last-update timestamps for meaningful retention decisions.
+- History-only removal, partial-data deletion, and explicit completed-file deletion.
+- Safe completed-file move/rename with cross-volume temporary-copy fallback.
+- GET re-download with auto-rename and preserved workflow metadata.
+- Expired HTTP(S) URL refresh without discarding partial data.
+- Persisted source-page metadata and open file/folder/URL/source-page actions.
+- Versioned credential-free JSON download-list export and plain URL-list import.
+- 8 MiB and 50,000-entry import limits with HTTP(S)-only normalization.
+- Bulk startup restoration and indexed application-state updates for large histories.
+- Avalonia history-management and retention controls.
+- Deterministic history, file-action, transfer, and 10,000-entry performance tests.
+- Executable parity ledger and documentation updates.
 
 ## Safety
 
-Imports are parsed as bounded data only and are never executed. All imported
-values pass through the normal settings schema limits. Exports omit proxy and
-server passwords unless the user explicitly enables secret export. Files are
-written through a private temporary path and atomically replaced.
+Retention never removes downloaded files. Destructive file deletion is a
+separate explicit action. Move/rename updates history only after successful
+publication, preserves the source on failures, and requires explicit overwrite
+permission. Import/export excludes credentials, cookies, arbitrary headers,
+authorization metadata, and request bodies. Platform URL actions allow only
+absolute HTTP and HTTPS URLs and do not execute command lines.
 
 ## Validation scope
 

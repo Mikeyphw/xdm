@@ -13,12 +13,12 @@ This ledger is executable through `XDM.Parity.Tests`. The source of truth is
 
 ## Current baseline
 
-The manifest inventories 66 feature contracts across the download engine,
+The manifest inventories 70 feature contracts across the download engine,
 browser integration, media, conversion, queues, settings, desktop integration,
 diagnostics, localization, packaging and migration.
 
 Overlay 13 completed segmented transfer, Overlay 14 completed browser takeover,
-Overlay 15 completed streaming media, Overlay 16 completed conversion, Overlay 17 completed queue scheduling and completion actions, and Overlay 18 completes settings and workflow parity. Later parity overlays must
+Overlay 15 completed streaming media, Overlay 16 completed conversion, Overlay 17 completed queue scheduling and completion actions, Overlay 18 completed settings and workflow parity, and Overlay 19 completes history and file management. Later parity overlays must
 update the status, implementation paths and tests in the same commit that
 supplies the behavior.
 
@@ -95,3 +95,15 @@ export redacts secrets by default, while the importer accepts modern JSON and
 legacy JSON, properties, or XML fixtures without executing source content.
 Migration behavior and supported keys are documented in
 `docs/parity/SETTINGS-WORKFLOW.md`.
+
+## Overlay 19 result
+
+History and file-management parity is complete for the planned modern scope.
+History-only removal is separated from destructive file deletion; completed
+files can be moved, renamed, opened, revealed, or queued again; failed entries
+can replace expired URLs without discarding partial data; source pages are
+persisted; and bounded JSON/plain-text download lists can be imported or
+exported without secrets. Optional retention prunes terminal history only, and
+large startup restores publish the history in one indexed batch. Design and
+safety details are documented in `docs/parity/HISTORY-FILE-MANAGEMENT.md`.
+

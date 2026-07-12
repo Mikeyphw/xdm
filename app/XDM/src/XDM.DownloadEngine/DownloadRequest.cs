@@ -18,7 +18,8 @@ public sealed record DownloadRequest(
     string Method = "GET",
     byte[]? RequestBody = null,
     string? RequestBodyContentType = null,
-    XDM.Core.Downloads.DownloadPriority Priority = XDM.Core.Downloads.DownloadPriority.Normal)
+    XDM.Core.Downloads.DownloadPriority Priority = XDM.Core.Downloads.DownloadPriority.Normal,
+    Uri? SourcePage = null)
 {
     public string ResolveFileName()
     {

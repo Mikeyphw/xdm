@@ -16,9 +16,10 @@ public sealed record ApplicationSettings(
     AntivirusScanSettings? Antivirus = null,
     NetworkSettings? Network = null,
     DownloadBehaviorSettings? DownloadBehavior = null,
-    IReadOnlyList<ServerCredentialDefinition>? Credentials = null)
+    IReadOnlyList<ServerCredentialDefinition>? Credentials = null,
+    HistoryRetentionSettings? History = null)
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
 
     public static ApplicationSettings CreateDefault()
     {
@@ -53,7 +54,8 @@ public sealed record ApplicationSettings(
             AntivirusScanSettings.Disabled,
             NetworkSettings.Default,
             DownloadBehaviorSettings.Default,
-            []);
+            [],
+            HistoryRetentionSettings.Default);
     }
 
     public ApplicationSettings Normalize()
@@ -136,7 +138,8 @@ public sealed record ApplicationSettings(
             Antivirus = (Antivirus ?? AntivirusScanSettings.Disabled).Normalize(),
             Network = (Network ?? NetworkSettings.Default).Normalize(),
             DownloadBehavior = (DownloadBehavior ?? DownloadBehaviorSettings.Default).Normalize(),
-            Credentials = credentials
+            Credentials = credentials,
+            History = (History ?? HistoryRetentionSettings.Default).Normalize()
         };
     }
 }

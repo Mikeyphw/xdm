@@ -18,4 +18,5 @@ public sealed record PersistedDownload(
     DateTimeOffset? LastModified = null,
     int ConnectionCount = 4,
     string Method = "GET",
-    DownloadPriority Priority = DownloadPriority.Normal);
+    DownloadPriority Priority = DownloadPriority.Normal,
+    Uri? SourcePage = null);
