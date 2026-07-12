@@ -70,6 +70,47 @@ public sealed class LoopbackAcknowledgementTests
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+
+    [Fact]
+    public async Task AcceptsAuthenticatedExtensionHealthReport()
+    {
+        int port = GetFreeTcpPort();
+        const string token = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        using LoopbackBrowserIntegrationService service = new(port, token);
+        await service.InitializeAsync();
+        Assert.True(service.Current.IsListening, service.Current.LastError);
+
+        BrowserExtensionHealthReport report = new(
+            "Chrome",
+            "Chrome/140",
+            "4.1.0",
+            "abcdefghijklmnopabcdefghijklmnop",
+            3,
+            false,
+            false,
+            [],
+            BrowserNativeProtocol.ProtocolVersion,
+            "compatible",
+            BrowserNativeProtocol.Capabilities,
+            DateTimeOffset.UtcNow);
+        using HttpClient client = new();
+        using HttpRequestMessage request = new(
+            HttpMethod.Post,
+            $"http://127.0.0.1:{port}/extension-status")
+        {
+            Content = JsonContent.Create(report)
+        };
+        request.Headers.Add("X-XDM-Token", token);
+
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Chrome", service.Current.ExtensionBrowser);
+        Assert.Equal("4.1.0", service.Current.ExtensionVersion);
+        Assert.Equal("compatible", service.Current.ExtensionCompatibility);
+        Assert.False(service.Current.ExtensionEnhancedAccessGranted);
+    }
+
     private static int GetFreeTcpPort()
     {
         TcpListener listener = new(IPAddress.Loopback, 0);

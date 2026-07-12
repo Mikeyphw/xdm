@@ -2,6 +2,19 @@
 
 import NativeConnector from "./connector.js";
 
+const SENSITIVE_SITE_DEFAULTS = [
+  "accounts.google.com",
+  "login.microsoftonline.com",
+  "appleid.apple.com",
+  "paypal.com",
+  "stripe.com",
+  "wise.com",
+  "1password.com",
+  "bitwarden.com",
+  "lastpass.com",
+  "localhost",
+  "127.0.0.1"
+];
 const DEFAULT_RULES = Object.freeze({
   enabled: true,
   disabledUntilUtc: null,
@@ -12,9 +25,13 @@ const DEFAULT_RULES = Object.freeze({
   allowedExtensions: [],
   blockedExtensions: [],
   includedSites: [],
-  excludedSites: []
+  excludedSites: SENSITIVE_SITE_DEFAULTS,
+  defaultSiteMode: "ask",
+  sitePolicies: [],
+  securityDefaultsVersion: 1
 });
 const MAX_BATCH_ITEMS = 25;
+const MAX_PENDING_ITEMS = 20;
 const METADATA_TTL_MS = 120000;
 
 export default class App {
@@ -23,25 +40,34 @@ export default class App {
     this.connector = new NativeConnector(status => this.onConnectorStatus(status));
     this.processingDownloads = new Set();
     this.requestMetadata = new Map();
+    this.pendingCaptures = [];
     this.lastResult = null;
+    this.metadataListenersRegistered = false;
   }
 
   async start() {
     await this.loadRules();
-    this.registerRequestMetadataCapture();
+    await this.loadPendingCaptures();
+    await this.refreshPermissionState();
     this.registerDownloadTakeover();
     this.registerContextMenus();
     this.registerRuntimeMessages();
+    chrome.permissions.onAdded.addListener(() => void this.refreshPermissionState());
+    chrome.permissions.onRemoved.addListener(() => void this.refreshPermissionState());
     chrome.alarms.create("xdm-health", { periodInMinutes: 1 });
     chrome.alarms.onAlarm.addListener(alarm => {
-      if (alarm.name === "xdm-health") this.refreshHealth();
+      if (alarm.name === "xdm-health") void this.refreshHealth();
     });
     await this.refreshHealth();
   }
 
   async loadRules() {
     const stored = await chrome.storage.local.get("captureRules");
-    this.rules = normalizeRules(stored.captureRules || DEFAULT_RULES);
+    const source = stored.captureRules || DEFAULT_RULES;
+    this.rules = normalizeRules(source);
+    if (Number(source.securityDefaultsVersion || 0) < 1) {
+      await chrome.storage.local.set({ captureRules: this.rules });
+    }
   }
 
   async saveRules(rules) {
@@ -51,10 +77,37 @@ export default class App {
     return this.rules;
   }
 
+  async loadPendingCaptures() {
+    const area = chrome.storage.session || chrome.storage.local;
+    const stored = await area.get("pendingCaptures");
+    const threshold = Date.now() - 30 * 60 * 1000;
+    this.pendingCaptures = Array.isArray(stored.pendingCaptures)
+      ? stored.pendingCaptures.filter(item => item?.id && item?.capture?.url && item.createdAt >= threshold).slice(0, MAX_PENDING_ITEMS)
+      : [];
+  }
+
+  async savePendingCaptures() {
+    const area = chrome.storage.session || chrome.storage.local;
+    await area.set({ pendingCaptures: this.pendingCaptures });
+  }
+
+  async refreshPermissionState() {
+    const all = await new Promise(resolve => chrome.permissions.getAll(resolve));
+    const permissions = all.permissions || [];
+    const origins = (all.origins || []).filter(origin => /^https?:/i.test(origin));
+    this.permissionState = {
+      permissions,
+      origins,
+      enhancedAccessGranted: permissions.includes("webRequest") && permissions.includes("cookies") && origins.length > 0
+    };
+    if (this.permissionState.enhancedAccessGranted) this.registerRequestMetadataCapture();
+    else this.unregisterRequestMetadataCapture();
+    this.connector.disconnect();
+    return this.permissionState;
+  }
+
   registerDownloadTakeover() {
-    chrome.downloads.onCreated.addListener(item => {
-      void this.handleCreatedDownload(item);
-    });
+    chrome.downloads.onCreated.addListener(item => void this.handleCreatedDownload(item));
   }
 
   async handleCreatedDownload(initialItem) {
@@ -77,17 +130,14 @@ export default class App {
       });
       const localDecision = evaluateRules(capture, this.rules);
       if (!localDecision.accepted) {
-        this.lastResult = localDecision;
+        this.lastResult = { ...localDecision, url: capture.url };
+        if (localDecision.reason === "site_requires_confirmation") {
+          await this.queuePendingCapture(item.id, capture);
+        }
         return;
       }
 
-      const response = await this.connector.send("capture", { capture, rules: this.rules });
-      const accepted = response.accepted === true && response.items?.[0]?.accepted !== false;
-      this.lastResult = { accepted, reason: response.reason || "unknown", url: capture.url };
-      if (accepted) {
-        await chrome.downloads.cancel(item.id);
-        await chrome.downloads.erase({ id: item.id });
-      }
+      await this.takeOverDownload(item.id, capture);
     } catch (error) {
       this.lastResult = { accepted: false, reason: error.message };
       this.onConnectorStatus({ connected: false, ready: false, reason: error.message });
@@ -96,9 +146,36 @@ export default class App {
     }
   }
 
+  async queuePendingCapture(downloadId, capture) {
+    this.pendingCaptures = this.pendingCaptures.filter(item => item.downloadId !== downloadId);
+    this.pendingCaptures.unshift({
+      id: capture.requestId,
+      downloadId,
+      capture,
+      host: new URL(capture.url).hostname,
+      fileName: capture.fileName || leafName(new URL(capture.url).pathname) || capture.url,
+      createdAt: Date.now()
+    });
+    this.pendingCaptures = this.pendingCaptures.slice(0, MAX_PENDING_ITEMS);
+    await this.savePendingCaptures();
+    this.updateBadge();
+  }
+
+  async takeOverDownload(downloadId, capture) {
+    const response = await this.connector.send("capture", { capture, rules: this.rules });
+    const accepted = response.accepted === true && response.items?.[0]?.accepted !== false;
+    this.lastResult = { accepted, reason: response.reason || "unknown", url: capture.url };
+    if (accepted) {
+      await chrome.downloads.cancel(downloadId);
+      await chrome.downloads.erase({ id: downloadId });
+    }
+    return this.lastResult;
+  }
+
   registerRequestMetadataCapture() {
+    if (this.metadataListenersRegistered) return;
     chrome.webRequest.onBeforeRequest.addListener(
-      details => {
+      this.onBeforeRequest = details => {
         const entry = this.getMetadataEntry(details.url);
         entry.method = details.method || "GET";
         entry.requestBodyBase64 = encodeRequestBody(details.requestBody);
@@ -109,7 +186,7 @@ export default class App {
       ["requestBody"]
     );
     chrome.webRequest.onBeforeSendHeaders.addListener(
-      details => {
+      this.onBeforeSendHeaders = details => {
         const entry = this.getMetadataEntry(details.url);
         for (const header of details.requestHeaders || []) {
           const name = header.name.toLowerCase();
@@ -127,6 +204,15 @@ export default class App {
       { urls: ["http://*/*", "https://*/*"] },
       ["requestHeaders", "extraHeaders"]
     );
+    this.metadataListenersRegistered = true;
+  }
+
+  unregisterRequestMetadataCapture() {
+    if (!this.metadataListenersRegistered) return;
+    if (this.onBeforeRequest) chrome.webRequest.onBeforeRequest.removeListener(this.onBeforeRequest);
+    if (this.onBeforeSendHeaders) chrome.webRequest.onBeforeSendHeaders.removeListener(this.onBeforeSendHeaders);
+    this.requestMetadata.clear();
+    this.metadataListenersRegistered = false;
   }
 
   getMetadataEntry(url) {
@@ -136,21 +222,25 @@ export default class App {
 
   pruneMetadata() {
     const threshold = Date.now() - METADATA_TTL_MS;
-    for (const [url, value] of this.requestMetadata) {
-      if (value.updatedAt < threshold) this.requestMetadata.delete(url);
-    }
+    for (const [url, value] of this.requestMetadata) if (value.updatedAt < threshold) this.requestMetadata.delete(url);
   }
 
   async createCapture(url, options = {}) {
     const metadata = this.getMetadataEntry(url);
-    const cookies = await chrome.cookies.getAll({ url });
+    let cookie = null;
+    if (this.permissionState?.enhancedAccessGranted) {
+      try {
+        const cookies = await chrome.cookies.getAll({ url });
+        cookie = cookies.map(value => `${value.name}=${value.value}`).join("; ") || null;
+      } catch { }
+    }
     const method = (metadata.method || options.method || "GET").toUpperCase();
     return {
       url,
       requestId: options.requestId || `capture-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       fileName: options.fileName || null,
       headers: metadata.headers,
-      cookie: cookies.map(cookie => `${cookie.name}=${cookie.value}`).join("; ") || null,
+      cookie,
       referer: options.referer || metadata.referer || null,
       userAgent: metadata.userAgent || navigator.userAgent,
       browser: detectBrowser(),
@@ -181,10 +271,7 @@ export default class App {
   }
 
   async handleContextMenu(info, tab) {
-    if (info.menuItemId === "xdm-download-all") {
-      await this.downloadAllLinks(tab);
-      return;
-    }
+    if (info.menuItemId === "xdm-download-all") return this.downloadAllLinks(tab);
     const url = info.linkUrl || info.srcUrl || info.pageUrl;
     if (!isHttpUrl(url)) return;
     const capture = await this.createCapture(url, {
@@ -199,11 +286,7 @@ export default class App {
 
   async downloadAllLinks(tab) {
     if (!tab?.id) return;
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => Array.from(new Set(Array.from(document.links, link => link.href).filter(url => /^https?:/i.test(url)))).slice(0, 500)
-    });
-    const urls = results?.[0]?.result || [];
+    const urls = await collectLinks(tab.id);
     for (let offset = 0; offset < urls.length; offset += MAX_BATCH_ITEMS) {
       const captures = await Promise.all(urls.slice(offset, offset + MAX_BATCH_ITEMS).map(url => this.createCapture(url, {
         referer: tab.url,
@@ -225,37 +308,88 @@ export default class App {
 
   async handleRuntimeMessage(message) {
     if (message?.type === "status") {
-      return { ok: true, rules: this.rules, connector: this.connector.status, lastResult: this.lastResult, extensionId: chrome.runtime.id };
+      return {
+        ok: true,
+        rules: this.rules,
+        connector: this.connector.status,
+        lastResult: this.lastResult,
+        extensionId: chrome.runtime.id,
+        permissions: this.permissionState,
+        pending: this.pendingCaptures.map(({ capture, ...item }) => ({ ...item, url: capture.url }))
+      };
     }
-    if (message?.type === "save-rules") {
-      return { ok: true, rules: await this.saveRules(message.rules || {}) };
+    if (message?.type === "save-rules") return { ok: true, rules: await this.saveRules(message.rules || {}) };
+    if (message?.type === "save-site-policy") {
+      const host = normalizeHost(message.host);
+      const mode = normalizeMode(message.mode);
+      const sitePolicies = (this.rules.sitePolicies || []).filter(policy => policy.pattern !== host);
+      if (host && mode !== this.rules.defaultSiteMode) sitePolicies.push({ pattern: host, mode });
+      return { ok: true, rules: await this.saveRules({ sitePolicies }) };
+    }
+    if (message?.type === "permissions-changed") {
+      return { ok: true, permissions: await this.refreshPermissionState() };
+    }
+    if (message?.type === "accept-pending") {
+      const pending = this.pendingCaptures.find(item => item.id === message.id);
+      if (!pending) return { ok: false, reason: "pending_capture_not_found" };
+      const [item] = await chrome.downloads.search({ id: pending.downloadId });
+      if (!item || item.state === "complete") {
+        this.pendingCaptures = this.pendingCaptures.filter(value => value.id !== pending.id);
+        await this.savePendingCaptures();
+        return { ok: false, reason: "browser_download_no_longer_active" };
+      }
+      const capture = { ...pending.capture, operation: "confirmed", bypassRules: true };
+      const result = await this.takeOverDownload(pending.downloadId, capture);
+      if (result.accepted) {
+        this.pendingCaptures = this.pendingCaptures.filter(value => value.id !== pending.id);
+        await this.savePendingCaptures();
+      }
+      this.updateBadge();
+      return { ok: result.accepted, result };
+    }
+    if (message?.type === "reject-pending") {
+      this.pendingCaptures = this.pendingCaptures.filter(item => item.id !== message.id);
+      await this.savePendingCaptures();
+      this.updateBadge();
+      return { ok: true };
     }
     if (message?.type === "disable-for") {
       const minutes = Math.max(0, Math.min(1440, Number(message.minutes) || 0));
       return { ok: true, rules: await this.saveRules({ disabledUntilUtc: minutes ? new Date(Date.now() + minutes * 60000).toISOString() : null }) };
     }
-    if (message?.type === "health") {
-      const health = await this.connector.health();
-      return { ok: true, health };
-    }
+    if (message?.type === "health") return { ok: true, health: await this.connector.health() };
     return { ok: false, reason: "unknown_message" };
   }
 
   async refreshHealth() {
     const health = await this.connector.health();
-    this.onConnectorStatus({ connected: health.accepted === true, ready: health.accepted === true, reason: health.reason || "unavailable" });
+    this.onConnectorStatus({
+      connected: health.accepted === true,
+      ready: health.accepted === true,
+      reason: health.reason || "unavailable",
+      hostVersion: health.hostVersion,
+      compatibility: health.compatibility,
+      minimumExtensionVersion: health.minimumExtensionVersion,
+      capabilities: health.capabilities || []
+    });
   }
 
-  onConnectorStatus(status) {
+  onConnectorStatus(status) { this.connector.status = status; this.updateBadge(); }
+
+  updateBadge() {
     const disabled = !this.rules.enabled || (this.rules.disabledUntilUtc && Date.parse(this.rules.disabledUntilUtc) > Date.now());
-    const text = disabled ? "OFF" : status.ready ? "" : "!";
+    const text = disabled ? "OFF" : this.pendingCaptures.length ? String(Math.min(99, this.pendingCaptures.length)) : this.connector.status.ready ? "" : "!";
     chrome.action.setBadgeText({ text });
-    chrome.action.setTitle({ title: status.ready ? "XDM integration ready" : `XDM integration: ${status.reason || "unavailable"}` });
+    chrome.action.setTitle({ title: disabled ? "XDM capture disabled" : this.pendingCaptures.length ? `${this.pendingCaptures.length} download(s) waiting for confirmation` : this.connector.status.ready ? "XDM integration ready" : `XDM integration: ${this.connector.status.reason || "unavailable"}` });
   }
 }
 
 function normalizeRules(value) {
   const array = input => Array.isArray(input) ? input.map(item => String(item).trim().toLowerCase()).filter(Boolean).slice(0, 256) : [];
+  const sitePolicies = Array.isArray(value?.sitePolicies) ? value.sitePolicies
+    .map(item => ({ pattern: normalizeHost(item?.pattern), mode: normalizeMode(item?.mode) }))
+    .filter(item => item.pattern)
+    .slice(0, 256) : [];
   return {
     enabled: value?.enabled !== false,
     disabledUntilUtc: value?.disabledUntilUtc || null,
@@ -266,7 +400,10 @@ function normalizeRules(value) {
     allowedExtensions: array(value?.allowedExtensions).map(item => item.replace(/^\./, "")),
     blockedExtensions: array(value?.blockedExtensions).map(item => item.replace(/^\./, "")),
     includedSites: array(value?.includedSites),
-    excludedSites: array(value?.excludedSites)
+    excludedSites: [...new Set([...(Number(value?.securityDefaultsVersion || 0) < 1 ? SENSITIVE_SITE_DEFAULTS : []), ...array(value?.excludedSites)])],
+    defaultSiteMode: normalizeMode(value?.defaultSiteMode || "ask"),
+    sitePolicies,
+    securityDefaultsVersion: 1
   };
 }
 
@@ -274,9 +411,12 @@ function evaluateRules(capture, rules) {
   if (!rules.enabled) return { accepted: false, reason: "capture_disabled" };
   if (rules.disabledUntilUtc && Date.parse(rules.disabledUntilUtc) > Date.now()) return { accepted: false, reason: "temporarily_disabled" };
   if (capture.isIncognito && !rules.captureIncognito) return { accepted: false, reason: "incognito_disabled" };
-  if (capture.bypassRules && ["context", "download-all", "media"].includes(capture.operation)) return { accepted: true, reason: "manual_capture" };
+  if (capture.bypassRules && ["context", "download-all", "media", "confirmed"].includes(capture.operation)) return { accepted: true, reason: "manual_capture" };
   const host = new URL(capture.url).hostname.toLowerCase();
   if (matchesSite(host, rules.excludedSites)) return { accepted: false, reason: "site_excluded" };
+  const siteMode = resolveSiteMode(host, rules);
+  if (siteMode === "never") return { accepted: false, reason: "site_never_capture" };
+  if (siteMode === "ask") return { accepted: false, reason: "site_requires_confirmation" };
   if (rules.includedSites.length && !matchesSite(host, rules.includedSites)) return { accepted: false, reason: "site_not_included" };
   if (capture.fileSize != null && capture.fileSize < rules.minimumSizeBytes) return { accepted: false, reason: "below_minimum_size" };
   const mime = (capture.mimeType || "").split(";", 1)[0].toLowerCase();
@@ -288,36 +428,41 @@ function evaluateRules(capture, rules) {
   return { accepted: true, reason: "accepted" };
 }
 
-function matchesSite(host, patterns) {
-  return patterns.some(raw => {
-    const pattern = raw.replace(/^\*?\.?/, "");
-    return host === pattern || host.endsWith(`.${pattern}`);
-  });
+function resolveSiteMode(host, rules) {
+  const policy = [...(rules.sitePolicies || [])]
+    .filter(item => matchesSite(host, [item.pattern]))
+    .sort((a, b) => b.pattern.length - a.pattern.length)[0];
+  return policy?.mode || rules.defaultSiteMode;
 }
-function matchesMime(mime, patterns) {
-  return patterns.some(pattern => pattern.endsWith("/*") ? mime.startsWith(pattern.slice(0, -1)) : mime === pattern);
+function normalizeMode(value) { return ["always", "ask", "never"].includes(String(value).toLowerCase()) ? String(value).toLowerCase() : "ask"; }
+function normalizeHost(value) {
+  try { return new URL(String(value).includes("://") ? String(value) : `https://${value}`).hostname.toLowerCase(); }
+  catch { return String(value || "").trim().replace(/^\*?\.?/, "").toLowerCase(); }
 }
-function extensionOf(value) {
-  const match = /\.([a-z0-9]{1,16})(?:$|[?#])/i.exec(value || "");
-  return match ? match[1].toLowerCase() : null;
-}
+function matchesSite(host, patterns) { return (patterns || []).some(raw => { const pattern = normalizeHost(raw); return host === pattern || host.endsWith(`.${pattern}`); }); }
+function matchesMime(mime, patterns) { return (patterns || []).some(pattern => pattern.endsWith("/*") ? mime.startsWith(pattern.slice(0, -1)) : mime === pattern); }
+function extensionOf(value) { const match = /\.([a-z0-9]{1,16})(?:$|[?#])/i.exec(value || ""); return match ? match[1].toLowerCase() : null; }
 function encodeRequestBody(requestBody) {
   try {
     if (requestBody?.raw?.[0]?.bytes) {
       const bytes = new Uint8Array(requestBody.raw[0].bytes);
       if (bytes.byteLength > 16384) return null;
-      let binary = "";
-      for (const value of bytes) binary += String.fromCharCode(value);
-      return btoa(binary);
+      let binary = ""; for (const value of bytes) binary += String.fromCharCode(value); return btoa(binary);
     }
     if (requestBody?.formData) {
       const params = new URLSearchParams();
       for (const [name, values] of Object.entries(requestBody.formData)) for (const value of values) params.append(name, value);
-      const text = params.toString();
-      return text.length <= 16384 ? btoa(unescape(encodeURIComponent(text))) : null;
+      const text = params.toString(); return text.length <= 16384 ? btoa(unescape(encodeURIComponent(text))) : null;
     }
   } catch { }
   return null;
+}
+async function collectLinks(tabId) {
+  if (chrome.scripting?.executeScript) {
+    const results = await chrome.scripting.executeScript({ target: { tabId }, func: () => Array.from(new Set(Array.from(document.links, link => link.href).filter(url => /^https?:/i.test(url)))).slice(0, 500) });
+    return results?.[0]?.result || [];
+  }
+  return [];
 }
 function positiveSize(value) { return Number.isFinite(value) && value >= 0 ? value : null; }
 function leafName(path) { return path ? path.split(/[\\/]/).pop() || null : null; }
@@ -329,6 +474,7 @@ function detectBrowser() {
   if (/OPR\//.test(ua)) return "Opera";
   if (/Vivaldi\//.test(ua)) return "Vivaldi";
   if (/Brave/i.test(ua) || navigator.brave) return "Brave";
+  if (/Firefox\//.test(ua)) return "Firefox";
   if (/Chromium\//.test(ua)) return "Chromium";
   return "Chrome";
 }

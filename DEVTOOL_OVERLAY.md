@@ -1,37 +1,42 @@
-# XDM Overlay — Resume integrity and crash recovery
+# XDM Overlay — Browser extension security and diagnostics
 
-This overlay implements the reliable-transfer foundation on top of commit `d9c9756`.
+This overlay applies on top of commit `aee5671`.
 
-## Transfer integrity
+## Least-privilege browser helpers
 
-- replaces generic partial files with transactional `.xdm.part` artifacts;
-- writes atomic, flushed `.xdm.resume.json` checkpoints;
-- validates Content-Range, known total length, ETag, and Last-Modified before append;
-- verifies SHA-256 or SHA-512 before final rename when an expected checksum is supplied;
-- verifies the `416 Range Not Satisfiable` completion path before finalization;
-- records manual SHA-256 fingerprints for completed downloads without a supplied checksum;
-- preserves mismatching partials and suspect completed files for diagnosis.
+- moves cookies, webRequest, and HTTP/HTTPS host access to optional permissions;
+- keeps URL-only acknowledged takeover functional without enhanced metadata access;
+- exposes explicit grant/remove controls in the popup;
+- keeps private/incognito capture disabled by default;
+- excludes sensitive authentication, payment, password-manager, and loopback hosts by default.
 
-## Crash recovery
+## Per-site capture policy
 
-- reconciles history with actual partial and segmented bytes on startup;
-- migrates legacy `.part`, segmented-part, and `.finalizing` artifacts;
-- recovers valid interrupted finalization using durable length/checksum markers;
-- restores the active mirror after a crash during failover;
-- rejects malformed, oversized, foreign, or incomplete checkpoints;
-- serializes final completion against in-flight checkpoint writes so no stale checkpoint can reappear after a verified rename;
-- exposes recovery review, Verify, and Repair actions in Downloads.
+- adds Always, Ask each time, and Never modes;
+- defaults unconfigured sites to Ask each time;
+- queues pending automatic captures without cancelling the browser download;
+- allows users to confirm takeover or keep the download in the browser;
+- preserves explicit context-menu capture.
 
-## Mirrors and Metalink
+## Native-host hardening
 
-- supports ordered mirrors with normal retry/backoff before failover;
-- restarts from zero when changing mirrors to avoid mixed-source corruption;
-- imports bounded, XXE-safe Metalink v4 documents;
-- imports declared size plus SHA-256/SHA-512 metadata;
-- retains mirrors, size, and checksum metadata in download-list export/import.
+- upgrades the extension handshake to report identity, manifest version, optional permissions, and origins;
+- enforces extension version compatibility;
+- verifies the browser-provided native-host origin/add-on identity when available;
+- validates native-host manifest allow-lists rather than accepting any non-empty list;
+- reports authenticated extension health to the XDM loopback service.
 
-## Qualification
+## Desktop diagnostics
 
-The overlay adds deterministic coverage for atomic checkpoints, corrupt/oversized checkpoint quarantine, checksum success and mismatch, safe orphan handling, crash reconciliation, interrupted finalization, manual verification and repair, `416` verification, mirror failover/recovery, Metalink parsing/XXE rejection, persistence round trips, and the recovery UI contract.
+- adds extension version, manifest, compatibility, heartbeat, permissions, and capability summaries;
+- adds a Refresh diagnostics action;
+- includes extension health in diagnostic support bundles;
+- adds deterministic tests for manifests, site policies, pending confirmation, protocol compatibility, origin validation, and health reporting.
 
-`docs/parity/features.json` is intentionally unchanged because these are modern reliability enhancements rather than legacy-parity claims.
+`docs/parity/features.json` is intentionally unchanged because this is a modern security enhancement rather than a legacy-parity claim.
+
+## Validation repair
+
+- accepts both fixed-length and chunked extension-health reports while enforcing the same 32 KiB streaming limit;
+- uses culture-invariant manifest-version formatting;
+- removes the reported single-character and repeated-array analyzer warnings.

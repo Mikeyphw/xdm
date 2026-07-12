@@ -343,5 +343,15 @@
   "integrity_verifying": "Verifying",
   "integrity_verified": "Verified",
   "integrity_mismatch": "Checksum mismatch",
-  "integrity_repairing": "Repairing"
+  "integrity_repairing": "Repairing",
+  "ui_capture_service": "Capture service",
+  "ui_extension_health": "Extension health",
+  "ui_protocol_compatibility": "Protocol compatibility",
+  "ui_browser_integration_health": "Browser integration health",
+  "ui_browser_security_description": "XDM uses a versioned native-messaging handshake, authenticated loopback transport, per-site capture rules, and optional permissions for sensitive request metadata.",
+  "ui_refresh_diagnostics": "Refresh diagnostics",
+  "ui_native_host_registration": "Native host registration",
+  "ui_chromium_extension_ids": "Chromium extension IDs",
+  "ui_extension_permissions_capabilities": "Permissions and capabilities",
+  "ui_extension_permissions_hint": "Cookies, request bodies, and request headers are read only after the user grants optional enhanced access in the extension popup. URL-only takeover remains available without it."
 }

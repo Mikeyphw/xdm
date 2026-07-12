@@ -22,6 +22,8 @@ internal static class Program
         Stream output = Console.OpenStandardOutput();
         string sessionId = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         string hostVersion = typeof(Program).Assembly.GetName().Version?.ToString() ?? "9.0.0";
+        string? launchOrigin = NativeHostOriginVerifier.ResolveLaunchOrigin(Environment.GetCommandLineArgs());
+        BrowserClientInfo? negotiatedClient = null;
 
         using HttpClient client = new() { Timeout = LoopbackTimeout };
         while (true)
@@ -49,7 +51,18 @@ internal static class Program
             try
             {
                 BrowserNativeMessage message = BrowserNativeProtocol.Parse(payload);
-                response = await HandleMessageAsync(message, sessionId, hostVersion, client).ConfigureAwait(false);
+                if (message.Type == "hello")
+                {
+                    negotiatedClient = message.Client;
+                }
+
+                response = await HandleMessageAsync(
+                    message,
+                    sessionId,
+                    hostVersion,
+                    client,
+                    launchOrigin,
+                    negotiatedClient).ConfigureAwait(false);
             }
             catch (Exception exception) when (exception is JsonException or InvalidDataException or HttpRequestException or IOException or OperationCanceledException)
             {
@@ -67,11 +80,31 @@ internal static class Program
         BrowserNativeMessage message,
         string sessionId,
         string hostVersion,
-        HttpClient client)
+        HttpClient client,
+        string? launchOrigin,
+        BrowserClientInfo? negotiatedClient)
     {
         if (message.Type == "hello")
         {
-            return BrowserNativeProtocol.CreateHelloResponse(message.RequestId, sessionId, hostVersion);
+            BrowserClientInfo clientInfo = message.Client!;
+            if (!NativeHostOriginVerifier.IsMatch(launchOrigin, clientInfo.ExtensionId))
+            {
+                await ReportExtensionStatusAsync(client, clientInfo, "protocol_mismatch", hostVersion)
+                    .ConfigureAwait(false);
+                return BrowserNativeProtocol.CreateError(message.RequestId, "hello-ack", "extension_origin_mismatch");
+            }
+
+            BrowserNativeResponse hello = BrowserNativeProtocol.CreateHelloResponse(
+                message.RequestId,
+                sessionId,
+                hostVersion,
+                clientInfo);
+            await ReportExtensionStatusAsync(
+                client,
+                clientInfo,
+                hello.Compatibility ?? "protocol_mismatch",
+                hostVersion).ConfigureAwait(false);
+            return hello;
         }
 
         if (!FixedTimeEquals(message.SessionId, sessionId))
@@ -83,6 +116,16 @@ internal static class Program
         {
             string? healthToken = await TryLoadTokenAsync().ConfigureAwait(false);
             bool ready = healthToken is not null && await ProbeHealthAsync(client, healthToken).ConfigureAwait(false);
+            if (negotiatedClient is not null)
+            {
+                await ReportExtensionStatusAsync(
+                    client,
+                    negotiatedClient,
+                    BrowserNativeProtocol.GetCompatibility(negotiatedClient.ExtensionVersion),
+                    hostVersion,
+                    healthToken).ConfigureAwait(false);
+            }
+
             return new BrowserNativeResponse(
                 BrowserNativeProtocol.ProtocolVersion,
                 message.RequestId,
@@ -91,7 +134,11 @@ internal static class Program
                 ready ? "ready" : "xdm_unavailable",
                 sessionId,
                 hostVersion,
-                BrowserNativeProtocol.Capabilities);
+                BrowserNativeProtocol.Capabilities,
+                MinimumExtensionVersion: BrowserNativeProtocol.MinimumExtensionVersion,
+                Compatibility: negotiatedClient is null
+                    ? "protocol_mismatch"
+                    : BrowserNativeProtocol.GetCompatibility(negotiatedClient.ExtensionVersion));
         }
 
         IReadOnlyList<BrowserCaptureRequest> captures = message.Type == "capture"
@@ -142,7 +189,52 @@ internal static class Program
             BrowserNativeProtocol.Capabilities,
             accepted,
             rejected,
-            results);
+            results,
+            BrowserNativeProtocol.MinimumExtensionVersion,
+            negotiatedClient is null
+                ? "protocol_mismatch"
+                : BrowserNativeProtocol.GetCompatibility(negotiatedClient.ExtensionVersion));
+    }
+
+    private static async Task ReportExtensionStatusAsync(
+        HttpClient client,
+        BrowserClientInfo browserClient,
+        string compatibility,
+        string hostVersion,
+        string? token = null)
+    {
+        token ??= await TryLoadTokenAsync().ConfigureAwait(false);
+        if (token is null)
+        {
+            return;
+        }
+
+        BrowserExtensionHealthReport report = new(
+            browserClient.Name,
+            browserClient.Version,
+            browserClient.ExtensionVersion,
+            browserClient.ExtensionId,
+            browserClient.ManifestVersion,
+            browserClient.IncognitoAllowed,
+            browserClient.EnhancedAccessGranted,
+            browserClient.GrantedOrigins,
+            BrowserNativeProtocol.ProtocolVersion,
+            compatibility,
+            BrowserNativeProtocol.Capabilities.Append($"host-version:{hostVersion}").ToArray(),
+            DateTimeOffset.UtcNow);
+        using HttpRequestMessage request = new(HttpMethod.Post, "http://127.0.0.1:9614/extension-status")
+        {
+            Content = JsonContent.Create(report, options: JsonOptions)
+        };
+        request.Headers.Add("X-XDM-Token", token);
+        try
+        {
+            using HttpResponseMessage response = await client.SendAsync(request).ConfigureAwait(false);
+            _ = response.IsSuccessStatusCode;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException)
+        {
+        }
     }
 
     private static async Task<BrowserCaptureAcknowledgement> SendCaptureAsync(

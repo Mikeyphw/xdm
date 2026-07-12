@@ -32,7 +32,7 @@ public static class BrowserCaptureRuleEvaluator
             return BrowserCaptureRuleDecision.Reject("incognito_disabled");
         }
 
-        if (request.BypassRules && request.Operation is "context" or "download-all" or "media")
+        if (request.BypassRules && request.Operation is "context" or "download-all" or "media" or "confirmed")
         {
             return BrowserCaptureRuleDecision.Accept("manual_capture");
         }
@@ -41,6 +41,17 @@ public static class BrowserCaptureRuleEvaluator
         if (MatchesSite(host, normalized.ExcludedSites))
         {
             return BrowserCaptureRuleDecision.Reject("site_excluded");
+        }
+
+        string siteMode = normalized.ResolveSiteMode(host);
+        if (siteMode == BrowserSiteCaptureModes.Never)
+        {
+            return BrowserCaptureRuleDecision.Reject("site_never_capture");
+        }
+
+        if (siteMode == BrowserSiteCaptureModes.Ask)
+        {
+            return BrowserCaptureRuleDecision.Reject("site_requires_confirmation");
         }
 
         if (normalized.IncludedSites is { Count: > 0 } && !MatchesSite(host, normalized.IncludedSites))

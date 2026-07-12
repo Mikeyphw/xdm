@@ -1,8 +1,8 @@
 "use strict";
 
-const XDM_HOST_NAME = "com.xtremedownloadmanager.xdm";
-const XDM_PROTOCOL_VERSION = "2.0";
-const XDM_REQUEST_TIMEOUT_MS = 25000;
+const HOST_NAME = "com.xtremedownloadmanager.xdm";
+const PROTOCOL_VERSION = "2.0";
+const REQUEST_TIMEOUT_MS = 25000;
 
 class NativeConnector {
   constructor(onStatusChanged = () => {}) {
@@ -12,18 +12,23 @@ class NativeConnector {
     this.pending = new Map();
     this.connectPromise = null;
     this.sequence = 0;
-    this.status = { connected: false, ready: false, reason: "not_connected" };
+    this.status = { connected: false, ready: false, reason: "not_connected", compatibility: "unknown" };
   }
 
   async send(type, payload = {}) {
     await this.ensureConnected();
     const requestId = this.nextRequestId();
-    return this.postAndWait({ protocolVersion: XDM_PROTOCOL_VERSION, requestId, type, sessionId: this.sessionId, ...payload });
+    return this.postAndWait({ protocolVersion: PROTOCOL_VERSION, requestId, type, sessionId: this.sessionId, ...payload });
   }
 
   async health() {
     try { return await this.send("health"); }
-    catch (error) { return { accepted: false, reason: error.message }; }
+    catch (error) { return { accepted: false, reason: error.message, compatibility: this.status.compatibility }; }
+  }
+
+  disconnect() {
+    if (this.port) { try { this.port.disconnect(); } catch { } }
+    this.handleDisconnect("disconnected");
   }
 
   async ensureConnected() {
@@ -35,28 +40,44 @@ class NativeConnector {
   }
 
   async connectInternal() {
-    const port = browser.runtime.connectNative(XDM_HOST_NAME);
+    const port = chrome.runtime.connectNative(HOST_NAME);
     this.port = port;
     port.onMessage.addListener(message => this.handleMessage(message));
-    port.onDisconnect.addListener(disconnectedPort => this.handleDisconnect(disconnectedPort?.error?.message || "native_host_disconnected"));
-    this.updateStatus({ connected: true, ready: false, reason: "negotiating" });
+    port.onDisconnect.addListener(() => this.handleDisconnect(chrome.runtime.lastError?.message || "native_host_disconnected"));
+    this.updateStatus({ connected: true, ready: false, reason: "negotiating", compatibility: "unknown" });
+
     try {
+      const permissions = await permissionSnapshot();
+      const manifest = chrome.runtime.getManifest();
       const hello = await this.postAndWait({
-        protocolVersion: XDM_PROTOCOL_VERSION,
+        protocolVersion: PROTOCOL_VERSION,
         requestId: this.nextRequestId(),
         type: "hello",
         client: {
-          name: "Firefox",
+          name: detectBrowser(),
           version: navigator.userAgent,
-          extensionVersion: browser.runtime.getManifest().version,
-          platform: navigator.platform
+          extensionVersion: manifest.version,
+          platform: navigator.platform,
+          extensionId: chrome.runtime.id,
+          manifestVersion: manifest.manifest_version || 3,
+          incognitoAllowed: permissions.incognitoAllowed,
+          enhancedAccessGranted: permissions.enhancedAccessGranted,
+          grantedOrigins: permissions.grantedOrigins
         }
       });
-      if (!hello.accepted || !hello.sessionId || hello.protocolVersion !== XDM_PROTOCOL_VERSION) {
+      if (!hello.accepted || !hello.sessionId || hello.protocolVersion !== PROTOCOL_VERSION) {
         throw new Error(hello.reason || "protocol_negotiation_failed");
       }
       this.sessionId = hello.sessionId;
-      this.updateStatus({ connected: true, ready: true, reason: "ready", hostVersion: hello.hostVersion });
+      this.updateStatus({
+        connected: true,
+        ready: true,
+        reason: "ready",
+        hostVersion: hello.hostVersion,
+        minimumExtensionVersion: hello.minimumExtensionVersion,
+        compatibility: hello.compatibility || "compatible",
+        capabilities: hello.capabilities || []
+      });
     } catch (error) {
       try { port.disconnect(); } catch { }
       this.handleDisconnect(error.message || "protocol_negotiation_failed");
@@ -70,7 +91,7 @@ class NativeConnector {
       const timeout = setTimeout(() => {
         this.pending.delete(message.requestId);
         reject(new Error("native_message_timeout"));
-      }, XDM_REQUEST_TIMEOUT_MS);
+      }, REQUEST_TIMEOUT_MS);
       this.pending.set(message.requestId, { resolve, reject, timeout, expectedType: `${message.type}-ack` });
       try { this.port.postMessage(message); }
       catch (error) {
@@ -88,7 +109,7 @@ class NativeConnector {
     this.pending.delete(message.requestId);
     const validType = message.type === pending.expectedType || message.type === "protocol-error";
     const validSession = message.accepted !== true || !this.sessionId || message.sessionId === this.sessionId;
-    if (message.protocolVersion !== XDM_PROTOCOL_VERSION || typeof message.accepted !== "boolean" || !validType || !validSession) {
+    if (message.protocolVersion !== PROTOCOL_VERSION || typeof message.accepted !== "boolean" || !validType || !validSession) {
       pending.reject(new Error("invalid_native_response"));
       return;
     }
@@ -103,9 +124,33 @@ class NativeConnector {
       pending.reject(new Error(reason));
     }
     this.pending.clear();
-    this.updateStatus({ connected: false, ready: false, reason });
+    this.updateStatus({ connected: false, ready: false, reason, compatibility: reason === "extension_outdated" ? "extension_outdated" : "unknown" });
   }
 
   updateStatus(status) { this.status = status; this.onStatusChanged(status); }
-  nextRequestId() { this.sequence = (this.sequence + 1) % 1000000; return `f-${Date.now().toString(36)}-${this.sequence.toString(36)}`; }
+  nextRequestId() { this.sequence = (this.sequence + 1) % 1000000; return `c-${Date.now().toString(36)}-${this.sequence.toString(36)}`; }
+}
+
+async function permissionSnapshot() {
+  const all = await new Promise(resolve => chrome.permissions.getAll(resolve));
+  const incognitoAllowed = await new Promise(resolve => chrome.extension?.isAllowedIncognitoAccess
+    ? chrome.extension.isAllowedIncognitoAccess(resolve)
+    : resolve(false));
+  const grantedOrigins = (all.origins || []).filter(origin => /^https?:/i.test(origin));
+  return {
+    incognitoAllowed,
+    grantedOrigins,
+    enhancedAccessGranted: grantedOrigins.length > 0 && (all.permissions || []).includes("webRequest") && (all.permissions || []).includes("cookies")
+  };
+}
+
+function detectBrowser() {
+  const ua = navigator.userAgent;
+  if (/Edg\//.test(ua)) return "Edge";
+  if (/OPR\//.test(ua)) return "Opera";
+  if (/Vivaldi\//.test(ua)) return "Vivaldi";
+  if (/Brave/i.test(ua) || navigator.brave) return "Brave";
+  if (/Firefox\//.test(ua)) return "Firefox";
+  if (/Chromium\//.test(ua)) return "Chromium";
+  return "Chrome";
 }

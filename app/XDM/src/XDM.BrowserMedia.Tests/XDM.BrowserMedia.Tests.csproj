@@ -16,6 +16,11 @@
   <ItemGroup>
     <None Include="Fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Fixtures/Media/*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../chrome-extension/manifest.json" Link="Fixtures/Extensions/chrome-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../chrome-extension/app.js" Link="Fixtures/Extensions/chrome-app.js" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../chrome-extension/popup.html" Link="Fixtures/Extensions/chrome-popup.html" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../firefox-amo/manifest.json" Link="Fixtures/Extensions/firefox-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../firefox-amo/app/app.js" Link="Fixtures/Extensions/firefox-app.js" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

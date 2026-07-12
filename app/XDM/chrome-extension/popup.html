@@ -12,30 +12,57 @@
     <div>
       <strong>XDM Integration</strong>
       <span id="health">Checking native host…</span>
+      <span id="compatibility" class="muted"></span>
     </div>
-    <label class="switch"><input id="enabled" type="checkbox"><span>Capture downloads</span></label>
+    <label class="switch"><input id="enabled" type="checkbox"><span>Capture</span></label>
   </header>
   <main>
-    <div class="grid two">
-      <label>Minimum size (MB)<input id="minimumSize" type="number" min="0" step="0.1"></label>
-      <label class="check"><input id="incognito" type="checkbox"><span>Allow private/incognito</span></label>
-    </div>
-    <label>Excluded sites<textarea id="excludedSites" placeholder="example.com, *.internal.test"></textarea></label>
-    <label>Included sites (empty = all)<textarea id="includedSites"></textarea></label>
-    <div class="grid two">
-      <label>Blocked MIME types<textarea id="blockedMimeTypes" placeholder="text/html, image/*"></textarea></label>
-      <label>Allowed MIME types<textarea id="allowedMimeTypes"></textarea></label>
-    </div>
-    <div class="grid two">
-      <label>Blocked extensions<textarea id="blockedExtensions" placeholder="tmp, crdownload"></textarea></label>
-      <label>Allowed extensions<textarea id="allowedExtensions"></textarea></label>
-    </div>
+    <section class="card">
+      <div class="section-title">Current site</div>
+      <div class="site-row"><code id="currentSite">No web page selected</code><select id="currentSiteMode"><option value="always">Always capture</option><option value="ask">Ask each time</option><option value="never">Never capture</option></select></div>
+      <p class="hint">Context-menu actions always remain manual and explicit.</p>
+    </section>
+
+    <section class="card">
+      <div class="section-title">Privacy access</div>
+      <div id="permissionSummary" class="status-line">Checking permissions…</div>
+      <button id="grantAccess" class="primary">Grant enhanced metadata access</button>
+      <button id="removeAccess">Remove enhanced access</button>
+      <p class="hint">Optional access adds cookies, request headers, and POST metadata. Normal URL takeover works without it.</p>
+    </section>
+
+    <section id="pendingSection" class="card" hidden>
+      <div class="section-title">Waiting for confirmation</div>
+      <div id="pendingList" class="pending-list"></div>
+    </section>
+
+    <details>
+      <summary>Capture rules</summary>
+      <div class="details-content">
+        <div class="grid two">
+          <label>Default site mode<select id="defaultSiteMode"><option value="always">Always capture</option><option value="ask">Ask each time</option><option value="never">Never capture</option></select></label>
+          <label>Minimum size (MB)<input id="minimumSize" type="number" min="0" step="0.1"></label>
+        </div>
+        <label class="check"><input id="incognito" type="checkbox"><span>Allow private/incognito captures</span></label>
+        <label>Excluded sites<textarea id="excludedSites" placeholder="Sensitive sites are excluded by default"></textarea></label>
+        <label>Included sites (empty = all)<textarea id="includedSites"></textarea></label>
+        <div class="grid two">
+          <label>Blocked MIME types<textarea id="blockedMimeTypes" placeholder="text/html, image/*"></textarea></label>
+          <label>Allowed MIME types<textarea id="allowedMimeTypes"></textarea></label>
+        </div>
+        <div class="grid two">
+          <label>Blocked extensions<textarea id="blockedExtensions" placeholder="tmp, crdownload"></textarea></label>
+          <label>Allowed extensions<textarea id="allowedExtensions"></textarea></label>
+        </div>
+      </div>
+    </details>
+
     <div class="actions">
       <button id="save" class="primary">Save rules</button>
       <button id="disable">Disable 10 min</button>
       <button id="enableNow">Enable now</button>
     </div>
-    <p id="result"></p>
+    <p id="result" role="status"></p>
     <p class="extension-id">Extension ID: <code id="extensionId"></code></p>
   </main>
 </body>

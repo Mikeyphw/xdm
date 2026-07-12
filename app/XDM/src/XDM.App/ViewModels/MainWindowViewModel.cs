@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using XDM.App.Services;
@@ -431,6 +432,24 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string browserHostStatus = "Native host status has not been checked.";
+
+    [ObservableProperty]
+    private string browserExtensionSummary = "No browser extension has reported health yet.";
+
+    [ObservableProperty]
+    private string browserCompatibilityStatus = "Compatibility has not been negotiated.";
+
+    [ObservableProperty]
+    private string browserPermissionSummary = "Extension permissions have not been reported.";
+
+    [ObservableProperty]
+    private string browserCapabilitiesSummary = "Capabilities have not been reported.";
+
+    [ObservableProperty]
+    private string browserLastHealth = "No extension heartbeat received.";
+
+    [ObservableProperty]
+    private bool browserExtensionHealthy;
 
     [ObservableProperty]
     private string lastBrowserCapture = "No browser captures yet";
@@ -1209,6 +1228,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         await _browserIntegrationService.StopAsync();
         await _browserIntegrationService.InitializeAsync();
         ApplyBrowserStatus(_browserIntegrationService.Current);
+    }
+
+    [RelayCommand]
+    private Task RefreshBrowserDiagnosticsAsync()
+    {
+        BrowserHostInstallationStatus hostStatus = _browserHostInstaller.GetStatus();
+        BrowserHostStatus = hostStatus.Message;
+        ApplyBrowserStatus(_browserIntegrationService.Current);
+        OperationMessage = "Browser integration diagnostics refreshed.";
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
@@ -2014,6 +2043,33 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             LastBrowserCapture = $"{status.LastBrowser ?? "Browser"}: {status.LastCapturedUrl}";
         }
+
+        BrowserExtensionHealthy = string.Equals(status.ExtensionCompatibility, "compatible", StringComparison.Ordinal)
+            && status.LastExtensionHealthAt is DateTimeOffset heartbeat
+            && DateTimeOffset.UtcNow - heartbeat < TimeSpan.FromMinutes(3);
+        BrowserExtensionSummary = status.ExtensionBrowser is null
+            ? "No browser extension has reported health yet. Open the extension popup to connect."
+            : $"{status.ExtensionBrowser} • extension {status.ExtensionVersion ?? "unknown"} • Manifest V{status.ExtensionManifestVersion?.ToString(CultureInfo.InvariantCulture) ?? "?"}";
+        BrowserCompatibilityStatus = status.ExtensionCompatibility switch
+        {
+            "compatible" => $"Compatible with native protocol {status.ProtocolVersion}.",
+            "extension_outdated" => $"Extension is outdated; install version {BrowserNativeProtocol.MinimumExtensionVersion} or newer.",
+            "host_outdated" => "The XDM native host is older than the extension.",
+            "protocol_mismatch" => "Extension and native host protocol versions do not match.",
+            _ => "Compatibility has not been negotiated."
+        };
+        BrowserPermissionSummary = status.ExtensionEnhancedAccessGranted switch
+        {
+            true => $"Enhanced metadata access granted • {status.ExtensionGrantedOrigins?.Count ?? 0} origin pattern(s) • private mode {(status.ExtensionIncognitoAllowed == true ? "allowed" : "blocked")}",
+            false => $"Least-privilege URL-only mode • private mode {(status.ExtensionIncognitoAllowed == true ? "allowed" : "blocked")}",
+            _ => "Extension permissions have not been reported."
+        };
+        BrowserCapabilitiesSummary = status.ExtensionCapabilities is { Count: > 0 }
+            ? string.Join(" • ", status.ExtensionCapabilities.Where(static value => !value.StartsWith("host-version:", StringComparison.Ordinal)).Take(8))
+            : "Capabilities have not been reported.";
+        BrowserLastHealth = status.LastExtensionHealthAt is DateTimeOffset lastHealth
+            ? $"Last extension heartbeat: {lastHealth.ToLocalTime():g}"
+            : "No extension heartbeat received.";
     }
 
     private static string RedactToken(string token)

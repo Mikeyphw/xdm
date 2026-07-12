@@ -168,14 +168,20 @@ public sealed class BrowserHostInstaller : IBrowserHostInstaller
                     _platform == BrowserHostPlatform.Windows ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
             bool typeMatches = root.TryGetProperty("type", out JsonElement type)
                 && string.Equals(type.GetString(), "stdio", StringComparison.Ordinal);
-            bool allowListPresent = isFirefox
+            bool allowListCompatible = isFirefox
                 ? root.TryGetProperty("allowed_extensions", out JsonElement extensions)
                     && extensions.ValueKind == JsonValueKind.Array
-                    && extensions.GetArrayLength() > 0
+                    && extensions.EnumerateArray()
+                        .Where(static value => value.ValueKind == JsonValueKind.String)
+                        .Select(static value => value.GetString())
+                        .Any(static value => string.Equals(value, FirefoxExtensionId, StringComparison.Ordinal))
                 : root.TryGetProperty("allowed_origins", out JsonElement origins)
                     && origins.ValueKind == JsonValueKind.Array
-                    && origins.GetArrayLength() > 0;
-            bool compatible = nameMatches && pathMatches && typeMatches && allowListPresent;
+                    && origins.GetArrayLength() > 0
+                    && origins.EnumerateArray().All(static value =>
+                        value.ValueKind == JsonValueKind.String
+                        && IsValidChromiumOrigin(value.GetString()));
+            bool compatible = nameMatches && pathMatches && typeMatches && allowListCompatible;
             return new BrowserHostManifestStatus(
                 browser,
                 path,
@@ -187,6 +193,21 @@ public sealed class BrowserHostInstaller : IBrowserHostInstaller
         {
             return new BrowserHostManifestStatus(browser, path, true, false, $"Invalid manifest: {exception.Message}");
         }
+    }
+
+
+    private static bool IsValidChromiumOrigin(string? value)
+    {
+        const string Prefix = "chrome-extension://";
+        if (string.IsNullOrWhiteSpace(value)
+            || !value.StartsWith(Prefix, StringComparison.Ordinal)
+            || !value.EndsWith('/'))
+        {
+            return false;
+        }
+
+        string id = value[Prefix.Length..^1];
+        return id.Length == 32 && id.All(static character => character is >= 'a' and <= 'p');
     }
 
     private static string[] ParseChromiumExtensionIds(string? value)

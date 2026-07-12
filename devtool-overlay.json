@@ -1,27 +1,26 @@
 {
-  "name": "xdm_resume_integrity_recovery_overlay",
+  "name": "xdm_browser_security_diagnostics_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "d9c9756",
+  "baseCommit": "aee5671",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "reliable-transfer-foundation",
-  "description": "Adds transactional partial files, durable resume checkpoints, server identity validation, checksum verification, mirror and Metalink support, crash recovery, and Verify/Repair UX.",
+  "phase": "browser-extension-security-diagnostics",
+  "description": "Adds least-privilege browser permissions, per-site capture modes, pending confirmation, native-host identity/version checks, authenticated extension health, and a diagnostics workbench.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
     "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Add durable resume integrity and crash recovery",
+  "commitMessage": "Harden browser integration security and diagnostics",
   "constraints": [
-    "Apply on top of commit d9c9756",
+    "Apply on top of commit aee5671",
     "Validate only app/XDM/XDM.Modern.sln",
     "Require zero warnings and zero errors",
-    "Preserve existing HTTP, FTP, queue, scheduler, browser capture, media and aria2 behavior",
-    "Preserve legacy partial and finalization migration",
-    "Do not trust orphaned single-stream partial data without a compatible durable checkpoint",
-    "Migrate legacy segmented parts only through the probed range-validation path",
-    "Do not finalize data that fails expected size or checksum validation",
+    "Preserve acknowledged download takeover and explicit context-menu capture",
+    "Do not require cookie, webRequest, or broad host access for URL-only takeover",
+    "Do not capture private/incognito downloads unless explicitly enabled",
+    "Do not expose the browser loopback authentication token",
     "Do not modify docs/parity/features.json"
   ]
 }

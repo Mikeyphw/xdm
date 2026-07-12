@@ -7,6 +7,7 @@ namespace XDM.BrowserIntegration;
 
 public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationService
 {
+    private const int MaxExtensionHealthPayloadBytes = 32 * 1024;
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan CaptureDecisionTimeout = TimeSpan.FromSeconds(20);
     private readonly object _sync = new();
@@ -216,7 +217,8 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
     {
         string path = context.Request.Url?.AbsolutePath ?? "/";
         bool protectedEndpoint = string.Equals(path, "/health", StringComparison.Ordinal)
-            || string.Equals(path, "/capture", StringComparison.Ordinal);
+            || string.Equals(path, "/capture", StringComparison.Ordinal)
+            || string.Equals(path, "/extension-status", StringComparison.Ordinal);
         if (protectedEndpoint && !IsAuthenticated(context.Request))
         {
             await WriteJsonAsync(context.Response, HttpStatusCode.Unauthorized, new { error = "unauthorized" }, cancellationToken)
@@ -236,8 +238,52 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
                 status.LastMessageAt,
                 status.LastBrowser,
                 status.LastCapturedUrl,
-                status.LastError
+                status.LastError,
+                status.LastExtensionHealthAt,
+                status.ExtensionBrowser,
+                status.ExtensionBrowserVersion,
+                status.ExtensionVersion,
+                status.ExtensionId,
+                status.ExtensionManifestVersion,
+                status.ExtensionIncognitoAllowed,
+                status.ExtensionEnhancedAccessGranted,
+                status.ExtensionGrantedOrigins,
+                status.ExtensionCompatibility,
+                status.ExtensionCapabilities
             }, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (context.Request.HttpMethod == "POST" && string.Equals(path, "/extension-status", StringComparison.Ordinal))
+        {
+            if (context.Request.ContentLength64 == 0
+                || context.Request.ContentLength64 > MaxExtensionHealthPayloadBytes)
+            {
+                throw new InvalidDataException("Browser extension health payload is empty or exceeds 32 KiB.");
+            }
+
+            BrowserExtensionHealthReport report = await DeserializeExtensionHealthReportAsync(
+                context.Request.InputStream,
+                cancellationToken).ConfigureAwait(false);
+
+            report.Validate();
+            UpdateStatus(status => status with
+            {
+                LastExtensionHealthAt = report.ReportedAtUtc,
+                ExtensionBrowser = report.Browser,
+                ExtensionBrowserVersion = report.BrowserVersion,
+                ExtensionVersion = report.ExtensionVersion,
+                ExtensionId = report.ExtensionId,
+                ExtensionManifestVersion = report.ManifestVersion,
+                ExtensionIncognitoAllowed = report.IncognitoAllowed,
+                ExtensionEnhancedAccessGranted = report.EnhancedAccessGranted,
+                ExtensionGrantedOrigins = report.GrantedOrigins?.ToArray(),
+                ExtensionCompatibility = report.Compatibility,
+                ExtensionCapabilities = report.Capabilities?.ToArray(),
+                LastError = report.Compatibility == "compatible" ? null : report.Compatibility
+            });
+            await WriteJsonAsync(context.Response, HttpStatusCode.OK, new { accepted = true }, cancellationToken)
+                .ConfigureAwait(false);
             return;
         }
 
@@ -302,6 +348,45 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
                 decision.Reason,
                 decision.DownloadId),
             cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<BrowserExtensionHealthReport> DeserializeExtensionHealthReportAsync(
+        Stream input,
+        CancellationToken cancellationToken)
+    {
+        using MemoryStream payload = new();
+        byte[] buffer = new byte[4096];
+        int totalBytes = 0;
+        while (true)
+        {
+            int maximumRead = Math.Min(buffer.Length, MaxExtensionHealthPayloadBytes - totalBytes + 1);
+            int bytesRead = await input
+                .ReadAsync(buffer.AsMemory(0, maximumRead), cancellationToken)
+                .ConfigureAwait(false);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+
+            totalBytes += bytesRead;
+            if (totalBytes > MaxExtensionHealthPayloadBytes)
+            {
+                throw new InvalidDataException("Browser extension health payload exceeds 32 KiB.");
+            }
+
+            payload.Write(buffer.AsSpan(0, bytesRead));
+        }
+
+        if (payload.Length == 0)
+        {
+            throw new InvalidDataException("Browser extension health payload is empty.");
+        }
+
+        payload.Position = 0;
+        BrowserExtensionHealthReport? report = await JsonSerializer
+            .DeserializeAsync<BrowserExtensionHealthReport>(payload, SerializerOptions, cancellationToken)
+            .ConfigureAwait(false);
+        return report ?? throw new InvalidDataException("Browser extension health payload is empty.");
     }
 
     private bool IsAuthenticated(HttpListenerRequest request)

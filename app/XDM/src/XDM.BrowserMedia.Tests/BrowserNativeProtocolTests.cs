@@ -84,6 +84,43 @@ public sealed class BrowserNativeProtocolTests
         Assert.Throws<InvalidDataException>(() => BrowserNativeProtocol.Parse(payload));
     }
 
+
+    [Fact]
+    public void ParsesLeastPrivilegeClientHealthMetadata()
+    {
+        byte[] payload = Encoding.UTF8.GetBytes("""
+            {"protocolVersion":"2.0","requestId":"hello-security","type":"hello","client":{"name":"Chrome","version":"Chrome/140","extensionVersion":"4.1.0","platform":"Linux","extensionId":"abcdefghijklmnopabcdefghijklmnop","manifestVersion":3,"incognitoAllowed":false,"enhancedAccessGranted":false,"grantedOrigins":[]}}
+            """);
+
+        BrowserNativeMessage message = BrowserNativeProtocol.Parse(payload);
+
+        Assert.Equal("abcdefghijklmnopabcdefghijklmnop", message.Client!.ExtensionId);
+        Assert.Equal(3, message.Client.ManifestVersion);
+        Assert.False(message.Client.EnhancedAccessGranted);
+        Assert.Equal("compatible", BrowserNativeProtocol.GetCompatibility(message.Client.ExtensionVersion));
+    }
+
+    [Theory]
+    [InlineData("4.0.9", "extension_outdated")]
+    [InlineData("4.1.0", "compatible")]
+    [InlineData("5.0.0", "compatible")]
+    public void EvaluatesExtensionCompatibility(string version, string expected)
+        => Assert.Equal(expected, BrowserNativeProtocol.GetCompatibility(version));
+
+    [Fact]
+    public void VerifiesNativeHostLaunchOriginAgainstExtensionIdentity()
+    {
+        Assert.True(NativeHostOriginVerifier.IsMatch(
+            "chrome-extension://abcdefghijklmnopabcdefghijklmnop/",
+            "abcdefghijklmnopabcdefghijklmnop"));
+        Assert.True(NativeHostOriginVerifier.IsMatch(
+            BrowserHostInstaller.FirefoxExtensionId,
+            BrowserHostInstaller.FirefoxExtensionId));
+        Assert.False(NativeHostOriginVerifier.IsMatch(
+            "chrome-extension://abcdefghijklmnopabcdefghijklmnop/",
+            "ponmlkjihgfedcbaponmlkjihgfedcba"));
+    }
+
     private static BrowserNativeMessage ParseFixture(string name)
         => BrowserNativeProtocol.Parse(File.ReadAllBytes(GetFixturePath(name)));
 

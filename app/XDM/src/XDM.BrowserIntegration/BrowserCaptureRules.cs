@@ -1,5 +1,23 @@
 namespace XDM.BrowserIntegration;
 
+public static class BrowserSiteCaptureModes
+{
+    public const string Always = "always";
+    public const string Ask = "ask";
+    public const string Never = "never";
+
+    public static bool IsValid(string? value)
+        => value is Always or Ask or Never;
+}
+
+public sealed record BrowserSiteCapturePolicy(string Pattern, string Mode)
+{
+    public BrowserSiteCapturePolicy Normalize()
+        => new(
+            Pattern.Trim().TrimStart('*').TrimStart('.').ToLowerInvariant(),
+            Mode.Trim().ToLowerInvariant());
+}
+
 public sealed record BrowserCaptureRules(
     bool Enabled = true,
     DateTimeOffset? DisabledUntilUtc = null,
@@ -10,7 +28,9 @@ public sealed record BrowserCaptureRules(
     IReadOnlyList<string>? AllowedExtensions = null,
     IReadOnlyList<string>? BlockedExtensions = null,
     IReadOnlyList<string>? IncludedSites = null,
-    IReadOnlyList<string>? ExcludedSites = null)
+    IReadOnlyList<string>? ExcludedSites = null,
+    string DefaultSiteMode = BrowserSiteCaptureModes.Always,
+    IReadOnlyList<BrowserSiteCapturePolicy>? SitePolicies = null)
 {
     public void Validate()
     {
@@ -25,6 +45,27 @@ public sealed record BrowserCaptureRules(
         ValidateList(BlockedExtensions, nameof(BlockedExtensions));
         ValidateList(IncludedSites, nameof(IncludedSites));
         ValidateList(ExcludedSites, nameof(ExcludedSites));
+
+        if (!BrowserSiteCaptureModes.IsValid(DefaultSiteMode?.Trim().ToLowerInvariant()))
+        {
+            throw new InvalidDataException("Default site capture mode is invalid.");
+        }
+
+        if (SitePolicies is { Count: > 256 })
+        {
+            throw new InvalidDataException("Site policy list exceeds 256 entries.");
+        }
+
+        foreach (BrowserSiteCapturePolicy policy in SitePolicies ?? [])
+        {
+            BrowserSiteCapturePolicy normalized = policy.Normalize();
+            if (normalized.Pattern.Length is 0 or > 253
+                || normalized.Pattern.Any(static character => !(char.IsAsciiLetterOrDigit(character) || character is '.' or '-'))
+                || !BrowserSiteCaptureModes.IsValid(normalized.Mode))
+            {
+                throw new InvalidDataException("Site capture policy contains an invalid pattern or mode.");
+            }
+        }
     }
 
     public BrowserCaptureRules Normalize()
@@ -36,8 +77,41 @@ public sealed record BrowserCaptureRules(
             AllowedExtensions = NormalizeExtensions(AllowedExtensions),
             BlockedExtensions = NormalizeExtensions(BlockedExtensions),
             IncludedSites = NormalizeList(IncludedSites, lowerCase: true),
-            ExcludedSites = NormalizeList(ExcludedSites, lowerCase: true)
+            ExcludedSites = NormalizeList(ExcludedSites, lowerCase: true),
+            DefaultSiteMode = NormalizeMode(DefaultSiteMode),
+            SitePolicies = NormalizePolicies(SitePolicies)
         };
+
+    public string ResolveSiteMode(string host)
+    {
+        string normalizedHost = host.Trim().TrimEnd('.').ToLowerInvariant();
+        BrowserSiteCapturePolicy? policy = SitePolicies?
+            .Select(static value => value.Normalize())
+            .Where(value => MatchesSite(normalizedHost, value.Pattern))
+            .OrderByDescending(static value => value.Pattern.Length)
+            .FirstOrDefault();
+        return policy?.Mode ?? DefaultSiteMode;
+    }
+
+
+    private static string NormalizeMode(string? value)
+    {
+        string normalized = value?.Trim().ToLowerInvariant() ?? string.Empty;
+        return BrowserSiteCaptureModes.IsValid(normalized)
+            ? normalized
+            : BrowserSiteCaptureModes.Always;
+    }
+
+    private static BrowserSiteCapturePolicy[] NormalizePolicies(IReadOnlyList<BrowserSiteCapturePolicy>? values)
+        => values?
+            .Where(static value => value is not null)
+            .Select(static value => value.Normalize())
+            .Where(static value => value.Pattern.Length > 0 && BrowserSiteCaptureModes.IsValid(value.Mode))
+            .GroupBy(static value => value.Pattern, StringComparer.OrdinalIgnoreCase)
+            .Select(static group => group.Last())
+            .Take(256)
+            .ToArray()
+            ?? [];
 
     private static string[] NormalizeExtensions(IReadOnlyList<string>? values)
         => NormalizeList(values, lowerCase: true)
@@ -51,26 +125,24 @@ public sealed record BrowserCaptureRules(
             .Where(static value => !string.IsNullOrWhiteSpace(value))
             .Select(value => lowerCase ? value.Trim().ToLowerInvariant() : value.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(256)
             .ToArray()
             ?? [];
 
     private static void ValidateList(IReadOnlyList<string>? values, string name)
     {
-        if (values is null)
+        if (values is { Count: > 256 })
         {
-            return;
+            throw new InvalidDataException($"{name} exceeds 256 entries.");
         }
 
-        if (values.Count > 256)
+        if (values?.Any(static value => value is null || value.Length > 512) == true)
         {
-            throw new InvalidDataException($"Capture rule list '{name}' exceeds 256 entries.");
-        }
-
-        if (values.Any(static value => value is null
-            || value.Length > 256
-            || value.Any(static character => char.IsControl(character))))
-        {
-            throw new InvalidDataException($"Capture rule list '{name}' contains an invalid value.");
+            throw new InvalidDataException($"{name} contains an invalid entry.");
         }
     }
+
+    private static bool MatchesSite(string host, string pattern)
+        => string.Equals(host, pattern, StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith($".{pattern}", StringComparison.OrdinalIgnoreCase);
 }

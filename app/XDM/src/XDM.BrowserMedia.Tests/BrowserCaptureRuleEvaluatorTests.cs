@@ -70,6 +70,44 @@ public sealed class BrowserCaptureRuleEvaluatorTests
         Assert.True(Evaluate(rules).Accepted);
     }
 
+
+    [Fact]
+    public void AppliesPerSiteAlwaysAskAndNeverModes()
+    {
+        BrowserCaptureRules rules = new(
+            DefaultSiteMode: BrowserSiteCaptureModes.Ask,
+            SitePolicies:
+            [
+                new BrowserSiteCapturePolicy("downloads.example.test", BrowserSiteCaptureModes.Always),
+                new BrowserSiteCapturePolicy("blocked.example.test", BrowserSiteCaptureModes.Never),
+            ]);
+
+        Assert.True(Evaluate(rules).Accepted);
+        Assert.Equal(
+            "site_requires_confirmation",
+            BrowserCaptureRuleEvaluator.Evaluate(
+                BaseRequest with { Url = new Uri("https://other.example.test/file.zip") },
+                rules).Reason);
+        Assert.Equal(
+            "site_never_capture",
+            BrowserCaptureRuleEvaluator.Evaluate(
+                BaseRequest with { Url = new Uri("https://blocked.example.test/file.zip") },
+                rules).Reason);
+    }
+
+    [Fact]
+    public void ConfirmedCaptureBypassesSitePrompt()
+    {
+        BrowserCaptureRequest confirmed = BaseRequest with
+        {
+            Operation = "confirmed",
+            BypassRules = true
+        };
+        BrowserCaptureRules rules = new(DefaultSiteMode: BrowserSiteCaptureModes.Ask);
+
+        Assert.Equal("manual_capture", BrowserCaptureRuleEvaluator.Evaluate(confirmed, rules).Reason);
+    }
+
     private static BrowserCaptureRuleDecision Evaluate(BrowserCaptureRules rules)
         => BrowserCaptureRuleEvaluator.Evaluate(BaseRequest, rules);
 }

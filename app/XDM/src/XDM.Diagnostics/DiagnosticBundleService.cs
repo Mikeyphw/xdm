@@ -118,6 +118,16 @@ public sealed class DiagnosticBundleService : IDiagnosticBundleService
             LastCapturedOrigin = browser.LastCapturedUrl is null
                 ? null
                 : GetOrigin(browser.LastCapturedUrl),
+            browser.LastExtensionHealthAt,
+            browser.ExtensionBrowser,
+            browser.ExtensionBrowserVersion,
+            browser.ExtensionVersion,
+            browser.ExtensionManifestVersion,
+            browser.ExtensionIncognitoAllowed,
+            browser.ExtensionEnhancedAccessGranted,
+            browser.ExtensionGrantedOrigins,
+            browser.ExtensionCompatibility,
+            browser.ExtensionCapabilities,
             LastError = browser.LastError is null ? null : SecretRedactor.Redact(browser.LastError)
         }, cancellationToken).ConfigureAwait(false);
 

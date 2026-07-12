@@ -5,6 +5,8 @@ namespace XDM.BrowserMedia.Tests;
 
 public sealed class BrowserHostInstallerTests
 {
+    private static readonly string[] UntrustedFirefoxExtensions = ["untrusted@example.test"];
+
     [Fact]
     public async Task RepairsAndUninstallsFirefoxAndChromiumFamilyManifests()
     {
@@ -70,4 +72,45 @@ public sealed class BrowserHostInstallerTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task RejectsManifestWithUntrustedExtensionAllowList()
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"xdm-host-{Guid.NewGuid():N}");
+        string host = Path.Combine(root, "XDM.NativeHost");
+        Directory.CreateDirectory(root);
+        await File.WriteAllTextAsync(host, "host");
+        try
+        {
+            BrowserHostInstaller installer = new(host, root, BrowserHostPlatform.Linux);
+            await installer.RepairAsync("abcdefghijklmnopabcdefghijklmnop");
+            string manifestPath = Path.Combine(
+                root,
+                ".mozilla",
+                "native-messaging-hosts",
+                $"{BrowserHostInstaller.HostName}.json");
+            await File.WriteAllTextAsync(
+                manifestPath,
+                JsonSerializer.Serialize(new
+                {
+                    name = BrowserHostInstaller.HostName,
+                    description = "rogue allow-list",
+                    path = host,
+                    type = "stdio",
+                    allowed_extensions = UntrustedFirefoxExtensions
+                }));
+
+            BrowserHostInstallationStatus status = installer.GetStatus();
+
+            Assert.False(status.IsCompatible);
+            Assert.Contains(
+                status.Manifests!,
+                static manifest => manifest.Browser == "Firefox" && !manifest.IsCompatible);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
 }
