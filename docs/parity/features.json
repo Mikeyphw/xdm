@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baseline": "overlay-19-history-files",
+  "baseline": "overlay-20-localization-accessibility",
   "updatedAt": "2026-07-12",
   "features": [
     {
@@ -997,31 +997,42 @@
       "area": "localization-accessibility",
       "name": "Legacy translation migration",
       "priority": "high",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
-        "app/XDM/XDM.Wpf.UI/Translations/",
-        "app/XDM/XDM.Gtk.UI/Translations/"
+        "app/XDM/Lang/",
+        "app/XDM/Translations/TextResource.cs"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Localization/LegacyLanguageIndex.cs",
+        "app/XDM/src/XDM.Core/Localization/LegacyTranslationCatalog.cs",
+        "app/XDM/src/XDM.App/Services/LocalizationService.cs",
+        "app/XDM/src/XDM.App/Localization/strings.en.json"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.LegacyTranslationCatalogTests.LoadsLegacyPacksWithEnglishFallbackAndRtlMetadata"
+      ],
       "targetOverlay": "20",
-      "notes": "Existing translations must be mapped to stable resource keys."
+      "notes": "Retained language packs are parsed through bounded stable keys with English fallback and a modern embedded resource catalog."
     },
     {
       "id": "accessibility.keyboard",
       "area": "localization-accessibility",
       "name": "Keyboard and screen-reader navigation",
       "priority": "high",
-      "status": "partial",
+      "status": "complete",
       "legacySources": [
-        "app/XDM/XDM.Wpf.UI/MainWindow.xaml"
+        "app/XDM/XDM.Wpf.UI/MainWindow.xaml",
+        "app/XDM/Lang/English.txt"
       ],
       "implementationPaths": [
-        "app/XDM/src/XDM.App/MainWindow.axaml"
+        "app/XDM/src/XDM.App/MainWindow.axaml",
+        "app/XDM/src/XDM.App/MainWindow.axaml.cs"
       ],
-      "automatedTests": [],
+      "automatedTests": [
+        "XDM.Core.Tests.AccessibilitySurfaceTests.MainWindowDeclaresKeyboardAutomationLiveRegionsAndScaling"
+      ],
       "targetOverlay": "20",
-      "notes": "Basic Avalonia navigation exists; complete accessible names and shortcuts need audit."
+      "notes": "The modern shell provides tab navigation, accessible names, a polite live status region, direct focus shortcuts, section shortcuts, and cancellation shortcuts."
     },
     {
       "id": "packaging.self-contained",
@@ -1392,6 +1403,90 @@
       ],
       "targetOverlay": "18",
       "notes": "Default duplicate behavior, connection count, directory creation, category selection, clipboard behavior, and request-metadata preference are persisted in the modern schema."
+    },
+    {
+      "id": "localization.runtime-switching",
+      "area": "localization-accessibility",
+      "name": "Runtime language switching and persisted preference",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/Lang/index.txt",
+        "app/XDM/Lang/English.txt"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Localization/LocalizationSettings.cs",
+        "app/XDM/src/XDM.App/Services/LocalizationService.cs",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.SettingsTransferServiceTests.ImportsLegacyLanguageAndAccessibilityPreferences"
+      ],
+      "targetOverlay": "20",
+      "notes": "Language selection and system-language preference are stored in schema 5 and refresh the active Avalonia surface after settings are saved."
+    },
+    {
+      "id": "localization.rtl",
+      "area": "localization-accessibility",
+      "name": "Right-to-left layout support",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/Lang/Arabic.txt",
+        "app/XDM/Lang/Farsi-Persian.txt"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Localization/LegacyLanguageIndex.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.LegacyTranslationCatalogTests.LoadsLegacyPacksWithEnglishFallbackAndRtlMetadata"
+      ],
+      "targetOverlay": "20",
+      "notes": "Culture metadata identifies RTL languages and updates the inherited window flow direction at runtime."
+    },
+    {
+      "id": "localization.locale-formatting",
+      "area": "localization-accessibility",
+      "name": "Locale-aware values and status presentation",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/Lang/English.txt"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Localization/LocaleFormatter.cs",
+        "app/XDM/src/XDM.App/ViewModels/DownloadItemViewModel.cs",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.LocaleFormatterTests.FormatsScaledValuesUsingSelectedCulture",
+        "XDM.Core.Tests.LocaleFormatterTests.FormatsDurationWithoutInvariantNumberSeparators"
+      ],
+      "targetOverlay": "20",
+      "notes": "Byte counts, rates, durations, aggregate speed, and timeline values use the selected culture."
+    },
+    {
+      "id": "accessibility.visual-preferences",
+      "area": "localization-accessibility",
+      "name": "High contrast, scaling, and live status preferences",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/Lang/English.txt"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Localization/AccessibilitySettings.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml",
+        "app/XDM/src/XDM.App/MainWindow.axaml.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.AccessibilitySurfaceTests.MainWindowDeclaresKeyboardAutomationLiveRegionsAndScaling",
+        "XDM.Core.Tests.LocaleFormatterTests.AccessibilitySettingsClampUiScale"
+      ],
+      "targetOverlay": "20",
+      "notes": "Persisted 75–175% scaling, high-contrast styles, and optional polite operation announcements update the active window."
     }
   ]
 }

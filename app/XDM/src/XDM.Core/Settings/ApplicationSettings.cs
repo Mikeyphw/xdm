@@ -1,3 +1,4 @@
+using XDM.Core.Localization;
 using XDM.Core.Scheduling;
 
 namespace XDM.Core.Settings;
@@ -17,9 +18,11 @@ public sealed record ApplicationSettings(
     NetworkSettings? Network = null,
     DownloadBehaviorSettings? DownloadBehavior = null,
     IReadOnlyList<ServerCredentialDefinition>? Credentials = null,
-    HistoryRetentionSettings? History = null)
+    HistoryRetentionSettings? History = null,
+    LocalizationSettings? Localization = null,
+    AccessibilitySettings? Accessibility = null)
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     public static ApplicationSettings CreateDefault()
     {
@@ -55,7 +58,9 @@ public sealed record ApplicationSettings(
             NetworkSettings.Default,
             DownloadBehaviorSettings.Default,
             [],
-            HistoryRetentionSettings.Default);
+            HistoryRetentionSettings.Default,
+            LocalizationSettings.Default,
+            AccessibilitySettings.Default);
     }
 
     public ApplicationSettings Normalize()
@@ -139,7 +144,9 @@ public sealed record ApplicationSettings(
             Network = (Network ?? NetworkSettings.Default).Normalize(),
             DownloadBehavior = (DownloadBehavior ?? DownloadBehaviorSettings.Default).Normalize(),
             Credentials = credentials,
-            History = (History ?? HistoryRetentionSettings.Default).Normalize()
+            History = (History ?? HistoryRetentionSettings.Default).Normalize(),
+            Localization = (Localization ?? LocalizationSettings.Default).Normalize(),
+            Accessibility = (Accessibility ?? AccessibilitySettings.Default).Normalize()
         };
     }
 }

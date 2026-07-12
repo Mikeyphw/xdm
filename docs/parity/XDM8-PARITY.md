@@ -13,12 +13,12 @@ This ledger is executable through `XDM.Parity.Tests`. The source of truth is
 
 ## Current baseline
 
-The manifest inventories 70 feature contracts across the download engine,
+The manifest inventories 74 feature contracts across the download engine,
 browser integration, media, conversion, queues, settings, desktop integration,
 diagnostics, localization, packaging and migration.
 
 Overlay 13 completed segmented transfer, Overlay 14 completed browser takeover,
-Overlay 15 completed streaming media, Overlay 16 completed conversion, Overlay 17 completed queue scheduling and completion actions, Overlay 18 completed settings and workflow parity, and Overlay 19 completes history and file management. Later parity overlays must
+Overlay 15 completed streaming media, Overlay 16 completed conversion, Overlay 17 completed queue scheduling and completion actions, Overlay 18 completed settings and workflow parity, Overlay 19 completed history and file management, and Overlay 20 completes localization and accessibility. Later parity overlays must
 update the status, implementation paths and tests in the same commit that
 supplies the behavior.
 
@@ -106,4 +106,14 @@ persisted; and bounded JSON/plain-text download lists can be imported or
 exported without secrets. Optional retention prunes terminal history only, and
 large startup restores publish the history in one indexed batch. Design and
 safety details are documented in `docs/parity/HISTORY-FILE-MANAGEMENT.md`.
+## Overlay 20 result
+
+Localization and accessibility parity is complete for the planned modern scope.
+The active Avalonia shell now consumes bounded retained language packs through
+stable modern resource keys and English fallback, changes language and culture
+at runtime, applies RTL flow, formats user-facing values with the selected
+culture, and persists high-contrast, scaling, and screen-reader announcement
+preferences. Primary workflows expose accessible names, live operation status,
+tab navigation, and keyboard shortcuts. Design and safety details are documented
+in `docs/parity/LOCALIZATION-ACCESSIBILITY.md`.
 

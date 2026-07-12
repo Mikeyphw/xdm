@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
+using XDM.Core.Localization;
 using XDM.Core.Settings;
 
 namespace XDM.Persistence;
@@ -153,6 +154,8 @@ public sealed class SettingsTransferService : ISettingsTransferService
         NetworkSettings network = current.Network!;
         ProxySettings proxy = network.Proxy!;
         DownloadBehaviorSettings behavior = current.DownloadBehavior!;
+        LocalizationSettings localization = current.Localization ?? LocalizationSettings.Default;
+        AccessibilitySettings accessibility = current.Accessibility ?? AccessibilitySettings.Default;
 
         string downloadDirectory = Get(values,
             "defaultDownloadDirectory", "default.folder", "download.folder", "downloadFolder", "saveTo")
@@ -206,6 +209,30 @@ public sealed class SettingsTransferService : ISettingsTransferService
                 "autoSelectCategory", "category.auto.select")
         };
 
+        string? legacyLanguage = Get(values, "language", "ui.language", "locale", "lang");
+        if (!string.IsNullOrWhiteSpace(legacyLanguage))
+        {
+            localization = localization with
+            {
+                LanguageId = LegacyLanguageIndex.NormalizeIdentifier(legacyLanguage),
+                UseSystemLanguage = false
+            };
+        }
+        localization = localization with
+        {
+            UseSystemLanguage = GetBool(values, localization.UseSystemLanguage,
+                "useSystemLanguage", "language.system", "locale.system")
+        };
+        accessibility = accessibility with
+        {
+            HighContrastEnabled = GetBool(values, accessibility.HighContrastEnabled,
+                "highContrast", "accessibility.highContrast"),
+            UiScalePercent = GetInt(values, accessibility.UiScalePercent,
+                "uiScalePercent", "ui.scale", "accessibility.scale"),
+            AnnounceStatusChanges = GetBool(values, accessibility.AnnounceStatusChanges,
+                "announceStatusChanges", "accessibility.liveRegions")
+        };
+
         DownloadCategoryDefinition[] categories = ParseCategories(values, downloadDirectory);
         DownloadQueueDefinition[] queues = ParseQueues(values);
         if (categories.Length == 0)
@@ -229,7 +256,9 @@ public sealed class SettingsTransferService : ISettingsTransferService
             Categories = categories,
             Queues = queues,
             Network = network,
-            DownloadBehavior = behavior
+            DownloadBehavior = behavior,
+            Localization = localization,
+            Accessibility = accessibility
         }).Normalize();
         return CreateResult(imported, sourceFormat, warnings, imported);
     }

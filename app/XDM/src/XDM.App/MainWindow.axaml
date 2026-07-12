@@ -6,16 +6,45 @@
         d:DesignWidth="1280"
         d:DesignHeight="840"
         x:Class="XDM.App.MainWindow"
-        Title="Xtreme Download Manager"
+        Title="{Binding Localization[ui_xtreme_download_manager]}"
         Width="1280"
         Height="840"
         MinWidth="1000"
         MinHeight="680"
-        Background="#0E1116">
+        Background="{DynamicResource XdmWindowBackground}"
+        KeyDown="MainWindow_KeyDown"
+        AutomationProperties.Name="{Binding Localization[ui_xtreme_download_manager]}">
+
+  <Window.Resources>
+    <SolidColorBrush x:Key="XdmWindowBackground" Color="#0E1116" />
+    <SolidColorBrush x:Key="XdmPanelBackground" Color="#12171E" />
+    <SolidColorBrush x:Key="XdmPanelAltBackground" Color="#151B23" />
+    <SolidColorBrush x:Key="XdmInputBackground" Color="#171D25" />
+    <SolidColorBrush x:Key="XdmSecondaryButtonBackground" Color="#1B212A" />
+    <SolidColorBrush x:Key="XdmSelectedBackground" Color="#26354A" />
+    <SolidColorBrush x:Key="XdmBorderBrush" Color="#202833" />
+    <SolidColorBrush x:Key="XdmInputBorderBrush" Color="#273240" />
+    <SolidColorBrush x:Key="XdmBrandBrush" Color="#4F8CFF" />
+    <SolidColorBrush x:Key="XdmPrimaryForeground" Color="#F3F7FC" />
+    <SolidColorBrush x:Key="XdmPrimarySoftForeground" Color="#F1F5FA" />
+    <SolidColorBrush x:Key="XdmBodyForeground" Color="#E8EEF7" />
+    <SolidColorBrush x:Key="XdmBodySoftForeground" Color="#E9EEF6" />
+    <SolidColorBrush x:Key="XdmSecondaryForeground" Color="#DDE5F2" />
+    <SolidColorBrush x:Key="XdmSecondarySoftForeground" Color="#BAC7D8" />
+    <SolidColorBrush x:Key="XdmSecondaryDimForeground" Color="#C8D1DE" />
+    <SolidColorBrush x:Key="XdmMutedForeground" Color="#7F8B9B" />
+    <SolidColorBrush x:Key="XdmSubtleForeground" Color="#718095" />
+    <SolidColorBrush x:Key="XdmSubtleDarkForeground" Color="#687586" />
+    <SolidColorBrush x:Key="XdmSummaryForeground" Color="#8794A5" />
+    <SolidColorBrush x:Key="XdmDisabledForeground" Color="#58739A" />
+    <SolidColorBrush x:Key="XdmAccentForeground" Color="#8FB5FF" />
+    <SolidColorBrush x:Key="XdmErrorForeground" Color="#FF8F8F" />
+    <SolidColorBrush x:Key="XdmWarningForeground" Color="#F5C66A" />
+  </Window.Resources>
 
   <Window.Styles>
     <Style Selector="Button.primary">
-      <Setter Property="Background" Value="#4F8CFF" />
+      <Setter Property="Background" Value="{DynamicResource XdmBrandBrush}" />
       <Setter Property="Foreground" Value="White" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Padding" Value="16,9" />
@@ -23,23 +52,23 @@
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="Button.secondary">
-      <Setter Property="Background" Value="#1B212A" />
-      <Setter Property="Foreground" Value="#DDE5F2" />
+      <Setter Property="Background" Value="{DynamicResource XdmSecondaryButtonBackground}" />
+      <Setter Property="Foreground" Value="{DynamicResource XdmSecondaryForeground}" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Padding" Value="13,8" />
       <Setter Property="CornerRadius" Value="8" />
     </Style>
     <Style Selector="TextBox">
-      <Setter Property="Background" Value="#171D25" />
-      <Setter Property="Foreground" Value="#E8EEF7" />
-      <Setter Property="BorderBrush" Value="#273240" />
+      <Setter Property="Background" Value="{DynamicResource XdmInputBackground}" />
+      <Setter Property="Foreground" Value="{DynamicResource XdmBodyForeground}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource XdmInputBorderBrush}" />
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="11,8" />
     </Style>
     <Style Selector="ComboBox">
-      <Setter Property="Background" Value="#171D25" />
-      <Setter Property="Foreground" Value="#E8EEF7" />
-      <Setter Property="BorderBrush" Value="#273240" />
+      <Setter Property="Background" Value="{DynamicResource XdmInputBackground}" />
+      <Setter Property="Foreground" Value="{DynamicResource XdmBodyForeground}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource XdmInputBorderBrush}" />
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="8,5" />
     </Style>
@@ -49,46 +78,68 @@
       <Setter Property="CornerRadius" Value="8" />
     </Style>
     <Style Selector="ListBoxItem:selected">
-      <Setter Property="Background" Value="#26354A" />
+      <Setter Property="Background" Value="{DynamicResource XdmSelectedBackground}" />
     </Style>
     <Style Selector="TextBlock.label">
       <Setter Property="FontSize" Value="11" />
       <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="Foreground" Value="#7F8B9B" />
+      <Setter Property="Foreground" Value="{DynamicResource XdmMutedForeground}" />
+    </Style>
+    <Style Selector="Window.high-contrast">
+      <Setter Property="Background" Value="#000000" />
+    </Style>
+    <Style Selector="Window.high-contrast Border">
+      <Setter Property="BorderBrush" Value="#FFFFFF" />
+    </Style>
+    <Style Selector="Window.high-contrast TextBlock">
+      <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+    <Style Selector="Window.high-contrast Button">
+      <Setter Property="BorderBrush" Value="#FFFFFF" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Window.high-contrast TextBox">
+      <Setter Property="Background" Value="#000000" />
+      <Setter Property="Foreground" Value="#FFFFFF" />
+      <Setter Property="BorderBrush" Value="#FFFFFF" />
     </Style>
   </Window.Styles>
 
-  <Grid ColumnDefinitions="228,*">
+  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+  <LayoutTransformControl x:Name="UiScaleRoot">
+  <Grid x:Name="MainLayout" ColumnDefinitions="228,*" KeyboardNavigation.TabNavigation="Continue">
     <Border Grid.Column="0"
-            Background="#12171E"
-            BorderBrush="#202833"
+            Background="{DynamicResource XdmPanelBackground}"
+            BorderBrush="{DynamicResource XdmBorderBrush}"
             BorderThickness="0,0,1,0"
             Padding="16">
       <Grid RowDefinitions="Auto,*,Auto">
         <StackPanel Spacing="2" Margin="8,8,8,20">
-          <TextBlock Text="XDM" FontSize="28" FontWeight="Bold" Foreground="#F3F7FC" />
-          <TextBlock Text="Avalonia downloader" FontSize="12" Foreground="#7F8B9B" />
+          <TextBlock Text="{Binding Localization[ui_xdm]}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource XdmPrimaryForeground}" />
+          <TextBlock Text="{Binding Localization[ui_avalonia_downloader]}" FontSize="12" Foreground="{DynamicResource XdmMutedForeground}" />
         </StackPanel>
 
         <ListBox Grid.Row="1"
                  ItemsSource="{Binding Sections}"
+                 AutomationProperties.Name="{Binding Localization[ui_application_sections]}"
+                 AutomationProperties.AccessibilityView="Control"
                  SelectedItem="{Binding SelectedSection}"
                  Background="Transparent"
                  BorderThickness="0">
           <ListBox.ItemTemplate>
             <DataTemplate>
               <Grid ColumnDefinitions="28,*">
-                <TextBlock Text="{Binding Glyph}" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#8FB5FF" />
-                <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#DDE5F2" />
+                <TextBlock Text="{Binding Glyph}" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource XdmAccentForeground}" />
+                <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource XdmSecondaryForeground}" />
               </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
 
-        <Border Grid.Row="2" Background="#171D25" CornerRadius="8" Padding="12" Margin="0,14,0,0">
+        <Border Grid.Row="2" Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12" Margin="0,14,0,0">
           <StackPanel Spacing="4">
-            <TextBlock Text="Browser capture" FontWeight="SemiBold" Foreground="#DDE5F2" />
-            <TextBlock Text="Authenticated loopback capture plus direct, HLS, and DASH media probing." TextWrapping="Wrap" FontSize="11" Foreground="#7F8B9B" />
+            <TextBlock Text="{Binding Localization[ui_browser_capture]}" FontWeight="SemiBold" Foreground="{DynamicResource XdmSecondaryForeground}" />
+            <TextBlock Text="{Binding Localization[ui_authenticated_loopback_capture_plus_direct_hls_and_dash_media_probing]}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" />
           </StackPanel>
         </Border>
       </Grid>
@@ -97,43 +148,43 @@
     <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" Margin="28,22,28,18">
       <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,18">
         <StackPanel Spacing="5">
-          <TextBlock Text="{Binding CurrentTitle}" FontSize="27" FontWeight="Bold" Foreground="#F3F7FC" />
-          <TextBlock Text="{Binding CurrentSummary}" Foreground="#8794A5" />
+          <TextBlock Text="{Binding CurrentTitle}" FontSize="27" FontWeight="Bold" Foreground="{DynamicResource XdmPrimaryForeground}" />
+          <TextBlock Text="{Binding CurrentSummary}" Foreground="{DynamicResource XdmSummaryForeground}" />
         </StackPanel>
-        <TextBlock Grid.Column="1" Text="{Binding OperationMessage}" Foreground="#8FB5FF" VerticalAlignment="Center" MaxWidth="430" TextWrapping="Wrap" />
+        <TextBlock x:Name="OperationStatusText" Grid.Column="1" Text="{Binding OperationMessage}" AutomationProperties.Name="{Binding Localization[ui_operation_status]}" AutomationProperties.LiveSetting="Polite" Foreground="{DynamicResource XdmAccentForeground}" VerticalAlignment="Center" MaxWidth="430" TextWrapping="Wrap" />
       </Grid>
 
       <Grid Grid.Row="1" RowDefinitions="Auto,*">
         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
-          <Border Background="#151B23" CornerRadius="10" Padding="15">
+          <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="10" Padding="15">
             <StackPanel Spacing="6">
-              <TextBlock Text="ACTIVE" Classes="label" />
-              <TextBlock Text="{Binding ActiveDownloadCount}" FontSize="25" FontWeight="Bold" Foreground="#F3F7FC" />
+              <TextBlock Text="{Binding Localization[ui_active]}" Classes="label" />
+              <TextBlock Text="{Binding ActiveDownloadCount}" FontSize="25" FontWeight="Bold" Foreground="{DynamicResource XdmPrimaryForeground}" />
             </StackPanel>
           </Border>
-          <Border Grid.Column="1" Background="#151B23" CornerRadius="10" Padding="15">
+          <Border Grid.Column="1" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="10" Padding="15">
             <StackPanel Spacing="6">
-              <TextBlock Text="SPEED" Classes="label" />
-              <TextBlock Text="{Binding AggregateSpeed}" FontSize="25" FontWeight="Bold" Foreground="#F3F7FC" />
+              <TextBlock Text="{Binding Localization[ui_speed]}" Classes="label" />
+              <TextBlock Text="{Binding AggregateSpeed}" FontSize="25" FontWeight="Bold" Foreground="{DynamicResource XdmPrimaryForeground}" />
             </StackPanel>
           </Border>
-          <Border Grid.Column="2" Background="#151B23" CornerRadius="10" Padding="15">
+          <Border Grid.Column="2" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="10" Padding="15">
             <StackPanel Spacing="6">
-              <TextBlock Text="CORE" Classes="label" />
-              <TextBlock Text="{Binding CoreStatus}" FontSize="25" FontWeight="Bold" Foreground="#F3F7FC" />
+              <TextBlock Text="{Binding Localization[ui_core]}" Classes="label" />
+              <TextBlock Text="{Binding CoreStatus}" FontSize="25" FontWeight="Bold" Foreground="{DynamicResource XdmPrimaryForeground}" />
             </StackPanel>
           </Border>
         </Grid>
 
         <Grid Grid.Row="1" Margin="0,14,0,0">
           <Grid IsVisible="{Binding IsDownloadsVisible}" RowDefinitions="Auto,Auto,Auto,*">
-            <Border Background="#12171E" CornerRadius="10" Padding="14" BorderBrush="#202833" BorderThickness="1">
+            <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
               <StackPanel Spacing="10">
                 <Grid ColumnDefinitions="2*,*,Auto,Auto" ColumnSpacing="9">
-                  <TextBox AcceptsReturn="True" MinHeight="62" PlaceholderText="One or more HTTP/HTTPS URLs" Text="{Binding NewDownloadUrls}" />
-                  <TextBox Grid.Column="1" PlaceholderText="Destination folder" Text="{Binding DestinationFolder}" />
-                  <Button Grid.Column="2" Classes="secondary" Content="Browse" Click="BrowseDestination_Click" />
-                  <Button Grid.Column="3" Classes="primary" Content="Add" Command="{Binding AddDownloadCommand}" />
+                  <TextBox x:Name="NewDownloadUrlsInput" AcceptsReturn="True" MinHeight="62" PlaceholderText="{Binding Localization[ui_one_or_more_http_https_urls]}" Text="{Binding NewDownloadUrls}" AutomationProperties.Name="{Binding Localization[ui_download_urls]}" />
+                  <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_destination_folder]}" Text="{Binding DestinationFolder}" />
+                  <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseDestination_Click" />
+                  <Button Grid.Column="3" Classes="primary" Content="{Binding Localization[ui_add]}" Command="{Binding AddDownloadCommand}" />
                 </Grid>
 
                 <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="9">
@@ -144,19 +195,19 @@
                     <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
                   </ComboBox>
                   <ComboBox Grid.Column="2" ItemsSource="{Binding DuplicateBehaviors}" SelectedItem="{Binding SelectedDuplicateBehavior}" />
-                  <TextBox Grid.Column="3" PlaceholderText="Speed limit KB/s (0 = unlimited)" Text="{Binding SpeedLimitKbps}" />
+                  <TextBox Grid.Column="3" PlaceholderText="{Binding Localization[ui_speed_limit_kb_s_0_unlimited]}" Text="{Binding SpeedLimitKbps}" />
                 </Grid>
 
-                <Expander Header="Request details and authentication">
+                <Expander Header="{Binding Localization[ui_request_details_and_authentication]}">
                   <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,*" ColumnSpacing="9" RowSpacing="9">
-                    <TextBox PlaceholderText="Custom filename (single URL only)" Text="{Binding CustomFileName}" />
-                    <TextBox Grid.Column="1" PlaceholderText="User-Agent" Text="{Binding UserAgent}" />
-                    <TextBox Grid.Row="1" PlaceholderText="Username" Text="{Binding Username}" />
-                    <TextBox Grid.Row="1" Grid.Column="1" PlaceholderText="Password" PasswordChar="●" Text="{Binding Password}" />
-                    <TextBox Grid.Row="2" AcceptsReturn="True" MinHeight="58" PlaceholderText="Headers, one per line: Name: value" Text="{Binding RequestHeaders}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_custom_filename_single_url_only]}" Text="{Binding CustomFileName}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_user_agent]}" Text="{Binding UserAgent}" />
+                    <TextBox Grid.Row="1" PlaceholderText="{Binding Localization[ui_username]}" Text="{Binding Username}" />
+                    <TextBox Grid.Row="1" Grid.Column="1" PlaceholderText="{Binding Localization[ui_password]}" PasswordChar="●" Text="{Binding Password}" />
+                    <TextBox Grid.Row="2" AcceptsReturn="True" MinHeight="58" PlaceholderText="{Binding Localization[ui_headers_one_per_line_name_value]}" Text="{Binding RequestHeaders}" />
                     <StackPanel Grid.Row="2" Grid.Column="1" Spacing="9">
-                      <TextBox PlaceholderText="Cookie header" Text="{Binding Cookie}" />
-                      <TextBox PlaceholderText="Referer" Text="{Binding Referer}" />
+                      <TextBox PlaceholderText="{Binding Localization[ui_cookie_header]}" Text="{Binding Cookie}" />
+                      <TextBox PlaceholderText="{Binding Localization[ui_referer]}" Text="{Binding Referer}" />
                     </StackPanel>
                   </Grid>
                 </Expander>
@@ -165,70 +216,70 @@
 
             <Grid Grid.Row="1" RowDefinitions="Auto,Auto" RowSpacing="8" Margin="0,10">
               <Grid ColumnDefinitions="*,220" ColumnSpacing="9">
-                <TextBox PlaceholderText="Search filename, URL, destination, or queue" Text="{Binding DownloadSearchText}" />
+                <TextBox x:Name="DownloadSearchInput" PlaceholderText="{Binding Localization[ui_search_filename_url_destination_or_queue]}" Text="{Binding DownloadSearchText}" AutomationProperties.Name="{Binding Localization[ui_search_downloads]}" />
                 <ComboBox Grid.Column="1" ItemsSource="{Binding DownloadStatusFilters}" SelectedItem="{Binding SelectedDownloadStatus}" />
               </Grid>
               <WrapPanel Grid.Row="1" Orientation="Horizontal">
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Pause" Command="{Binding PauseSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanPause}" />
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Resume" Command="{Binding ResumeSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Cancel" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanCancel}" />
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Retry" Command="{Binding RetrySelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Remove" Command="{Binding RemoveSelectedCommand}" />
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Convert" Command="{Binding PrepareSelectedDownloadConversionCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_pause]}" Command="{Binding PauseSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanPause}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_resume]}" Command="{Binding ResumeSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_cancel]}" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanCancel}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_retry]}" Command="{Binding RetrySelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_remove]}" Command="{Binding RemoveSelectedCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_convert]}" Command="{Binding PrepareSelectedDownloadConversionCommand}" />
                 <ComboBox Width="110" Margin="0,0,8,0" ItemsSource="{Binding DownloadPriorities}" SelectedItem="{Binding SelectedDownloadPriority}" />
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Set priority" Command="{Binding ApplySelectedDownloadPriorityCommand}" />
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Earlier" Command="{Binding MoveSelectedDownloadEarlierCommand}" />
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Later" Command="{Binding MoveSelectedDownloadLaterCommand}" />
-                <Button Margin="12,0,8,0" Classes="secondary" Content="Select visible" Command="{Binding SelectAllVisibleCommand}" />
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Clear selection" Command="{Binding ClearBulkSelectionCommand}" />
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Pause selected" Command="{Binding PauseBulkCommand}" />
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Resume selected" Command="{Binding ResumeBulkCommand}" />
-                <Button Margin="0,0,8,0" Classes="secondary" Content="Cancel selected" Command="{Binding CancelBulkCommand}" />
-                <Button Classes="secondary" Content="Remove selected" Command="{Binding RemoveBulkCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_set_priority]}" Command="{Binding ApplySelectedDownloadPriorityCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_earlier]}" Command="{Binding MoveSelectedDownloadEarlierCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_later]}" Command="{Binding MoveSelectedDownloadLaterCommand}" />
+                <Button Margin="12,0,8,0" Classes="secondary" Content="{Binding Localization[ui_select_visible]}" Command="{Binding SelectAllVisibleCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_clear_selection]}" Command="{Binding ClearBulkSelectionCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_pause_selected]}" Command="{Binding PauseBulkCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_resume_selected]}" Command="{Binding ResumeBulkCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_cancel_selected]}" Command="{Binding CancelBulkCommand}" />
+                <Button Classes="secondary" Content="{Binding Localization[ui_remove_selected]}" Command="{Binding RemoveBulkCommand}" />
               </WrapPanel>
             </Grid>
 
 
-            <Expander Grid.Row="2" Header="History and file management" Margin="0,0,0,10">
-              <Border Background="#12171E" CornerRadius="10" Padding="14" BorderBrush="#202833" BorderThickness="1">
+            <Expander Grid.Row="2" Header="{Binding Localization[ui_history_and_file_management]}" Margin="0,0,0,10">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="9">
                   <WrapPanel Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="Open file" Command="{Binding OpenSelectedFileCommand}" />
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="Open folder" Command="{Binding RevealSelectedDestinationCommand}" />
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="Open URL" Command="{Binding OpenSelectedSourceCommand}" />
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="Open source page" Command="{Binding OpenSelectedSourcePageCommand}" IsEnabled="{Binding SelectedDownload.HasSourcePage}" />
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="Re-download" Command="{Binding RedownloadSelectedCommand}" />
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="Delete partial data" Command="{Binding DeleteSelectedPartialDataCommand}" />
-                    <Button Classes="secondary" Content="Delete file + history" Command="{Binding DeleteSelectedFileAndHistoryCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_open_file]}" Command="{Binding OpenSelectedFileCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_open_folder]}" Command="{Binding RevealSelectedDestinationCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_open_url]}" Command="{Binding OpenSelectedSourceCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_open_source_page]}" Command="{Binding OpenSelectedSourcePageCommand}" IsEnabled="{Binding SelectedDownload.HasSourcePage}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_re_download]}" Command="{Binding RedownloadSelectedCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_delete_partial_data]}" Command="{Binding DeleteSelectedPartialDataCommand}" />
+                    <Button Classes="secondary" Content="{Binding Localization[ui_delete_file_history]}" Command="{Binding DeleteSelectedFileAndHistoryCommand}" />
                   </WrapPanel>
                   <Grid ColumnDefinitions="2*,2*,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Replacement download URL" Text="{Binding RefreshedDownloadUrl}" />
-                    <TextBox Grid.Column="1" PlaceholderText="Source page URL (optional)" Text="{Binding RefreshedSourcePage}" />
-                    <Button Grid.Column="2" Classes="secondary" Content="Refresh URL" Command="{Binding RefreshSelectedDownloadUrlCommand}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_replacement_download_url]}" Text="{Binding RefreshedDownloadUrl}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_source_page_url_optional]}" Text="{Binding RefreshedSourcePage}" />
+                    <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_refresh_url]}" Command="{Binding RefreshSelectedDownloadUrlCommand}" />
                   </Grid>
                   <Grid ColumnDefinitions="2*,Auto,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="New full destination path" Text="{Binding RelocationDestinationPath}" />
-                    <Button Grid.Column="1" Classes="secondary" Content="Choose path" Click="BrowseRelocationDestination_Click" />
-                    <Button Grid.Column="2" Classes="secondary" Content="Move / rename" Command="{Binding RelocateSelectedDownloadCommand}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_new_full_destination_path]}" Text="{Binding RelocationDestinationPath}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_choose_path]}" Click="BrowseRelocationDestination_Click" />
+                    <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_move_rename]}" Command="{Binding RelocateSelectedDownloadCommand}" />
                   </Grid>
-                  <CheckBox Content="Allow replacing an existing destination file" IsChecked="{Binding OverwriteRelocationDestination}" />
+                  <CheckBox Content="{Binding Localization[ui_allow_replacing_an_existing_destination_file]}" IsChecked="{Binding OverwriteRelocationDestination}" />
                   <Grid ColumnDefinitions="2*,Auto,Auto,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Download-list JSON or plain URL-list path" Text="{Binding HistoryTransferPath}" />
-                    <Button Grid.Column="1" Classes="secondary" Content="Choose import" Click="BrowseHistoryImport_Click" />
-                    <Button Grid.Column="2" Classes="secondary" Content="Choose export" Click="BrowseHistoryExport_Click" />
-                    <Button Grid.Column="3" Classes="secondary" Content="Import" Command="{Binding ImportDownloadListCommand}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_download_list_json_or_plain_url_list_path]}" Text="{Binding HistoryTransferPath}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_choose_import]}" Click="BrowseHistoryImport_Click" />
+                    <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_choose_export]}" Click="BrowseHistoryExport_Click" />
+                    <Button Grid.Column="3" Classes="secondary" Content="{Binding Localization[ui_import]}" Command="{Binding ImportDownloadListCommand}" />
                   </Grid>
                   <WrapPanel Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="Export visible" Command="{Binding ExportVisibleHistoryCommand}" />
-                    <Button Classes="secondary" Content="Prune now" Command="{Binding PruneHistoryCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_export_visible]}" Command="{Binding ExportVisibleHistoryCommand}" />
+                    <Button Classes="secondary" Content="{Binding Localization[ui_prune_now]}" Command="{Binding PruneHistoryCommand}" />
                   </WrapPanel>
-                  <TextBlock Text="{Binding HistoryTransferStatus}" TextWrapping="Wrap" Foreground="#8FB5FF" />
+                  <TextBlock Text="{Binding HistoryTransferStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}" />
                 </StackPanel>
               </Border>
             </Expander>
 
             <Grid Grid.Row="3" ColumnDefinitions="2*,*" ColumnSpacing="12">
-              <Border Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <ListBox ItemsSource="{Binding FilteredDownloads}"
                          SelectedItem="{Binding SelectedDownload}"
                          Background="Transparent"
@@ -239,38 +290,38 @@
                   </ListBox.ItemsPanel>
                   <ListBox.ItemTemplate>
                     <DataTemplate>
-                      <Border Padding="12" Background="#151B23" CornerRadius="8">
+                      <Border Padding="12" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8">
                         <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="16">
                           <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" />
                           <StackPanel Grid.Column="1">
-                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" Foreground="#F1F5FA" />
-                            <TextBlock Text="{Binding Source}" FontSize="11" Foreground="#718095" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
+                            <TextBlock Text="{Binding Source}" FontSize="11" Foreground="{DynamicResource XdmSubtleForeground}" TextTrimming="CharacterEllipsis" />
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                              <TextBlock Text="{Binding QueueId}" FontSize="10" Foreground="#58739A" />
-                              <TextBlock Text="{Binding Priority}" FontSize="10" Foreground="#8FB5FF" />
+                              <TextBlock Text="{Binding QueueId}" FontSize="10" Foreground="{DynamicResource XdmDisabledForeground}" />
+                              <TextBlock Text="{Binding Priority}" FontSize="10" Foreground="{DynamicResource XdmAccentForeground}" />
                             </StackPanel>
                           </StackPanel>
-                          <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="#8FB5FF" VerticalAlignment="Center" />
-                          <TextBlock Grid.Column="3" Text="{Binding SpeedText}" Foreground="#C8D1DE" VerticalAlignment="Center" />
-                          <TextBlock Grid.Column="4" Text="{Binding RemainingText}" Foreground="#7F8B9B" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="{DynamicResource XdmAccentForeground}" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="3" Text="{Binding SpeedText}" Foreground="{DynamicResource XdmSecondaryDimForeground}" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="4" Text="{Binding RemainingText}" Foreground="{DynamicResource XdmMutedForeground}" VerticalAlignment="Center" />
                           <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Margin="0,10,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" />
-                          <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ProgressText}" FontSize="11" Foreground="#7F8B9B" />
-                          <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Text="{Binding ErrorMessage}" FontSize="11" Foreground="#FF8F8F" HorizontalAlignment="Right" />
+                          <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ProgressText}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" />
+                          <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Text="{Binding ErrorMessage}" FontSize="11" Foreground="{DynamicResource XdmErrorForeground}" HorizontalAlignment="Right" />
                         </Grid>
                       </Border>
                     </DataTemplate>
                   </ListBox.ItemTemplate>
                 </ListBox>
               </Border>
-              <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="16" BorderBrush="#202833" BorderThickness="1">
+              <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
-                  <TextBlock Text="DOWNLOAD DETAILS" Classes="label" />
+                  <TextBlock Text="{Binding Localization[ui_download_details]}" Classes="label" />
                   <StackPanel Grid.Row="1" Spacing="4">
-                    <TextBlock Text="{Binding SelectedDownload.FileName}" FontWeight="SemiBold" Foreground="#F1F5FA" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding SelectedDownload.Source}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding SelectedDownload.DestinationPath}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedDownload.FileName}" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedDownload.Source}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedDownload.DestinationPath}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap" />
                   </StackPanel>
-                  <TextBlock Grid.Row="2" Text="EVENT TIMELINE" Classes="label" />
+                  <TextBlock Grid.Row="2" Text="{Binding Localization[ui_event_timeline]}" Classes="label" />
                   <ListBox Grid.Row="3" ItemsSource="{Binding SelectedDownloadTimeline}" Background="Transparent" BorderThickness="0">
                     <ListBox.ItemsPanel>
                       <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
@@ -278,9 +329,9 @@
                     <ListBox.ItemTemplate>
                       <DataTemplate>
                         <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto" Margin="0,3">
-                          <TextBlock Text="{Binding Status}" Foreground="#8FB5FF" FontSize="11" />
-                          <TextBlock Grid.Column="1" Text="{Binding Timestamp}" Foreground="#687586" FontSize="10" HorizontalAlignment="Right" />
-                          <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Message}" Foreground="#C8D1DE" FontSize="11" TextWrapping="Wrap" />
+                          <TextBlock Text="{Binding Status}" Foreground="{DynamicResource XdmAccentForeground}" FontSize="11" />
+                          <TextBlock Grid.Column="1" Text="{Binding Timestamp}" Foreground="{DynamicResource XdmSubtleDarkForeground}" FontSize="10" HorizontalAlignment="Right" />
+                          <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Message}" Foreground="{DynamicResource XdmSecondaryDimForeground}" FontSize="11" TextWrapping="Wrap" />
                         </Grid>
                       </DataTemplate>
                     </ListBox.ItemTemplate>
@@ -292,67 +343,67 @@
 
           <ScrollViewer IsVisible="{Binding IsQueuesVisible}">
             <StackPanel Spacing="14">
-              <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="12">
-                  <TextBlock Text="Queue definitions" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <TextBlock Text="{Binding Localization[ui_queue_definitions]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
                   <ItemsControl ItemsSource="{Binding QueueDefinitions}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <Border Background="#171D25" CornerRadius="8" Padding="12" Margin="0,0,0,7">
+                        <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12" Margin="0,0,0,7">
                           <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="18">
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#E8EEF7" />
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodyForeground}" />
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
-                              <TextBlock Text="{Binding MaxConcurrentDownloads}" Foreground="#8FB5FF" />
-                              <TextBlock Text="concurrent" Foreground="#8FB5FF" />
+                              <TextBlock Text="{Binding MaxConcurrentDownloads}" Foreground="{DynamicResource XdmAccentForeground}" />
+                              <TextBlock Text="concurrent" Foreground="{DynamicResource XdmAccentForeground}" />
                             </StackPanel>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
-                              <TextBlock Text="{Binding SpeedLimitBytesPerSecond}" Foreground="#7F8B9B" />
-                              <TextBlock Text="B/s limit" Foreground="#7F8B9B" />
+                              <TextBlock Text="{Binding SpeedLimitBytesPerSecond}" Foreground="{DynamicResource XdmMutedForeground}" />
+                              <TextBlock Text="B/s limit" Foreground="{DynamicResource XdmMutedForeground}" />
                             </StackPanel>
                           </Grid>
                         </Border>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <TextBlock Text="{Binding QueueRuntimeStatus}" Foreground="#8FB5FF" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding QueueRuntimeStatus}" Foreground="{DynamicResource XdmAccentForeground}" TextWrapping="Wrap" />
                   <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="9">
                     <ComboBox ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedQueue}">
                       <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
                     </ComboBox>
-                    <Button Grid.Column="1" Classes="primary" Content="Start" Command="{Binding StartSelectedQueueCommand}" />
-                    <Button Grid.Column="2" Classes="secondary" Content="Stop" Command="{Binding StopSelectedQueueCommand}" />
-                    <Button Grid.Column="3" Classes="secondary" Content="Move selected download" Command="{Binding MoveSelectedDownloadToQueueCommand}" />
+                    <Button Grid.Column="1" Classes="primary" Content="{Binding Localization[ui_start]}" Command="{Binding StartSelectedQueueCommand}" />
+                    <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_stop]}" Command="{Binding StopSelectedQueueCommand}" />
+                    <Button Grid.Column="3" Classes="secondary" Content="{Binding Localization[ui_move_selected_download]}" Command="{Binding MoveSelectedDownloadToQueueCommand}" />
                   </Grid>
                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="New queue name" Text="{Binding NewQueueName}" />
-                    <Button Grid.Column="1" Classes="primary" Content="Add queue" Command="{Binding AddQueueCommand}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_new_queue_name]}" Text="{Binding NewQueueName}" />
+                    <Button Grid.Column="1" Classes="primary" Content="{Binding Localization[ui_add_queue]}" Command="{Binding AddQueueCommand}" />
                   </Grid>
-                  <TextBlock Text="Queues execute independently. Global and per-queue concurrency and speed limits are enforced while multiple queues are active." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  <TextBlock Text="{Binding Localization[ui_queues_execute_independently_global_and_per_queue_concurrency_and_speed]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
                 </StackPanel>
               </Border>
 
-              <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="12">
-                  <TextBlock Text="Categories" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <TextBlock Text="{Binding Localization[ui_categories]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
                   <ItemsControl ItemsSource="{Binding CategoryDefinitions}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <Border Background="#171D25" CornerRadius="8" Padding="12" Margin="0,0,0,7">
+                        <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12" Margin="0,0,0,7">
                           <Grid ColumnDefinitions="*,2*" ColumnSpacing="18">
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#E8EEF7" />
-                            <TextBlock Grid.Column="1" Text="{Binding DestinationDirectory}" Foreground="#7F8B9B" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodyForeground}" />
+                            <TextBlock Grid.Column="1" Text="{Binding DestinationDirectory}" Foreground="{DynamicResource XdmMutedForeground}" TextTrimming="CharacterEllipsis" />
                           </Grid>
                         </Border>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
                   <Grid ColumnDefinitions="*,*,2*,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Category name" Text="{Binding NewCategoryName}" />
-                    <TextBox Grid.Column="1" PlaceholderText="Extensions: zip, 7z, rar" Text="{Binding NewCategoryExtensions}" />
-                    <TextBox Grid.Column="2" PlaceholderText="Destination (blank = current)" Text="{Binding NewCategoryDestination}" />
-                    <Button Grid.Column="3" Classes="primary" Content="Add category" Command="{Binding AddCategoryCommand}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_category_name]}" Text="{Binding NewCategoryName}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_extensions_zip_7z_rar]}" Text="{Binding NewCategoryExtensions}" />
+                    <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_destination_blank_current]}" Text="{Binding NewCategoryDestination}" />
+                    <Button Grid.Column="3" Classes="primary" Content="{Binding Localization[ui_add_category]}" Command="{Binding AddCategoryCommand}" />
                   </Grid>
-                  <Button HorizontalAlignment="Left" Classes="secondary" Content="Save definitions" Command="{Binding SaveSettingsCommand}" />
+                  <Button HorizontalAlignment="Left" Classes="secondary" Content="{Binding Localization[ui_save_definitions]}" Command="{Binding SaveSettingsCommand}" />
                 </StackPanel>
               </Border>
             </StackPanel>
@@ -361,83 +412,83 @@
           <ScrollViewer IsVisible="{Binding IsSchedulerVisible}">
             <StackPanel Spacing="14">
               <Grid ColumnDefinitions="320,*" ColumnSpacing="14">
-                <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="10">
-                    <TextBlock Text="QUEUE SCHEDULES" Classes="label" />
+                    <TextBlock Text="{Binding Localization[ui_queue_schedules]}" Classes="label" />
                     <ListBox ItemsSource="{Binding Schedules}"
                              SelectedItem="{Binding SelectedSchedule}"
                              MinHeight="220"
                              MaxHeight="420">
                       <ListBox.ItemTemplate>
                         <DataTemplate>
-                          <Border Padding="10" Background="#151B23" CornerRadius="7">
+                          <Border Padding="10" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="7">
                             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#F1F5FA" />
-                              <TextBlock Grid.Column="1" Text="{Binding Enabled}" Foreground="#8FB5FF" />
-                              <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Queue.Name}" FontSize="11" Foreground="#7F8B9B" />
+                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
+                              <TextBlock Grid.Column="1" Text="{Binding Enabled}" Foreground="{DynamicResource XdmAccentForeground}" />
+                              <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Queue.Name}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" />
                             </Grid>
                           </Border>
                         </DataTemplate>
                       </ListBox.ItemTemplate>
                     </ListBox>
-                    <TextBox PlaceholderText="New schedule name" Text="{Binding NewScheduleName}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_new_schedule_name]}" Text="{Binding NewScheduleName}" />
                     <WrapPanel Orientation="Horizontal">
-                      <Button Margin="0,0,8,0" Classes="primary" Content="Add schedule" Command="{Binding AddScheduleCommand}" />
-                      <Button Classes="secondary" Content="Remove" Command="{Binding RemoveSelectedScheduleCommand}" />
+                      <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_add_schedule]}" Command="{Binding AddScheduleCommand}" />
+                      <Button Classes="secondary" Content="{Binding Localization[ui_remove]}" Command="{Binding RemoveSelectedScheduleCommand}" />
                     </WrapPanel>
                   </StackPanel>
                 </Border>
 
-                <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+                <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="12" MaxWidth="820" HorizontalAlignment="Left">
-                    <TextBlock Text="Schedule and completion workflow" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
-                    <TextBlock Text="{Binding SchedulerRuntimeStatus}" Foreground="#8FB5FF" TextWrapping="Wrap" />
-                    <CheckBox Content="Enable selected schedule" IsChecked="{Binding SelectedSchedule.Enabled}" />
-                    <TextBox PlaceholderText="Schedule name" Text="{Binding SelectedSchedule.Name}" />
+                    <TextBlock Text="{Binding Localization[ui_schedule_and_completion_workflow]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
+                    <TextBlock Text="{Binding SchedulerRuntimeStatus}" Foreground="{DynamicResource XdmAccentForeground}" TextWrapping="Wrap" />
+                    <CheckBox Content="{Binding Localization[ui_enable_selected_schedule]}" IsChecked="{Binding SelectedSchedule.Enabled}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_schedule_name]}" Text="{Binding SelectedSchedule.Name}" />
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
-                      <TextBox PlaceholderText="Start HH:mm" Text="{Binding SelectedSchedule.StartTime}" />
-                      <TextBox Grid.Column="1" PlaceholderText="End HH:mm" Text="{Binding SelectedSchedule.EndTime}" />
+                      <TextBox PlaceholderText="{Binding Localization[ui_start_hh_mm]}" Text="{Binding SelectedSchedule.StartTime}" />
+                      <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_end_hh_mm]}" Text="{Binding SelectedSchedule.EndTime}" />
                       <ComboBox Grid.Column="2" ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedSchedule.Queue}">
                         <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
                       </ComboBox>
                     </Grid>
-                    <TextBlock Text="Run on days" Classes="label" />
+                    <TextBlock Text="{Binding Localization[ui_run_on_days]}" Classes="label" />
                     <WrapPanel Orientation="Horizontal">
-                      <CheckBox Margin="0,0,10,0" Content="Mon" IsChecked="{Binding SelectedSchedule.MondayEnabled}" />
-                      <CheckBox Margin="0,0,10,0" Content="Tue" IsChecked="{Binding SelectedSchedule.TuesdayEnabled}" />
-                      <CheckBox Margin="0,0,10,0" Content="Wed" IsChecked="{Binding SelectedSchedule.WednesdayEnabled}" />
-                      <CheckBox Margin="0,0,10,0" Content="Thu" IsChecked="{Binding SelectedSchedule.ThursdayEnabled}" />
-                      <CheckBox Margin="0,0,10,0" Content="Fri" IsChecked="{Binding SelectedSchedule.FridayEnabled}" />
-                      <CheckBox Margin="0,0,10,0" Content="Sat" IsChecked="{Binding SelectedSchedule.SaturdayEnabled}" />
-                      <CheckBox Content="Sun" IsChecked="{Binding SelectedSchedule.SundayEnabled}" />
+                      <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_mon]}" IsChecked="{Binding SelectedSchedule.MondayEnabled}" />
+                      <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_tue]}" IsChecked="{Binding SelectedSchedule.TuesdayEnabled}" />
+                      <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_wed]}" IsChecked="{Binding SelectedSchedule.WednesdayEnabled}" />
+                      <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_thu]}" IsChecked="{Binding SelectedSchedule.ThursdayEnabled}" />
+                      <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_fri]}" IsChecked="{Binding SelectedSchedule.FridayEnabled}" />
+                      <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_sat]}" IsChecked="{Binding SelectedSchedule.SaturdayEnabled}" />
+                      <CheckBox Content="{Binding Localization[ui_sun]}" IsChecked="{Binding SelectedSchedule.SundayEnabled}" />
                     </WrapPanel>
                     <ComboBox ItemsSource="{Binding SelectedSchedule.MissedRunOptions}" SelectedItem="{Binding SelectedSchedule.MissedRunPolicy}" />
-                    <TextBlock Text="Completion action" Classes="label" />
+                    <TextBlock Text="{Binding Localization[ui_completion_action]}" Classes="label" />
                     <Grid ColumnDefinitions="2*,*" ColumnSpacing="9">
                       <ComboBox ItemsSource="{Binding SelectedSchedule.CompletionActionOptions}" SelectedItem="{Binding SelectedSchedule.CompletionAction}" />
-                      <TextBox Grid.Column="1" PlaceholderText="Countdown seconds" Text="{Binding SelectedSchedule.CountdownSeconds}" />
+                      <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_countdown_seconds]}" Text="{Binding SelectedSchedule.CountdownSeconds}" />
                     </Grid>
-                    <TextBox PlaceholderText="Absolute executable path for RunCommand" Text="{Binding SelectedSchedule.CommandPath}" />
-                    <TextBox PlaceholderText="One command argument per line" Text="{Binding SelectedSchedule.CommandArguments}" AcceptsReturn="True" MinHeight="72" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_absolute_executable_path_for_runcommand]}" Text="{Binding SelectedSchedule.CommandPath}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_one_command_argument_per_line]}" Text="{Binding SelectedSchedule.CommandArguments}" AcceptsReturn="True" MinHeight="72" />
 
-                    <Border Background="#171D25" CornerRadius="8" Padding="12">
+                    <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12">
                       <StackPanel Spacing="8">
-                        <TextBlock Text="ANTIVIRUS SCAN BEFORE COMPLETION ACTION" Classes="label" />
-                        <CheckBox Content="Scan files completed by scheduled runs" IsChecked="{Binding AntivirusEnabled}" />
-                        <TextBox PlaceholderText="Absolute antivirus executable path" Text="{Binding AntivirusExecutablePath}" />
-                        <TextBox PlaceholderText="One argument per line; use {file} where the file path belongs" Text="{Binding AntivirusArguments}" AcceptsReturn="True" MinHeight="62" />
-                        <TextBox PlaceholderText="Scan timeout seconds" Text="{Binding AntivirusTimeoutSeconds}" />
+                        <TextBlock Text="{Binding Localization[ui_antivirus_scan_before_completion_action]}" Classes="label" />
+                        <CheckBox Content="{Binding Localization[ui_scan_files_completed_by_scheduled_runs]}" IsChecked="{Binding AntivirusEnabled}" />
+                        <TextBox PlaceholderText="{Binding Localization[ui_absolute_antivirus_executable_path]}" Text="{Binding AntivirusExecutablePath}" />
+                        <TextBox PlaceholderText="{Binding Localization[ui_one_argument_per_line_use_file_where_the_file_path_belongs]}" Text="{Binding AntivirusArguments}" AcceptsReturn="True" MinHeight="62" />
+                        <TextBox PlaceholderText="{Binding Localization[ui_scan_timeout_seconds]}" Text="{Binding AntivirusTimeoutSeconds}" />
                       </StackPanel>
                     </Border>
 
-                    <TextBlock Text="{Binding CompletionCapabilitySummary}" TextWrapping="Wrap" Foreground="#7F8B9B" />
-                    <TextBlock Text="{Binding PendingCompletionAction}" TextWrapping="Wrap" Foreground="#F5C66A" />
+                    <TextBlock Text="{Binding CompletionCapabilitySummary}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
+                    <TextBlock Text="{Binding PendingCompletionAction}" TextWrapping="Wrap" Foreground="{DynamicResource XdmWarningForeground}" />
                     <WrapPanel Orientation="Horizontal">
-                      <Button Margin="0,0,8,0" Classes="primary" Content="Save schedules" Command="{Binding SaveSettingsCommand}" />
-                      <Button Margin="0,0,8,0" Classes="secondary" Content="Refresh capabilities" Command="{Binding RefreshCompletionCapabilitiesCommand}" />
-                      <Button Classes="secondary" Content="Cancel pending action" Command="{Binding CancelPendingCompletionActionCommand}" IsEnabled="{Binding HasPendingCompletionAction}" />
+                      <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_save_schedules]}" Command="{Binding SaveSettingsCommand}" />
+                      <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_refresh_capabilities]}" Command="{Binding RefreshCompletionCapabilitiesCommand}" />
+                      <Button Classes="secondary" Content="{Binding Localization[ui_cancel_pending_action]}" Command="{Binding CancelPendingCompletionActionCommand}" IsEnabled="{Binding HasPendingCompletionAction}" />
                     </WrapPanel>
-                    <TextBlock Text="Commands are launched directly without a shell. Shutdown, sleep, hibernate and logout are enabled only when a compatible platform command is present." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                    <TextBlock Text="{Binding Localization[ui_commands_are_launched_directly_without_a_shell_shutdown_sleep_hibernate]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
                   </StackPanel>
                 </Border>
               </Grid>
@@ -446,45 +497,45 @@
 
           <ScrollViewer IsVisible="{Binding IsBrowserIntegrationVisible}">
             <StackPanel Spacing="14">
-              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="13" MaxWidth="820" HorizontalAlignment="Left">
-                  <TextBlock Text="Browser capture service" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
-                  <TextBlock Text="{Binding BrowserIntegrationStatus}" Foreground="#8FB5FF" />
+                  <TextBlock Text="{Binding Localization[ui_browser_capture_service]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
+                  <TextBlock Text="{Binding BrowserIntegrationStatus}" Foreground="{DynamicResource XdmAccentForeground}" />
                   <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="8">
-                    <TextBlock Text="Endpoint" Classes="label" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Localization[ui_endpoint]}" Classes="label" VerticalAlignment="Center" />
                     <TextBox Grid.Column="1" Text="{Binding BrowserEndpoint}" IsReadOnly="True" />
-                    <TextBlock Grid.Row="1" Text="Token" Classes="label" VerticalAlignment="Center" />
+                    <TextBlock Grid.Row="1" Text="{Binding Localization[ui_token]}" Classes="label" VerticalAlignment="Center" />
                     <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BrowserAuthenticationToken}" IsReadOnly="True" />
                   </Grid>
                   <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Classes="primary" Content="Restart capture service" Command="{Binding RestartBrowserIntegrationCommand}" />
-                    <Button Classes="secondary" Content="Probe URL from Downloads" Command="{Binding ProbeEnteredUrlCommand}" />
+                    <Button Classes="primary" Content="{Binding Localization[ui_restart_capture_service]}" Command="{Binding RestartBrowserIntegrationCommand}" />
+                    <Button Classes="secondary" Content="{Binding Localization[ui_probe_url_from_downloads]}" Command="{Binding ProbeEnteredUrlCommand}" />
                   </StackPanel>
-                  <Border Background="#171D25" CornerRadius="8" Padding="12">
+                  <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12">
                     <StackPanel Spacing="8">
-                      <TextBlock Text="NATIVE HOST" Classes="label" />
-                      <TextBlock Text="{Binding BrowserHostStatus}" TextWrapping="Wrap" Foreground="#BAC7D8" />
+                      <TextBlock Text="{Binding Localization[ui_native_host]}" Classes="label" />
+                      <TextBlock Text="{Binding BrowserHostStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmSecondarySoftForeground}" />
                       <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                        <TextBox PlaceholderText="Chromium extension ID(s), comma-separated; Firefox is automatic" Text="{Binding BrowserExtensionId}" />
-                        <Button Grid.Column="1" Classes="secondary" Content="Install / repair" Command="{Binding RepairBrowserHostCommand}" />
-                        <Button Grid.Column="2" Classes="secondary" Content="Uninstall" Command="{Binding UninstallBrowserHostCommand}" />
+                        <TextBox PlaceholderText="{Binding Localization[ui_chromium_extension_id_s_comma_separated_firefox_is_automatic]}" Text="{Binding BrowserExtensionId}" />
+                        <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_install_repair]}" Command="{Binding RepairBrowserHostCommand}" />
+                        <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_uninstall]}" Command="{Binding UninstallBrowserHostCommand}" />
                       </Grid>
                     </StackPanel>
                   </Border>
-                  <TextBlock Text="Browser extensions use the versioned native-messaging protocol. The host authenticates a per-connection session, validates capture rules and metadata, then waits for XDM to queue the download before acknowledging browser cancellation." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  <TextBlock Text="{Binding Localization[ui_browser_extensions_use_the_versioned_native_messaging_protocol_the_host]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
                 </StackPanel>
               </Border>
               <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
-                <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="8">
-                    <TextBlock Text="LAST CAPTURE" Classes="label" />
-                    <TextBlock Text="{Binding LastBrowserCapture}" TextWrapping="Wrap" Foreground="#E8EEF7" />
+                    <TextBlock Text="{Binding Localization[ui_last_capture]}" Classes="label" />
+                    <TextBlock Text="{Binding LastBrowserCapture}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}" />
                   </StackPanel>
                 </Border>
-                <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="8">
-                    <TextBlock Text="MEDIA PROBE" Classes="label" />
-                    <TextBlock Text="{Binding LastMediaProbe}" TextWrapping="Wrap" Foreground="#E8EEF7" />
+                    <TextBlock Text="{Binding Localization[ui_media_probe]}" Classes="label" />
+                    <TextBlock Text="{Binding LastMediaProbe}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}" />
                   </StackPanel>
                 </Border>
               </Grid>
@@ -493,45 +544,45 @@
 
           <ScrollViewer IsVisible="{Binding IsMediaVisible}">
             <StackPanel Spacing="14">
-              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="13">
                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="HLS, DASH, direct media, or a page supported by yt-dlp" Text="{Binding MediaSourceUrl}" />
-                    <Button Grid.Column="1" Classes="primary" Content="Discover formats" Command="{Binding ProbeMediaCommand}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_hls_dash_direct_media_or_a_page_supported_by_yt_dlp]}" Text="{Binding MediaSourceUrl}" />
+                    <Button Grid.Column="1" Classes="primary" Content="{Binding Localization[ui_discover_formats]}" Command="{Binding ProbeMediaCommand}" />
                   </Grid>
-                  <TextBlock Text="{Binding MediaCatalogSummary}" TextWrapping="Wrap" Foreground="#8FB5FF" />
+                  <TextBlock Text="{Binding MediaCatalogSummary}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}" />
                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
-                    <TextBlock Text="{Binding MediaToolHealth}" TextWrapping="Wrap" Foreground="#7F8B9B" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Classes="secondary" Content="Check tools" Command="{Binding RefreshMediaToolHealthCommand}" />
+                    <TextBlock Text="{Binding MediaToolHealth}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_check_tools]}" Command="{Binding RefreshMediaToolHealthCommand}" />
                   </Grid>
                 </StackPanel>
               </Border>
 
               <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
-                <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="10">
-                    <TextBlock Text="VIDEO" Classes="label" />
+                    <TextBlock Text="{Binding Localization[ui_video]}" Classes="label" />
                     <ComboBox ItemsSource="{Binding MediaVideoFormats}" SelectedItem="{Binding SelectedMediaVideoFormat}">
                       <ComboBox.ItemTemplate>
                         <DataTemplate>
                           <StackPanel Margin="2" Spacing="2">
-                            <TextBlock Text="{Binding DisplayName}" Foreground="#E8EEF7" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Text="{Binding Details}" FontSize="11" Foreground="#7F8B9B" />
+                            <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource XdmBodyForeground}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Details}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" />
                           </StackPanel>
                         </DataTemplate>
                       </ComboBox.ItemTemplate>
                     </ComboBox>
                   </StackPanel>
                 </Border>
-                <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="10">
-                    <TextBlock Text="AUDIO" Classes="label" />
+                    <TextBlock Text="{Binding Localization[ui_audio]}" Classes="label" />
                     <ComboBox ItemsSource="{Binding MediaAudioFormats}" SelectedItem="{Binding SelectedMediaAudioFormat}">
                       <ComboBox.ItemTemplate>
                         <DataTemplate>
                           <StackPanel Margin="2" Spacing="2">
-                            <TextBlock Text="{Binding DisplayName}" Foreground="#E8EEF7" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Text="{Binding Details}" FontSize="11" Foreground="#7F8B9B" />
+                            <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource XdmBodyForeground}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Details}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" />
                           </StackPanel>
                         </DataTemplate>
                       </ComboBox.ItemTemplate>
@@ -540,9 +591,9 @@
                 </Border>
               </Grid>
 
-              <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="10">
-                  <TextBlock Text="SUBTITLES" Classes="label" />
+                  <TextBlock Text="{Binding Localization[ui_subtitles]}" Classes="label" />
                   <ItemsControl ItemsSource="{Binding MediaSubtitleFormats}">
                     <ItemsControl.ItemsPanel>
                       <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
@@ -553,22 +604,22 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <TextBlock Text="Selected subtitles are saved as language-labelled sidecar files. Separate audio/video representations are stream-copied with FFmpeg." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  <TextBlock Text="{Binding Localization[ui_selected_subtitles_are_saved_as_language_labelled_sidecar_files_separate]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
                 </StackPanel>
               </Border>
 
-              <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="11">
                   <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Destination folder" Text="{Binding DestinationFolder}" />
-                    <Button Grid.Column="1" Classes="secondary" Content="Browse" Click="BrowseDestination_Click" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_destination_folder]}" Text="{Binding DestinationFolder}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseDestination_Click" />
                   </Grid>
                   <Grid ColumnDefinitions="2*,*" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Output filename, for example video.mp4" Text="{Binding MediaDestinationFile}" />
-                    <TextBox Grid.Column="1" PlaceholderText="Live capture minutes" Text="{Binding MediaLiveDurationMinutes}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_output_filename_for_example_video_mp4]}" Text="{Binding MediaDestinationFile}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_live_capture_minutes]}" Text="{Binding MediaLiveDurationMinutes}" />
                   </Grid>
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                    <CheckBox Content="Queue conversion after download" IsChecked="{Binding MediaPostConversionEnabled}" VerticalAlignment="Center" />
+                    <CheckBox Content="{Binding Localization[ui_queue_conversion_after_download]}" IsChecked="{Binding MediaPostConversionEnabled}" VerticalAlignment="Center" />
                     <ComboBox Grid.Column="1" ItemsSource="{Binding ConversionPresets}" SelectedItem="{Binding MediaPostConversionPreset}" IsEnabled="{Binding MediaPostConversionEnabled}">
                       <ComboBox.ItemTemplate>
                         <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
@@ -576,10 +627,10 @@
                     </ComboBox>
                   </Grid>
                   <ProgressBar Minimum="0" Maximum="1" Value="{Binding MediaDownloadProgress}" IsIndeterminate="{Binding MediaDownloadIndeterminate}" Height="6" />
-                  <TextBlock Text="{Binding MediaDownloadStatus}" TextWrapping="Wrap" Foreground="#BAC7D8" />
+                  <TextBlock Text="{Binding MediaDownloadStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmSecondarySoftForeground}" />
                   <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Classes="primary" Content="Download selected media" Command="{Binding DownloadMediaCommand}" />
-                    <Button Classes="secondary" Content="Cancel" Command="{Binding CancelMediaDownloadCommand}" />
+                    <Button Classes="primary" Content="{Binding Localization[ui_download_selected_media]}" Command="{Binding DownloadMediaCommand}" />
+                    <Button Classes="secondary" Content="{Binding Localization[ui_cancel]}" Command="{Binding CancelMediaDownloadCommand}" />
                   </StackPanel>
                 </StackPanel>
               </Border>
@@ -588,44 +639,44 @@
 
           <ScrollViewer IsVisible="{Binding IsConversionVisible}">
             <StackPanel Spacing="14">
-              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="12">
                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                     <StackPanel Spacing="5">
-                      <TextBlock Text="FFMPEG CONVERSION" Classes="label" />
-                      <TextBlock Text="{Binding ConversionHealth}" TextWrapping="Wrap" Foreground="#BAC7D8" />
+                      <TextBlock Text="{Binding Localization[ui_ffmpeg_conversion]}" Classes="label" />
+                      <TextBlock Text="{Binding ConversionHealth}" TextWrapping="Wrap" Foreground="{DynamicResource XdmSecondarySoftForeground}" />
                     </StackPanel>
-                    <Button Grid.Column="1" Classes="secondary" Content="Check FFmpeg + FFprobe" Command="{Binding RefreshConversionHealthCommand}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_check_ffmpeg_ffprobe]}" Command="{Binding RefreshConversionHealthCommand}" />
                   </Grid>
-                  <TextBlock Text="Preset IDs select fixed argument templates. XDM never executes user-provided commands or invokes a shell." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  <TextBlock Text="{Binding Localization[ui_preset_ids_select_fixed_argument_templates_xdm_never_executes_user_provi]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
                 </StackPanel>
               </Border>
 
-              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="11">
                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Source media file" Text="{Binding ConversionSourcePath}" />
-                    <Button Grid.Column="1" Classes="secondary" Content="Browse" Click="BrowseConversionSource_Click" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_source_media_file]}" Text="{Binding ConversionSourcePath}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseConversionSource_Click" />
                   </Grid>
-                  <TextBox PlaceholderText="Destination .mp4 or .mp3 path" Text="{Binding ConversionDestinationPath}" />
+                  <TextBox PlaceholderText="{Binding Localization[ui_destination_mp4_or_mp3_path]}" Text="{Binding ConversionDestinationPath}" />
                   <ComboBox ItemsSource="{Binding ConversionPresets}" SelectedItem="{Binding SelectedConversionPreset}">
                     <ComboBox.ItemTemplate>
                       <DataTemplate>
                         <StackPanel Margin="2" Spacing="2">
-                          <TextBlock Text="{Binding Name}" Foreground="#E8EEF7" />
-                          <TextBlock Text="{Binding Description}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
+                          <TextBlock Text="{Binding Name}" Foreground="{DynamicResource XdmBodyForeground}" />
+                          <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap" />
                         </StackPanel>
                       </DataTemplate>
                     </ComboBox.ItemTemplate>
                   </ComboBox>
-                  <CheckBox Content="Overwrite an existing destination only after conversion succeeds" IsChecked="{Binding ConversionOverwriteExisting}" />
-                  <TextBlock Text="{Binding ConversionStatus}" TextWrapping="Wrap" Foreground="#8FB5FF" />
-                  <Button HorizontalAlignment="Left" Classes="primary" Content="Add to conversion queue" Command="{Binding EnqueueConversionCommand}" />
+                  <CheckBox Content="{Binding Localization[ui_overwrite_an_existing_destination_only_after_conversion_succeeds]}" IsChecked="{Binding ConversionOverwriteExisting}" />
+                  <TextBlock Text="{Binding ConversionStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}" />
+                  <Button HorizontalAlignment="Left" Classes="primary" Content="{Binding Localization[ui_add_to_conversion_queue]}" Command="{Binding EnqueueConversionCommand}" />
                 </StackPanel>
               </Border>
 
               <Grid ColumnDefinitions="2*,*" ColumnSpacing="14" MinHeight="300">
-                <Border Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
+                <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <ListBox ItemsSource="{Binding ConversionJobs}"
                            SelectedItem="{Binding SelectedConversionJob}"
                            Background="Transparent"
@@ -636,16 +687,16 @@
                     </ListBox.ItemsPanel>
                     <ListBox.ItemTemplate>
                       <DataTemplate>
-                        <Border Padding="12" Background="#151B23" CornerRadius="8">
+                        <Border Padding="12" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8">
                           <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="12">
                             <StackPanel>
-                              <TextBlock Text="{Binding PresetName}" FontWeight="SemiBold" Foreground="#F1F5FA" />
-                              <TextBlock Text="{Binding SourcePath}" FontSize="11" Foreground="#718095" TextTrimming="CharacterEllipsis" />
+                              <TextBlock Text="{Binding PresetName}" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
+                              <TextBlock Text="{Binding SourcePath}" FontSize="11" Foreground="{DynamicResource XdmSubtleForeground}" TextTrimming="CharacterEllipsis" />
                             </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{Binding State}" Foreground="#8FB5FF" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding State}" Foreground="{DynamicResource XdmAccentForeground}" VerticalAlignment="Center" />
                             <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Margin="0,9,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" IsIndeterminate="{Binding IsIndeterminate}" />
-                            <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
-                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding OutputSize}" FontSize="11" Foreground="#BAC7D8" HorizontalAlignment="Right" />
+                            <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding OutputSize}" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}" HorizontalAlignment="Right" />
                           </Grid>
                         </Border>
                       </DataTemplate>
@@ -653,18 +704,18 @@
                   </ListBox>
                 </Border>
 
-                <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="10">
-                    <TextBlock Text="SELECTED JOB" Classes="label" />
-                    <TextBlock Text="{Binding SelectedConversionJob.PresetName}" FontWeight="SemiBold" Foreground="#F1F5FA" />
-                    <TextBlock Text="{Binding SelectedConversionJob.SourcePath}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding SelectedConversionJob.DestinationPath}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding SelectedConversionJob.ErrorMessage}" Foreground="#FF8F8F" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Localization[ui_selected_job]}" Classes="label" />
+                    <TextBlock Text="{Binding SelectedConversionJob.PresetName}" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
+                    <TextBlock Text="{Binding SelectedConversionJob.SourcePath}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedConversionJob.DestinationPath}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedConversionJob.ErrorMessage}" Foreground="{DynamicResource XdmErrorForeground}" TextWrapping="Wrap" />
                     <WrapPanel Orientation="Horizontal">
-                      <Button Margin="0,0,8,0" Classes="secondary" Content="Cancel" Command="{Binding CancelSelectedConversionCommand}" IsEnabled="{Binding SelectedConversionJob.CanCancel}" />
-                      <Button Classes="secondary" Content="Remove" Command="{Binding RemoveSelectedConversionCommand}" IsEnabled="{Binding SelectedConversionJob.CanRemove}" />
+                      <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_cancel]}" Command="{Binding CancelSelectedConversionCommand}" IsEnabled="{Binding SelectedConversionJob.CanCancel}" />
+                      <Button Classes="secondary" Content="{Binding Localization[ui_remove]}" Command="{Binding RemoveSelectedConversionCommand}" IsEnabled="{Binding SelectedConversionJob.CanRemove}" />
                     </WrapPanel>
-                    <TextBlock Text="Conversions run one at a time. Cancellation terminates the FFmpeg process tree, removes only the private temporary output, and leaves the source untouched." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                    <TextBlock Text="{Binding Localization[ui_conversions_run_one_at_a_time_cancellation_terminates_the_ffmpeg_process]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
                   </StackPanel>
                 </Border>
               </Grid>
@@ -673,96 +724,115 @@
 
           <ScrollViewer IsVisible="{Binding IsSettingsVisible}">
             <StackPanel Spacing="14" MaxWidth="920" HorizontalAlignment="Left">
-              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="12">
-                  <TextBlock Text="Download behavior" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <TextBlock Text="{Binding Localization[ui_download_behavior]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
                   <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Default download directory" Text="{Binding DestinationFolder}" />
-                    <Button Grid.Column="1" Classes="secondary" Content="Browse" Click="BrowseDestination_Click" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_default_download_directory]}" Text="{Binding DestinationFolder}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseDestination_Click" />
                   </Grid>
                   <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Maximum concurrent downloads" Text="{Binding MaxConcurrentDownloads}" />
-                    <TextBox Grid.Column="1" PlaceholderText="Default speed limit KB/s (0 = unlimited)" Text="{Binding DefaultSpeedLimitKbps}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_maximum_concurrent_downloads]}" Text="{Binding MaxConcurrentDownloads}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_default_speed_limit_kb_s_0_unlimited]}" Text="{Binding DefaultSpeedLimitKbps}" />
                   </Grid>
                   <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
                     <ComboBox ItemsSource="{Binding DuplicateBehaviors}" SelectedItem="{Binding SelectedDuplicateBehavior}" />
-                    <TextBox Grid.Column="1" PlaceholderText="Default connections" Text="{Binding DefaultConnectionCount}" />
-                    <TextBox Grid.Column="2" PlaceholderText="Maximum connections" Text="{Binding MaximumConnectionCount}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_default_connections]}" Text="{Binding DefaultConnectionCount}" />
+                    <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_maximum_connections]}" Text="{Binding MaximumConnectionCount}" />
                   </Grid>
-                  <CheckBox Content="Create destination directories when missing" IsChecked="{Binding CreateDestinationDirectory}" />
-                  <CheckBox Content="Automatically select categories by extension" IsChecked="{Binding AutoSelectCategory}" />
-                  <CheckBox Content="Remember the last request metadata in the download dialog" IsChecked="{Binding RememberLastRequestMetadata}" />
-                  <CheckBox Content="Monitor clipboard for HTTP/HTTPS links" IsChecked="{Binding ClipboardMonitoringEnabled}" />
-                  <CheckBox Content="Automatically add links captured from clipboard" IsChecked="{Binding AutoAddClipboardLinks}" />
+                  <CheckBox Content="{Binding Localization[ui_create_destination_directories_when_missing]}" IsChecked="{Binding CreateDestinationDirectory}" />
+                  <CheckBox Content="{Binding Localization[ui_automatically_select_categories_by_extension]}" IsChecked="{Binding AutoSelectCategory}" />
+                  <CheckBox Content="{Binding Localization[ui_remember_the_last_request_metadata_in_the_download_dialog]}" IsChecked="{Binding RememberLastRequestMetadata}" />
+                  <CheckBox Content="{Binding Localization[ui_monitor_clipboard_for_http_https_links]}" IsChecked="{Binding ClipboardMonitoringEnabled}" />
+                  <CheckBox Content="{Binding Localization[ui_automatically_add_links_captured_from_clipboard]}" IsChecked="{Binding AutoAddClipboardLinks}" />
                 </StackPanel>
               </Border>
 
 
-              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="12">
-                  <TextBlock Text="History retention" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
-                  <CheckBox Content="Automatically prune terminal history entries" IsChecked="{Binding HistoryRetentionEnabled}" />
+                  <TextBlock Text="{Binding Localization[ui_language_and_accessibility]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
+                  <Grid ColumnDefinitions="2*,*" ColumnSpacing="9">
+                    <ComboBox ItemsSource="{Binding AvailableLanguages}" SelectedItem="{Binding SelectedLanguage}" AutomationProperties.Name="{Binding Localization[ui_interface_language]}">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate><TextBlock Text="{Binding DisplayName}" /></DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_ui_scale_percent_75_175]}" Text="{Binding UiScalePercent}" AutomationProperties.Name="{Binding Localization[ui_ui_scale_percent]}" />
+                  </Grid>
+                  <CheckBox Content="{Binding Localization[ui_use_the_operating_system_language]}" IsChecked="{Binding UseSystemLanguage}" />
+                  <CheckBox Content="{Binding Localization[ui_use_high_contrast_colors]}" IsChecked="{Binding HighContrastEnabled}" />
+                  <CheckBox Content="{Binding Localization[ui_announce_operation_status_changes_to_screen_readers]}" IsChecked="{Binding AnnounceStatusChanges}" />
+                  <TextBlock Text="{Binding Localization[ui_language_right_to_left_layout_contrast_and_scaling_update_immediately_af]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
+                </StackPanel>
+              </Border>
+
+
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="{Binding Localization[ui_history_retention]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
+                  <CheckBox Content="{Binding Localization[ui_automatically_prune_terminal_history_entries]}" IsChecked="{Binding HistoryRetentionEnabled}" />
                   <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Retention days" Text="{Binding HistoryRetentionDays}" />
-                    <TextBox Grid.Column="1" PlaceholderText="Maximum history entries" Text="{Binding HistoryMaximumEntries}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_retention_days]}" Text="{Binding HistoryRetentionDays}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_maximum_history_entries]}" Text="{Binding HistoryMaximumEntries}" />
                   </Grid>
-                  <TextBlock Text="Retention removes only history entries. Downloaded files are never deleted automatically." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  <TextBlock Text="{Binding Localization[ui_retention_removes_only_history_entries_downloaded_files_are_never_delete]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
                 </StackPanel>
               </Border>
 
-              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="12">
-                  <TextBlock Text="Network, retries, and segmented transfers" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <TextBlock Text="{Binding Localization[ui_network_retries_and_segmented_transfers]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
                   <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Connect timeout seconds" Text="{Binding ConnectTimeoutSeconds}" />
-                    <TextBox Grid.Column="1" PlaceholderText="Whole-request timeout seconds (0 = unlimited)" Text="{Binding RequestTimeoutSeconds}" />
-                    <TextBox Grid.Column="2" PlaceholderText="Maximum retry attempts" Text="{Binding MaximumRetryAttempts}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_connect_timeout_seconds]}" Text="{Binding ConnectTimeoutSeconds}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_whole_request_timeout_seconds_0_unlimited]}" Text="{Binding RequestTimeoutSeconds}" />
+                    <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_maximum_retry_attempts]}" Text="{Binding MaximumRetryAttempts}" />
                   </Grid>
                   <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Retry base delay milliseconds" Text="{Binding RetryBaseDelayMilliseconds}" />
-                    <TextBox Grid.Column="1" PlaceholderText="Minimum segmented size MiB" Text="{Binding MinimumSegmentedSizeMegabytes}" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_retry_base_delay_milliseconds]}" Text="{Binding RetryBaseDelayMilliseconds}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_minimum_segmented_size_mib]}" Text="{Binding MinimumSegmentedSizeMegabytes}" />
                   </Grid>
-                  <TextBlock Text="Network handler, proxy, retry, and segment settings apply to new processes after restart. Per-download connection counts use the saved default immediately." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  <TextBlock Text="{Binding Localization[ui_network_handler_proxy_retry_and_segment_settings_apply_to_new_processes]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
                 </StackPanel>
               </Border>
 
-              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="12">
-                  <TextBlock Text="Proxy" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <TextBlock Text="{Binding Localization[ui_proxy]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
                   <Grid ColumnDefinitions="*,2*,*" ColumnSpacing="9">
                     <ComboBox ItemsSource="{Binding ProxyModes}" SelectedItem="{Binding SelectedProxyMode}" />
-                    <TextBox Grid.Column="1" PlaceholderText="Proxy host" Text="{Binding ProxyHost}" />
-                    <TextBox Grid.Column="2" PlaceholderText="Port" Text="{Binding ProxyPort}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_proxy_host]}" Text="{Binding ProxyHost}" />
+                    <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_port]}" Text="{Binding ProxyPort}" />
                   </Grid>
                   <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Proxy username" Text="{Binding ProxyUsername}" />
-                    <TextBox Grid.Column="1" PlaceholderText="Proxy password" Text="{Binding ProxyPassword}" PasswordChar="●" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_proxy_username]}" Text="{Binding ProxyUsername}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_proxy_password]}" Text="{Binding ProxyPassword}" PasswordChar="●" />
                   </Grid>
-                  <CheckBox Content="Bypass proxy for local addresses" IsChecked="{Binding ProxyBypassLocal}" />
-                  <TextBox AcceptsReturn="True" MinHeight="70" PlaceholderText="Proxy bypass patterns, one per line" Text="{Binding ProxyBypassList}" />
+                  <CheckBox Content="{Binding Localization[ui_bypass_proxy_for_local_addresses]}" IsChecked="{Binding ProxyBypassLocal}" />
+                  <TextBox AcceptsReturn="True" MinHeight="70" PlaceholderText="{Binding Localization[ui_proxy_bypass_patterns_one_per_line]}" Text="{Binding ProxyBypassList}" />
                 </StackPanel>
               </Border>
 
-              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="12">
-                  <TextBlock Text="Server credentials" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <TextBlock Text="{Binding Localization[ui_server_credentials]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
                   <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Host (example.com)" Text="{Binding CredentialHost}" />
-                    <TextBox Grid.Column="1" PlaceholderText="Username" Text="{Binding CredentialUsername}" />
-                    <TextBox Grid.Column="2" PlaceholderText="Password" Text="{Binding CredentialPassword}" PasswordChar="●" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_host_example_com]}" Text="{Binding CredentialHost}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_username]}" Text="{Binding CredentialUsername}" />
+                    <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_password]}" Text="{Binding CredentialPassword}" PasswordChar="●" />
                   </Grid>
-                  <CheckBox Content="Include subdomains" IsChecked="{Binding CredentialIncludesSubdomains}" />
+                  <CheckBox Content="{Binding Localization[ui_include_subdomains]}" IsChecked="{Binding CredentialIncludesSubdomains}" />
                   <WrapPanel Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="Add or replace" Command="{Binding AddServerCredentialCommand}" />
-                    <Button Classes="secondary" Content="Remove selected" Command="{Binding RemoveSelectedServerCredentialCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_add_or_replace]}" Command="{Binding AddServerCredentialCommand}" />
+                    <Button Classes="secondary" Content="{Binding Localization[ui_remove_selected]}" Command="{Binding RemoveSelectedServerCredentialCommand}" />
                   </WrapPanel>
                   <ListBox ItemsSource="{Binding ServerCredentials}" SelectedItem="{Binding SelectedServerCredential}" MaxHeight="150">
                     <ListBox.ItemTemplate>
                       <DataTemplate>
                         <Grid ColumnDefinitions="2*,*,Auto" ColumnSpacing="10" Margin="2">
-                          <TextBlock Text="{Binding Host}" Foreground="#E8EEF7" />
-                          <TextBlock Grid.Column="1" Text="{Binding Username}" Foreground="#BAC7D8" />
-                          <TextBlock Grid.Column="2" Text="Saved" Foreground="#8FB5FF" />
+                          <TextBlock Text="{Binding Host}" Foreground="{DynamicResource XdmBodyForeground}" />
+                          <TextBlock Grid.Column="1" Text="{Binding Username}" Foreground="{DynamicResource XdmSecondarySoftForeground}" />
+                          <TextBlock Grid.Column="2" Text="Saved" Foreground="{DynamicResource XdmAccentForeground}" />
                         </Grid>
                       </DataTemplate>
                     </ListBox.ItemTemplate>
@@ -770,62 +840,62 @@
                 </StackPanel>
               </Border>
 
-              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="12">
-                  <TextBlock Text="Import, export, and XDM 8 migration" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <TextBlock Text="{Binding Localization[ui_import_export_and_xdm_8_migration]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
                   <Grid ColumnDefinitions="2*,Auto,Auto,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="Settings file or legacy settings directory" Text="{Binding SettingsTransferPath}" />
-                    <Button Grid.Column="1" Classes="secondary" Content="Choose file" Click="BrowseSettingsImport_Click" />
-                    <Button Grid.Column="2" Classes="secondary" Content="Choose folder" Click="BrowseSettingsDirectory_Click" />
-                    <Button Grid.Column="3" Classes="secondary" Content="Choose export" Click="BrowseSettingsExport_Click" />
+                    <TextBox PlaceholderText="{Binding Localization[ui_settings_file_or_legacy_settings_directory]}" Text="{Binding SettingsTransferPath}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_choose_file]}" Click="BrowseSettingsImport_Click" />
+                    <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_choose_folder]}" Click="BrowseSettingsDirectory_Click" />
+                    <Button Grid.Column="3" Classes="secondary" Content="{Binding Localization[ui_choose_export]}" Click="BrowseSettingsExport_Click" />
                   </Grid>
-                  <CheckBox Content="Include proxy and server passwords in export" IsChecked="{Binding IncludeSecretsInSettingsExport}" />
+                  <CheckBox Content="{Binding Localization[ui_include_proxy_and_server_passwords_in_export]}" IsChecked="{Binding IncludeSecretsInSettingsExport}" />
                   <WrapPanel Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="Import or migrate" Command="{Binding ImportSettingsCommand}" />
-                    <Button Classes="secondary" Content="Export settings" Command="{Binding ExportSettingsCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_import_or_migrate]}" Command="{Binding ImportSettingsCommand}" />
+                    <Button Classes="secondary" Content="{Binding Localization[ui_export_settings]}" Command="{Binding ExportSettingsCommand}" />
                   </WrapPanel>
-                  <TextBlock Text="{Binding SettingsTransferStatus}" TextWrapping="Wrap" Foreground="#8FB5FF" />
-                  <TextBlock Text="Legacy import recognizes JSON, Java properties, and XML files. Modern exports redact passwords unless explicitly included." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  <TextBlock Text="{Binding SettingsTransferStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}" />
+                  <TextBlock Text="{Binding Localization[ui_legacy_import_recognizes_json_java_properties_and_xml_files_modern_expor]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
                 </StackPanel>
               </Border>
 
-              <Button HorizontalAlignment="Left" Classes="primary" Content="Save all settings" Command="{Binding SaveSettingsCommand}" />
+              <Button HorizontalAlignment="Left" Classes="primary" Content="{Binding Localization[ui_save_all_settings]}" Command="{Binding SaveSettingsCommand}" />
             </StackPanel>
           </ScrollViewer>
 
           <ScrollViewer IsVisible="{Binding IsDiagnosticsVisible}">
             <StackPanel Spacing="14">
               <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
-                <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="8">
-                    <TextBlock Text="RECOVERY" Classes="label" />
-                    <TextBlock Text="{Binding RecoveryStatus}" TextWrapping="Wrap" Foreground="#E8EEF7" />
-                    <TextBlock Text="Launch with --safe-mode to skip browser and scheduler startup, or --reset-window-state to discard stored window placement." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                    <TextBlock Text="{Binding Localization[ui_recovery]}" Classes="label" />
+                    <TextBlock Text="{Binding RecoveryStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}" />
+                    <TextBlock Text="{Binding Localization[ui_launch_with_safe_mode_to_skip_browser_and_scheduler_startup_or_reset_win]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
                   </StackPanel>
                 </Border>
-                <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="8">
-                    <TextBlock Text="DIAGNOSTIC BUNDLE" Classes="label" />
-                    <TextBlock Text="{Binding DiagnosticBundlePath}" TextWrapping="Wrap" Foreground="#E8EEF7" />
+                    <TextBlock Text="{Binding Localization[ui_diagnostic_bundle]}" Classes="label" />
+                    <TextBlock Text="{Binding DiagnosticBundlePath}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                      <Button Classes="primary" Content="Export bundle" Command="{Binding ExportDiagnosticsCommand}" />
-                      <Button Classes="secondary" Content="Clear events" Command="{Binding ClearDiagnosticsCommand}" />
+                      <Button Classes="primary" Content="{Binding Localization[ui_export_bundle]}" Command="{Binding ExportDiagnosticsCommand}" />
+                      <Button Classes="secondary" Content="{Binding Localization[ui_clear_events]}" Command="{Binding ClearDiagnosticsCommand}" />
                     </StackPanel>
                   </StackPanel>
                 </Border>
               </Grid>
 
-              <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="10">
-                  <TextBlock Text="RECENT EVENTS" Classes="label" />
+                  <TextBlock Text="{Binding Localization[ui_recent_events]}" Classes="label" />
                   <ItemsControl ItemsSource="{Binding DiagnosticEvents}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
                         <Grid ColumnDefinitions="150,100,180,*" ColumnSpacing="10" Margin="0,3">
-                          <TextBlock Text="{Binding Timestamp}" FontFamily="monospace" FontSize="11" Foreground="#7F8B9B" />
-                          <TextBlock Grid.Column="1" Text="{Binding Severity}" FontSize="11" Foreground="#8FB5FF" />
-                          <TextBlock Grid.Column="2" Text="{Binding Code}" FontFamily="monospace" FontSize="11" Foreground="#BAC7D8" />
-                          <TextBlock Grid.Column="3" Text="{Binding Message}" TextWrapping="Wrap" FontSize="11" Foreground="#E8EEF7" />
+                          <TextBlock Text="{Binding Timestamp}" FontFamily="monospace" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" />
+                          <TextBlock Grid.Column="1" Text="{Binding Severity}" FontSize="11" Foreground="{DynamicResource XdmAccentForeground}" />
+                          <TextBlock Grid.Column="2" Text="{Binding Code}" FontFamily="monospace" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}" />
+                          <TextBlock Grid.Column="3" Text="{Binding Message}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmBodyForeground}" />
                         </Grid>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -835,19 +905,21 @@
             </StackPanel>
           </ScrollViewer>
 
-          <Border IsVisible="{Binding IsPlaceholderVisible}" Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
+          <Border IsVisible="{Binding IsPlaceholderVisible}" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Margin="30">
-              <TextBlock Text="◇" FontSize="38" Foreground="#4F8CFF" HorizontalAlignment="Center" />
-              <TextBlock Text="No page is available" FontSize="19" FontWeight="SemiBold" Foreground="#E9EEF6" HorizontalAlignment="Center" />
+              <TextBlock Text="{Binding Localization[ui_text]}" FontSize="38" Foreground="{DynamicResource XdmBrandBrush}" HorizontalAlignment="Center" />
+              <TextBlock Text="{Binding Localization[ui_no_page_is_available]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodySoftForeground}" HorizontalAlignment="Center" />
             </StackPanel>
           </Border>
         </Grid>
       </Grid>
 
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
-        <TextBlock Text="{Binding RuntimeDescription}" FontSize="11" Foreground="#687586" />
-        <TextBlock Grid.Column="1" Text="Settings and workflow parity • overlay 18" FontSize="11" Foreground="#8FB5FF" />
+        <TextBlock Text="{Binding RuntimeDescription}" FontSize="11" Foreground="{DynamicResource XdmSubtleDarkForeground}" />
+        <TextBlock Grid.Column="1" Text="{Binding Localization[ui_localization_and_accessibility_parity_overlay_20]}" FontSize="11" Foreground="{DynamicResource XdmAccentForeground}" />
       </Grid>
     </Grid>
   </Grid>
+  </LayoutTransformControl>
+  </ScrollViewer>
 </Window>

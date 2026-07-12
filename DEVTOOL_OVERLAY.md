@@ -1,6 +1,6 @@
-# XDM Overlay 19 — history and file management
+# XDM Overlay 20 — localization and accessibility
 
-Base: confirmed successful commit `5d512e2`
+Base: confirmed successful commit `86633eb`
 
 Target: `xdm_modern`
 
@@ -8,28 +8,23 @@ Active solution: `app/XDM/XDM.Modern.sln`
 
 ## Included
 
-- Optional age/count history retention that preserves active work and all files.
-- True persisted last-update timestamps for meaningful retention decisions.
-- History-only removal, partial-data deletion, and explicit completed-file deletion.
-- Safe completed-file move/rename with cross-volume temporary-copy fallback.
-- GET re-download with auto-rename and preserved workflow metadata.
-- Expired HTTP(S) URL refresh without discarding partial data.
-- Persisted source-page metadata and open file/folder/URL/source-page actions.
-- Versioned credential-free JSON download-list export and plain URL-list import.
-- 8 MiB and 50,000-entry import limits with HTTP(S)-only normalization.
-- Bulk startup restoration and indexed application-state updates for large histories.
-- Avalonia history-management and retention controls.
-- Deterministic history, file-action, transfer, and 10,000-entry performance tests.
+- Stable embedded English resources plus bounded migration of retained XDM language packs.
+- Persisted language selection and operating-system language preference.
+- Runtime translated binding refresh and English fallback.
+- Right-to-left flow for RTL cultures.
+- Locale-aware sizes, rates, durations, aggregate speed, and status labels.
+- Persisted high-contrast mode, 75–175% UI scaling, and screen-reader announcements.
+- Accessible names, live operation status, tab navigation, and keyboard shortcuts.
+- Legacy language/accessibility settings migration.
+- Deterministic localization, formatting, settings, and accessibility-surface tests.
 - Executable parity ledger and documentation updates.
 
 ## Safety
 
-Retention never removes downloaded files. Destructive file deletion is a
-separate explicit action. Move/rename updates history only after successful
-publication, preserves the source on failures, and requires explicit overwrite
-permission. Import/export excludes credentials, cookies, arbitrary headers,
-authorization metadata, and request bodies. Platform URL actions allow only
-absolute HTTP and HTTPS URLs and do not execute command lines.
+Language packs are data-only and bounded by file size, entry count, key length,
+and value length. Index paths are reduced to file names. No markup, scripts, or
+commands are evaluated from translations. Unknown or missing translations fall
+back to embedded English resources.
 
 ## Validation scope
 

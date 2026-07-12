@@ -12,6 +12,11 @@
 
   <ItemGroup>
     <AvaloniaResource Include="../../xdm-logo.ico" Link="Assets/xdm-logo.ico" />
+    <EmbeddedResource Include="Localization/strings.en.json" />
+    <Content Include="../../Lang/*.txt"
+             Link="Lang/%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

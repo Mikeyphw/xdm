@@ -17,4 +17,9 @@
     <ProjectReference Include="../XDM.Core/XDM.Core.csproj" />
     <ProjectReference Include="../XDM.Platform/XDM.Platform.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../XDM.App/MainWindow.axaml" Link="Fixtures/MainWindow.axaml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../XDM.App/Localization/strings.en.json" Link="Fixtures/strings.en.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
+using XDM.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XDM.BrowserIntegration;
 using XDM.Core.Abstractions;
 using XDM.Core.Downloads;
+using XDM.Core.Localization;
 using XDM.Core.Queues;
 using XDM.Core.Scheduling;
 using XDM.Core.Settings;
@@ -22,6 +24,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IApplicationState _applicationState;
     private readonly IDownloadManager _downloadManager;
     private readonly ISettingsService _settingsService;
+    private readonly LocalizationService _localization;
     private readonly IQueueSchedulerRuntime _queueSchedulerRuntime;
     private readonly ICompletionActionService _completionActionService;
     private readonly IUiDispatcher _dispatcher;
@@ -48,6 +51,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IPlatformInfo platformInfo,
         IDownloadManager downloadManager,
         ISettingsService settingsService,
+        LocalizationService localization,
         ISettingsTransferService settingsTransferService,
         XDM.Core.Persistence.IDownloadListTransferService downloadListTransferService,
         IPlatformService platformService,
@@ -71,6 +75,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _applicationState = applicationState;
         _downloadManager = downloadManager;
         _settingsService = settingsService;
+        _localization = localization;
         _settingsTransferService = settingsTransferService;
         _downloadListTransferService = downloadListTransferService;
         _platformService = platformService;
@@ -92,19 +97,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         PlatformDescription = platformInfo.DisplayName;
         RuntimeDescription = platformInfo.Runtime;
 
+        Localization = localization;
         Sections = new ObservableCollection<NavigationItem>
         {
-            new("Downloads", "↓", "Batch downloads, request metadata, live progress, and history."),
-            new("Queues", "≡", "Queue definitions, concurrency, and per-queue bandwidth policies."),
-            new("Scheduler", "◷", "Time windows for unattended queue runs."),
-            new("Browser Integration", "◉", "Extension, native host, and capture health."),
-            new("Media", "▶", "HLS, DASH, yt-dlp discovery, formats, subtitles, and live capture."),
-            new("Conversion", "⇄", "Safe FFmpeg remuxing, transcoding, MP3 extraction, and queued post-download jobs."),
-            new("Settings", "⚙", "Folders, limits, clipboard monitoring, and behavior."),
-            new("Diagnostics", "◇", "Startup, runtime, browser, and engine diagnostics.")
+            new("downloads", "nav_downloads", "↓", "nav_downloads_summary", localization),
+            new("queues", "nav_queues", "≡", "nav_queues_summary", localization),
+            new("scheduler", "nav_scheduler", "◷", "nav_scheduler_summary", localization),
+            new("browser", "nav_browser", "◉", "nav_browser_summary", localization),
+            new("media", "nav_media", "▶", "nav_media_summary", localization),
+            new("conversion", "nav_conversion", "⇄", "nav_conversion_summary", localization),
+            new("settings", "nav_settings", "⚙", "nav_settings_summary", localization),
+            new("diagnostics", "nav_diagnostics", "◇", "nav_diagnostics_summary", localization)
         };
 
         DuplicateBehaviors = Enum.GetNames<DuplicateFileBehavior>();
+        RefreshDownloadStatusFilters();
         SelectedSection = Sections[0];
         ApplySettings(settingsService.Current);
         ApplySnapshot(applicationState.Current);
@@ -130,6 +137,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 : "No recovery action is currently required.";
         applicationState.Changed += OnApplicationStateChanged;
         settingsService.Changed += OnSettingsChanged;
+        localization.Changed += OnLocalizationChanged;
         downloadManager.QueueRuntimeChanged += OnQueueRuntimeChanged;
         queueSchedulerRuntime.Changed += OnSchedulerRuntimeChanged;
         browserIntegrationService.StatusChanged += OnBrowserStatusChanged;
@@ -137,6 +145,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         diagnosticEvents.Changed += OnDiagnosticsChanged;
         conversionQueueService.Changed += OnConversionQueueChanged;
     }
+
+    public LocalizationService Localization { get; }
+
+    public IReadOnlyList<LanguageDefinition> AvailableLanguages => _localization.Languages;
 
     public ObservableCollection<NavigationItem> Sections { get; }
 
@@ -168,12 +180,26 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public IReadOnlyList<DownloadPriority> DownloadPriorities { get; } = Enum.GetValues<DownloadPriority>();
 
-    public IReadOnlyList<string> DownloadStatusFilters { get; } =
-        ["All", "Queued", "Connecting", "Downloading", "Paused", "Finalizing", "Completed", "Failed", "Cancelled"];
+    public ObservableCollection<string> DownloadStatusFilters { get; } = [];
 
     public string PlatformDescription { get; }
 
     public string RuntimeDescription { get; }
+
+    [ObservableProperty]
+    private LanguageDefinition? selectedLanguage;
+
+    [ObservableProperty]
+    private bool useSystemLanguage;
+
+    [ObservableProperty]
+    private bool highContrastEnabled;
+
+    [ObservableProperty]
+    private bool announceStatusChanges = true;
+
+    [ObservableProperty]
+    private string uiScalePercent = "100";
 
     [ObservableProperty]
     private NavigationItem? selectedSection;
@@ -185,7 +211,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string downloadSearchText = string.Empty;
 
     [ObservableProperty]
-    private string selectedDownloadStatus = "All";
+    private string selectedDownloadStatus = string.Empty;
 
     [ObservableProperty]
     private DownloadCategoryDefinition? selectedCategory;
@@ -410,28 +436,28 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         => SelectedQueue is not null && _downloadManager.QueueRuntime.IsActive(SelectedQueue.Id);
 
     public bool IsDownloadsVisible
-        => string.Equals(SelectedSection?.Title, "Downloads", StringComparison.Ordinal);
+        => string.Equals(SelectedSection?.Id, "downloads", StringComparison.Ordinal);
 
     public bool IsQueuesVisible
-        => string.Equals(SelectedSection?.Title, "Queues", StringComparison.Ordinal);
+        => string.Equals(SelectedSection?.Id, "queues", StringComparison.Ordinal);
 
     public bool IsSchedulerVisible
-        => string.Equals(SelectedSection?.Title, "Scheduler", StringComparison.Ordinal);
+        => string.Equals(SelectedSection?.Id, "scheduler", StringComparison.Ordinal);
 
     public bool IsBrowserIntegrationVisible
-        => string.Equals(SelectedSection?.Title, "Browser Integration", StringComparison.Ordinal);
+        => string.Equals(SelectedSection?.Id, "browser", StringComparison.Ordinal);
 
     public bool IsMediaVisible
-        => string.Equals(SelectedSection?.Title, "Media", StringComparison.Ordinal);
+        => string.Equals(SelectedSection?.Id, "media", StringComparison.Ordinal);
 
     public bool IsConversionVisible
-        => string.Equals(SelectedSection?.Title, "Conversion", StringComparison.Ordinal);
+        => string.Equals(SelectedSection?.Id, "conversion", StringComparison.Ordinal);
 
     public bool IsSettingsVisible
-        => string.Equals(SelectedSection?.Title, "Settings", StringComparison.Ordinal);
+        => string.Equals(SelectedSection?.Id, "settings", StringComparison.Ordinal);
 
     public bool IsDiagnosticsVisible
-        => string.Equals(SelectedSection?.Title, "Diagnostics", StringComparison.Ordinal);
+        => string.Equals(SelectedSection?.Id, "diagnostics", StringComparison.Ordinal);
 
     public bool IsPlaceholderVisible
         => !IsDownloadsVisible
@@ -445,7 +471,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     partial void OnSelectedSectionChanged(NavigationItem? value)
     {
-        CurrentTitle = value?.Title ?? "Downloads";
+        CurrentTitle = value?.Title ?? _localization["nav_downloads"];
         CurrentSummary = value?.Summary ?? string.Empty;
         OnPropertyChanged(nameof(IsDownloadsVisible));
         OnPropertyChanged(nameof(IsQueuesVisible));
@@ -775,11 +801,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             Network = editorSettings.Network,
             DownloadBehavior = editorSettings.DownloadBehavior,
             Credentials = ServerCredentials.ToArray(),
-            History = BuildHistoryRetentionSettings()
+            History = BuildHistoryRetentionSettings(),
+            Localization = new LocalizationSettings(
+                SelectedLanguage?.Id ?? "en",
+                UseSystemLanguage),
+            Accessibility = new AccessibilitySettings(
+                HighContrastEnabled,
+                ParseUiScalePercent(UiScalePercent),
+                AnnounceStatusChanges)
         };
 
         await _settingsService.UpdateAsync(updated);
-        OperationMessage = "Settings saved. Concurrency, proxy, timeout, retry, and segment policy changes apply after restart.";
+        OperationMessage = _localization["operation_settings_saved"];
     }
 
     [RelayCommand]
@@ -1126,7 +1159,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 request,
                 progress,
                 _mediaDownloadCancellation.Token);
-            MediaDownloadStatus = $"Completed • {result.DownloadedFragments} fragment(s) • {FormatBytes(result.DownloadedBytes)} • {result.DestinationPath}";
+            MediaDownloadStatus = $"Completed • {result.DownloadedFragments} fragment(s) • {LocaleFormatter.FormatBytes(result.DownloadedBytes, _localization.Culture)} • {result.DestinationPath}";
             if (MediaPostConversionEnabled && MediaPostConversionPreset is not null)
             {
                 string conversionDestination = ConversionDestinationPlanner.CreatePostDownloadDestination(result.DestinationPath, MediaPostConversionPreset);
@@ -1387,6 +1420,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _mediaDownloadCancellation?.Dispose();
         _applicationState.Changed -= OnApplicationStateChanged;
         _settingsService.Changed -= OnSettingsChanged;
+        _localization.Changed -= OnLocalizationChanged;
         _downloadManager.QueueRuntimeChanged -= OnQueueRuntimeChanged;
         _queueSchedulerRuntime.Changed -= OnSchedulerRuntimeChanged;
         _browserIntegrationService.StatusChanged -= OnBrowserStatusChanged;
@@ -1656,9 +1690,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private void ApplySnapshot(ApplicationSnapshot snapshot)
     {
-        CoreStatus = snapshot.CoreReady ? "Ready" : "Starting";
+        CoreStatus = snapshot.CoreReady ? _localization["core_ready"] : _localization["core_starting"];
         ActiveDownloadCount = snapshot.ActiveDownloadCount;
-        AggregateSpeed = FormatSpeed(snapshot.AggregateBytesPerSecond);
+        AggregateSpeed = LocaleFormatter.FormatRate(snapshot.AggregateBytesPerSecond, _localization.Culture);
 
         Dictionary<string, DownloadItemViewModel> existing = Downloads
             .ToDictionary(static item => item.Id, StringComparer.Ordinal);
@@ -1671,11 +1705,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
             if (existing.Remove(download.Id, out DownloadItemViewModel? item))
             {
-                item.Apply(download);
+                item.Apply(download, _localization);
             }
             else
             {
-                Downloads.Add(new DownloadItemViewModel(download));
+                Downloads.Add(new DownloadItemViewModel(download, _localization));
             }
 
             if (stateChanged)
@@ -1797,7 +1831,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private void OnMediaProgress(MediaDownloadProgress progress)
     {
-        MediaDownloadStatus = $"{progress.Stage} • {progress.Message} • {FormatBytes(progress.DownloadedBytes)}";
+        MediaDownloadStatus = $"{progress.Stage} • {progress.Message} • {LocaleFormatter.FormatBytes(progress.DownloadedBytes, _localization.Culture)}";
         if (progress.Fraction is double fraction)
         {
             MediaDownloadProgress = fraction;
@@ -1885,6 +1919,15 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         AntivirusArguments = string.Join(Environment.NewLine, antivirus.Arguments ?? []);
         AntivirusTimeoutSeconds = antivirus.TimeoutSeconds
             .ToString(System.Globalization.CultureInfo.InvariantCulture);
+        LocalizationSettings localization = (settings.Localization ?? LocalizationSettings.Default).Normalize();
+        AccessibilitySettings accessibility = (settings.Accessibility ?? AccessibilitySettings.Default).Normalize();
+        UseSystemLanguage = localization.UseSystemLanguage;
+        SelectedLanguage = AvailableLanguages.FirstOrDefault(language =>
+            string.Equals(language.Id, localization.LanguageId, StringComparison.OrdinalIgnoreCase))
+            ?? _localization.CurrentLanguage;
+        HighContrastEnabled = accessibility.HighContrastEnabled;
+        AnnounceStatusChanges = accessibility.AnnounceStatusChanges;
+        UiScalePercent = accessibility.UiScalePercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
         ApplySettingsParity(settings);
         ApplyHistorySettings(settings);
         ApplyQueueRuntime(_downloadManager.QueueRuntime);
@@ -1921,7 +1964,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         string message = download.ErrorMessage is null
-            ? download.DownloadedBytes.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " bytes received."
+            ? download.DownloadedBytes.ToString("N0", _localization.Culture) + " bytes received."
             : download.ErrorMessage;
         entries.Add(new DownloadTimelineEntry(DateTimeOffset.Now, download.State.ToString(), message));
         if (entries.Count > 100)
@@ -1956,7 +1999,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         FilteredDownloads.Clear();
         foreach (DownloadItemViewModel download in Downloads)
         {
-            bool statusMatches = string.Equals(status, "All", StringComparison.OrdinalIgnoreCase)
+            bool statusMatches = string.Equals(status, _localization["status_all"], StringComparison.OrdinalIgnoreCase)
                 || string.Equals(download.StatusText, status, StringComparison.OrdinalIgnoreCase);
             bool searchMatches = search.Length == 0
                 || download.FileName.Contains(search, StringComparison.OrdinalIgnoreCase)
@@ -2036,31 +2079,67 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         return $"{stem}-{Guid.NewGuid():N}";
     }
 
-    private static string FormatBytes(long bytes)
+    public void SelectSection(string id)
     {
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        double value = Math.Max(0, bytes);
-        int unitIndex = 0;
-        while (value >= 1024 && unitIndex < units.Length - 1)
+        NavigationItem? section = Sections.FirstOrDefault(item => string.Equals(item.Id, id, StringComparison.Ordinal));
+        if (section is not null)
         {
-            value /= 1024;
-            unitIndex++;
+            SelectedSection = section;
         }
-
-        return $"{value:0.#} {units[unitIndex]}";
     }
 
-    private static string FormatSpeed(double bytesPerSecond)
+    private void OnLocalizationChanged(object? sender, EventArgs eventArgs)
     {
-        string[] units = ["B/s", "KB/s", "MB/s", "GB/s"];
-        int unitIndex = 0;
-
-        while (bytesPerSecond >= 1024 && unitIndex < units.Length - 1)
+        if (_dispatcher.CheckAccess())
         {
-            bytesPerSecond /= 1024;
-            unitIndex++;
+            ApplyLocalization();
+        }
+        else
+        {
+            _dispatcher.Post(ApplyLocalization);
+        }
+    }
+
+    private void ApplyLocalization()
+    {
+        foreach (NavigationItem section in Sections)
+        {
+            section.Refresh();
         }
 
-        return $"{bytesPerSecond:0.#} {units[unitIndex]}";
+        RefreshDownloadStatusFilters();
+        foreach (DownloadItemViewModel download in Downloads)
+        {
+            download.RefreshLocalization(_localization);
+        }
+
+        CurrentTitle = SelectedSection?.Title ?? _localization["nav_downloads"];
+        CurrentSummary = SelectedSection?.Summary ?? string.Empty;
+        CoreStatus = _applicationState.Current.CoreReady ? _localization["core_ready"] : _localization["core_starting"];
+        AggregateSpeed = LocaleFormatter.FormatRate(_applicationState.Current.AggregateBytesPerSecond, _localization.Culture);
+        RefreshFilteredDownloads();
     }
+
+    private void RefreshDownloadStatusFilters()
+    {
+        int selectedIndex = Math.Max(0, DownloadStatusFilters.IndexOf(SelectedDownloadStatus));
+        DownloadStatusFilters.Clear();
+        DownloadStatusFilters.Add(_localization["status_all"]);
+        foreach (DownloadState state in Enum.GetValues<DownloadState>())
+        {
+            DownloadStatusFilters.Add(_localization.GetStatus(state));
+        }
+
+        SelectedDownloadStatus = DownloadStatusFilters[Math.Min(selectedIndex, DownloadStatusFilters.Count - 1)];
+    }
+
+    private static int ParseUiScalePercent(string value)
+        => int.TryParse(
+            value,
+            System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out int parsed)
+                ? Math.Clamp(parsed, 75, 175)
+                : 100;
+
 }

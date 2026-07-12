@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-12T04:35:57.587823Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_localization_accessibility_overlay.zip",
+  "artifact_name": "xdm_localization_accessibility_overlay.zip",
+  "type": "overlay",
+  "sha256": "71394ed5d46e69807d2d6271d80c2a8b0fec663076fbcb2cff4abaa249008ac3",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Add localization and accessibility parity",
+  "commit_hash": "",
+  "file_count": 27,
+  "change_counts": {
+    "add": 12,
+    "modify": 15
+  },
+  "manifest": {},
+  "history_id": "7a5439abb2704b14ba2b5fb3601f01af"
+}

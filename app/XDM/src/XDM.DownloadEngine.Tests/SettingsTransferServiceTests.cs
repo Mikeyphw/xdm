@@ -1,4 +1,5 @@
 using System.Text.Json;
+using XDM.Core.Localization;
 using XDM.Core.Settings;
 using XDM.Persistence;
 
@@ -86,6 +87,33 @@ public sealed class SettingsTransferServiceTests
             Assert.Equal("/tmp/json-downloads", result.Settings.DefaultDownloadDirectory);
             Assert.Equal(5, result.Settings.Network!.MaximumRetryAttempts);
             Assert.Equal(ProxyMode.None, result.Settings.Network.Proxy!.Mode);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+
+    [Fact]
+    public async Task ImportsLegacyLanguageContrastAndScaleSettings()
+    {
+        string directory = CreateTemporaryDirectory();
+        try
+        {
+            string path = Path.Combine(directory, "legacy.properties");
+            await File.WriteAllTextAsync(
+                path,
+                "language=Portuguese Brazil\nhighContrast=true\nuiScalePercent=140\nannounceStatusChanges=false\n");
+            SettingsTransferService service = new();
+
+            SettingsImportResult result = await service.ImportAsync(path, ApplicationSettings.CreateDefault());
+
+            Assert.Equal("pt-BR", result.Settings.Localization!.LanguageId);
+            Assert.False(result.Settings.Localization.UseSystemLanguage);
+            Assert.True(result.Settings.Accessibility!.HighContrastEnabled);
+            Assert.Equal(140, result.Settings.Accessibility.UiScalePercent);
+            Assert.False(result.Settings.Accessibility.AnnounceStatusChanges);
         }
         finally
         {

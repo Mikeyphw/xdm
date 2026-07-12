@@ -180,6 +180,7 @@ public partial class App : Application
         services.AddSingleton<IDownloadListTransferService, DownloadListTransferService>();
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<LocalizationService>();
         services.AddSingleton<ISettingsTransferService, SettingsTransferService>();
         services.AddSingleton<ISchedulerStateStore, JsonSchedulerStateStore>();
         services.AddSingleton<IApplicationLifetimeService, AvaloniaApplicationLifetimeService>();

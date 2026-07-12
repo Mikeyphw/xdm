@@ -1,20 +1,27 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using XDM.App.Services;
 using XDM.Core.Downloads;
+using XDM.Core.Localization;
 
 namespace XDM.App.ViewModels;
 
 public sealed partial class DownloadItemViewModel : ObservableObject
 {
-    public DownloadItemViewModel(DownloadSnapshot snapshot)
+    private DownloadSnapshot _snapshot;
+
+    public DownloadItemViewModel(DownloadSnapshot snapshot, LocalizationService localization)
     {
         Id = snapshot.Id;
+        _snapshot = snapshot;
         source = snapshot.Source;
         destinationPath = snapshot.DestinationPath;
         sourcePage = snapshot.SourcePage;
-        Apply(snapshot);
+        Apply(snapshot, localization);
     }
 
     public string Id { get; }
+
+    public DownloadState State => _snapshot.State;
 
     [ObservableProperty]
     private Uri source;
@@ -69,23 +76,26 @@ public sealed partial class DownloadItemViewModel : ObservableObject
 
     public bool HasSourcePage => SourcePage is not null;
 
-    public void Apply(DownloadSnapshot snapshot)
+    public void Apply(DownloadSnapshot snapshot, LocalizationService localization)
     {
+        ArgumentNullException.ThrowIfNull(localization);
+        _snapshot = snapshot;
         Source = snapshot.Source;
         SourcePage = snapshot.SourcePage;
         DestinationPath = snapshot.DestinationPath;
         OnPropertyChanged(nameof(HasSourcePage));
+        OnPropertyChanged(nameof(State));
         FileName = snapshot.FileName;
-        StatusText = snapshot.State.ToString();
+        StatusText = localization.GetStatus(snapshot.State);
         ProgressPercent = (snapshot.ProgressFraction ?? 0d) * 100d;
         ProgressText = snapshot.TotalBytes is > 0
-            ? $"{FormatBytes(snapshot.DownloadedBytes)} of {FormatBytes(snapshot.TotalBytes.Value)}"
-            : FormatBytes(snapshot.DownloadedBytes);
+            ? $"{LocaleFormatter.FormatBytes(snapshot.DownloadedBytes, localization.Culture)} {localization["unit_of"]} {LocaleFormatter.FormatBytes(snapshot.TotalBytes.Value, localization.Culture)}"
+            : LocaleFormatter.FormatBytes(snapshot.DownloadedBytes, localization.Culture);
         SpeedText = snapshot.BytesPerSecond > 0
-            ? $"{FormatBytes((long)snapshot.BytesPerSecond)}/s"
+            ? LocaleFormatter.FormatRate(snapshot.BytesPerSecond, localization.Culture)
             : "—";
         RemainingText = snapshot.EstimatedRemaining is TimeSpan remaining
-            ? FormatRemaining(remaining)
+            ? LocaleFormatter.FormatDuration(remaining, localization.Culture)
             : "—";
         ErrorMessage = snapshot.ErrorMessage;
         QueueId = snapshot.QueueId;
@@ -99,32 +109,6 @@ public sealed partial class DownloadItemViewModel : ObservableObject
             or DownloadState.Paused;
     }
 
-    private static string FormatBytes(long bytes)
-    {
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        double value = Math.Max(0, bytes);
-        int unit = 0;
-        while (value >= 1024 && unit < units.Length - 1)
-        {
-            value /= 1024;
-            unit++;
-        }
-
-        return $"{value:0.#} {units[unit]}";
-    }
-
-    private static string FormatRemaining(TimeSpan remaining)
-    {
-        if (remaining.TotalHours >= 1)
-        {
-            return $"{(int)remaining.TotalHours}h {remaining.Minutes}m";
-        }
-
-        if (remaining.TotalMinutes >= 1)
-        {
-            return $"{remaining.Minutes}m {remaining.Seconds}s";
-        }
-
-        return $"{Math.Max(0, remaining.Seconds)}s";
-    }
+    public void RefreshLocalization(LocalizationService localization)
+        => Apply(_snapshot, localization);
 }
