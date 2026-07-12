@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-12T20:03:40.542497Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_flat_icon_overlay.zip",
+  "artifact_name": "xdm_flat_icon_overlay.zip",
+  "type": "overlay",
+  "sha256": "5abb52923bdea17dc35fbb8c3d9e425486181b327be6bd23c14aa62b9b2ce318",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Replace XDM icon with modern flat artwork",
+  "commit_hash": "",
+  "file_count": 9,
+  "change_counts": {
+    "add": 1,
+    "modify": 8
+  },
+  "manifest": {},
+  "history_id": "b8a140f77bdc496bad0d7f4d7f4af9fc"
+}

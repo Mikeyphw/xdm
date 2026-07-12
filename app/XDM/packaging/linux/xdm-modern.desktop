@@ -4,5 +4,6 @@ Name=Xtreme Download Manager
 Comment=Download files and capture browser media
 Exec=/opt/xdm/XDM
 Terminal=false
+Icon=xdm-modern
 Categories=Network;FileTransfer;
 StartupNotify=true

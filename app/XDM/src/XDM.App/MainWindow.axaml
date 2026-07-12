@@ -8,6 +8,7 @@
         d:DesignHeight="840"
         x:Class="XDM.App.MainWindow"
         Title="{Binding Localization[ui_xtreme_download_manager]}"
+        Icon="/Assets/xdm-logo.ico"
         Width="1280"
         Height="840"
         MinWidth="760"

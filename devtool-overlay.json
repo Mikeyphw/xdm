@@ -1,27 +1,25 @@
 {
-  "name": "xdm_runtime_polish_overlay",
+  "name": "xdm_flat_icon_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "d9778e3",
+  "baseCommit": "d9c9756",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "runtime-polish",
-  "description": "Adds runtime polish, responsive Downloads states, headless layout coverage, and a corrected shell architecture guard for descendant state visibility.",
+  "phase": "flat-application-icon",
+  "description": "Replaces the legacy XDM artwork with a modern flat icon across the app window, tray, executable, raster/vector assets, and Linux package integration.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
     "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Polish runtime states and responsive Downloads UI",
+  "commitMessage": "Replace XDM icon with modern flat artwork",
   "constraints": [
-    "Apply on top of commit d9778e3",
+    "Apply on top of commit d9c9756",
     "Validate only app/XDM/XDM.Modern.sln",
-    "Preserve all download commands, storage pickers, keyboard shortcuts and accessibility metadata",
-    "Preserve virtualized download and timeline lists",
-    "Keep the details pane available and resizable at every supported window width",
+    "Use one consistent icon design for window, tray, executable, and Linux launcher packaging",
+    "Preserve transparent rounded corners and flat colors",
     "Require zero warnings and zero errors",
     "Do not modify docs/parity/features.json",
-    "Do not change download-engine behavior or persistence formats",
-    "Allow descendant IsVisible bindings for runtime state surfaces while keeping page-root visibility owned by the shell"
+    "Do not change application behavior or persistence formats"
   ]
 }

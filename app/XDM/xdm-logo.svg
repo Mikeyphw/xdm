@@ -1,10 +1,7 @@
-<svg width="800" height="800" xmlns="http://www.w3.org/2000/svg" stroke="null">
- <g id="Layer_1">
-  <title>Layer 1</title>
-  <rect id="svg_1" height="800" width="800" y="0" x="0" stroke="#2471A3" fill="#2471A3"/>
-  <ellipse ry="273.00006" rx="571.00013" id="svg_2" cy="91.33359" cx="400" stroke="#3498DB" fill="#3498DB"/>
-  <rect fill="#FFFFFF" x="295.33241" y="175.99878" width="209.33521" height="272.00244" id="svg_3" stroke="#FFFFFF"/>
-  <path transform="rotate(180 400 507)" stroke="#FFFFFF" id="svg_4" d="m197.99999,631.49998l202,-248.99999l202,248.99999l-404,0z" fill="#FFFFFF"/>
- </g>
-
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Xtreme Download Manager</title>
+  <desc id="desc">A blue download arrow entering a green tray on a dark rounded-square background.</desc>
+  <rect width="512" height="512" rx="112" fill="#111827"/>
+  <path d="M224 112C224 94 238 80 256 80C274 80 288 94 288 112V250L336 202C348 190 368 190 380 202C392 214 392 234 380 246L279 347C266 360 246 360 233 347L132 246C120 234 120 214 132 202C144 190 164 190 176 202L224 250Z" fill="#4F8CFF"/>
+  <path d="M112 352C112 334 126 320 144 320H190L226 356C243 373 269 373 286 356L322 320H368C386 320 400 334 400 352V384C400 410 378 432 352 432H160C134 432 112 410 112 384Z" fill="#34D399"/>
 </svg>
