@@ -12,6 +12,7 @@ using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.Diagnostics;
 using XDM.DownloadEngine;
+using XDM.DownloadEngine.Aria2;
 using XDM.DownloadEngine.Queues;
 using XDM.Media;
 using XDM.Platform;
@@ -50,6 +51,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IApplicationState applicationState,
         IPlatformInfo platformInfo,
         IDownloadManager downloadManager,
+        IAria2Service aria2Service,
         ISettingsService settingsService,
         LocalizationService localization,
         ISettingsTransferService settingsTransferService,
@@ -75,6 +77,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         _applicationState = applicationState;
         _downloadManager = downloadManager;
+        _aria2Service = aria2Service;
         _settingsService = settingsService;
         _localization = localization;
         _settingsTransferService = settingsTransferService;
@@ -116,6 +119,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         RefreshDownloadStatusFilters();
         SelectedSection = Sections[0];
         ApplySettings(settingsService.Current);
+        ApplyAria2Snapshot(aria2Service.Current);
         ApplySnapshot(applicationState.Current);
         ApplyQueueRuntime(downloadManager.QueueRuntime);
         ApplySchedulerRuntime(queueSchedulerRuntime.Current);
@@ -146,6 +150,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         browserIntegrationService.CaptureReceived += OnBrowserCaptureReceived;
         diagnosticEvents.Changed += OnDiagnosticsChanged;
         conversionQueueService.Changed += OnConversionQueueChanged;
+        aria2Service.Changed += OnAria2SnapshotChanged;
     }
 
     public LocalizationService Localization { get; }
@@ -810,7 +815,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             Accessibility = new AccessibilitySettings(
                 HighContrastEnabled,
                 ParseUiScalePercent(UiScalePercent),
-                AnnounceStatusChanges)
+                AnnounceStatusChanges),
+            Aria2 = BuildAria2Settings()
         };
 
         await _settingsService.UpdateAsync(updated);
@@ -1431,6 +1437,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _browserIntegrationService.CaptureReceived -= OnBrowserCaptureReceived;
         _diagnosticEvents.Changed -= OnDiagnosticsChanged;
         _conversionQueueService.Changed -= OnConversionQueueChanged;
+        _aria2Service.Changed -= OnAria2SnapshotChanged;
         GC.SuppressFinalize(this);
     }
 
@@ -1933,6 +1940,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         AnnounceStatusChanges = accessibility.AnnounceStatusChanges;
         UiScalePercent = accessibility.UiScalePercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
         ApplySettingsParity(settings);
+        ApplyAria2Settings(settings);
         ApplyHistorySettings(settings);
         ApplyQueueRuntime(_downloadManager.QueueRuntime);
         ApplySchedulerRuntime(_queueSchedulerRuntime.Current);
@@ -2116,6 +2124,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             download.RefreshLocalization(_localization);
         }
+        RefreshAria2Localization();
 
         CurrentTitle = SelectedSection?.Title ?? _localization["nav_downloads"];
         CurrentSummary = SelectedSection?.Summary ?? string.Empty;

@@ -27,7 +27,14 @@ public sealed class SettingsTransferServiceTests
                         true,
                         [])
                 },
-                Credentials = [new ServerCredentialDefinition("example.test", "alice", "server-secret", true)]
+                Credentials = [new ServerCredentialDefinition("example.test", "alice", "server-secret", true)],
+                Aria2 = Aria2IntegrationSettings.Default with
+                {
+                    Enabled = true,
+                    ConnectionMode = Aria2ConnectionMode.ExternalRpc,
+                    RpcEndpoint = "https://aria2.example.test/jsonrpc",
+                    RpcSecret = "aria2-secret"
+                }
             };
             SettingsTransferService service = new();
 
@@ -37,10 +44,14 @@ public sealed class SettingsTransferServiceTests
 
             Assert.DoesNotContain("proxy-secret", exported);
             Assert.DoesNotContain("server-secret", exported);
+            Assert.DoesNotContain("aria2-secret", exported);
             Assert.Equal("modern-json", imported.SourceFormat);
             Assert.Equal(ProxyMode.Manual, imported.Settings.Network!.Proxy!.Mode);
             Assert.Null(imported.Settings.Network.Proxy.Password);
             Assert.Equal(string.Empty, Assert.Single(imported.Settings.Credentials!).Password);
+            Assert.True(imported.Settings.Aria2!.Enabled);
+            Assert.Equal("https://aria2.example.test/jsonrpc", imported.Settings.Aria2.RpcEndpoint);
+            Assert.Equal(string.Empty, imported.Settings.Aria2.RpcSecret);
         }
         finally
         {

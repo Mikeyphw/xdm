@@ -177,6 +177,54 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void BrowseAria2Executable_Click(object? sender, RoutedEventArgs e)
+    {
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(
+            new FilePickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = Localize("picker_aria2_executable", "Choose aria2c executable")
+            });
+
+        string? path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
+        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.Aria2ExecutablePath = path;
+        }
+    }
+
+    private async void BrowseAria2SessionFile_Click(object? sender, RoutedEventArgs e)
+    {
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(
+            new FilePickerSaveOptions
+            {
+                Title = Localize("picker_aria2_session", "Choose aria2 session file"),
+                SuggestedFileName = "aria2.session"
+            });
+
+        string? path = file?.TryGetLocalPath();
+        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.Aria2SessionFilePath = path;
+        }
+    }
+
+    private async void BrowseAria2Destination_Click(object? sender, RoutedEventArgs e)
+    {
+        IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(
+            new FolderPickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = Localize("picker_aria2_destination", "Choose aria2 download destination")
+            });
+
+        string? path = folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
+        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.Aria2DestinationFolder = path;
+        }
+    }
+
 
     private async void BrowseSettingsImport_Click(object? sender, RoutedEventArgs e)
     {

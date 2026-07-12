@@ -1,24 +1,27 @@
 {
-  "name": "xdm_upstream_parity_corrections_overlay",
+  "name": "xdm_aria2_integration_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "5d8d481",
+  "baseCommit": "45b1b13",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "functional-parity-22-upstream-corrections-recovery",
-  "description": "Self-contained modern-tree recovery plus upstream parity corrections. Restores XDM.Modern.sln and all active modern projects before validating FTP/FTPS, PAC and enterprise proxy support, device profiles, and verified update staging.",
+  "phase": "optional-aria2-backend",
+  "description": "Adds an optional authenticated aria2 JSON-RPC backend with managed-process and external-RPC modes, settings persistence, task controls, UI integration, qualification tests, stale parity-entry cleanup, and deterministic PAC parsing.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
-    "build": "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore",
-    "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build"
+    "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
+    "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Close upstream parity gaps and restore modern solution",
+  "commitMessage": "Add optional authenticated aria2 backend",
   "constraints": [
     "Validate only app/XDM/XDM.Modern.sln",
-    "Do not restore or build WPF, GTK, WinForms or MSIX targets",
-    "Restore the complete active modern source tree when the checkout is sparse or incomplete",
-    "Preserve post-final-gate startup diagnostics and localization resources",
-    "Do not add macOS as an active target",
-    "Require zero warnings and zero errors"
+    "Do not restore or build WPF, GTK, WinForms, CoreFx or MSIX targets",
+    "Keep the built-in download engine as the default",
+    "Bind managed aria2 RPC to loopback only",
+    "Require HTTPS and an RPC secret for non-loopback external endpoints",
+    "Remove any stale download.aria2-backend entry from docs/parity/features.json because aria2 is not a legacy parity feature",
+    "Preserve the existing eight-section navigation",
+    "Require zero warnings and zero errors",
+    "Keep PAC parsing bounded and deterministic under parallel test load"
   ]
 }

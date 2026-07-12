@@ -38,7 +38,8 @@ public sealed class SettingsTransferService : ISettingsTransferService
                 },
                 Credentials = normalized.Credentials?
                     .Select(static credential => credential with { Password = string.Empty })
-                    .ToArray()
+                    .ToArray(),
+                Aria2 = normalized.Aria2! with { RpcSecret = string.Empty }
             };
         }
 
@@ -156,6 +157,7 @@ public sealed class SettingsTransferService : ISettingsTransferService
         DownloadBehaviorSettings behavior = current.DownloadBehavior!;
         LocalizationSettings localization = current.Localization ?? LocalizationSettings.Default;
         AccessibilitySettings accessibility = current.Accessibility ?? AccessibilitySettings.Default;
+        Aria2IntegrationSettings aria2 = current.Aria2 ?? Aria2IntegrationSettings.Default;
 
         string downloadDirectory = Get(values,
             "defaultDownloadDirectory", "default.folder", "download.folder", "downloadFolder", "saveTo")
@@ -247,6 +249,37 @@ public sealed class SettingsTransferService : ISettingsTransferService
             AnnounceStatusChanges = GetBool(values, accessibility.AnnounceStatusChanges,
                 "announceStatusChanges", "accessibility.liveRegions")
         };
+        aria2 = aria2 with
+        {
+            Enabled = GetBool(values, aria2.Enabled,
+                "aria2.enabled", "aria2Enabled"),
+            ConnectionMode = ParseAria2ConnectionMode(
+                Get(values, "aria2.connectionMode", "aria2.mode"),
+                aria2.ConnectionMode),
+            RpcEndpoint = Get(values, "aria2.rpcEndpoint", "aria2.rpc.url") ?? aria2.RpcEndpoint,
+            RpcSecret = Get(values, "aria2.rpcSecret", "aria2.rpc.secret") ?? aria2.RpcSecret,
+            ExecutablePath = Get(values, "aria2.executablePath", "aria2.path") ?? aria2.ExecutablePath,
+            SessionFilePath = Get(values, "aria2.sessionFilePath", "aria2.session") ?? aria2.SessionFilePath,
+            PollIntervalMilliseconds = GetInt(values, aria2.PollIntervalMilliseconds,
+                "aria2.pollIntervalMilliseconds", "aria2.pollInterval"),
+            RpcConnectTimeoutSeconds = GetInt(values, aria2.RpcConnectTimeoutSeconds,
+                "aria2.rpcConnectTimeoutSeconds", "aria2.timeout"),
+            MaxConcurrentDownloads = GetInt(values, aria2.MaxConcurrentDownloads,
+                "aria2.maxConcurrentDownloads", "aria2.maxDownloads"),
+            SplitCount = GetInt(values, aria2.SplitCount,
+                "aria2.splitCount", "aria2.split"),
+            MinimumSplitSizeBytes = GetLong(values, aria2.MinimumSplitSizeBytes,
+                "aria2.minimumSplitSizeBytes", "aria2.minSplitSize"),
+            AdditionalArguments = Get(values, "aria2.additionalArguments", "aria2.arguments") ?? aria2.AdditionalArguments,
+            AutoStartManagedProcess = GetBool(values, aria2.AutoStartManagedProcess,
+                "aria2.autoStartManagedProcess", "aria2.autoStart"),
+            ContinueDownloads = GetBool(values, aria2.ContinueDownloads,
+                "aria2.continueDownloads", "aria2.continue"),
+            CheckCertificate = GetBool(values, aria2.CheckCertificate,
+                "aria2.checkCertificate", "aria2.verifyTls"),
+            SaveSession = GetBool(values, aria2.SaveSession,
+                "aria2.saveSession", "aria2.persistSession")
+        };
 
         DownloadCategoryDefinition[] categories = ParseCategories(values, downloadDirectory);
         DownloadQueueDefinition[] queues = ParseQueues(values);
@@ -273,7 +306,8 @@ public sealed class SettingsTransferService : ISettingsTransferService
             Network = network,
             DownloadBehavior = behavior,
             Localization = localization,
-            Accessibility = accessibility
+            Accessibility = accessibility,
+            Aria2 = aria2
         }).Normalize();
         return CreateResult(imported, sourceFormat, warnings, imported);
     }
@@ -521,6 +555,16 @@ public sealed class SettingsTransferService : ISettingsTransferService
             "basic" or "1" => ProxyAuthenticationMode.Basic,
             "integrated" or "ntlm" or "kerberos" or "default" or "2"
                 => ProxyAuthenticationMode.Integrated,
+            _ => fallback
+        };
+
+    private static Aria2ConnectionMode ParseAria2ConnectionMode(
+        string? value,
+        Aria2ConnectionMode fallback)
+        => value?.Trim().ToLowerInvariant() switch
+        {
+            "managed" or "managedprocess" or "local" or "0" => Aria2ConnectionMode.ManagedProcess,
+            "external" or "externalrpc" or "remote" or "1" => Aria2ConnectionMode.ExternalRpc,
             _ => fallback
         };
 

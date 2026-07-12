@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-12T16:34:31.221319Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_aria2_integration_overlay.zip",
+  "artifact_name": "xdm_aria2_integration_overlay.zip",
+  "type": "overlay",
+  "sha256": "9fa650721320cf8445ea1e3baf4c66feac57994fcbcc0a58f6b9c03d19e97b03",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Add optional aria2 integration",
+  "commit_hash": "",
+  "file_count": 27,
+  "change_counts": {
+    "add": 17,
+    "modify": 10
+  },
+  "manifest": {},
+  "history_id": "7c9e1349bea34964bbbae3cdd8ab7f21"
+}

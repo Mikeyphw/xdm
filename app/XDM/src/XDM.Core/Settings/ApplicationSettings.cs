@@ -20,7 +20,8 @@ public sealed record ApplicationSettings(
     IReadOnlyList<ServerCredentialDefinition>? Credentials = null,
     HistoryRetentionSettings? History = null,
     LocalizationSettings? Localization = null,
-    AccessibilitySettings? Accessibility = null)
+    AccessibilitySettings? Accessibility = null,
+    Aria2IntegrationSettings? Aria2 = null)
 {
     public const int CurrentSchemaVersion = 5;
 
@@ -60,7 +61,8 @@ public sealed record ApplicationSettings(
             [],
             HistoryRetentionSettings.Default,
             LocalizationSettings.Default,
-            AccessibilitySettings.Default);
+            AccessibilitySettings.Default,
+            Aria2IntegrationSettings.Default);
     }
 
     public ApplicationSettings Normalize()
@@ -146,7 +148,8 @@ public sealed record ApplicationSettings(
             Credentials = credentials,
             History = (History ?? HistoryRetentionSettings.Default).Normalize(),
             Localization = (Localization ?? LocalizationSettings.Default).Normalize(),
-            Accessibility = (Accessibility ?? AccessibilitySettings.Default).Normalize()
+            Accessibility = (Accessibility ?? AccessibilitySettings.Default).Normalize(),
+            Aria2 = (Aria2 ?? Aria2IntegrationSettings.Default).Normalize()
         };
     }
 }

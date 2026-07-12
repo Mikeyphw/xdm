@@ -14,6 +14,7 @@ using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.Diagnostics;
 using XDM.DownloadEngine;
+using XDM.DownloadEngine.Aria2;
 using XDM.DownloadEngine.Queues;
 using XDM.Media;
 using XDM.Persistence;
@@ -67,6 +68,10 @@ public partial class App : Application
             InitializeService(
                 "XDM-STARTUP-BROWSER",
                 () => services.GetRequiredService<IBrowserIntegrationService>().InitializeAsync(),
+                diagnostics);
+            InitializeService(
+                "XDM-STARTUP-ARIA2",
+                () => services.GetRequiredService<IAria2Service>().InitializeAsync(),
                 diagnostics);
         }
         else
@@ -180,6 +185,7 @@ public partial class App : Application
         services.AddSingleton<IDownloadListTransferService, DownloadListTransferService>();
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IAria2Service, Aria2Service>();
         services.AddSingleton<LocalizationService>();
         services.AddSingleton<ISettingsTransferService, SettingsTransferService>();
         services.AddSingleton<ISchedulerStateStore, JsonSchedulerStateStore>();

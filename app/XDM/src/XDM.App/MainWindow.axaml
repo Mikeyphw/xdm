@@ -798,6 +798,93 @@
 
               <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="12">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="3">
+                      <TextBlock Text="{Binding Localization[ui_aria2_backend]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
+                      <TextBlock Text="{Binding Aria2ConnectionStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}" />
+                    </StackPanel>
+                    <ProgressBar Grid.Column="1" Width="90" Height="6" IsIndeterminate="{Binding Aria2IsRefreshing}" IsVisible="{Binding Aria2IsRefreshing}" />
+                  </Grid>
+                  <CheckBox Content="{Binding Localization[ui_enable_aria2_backend]}" IsChecked="{Binding Aria2Enabled}" />
+                  <Grid ColumnDefinitions="*,2*,*" ColumnSpacing="9">
+                    <ComboBox ItemsSource="{Binding Aria2ConnectionModes}" SelectedItem="{Binding SelectedAria2ConnectionMode}" AutomationProperties.Name="{Binding Localization[ui_aria2_connection_mode]}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_aria2_rpc_endpoint]}" Text="{Binding Aria2RpcEndpoint}" />
+                    <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_aria2_rpc_secret]}" Text="{Binding Aria2RpcSecret}" PasswordChar="●" />
+                  </Grid>
+                  <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="{Binding Localization[ui_aria2_executable_path]}" Text="{Binding Aria2ExecutablePath}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2Executable_Click" />
+                  </Grid>
+                  <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="{Binding Localization[ui_aria2_session_file]}" Text="{Binding Aria2SessionFilePath}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2SessionFile_Click" />
+                  </Grid>
+                  <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="9">
+                    <TextBox PlaceholderText="{Binding Localization[ui_aria2_poll_interval_ms]}" Text="{Binding Aria2PollIntervalMilliseconds}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_aria2_rpc_timeout_seconds]}" Text="{Binding Aria2RpcConnectTimeoutSeconds}" />
+                    <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_aria2_max_concurrent]}" Text="{Binding Aria2MaxConcurrentDownloads}" />
+                    <TextBox Grid.Column="3" PlaceholderText="{Binding Localization[ui_aria2_split_count]}" Text="{Binding Aria2SplitCount}" />
+                  </Grid>
+                  <TextBox PlaceholderText="{Binding Localization[ui_aria2_minimum_split_mib]}" Text="{Binding Aria2MinimumSplitSizeMegabytes}" />
+                  <WrapPanel Orientation="Horizontal">
+                    <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_auto_start]}" IsChecked="{Binding Aria2AutoStartManagedProcess}" />
+                    <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_continue]}" IsChecked="{Binding Aria2ContinueDownloads}" />
+                    <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_check_certificate]}" IsChecked="{Binding Aria2CheckCertificate}" />
+                    <CheckBox Content="{Binding Localization[ui_aria2_save_session]}" IsChecked="{Binding Aria2SaveSession}" />
+                  </WrapPanel>
+                  <TextBox AcceptsReturn="True" MinHeight="62" PlaceholderText="{Binding Localization[ui_aria2_additional_arguments]}" Text="{Binding Aria2AdditionalArguments}" />
+                  <WrapPanel Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_apply_and_connect]}" Command="{Binding ApplyAria2ConfigurationCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_start_managed_aria2]}" Command="{Binding StartManagedAria2Command}" IsEnabled="{Binding CanStartManagedAria2}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_stop_managed_aria2]}" Command="{Binding StopManagedAria2Command}" />
+                    <Button Classes="secondary" Content="{Binding Localization[ui_refresh]}" Command="{Binding RefreshAria2Command}" />
+                  </WrapPanel>
+                  <TextBlock Text="{Binding Localization[ui_aria2_security_note]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
+
+                  <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="12" Margin="0,4,0,0">
+                    <StackPanel Spacing="9">
+                      <TextBlock Text="{Binding Localization[ui_add_aria2_download]}" FontWeight="SemiBold" Foreground="{DynamicResource XdmSecondaryForeground}" />
+                      <TextBox PlaceholderText="{Binding Localization[ui_aria2_url_or_magnet]}" Text="{Binding Aria2NewUrl}" />
+                      <Grid ColumnDefinitions="2*,Auto,*" ColumnSpacing="9">
+                        <TextBox PlaceholderText="{Binding Localization[ui_destination_folder]}" Text="{Binding Aria2DestinationFolder}" />
+                        <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2Destination_Click" />
+                        <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_custom_filename_optional]}" Text="{Binding Aria2CustomFileName}" />
+                      </Grid>
+                      <Button HorizontalAlignment="Left" Classes="primary" Content="{Binding Localization[ui_add_to_aria2]}" Command="{Binding AddAria2DownloadCommand}" />
+                    </StackPanel>
+                  </Border>
+
+                  <ListBox ItemsSource="{Binding Aria2Tasks}" SelectedItem="{Binding SelectedAria2Task}" MaxHeight="310">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate>
+                        <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="2*,Auto" ColumnSpacing="12" RowSpacing="5" Margin="2">
+                          <StackPanel>
+                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodyForeground}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding DestinationPath}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextTrimming="CharacterEllipsis" />
+                          </StackPanel>
+                          <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                            <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource XdmAccentForeground}" HorizontalAlignment="Right" />
+                            <TextBlock Text="{Binding SpeedText}" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}" HorizontalAlignment="Right" />
+                          </StackPanel>
+                          <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" IsIndeterminate="{Binding IsIndeterminate}" Height="7" />
+                          <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <TextBlock Text="{Binding ProgressText}" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}" />
+                            <TextBlock Grid.Column="1" Text="{Binding ConnectionsText, StringFormat='{}{0} connections'}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" />
+                          </Grid>
+                        </Grid>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                  <WrapPanel Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_pause]}" Command="{Binding PauseSelectedAria2TaskCommand}" IsEnabled="{Binding SelectedAria2Task.CanPause}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_resume]}" Command="{Binding ResumeSelectedAria2TaskCommand}" IsEnabled="{Binding SelectedAria2Task.CanResume}" />
+                    <Button Classes="secondary" Content="{Binding Localization[ui_remove]}" Command="{Binding RemoveSelectedAria2TaskCommand}" IsEnabled="{Binding SelectedAria2Task.CanRemove}" />
+                  </WrapPanel>
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="12">
                   <TextBlock Text="{Binding Localization[ui_proxy]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
                   <Grid ColumnDefinitions="*,2*,*" ColumnSpacing="9">
                     <ComboBox ItemsSource="{Binding ProxyModes}" SelectedItem="{Binding SelectedProxyMode}" />

@@ -235,7 +235,7 @@ public sealed partial class PacProxy : IWebProxy
         ShellPattern
     }
 
-    [GeneratedRegex(@"if\s*\((.*?)\)\s*\{?\s*return\s+[""']([^""']+)[""']\s*;", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant, 100)]
+    [GeneratedRegex(@"if\s*\(\s*((?:[^()]|\([^()]*\))*)\s*\)\s*\{?\s*return\s+[""']([^""']+)[""']\s*;", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant, 100)]
     private static partial Regex ConditionalReturnRegex();
 
     [GeneratedRegex(@"return\s+[""']([^""']+)[""']\s*;", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
