@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-12T15:36:01.569368Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_aria2_integration_overlay.zip",
+  "artifact_name": "xdm_aria2_integration_overlay.zip",
+  "type": "overlay",
+  "sha256": "495e137f3c78bd40ca56d846e4a60266b3f2b86454bdf757cb87ba53a7ffd1ff",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Add optional authenticated aria2 backend",
+  "commit_hash": "",
+  "file_count": 28,
+  "change_counts": {
+    "add": 17,
+    "modify": 11
+  },
+  "manifest": {},
+  "history_id": "5b36b2a16d174ac4b2367add484dc99f"
+}

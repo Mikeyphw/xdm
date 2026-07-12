@@ -832,6 +832,60 @@
       },
       "manifest": {},
       "history_id": "9d6c6ca26e2c44d19e4fec608a9f1848"
+    },
+    {
+      "applied_at": "2026-07-12T15:36:01.569368Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_aria2_integration_overlay.zip",
+      "artifact_name": "xdm_aria2_integration_overlay.zip",
+      "type": "overlay",
+      "sha256": "495e137f3c78bd40ca56d846e4a60266b3f2b86454bdf757cb87ba53a7ffd1ff",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add optional authenticated aria2 backend",
+      "commit_hash": "",
+      "file_count": 28,
+      "change_counts": {
+        "add": 17,
+        "modify": 11
+      },
+      "manifest": {},
+      "history_id": "5b36b2a16d174ac4b2367add484dc99f"
+    },
+    {
+      "applied_at": "2026-07-12T15:40:03.364931Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_aria2_integration_overlay.zip",
+      "artifact_name": "xdm_aria2_integration_overlay.zip",
+      "type": "overlay",
+      "sha256": "9bfb92c18cbf6b2dcbb095aa20d6fd122788f9ab443bc9d858ef1a9a497e179d",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add optional authenticated aria2 backend",
+      "commit_hash": "",
+      "file_count": 28,
+      "change_counts": {
+        "add": 17,
+        "modify": 11
+      },
+      "manifest": {},
+      "history_id": "705c944c9fd34f388415d9d01741edce"
+    },
+    {
+      "applied_at": "2026-07-12T15:42:58.771901Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_aria2_integration_overlay.zip",
+      "artifact_name": "xdm_aria2_integration_overlay.zip",
+      "type": "overlay",
+      "sha256": "2346bbef954bddb2c4854c20b085694dcc9808d9640c4edd8d383f7774934dbb",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add optional authenticated aria2 backend",
+      "commit_hash": "",
+      "file_count": 28,
+      "change_counts": {
+        "add": 17,
+        "modify": 11
+      },
+      "manifest": {},
+      "history_id": "770ee90484124b02add09db207c229c6"
     }
   ]
 }
