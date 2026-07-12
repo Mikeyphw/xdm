@@ -1,0 +1,13 @@
+{
+  "defaultDownloadDirectory": "/tmp/xdm-json-final-gate",
+  "maxConcurrentDownloads": "9",
+  "retryBaseDelayMilliseconds": "800",
+  "defaultConnectionCount": "6",
+  "maximumConnectionCount": "12",
+  "minimumSegmentedSizeBytes": "524288",
+  "duplicateBehavior": "Skip",
+  "createDestinationDirectory": "false",
+  "autoSelectCategory": "true",
+  "language": "Farsi",
+  "announceStatusChanges": "false"
+}

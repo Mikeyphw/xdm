@@ -4,9 +4,11 @@
 
 - [ ] Working tree is clean and commit history identifies the intended release
 - [ ] `VERSION` matches package and release names
-- [ ] `XDM.Modern.sln` restores, builds, and tests with zero warnings
+- [ ] `XDM.Modern.sln` restores, builds, and tests with zero warnings and zero errors
 - [ ] Bootstrap validation passes on Linux and Windows
+- [ ] `FinalParityGateTests` reports 100% critical/high parity and valid evidence
 - [ ] No active workflow restores or builds WPF, GTK, WinForms, or MSIX projects
+- [ ] Known legacy application source paths are absent
 
 ## Functional smoke tests
 
@@ -28,6 +30,7 @@
 - [ ] Windows x64 self-contained package launches on a clean supported system
 - [ ] `XDM.NativeHost` is beside the application executable
 - [ ] Browser manifests point to the packaged native-host path
+- [ ] Recorded XML/JSON settings, history, and scheduler migration fixtures pass
 - [ ] Upgrade preserves settings and history
 - [ ] Uninstall leaves user data unless explicitly requested
 - [ ] Package hashes are published

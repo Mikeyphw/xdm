@@ -1,3 +1,5 @@
+using XDM.Core.Product;
+
 namespace XDM.Core.Downloads;
 
 public static class DownloadInputParser
@@ -12,7 +14,7 @@ public static class DownloadInputParser
         return input
             .Split(['\r', '\n', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(static value => Uri.TryCreate(value, UriKind.Absolute, out Uri? uri) ? uri : null)
-            .Where(static uri => uri is not null && uri.Scheme is "http" or "https")
+            .Where(ModernFeaturePolicy.IsSupportedDownloadUri)
             .Cast<Uri>()
             .DistinctBy(static uri => uri.AbsoluteUri, StringComparer.OrdinalIgnoreCase)
             .ToArray();

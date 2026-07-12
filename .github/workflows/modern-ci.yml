@@ -21,17 +21,26 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - name: Restore
+      - name: Restore modern solution
         run: dotnet restore app/XDM/XDM.Modern.sln
-      - name: Build
+      - name: Build modern solution
         run: dotnet build app/XDM/XDM.Modern.sln -c Release --no-restore
-      - name: Test
+      - name: Test modern solution and final-gate contracts
         run: dotnet test app/XDM/XDM.Modern.sln -c Release --no-build --logger trx --results-directory artifacts/test-results
       - name: Bootstrap smoke test
         run: dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj -c Release --no-build -- --validate-bootstrap
+      - name: Linux final-gate package smoke
+        if: runner.os == 'Linux'
+        run: bash app/XDM/eng/smoke-package.sh linux-x64
+      - name: Windows final-gate package smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./app/XDM/eng/smoke-package.ps1 -Runtime win-x64
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ matrix.os }}
-          path: artifacts/test-results
+          name: final-gate-${{ runner.os }}
+          path: |
+            artifacts/test-results
+            artifacts/smoke
           if-no-files-found: ignore

@@ -20,16 +20,16 @@ public sealed class ParityManifestTests
     }
 
     [Fact]
-    public async Task CompleteFeaturesAreBackedByImplementationAndTests()
+    public async Task QualifiedFeaturesAreBackedByImplementationAndTests()
     {
         ParityManifest manifest = await ParityManifestLoader.LoadAsync(ManifestPath);
-        ParityFeature[] complete = manifest.Features
-            .Where(static feature => feature.Status == ParityStatus.Complete)
+        ParityFeature[] qualified = manifest.Features
+            .Where(static feature => feature.Status is ParityStatus.Complete or ParityStatus.IntentionallyReplaced)
             .ToArray();
 
-        Assert.NotEmpty(complete);
-        Assert.All(complete, static feature => Assert.NotEmpty(feature.ImplementationPaths));
-        Assert.All(complete, static feature => Assert.NotEmpty(feature.AutomatedTests));
+        Assert.NotEmpty(qualified);
+        Assert.All(qualified, static feature => Assert.NotEmpty(feature.ImplementationPaths));
+        Assert.All(qualified, static feature => Assert.NotEmpty(feature.AutomatedTests));
     }
 
     [Fact]

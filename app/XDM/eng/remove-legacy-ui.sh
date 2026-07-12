@@ -30,6 +30,7 @@ case "$mode" in
     if [[ "$found" -eq 0 ]]; then
       echo 'No known legacy application paths remain.'
     fi
+    exit "$found"
     ;;
   --apply)
     if [[ -n "$(git -C "$repo_root" status --porcelain)" ]]; then

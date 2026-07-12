@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "baseline": "overlay-20-localization-accessibility",
-  "updatedAt": "2026-07-12",
+  "baseline": "overlay-21-final-gate",
+  "updatedAt": "2026-07-12T15:00:00Z",
   "features": [
     {
       "id": "download.http-single-stream",
@@ -158,16 +158,19 @@
       "area": "download-engine",
       "name": "Unknown-length response support",
       "priority": "high",
-      "status": "partial",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/HttpDownloader.cs"
       ],
       "implementationPaths": [
-        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs",
+        "app/XDM/src/XDM.DownloadEngine/SegmentedDownloadExecutor.cs"
       ],
-      "automatedTests": [],
-      "targetOverlay": "13",
-      "notes": "Single stream works; segmented mode must fall back."
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.SegmentedDownloadTests.CompletesUnknownLengthResponseThroughSingleStreamFallback"
+      ],
+      "targetOverlay": "21",
+      "notes": "Unknown-length HTTP responses fall back from segmented probing to the single-stream path and publish the observed final length."
     },
     {
       "id": "download.proxy",
@@ -195,15 +198,21 @@
       "area": "network",
       "name": "FTP/FTPS downloads",
       "priority": "medium",
-      "status": "missing",
+      "status": "intentionallyReplaced",
       "legacySources": [
         "README.md",
         "app/XDM/XDM.Core/FtpDownloader.cs"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Product/ModernFeaturePolicy.cs",
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.ModernFeaturePolicyTests.SupportsOnlyModernHttpDownloadSchemes",
+        "XDM.Core.Tests.ModernFeaturePolicyTests.FtpReplacementIsExplicitAndActionable"
+      ],
       "targetOverlay": "21",
-      "notes": "Decision required: implement or mark intentionally replaced."
+      "notes": "Legacy FTP/FTPS transport is explicitly replaced by HTTPS downloads or a dedicated file-transfer client; the modern engine rejects those schemes with an actionable message."
     },
     {
       "id": "workflow.add-single",
@@ -1048,7 +1057,7 @@
         "app/XDM/eng/publish-modern.ps1"
       ],
       "automatedTests": [
-        "package smoke validation"
+        "XDM.Parity.Tests.FinalParityGateTests.ModernPackagingQualificationScriptsExist"
       ],
       "targetOverlay": "11",
       "notes": "Linux and Windows publish/qualification scripts exist."
@@ -1058,14 +1067,22 @@
       "area": "packaging",
       "name": "In-app update channel",
       "priority": "medium",
-      "status": "missing",
+      "status": "intentionallyReplaced",
       "legacySources": [
         "app/XDM/XDM.Core/Updater.cs"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Product/ModernFeaturePolicy.cs",
+        ".github/workflows/modern-prerelease.yml",
+        "app/XDM/eng/qualify-prerelease.sh",
+        "app/XDM/eng/qualify-prerelease.ps1"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.ModernFeaturePolicyTests.UpdatesUseExternalSignedPackageChannel",
+        "XDM.Parity.Tests.FinalParityGateTests.ModernPackagingQualificationScriptsExist"
+      ],
       "targetOverlay": "21",
-      "notes": "Requires signed release metadata and preview/stable channels."
+      "notes": "Self-modifying in-process updates are replaced by externally installed, checksum-qualified release packages from the HTTPS release channel."
     },
     {
       "id": "browser.protocol-security",
@@ -1421,7 +1438,7 @@
         "app/XDM/src/XDM.App/MainWindow.axaml"
       ],
       "automatedTests": [
-        "XDM.DownloadEngine.Tests.SettingsTransferServiceTests.ImportsLegacyLanguageAndAccessibilityPreferences"
+        "XDM.DownloadEngine.Tests.SettingsTransferServiceTests.ImportsLegacyLanguageContrastAndScaleSettings"
       ],
       "targetOverlay": "20",
       "notes": "Language selection and system-language preference are stored in schema 5 and refresh the active Avalonia surface after settings are saved."
@@ -1486,7 +1503,90 @@
         "XDM.Core.Tests.LocaleFormatterTests.AccessibilitySettingsClampUiScale"
       ],
       "targetOverlay": "20",
-      "notes": "Persisted 75–175% scaling, high-contrast styles, and optional polite operation announcements update the active window."
+      "notes": "Persisted 75\u2013175% scaling, high-contrast styles, and optional polite operation announcements update the active window."
+    },
+    {
+      "id": "quality.final-parity-gate",
+      "area": "quality",
+      "name": "Executable final parity certification",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "docs/parity/XDM8-PARITY.md"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Parity/ParityManifestValidator.cs",
+        "app/XDM/src/XDM.Parity/ParityRepositoryValidator.cs"
+      ],
+      "automatedTests": [
+        "XDM.Parity.Tests.FinalParityGateTests.CriticalAndHighParityAreOneHundredPercentQualified",
+        "XDM.Parity.Tests.FinalParityGateTests.CompletedParityEvidenceResolvesInsideRepository"
+      ],
+      "targetOverlay": "21",
+      "notes": "Critical and high contracts must be fully qualified and all completed evidence must resolve inside the repository."
+    },
+    {
+      "id": "migration.final-qualification",
+      "area": "migration",
+      "name": "Representative legacy migration qualification matrix",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "docs/MIGRATING-FROM-XDM8.md"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Persistence/SettingsTransferService.cs",
+        "app/XDM/src/XDM.Persistence/JsonDownloadHistoryStore.cs",
+        "app/XDM/src/XDM.Persistence/JsonSchedulerStateStore.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.MigrationQualificationTests.ImportsRepresentativeLegacySettingsFormats",
+        "XDM.DownloadEngine.Tests.MigrationQualificationTests.LoadsLegacyHistoryWithoutLosingPartialState",
+        "XDM.DownloadEngine.Tests.MigrationQualificationTests.LoadsPersistedSchedulerWindowForMissedRunEvaluation",
+        "XDM.DownloadEngine.Tests.MigrationQualificationTests.MigrationExportRemainsCredentialFreeByDefault"
+      ],
+      "targetOverlay": "21",
+      "notes": "Recorded XML, JSON, history, scheduler and secret-redaction fixtures qualify representative upgrades."
+    },
+    {
+      "id": "quality.cross-platform-final-ci",
+      "area": "quality",
+      "name": "Linux and Windows final-gate CI",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        ".github/workflows/modern-ci.yml"
+      ],
+      "implementationPaths": [
+        ".github/workflows/modern-ci.yml",
+        "app/XDM/eng/final-gate.sh",
+        "app/XDM/eng/final-gate.ps1"
+      ],
+      "automatedTests": [
+        "XDM.Parity.Tests.FinalParityGateTests.LinuxAndWindowsQualificationWorkflowsArePresent"
+      ],
+      "targetOverlay": "21",
+      "notes": "Both supported desktop operating-system families build, test, bootstrap and smoke their native package in CI."
+    },
+    {
+      "id": "cutover.legacy-source-removal",
+      "area": "cutover",
+      "name": "Legacy application source removal",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "docs/RELEASE-CHECKLIST.md"
+      ],
+      "implementationPaths": [
+        "app/XDM/eng/remove-legacy-ui.sh",
+        "app/XDM/src/XDM.Parity/ParityRepositoryValidator.cs"
+      ],
+      "automatedTests": [
+        "XDM.Parity.Tests.FinalParityGateTests.LegacyApplicationSourceIsAbsent",
+        "XDM.Parity.Tests.FinalParityGateTests.ModernSolutionContainsOnlyApprovedProjects"
+      ],
+      "targetOverlay": "21",
+      "notes": "Known WPF, GTK, WinForms, legacy CoreFx, compatibility and legacy test application paths are absent and prohibited from the active solution."
     }
   ]
 }

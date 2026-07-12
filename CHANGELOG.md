@@ -15,16 +15,18 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Structured diagnostics, redacted bundle export, safe mode, and recovery tools
 - Single-instance activation, tray/background mode, notifications, search, filters, bulk actions, and timeline
 - Self-contained Linux x64/ARM64 and Windows x64 packaging
-- Modern-only CI, package qualification, and large-history performance checks
+- Modern-only Linux/Windows CI, package qualification, final parity certification, and large-history performance checks
+- Full browser takeover, HLS/DASH media acquisition, conversion, completion actions, migration, file management, localization, and accessibility
 
 ### Changed
 
 - `app/XDM/XDM.Modern.sln` is the supported solution
 - WPF, GTK, WinForms, MSIX, and .NET Framework projects are no longer part of active builds
 
-### Known preview limitations
+### Intentional modern replacements and preview boundaries
 
-- Media extraction coverage is not yet equivalent to every site supported by historical XDM releases
-- Browser extension distribution and signing remain separate release tasks
+- FTP/FTPS transport is replaced by HTTPS downloads or a dedicated file-transfer client
+- In-process binary self-update is replaced by externally installed, checksum-qualified release packages
+- Browser extension store distribution and signing remain release-channel tasks
 - Linux desktop integration may vary between desktop environments
-- Legacy configuration migration is best-effort; retain a backup of old XDM data
+- Retain a backup before migrating legacy state even though recorded migration fixtures are qualified

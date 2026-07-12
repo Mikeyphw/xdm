@@ -6,6 +6,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using XDM.Core.Downloads;
 using XDM.Core.Persistence;
+using XDM.Core.Product;
 using XDM.Core.Queues;
 using XDM.Core.Settings;
 using XDM.Core.State;
@@ -188,9 +189,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!request.Source.IsAbsoluteUri || request.Source.Scheme is not ("http" or "https"))
+        if (!ModernFeaturePolicy.IsSupportedDownloadUri(request.Source))
         {
-            throw new ArgumentException("Only absolute HTTP and HTTPS URLs are supported.", nameof(request));
+            throw new ArgumentException(
+                ModernFeaturePolicy.GetUnsupportedDownloadMessage(request.Source),
+                nameof(request));
         }
 
         string method = string.IsNullOrWhiteSpace(request.Method) ? "GET" : request.Method.Trim().ToUpperInvariant();

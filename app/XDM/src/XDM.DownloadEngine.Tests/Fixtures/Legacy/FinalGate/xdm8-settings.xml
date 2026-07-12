@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<settings>
+  <entry key="defaultDownloadDirectory">/tmp/xdm-final-gate</entry>
+  <entry key="maxConcurrentDownloads">6</entry>
+  <entry key="maxRetry">5</entry>
+  <entry key="proxyMode">none</entry>
+  <entry key="language">Portuguese Brazil</entry>
+  <entry key="highContrast">true</entry>
+  <entry key="uiScalePercent">135</entry>
+  <entry key="category.video.name">Legacy video</entry>
+  <entry key="category.video.extensions">mp4,mkv,webm</entry>
+  <entry key="category.video.directory">/tmp/xdm-final-gate/video</entry>
+  <entry key="queue.night.name">Night queue</entry>
+  <entry key="queue.night.maxConcurrent">2</entry>
+</settings>

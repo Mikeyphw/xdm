@@ -1,0 +1,23 @@
+[
+  {
+    "id": "legacy-complete",
+    "source": "https://example.test/archive.zip",
+    "destinationPath": "/tmp/archive.zip",
+    "downloadedBytes": 4096,
+    "totalBytes": 4096,
+    "state": 5,
+    "updatedAt": "2026-07-01T10:00:00Z"
+  },
+  {
+    "id": "legacy-paused",
+    "source": "https://example.test/video.mp4",
+    "destinationPath": "/tmp/video.mp4",
+    "downloadedBytes": 1024,
+    "totalBytes": null,
+    "state": 3,
+    "updatedAt": "2026-07-02T11:00:00Z",
+    "queueId": "night",
+    "categoryId": "video",
+    "entityTag": "\"legacy-v1\""
+  }
+]

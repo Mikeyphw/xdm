@@ -1,6 +1,6 @@
-# XDM Overlay 20 — localization and accessibility
+# XDM Overlay 21 — final parity gate
 
-Base: confirmed successful commit `86633eb`
+Base: confirmed successful commit `55ad296`
 
 Target: `xdm_modern`
 
@@ -8,23 +8,14 @@ Active solution: `app/XDM/XDM.Modern.sln`
 
 ## Included
 
-- Stable embedded English resources plus bounded migration of retained XDM language packs.
-- Persisted language selection and operating-system language preference.
-- Runtime translated binding refresh and English fallback.
-- Right-to-left flow for RTL cultures.
-- Locale-aware sizes, rates, durations, aggregate speed, and status labels.
-- Persisted high-contrast mode, 75–175% UI scaling, and screen-reader announcements.
-- Accessible names, live operation status, tab navigation, and keyboard shortcuts.
-- Legacy language/accessibility settings migration.
-- Deterministic localization, formatting, settings, and accessibility-surface tests.
-- Executable parity ledger and documentation updates.
-
-## Safety
-
-Language packs are data-only and bounded by file size, entry count, key length,
-and value length. Index paths are reduced to file names. No markup, scripts, or
-commands are evaluated from translations. Unknown or missing translations fall
-back to embedded English resources.
+- 100% qualified critical and high-priority parity.
+- Repository-local implementation and automated-test evidence validation.
+- Unknown-length HTTP response qualification and segmented fallback coverage.
+- Representative legacy settings, history and scheduler migration fixtures.
+- Linux and Windows build/test/bootstrap/self-contained-package CI gates.
+- Enforced absence of known WPF, GTK, WinForms, legacy CoreFx and compatibility source paths.
+- Explicit modern replacement policies for FTP/FTPS and in-process self-update.
+- Final release and parity documentation.
 
 ## Validation scope
 

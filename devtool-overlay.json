@@ -1,24 +1,24 @@
 {
-  "name": "xdm_localization_accessibility_overlay",
+  "name": "xdm_final_parity_gate_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "86633eb",
+  "baseCommit": "55ad296",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "functional-parity-20",
-  "description": "Migrates retained XDM language packs into the active Avalonia shell and adds runtime switching, RTL, locale formatting, keyboard/screen-reader navigation, high contrast, and UI scaling.",
+  "phase": "functional-parity-21-final-gate",
+  "description": "Certifies critical and high parity, qualifies migration fixtures and unknown-length downloads, enforces modern-only source and solution policy, and adds Linux/Windows package smoke CI.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore",
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
-    "focusedTests": "dotnet test app/XDM/src/XDM.Core.Tests/XDM.Core.Tests.csproj app/XDM/src/XDM.DownloadEngine.Tests/XDM.DownloadEngine.Tests.csproj --configuration Release --no-build"
+    "focusedTests": "dotnet test app/XDM/src/XDM.Parity.Tests/XDM.Parity.Tests.csproj app/XDM/src/XDM.DownloadEngine.Tests/XDM.DownloadEngine.Tests.csproj --configuration Release --no-build"
   },
-  "commitMessage": "Add localization and accessibility parity",
+  "commitMessage": "Complete the modern XDM final parity gate",
   "constraints": [
     "Validate only app/XDM/XDM.Modern.sln",
     "Do not restore or build WPF, GTK, WinForms or MSIX targets",
-    "Treat retained language packs as bounded data only",
-    "Never evaluate translation markup, scripts or commands",
-    "Fallback to embedded English for unknown or missing translations"
+    "Require 100 percent critical and high-priority parity",
+    "Require repository-local implementation and test evidence",
+    "Require zero warnings and zero errors"
   ]
 }

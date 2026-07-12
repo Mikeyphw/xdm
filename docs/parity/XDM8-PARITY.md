@@ -13,9 +13,9 @@ This ledger is executable through `XDM.Parity.Tests`. The source of truth is
 
 ## Current baseline
 
-The manifest inventories 74 feature contracts across the download engine,
+The manifest inventories 78 feature contracts across the download engine,
 browser integration, media, conversion, queues, settings, desktop integration,
-diagnostics, localization, packaging and migration.
+diagnostics, localization, packaging, migration, quality and cutover.
 
 Overlay 13 completed segmented transfer, Overlay 14 completed browser takeover,
 Overlay 15 completed streaming media, Overlay 16 completed conversion, Overlay 17 completed queue scheduling and completion actions, Overlay 18 completed settings and workflow parity, Overlay 19 completed history and file management, and Overlay 20 completes localization and accessibility. Later parity overlays must
@@ -31,8 +31,10 @@ The test project enforces:
 3. An assigned target overlay for all work.
 4. Implementation and test references for every feature marked complete.
 
-The final parity gate will additionally require every critical and high feature
-to be complete, intentionally replaced, or explicitly not applicable.
+Overlay 21 enforces that every critical and high feature is complete,
+intentionally replaced, or explicitly not applicable. It also resolves every
+qualified implementation path and automated-test symbol against the repository,
+checks the modern solution allowlist, and rejects known legacy application paths.
 
 ## Overlay 13 result
 
@@ -117,3 +119,14 @@ preferences. Primary workflows expose accessible names, live operation status,
 tab navigation, and keyboard shortcuts. Design and safety details are documented
 in `docs/parity/LOCALIZATION-ACCESSIBILITY.md`.
 
+
+## Overlay 21 result
+
+The final gate qualifies 100% of critical and high-priority contracts. Recorded
+fixtures exercise legacy XML/JSON settings, history, scheduler state and
+credential-redacted export. Unknown-length HTTP responses are covered through
+the segmented-probe fallback. Linux and Windows CI now build, test, bootstrap
+and smoke self-contained packages. Known legacy WPF, GTK, WinForms, CoreFx,
+compatibility and test application paths are prohibited. FTP/FTPS transport and
+in-process self-update are explicit modern replacements rather than silent gaps.
+Details are documented in `docs/parity/FINAL-GATE.md`.

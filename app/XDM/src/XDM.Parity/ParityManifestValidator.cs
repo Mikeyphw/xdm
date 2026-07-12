@@ -45,21 +45,35 @@ public static class ParityManifestValidator
                 issues.Add($"{feature.Id}: targetOverlay is required.");
             }
 
-            if (feature.Status == ParityStatus.Complete)
+            if (feature.Status is ParityStatus.Complete or ParityStatus.IntentionallyReplaced)
             {
                 if (feature.ImplementationPaths.Count == 0)
                 {
-                    issues.Add($"{feature.Id}: complete features require implementation paths.");
+                    issues.Add($"{feature.Id}: qualified features require implementation paths.");
                 }
 
                 if (feature.AutomatedTests.Count == 0)
                 {
-                    issues.Add($"{feature.Id}: complete features require automated tests.");
+                    issues.Add($"{feature.Id}: qualified features require automated tests.");
                 }
             }
         }
 
         return [.. issues];
+    }
+
+    public static string[] ValidateFinalGate(ParityManifest manifest)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        List<string> issues = [.. Validate(manifest)];
+        foreach (ParityFeature feature in manifest.Features.Where(static feature =>
+            (feature.Priority is ParityPriority.Critical or ParityPriority.High)
+            && feature.Status is not (ParityStatus.Complete or ParityStatus.IntentionallyReplaced or ParityStatus.NotApplicable)))
+        {
+            issues.Add($"{feature.Id}: critical and high parity must be complete at the final gate.");
+        }
+
+        return issues.Distinct(StringComparer.Ordinal).ToArray();
     }
 
     public static ParitySummary Summarize(ParityManifest manifest)
@@ -71,7 +85,17 @@ public static class ParityManifestValidator
         int criticalComplete = manifest.Features.Count(feature =>
             feature.Priority == ParityPriority.Critical
             && feature.Status is ParityStatus.Complete or ParityStatus.IntentionallyReplaced or ParityStatus.NotApplicable);
-        return new ParitySummary(manifest.Features.Count, counts, criticalComplete, criticalTotal);
+        int highTotal = manifest.Features.Count(feature => feature.Priority == ParityPriority.High);
+        int highComplete = manifest.Features.Count(feature =>
+            feature.Priority == ParityPriority.High
+            && feature.Status is ParityStatus.Complete or ParityStatus.IntentionallyReplaced or ParityStatus.NotApplicable);
+        return new ParitySummary(
+            manifest.Features.Count,
+            counts,
+            criticalComplete,
+            criticalTotal,
+            highComplete,
+            highTotal);
     }
 }
 
@@ -79,8 +103,13 @@ public sealed record ParitySummary(
     int Total,
     IReadOnlyDictionary<ParityStatus, int> Counts,
     int CriticalComplete,
-    int CriticalTotal)
+    int CriticalTotal,
+    int HighComplete,
+    int HighTotal)
 {
     public double CriticalCompletionFraction
         => CriticalTotal == 0 ? 1d : (double)CriticalComplete / CriticalTotal;
+
+    public double HighCompletionFraction
+        => HighTotal == 0 ? 1d : (double)HighComplete / HighTotal;
 }

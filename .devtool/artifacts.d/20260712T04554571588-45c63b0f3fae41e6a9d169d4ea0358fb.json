@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-12T04:55:45.715882Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_final_parity_gate_overlay.zip",
+  "artifact_name": "xdm_final_parity_gate_overlay.zip",
+  "type": "overlay",
+  "sha256": "ecdf368844c95a241e35fc3d34c3c6bed76e93d6349d0d7c954af65703c89667",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Complete the modern XDM final parity gate",
+  "commit_hash": "",
+  "file_count": 27,
+  "change_counts": {
+    "add": 12,
+    "modify": 15
+  },
+  "manifest": {},
+  "history_id": "45c63b0f3fae41e6a9d169d4ea0358fb"
+}

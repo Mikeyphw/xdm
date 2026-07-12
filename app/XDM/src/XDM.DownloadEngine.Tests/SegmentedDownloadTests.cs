@@ -81,6 +81,31 @@ public sealed class SegmentedDownloadTests
     }
 
     [Fact]
+    public async Task CompletesUnknownLengthResponseThroughSingleStreamFallback()
+    {
+        byte[] payload = CreatePayload(6144);
+        using TemporaryDirectory directory = new();
+        UnknownLengthHandler handler = new(payload);
+        using HttpClient client = new(handler);
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state);
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/chunked.bin"),
+            directory.Path,
+            "chunked.bin",
+            ConnectionCount: 4));
+
+        DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        Assert.Equal(2, handler.RequestCount);
+        Assert.Equal(payload.Length, completed.DownloadedBytes);
+        Assert.Equal(payload.Length, completed.TotalBytes);
+        Assert.Equal(payload, await File.ReadAllBytesAsync(completed.DestinationPath));
+        Assert.False(Directory.Exists($"{completed.DestinationPath}.segments"));
+    }
+
+    [Fact]
     public async Task FallsBackToSingleStreamWhenProbeRangeIsIgnored()
     {
         byte[] payload = CreatePayload(4096);
@@ -168,6 +193,41 @@ public sealed class SegmentedDownloadTests
             response.Content.Headers.ContentLength = length;
             response.Content.Headers.ContentRange = new ContentRangeHeaderValue(start, end, payload.Length);
             return Task.FromResult(response);
+        }
+    }
+
+    private sealed class UnknownLengthHandler(byte[] payload) : HttpMessageHandler
+    {
+        public int RequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RequestCount++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new UnknownLengthContent(payload)
+            });
+        }
+    }
+
+    private sealed class UnknownLengthContent(byte[] payload) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+            => SerializeToStreamAsync(stream, context, CancellationToken.None);
+
+        protected override Task SerializeToStreamAsync(
+            Stream stream,
+            TransportContext? context,
+            CancellationToken cancellationToken)
+            => stream.WriteAsync(payload, cancellationToken).AsTask();
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
         }
     }
 

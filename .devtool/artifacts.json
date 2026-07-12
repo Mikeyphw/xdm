@@ -706,6 +706,42 @@
       },
       "manifest": {},
       "history_id": "7a5439abb2704b14ba2b5fb3601f01af"
+    },
+    {
+      "applied_at": "2026-07-12T04:55:45.715882Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_final_parity_gate_overlay.zip",
+      "artifact_name": "xdm_final_parity_gate_overlay.zip",
+      "type": "overlay",
+      "sha256": "ecdf368844c95a241e35fc3d34c3c6bed76e93d6349d0d7c954af65703c89667",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Complete the modern XDM final parity gate",
+      "commit_hash": "",
+      "file_count": 27,
+      "change_counts": {
+        "add": 12,
+        "modify": 15
+      },
+      "manifest": {},
+      "history_id": "45c63b0f3fae41e6a9d169d4ea0358fb"
+    },
+    {
+      "applied_at": "2026-07-12T04:59:50.348870Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_final_parity_gate_overlay(1).zip",
+      "artifact_name": "xdm_final_parity_gate_overlay(1).zip",
+      "type": "overlay",
+      "sha256": "ca48d8dd0e3e02d1e3fa996b051a1d46438a7043542b27d5d196292f732180b3",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Complete the modern XDM final parity gate",
+      "commit_hash": "",
+      "file_count": 27,
+      "change_counts": {
+        "add": 12,
+        "modify": 15
+      },
+      "manifest": {},
+      "history_id": "d3edc24e25a242f9af9ca2aae4ef5ca0"
     }
   ]
 }
