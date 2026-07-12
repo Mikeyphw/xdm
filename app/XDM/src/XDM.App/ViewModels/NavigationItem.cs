@@ -1,3 +1,4 @@
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using XDM.App.Services;
 
@@ -10,13 +11,13 @@ public sealed partial class NavigationItem : ObservableObject
     public NavigationItem(
         string id,
         string titleKey,
-        string glyph,
+        string iconData,
         string summaryKey,
         LocalizationService localization)
     {
         Id = id;
         TitleKey = titleKey;
-        Glyph = glyph;
+        IconData = Geometry.Parse(iconData);
         SummaryKey = summaryKey;
         _localization = localization;
         title = localization[titleKey];
@@ -27,7 +28,7 @@ public sealed partial class NavigationItem : ObservableObject
 
     public string TitleKey { get; }
 
-    public string Glyph { get; }
+    public Geometry IconData { get; }
 
     public string SummaryKey { get; }
 

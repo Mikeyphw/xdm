@@ -105,14 +105,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         Localization = localization;
         Sections = new ObservableCollection<NavigationItem>
         {
-            new("downloads", "nav_downloads", "↓", "nav_downloads_summary", localization),
-            new("queues", "nav_queues", "≡", "nav_queues_summary", localization),
-            new("scheduler", "nav_scheduler", "◷", "nav_scheduler_summary", localization),
-            new("browser", "nav_browser", "◉", "nav_browser_summary", localization),
-            new("media", "nav_media", "▶", "nav_media_summary", localization),
-            new("conversion", "nav_conversion", "⇄", "nav_conversion_summary", localization),
-            new("settings", "nav_settings", "⚙", "nav_settings_summary", localization),
-            new("diagnostics", "nav_diagnostics", "◇", "nav_diagnostics_summary", localization)
+            new("downloads", "nav_downloads", "M12 3V14.17L16.59 9.59L18 11L11 18L4 11L5.41 9.59L10 14.17V3H12M4 19H18V21H4V19Z", "nav_downloads_summary", localization),
+            new("queues", "nav_queues", "M3 5H5V7H3V5M7 5H21V7H7V5M3 11H5V13H3V11M7 11H21V13H7V11M3 17H5V19H3V17M7 17H21V19H7V17Z", "nav_queues_summary", localization),
+            new("scheduler", "nav_scheduler", "M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2M13 7V11.59L16.2 14.79L14.79 16.2L11 12.41V7H13Z", "nav_scheduler_summary", localization),
+            new("browser", "nav_browser", "M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2M19.93 11H16.95A15.7 15.7 0 0 0 15.84 6.65A8.03 8.03 0 0 1 19.93 11M12 4C13.38 5.67 14.19 8.05 14.41 11H9.59C9.81 8.05 10.62 5.67 12 4M4.07 13H7.05C7.18 14.54 7.52 16 8.05 17.35A8.03 8.03 0 0 1 4.07 13M9.59 13H14.41C14.19 15.95 13.38 18.33 12 20C10.62 18.33 9.81 15.95 9.59 13M15.95 17.35C16.48 16 16.82 14.54 16.95 13H19.93A8.03 8.03 0 0 1 15.95 17.35M8.05 6.65C7.52 8 7.18 9.46 7.05 11H4.07A8.03 8.03 0 0 1 8.05 6.65Z", "nav_browser_summary", localization),
+            new("media", "nav_media", "M8 5V19L19 12L8 5Z", "nav_media_summary", localization),
+            new("conversion", "nav_conversion", "M7.5 21L3 16.5L7.5 12V15H13V18H7.5V21M16.5 12V9H11V6H16.5V3L21 7.5L16.5 12Z", "nav_conversion_summary", localization),
+            new("settings", "nav_settings", "M12 8A4 4 0 1 0 16 12A4 4 0 0 0 12 8M3.05 13H1V11H3.05C3.2 10.28 3.48 9.6 3.87 9L2.42 7.55L3.84 6.13L5.29 7.58C5.9 7.19 6.58 6.91 7.3 6.76V4.71H9.3V6.76C10.02 6.91 10.7 7.19 11.31 7.58L12.76 6.13L14.18 7.55L12.73 9C13.12 9.6 13.4 10.28 13.55 11H15.6V13H13.55C13.4 13.72 13.12 14.4 12.73 15L14.18 16.45L12.76 17.87L11.31 16.42C10.7 16.81 10.02 17.09 9.3 17.24V19.29H7.3V17.24C6.58 17.09 5.9 16.81 5.29 16.42L3.84 17.87L2.42 16.45L3.87 15C3.48 14.4 3.2 13.72 3.05 13Z", "nav_settings_summary", localization),
+            new("diagnostics", "nav_diagnostics", "M3 13H7L9 8L13 18L15 13H21V11H16.35L13 4L9 14L8 11H3V13Z", "nav_diagnostics_summary", localization)
         };
 
         DuplicateBehaviors = Enum.GetNames<DuplicateFileBehavior>();
@@ -466,6 +466,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsDiagnosticsVisible
         => string.Equals(SelectedSection?.Id, "diagnostics", StringComparison.Ordinal);
 
+    public bool IsDashboardSummaryVisible
+        => IsDownloadsVisible || IsQueuesVisible;
+
     public bool IsPlaceholderVisible
         => !IsDownloadsVisible
             && !IsQueuesVisible
@@ -488,6 +491,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsConversionVisible));
         OnPropertyChanged(nameof(IsSettingsVisible));
         OnPropertyChanged(nameof(IsDiagnosticsVisible));
+        OnPropertyChanged(nameof(IsDashboardSummaryVisible));
         OnPropertyChanged(nameof(IsPlaceholderVisible));
     }
 

@@ -1,21 +1,26 @@
-# XDM Overlay — Optional authenticated aria2 backend
+# XDM overlay — Typography foundation and shell cleanup
 
-This overlay adds an opt-in aria2 JSON-RPC backend to the active modern XDM application.
+This overlay implements phase 1 of the modern Avalonia UI/UX audit on top of commit `e2ca125`.
 
-It includes:
+## Included
 
-- managed local `aria2c` and external RPC connection modes;
-- RPC-secret authentication and secure remote-endpoint validation;
-- settings persistence, legacy import, and secret-redacted export;
-- managed-process lifecycle and session persistence;
-- add, monitor, pause, resume, and remove task operations;
-- an aria2 configuration and task panel inside the existing Settings section;
-- core and download-engine qualification tests;
-- enhancement documentation in `docs/parity/ARIA2-INTEGRATION.md`;
-- an explicit clean parity-manifest replacement that removes any stale `download.aria2-backend` entry;
-- a bounded PAC-condition regex that avoids the observed parser timeout;
-- a zero-warning `Aria2RpcClient.ParseTasks` implementation.
+- semantic display, page-title, section-title, form-label, supporting, caption, and metric typography roles;
+- revised high-contrast dark palette with a primary blue that supports white button text;
+- consistent primary, secondary, quiet, and destructive button treatments;
+- explicit keyboard-focus borders for buttons and form controls;
+- 38 persistent form labels across the download entry form and primary settings groups;
+- 19 bounded `NumericUpDown` fields backed by a two-way invariant string/decimal converter;
+- 43 stable automation IDs for navigation, status, primary actions, and settings fields;
+- vector `PathIcon` navigation graphics in place of platform-dependent text glyphs;
+- bootstrap checks for numeric conversion, icon geometry, and initial dashboard visibility;
+- removal of the outer two-axis window scroller in favor of page-owned scrolling;
+- dashboard summaries shown only on Downloads and Queues;
+- narrower navigation rail, reduced minimum window width, and cleaner page headers;
+- updated high-contrast handling for combo boxes and numeric controls;
+- implementation notes in `docs/ui/TYPOGRAPHY-SHELL-PHASE1.md`.
 
-aria2 is a new optional enhancement and has no upstream legacy evidence. It is therefore deliberately excluded from the legacy parity ledger.
+## Deliberately deferred
 
-Validation is limited to `app/XDM/XDM.Modern.sln`. Legacy WPF, GTK, WinForms, CoreFx, and MSIX projects are not included or built.
+This overlay does not split `MainWindow.axaml` into separate views, redesign the download list, add secondary Settings navigation, or move live aria2 task management out of Settings. Those are later workflow and architecture phases.
+
+Validation is limited to `app/XDM/XDM.Modern.sln`.

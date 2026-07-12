@@ -923,6 +923,24 @@
       },
       "manifest": {},
       "history_id": "46cc437ce881488095659cea71c9fa51"
+    },
+    {
+      "applied_at": "2026-07-12T17:03:26.008852Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_typography_shell_cleanup_overlay.zip",
+      "artifact_name": "xdm_typography_shell_cleanup_overlay.zip",
+      "type": "overlay",
+      "sha256": "025553a12b2280f2a8245ef73f37220d34e2d695e1256783af98d2e6ec6af702",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Improve XDM typography and shell UI",
+      "commit_hash": "",
+      "file_count": 10,
+      "change_counts": {
+        "add": 2,
+        "modify": 8
+      },
+      "manifest": {},
+      "history_id": "9fe86d4a60d9480bbdceb2ae235c4228"
     }
   ]
 }

@@ -1,27 +1,25 @@
 {
-  "name": "xdm_aria2_integration_overlay",
+  "name": "xdm_typography_shell_cleanup_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "45b1b13",
+  "baseCommit": "e2ca125",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "optional-aria2-backend",
-  "description": "Adds an optional authenticated aria2 JSON-RPC backend with managed-process and external-RPC modes, settings persistence, task controls, UI integration, qualification tests, stale parity-entry cleanup, and deterministic PAC parsing.",
+  "phase": "ui-typography-shell-phase-1",
+  "description": "Introduces a semantic typography and control system, accessible persistent form labels, bounded numeric inputs, vector navigation icons, improved dark-theme contrast, distinct destructive actions, and a page-owned scrolling shell with contextual dashboard summaries.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
     "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Add optional authenticated aria2 backend",
+  "commitMessage": "Improve typography and clean up the application shell",
   "constraints": [
     "Validate only app/XDM/XDM.Modern.sln",
     "Do not restore or build WPF, GTK, WinForms, CoreFx or MSIX targets",
-    "Keep the built-in download engine as the default",
-    "Bind managed aria2 RPC to loopback only",
-    "Require HTTPS and an RPC secret for non-loopback external endpoints",
-    "Remove any stale download.aria2-backend entry from docs/parity/features.json because aria2 is not a legacy parity feature",
-    "Preserve the existing eight-section navigation",
-    "Require zero warnings and zero errors",
-    "Keep PAC parsing bounded and deterministic under parallel test load"
+    "Preserve all eight navigation sections and existing workflow behavior",
+    "Preserve the optional aria2 integration from commit e2ca125",
+    "Do not add aria2 or UI enhancements to the legacy parity ledger",
+    "Keep settings persistence compatible with the existing string-backed editor model",
+    "Require zero warnings and zero errors"
   ]
 }

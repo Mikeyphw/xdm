@@ -1,5 +1,6 @@
 using Avalonia;
 using Microsoft.Extensions.DependencyInjection;
+using XDM.App.Converters;
 using XDM.App.ViewModels;
 using XDM.Core.Categories;
 using XDM.Core.State;
@@ -62,14 +63,29 @@ internal static class Program
             Path.GetTempPath(),
             isPredefined: true);
 
+        InvariantDecimalStringConverter numericConverter = new();
+        bool numericConverterReady = Equals(
+            numericConverter.Convert("175", typeof(decimal?), null, System.Globalization.CultureInfo.InvariantCulture),
+            175m)
+            && string.Equals(
+                numericConverter.ConvertBack(64m, typeof(string), null, System.Globalization.CultureInfo.InvariantCulture) as string,
+                "64",
+                StringComparison.Ordinal);
         bool sectionsReady = viewModel.Sections.Count == 8;
+        bool sectionIconsReady = viewModel.Sections.All(static section =>
+            section.IconData.Bounds.Width > 0
+            && section.IconData.Bounds.Height > 0);
         bool selectedSectionReady = viewModel.SelectedSection is not null;
+        bool dashboardSummaryReady = viewModel.IsDashboardSummaryVisible;
         bool coreReady = state.Current.CoreReady;
         bool coreStatusReady = viewModel.CoreStatus == "Ready";
         bool archiveCategoryReady = archiveCategory.MatchesFileName("release.zip");
         bool downloadManagerReady = downloadManager is DownloadManager;
-        bool valid = sectionsReady
+        bool valid = numericConverterReady
+            && sectionsReady
+            && sectionIconsReady
             && selectedSectionReady
+            && dashboardSummaryReady
             && coreReady
             && coreStatusReady
             && archiveCategoryReady
@@ -78,14 +94,29 @@ internal static class Program
         if (!valid)
         {
             List<string> failedChecks = [];
+            if (!numericConverterReady)
+            {
+                failedChecks.Add("numericConverter=invalid");
+            }
+
             if (!sectionsReady)
             {
                 failedChecks.Add($"sections={viewModel.Sections.Count}");
             }
 
+            if (!sectionIconsReady)
+            {
+                failedChecks.Add("sectionIcons=invalid");
+            }
+
             if (!selectedSectionReady)
             {
                 failedChecks.Add("selectedSection=null");
+            }
+
+            if (!dashboardSummaryReady)
+            {
+                failedChecks.Add("dashboardSummary=false");
             }
 
             if (!coreReady)
