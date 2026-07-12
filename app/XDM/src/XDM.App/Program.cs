@@ -62,16 +62,55 @@ internal static class Program
             Path.GetTempPath(),
             isPredefined: true);
 
-        bool valid = viewModel.Sections.Count == 6
-            && viewModel.SelectedSection is not null
-            && state.Current.CoreReady
-            && viewModel.CoreStatus == "Ready"
-            && archiveCategory.MatchesFileName("release.zip")
-            && downloadManager is DownloadManager;
+        bool sectionsReady = viewModel.Sections.Count == 8;
+        bool selectedSectionReady = viewModel.SelectedSection is not null;
+        bool coreReady = state.Current.CoreReady;
+        bool coreStatusReady = viewModel.CoreStatus == "Ready";
+        bool archiveCategoryReady = archiveCategory.MatchesFileName("release.zip");
+        bool downloadManagerReady = downloadManager is DownloadManager;
+        bool valid = sectionsReady
+            && selectedSectionReady
+            && coreReady
+            && coreStatusReady
+            && archiveCategoryReady
+            && downloadManagerReady;
 
         if (!valid)
         {
-            Console.Error.WriteLine("XDM functional downloader bootstrap validation failed.");
+            List<string> failedChecks = [];
+            if (!sectionsReady)
+            {
+                failedChecks.Add($"sections={viewModel.Sections.Count}");
+            }
+
+            if (!selectedSectionReady)
+            {
+                failedChecks.Add("selectedSection=null");
+            }
+
+            if (!coreReady)
+            {
+                failedChecks.Add("coreReady=false");
+            }
+
+            if (!coreStatusReady)
+            {
+                failedChecks.Add($"coreStatus={viewModel.CoreStatus}");
+            }
+
+            if (!archiveCategoryReady)
+            {
+                failedChecks.Add("archiveCategory=release.zip");
+            }
+
+            if (!downloadManagerReady)
+            {
+                failedChecks.Add($"downloadManager={downloadManager.GetType().Name}");
+            }
+
+            Console.Error.WriteLine(
+                "XDM functional downloader bootstrap validation failed: "
+                + string.Join(", ", failedChecks));
             return 1;
         }
 

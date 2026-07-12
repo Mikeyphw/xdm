@@ -122,9 +122,26 @@ public sealed class LocalizationService : INotifyPropertyChanged, IDisposable
 
     private static Dictionary<string, string> LoadModernEnglish()
     {
+        string filePath = Path.Combine(AppContext.BaseDirectory, "Localization", "strings.en.json");
+        if (File.Exists(filePath))
+        {
+            using FileStream fileStream = File.OpenRead(filePath);
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(fileStream)
+                ?? throw new InvalidDataException("The on-disk English localization resource is invalid.");
+        }
+
         Assembly assembly = typeof(LocalizationService).Assembly;
-        using Stream stream = assembly.GetManifestResourceStream(ModernResourceName)
-            ?? throw new InvalidOperationException($"Embedded localization resource '{ModernResourceName}' was not found.");
+        string resourceName = assembly.GetManifestResourceNames()
+            .FirstOrDefault(name => name.Equals(ModernResourceName, StringComparison.Ordinal)
+                || name.EndsWith(".Localization.strings.en.json", StringComparison.Ordinal)
+                || name.EndsWith("Localization.strings.en.json", StringComparison.Ordinal)
+                || name.EndsWith("strings.en.json", StringComparison.Ordinal))
+            ?? throw new InvalidOperationException(
+                $"Localization resource '{ModernResourceName}' was not found on disk at '{filePath}' " +
+                $"or embedded in the assembly. Available embedded resources: {string.Join(", ", assembly.GetManifestResourceNames())}");
+
+        using Stream stream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"Localization resource '{resourceName}' could not be opened.");
         return JsonSerializer.Deserialize<Dictionary<string, string>>(stream)
             ?? throw new InvalidDataException("The embedded English localization resource is invalid.");
     }
