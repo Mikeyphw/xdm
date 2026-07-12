@@ -76,6 +76,8 @@ public sealed partial class DownloadItemViewModel : ObservableObject
 
     public bool HasSourcePage => SourcePage is not null;
 
+    public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+
     public void Apply(DownloadSnapshot snapshot, LocalizationService localization)
     {
         ArgumentNullException.ThrowIfNull(localization);
@@ -98,6 +100,7 @@ public sealed partial class DownloadItemViewModel : ObservableObject
             ? LocaleFormatter.FormatDuration(remaining, localization.Culture)
             : "—";
         ErrorMessage = snapshot.ErrorMessage;
+        OnPropertyChanged(nameof(HasError));
         QueueId = snapshot.QueueId;
         QueueOrder = snapshot.QueueOrder;
         Priority = snapshot.Priority;

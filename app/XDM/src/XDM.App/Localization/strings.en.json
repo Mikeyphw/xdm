@@ -303,5 +303,17 @@
   "settings_validation_proxy_host": "Enter a proxy host when manual proxy mode is selected.",
   "settings_validation_pac_url": "Enter a valid HTTP, HTTPS, or file URL for the proxy auto-configuration script.",
   "settings_validation_aria2_endpoint": "Enter a valid HTTP or HTTPS aria2 RPC endpoint.",
-  "settings_validation_aria2_executable": "Choose an aria2 executable when managed-process mode is enabled."
+  "settings_validation_aria2_executable": "Choose an aria2 executable when managed-process mode is enabled.",
+  "ui_dismiss_status": "Dismiss status",
+  "ui_loading_downloads": "Loading downloads",
+  "ui_loading_downloads_hint": "XDM is connecting to the download engine and restoring the current session.",
+  "ui_no_downloads_yet": "No downloads yet",
+  "ui_no_downloads_yet_hint": "Add one or more links above, or enable clipboard monitoring to capture supported URLs.",
+  "ui_add_first_download": "Add your first download",
+  "ui_no_matching_downloads": "No matching downloads",
+  "ui_no_matching_downloads_hint": "Try a different search term or reset the status filter.",
+  "ui_clear_filters": "Clear filters",
+  "ui_select_download_for_details": "Select a download to see details",
+  "ui_select_download_for_details_hint": "The details pane shows progress, errors, source actions, and the event timeline.",
+  "ui_download_error": "Download error"
 }

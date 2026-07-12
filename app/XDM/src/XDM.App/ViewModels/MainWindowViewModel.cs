@@ -296,6 +296,24 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string operationMessage = "Ready";
 
     [ObservableProperty]
+    private bool isOperationMessageVisible = true;
+
+    [ObservableProperty]
+    private bool isDownloadsLoading = true;
+
+    public bool HasDownloads => Downloads.Count > 0;
+
+    public bool HasFilteredDownloads => FilteredDownloads.Count > 0;
+
+    public bool ShowDownloadsEmptyState => !IsDownloadsLoading && !HasDownloads;
+
+    public bool ShowDownloadFilterEmptyState => !IsDownloadsLoading && HasDownloads && !HasFilteredDownloads;
+
+    public bool HasSelectedDownload => SelectedDownload is not null;
+
+    public bool HasNoSelectedDownload => SelectedDownload is null;
+
+    [ObservableProperty]
     private string maxConcurrentDownloads = "4";
 
     [ObservableProperty]
@@ -519,6 +537,17 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         RefreshSelectedDownloadTimeline(value?.Id);
         SelectedDownloadPriority = value?.Priority ?? DownloadPriority.Normal;
         ApplySelectedHistoryItem(value);
+        OnPropertyChanged(nameof(HasSelectedDownload));
+        OnPropertyChanged(nameof(HasNoSelectedDownload));
+    }
+
+    partial void OnOperationMessageChanged(string value)
+        => IsOperationMessageVisible = !string.IsNullOrWhiteSpace(value);
+
+    partial void OnIsDownloadsLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowDownloadsEmptyState));
+        OnPropertyChanged(nameof(ShowDownloadFilterEmptyState));
     }
 
     partial void OnBulkSelectionCountChanged(int value)
@@ -691,6 +720,20 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OperationMessage = "Download removed from history.";
     }
 
+
+    [RelayCommand]
+    private void DismissOperationMessage()
+        => IsOperationMessageVisible = false;
+
+    [RelayCommand]
+    private void ClearDownloadFilters()
+    {
+        DownloadSearchText = string.Empty;
+        SelectedDownloadStatus = DownloadStatusFilters.Count > 0
+            ? DownloadStatusFilters[0]
+            : string.Empty;
+        OperationMessage = "Download filters cleared.";
+    }
 
     [RelayCommand]
     private void SelectAllVisible()
@@ -1738,6 +1781,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private void ApplySnapshot(ApplicationSnapshot snapshot)
     {
+        IsDownloadsLoading = !snapshot.CoreReady;
         CoreStatus = snapshot.CoreReady ? _localization["core_ready"] : _localization["core_starting"];
         ActiveDownloadCount = snapshot.ActiveDownloadCount;
         AggregateSpeed = LocaleFormatter.FormatRate(snapshot.AggregateBytesPerSecond, _localization.Culture);
@@ -2087,6 +2131,17 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             SelectedDownload = FilteredDownloads.Count > 0 ? FilteredDownloads[0] : null;
         }
+        else if (SelectedDownload is null && FilteredDownloads.Count > 0)
+        {
+            SelectedDownload = FilteredDownloads[0];
+        }
+
+        OnPropertyChanged(nameof(HasDownloads));
+        OnPropertyChanged(nameof(HasFilteredDownloads));
+        OnPropertyChanged(nameof(ShowDownloadsEmptyState));
+        OnPropertyChanged(nameof(ShowDownloadFilterEmptyState));
+        OnPropertyChanged(nameof(HasSelectedDownload));
+        OnPropertyChanged(nameof(HasNoSelectedDownload));
     }
 
     private void UpdateSuggestedConversionDestination(string sourcePath, ConversionPreset preset)

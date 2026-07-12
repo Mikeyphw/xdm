@@ -47,7 +47,7 @@ public sealed class ShellArchitectureTests
 
     [Theory]
     [MemberData(nameof(PageFixtureNames))]
-    public void PageFixtureHasAUserControlRootAndNoNestedPageVisibility(string fixtureName)
+    public void PageFixtureHasAUserControlRootAndNoRootLevelPageVisibility(string fixtureName)
     {
         XDocument document = XDocument.Load(
             Path.Combine(AppContext.BaseDirectory, "Fixtures", "Views", fixtureName),
@@ -55,9 +55,9 @@ public sealed class ShellArchitectureTests
         XElement root = Assert.IsType<XElement>(document.Root);
 
         Assert.Equal("UserControl", root.Name.LocalName);
-        Assert.DoesNotContain(
-            root.DescendantsAndSelf(),
-            static element => element.Attribute("IsVisible")?.Value.StartsWith("{Binding Is", StringComparison.Ordinal) == true);
+        Assert.False(
+            root.Attribute("IsVisible")?.Value.StartsWith("{Binding Is", StringComparison.Ordinal) == true,
+            "Page visibility belongs to the shell; descendant controls may use state-specific visibility bindings.");
     }
 
     public static TheoryData<string> PageFixtureNames()

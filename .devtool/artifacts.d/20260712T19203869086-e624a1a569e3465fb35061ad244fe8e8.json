@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-12T19:20:38.690860Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_runtime_polish_overlay.zip",
+  "artifact_name": "xdm_runtime_polish_overlay.zip",
+  "type": "overlay",
+  "sha256": "0dbe11fcba2462b9bb33f662c57397104e5503e640d6279793f50dc67346e3eb",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Polish runtime states and responsive Downloads UI",
+  "commit_hash": "",
+  "file_count": 12,
+  "change_counts": {
+    "add": 2,
+    "modify": 10
+  },
+  "manifest": {},
+  "history_id": "e624a1a569e3465fb35061ad244fe8e8"
+}

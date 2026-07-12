@@ -93,4 +93,61 @@ public sealed class AccessibilityLayoutTests
             automationIds.Distinct(StringComparer.Ordinal).Count());
     }
 
+    [AvaloniaFact]
+    public void DownloadsViewReflowsFormsAtCompactWidth()
+    {
+        DownloadsView view = new();
+        view.ApplyResponsiveLayout(800);
+
+        Grid newDownloadGrid = Assert.IsType<Grid>(view.FindControl<Grid>("NewDownloadGrid"));
+        Grid optionsGrid = Assert.IsType<Grid>(view.FindControl<Grid>("DownloadOptionsGrid"));
+        Grid searchGrid = Assert.IsType<Grid>(view.FindControl<Grid>("DownloadSearchGrid"));
+        Grid workspace = Assert.IsType<Grid>(view.FindControl<Grid>("DownloadWorkspace"));
+        Control destination = Assert.IsAssignableFrom<Control>(view.FindControl<StackPanel>("DownloadDestinationField"));
+
+        Assert.Contains("compact-downloads", view.Classes);
+        Assert.Single(newDownloadGrid.ColumnDefinitions);
+        Assert.Equal(3, newDownloadGrid.RowDefinitions.Count);
+        Assert.Equal(1, Grid.GetRow(destination));
+        Assert.Equal(2, optionsGrid.ColumnDefinitions.Count);
+        Assert.Equal(2, optionsGrid.RowDefinitions.Count);
+        Assert.Equal(2, searchGrid.ColumnDefinitions.Count);
+        Assert.Equal(3, workspace.ColumnDefinitions.Count);
+        Assert.Equal(3d, workspace.ColumnDefinitions[0].Width.Value);
+        Assert.Equal(2d, workspace.ColumnDefinitions[2].Width.Value);
+    }
+
+    [AvaloniaFact]
+    public void DownloadsViewRestoresWideLayout()
+    {
+        DownloadsView view = new();
+        view.ApplyResponsiveLayout(1280);
+
+        Grid newDownloadGrid = Assert.IsType<Grid>(view.FindControl<Grid>("NewDownloadGrid"));
+        Grid optionsGrid = Assert.IsType<Grid>(view.FindControl<Grid>("DownloadOptionsGrid"));
+        Grid searchGrid = Assert.IsType<Grid>(view.FindControl<Grid>("DownloadSearchGrid"));
+        Grid workspace = Assert.IsType<Grid>(view.FindControl<Grid>("DownloadWorkspace"));
+
+        Assert.DoesNotContain("compact-downloads", view.Classes);
+        Assert.Equal(3, newDownloadGrid.ColumnDefinitions.Count);
+        Assert.Single(newDownloadGrid.RowDefinitions);
+        Assert.Equal(4, optionsGrid.ColumnDefinitions.Count);
+        Assert.Single(optionsGrid.RowDefinitions);
+        Assert.Equal(3, searchGrid.ColumnDefinitions.Count);
+        Assert.Equal(2d, workspace.ColumnDefinitions[0].Width.Value);
+        Assert.Equal(1d, workspace.ColumnDefinitions[2].Width.Value);
+    }
+
+    [AvaloniaFact]
+    public void MainWindowExposesRuntimeStatusAndCompactContentState()
+    {
+        MainWindow window = new();
+        window.ApplyResponsiveShell(800);
+
+        Assert.Contains("compact-content", window.Classes);
+        Assert.NotNull(window.FindControl<Border>("OperationStatusBanner"));
+        Border sectionIcon = Assert.IsType<Border>(window.FindControl<Border>("SectionIcon"));
+        Assert.False(sectionIcon.IsVisible);
+    }
+
 }

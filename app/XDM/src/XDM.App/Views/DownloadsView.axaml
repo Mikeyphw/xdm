@@ -2,39 +2,41 @@
   <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
     <Border Background="{DynamicResource XdmPanelBackground}" AutomationProperties.LandmarkType="Form" AutomationProperties.AccessibilityView="Control" CornerRadius="10" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
       <StackPanel Spacing="10">
-        <Grid ColumnDefinitions="2*,*,Auto,Auto" ColumnSpacing="10">
-          <StackPanel Spacing="6">
+        <Grid x:Name="NewDownloadGrid" ColumnDefinitions="2*,*,Auto" ColumnSpacing="10" RowSpacing="10">
+          <StackPanel x:Name="DownloadUrlField" Spacing="6">
             <TextBlock Text="{Binding Localization[ui_download_urls]}" Classes="form-label"/>
             <TextBox x:Name="NewDownloadUrlsInput" AutomationProperties.AutomationId="NewDownloadUrls" AutomationProperties.Name="{Binding Localization[ui_download_urls]}" AcceptsReturn="True" MinHeight="58" PlaceholderText="{Binding Localization[ui_one_or_more_http_https_urls]}" Text="{Binding NewDownloadUrls}"/>
           </StackPanel>
-          <StackPanel Grid.Column="1" Spacing="6">
+          <StackPanel x:Name="DownloadDestinationField" Grid.Column="1" Spacing="6">
             <TextBlock Text="{Binding Localization[ui_destination_folder]}" Classes="form-label"/>
             <TextBox Text="{Binding DestinationFolder}" AutomationProperties.Name="{Binding Localization[ui_destination_folder]}" AutomationProperties.AutomationId="NewDownloadDestination"/>
           </StackPanel>
-          <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseDestination_Click" VerticalAlignment="Bottom"/>
-          <Button Grid.Column="3" Classes="primary" Content="{Binding Localization[ui_add]}" Command="{Binding AddDownloadCommand}" AutomationProperties.AutomationId="AddDownload" AutomationProperties.AcceleratorKey="Ctrl+N" VerticalAlignment="Bottom"/>
+          <StackPanel x:Name="NewDownloadActions" Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+            <Button Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseDestination_Click"/>
+            <Button Classes="primary" Content="{Binding Localization[ui_add]}" Command="{Binding AddDownloadCommand}" AutomationProperties.AutomationId="AddDownload" AutomationProperties.AcceleratorKey="Ctrl+N"/>
+          </StackPanel>
         </Grid>
 
         <Expander Header="{Binding Localization[ui_download_options]}">
           <StackPanel Margin="0,8,0,0" Spacing="10">
-            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
-              <StackPanel Spacing="6">
+            <Grid x:Name="DownloadOptionsGrid" ColumnDefinitions="*,*,*,*" ColumnSpacing="10" RowSpacing="10">
+              <StackPanel x:Name="CategoryField" Spacing="6">
                 <TextBlock Text="{Binding Localization[ui_category]}" Classes="form-label"/>
                 <ComboBox ItemsSource="{Binding CategoryDefinitions}" SelectedItem="{Binding SelectedCategory}" AutomationProperties.Name="{Binding Localization[ui_category]}" AutomationProperties.AutomationId="DownloadCategory">
                   <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
                 </ComboBox>
               </StackPanel>
-              <StackPanel Grid.Column="1" Spacing="6">
+              <StackPanel x:Name="QueueField" Grid.Column="1" Spacing="6">
                 <TextBlock Text="{Binding Localization[ui_queue]}" Classes="form-label"/>
                 <ComboBox ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedQueue}" AutomationProperties.Name="{Binding Localization[ui_queue]}" AutomationProperties.AutomationId="DownloadQueue">
                   <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
                 </ComboBox>
               </StackPanel>
-              <StackPanel Grid.Column="2" Spacing="6">
+              <StackPanel x:Name="DuplicateBehaviorField" Grid.Column="2" Spacing="6">
                 <TextBlock Text="{Binding Localization[ui_duplicate_file_behavior]}" Classes="form-label"/>
                 <ComboBox ItemsSource="{Binding DuplicateBehaviors}" SelectedItem="{Binding SelectedDuplicateBehavior}" AutomationProperties.Name="{Binding Localization[ui_duplicate_file_behavior]}" AutomationProperties.AutomationId="NewDownloadDuplicateBehavior"/>
               </StackPanel>
-              <StackPanel Grid.Column="3" Spacing="6">
+              <StackPanel x:Name="SpeedLimitField" Grid.Column="3" Spacing="6">
                 <TextBlock Text="{Binding Localization[ui_speed_limit_kb_s_0_unlimited]}" Classes="form-label"/>
                 <NumericUpDown Value="{Binding SpeedLimitKbps, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="104857600" Increment="100" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_speed_limit_kb_s_0_unlimited]}" AutomationProperties.AutomationId="NewDownloadSpeedLimit"/>
               </StackPanel>
@@ -58,10 +60,10 @@
       </StackPanel>
     </Border>
 
-    <Grid Grid.Row="1" ColumnDefinitions="*,220,Auto" ColumnSpacing="9" AutomationProperties.LandmarkType="Search" AutomationProperties.AccessibilityView="Control">
+    <Grid x:Name="DownloadSearchGrid" Grid.Row="1" ColumnDefinitions="*,220,Auto" ColumnSpacing="9" RowSpacing="9" AutomationProperties.LandmarkType="Search" AutomationProperties.AccessibilityView="Control">
       <TextBox x:Name="DownloadSearchInput" AutomationProperties.AutomationId="DownloadSearch" AutomationProperties.AcceleratorKey="Ctrl+F" AutomationProperties.Name="{Binding Localization[ui_search_downloads]}" PlaceholderText="{Binding Localization[ui_search_filename_url_destination_or_queue]}" Text="{Binding DownloadSearchText}"/>
-      <ComboBox Grid.Column="1" ItemsSource="{Binding DownloadStatusFilters}" SelectedItem="{Binding SelectedDownloadStatus}" AutomationProperties.AutomationId="DownloadStatusFilter" AutomationProperties.Name="Download Status"/>
-      <Button Grid.Column="2" Classes="quiet" Content="{Binding Localization[ui_select_visible]}" Command="{Binding SelectAllVisibleCommand}" AutomationProperties.AutomationId="SelectVisibleDownloads"/>
+      <ComboBox x:Name="DownloadStatusFilter" Grid.Column="1" ItemsSource="{Binding DownloadStatusFilters}" SelectedItem="{Binding SelectedDownloadStatus}" AutomationProperties.AutomationId="DownloadStatusFilter" AutomationProperties.Name="Download Status"/>
+      <Button x:Name="SelectVisibleDownloads" Grid.Column="2" Classes="quiet" Content="{Binding Localization[ui_select_visible]}" Command="{Binding SelectAllVisibleCommand}" AutomationProperties.AutomationId="SelectVisibleDownloads"/>
     </Grid>
 
     <Border Grid.Row="2" IsVisible="{Binding HasBulkSelection}" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="10,8" BorderBrush="{DynamicResource XdmAccentBrush}" BorderThickness="1" AutomationProperties.AutomationId="BulkActionBar">
@@ -79,42 +81,82 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Row="3" ColumnDefinitions="2*,6,*" MinHeight="260">
-      <Border Grid.Column="0" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-        <ListBox ItemsSource="{Binding FilteredDownloads}" SelectedItem="{Binding SelectedDownload}" Background="Transparent" BorderThickness="0" Padding="7" AutomationProperties.AutomationId="DownloadsList" AutomationProperties.Name="Download">
+    <Grid x:Name="DownloadWorkspace" Grid.Row="3" ColumnDefinitions="2*,6,*" MinHeight="260">
+      <Border x:Name="DownloadListPane" Grid.Column="0" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+        <Grid>
+          <ListBox ItemsSource="{Binding FilteredDownloads}" SelectedItem="{Binding SelectedDownload}" Background="Transparent" BorderThickness="0" Padding="7" IsVisible="{Binding HasFilteredDownloads}" AutomationProperties.AutomationId="DownloadsList" AutomationProperties.Name="Download">
           <ListBox.ItemsPanel>
             <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <Border Padding="12" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" AutomationProperties.Name="{Binding FileName}" AutomationProperties.ItemStatus="{Binding StatusText}" AutomationProperties.AccessibilityView="Content">
-                <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="16">
+              <Border Padding="12" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1" AutomationProperties.Name="{Binding FileName}" AutomationProperties.ItemStatus="{Binding StatusText}" AutomationProperties.AccessibilityView="Content">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
                   <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
                   <StackPanel Grid.Column="1">
-                    <TextBlock Text="{Binding FileName}" Classes="card-title" Foreground="{DynamicResource XdmPrimarySoftForeground}"/>
+                    <TextBlock Text="{Binding FileName}" Classes="card-title" Foreground="{DynamicResource XdmPrimarySoftForeground}" TextTrimming="CharacterEllipsis"/>
                     <TextBlock Text="{Binding Source}" Classes="caption" Foreground="{DynamicResource XdmSubtleForeground}" TextTrimming="CharacterEllipsis"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Border Width="7" Height="7" CornerRadius="4" Background="{DynamicResource XdmBrandBrush}"/>
+                    <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource XdmAccentForeground}" TextTrimming="CharacterEllipsis"/>
+                  </StackPanel>
+                  <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,10,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}"/>
+                  <Grid Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
                     <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="{Binding ProgressText}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
                       <TextBlock Text="{Binding QueueId}" Classes="caption" Foreground="{DynamicResource XdmDisabledForeground}"/>
                       <TextBlock Text="{Binding Priority}" Classes="caption" Foreground="{DynamicResource XdmAccentForeground}"/>
                     </StackPanel>
-                  </StackPanel>
-                  <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="{DynamicResource XdmAccentForeground}" VerticalAlignment="Center"/>
-                  <TextBlock Grid.Column="3" Text="{Binding SpeedText}" Foreground="{DynamicResource XdmSecondaryDimForeground}" VerticalAlignment="Center"/>
-                  <TextBlock Grid.Column="4" Text="{Binding RemainingText}" Foreground="{DynamicResource XdmMutedForeground}" VerticalAlignment="Center"/>
-                  <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Margin="0,10,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}"/>
-                  <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ProgressText}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
-                  <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Text="{Binding ErrorMessage}" Classes="caption" Foreground="{DynamicResource XdmErrorForeground}" HorizontalAlignment="Right"/>
+                    <TextBlock Grid.Column="1" Text="{Binding SpeedText}" Classes="caption" Foreground="{DynamicResource XdmSecondaryDimForeground}"/>
+                    <TextBlock Grid.Column="2" Text="{Binding RemainingText}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
+                  </Grid>
+                  <TextBlock Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding ErrorMessage}" Classes="caption" Foreground="{DynamicResource XdmErrorForeground}" TextWrapping="Wrap"/>
                 </Grid>
               </Border>
             </DataTemplate>
           </ListBox.ItemTemplate>
-        </ListBox>
+          </ListBox>
+
+          <Border Classes="empty-state" Margin="10" IsVisible="{Binding IsDownloadsLoading}" AutomationProperties.Name="{Binding Localization[ui_loading_downloads]}" AutomationProperties.AutomationId="DownloadsLoadingState">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="360">
+              <ProgressBar IsIndeterminate="True" Width="180" Height="6"/>
+              <TextBlock Text="{Binding Localization[ui_loading_downloads]}" Classes="section-title" HorizontalAlignment="Center"/>
+              <TextBlock Text="{Binding Localization[ui_loading_downloads_hint]}" Classes="supporting" TextAlignment="Center" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="empty-state" Margin="10" IsVisible="{Binding ShowDownloadsEmptyState}" AutomationProperties.Name="{Binding Localization[ui_no_downloads_yet]}" AutomationProperties.AutomationId="DownloadsEmptyState">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MaxWidth="380">
+              <TextBlock Text="↓" FontSize="34" Foreground="{DynamicResource XdmAccentForeground}" HorizontalAlignment="Center"/>
+              <TextBlock Text="{Binding Localization[ui_no_downloads_yet]}" Classes="section-title" HorizontalAlignment="Center"/>
+              <TextBlock Text="{Binding Localization[ui_no_downloads_yet_hint]}" Classes="supporting" TextAlignment="Center" TextWrapping="Wrap"/>
+              <Button Classes="primary" Content="{Binding Localization[ui_add_first_download]}" Click="FocusNewDownload_Click" HorizontalAlignment="Center"/>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="empty-state" Margin="10" IsVisible="{Binding ShowDownloadFilterEmptyState}" AutomationProperties.Name="{Binding Localization[ui_no_matching_downloads]}" AutomationProperties.AutomationId="DownloadsFilterEmptyState">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MaxWidth="380">
+              <TextBlock Text="⌕" FontSize="32" Foreground="{DynamicResource XdmMutedForeground}" HorizontalAlignment="Center"/>
+              <TextBlock Text="{Binding Localization[ui_no_matching_downloads]}" Classes="section-title" HorizontalAlignment="Center"/>
+              <TextBlock Text="{Binding Localization[ui_no_matching_downloads_hint]}" Classes="supporting" TextAlignment="Center" TextWrapping="Wrap"/>
+              <Button Classes="secondary" Content="{Binding Localization[ui_clear_filters]}" Command="{Binding ClearDownloadFiltersCommand}" HorizontalAlignment="Center"/>
+            </StackPanel>
+          </Border>
+        </Grid>
       </Border>
 
-      <GridSplitter Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" Background="Transparent" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="DownloadDetailsSplitter"/>
+      <GridSplitter x:Name="DownloadWorkspaceSplitter" Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" Background="Transparent" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="DownloadDetailsSplitter"/>
 
-      <Border Grid.Column="2" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <Border x:Name="DownloadDetailsPane" Grid.Column="2" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+        <Grid>
+          <Border Classes="empty-state" Margin="10" IsVisible="{Binding HasNoSelectedDownload}" AutomationProperties.Name="{Binding Localization[ui_select_download_for_details]}" AutomationProperties.AutomationId="DownloadDetailsEmptyState">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MaxWidth="300">
+              <TextBlock Text="{Binding Localization[ui_select_download_for_details]}" Classes="section-title" TextAlignment="Center" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding Localization[ui_select_download_for_details_hint]}" Classes="supporting" TextAlignment="Center" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+          <ScrollViewer IsVisible="{Binding HasSelectedDownload}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="16" Spacing="12">
             <StackPanel Spacing="4">
               <TextBlock Text="{Binding Localization[ui_download_details]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
@@ -122,6 +164,13 @@
               <TextBlock Text="{Binding SelectedDownload.Source}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap"/>
               <TextBlock Text="{Binding SelectedDownload.DestinationPath}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap"/>
             </StackPanel>
+
+            <Border Classes="error-state" IsVisible="{Binding SelectedDownload.HasError}" AutomationProperties.LiveSetting="Assertive">
+              <StackPanel Spacing="4">
+                <TextBlock Text="{Binding Localization[ui_download_error]}" FontWeight="SemiBold" Foreground="{DynamicResource XdmErrorForeground}"/>
+                <TextBlock Text="{Binding SelectedDownload.ErrorMessage}" Classes="supporting" Foreground="{DynamicResource XdmErrorForeground}" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
 
             <ProgressBar Minimum="0" Maximum="100" Value="{Binding SelectedDownload.ProgressPercent}" Height="7"/>
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
@@ -213,7 +262,8 @@
               </StackPanel>
             </Expander>
           </StackPanel>
-        </ScrollViewer>
+          </ScrollViewer>
+        </Grid>
       </Border>
     </Grid>
   </Grid>

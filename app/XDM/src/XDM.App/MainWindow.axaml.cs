@@ -42,6 +42,9 @@ public partial class MainWindow : Window
         ("XdmDangerSoftBrush", "#3A2025", "#000000"),
         ("XdmErrorForeground", "#FF9B9B", "#FF6B6B"),
         ("XdmWarningForeground", "#F5C66A", "#FFFF00"),
+        ("XdmSuccessForeground", "#7ED9A6", "#00FF88"),
+        ("XdmInfoSoftBrush", "#17243A", "#000000"),
+        ("XdmEmptyStateBrush", "#121820", "#000000"),
     ];
     private readonly DispatcherTimer _clipboardTimer = new()
     {
@@ -157,6 +160,8 @@ public partial class MainWindow : Window
 
     private void PrimaryNavigation_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        PageContentHost.Opacity = 0;
+        Dispatcher.UIThread.Post(() => PageContentHost.Opacity = 1);
         if (NavigationSplitView.DisplayMode == SplitViewDisplayMode.Overlay)
         {
             NavigationSplitView.IsPaneOpen = false;
@@ -196,6 +201,9 @@ public partial class MainWindow : Window
         }
 
         SetClass("narrow-shell", width < 1040);
+        SetClass("compact-content", width < 900);
+        SectionIcon.IsVisible = width >= 820;
+        OperationStatusBanner.MaxWidth = width < 1040 ? 280 : 390;
         UpdateNavigationVisualState();
     }
 

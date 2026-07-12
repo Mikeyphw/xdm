@@ -43,6 +43,9 @@
     <SolidColorBrush x:Key="XdmDangerSoftBrush" Color="#3A2025" />
     <SolidColorBrush x:Key="XdmErrorForeground" Color="#FF9B9B" />
     <SolidColorBrush x:Key="XdmWarningForeground" Color="#F5C66A" />
+    <SolidColorBrush x:Key="XdmSuccessForeground" Color="#7ED9A6" />
+    <SolidColorBrush x:Key="XdmInfoSoftBrush" Color="#17243A" />
+    <SolidColorBrush x:Key="XdmEmptyStateBrush" Color="#121820" />
   </Window.Resources>
 
   <Window.Styles>
@@ -237,6 +240,33 @@
     <Style Selector="Window.narrow-shell Grid#ContentRoot">
       <Setter Property="Margin" Value="16,14,16,12" />
     </Style>
+    <Style Selector="Border.notification-banner">
+      <Setter Property="Background" Value="{DynamicResource XdmInfoSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource XdmInputBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="10,8" />
+    </Style>
+    <Style Selector="Border.empty-state">
+      <Setter Property="Background" Value="{DynamicResource XdmEmptyStateBrush}" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="24" />
+    </Style>
+    <Style Selector="Border.error-state">
+      <Setter Property="Background" Value="{DynamicResource XdmDangerSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource XdmDangerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="10" />
+    </Style>
+    <Style Selector="Grid#PageContentHost">
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.16" />
+        </Transitions>
+      </Setter>
+    </Style>
   </Window.Styles>
 
   <LayoutTransformControl x:Name="UiScaleRoot">
@@ -312,7 +342,7 @@
 
       <SplitView.Content>
         <Grid x:Name="ContentRoot" RowDefinitions="Auto,*,Auto" Margin="24,20,24,16">
-          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Margin="0,0,0,16">
+          <Grid x:Name="PageHeader" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Margin="0,0,0,16">
             <Button x:Name="ContentNavigationToggle"
                     Classes="quiet"
                     Width="38"
@@ -330,7 +360,7 @@
                         Foreground="{DynamicResource XdmSecondaryForeground}" />
             </Button>
             <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="12">
-              <Border Width="42" Height="42" CornerRadius="10" Background="{DynamicResource XdmSelectedBackground}" VerticalAlignment="Top">
+              <Border x:Name="SectionIcon" Width="42" Height="42" CornerRadius="10" Background="{DynamicResource XdmSelectedBackground}" VerticalAlignment="Top">
                 <PathIcon Data="{Binding SelectedSection.IconData}" Width="21" Height="21" Foreground="{DynamicResource XdmAccentForeground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
               </Border>
               <StackPanel Grid.Column="1" Spacing="4">
@@ -344,23 +374,37 @@
                 <TextBlock Text="{Binding CurrentSummary}" Classes="supporting" MaxWidth="760" TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
-            <Border Grid.Column="2" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="10,7" VerticalAlignment="Center" MaxWidth="390">
-              <TextBlock x:Name="OperationStatusText"
-                         Text="{Binding OperationMessage}"
-                         AutomationProperties.Name="{Binding Localization[ui_operation_status]}"
-                         AutomationProperties.AutomationId="OperationStatus"
-                         AutomationProperties.LiveSetting="Polite"
-                         AutomationProperties.LandmarkType="Region"
-                         Foreground="{DynamicResource XdmAccentForeground}"
-                         Classes="supporting"
-                         TextWrapping="Wrap" />
+            <Border x:Name="OperationStatusBanner" Grid.Column="2" Classes="notification-banner" VerticalAlignment="Center" MaxWidth="390" IsVisible="{Binding IsOperationMessageVisible}">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+                <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource XdmBrandBrush}" VerticalAlignment="Center" />
+                <TextBlock x:Name="OperationStatusText"
+                           Grid.Column="1"
+                           Text="{Binding OperationMessage}"
+                           AutomationProperties.Name="{Binding Localization[ui_operation_status]}"
+                           AutomationProperties.AutomationId="OperationStatus"
+                           AutomationProperties.LiveSetting="Polite"
+                           AutomationProperties.LandmarkType="Region"
+                           Foreground="{DynamicResource XdmAccentForeground}"
+                           Classes="supporting"
+                           TextWrapping="Wrap" />
+                <Button Grid.Column="2"
+                        Classes="quiet"
+                        Width="30"
+                        Height="30"
+                        Padding="4"
+                        Content="×"
+                        Command="{Binding DismissOperationMessageCommand}"
+                        ToolTip.Tip="{Binding Localization[ui_dismiss_status]}"
+                        AutomationProperties.Name="{Binding Localization[ui_dismiss_status]}"
+                        AutomationProperties.AutomationId="DismissOperationStatus" />
+              </Grid>
             </Border>
           </Grid>
 
           <Grid Grid.Row="1" RowDefinitions="Auto,*"
                 AutomationProperties.LandmarkType="Main"
                 AutomationProperties.AccessibilityView="Control">
-            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" IsVisible="{Binding IsDashboardSummaryVisible}"
+            <Grid x:Name="DashboardSummary" ColumnDefinitions="*,*,*" ColumnSpacing="12" IsVisible="{Binding IsDashboardSummaryVisible}"
                   AutomationProperties.Name="Download activity summary"
                   AutomationProperties.LandmarkType="Region">
               <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="10" Padding="15">

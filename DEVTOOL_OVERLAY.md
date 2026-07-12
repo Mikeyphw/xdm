@@ -1,35 +1,31 @@
-# XDM Overlay — Accessibility and UI validation
+# XDM Overlay — Runtime polish and responsive Downloads states
 
-This overlay implements Phase 4 on top of commit `18a36ab`.
+This overlay implements the runtime-polish phase on top of commit `d9778e3`.
 
-## Accessibility tree
+## Shell polish
 
-- adds Navigation, Main, Search, Form, Region, and ContentInfo landmarks;
-- marks the current page title as heading level 1 and section titles as heading level 2;
-- gives every text, selector, numeric, list, and tab input an accessible name and stable automation ID;
-- exposes download and aria2 task item status;
-- keeps operation status as a polite live region;
-- uses an assertive live region for Settings validation.
+- turns the operation message into a dismissible, accessible status banner;
+- adds a lightweight opacity transition when switching application sections;
+- tightens the header at compact widths while preserving F6 and overlay-navigation behavior;
+- extends the normal and high-contrast palettes for information, success, and empty-state surfaces.
 
-## Keyboard and focus
+## Downloads workflow states
 
-- adds F6 focus switching between navigation and the current page heading;
-- closes overlay navigation with Escape before page-level cancellation;
-- adds Ctrl+S for Settings while preserving Ctrl+N, Ctrl+F, Ctrl+1–8, Ctrl+P, and Ctrl+R;
-- switches focus styling to `:focus-visible`;
-- keeps page tab navigation in source order.
+- adds explicit loading, first-run empty, filtered-empty, and no-selection detail states;
+- adds a selected-download error panel with assertive accessibility semantics;
+- keeps the virtualized list, all commands, and the resizable details pane;
+- refines download rows into a denser filename/status/progress/metadata hierarchy;
+- selects the first visible download when the current filter leaves no selection;
+- adds one-click filter reset and status-banner dismissal commands.
 
-## Validation
+## Responsive behavior
 
-Settings now rejects invalid cross-field combinations before persistence: connection-count ordering, missing manual-proxy host, invalid PAC URL, invalid aria2 RPC endpoint, and missing managed aria2 executable.
+Below 920 DIPs, the Downloads add form, option fields, and search controls reflow into fewer columns. The list/details workspace remains resizable and gives more width to the list. Wide layout is restored automatically above the breakpoint.
 
-## Automated qualification
+## Qualification
 
-- adds `XDM.App.Tests` using Avalonia 12.1 headless XUnit integration;
-- registers `XDM.App.Tests` as an approved active project in the modern-solution parity gate;
-- tests all eight page views and all three responsive shell bands;
-- tests the primary Downloads focus targets;
-- tests runtime automation-ID uniqueness;
-- adds source-level AXAML accessibility architecture tests.
-
-The overlay does not modify download-engine behavior, persistence formats, or parity evidence.
+- adds headless tests for compact and wide Downloads layouts;
+- adds shell status/compact-header headless coverage;
+- adds source-level tests for transitions and all new loading/empty/error states;
+- narrows the shell architecture guard to reject root-level page visibility only, allowing legitimate descendant state surfaces;
+- preserves the modern-solution project allowlist and parity feature evidence.

@@ -1,27 +1,27 @@
 {
-  "name": "xdm_accessibility_ui_validation_overlay",
+  "name": "xdm_runtime_polish_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "18a36ab",
+  "baseCommit": "d9778e3",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "accessibility-and-ui-validation",
-  "description": "Adds semantic accessibility metadata, F6 shell focus navigation, accessible settings validation, complete form automation identifiers, Avalonia headless regression tests, and approval of the active XDM.App.Tests project in the modern-solution gate.",
+  "phase": "runtime-polish",
+  "description": "Adds runtime polish, responsive Downloads states, headless layout coverage, and a corrected shell architecture guard for descendant state visibility.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
     "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Add accessibility and headless UI validation",
+  "commitMessage": "Polish runtime states and responsive Downloads UI",
   "constraints": [
-    "Apply on top of commit 18a36ab",
+    "Apply on top of commit d9778e3",
     "Validate only app/XDM/XDM.Modern.sln",
-    "Do not restore or build WPF, GTK, WinForms, CoreFx or MSIX targets",
-    "Preserve all existing navigation, download, settings and storage-picker behavior",
-    "Preserve high contrast, UI scaling, RTL flow direction and existing keyboard shortcuts",
-    "Keep automation IDs stable and unique across the shell and page views",
+    "Preserve all download commands, storage pickers, keyboard shortcuts and accessibility metadata",
+    "Preserve virtualized download and timeline lists",
+    "Keep the details pane available and resizable at every supported window width",
     "Require zero warnings and zero errors",
     "Do not modify docs/parity/features.json",
-    "Register XDM.App.Tests as an approved active project without changing parity feature evidence"
+    "Do not change download-engine behavior or persistence formats",
+    "Allow descendant IsVisible bindings for runtime state surfaces while keeping page-root visibility owned by the shell"
   ]
 }
