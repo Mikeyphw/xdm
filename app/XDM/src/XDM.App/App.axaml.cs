@@ -175,6 +175,11 @@ public partial class App : Application
         services.AddSingleton<IRecoveryService, RecoveryService>();
         services.AddSingleton<IDiagnosticBundleService, DiagnosticBundleService>();
         services.AddSingleton<IBrowserIntegrationService, LoopbackBrowserIntegrationService>();
+        services.AddSingleton<IExternalToolRunner, ExternalToolRunner>();
+        services.AddSingleton<IYtDlpProvider, YtDlpProvider>();
+        services.AddSingleton<IFfmpegService, FfmpegService>();
+        services.AddSingleton<IMediaCatalogService, MediaCatalogService>();
+        services.AddSingleton<IMediaDownloadService, MediaDownloadService>();
         services.AddSingleton<IMediaProbeService, MediaProbeService>();
         services.AddSingleton<IApplicationState, ApplicationState>();
         services.AddSingleton<IDownloadHistoryStore, JsonDownloadHistoryStore>();

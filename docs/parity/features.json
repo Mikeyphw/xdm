@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "baseline": "XDM 8.0.29 legacy WPF/GTK behavior and public feature contract",
-  "updatedAt": "2026-07-12T02:45:00Z",
+  "baseline": "e2d5bc3",
+  "updatedAt": "2026-07-11T23:58:00-03:00",
   "features": [
     {
       "id": "download.http-single-stream",
@@ -452,77 +452,97 @@
         "app/XDM/XDM.Core/Video/"
       ],
       "implementationPaths": [
-        "app/XDM/src/XDM.Media/MediaProbeService.cs"
+        "app/XDM/src/XDM.Media/MediaCatalogService.cs",
+        "app/XDM/src/XDM.Media/MediaDownloadService.cs"
       ],
       "automatedTests": [
-        "XDM.BrowserMedia.Tests.MediaProbeServiceTests"
+        "XDM.BrowserMedia.Tests.MediaCatalogServiceTests",
+        "XDM.BrowserMedia.Tests.MediaDownloadServiceTests"
       ],
       "targetOverlay": "15",
-      "notes": "Direct media types are recognized."
+      "notes": "Direct HTTP media is catalogued and written atomically through the unified media pipeline."
     },
     {
       "id": "media.hls",
       "area": "media",
       "name": "HLS discovery and download",
       "priority": "critical",
-      "status": "partial",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/Video/"
       ],
       "implementationPaths": [
-        "app/XDM/src/XDM.Media/MediaProbeService.cs"
+        "app/XDM/src/XDM.Media/HlsManifestParser.cs",
+        "app/XDM/src/XDM.Media/HlsDownloader.cs",
+        "app/XDM/src/XDM.Media/MediaDownloadService.cs"
       ],
       "automatedTests": [
-        "XDM.BrowserMedia.Tests.MediaProbeServiceTests"
+        "XDM.BrowserMedia.Tests.HlsManifestParserTests",
+        "XDM.BrowserMedia.Tests.MediaDownloadServiceTests"
       ],
       "targetOverlay": "15",
-      "notes": "Playlist probing exists; fragment acquisition and merge are missing."
+      "notes": "Master and media playlists, renditions, byte ranges, AES-128, live refresh, checkpoints, retry and deterministic assembly are implemented."
     },
     {
       "id": "media.dash",
       "area": "media",
       "name": "DASH discovery and download",
       "priority": "critical",
-      "status": "partial",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/Video/"
       ],
       "implementationPaths": [
-        "app/XDM/src/XDM.Media/MediaProbeService.cs"
+        "app/XDM/src/XDM.Media/DashManifestParser.cs",
+        "app/XDM/src/XDM.Media/DashDownloader.cs",
+        "app/XDM/src/XDM.Media/MediaDownloadService.cs"
       ],
       "automatedTests": [
-        "XDM.BrowserMedia.Tests.MediaProbeServiceTests"
+        "XDM.BrowserMedia.Tests.DashManifestParserTests",
+        "XDM.BrowserMedia.Tests.DashDownloaderTests"
       ],
       "targetOverlay": "15",
-      "notes": "MPD probing exists; representation download and merge are missing."
+      "notes": "Static and dynamic MPDs, SegmentTemplate timelines, SegmentList, representation selection, checkpoints and manifest refresh are implemented."
     },
     {
       "id": "media.ytdlp",
       "area": "media",
       "name": "yt-dlp extractor provider",
       "priority": "high",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/YDLWrapper/"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/YtDlpProvider.cs",
+        "app/XDM/src/XDM.Media/ExternalToolRunner.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.YtDlpProviderTests",
+        "XDM.BrowserMedia.Tests.ExternalMediaToolTests"
+      ],
       "targetOverlay": "15",
-      "notes": "Requires verified external tool lifecycle and structured parsing."
+      "notes": "yt-dlp is discovered safely, queried using structured JSON, and receives sensitive metadata through a private temporary configuration file."
     },
     {
       "id": "media.ffmpeg",
       "area": "media",
       "name": "FFmpeg discovery and diagnostics",
       "priority": "critical",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/FFmpeg/"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/FfmpegService.cs",
+        "app/XDM/src/XDM.Media/ExternalToolLocator.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.ExternalMediaToolTests",
+        "XDM.BrowserMedia.Tests.MediaDownloadServiceTests"
+      ],
       "targetOverlay": "15",
-      "notes": "Required for merge and conversion parity."
+      "notes": "FFmpeg discovery, health diagnostics and no-shell stream-copy muxing are implemented."
     },
     {
       "id": "conversion.audio",
@@ -891,6 +911,108 @@
       ],
       "targetOverlay": "14",
       "notes": "Firefox and Chromium-compatible builds cover Chrome/Chromium, Edge, Brave, Vivaldi and Opera-compatible native-host locations."
+    },
+    {
+      "id": "media.format-selection",
+      "area": "media",
+      "name": "Audio/video representation selection",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Video/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/MediaCatalog.cs",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.MediaCatalogServiceTests",
+        "XDM.BrowserMedia.Tests.YtDlpProviderTests"
+      ],
+      "targetOverlay": "15",
+      "notes": "The Avalonia workflow exposes deterministic video, audio and subtitle selections from native and provider catalogs."
+    },
+    {
+      "id": "media.subtitles",
+      "area": "media",
+      "name": "Subtitle discovery and sidecar download",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Video/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/MediaCatalogService.cs",
+        "app/XDM/src/XDM.Media/MediaDownloadService.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.MediaCatalogServiceTests",
+        "XDM.BrowserMedia.Tests.MediaDownloadServiceTests"
+      ],
+      "targetOverlay": "15",
+      "notes": "HLS and yt-dlp subtitle tracks are selectable and saved as language-labelled sidecar files."
+    },
+    {
+      "id": "media.live",
+      "area": "media",
+      "name": "Live HLS and DASH capture",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Video/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/HlsDownloader.cs",
+        "app/XDM/src/XDM.Media/DashDownloader.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.HlsManifestParserTests",
+        "XDM.BrowserMedia.Tests.DashManifestParserTests"
+      ],
+      "targetOverlay": "15",
+      "notes": "Live manifests refresh until the bounded user-selected capture duration is reached."
+    },
+    {
+      "id": "media.fragment-recovery",
+      "area": "media",
+      "name": "Fragment retries and resumable checkpoints",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Video/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/FragmentRetryPolicy.cs",
+        "app/XDM/src/XDM.Media/FragmentCheckpointStore.cs",
+        "app/XDM/src/XDM.Media/HlsDownloader.cs",
+        "app/XDM/src/XDM.Media/DashDownloader.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.HlsManifestParserTests",
+        "XDM.BrowserMedia.Tests.DashDownloaderTests"
+      ],
+      "targetOverlay": "15",
+      "notes": "Fragment completion is checkpointed atomically and retries are bounded with cancellation-aware backoff."
+    },
+    {
+      "id": "media.encrypted-hls",
+      "area": "media",
+      "name": "HLS AES-128 decryption",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Video/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/HlsManifestParser.cs",
+        "app/XDM/src/XDM.Media/HlsDownloader.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.HlsManifestParserTests"
+      ],
+      "targetOverlay": "15",
+      "notes": "Identity-key AES-128 HLS is supported with explicit or media-sequence-derived IVs; unsupported DRM schemes are rejected."
     }
   ]
 }

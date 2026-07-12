@@ -13,13 +13,14 @@ This ledger is executable through `XDM.Parity.Tests`. The source of truth is
 
 ## Current baseline
 
-The manifest inventories 50 feature contracts across the download engine,
+The manifest inventories 55 feature contracts across the download engine,
 browser integration, media, conversion, queues, settings, desktop integration,
 diagnostics, localization, packaging and migration.
 
-Overlay 13 owns the first critical gap: `download.segmented-transfer`. Later
-parity overlays must update the status, implementation paths and tests in the
-same commit that supplies the behavior.
+Overlay 13 completed segmented transfer, Overlay 14 completed browser takeover,
+and Overlay 15 completes the streaming-media phase. Later parity overlays must
+update the status, implementation paths and tests in the same commit that
+supplies the behavior.
 
 ## Gate policy
 
@@ -50,3 +51,13 @@ cancel the browser transfer only after the modern app queues it. Native-host
 installation now supports compatibility inspection, repair and uninstall.
 Security and deterministic fixture coverage are documented in
 `docs/parity/BROWSER-TAKEOVER.md`.
+
+
+## Overlay 15 result
+
+Streaming-media parity is complete for the planned native and provider scope.
+The modern application now acquires HLS and DASH streams, refreshes live
+manifests, resumes fragment checkpoints, decrypts supported AES-128 HLS, selects
+audio/video/subtitle representations, discovers yt-dlp and FFmpeg safely, and
+finalizes streams through no-shell FFmpeg argument lists. Design and safety
+details are documented in `docs/parity/STREAMING-MEDIA.md`.

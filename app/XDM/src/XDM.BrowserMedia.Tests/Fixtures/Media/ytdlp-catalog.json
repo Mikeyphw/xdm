@@ -1,0 +1,30 @@
+{
+  "title": "Recorded page",
+  "is_live": false,
+  "formats": [
+    {
+      "format_id": "v1",
+      "url": "https://cdn.example.test/video.mp4",
+      "protocol": "https",
+      "ext": "mp4",
+      "vcodec": "avc1",
+      "acodec": "none",
+      "width": 1920,
+      "height": 1080,
+      "tbr": 2500,
+      "fps": 30,
+      "format_note": "1080p"
+    },
+    {
+      "format_id": "a1",
+      "url": "https://cdn.example.test/audio.m4a",
+      "protocol": "https",
+      "ext": "m4a",
+      "vcodec": "none",
+      "acodec": "mp4a.40.2",
+      "abr": 128,
+      "language": "en",
+      "format_note": "English audio"
+    }
+  ]
+}

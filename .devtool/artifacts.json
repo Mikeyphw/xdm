@@ -460,6 +460,126 @@
       },
       "manifest": {},
       "history_id": "b404a79b2ddc4f2580f9a70a6830aba4"
+    },
+    {
+      "applied_at": "2026-07-11T23:48:10.556886Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_browser_takeover_overlay.zip",
+      "artifact_name": "xdm_browser_takeover_overlay.zip",
+      "type": "overlay",
+      "sha256": "",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "Add acknowledged browser takeover and extension parity",
+      "commit_hash": "",
+      "file_count": 0,
+      "change_counts": {},
+      "manifest": {},
+      "history_id": "f2a54ad6ff534e6c8bbd4608ce280fc8"
+    },
+    {
+      "applied_at": "2026-07-12T01:12:14.362131Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_streaming_media_overlay.zip",
+      "artifact_name": "xdm_streaming_media_overlay.zip",
+      "type": "overlay",
+      "sha256": "916dd5325cdc127bdd511ab38b50d0cfa349a63cb9d162d413cbc774c1c200e8",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add resilient streaming media pipeline",
+      "commit_hash": "",
+      "file_count": 59,
+      "change_counts": {
+        "add": 49,
+        "modify": 10
+      },
+      "manifest": {},
+      "history_id": "4b6e6f83cd824c2a9c0e2f787753a460"
+    },
+    {
+      "applied_at": "2026-07-12T01:14:23.001621Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_streaming_media_overlay.zip",
+      "artifact_name": "xdm_streaming_media_overlay.zip",
+      "type": "overlay",
+      "sha256": "e3f6c5c657067c0012304172bae8419c5556f42ca3fa35eaf6337e0555bd4a72",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add resilient streaming media pipeline",
+      "commit_hash": "",
+      "file_count": 59,
+      "change_counts": {
+        "add": 49,
+        "modify": 10
+      },
+      "manifest": {},
+      "history_id": "88980cc3365e469fb22c6f8249ccc048"
+    },
+    {
+      "applied_at": "2026-07-12T01:14:51.540787Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_streaming_media_overlay.zip",
+      "artifact_name": "xdm_streaming_media_overlay.zip",
+      "type": "overlay",
+      "sha256": "",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "Add resilient streaming media pipeline",
+      "commit_hash": "",
+      "file_count": 0,
+      "change_counts": {},
+      "manifest": {},
+      "history_id": "a10ada2b7f134f178f32d4d76982c54e"
+    },
+    {
+      "applied_at": "2026-07-12T01:16:34.833995Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_streaming_media_overlay.zip",
+      "artifact_name": "xdm_streaming_media_overlay.zip",
+      "type": "overlay",
+      "sha256": "e3f6c5c657067c0012304172bae8419c5556f42ca3fa35eaf6337e0555bd4a72",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add resilient streaming media pipeline",
+      "commit_hash": "",
+      "file_count": 59,
+      "change_counts": {
+        "add": 49,
+        "modify": 10
+      },
+      "manifest": {},
+      "history_id": "a537cd4e0fd04f2c822463106418ee34"
+    },
+    {
+      "applied_at": "2026-07-12T02:02:26.271072Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_streaming_media_overlay.zip",
+      "artifact_name": "xdm_streaming_media_overlay.zip",
+      "type": "overlay",
+      "sha256": "e3f6c5c657067c0012304172bae8419c5556f42ca3fa35eaf6337e0555bd4a72",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add resilient streaming media pipeline",
+      "commit_hash": "",
+      "file_count": 59,
+      "change_counts": {
+        "add": 49,
+        "modify": 10
+      },
+      "manifest": {},
+      "history_id": "e147293ef360474fbe2c181695472441"
+    },
+    {
+      "applied_at": "2026-07-12T02:07:21.354246Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_streaming_media_overlay(2).zip",
+      "artifact_name": "xdm_streaming_media_overlay(2).zip",
+      "type": "overlay",
+      "sha256": "603994b23811eb0ebde154658bc1def2a789286341260bae29096c73dec8306c",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add resilient streaming media pipeline",
+      "commit_hash": "",
+      "file_count": 59,
+      "change_counts": {
+        "add": 49,
+        "modify": 10
+      },
+      "manifest": {},
+      "history_id": "643c2decca654c4e8259163ad3e00d39"
     }
   ]
 }

@@ -5,5 +5,6 @@ public enum MediaKind
     Unknown,
     DirectFile,
     Hls,
-    Dash
+    Dash,
+    ExternalProvider
 }

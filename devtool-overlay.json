@@ -1,11 +1,11 @@
 {
-  "name": "xdm_browser_takeover_overlay",
+  "name": "xdm_streaming_media_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "188d2a3",
+  "baseCommit": "e2d5bc3",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "functional-parity-14",
-  "description": "Adds acknowledged browser takeover, protocol 2.0 native messaging, request metadata, capture rules, context commands, Firefox/Chromium-family parity, host lifecycle health and deterministic fixtures.",
+  "phase": "functional-parity-15",
+  "description": "Adds robust HLS and DASH acquisition, live refresh, resumable fragment checkpoints, AES-128 HLS, yt-dlp and FFmpeg providers, format/subtitle selection, health diagnostics and deterministic recorded fixtures.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
@@ -13,10 +13,11 @@
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
     "focusedTests": "dotnet test app/XDM/src/XDM.BrowserMedia.Tests/XDM.BrowserMedia.Tests.csproj --configuration Release --no-build"
   },
-  "commitMessage": "Add acknowledged browser takeover and extension parity",
+  "commitMessage": "Add resilient streaming media pipeline",
   "constraints": [
     "Validate only app/XDM/XDM.Modern.sln",
     "Do not restore or build WPF, GTK, WinForms or MSIX targets",
-    "Browser cancellation requires an accepted XDM queue acknowledgement"
+    "Do not invoke external media tools through a shell",
+    "Preserve fragment checkpoints after cancellation for deterministic resume"
   ]
 }

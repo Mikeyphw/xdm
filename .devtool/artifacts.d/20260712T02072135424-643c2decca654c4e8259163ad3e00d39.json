@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-12T02:07:21.354246Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_streaming_media_overlay(2).zip",
+  "artifact_name": "xdm_streaming_media_overlay(2).zip",
+  "type": "overlay",
+  "sha256": "603994b23811eb0ebde154658bc1def2a789286341260bae29096c73dec8306c",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Add resilient streaming media pipeline",
+  "commit_hash": "",
+  "file_count": 59,
+  "change_counts": {
+    "add": 49,
+    "modify": 10
+  },
+  "manifest": {},
+  "history_id": "643c2decca654c4e8259163ad3e00d39"
+}

@@ -1,31 +1,33 @@
-# XDM Overlay 14 — browser takeover and extension parity
+# XDM Overlay 15 — streaming media parity
 
-Base: confirmed successful commit `188d2a3`  
-Target: `xdm_modern`  
+Base: confirmed successful commit `e2d5bc3`
+
+Target: `xdm_modern`
+
 Active solution: `app/XDM/XDM.Modern.sln`
 
 ## Included
 
-- Protocol 2.0 native messaging with strict schemas, framing limits, bounded
-  batches and per-connection session authentication.
-- Automatic browser takeover that cancels only after XDM queues the download.
-- Cookies, referer, user agent, filename, MIME, size, safe request headers and
-  bounded GET/POST metadata.
-- Site, size, MIME, extension, temporary-disable and incognito rules.
-- Download with XDM, media capture and Download all links context commands.
-- Firefox and Chromium-family support, including compatible Edge, Brave,
-  Vivaldi and Opera paths.
-- Native-host install/repair/uninstall and compatibility health.
-- Recorded native-message fixtures and deterministic integration tests.
-- Executable parity ledger and browser takeover documentation updates.
+- Native HLS master/media parsing and acquisition with alternate audio,
+  subtitles, byte ranges, initialization maps and discontinuities.
+- Native DASH MPD parsing with BaseURL inheritance, SegmentTemplate timelines,
+  SegmentList and static/dynamic representation acquisition.
+- Live HLS/DASH manifest refresh with a bounded capture duration.
+- Atomic fragment checkpoints, deterministic resume, bounded retries and
+  cancellation-aware backoff.
+- Identity-key AES-128 HLS decryption with explicit or media-sequence IVs.
+- Structured yt-dlp format discovery using a private temporary metadata config.
+- FFmpeg discovery, compatibility health and stream-copy finalization.
+- Avalonia format, audio, subtitle and live-duration workflow with progress and
+  cancellation.
+- Recorded deterministic fixtures and executable parity-ledger updates.
 
-## Security properties
+## Safety properties
 
-The protocol has no arbitrary execution message. Only explicitly allowlisted
-request headers are accepted; messages, metadata and request bodies have explicit
-limits; URL query
-strings and secrets are not emitted in integration status. POST bodies are
-memory-only and unfinished POST captures cannot be replayed after restart.
+Only HTTP and HTTPS media URLs are accepted. XML DTD processing is prohibited.
+Manifest and key responses have explicit limits. Unsupported HLS encryption and
+DRM are rejected. External tools use `ProcessStartInfo.ArgumentList` with shell
+execution disabled. Sensitive headers do not appear in command-line arguments.
 
 ## Validation scope
 
