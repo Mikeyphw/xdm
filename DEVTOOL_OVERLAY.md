@@ -1,26 +1,26 @@
-# XDM overlay — Typography foundation and shell cleanup
+# XDM Overlay — Responsive shell and dedicated page views
 
-This overlay implements phase 1 of the modern Avalonia UI/UX audit on top of commit `e2ca125`.
+This overlay implements the second UI architecture phase on top of commit `3772fbc`.
 
-## Included
+It includes:
 
-- semantic display, page-title, section-title, form-label, supporting, caption, and metric typography roles;
-- revised high-contrast dark palette with a primary blue that supports white button text;
-- consistent primary, secondary, quiet, and destructive button treatments;
-- explicit keyboard-focus borders for buttons and form controls;
-- 38 persistent form labels across the download entry form and primary settings groups;
-- 19 bounded `NumericUpDown` fields backed by a two-way invariant string/decimal converter;
-- 43 stable automation IDs for navigation, status, primary actions, and settings fields;
-- vector `PathIcon` navigation graphics in place of platform-dependent text glyphs;
-- bootstrap checks for numeric conversion, icon geometry, and initial dashboard visibility;
-- removal of the outer two-axis window scroller in favor of page-owned scrolling;
-- dashboard summaries shown only on Downloads and Queues;
-- narrower navigation rail, reduced minimum window width, and cleaner page headers;
-- updated high-contrast handling for combo boxes and numeric controls;
-- implementation notes in `docs/ui/TYPOGRAPHY-SHELL-PHASE1.md`.
+- a responsive Avalonia `SplitView` shell;
+- full navigation at wide widths;
+- a compact icon rail at medium widths;
+- overlay navigation at narrow widths;
+- a reusable section header with the selected section icon, title, summary, and live operation status;
+- eight dedicated page views for Downloads, Queues, Scheduler, Browser Integration, Media, Conversion, Settings, and Diagnostics;
+- page-local file and folder picker behavior;
+- preserved Ctrl+N and Ctrl+F focus behavior through the extracted Downloads view;
+- application-scoped numeric conversion resources for extracted views;
+- shell architecture and page fixture qualification tests;
+- a reduced `MainWindow.axaml`, from 1,258 lines to under 400 lines.
 
-## Deliberately deferred
+The overlay does not change download-engine behavior, persistence formats, parity evidence, or the existing eight-section view-model contract.
 
-This overlay does not split `MainWindow.axaml` into separate views, redesign the download list, add secondary Settings navigation, or move live aria2 task management out of Settings. Those are later workflow and architecture phases.
+Validation is limited to `app/XDM/XDM.Modern.sln`. Legacy WPF, GTK, WinForms, CoreFx, and MSIX projects are not included or built.
+Repair notes for this revision:
 
-Validation is limited to `app/XDM/XDM.Modern.sln`.
+- compact navigation styles now target concrete Avalonia controls, preventing `AVLN2200`;
+- the shell architecture test uses the predicate overload of `Assert.Single`, preventing `xUnit2031`.
+

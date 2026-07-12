@@ -4,7 +4,6 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using XDM.App.Logging;
@@ -52,6 +51,7 @@ public partial class MainWindow : Window
     private bool _clipboardReadInProgress;
     private WindowStateStore _windowStateStore;
     private LocalizationService? _localization;
+    private int _responsiveShellBand = -1;
 
     public MainWindow()
     {
@@ -61,6 +61,7 @@ public partial class MainWindow : Window
         Opened += MainWindow_Opened;
         Closing += MainWindow_Closing;
         Closed += (_, _) => _clipboardTimer.Stop();
+        SizeChanged += (_, _) => UpdateResponsiveShell();
     }
 
     public MainWindow(
@@ -100,6 +101,7 @@ public partial class MainWindow : Window
     {
         _clipboardTimer.Start();
         ApplyLocalizationAndAccessibility();
+        UpdateResponsiveShell();
         if (App.LaunchOptions.ResetWindowState)
         {
             await _windowStateStore.ResetAsync();
@@ -147,184 +149,71 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void BrowseDestination_Click(object? sender, RoutedEventArgs e)
+    private void ToggleNavigation_Click(object? sender, RoutedEventArgs e)
     {
-        IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(
-            new FolderPickerOpenOptions
-            {
-                AllowMultiple = false,
-                Title = Localize("picker_download_destination", "Choose download destination")
-            });
+        NavigationSplitView.IsPaneOpen = !NavigationSplitView.IsPaneOpen;
+        UpdateNavigationVisualState();
+    }
 
-        string? path = folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
-        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+    private void PrimaryNavigation_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (NavigationSplitView.DisplayMode == SplitViewDisplayMode.Overlay)
         {
-            viewModel.DestinationFolder = path;
+            NavigationSplitView.IsPaneOpen = false;
+            UpdateNavigationVisualState();
         }
     }
 
-    private async void BrowseConversionSource_Click(object? sender, RoutedEventArgs e)
+    private void UpdateResponsiveShell()
     {
-        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(
-            new FilePickerOpenOptions
-            {
-                AllowMultiple = false,
-                Title = Localize("picker_conversion_source", "Choose media to convert")
-            });
-
-        string? path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
-        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+        double width = Bounds.Width > 0 ? Bounds.Width : Width;
+        int shellBand = width < 900 ? 0 : width < 1180 ? 1 : 2;
+        if (shellBand != _responsiveShellBand)
         {
-            viewModel.SetConversionSourcePath(path);
+            _responsiveShellBand = shellBand;
+            switch (shellBand)
+            {
+                case 0:
+                    NavigationSplitView.DisplayMode = SplitViewDisplayMode.Overlay;
+                    NavigationSplitView.IsPaneOpen = false;
+                    break;
+                case 1:
+                    NavigationSplitView.DisplayMode = SplitViewDisplayMode.CompactInline;
+                    NavigationSplitView.IsPaneOpen = false;
+                    break;
+                default:
+                    NavigationSplitView.DisplayMode = SplitViewDisplayMode.CompactInline;
+                    NavigationSplitView.IsPaneOpen = true;
+                    break;
+            }
         }
+
+        SetClass("narrow-shell", width < 1040);
+        UpdateNavigationVisualState();
     }
 
-    private async void BrowseAria2Executable_Click(object? sender, RoutedEventArgs e)
+    private void UpdateNavigationVisualState()
     {
-        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(
-            new FilePickerOpenOptions
-            {
-                AllowMultiple = false,
-                Title = Localize("picker_aria2_executable", "Choose aria2c executable")
-            });
-
-        string? path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
-        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
-        {
-            viewModel.Aria2ExecutablePath = path;
-        }
+        bool compact = NavigationSplitView.DisplayMode != SplitViewDisplayMode.Overlay
+            && !NavigationSplitView.IsPaneOpen;
+        SetClass("compact-nav", compact);
+        ContentNavigationToggle.IsVisible = Bounds.Width < 1180 || !NavigationSplitView.IsPaneOpen;
     }
 
-    private async void BrowseAria2SessionFile_Click(object? sender, RoutedEventArgs e)
+    private void SetClass(string className, bool enabled)
     {
-        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(
-            new FilePickerSaveOptions
-            {
-                Title = Localize("picker_aria2_session", "Choose aria2 session file"),
-                SuggestedFileName = "aria2.session"
-            });
-
-        string? path = file?.TryGetLocalPath();
-        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+        if (enabled)
         {
-            viewModel.Aria2SessionFilePath = path;
+            if (!Classes.Contains(className))
+            {
+                Classes.Add(className);
+            }
+        }
+        else
+        {
+            Classes.Remove(className);
         }
     }
-
-    private async void BrowseAria2Destination_Click(object? sender, RoutedEventArgs e)
-    {
-        IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(
-            new FolderPickerOpenOptions
-            {
-                AllowMultiple = false,
-                Title = Localize("picker_aria2_destination", "Choose aria2 download destination")
-            });
-
-        string? path = folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
-        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
-        {
-            viewModel.Aria2DestinationFolder = path;
-        }
-    }
-
-
-    private async void BrowseSettingsImport_Click(object? sender, RoutedEventArgs e)
-    {
-        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(
-            new FilePickerOpenOptions
-            {
-                AllowMultiple = false,
-                Title = Localize("picker_settings_import", "Choose modern or legacy XDM settings")
-            });
-        string? path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
-        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
-        {
-            viewModel.SettingsTransferPath = path;
-        }
-    }
-
-    private async void BrowseSettingsDirectory_Click(object? sender, RoutedEventArgs e)
-    {
-        IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(
-            new FolderPickerOpenOptions
-            {
-                AllowMultiple = false,
-                Title = Localize("picker_settings_directory", "Choose legacy XDM settings directory")
-            });
-        string? path = folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
-        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
-        {
-            viewModel.SettingsTransferPath = path;
-        }
-    }
-
-    private async void BrowseSettingsExport_Click(object? sender, RoutedEventArgs e)
-    {
-        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(
-            new FilePickerSaveOptions
-            {
-                Title = Localize("picker_settings_export", "Export XDM settings"),
-                SuggestedFileName = "xdm-settings.json",
-                DefaultExtension = "json"
-            });
-        string? path = file?.TryGetLocalPath();
-        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
-        {
-            viewModel.SettingsTransferPath = path;
-        }
-    }
-
-
-    private async void BrowseRelocationDestination_Click(object? sender, RoutedEventArgs e)
-    {
-        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(
-            new FilePickerSaveOptions
-            {
-                Title = Localize("picker_relocation_destination", "Choose new download path"),
-                SuggestedFileName = DataContext is MainWindowViewModel { SelectedDownload: { } selected }
-                    ? selected.FileName
-                    : "download.bin"
-            });
-        string? path = file?.TryGetLocalPath();
-        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
-        {
-            viewModel.RelocationDestinationPath = path;
-        }
-    }
-
-    private async void BrowseHistoryImport_Click(object? sender, RoutedEventArgs e)
-    {
-        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(
-            new FilePickerOpenOptions
-            {
-                AllowMultiple = false,
-                Title = Localize("picker_history_import", "Choose XDM download list or plain URL list")
-            });
-        string? path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
-        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
-        {
-            viewModel.HistoryTransferPath = path;
-        }
-    }
-
-    private async void BrowseHistoryExport_Click(object? sender, RoutedEventArgs e)
-    {
-        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(
-            new FilePickerSaveOptions
-            {
-                Title = Localize("picker_history_export", "Export XDM download list"),
-                SuggestedFileName = "xdm-downloads.json",
-                DefaultExtension = "json"
-            });
-        string? path = file?.TryGetLocalPath();
-        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
-        {
-            viewModel.HistoryTransferPath = path;
-        }
-    }
-
-    private string Localize(string key, string fallback)
-        => _localization?.Get(key, fallback) ?? fallback;
 
     private void Localization_Changed(object? sender, EventArgs eventArgs)
     {
@@ -389,7 +278,7 @@ public partial class MainWindow : Window
         if (control && eventArgs.Key == Key.N)
         {
             viewModel.SelectSection("downloads");
-            NewDownloadUrlsInput.Focus();
+            DownloadsPage.FocusNewDownload();
             eventArgs.Handled = true;
             return;
         }
@@ -397,7 +286,7 @@ public partial class MainWindow : Window
         if (control && eventArgs.Key == Key.F)
         {
             viewModel.SelectSection("downloads");
-            DownloadSearchInput.Focus();
+            DownloadsPage.FocusSearch();
             eventArgs.Handled = true;
             return;
         }

@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.DiagnosticsView" mc:Ignorable="d"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="14">
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="{Binding Localization[ui_recovery]}" Classes="label"/>
+                    <TextBlock Text="{Binding RecoveryStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
+                    <TextBlock Text="{Binding Localization[ui_launch_with_safe_mode_to_skip_browser_and_scheduler_startup_or_reset_win]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+                  </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="{Binding Localization[ui_diagnostic_bundle]}" Classes="label"/>
+                    <TextBlock Text="{Binding DiagnosticBundlePath}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Button Classes="primary" Content="{Binding Localization[ui_export_bundle]}" Command="{Binding ExportDiagnosticsCommand}"/>
+                      <Button Classes="secondary" Content="{Binding Localization[ui_clear_events]}" Command="{Binding ClearDiagnosticsCommand}"/>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </Grid>
+
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="{Binding Localization[ui_recent_events]}" Classes="label"/>
+                  <ItemsControl ItemsSource="{Binding DiagnosticEvents}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="150,100,180,*" ColumnSpacing="10" Margin="0,3">
+                          <TextBlock Text="{Binding Timestamp}" FontFamily="monospace" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
+                          <TextBlock Grid.Column="1" Text="{Binding Severity}" FontSize="11" Foreground="{DynamicResource XdmAccentForeground}"/>
+                          <TextBlock Grid.Column="2" Text="{Binding Code}" FontFamily="monospace" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
+                          <TextBlock Grid.Column="3" Text="{Binding Message}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmBodyForeground}"/>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+
+          </UserControl>

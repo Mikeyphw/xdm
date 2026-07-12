@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.QueuesView" mc:Ignorable="d"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="14">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="{Binding Localization[ui_queue_definitions]}" Classes="section-title"/>
+                  <ItemsControl ItemsSource="{Binding QueueDefinitions}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12" Margin="0,0,0,7">
+                          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="18">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodyForeground}"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                              <TextBlock Text="{Binding MaxConcurrentDownloads}" Foreground="{DynamicResource XdmAccentForeground}"/>
+                              <TextBlock Text="concurrent" Foreground="{DynamicResource XdmAccentForeground}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                              <TextBlock Text="{Binding SpeedLimitBytesPerSecond}" Foreground="{DynamicResource XdmMutedForeground}"/>
+                              <TextBlock Text="B/s limit" Foreground="{DynamicResource XdmMutedForeground}"/>
+                            </StackPanel>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="{Binding QueueRuntimeStatus}" Foreground="{DynamicResource XdmAccentForeground}" TextWrapping="Wrap"/>
+                  <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="9">
+                    <ComboBox ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedQueue}">
+                      <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Grid.Column="1" Classes="primary" Content="{Binding Localization[ui_start]}" Command="{Binding StartSelectedQueueCommand}"/>
+                    <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_stop]}" Command="{Binding StopSelectedQueueCommand}"/>
+                    <Button Grid.Column="3" Classes="secondary" Content="{Binding Localization[ui_move_selected_download]}" Command="{Binding MoveSelectedDownloadToQueueCommand}"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="{Binding Localization[ui_new_queue_name]}" Text="{Binding NewQueueName}"/>
+                    <Button Grid.Column="1" Classes="primary" Content="{Binding Localization[ui_add_queue]}" Command="{Binding AddQueueCommand}"/>
+                  </Grid>
+                  <TextBlock Text="{Binding Localization[ui_queues_execute_independently_global_and_per_queue_concurrency_and_speed]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="{Binding Localization[ui_categories]}" Classes="section-title"/>
+                  <ItemsControl ItemsSource="{Binding CategoryDefinitions}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12" Margin="0,0,0,7">
+                          <Grid ColumnDefinitions="*,2*" ColumnSpacing="18">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodyForeground}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding DestinationDirectory}" Foreground="{DynamicResource XdmMutedForeground}" TextTrimming="CharacterEllipsis"/>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Grid ColumnDefinitions="*,*,2*,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="{Binding Localization[ui_category_name]}" Text="{Binding NewCategoryName}"/>
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_extensions_zip_7z_rar]}" Text="{Binding NewCategoryExtensions}"/>
+                    <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_destination_blank_current]}" Text="{Binding NewCategoryDestination}"/>
+                    <Button Grid.Column="3" Classes="primary" Content="{Binding Localization[ui_add_category]}" Command="{Binding AddCategoryCommand}"/>
+                  </Grid>
+                  <Button HorizontalAlignment="Left" Classes="secondary" Content="{Binding Localization[ui_save_definitions]}" Command="{Binding SaveSettingsCommand}"/>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+
+          </UserControl>

@@ -1,0 +1,179 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.DownloadsView" mc:Ignorable="d"><Grid RowDefinitions="Auto,Auto,Auto,*">
+            <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="10">
+                <Grid ColumnDefinitions="2*,*,Auto,Auto" ColumnSpacing="10">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_download_urls]}" Classes="form-label"/>
+                    <TextBox x:Name="NewDownloadUrlsInput" AutomationProperties.AutomationId="NewDownloadUrls" AcceptsReturn="True" MinHeight="62" PlaceholderText="{Binding Localization[ui_one_or_more_http_https_urls]}" Text="{Binding NewDownloadUrls}" AutomationProperties.Name="{Binding Localization[ui_download_urls]}"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_destination_folder]}" Classes="form-label"/>
+                    <TextBox Text="{Binding DestinationFolder}" AutomationProperties.Name="{Binding Localization[ui_destination_folder]}" AutomationProperties.AutomationId="NewDownloadDestination"/>
+                  </StackPanel>
+                  <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseDestination_Click" VerticalAlignment="Bottom"/>
+                  <Button Grid.Column="3" Classes="primary" Content="{Binding Localization[ui_add]}" Command="{Binding AddDownloadCommand}" AutomationProperties.AutomationId="AddDownload" VerticalAlignment="Bottom"/>
+                </Grid>
+
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_category]}" Classes="form-label"/>
+                    <ComboBox ItemsSource="{Binding CategoryDefinitions}" SelectedItem="{Binding SelectedCategory}" AutomationProperties.Name="{Binding Localization[ui_category]}" AutomationProperties.AutomationId="DownloadCategory">
+                      <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_queue]}" Classes="form-label"/>
+                    <ComboBox ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedQueue}" AutomationProperties.Name="{Binding Localization[ui_queue]}" AutomationProperties.AutomationId="DownloadQueue">
+                      <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_duplicate_file_behavior]}" Classes="form-label"/>
+                    <ComboBox ItemsSource="{Binding DuplicateBehaviors}" SelectedItem="{Binding SelectedDuplicateBehavior}" AutomationProperties.Name="{Binding Localization[ui_duplicate_file_behavior]}" AutomationProperties.AutomationId="NewDownloadDuplicateBehavior"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="3" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_speed_limit_kb_s_0_unlimited]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding SpeedLimitKbps, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="104857600" Increment="100" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_speed_limit_kb_s_0_unlimited]}" AutomationProperties.AutomationId="NewDownloadSpeedLimit"/>
+                  </StackPanel>
+                </Grid>
+
+                <Expander Header="{Binding Localization[ui_request_details_and_authentication]}">
+                  <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,*" ColumnSpacing="9" RowSpacing="9">
+                    <TextBox PlaceholderText="{Binding Localization[ui_custom_filename_single_url_only]}" Text="{Binding CustomFileName}"/>
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_user_agent]}" Text="{Binding UserAgent}"/>
+                    <TextBox Grid.Row="1" PlaceholderText="{Binding Localization[ui_username]}" Text="{Binding Username}"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" PlaceholderText="{Binding Localization[ui_password]}" PasswordChar="●" Text="{Binding Password}"/>
+                    <TextBox Grid.Row="2" AcceptsReturn="True" MinHeight="58" PlaceholderText="{Binding Localization[ui_headers_one_per_line_name_value]}" Text="{Binding RequestHeaders}"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Spacing="9">
+                      <TextBox PlaceholderText="{Binding Localization[ui_cookie_header]}" Text="{Binding Cookie}"/>
+                      <TextBox PlaceholderText="{Binding Localization[ui_referer]}" Text="{Binding Referer}"/>
+                    </StackPanel>
+                  </Grid>
+                </Expander>
+              </StackPanel>
+            </Border>
+
+            <Grid Grid.Row="1" RowDefinitions="Auto,Auto" RowSpacing="8" Margin="0,10">
+              <Grid ColumnDefinitions="*,220" ColumnSpacing="9">
+                <TextBox x:Name="DownloadSearchInput" AutomationProperties.AutomationId="DownloadSearch" PlaceholderText="{Binding Localization[ui_search_filename_url_destination_or_queue]}" Text="{Binding DownloadSearchText}" AutomationProperties.Name="{Binding Localization[ui_search_downloads]}"/>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding DownloadStatusFilters}" SelectedItem="{Binding SelectedDownloadStatus}"/>
+              </Grid>
+              <WrapPanel Grid.Row="1" Orientation="Horizontal">
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_pause]}" Command="{Binding PauseSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanPause}"/>
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_resume]}" Command="{Binding ResumeSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}"/>
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_cancel]}" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanCancel}"/>
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_retry]}" Command="{Binding RetrySelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}"/>
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_remove]}" Command="{Binding RemoveSelectedCommand}"/>
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_convert]}" Command="{Binding PrepareSelectedDownloadConversionCommand}"/>
+                <ComboBox Width="110" Margin="0,0,8,0" ItemsSource="{Binding DownloadPriorities}" SelectedItem="{Binding SelectedDownloadPriority}"/>
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_set_priority]}" Command="{Binding ApplySelectedDownloadPriorityCommand}"/>
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_earlier]}" Command="{Binding MoveSelectedDownloadEarlierCommand}"/>
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_later]}" Command="{Binding MoveSelectedDownloadLaterCommand}"/>
+                <Button Margin="12,0,8,0" Classes="secondary" Content="{Binding Localization[ui_select_visible]}" Command="{Binding SelectAllVisibleCommand}"/>
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_clear_selection]}" Command="{Binding ClearBulkSelectionCommand}"/>
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_pause_selected]}" Command="{Binding PauseBulkCommand}"/>
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_resume_selected]}" Command="{Binding ResumeBulkCommand}"/>
+                <Button Margin="0,0,8,0" Classes="danger" Content="{Binding Localization[ui_cancel_selected]}" Command="{Binding CancelBulkCommand}"/>
+                <Button Classes="danger" Content="{Binding Localization[ui_remove_selected]}" Command="{Binding RemoveBulkCommand}"/>
+              </WrapPanel>
+            </Grid>
+
+
+            <Expander Grid.Row="2" Header="{Binding Localization[ui_history_and_file_management]}" Margin="0,0,0,10">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="9">
+                  <WrapPanel Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_open_file]}" Command="{Binding OpenSelectedFileCommand}"/>
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_open_folder]}" Command="{Binding RevealSelectedDestinationCommand}"/>
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_open_url]}" Command="{Binding OpenSelectedSourceCommand}"/>
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_open_source_page]}" Command="{Binding OpenSelectedSourcePageCommand}" IsEnabled="{Binding SelectedDownload.HasSourcePage}"/>
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_re_download]}" Command="{Binding RedownloadSelectedCommand}"/>
+                    <Button Margin="0,0,8,0" Classes="danger" Content="{Binding Localization[ui_delete_partial_data]}" Command="{Binding DeleteSelectedPartialDataCommand}"/>
+                    <Button Classes="danger" Content="{Binding Localization[ui_delete_file_history]}" Command="{Binding DeleteSelectedFileAndHistoryCommand}"/>
+                  </WrapPanel>
+                  <Grid ColumnDefinitions="2*,2*,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="{Binding Localization[ui_replacement_download_url]}" Text="{Binding RefreshedDownloadUrl}"/>
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_source_page_url_optional]}" Text="{Binding RefreshedSourcePage}"/>
+                    <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_refresh_url]}" Command="{Binding RefreshSelectedDownloadUrlCommand}"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="2*,Auto,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="{Binding Localization[ui_new_full_destination_path]}" Text="{Binding RelocationDestinationPath}"/>
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_choose_path]}" Click="BrowseRelocationDestination_Click"/>
+                    <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_move_rename]}" Command="{Binding RelocateSelectedDownloadCommand}"/>
+                  </Grid>
+                  <CheckBox Content="{Binding Localization[ui_allow_replacing_an_existing_destination_file]}" IsChecked="{Binding OverwriteRelocationDestination}"/>
+                  <Grid ColumnDefinitions="2*,Auto,Auto,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="{Binding Localization[ui_download_list_json_or_plain_url_list_path]}" Text="{Binding HistoryTransferPath}"/>
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_choose_import]}" Click="BrowseHistoryImport_Click"/>
+                    <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_choose_export]}" Click="BrowseHistoryExport_Click"/>
+                    <Button Grid.Column="3" Classes="secondary" Content="{Binding Localization[ui_import]}" Command="{Binding ImportDownloadListCommand}"/>
+                  </Grid>
+                  <WrapPanel Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_export_visible]}" Command="{Binding ExportVisibleHistoryCommand}"/>
+                    <Button Classes="secondary" Content="{Binding Localization[ui_prune_now]}" Command="{Binding PruneHistoryCommand}"/>
+                  </WrapPanel>
+                  <TextBlock Text="{Binding HistoryTransferStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}"/>
+                </StackPanel>
+              </Border>
+            </Expander>
+
+            <Grid Grid.Row="3" ColumnDefinitions="2*,*" ColumnSpacing="12">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                <ListBox ItemsSource="{Binding FilteredDownloads}" SelectedItem="{Binding SelectedDownload}" Background="Transparent" BorderThickness="0" Padding="7">
+                  <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
+                  </ListBox.ItemsPanel>
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <Border Padding="12" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8">
+                        <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="16">
+                          <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                          <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}"/>
+                            <TextBlock Text="{Binding Source}" FontSize="11" Foreground="{DynamicResource XdmSubtleForeground}" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                              <TextBlock Text="{Binding QueueId}" FontSize="10" Foreground="{DynamicResource XdmDisabledForeground}"/>
+                              <TextBlock Text="{Binding Priority}" FontSize="10" Foreground="{DynamicResource XdmAccentForeground}"/>
+                            </StackPanel>
+                          </StackPanel>
+                          <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="{DynamicResource XdmAccentForeground}" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="3" Text="{Binding SpeedText}" Foreground="{DynamicResource XdmSecondaryDimForeground}" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="4" Text="{Binding RemainingText}" Foreground="{DynamicResource XdmMutedForeground}" VerticalAlignment="Center"/>
+                          <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Margin="0,10,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}"/>
+                          <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ProgressText}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
+                          <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Text="{Binding ErrorMessage}" FontSize="11" Foreground="{DynamicResource XdmErrorForeground}" HorizontalAlignment="Right"/>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Border>
+              <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
+                  <TextBlock Text="{Binding Localization[ui_download_details]}" Classes="label"/>
+                  <StackPanel Grid.Row="1" Spacing="4">
+                    <TextBlock Text="{Binding SelectedDownload.FileName}" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding SelectedDownload.Source}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding SelectedDownload.DestinationPath}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap"/>
+                  </StackPanel>
+                  <TextBlock Grid.Row="2" Text="{Binding Localization[ui_event_timeline]}" Classes="label"/>
+                  <ListBox Grid.Row="3" ItemsSource="{Binding SelectedDownloadTimeline}" Background="Transparent" BorderThickness="0">
+                    <ListBox.ItemsPanel>
+                      <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto" Margin="0,3">
+                          <TextBlock Text="{Binding Status}" Foreground="{DynamicResource XdmAccentForeground}" FontSize="11"/>
+                          <TextBlock Grid.Column="1" Text="{Binding Timestamp}" Foreground="{DynamicResource XdmSubtleDarkForeground}" FontSize="10" HorizontalAlignment="Right"/>
+                          <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Message}" Foreground="{DynamicResource XdmSecondaryDimForeground}" FontSize="11" TextWrapping="Wrap"/>
+                        </Grid>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </Grid>
+              </Border>
+            </Grid>
+          </Grid>
+
+          </UserControl>

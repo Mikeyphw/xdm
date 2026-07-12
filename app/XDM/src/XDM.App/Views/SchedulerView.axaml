@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.SchedulerView" mc:Ignorable="d"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="14">
+              <Grid ColumnDefinitions="320,*" ColumnSpacing="14">
+                <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="10">
+                    <TextBlock Text="{Binding Localization[ui_queue_schedules]}" Classes="label"/>
+                    <ListBox ItemsSource="{Binding Schedules}" SelectedItem="{Binding SelectedSchedule}" MinHeight="220" MaxHeight="420">
+                      <ListBox.ItemTemplate>
+                        <DataTemplate>
+                          <Border Padding="10" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="7">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}"/>
+                              <TextBlock Grid.Column="1" Text="{Binding Enabled}" Foreground="{DynamicResource XdmAccentForeground}"/>
+                              <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Queue.Name}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBox PlaceholderText="{Binding Localization[ui_new_schedule_name]}" Text="{Binding NewScheduleName}"/>
+                    <WrapPanel Orientation="Horizontal">
+                      <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_add_schedule]}" Command="{Binding AddScheduleCommand}"/>
+                      <Button Classes="secondary" Content="{Binding Localization[ui_remove]}" Command="{Binding RemoveSelectedScheduleCommand}"/>
+                    </WrapPanel>
+                  </StackPanel>
+                </Border>
+
+                <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="12" MaxWidth="820" HorizontalAlignment="Left">
+                    <TextBlock Text="{Binding Localization[ui_schedule_and_completion_workflow]}" Classes="section-title"/>
+                    <TextBlock Text="{Binding SchedulerRuntimeStatus}" Foreground="{DynamicResource XdmAccentForeground}" TextWrapping="Wrap"/>
+                    <CheckBox Content="{Binding Localization[ui_enable_selected_schedule]}" IsChecked="{Binding SelectedSchedule.Enabled}"/>
+                    <TextBox PlaceholderText="{Binding Localization[ui_schedule_name]}" Text="{Binding SelectedSchedule.Name}"/>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
+                      <TextBox PlaceholderText="{Binding Localization[ui_start_hh_mm]}" Text="{Binding SelectedSchedule.StartTime}"/>
+                      <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_end_hh_mm]}" Text="{Binding SelectedSchedule.EndTime}"/>
+                      <ComboBox Grid.Column="2" ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedSchedule.Queue}">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </Grid>
+                    <TextBlock Text="{Binding Localization[ui_run_on_days]}" Classes="label"/>
+                    <WrapPanel Orientation="Horizontal">
+                      <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_mon]}" IsChecked="{Binding SelectedSchedule.MondayEnabled}"/>
+                      <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_tue]}" IsChecked="{Binding SelectedSchedule.TuesdayEnabled}"/>
+                      <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_wed]}" IsChecked="{Binding SelectedSchedule.WednesdayEnabled}"/>
+                      <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_thu]}" IsChecked="{Binding SelectedSchedule.ThursdayEnabled}"/>
+                      <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_fri]}" IsChecked="{Binding SelectedSchedule.FridayEnabled}"/>
+                      <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_sat]}" IsChecked="{Binding SelectedSchedule.SaturdayEnabled}"/>
+                      <CheckBox Content="{Binding Localization[ui_sun]}" IsChecked="{Binding SelectedSchedule.SundayEnabled}"/>
+                    </WrapPanel>
+                    <ComboBox ItemsSource="{Binding SelectedSchedule.MissedRunOptions}" SelectedItem="{Binding SelectedSchedule.MissedRunPolicy}"/>
+                    <TextBlock Text="{Binding Localization[ui_completion_action]}" Classes="label"/>
+                    <Grid ColumnDefinitions="2*,*" ColumnSpacing="9">
+                      <ComboBox ItemsSource="{Binding SelectedSchedule.CompletionActionOptions}" SelectedItem="{Binding SelectedSchedule.CompletionAction}"/>
+                      <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_countdown_seconds]}" Text="{Binding SelectedSchedule.CountdownSeconds}"/>
+                    </Grid>
+                    <TextBox PlaceholderText="{Binding Localization[ui_absolute_executable_path_for_runcommand]}" Text="{Binding SelectedSchedule.CommandPath}"/>
+                    <TextBox PlaceholderText="{Binding Localization[ui_one_command_argument_per_line]}" Text="{Binding SelectedSchedule.CommandArguments}" AcceptsReturn="True" MinHeight="72"/>
+
+                    <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12">
+                      <StackPanel Spacing="8">
+                        <TextBlock Text="{Binding Localization[ui_antivirus_scan_before_completion_action]}" Classes="label"/>
+                        <CheckBox Content="{Binding Localization[ui_scan_files_completed_by_scheduled_runs]}" IsChecked="{Binding AntivirusEnabled}"/>
+                        <TextBox PlaceholderText="{Binding Localization[ui_absolute_antivirus_executable_path]}" Text="{Binding AntivirusExecutablePath}"/>
+                        <TextBox PlaceholderText="{Binding Localization[ui_one_argument_per_line_use_file_where_the_file_path_belongs]}" Text="{Binding AntivirusArguments}" AcceptsReturn="True" MinHeight="62"/>
+                        <TextBox PlaceholderText="{Binding Localization[ui_scan_timeout_seconds]}" Text="{Binding AntivirusTimeoutSeconds}"/>
+                      </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="{Binding CompletionCapabilitySummary}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+                    <TextBlock Text="{Binding PendingCompletionAction}" TextWrapping="Wrap" Foreground="{DynamicResource XdmWarningForeground}"/>
+                    <WrapPanel Orientation="Horizontal">
+                      <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_save_schedules]}" Command="{Binding SaveSettingsCommand}"/>
+                      <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_refresh_capabilities]}" Command="{Binding RefreshCompletionCapabilitiesCommand}"/>
+                      <Button Classes="secondary" Content="{Binding Localization[ui_cancel_pending_action]}" Command="{Binding CancelPendingCompletionActionCommand}" IsEnabled="{Binding HasPendingCompletionAction}"/>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding Localization[ui_commands_are_launched_directly_without_a_shell_shutdown_sleep_hibernate]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+                  </StackPanel>
+                </Border>
+              </Grid>
+            </StackPanel>
+          </ScrollViewer>
+
+          </UserControl>

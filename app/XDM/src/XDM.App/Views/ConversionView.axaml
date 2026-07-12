@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.ConversionView" mc:Ignorable="d"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="14">
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <StackPanel Spacing="5">
+                      <TextBlock Text="{Binding Localization[ui_ffmpeg_conversion]}" Classes="label"/>
+                      <TextBlock Text="{Binding ConversionHealth}" TextWrapping="Wrap" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_check_ffmpeg_ffprobe]}" Command="{Binding RefreshConversionHealthCommand}"/>
+                  </Grid>
+                  <TextBlock Text="{Binding Localization[ui_preset_ids_select_fixed_argument_templates_xdm_never_executes_user_provi]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="11">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="{Binding Localization[ui_source_media_file]}" Text="{Binding ConversionSourcePath}"/>
+                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseConversionSource_Click"/>
+                  </Grid>
+                  <TextBox PlaceholderText="{Binding Localization[ui_destination_mp4_or_mp3_path]}" Text="{Binding ConversionDestinationPath}"/>
+                  <ComboBox ItemsSource="{Binding ConversionPresets}" SelectedItem="{Binding SelectedConversionPreset}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Margin="2" Spacing="2">
+                          <TextBlock Text="{Binding Name}" Foreground="{DynamicResource XdmBodyForeground}"/>
+                          <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <CheckBox Content="{Binding Localization[ui_overwrite_an_existing_destination_only_after_conversion_succeeds]}" IsChecked="{Binding ConversionOverwriteExisting}"/>
+                  <TextBlock Text="{Binding ConversionStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}"/>
+                  <Button HorizontalAlignment="Left" Classes="primary" Content="{Binding Localization[ui_add_to_conversion_queue]}" Command="{Binding EnqueueConversionCommand}"/>
+                </StackPanel>
+              </Border>
+
+              <Grid ColumnDefinitions="2*,*" ColumnSpacing="14" MinHeight="300">
+                <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                  <ListBox ItemsSource="{Binding ConversionJobs}" SelectedItem="{Binding SelectedConversionJob}" Background="Transparent" BorderThickness="0" Padding="7">
+                    <ListBox.ItemsPanel>
+                      <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                      <DataTemplate>
+                        <Border Padding="12" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8">
+                          <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <StackPanel>
+                              <TextBlock Text="{Binding PresetName}" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}"/>
+                              <TextBlock Text="{Binding SourcePath}" FontSize="11" Foreground="{DynamicResource XdmSubtleForeground}" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding State}" Foreground="{DynamicResource XdmAccentForeground}" VerticalAlignment="Center"/>
+                            <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Margin="0,9,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" IsIndeterminate="{Binding IsIndeterminate}"/>
+                            <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding OutputSize}" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}" HorizontalAlignment="Right"/>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </Border>
+
+                <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="10">
+                    <TextBlock Text="{Binding Localization[ui_selected_job]}" Classes="label"/>
+                    <TextBlock Text="{Binding SelectedConversionJob.PresetName}" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}"/>
+                    <TextBlock Text="{Binding SelectedConversionJob.SourcePath}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding SelectedConversionJob.DestinationPath}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding SelectedConversionJob.ErrorMessage}" Foreground="{DynamicResource XdmErrorForeground}" TextWrapping="Wrap"/>
+                    <WrapPanel Orientation="Horizontal">
+                      <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_cancel]}" Command="{Binding CancelSelectedConversionCommand}" IsEnabled="{Binding SelectedConversionJob.CanCancel}"/>
+                      <Button Classes="secondary" Content="{Binding Localization[ui_remove]}" Command="{Binding RemoveSelectedConversionCommand}" IsEnabled="{Binding SelectedConversionJob.CanRemove}"/>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding Localization[ui_conversions_run_one_at_a_time_cancellation_terminates_the_ffmpeg_process]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+                  </StackPanel>
+                </Border>
+              </Grid>
+            </StackPanel>
+          </ScrollViewer>
+
+          </UserControl>
