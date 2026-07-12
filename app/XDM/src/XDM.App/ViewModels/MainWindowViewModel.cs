@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using XDM.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -213,6 +214,17 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private DownloadItemViewModel? selectedDownload;
+
+    [ObservableProperty]
+    private int bulkSelectionCount;
+
+    public bool HasBulkSelection => BulkSelectionCount > 0;
+
+    public string BulkSelectionSummary
+        => string.Format(
+            _localization.Culture,
+            _localization.Get("ui_bulk_selection_summary", "{0} selected"),
+            BulkSelectionCount);
 
     [ObservableProperty]
     private string downloadSearchText = string.Empty;
@@ -509,6 +521,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         ApplySelectedHistoryItem(value);
     }
 
+    partial void OnBulkSelectionCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasBulkSelection));
+        OnPropertyChanged(nameof(BulkSelectionSummary));
+    }
+
     partial void OnSelectedMediaVideoFormatChanged(MediaFormatViewModel? value)
     {
         if (value?.Format.StreamKind == MediaStreamKind.Muxed)
@@ -682,6 +700,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             download.IsSelected = true;
         }
 
+        RefreshBulkSelectionState();
         OperationMessage = $"Selected {FilteredDownloads.Count} visible download(s).";
     }
 
@@ -693,6 +712,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             download.IsSelected = false;
         }
 
+        RefreshBulkSelectionState();
         OperationMessage = "Bulk selection cleared.";
     }
 
@@ -1442,6 +1462,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _diagnosticEvents.Changed -= OnDiagnosticsChanged;
         _conversionQueueService.Changed -= OnConversionQueueChanged;
         _aria2Service.Changed -= OnAria2SnapshotChanged;
+        foreach (DownloadItemViewModel download in Downloads)
+        {
+            UnsubscribeDownloadItem(download);
+        }
+
         GC.SuppressFinalize(this);
     }
 
@@ -1724,7 +1749,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             }
             else
             {
-                Downloads.Add(new DownloadItemViewModel(download, _localization));
+                DownloadItemViewModel added = new(download, _localization);
+                SubscribeDownloadItem(added);
+                Downloads.Add(added);
             }
 
             if (stateChanged)
@@ -1743,9 +1770,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         foreach (DownloadItemViewModel removed in existing.Values)
         {
+            UnsubscribeDownloadItem(removed);
             Downloads.Remove(removed);
         }
 
+        RefreshBulkSelectionState();
         RefreshFilteredDownloads();
     }
 
@@ -1958,6 +1987,24 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 .Where(static capability => capability.Kind != ScheduleCompletionActionKind.None)
                 .Select(static capability => $"{capability.Kind}: {(capability.IsSupported ? "available" : "unavailable")}"));
 
+
+    private void SubscribeDownloadItem(DownloadItemViewModel download)
+        => download.PropertyChanged += OnDownloadItemPropertyChanged;
+
+    private void UnsubscribeDownloadItem(DownloadItemViewModel download)
+        => download.PropertyChanged -= OnDownloadItemPropertyChanged;
+
+    private void OnDownloadItemPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    {
+        if (string.Equals(eventArgs.PropertyName, nameof(DownloadItemViewModel.IsSelected), StringComparison.Ordinal))
+        {
+            RefreshBulkSelectionState();
+        }
+    }
+
+    private void RefreshBulkSelectionState()
+        => BulkSelectionCount = Downloads.Count(static download => download.IsSelected);
+
     private DownloadItemViewModel[] GetActionTargets()
     {
         DownloadItemViewModel[] checkedDownloads = Downloads
@@ -2124,6 +2171,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         RefreshDownloadStatusFilters();
+        OnPropertyChanged(nameof(BulkSelectionSummary));
         foreach (DownloadItemViewModel download in Downloads)
         {
             download.RefreshLocalization(_localization);

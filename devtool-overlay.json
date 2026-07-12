@@ -1,25 +1,26 @@
 {
-  "name": "xdm_responsive_shell_views_overlay",
+  "name": "xdm_workflow_settings_phase3_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "3772fbc",
+  "baseCommit": "10a012e",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "responsive-shell-and-dedicated-views",
-  "description": "Splits the monolithic Avalonia window into eight dedicated page views, adds responsive SplitView navigation with full, compact, and overlay modes, preserves keyboard shortcuts and storage-picker workflows, and adds shell architecture qualification tests.",
+  "phase": "downloads-workflow-and-settings-categories",
+  "description": "Redesigns the Downloads workflow with contextual bulk actions and a resizable details pane, moves secondary actions into focused detail groups, and reorganizes Settings into five categories with a persistent save bar.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
     "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Add responsive shell and dedicated page views",
+  "commitMessage": "Redesign downloads workflow and settings navigation",
   "constraints": [
-    "Apply on top of commit 3772fbc",
+    "Apply on top of commit 10a012e",
     "Validate only app/XDM/XDM.Modern.sln",
     "Do not restore or build WPF, GTK, WinForms, CoreFx or MSIX targets",
-    "Preserve the existing eight-section navigation and all view-model bindings",
-    "Preserve Ctrl+N, Ctrl+F, Ctrl+1 through Ctrl+8 and bulk keyboard shortcuts",
-    "Keep high contrast, UI scaling, RTL flow direction and live status announcements functional",
+    "Preserve every existing Downloads command and storage-picker workflow",
+    "Preserve every existing Settings command, setting binding and storage picker",
+    "Keep the download list virtualized",
+    "Keep high contrast, UI scaling, RTL flow direction and keyboard shortcuts functional",
     "Require zero warnings and zero errors",
     "Do not modify docs/parity/features.json"
   ]

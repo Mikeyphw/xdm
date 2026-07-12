@@ -1,343 +1,370 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.SettingsView" mc:Ignorable="d"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="14" MaxWidth="920" HorizontalAlignment="Left">
-              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="12">
-                  <TextBlock Text="{Binding Localization[ui_download_behavior]}" Classes="section-title"/>
-                  <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_default_download_directory]}" Classes="form-label"/>
-                      <TextBox Text="{Binding DestinationFolder}" AutomationProperties.Name="{Binding Localization[ui_default_download_directory]}" AutomationProperties.AutomationId="DefaultDownloadDirectory"/>
-                    </StackPanel>
-                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseDestination_Click" VerticalAlignment="Bottom"/>
-                  </Grid>
-                  <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_maximum_concurrent_downloads]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding MaxConcurrentDownloads, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="128" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_concurrent_downloads]}" AutomationProperties.AutomationId="MaximumConcurrentDownloads"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_default_speed_limit_kb_s_0_unlimited]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding DefaultSpeedLimitKbps, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="104857600" Increment="100" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_default_speed_limit_kb_s_0_unlimited]}" AutomationProperties.AutomationId="DefaultSpeedLimit"/>
-                    </StackPanel>
-                  </Grid>
-                  <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_duplicate_file_behavior]}" Classes="form-label"/>
-                      <ComboBox ItemsSource="{Binding DuplicateBehaviors}" SelectedItem="{Binding SelectedDuplicateBehavior}" AutomationProperties.Name="{Binding Localization[ui_duplicate_file_behavior]}" AutomationProperties.AutomationId="DuplicateFileBehavior"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_default_connections]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding DefaultConnectionCount, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="64" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_default_connections]}" AutomationProperties.AutomationId="DefaultConnectionCount"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_maximum_connections]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding MaximumConnectionCount, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="128" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_connections]}" AutomationProperties.AutomationId="MaximumConnectionCount"/>
-                    </StackPanel>
-                  </Grid>
-                  <CheckBox Content="{Binding Localization[ui_create_destination_directories_when_missing]}" IsChecked="{Binding CreateDestinationDirectory}"/>
-                  <CheckBox Content="{Binding Localization[ui_automatically_select_categories_by_extension]}" IsChecked="{Binding AutoSelectCategory}"/>
-                  <CheckBox Content="{Binding Localization[ui_remember_the_last_request_metadata_in_the_download_dialog]}" IsChecked="{Binding RememberLastRequestMetadata}"/>
-                  <CheckBox Content="{Binding Localization[ui_monitor_clipboard_for_http_https_links]}" IsChecked="{Binding ClipboardMonitoringEnabled}"/>
-                  <CheckBox Content="{Binding Localization[ui_automatically_add_links_captured_from_clipboard]}" IsChecked="{Binding AutoAddClipboardLinks}"/>
-                </StackPanel>
-              </Border>
-
-
-              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="12">
-                  <TextBlock Text="{Binding Localization[ui_language_and_accessibility]}" Classes="section-title"/>
-                  <Grid ColumnDefinitions="2*,*" ColumnSpacing="12">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_interface_language]}" Classes="form-label"/>
-                      <ComboBox ItemsSource="{Binding AvailableLanguages}" SelectedItem="{Binding SelectedLanguage}" AutomationProperties.Name="{Binding Localization[ui_interface_language]}" AutomationProperties.AutomationId="InterfaceLanguage">
-                        <ComboBox.ItemTemplate>
-                          <DataTemplate><TextBlock Text="{Binding DisplayName}"/></DataTemplate>
-                        </ComboBox.ItemTemplate>
-                      </ComboBox>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_ui_scale_percent_75_175]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding UiScalePercent, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="75" Maximum="175" Increment="5" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_ui_scale_percent]}" AutomationProperties.AutomationId="UiScalePercent"/>
-                    </StackPanel>
-                  </Grid>
-                  <CheckBox Content="{Binding Localization[ui_use_the_operating_system_language]}" IsChecked="{Binding UseSystemLanguage}"/>
-                  <CheckBox Content="{Binding Localization[ui_use_high_contrast_colors]}" IsChecked="{Binding HighContrastEnabled}"/>
-                  <CheckBox Content="{Binding Localization[ui_announce_operation_status_changes_to_screen_readers]}" IsChecked="{Binding AnnounceStatusChanges}"/>
-                  <TextBlock Text="{Binding Localization[ui_language_right_to_left_layout_contrast_and_scaling_update_immediately_af]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
-                </StackPanel>
-              </Border>
-
-
-              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="12">
-                  <TextBlock Text="{Binding Localization[ui_history_retention]}" Classes="section-title"/>
-                  <CheckBox Content="{Binding Localization[ui_automatically_prune_terminal_history_entries]}" IsChecked="{Binding HistoryRetentionEnabled}"/>
-                  <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_retention_days]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding HistoryRetentionDays, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="36500" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_retention_days]}" AutomationProperties.AutomationId="HistoryRetentionDays"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_maximum_history_entries]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding HistoryMaximumEntries, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="1000000" Increment="100" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_history_entries]}" AutomationProperties.AutomationId="HistoryMaximumEntries"/>
-                    </StackPanel>
-                  </Grid>
-                  <TextBlock Text="{Binding Localization[ui_retention_removes_only_history_entries_downloaded_files_are_never_delete]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
-                </StackPanel>
-              </Border>
-
-              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="12">
-                  <TextBlock Text="{Binding Localization[ui_network_retries_and_segmented_transfers]}" Classes="section-title"/>
-                  <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_connect_timeout_seconds]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding ConnectTimeoutSeconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="3600" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_connect_timeout_seconds]}" AutomationProperties.AutomationId="ConnectTimeoutSeconds"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_whole_request_timeout_seconds_0_unlimited]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding RequestTimeoutSeconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="86400" Increment="5" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_whole_request_timeout_seconds_0_unlimited]}" AutomationProperties.AutomationId="RequestTimeoutSeconds"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_maximum_retry_attempts]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding MaximumRetryAttempts, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="100" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_retry_attempts]}" AutomationProperties.AutomationId="MaximumRetryAttempts"/>
-                    </StackPanel>
-                  </Grid>
-                  <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_retry_base_delay_milliseconds]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding RetryBaseDelayMilliseconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="600000" Increment="250" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_retry_base_delay_milliseconds]}" AutomationProperties.AutomationId="RetryBaseDelayMilliseconds"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_minimum_segmented_size_mib]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding MinimumSegmentedSizeMegabytes, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="1048576" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_minimum_segmented_size_mib]}" AutomationProperties.AutomationId="MinimumSegmentedSizeMegabytes"/>
-                    </StackPanel>
-                  </Grid>
-                  <TextBlock Text="{Binding Localization[ui_network_handler_proxy_retry_and_segment_settings_apply_to_new_processes]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
-                </StackPanel>
-              </Border>
-
-              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="12">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Spacing="3">
-                      <TextBlock Text="{Binding Localization[ui_aria2_backend]}" Classes="section-title"/>
-                      <TextBlock Text="{Binding Aria2ConnectionStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}"/>
-                    </StackPanel>
-                    <ProgressBar Grid.Column="1" Width="90" Height="6" IsIndeterminate="{Binding Aria2IsRefreshing}" IsVisible="{Binding Aria2IsRefreshing}"/>
-                  </Grid>
-                  <CheckBox Content="{Binding Localization[ui_enable_aria2_backend]}" IsChecked="{Binding Aria2Enabled}"/>
-                  <Grid ColumnDefinitions="*,2*,*" ColumnSpacing="12">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_aria2_connection_mode]}" Classes="form-label"/>
-                      <ComboBox ItemsSource="{Binding Aria2ConnectionModes}" SelectedItem="{Binding SelectedAria2ConnectionMode}" AutomationProperties.Name="{Binding Localization[ui_aria2_connection_mode]}" AutomationProperties.AutomationId="Aria2ConnectionMode"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_aria2_rpc_endpoint]}" Classes="form-label"/>
-                      <TextBox Text="{Binding Aria2RpcEndpoint}" AutomationProperties.Name="{Binding Localization[ui_aria2_rpc_endpoint]}" AutomationProperties.AutomationId="Aria2RpcEndpoint"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_aria2_rpc_secret]}" Classes="form-label"/>
-                      <TextBox Text="{Binding Aria2RpcSecret}" PasswordChar="●" AutomationProperties.Name="{Binding Localization[ui_aria2_rpc_secret]}" AutomationProperties.AutomationId="Aria2RpcSecret"/>
-                    </StackPanel>
-                  </Grid>
-                  <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_aria2_executable_path]}" Classes="form-label"/>
-                      <TextBox Text="{Binding Aria2ExecutablePath}" AutomationProperties.Name="{Binding Localization[ui_aria2_executable_path]}" AutomationProperties.AutomationId="Aria2ExecutablePath"/>
-                    </StackPanel>
-                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2Executable_Click" VerticalAlignment="Bottom"/>
-                  </Grid>
-                  <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_aria2_session_file]}" Classes="form-label"/>
-                      <TextBox Text="{Binding Aria2SessionFilePath}" AutomationProperties.Name="{Binding Localization[ui_aria2_session_file]}" AutomationProperties.AutomationId="Aria2SessionFile"/>
-                    </StackPanel>
-                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2SessionFile_Click" VerticalAlignment="Bottom"/>
-                  </Grid>
-                  <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="12">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_aria2_poll_interval_ms]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding Aria2PollIntervalMilliseconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="250" Maximum="60000" Increment="250" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_poll_interval_ms]}" AutomationProperties.AutomationId="Aria2PollInterval"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_aria2_rpc_timeout_seconds]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding Aria2RpcConnectTimeoutSeconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="300" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_rpc_timeout_seconds]}" AutomationProperties.AutomationId="Aria2RpcTimeout"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_aria2_max_concurrent]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding Aria2MaxConcurrentDownloads, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="1000" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_max_concurrent]}" AutomationProperties.AutomationId="Aria2MaximumConcurrent"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="3" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_aria2_split_count]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding Aria2SplitCount, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="64" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_split_count]}" AutomationProperties.AutomationId="Aria2SplitCount"/>
-                    </StackPanel>
-                  </Grid>
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.SettingsView" mc:Ignorable="d">
+  <Grid RowDefinitions="*,Auto">
+    <TabControl AutomationProperties.AutomationId="SettingsCategories">
+      <TabItem Header="{Binding Localization[ui_settings_general]}">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Spacing="14" MaxWidth="920" Margin="0,14,12,14" HorizontalAlignment="Left">
+            <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="12">
+                <TextBlock Text="{Binding Localization[ui_download_behavior]}" Classes="section-title"/>
+                <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
                   <StackPanel Spacing="6">
-                    <TextBlock Text="{Binding Localization[ui_aria2_minimum_split_mib]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding Aria2MinimumSplitSizeMegabytes, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="1048576" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_minimum_split_mib]}" AutomationProperties.AutomationId="Aria2MinimumSplitSize"/>
+                    <TextBlock Text="{Binding Localization[ui_default_download_directory]}" Classes="form-label"/>
+                    <TextBox Text="{Binding DestinationFolder}" AutomationProperties.Name="{Binding Localization[ui_default_download_directory]}" AutomationProperties.AutomationId="DefaultDownloadDirectory"/>
                   </StackPanel>
-                  <WrapPanel Orientation="Horizontal">
-                    <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_auto_start]}" IsChecked="{Binding Aria2AutoStartManagedProcess}"/>
-                    <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_continue]}" IsChecked="{Binding Aria2ContinueDownloads}"/>
-                    <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_check_certificate]}" IsChecked="{Binding Aria2CheckCertificate}"/>
-                    <CheckBox Content="{Binding Localization[ui_aria2_save_session]}" IsChecked="{Binding Aria2SaveSession}"/>
-                  </WrapPanel>
-                  <TextBox AcceptsReturn="True" MinHeight="62" PlaceholderText="{Binding Localization[ui_aria2_additional_arguments]}" Text="{Binding Aria2AdditionalArguments}"/>
-                  <WrapPanel Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_apply_and_connect]}" Command="{Binding ApplyAria2ConfigurationCommand}"/>
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_start_managed_aria2]}" Command="{Binding StartManagedAria2Command}" IsEnabled="{Binding CanStartManagedAria2}"/>
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_stop_managed_aria2]}" Command="{Binding StopManagedAria2Command}"/>
-                    <Button Classes="secondary" Content="{Binding Localization[ui_refresh]}" Command="{Binding RefreshAria2Command}"/>
-                  </WrapPanel>
-                  <TextBlock Text="{Binding Localization[ui_aria2_security_note]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
-
-                  <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="12" Margin="0,4,0,0">
-                    <StackPanel Spacing="9">
-                      <TextBlock Text="{Binding Localization[ui_add_aria2_download]}" FontWeight="SemiBold" Foreground="{DynamicResource XdmSecondaryForeground}"/>
-                      <TextBox PlaceholderText="{Binding Localization[ui_aria2_url_or_magnet]}" Text="{Binding Aria2NewUrl}"/>
-                      <Grid ColumnDefinitions="2*,Auto,*" ColumnSpacing="9">
-                        <TextBox PlaceholderText="{Binding Localization[ui_destination_folder]}" Text="{Binding Aria2DestinationFolder}"/>
-                        <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2Destination_Click"/>
-                        <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_custom_filename_optional]}" Text="{Binding Aria2CustomFileName}"/>
+                  <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseDestination_Click" VerticalAlignment="Bottom"/>
+                </Grid>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_maximum_concurrent_downloads]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding MaxConcurrentDownloads, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="128" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_concurrent_downloads]}" AutomationProperties.AutomationId="MaximumConcurrentDownloads"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_default_speed_limit_kb_s_0_unlimited]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding DefaultSpeedLimitKbps, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="104857600" Increment="100" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_default_speed_limit_kb_s_0_unlimited]}" AutomationProperties.AutomationId="DefaultSpeedLimit"/>
+                  </StackPanel>
+                </Grid>
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_duplicate_file_behavior]}" Classes="form-label"/>
+                    <ComboBox ItemsSource="{Binding DuplicateBehaviors}" SelectedItem="{Binding SelectedDuplicateBehavior}" AutomationProperties.Name="{Binding Localization[ui_duplicate_file_behavior]}" AutomationProperties.AutomationId="DuplicateFileBehavior"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_default_connections]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding DefaultConnectionCount, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="64" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_default_connections]}" AutomationProperties.AutomationId="DefaultConnectionCount"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_maximum_connections]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding MaximumConnectionCount, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="128" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_connections]}" AutomationProperties.AutomationId="MaximumConnectionCount"/>
+                  </StackPanel>
+                </Grid>
+                <CheckBox Content="{Binding Localization[ui_create_destination_directories_when_missing]}" IsChecked="{Binding CreateDestinationDirectory}"/>
+                <CheckBox Content="{Binding Localization[ui_automatically_select_categories_by_extension]}" IsChecked="{Binding AutoSelectCategory}"/>
+                <CheckBox Content="{Binding Localization[ui_remember_the_last_request_metadata_in_the_download_dialog]}" IsChecked="{Binding RememberLastRequestMetadata}"/>
+                <CheckBox Content="{Binding Localization[ui_monitor_clipboard_for_http_https_links]}" IsChecked="{Binding ClipboardMonitoringEnabled}"/>
+                <CheckBox Content="{Binding Localization[ui_automatically_add_links_captured_from_clipboard]}" IsChecked="{Binding AutoAddClipboardLinks}"/>
+              </StackPanel>
+            </Border>
+            <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="12">
+                <TextBlock Text="{Binding Localization[ui_language_and_accessibility]}" Classes="section-title"/>
+                <Grid ColumnDefinitions="2*,*" ColumnSpacing="12">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_interface_language]}" Classes="form-label"/>
+                    <ComboBox ItemsSource="{Binding AvailableLanguages}" SelectedItem="{Binding SelectedLanguage}" AutomationProperties.Name="{Binding Localization[ui_interface_language]}" AutomationProperties.AutomationId="InterfaceLanguage">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding DisplayName}"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_ui_scale_percent_75_175]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding UiScalePercent, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="75" Maximum="175" Increment="5" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_ui_scale_percent]}" AutomationProperties.AutomationId="UiScalePercent"/>
+                  </StackPanel>
+                </Grid>
+                <CheckBox Content="{Binding Localization[ui_use_the_operating_system_language]}" IsChecked="{Binding UseSystemLanguage}"/>
+                <CheckBox Content="{Binding Localization[ui_use_high_contrast_colors]}" IsChecked="{Binding HighContrastEnabled}"/>
+                <CheckBox Content="{Binding Localization[ui_announce_operation_status_changes_to_screen_readers]}" IsChecked="{Binding AnnounceStatusChanges}"/>
+                <TextBlock Text="{Binding Localization[ui_language_right_to_left_layout_contrast_and_scaling_update_immediately_af]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+              </StackPanel>
+            </Border>
+            <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="12">
+                <TextBlock Text="{Binding Localization[ui_history_retention]}" Classes="section-title"/>
+                <CheckBox Content="{Binding Localization[ui_automatically_prune_terminal_history_entries]}" IsChecked="{Binding HistoryRetentionEnabled}"/>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_retention_days]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding HistoryRetentionDays, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="36500" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_retention_days]}" AutomationProperties.AutomationId="HistoryRetentionDays"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_maximum_history_entries]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding HistoryMaximumEntries, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="1000000" Increment="100" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_history_entries]}" AutomationProperties.AutomationId="HistoryMaximumEntries"/>
+                  </StackPanel>
+                </Grid>
+                <TextBlock Text="{Binding Localization[ui_retention_removes_only_history_entries_downloaded_files_are_never_delete]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="{Binding Localization[ui_settings_network]}">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Spacing="14" MaxWidth="920" Margin="0,14,12,14" HorizontalAlignment="Left">
+            <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="12">
+                <TextBlock Text="{Binding Localization[ui_network_retries_and_segmented_transfers]}" Classes="section-title"/>
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_connect_timeout_seconds]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding ConnectTimeoutSeconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="3600" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_connect_timeout_seconds]}" AutomationProperties.AutomationId="ConnectTimeoutSeconds"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_whole_request_timeout_seconds_0_unlimited]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding RequestTimeoutSeconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="86400" Increment="5" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_whole_request_timeout_seconds_0_unlimited]}" AutomationProperties.AutomationId="RequestTimeoutSeconds"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_maximum_retry_attempts]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding MaximumRetryAttempts, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="100" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_retry_attempts]}" AutomationProperties.AutomationId="MaximumRetryAttempts"/>
+                  </StackPanel>
+                </Grid>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_retry_base_delay_milliseconds]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding RetryBaseDelayMilliseconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="600000" Increment="250" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_retry_base_delay_milliseconds]}" AutomationProperties.AutomationId="RetryBaseDelayMilliseconds"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_minimum_segmented_size_mib]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding MinimumSegmentedSizeMegabytes, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="1048576" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_minimum_segmented_size_mib]}" AutomationProperties.AutomationId="MinimumSegmentedSizeMegabytes"/>
+                  </StackPanel>
+                </Grid>
+                <TextBlock Text="{Binding Localization[ui_network_handler_proxy_retry_and_segment_settings_apply_to_new_processes]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+              </StackPanel>
+            </Border>
+            <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="12">
+                <TextBlock Text="{Binding Localization[ui_proxy]}" Classes="section-title"/>
+                <Grid ColumnDefinitions="*,2*,*" ColumnSpacing="12">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_proxy_mode]}" Classes="form-label"/>
+                    <ComboBox ItemsSource="{Binding ProxyModes}" SelectedItem="{Binding SelectedProxyMode}" AutomationProperties.Name="{Binding Localization[ui_proxy_mode]}" AutomationProperties.AutomationId="ProxyMode"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_proxy_host]}" Classes="form-label"/>
+                    <TextBox Text="{Binding ProxyHost}" AutomationProperties.Name="{Binding Localization[ui_proxy_host]}" AutomationProperties.AutomationId="ProxyHost"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_port]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding ProxyPort, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="65535" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_port]}" AutomationProperties.AutomationId="ProxyPort"/>
+                  </StackPanel>
+                </Grid>
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_proxy_authentication_mode]}" Classes="form-label"/>
+                    <ComboBox ItemsSource="{Binding ProxyAuthenticationModes}" SelectedItem="{Binding SelectedProxyAuthenticationMode}" AutomationProperties.Name="{Binding Localization[ui_proxy_authentication_mode]}" AutomationProperties.AutomationId="ProxyAuthenticationMode"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_proxy_username]}" Classes="form-label"/>
+                    <TextBox Text="{Binding ProxyUsername}" AutomationProperties.Name="{Binding Localization[ui_proxy_username]}" AutomationProperties.AutomationId="ProxyUsername"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_proxy_password]}" Classes="form-label"/>
+                    <TextBox Text="{Binding ProxyPassword}" PasswordChar="●" AutomationProperties.Name="{Binding Localization[ui_proxy_password]}" AutomationProperties.AutomationId="ProxyPassword"/>
+                  </StackPanel>
+                </Grid>
+                <StackPanel Spacing="6">
+                  <TextBlock Text="{Binding Localization[ui_pac_url_http_https_or_file]}" Classes="form-label"/>
+                  <TextBox Text="{Binding ProxyAutomaticConfigurationUrl}" AutomationProperties.Name="{Binding Localization[ui_pac_url_http_https_or_file]}" AutomationProperties.AutomationId="ProxyPacUrl"/>
+                </StackPanel>
+                <TextBlock Text="{Binding Localization[ui_integrated_proxy_authentication_note]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+                <CheckBox Content="{Binding Localization[ui_bypass_proxy_for_local_addresses]}" IsChecked="{Binding ProxyBypassLocal}"/>
+                <TextBox AcceptsReturn="True" MinHeight="70" PlaceholderText="{Binding Localization[ui_proxy_bypass_patterns_one_per_line]}" Text="{Binding ProxyBypassList}"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="{Binding Localization[ui_settings_aria2]}">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Spacing="14" MaxWidth="920" Margin="0,14,12,14" HorizontalAlignment="Left">
+            <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="12">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="{Binding Localization[ui_aria2_backend]}" Classes="section-title"/>
+                    <TextBlock Text="{Binding Aria2ConnectionStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}"/>
+                  </StackPanel>
+                  <ProgressBar Grid.Column="1" Width="90" Height="6" IsIndeterminate="{Binding Aria2IsRefreshing}" IsVisible="{Binding Aria2IsRefreshing}"/>
+                </Grid>
+                <CheckBox Content="{Binding Localization[ui_enable_aria2_backend]}" IsChecked="{Binding Aria2Enabled}"/>
+                <Grid ColumnDefinitions="*,2*,*" ColumnSpacing="12">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_aria2_connection_mode]}" Classes="form-label"/>
+                    <ComboBox ItemsSource="{Binding Aria2ConnectionModes}" SelectedItem="{Binding SelectedAria2ConnectionMode}" AutomationProperties.Name="{Binding Localization[ui_aria2_connection_mode]}" AutomationProperties.AutomationId="Aria2ConnectionMode"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_aria2_rpc_endpoint]}" Classes="form-label"/>
+                    <TextBox Text="{Binding Aria2RpcEndpoint}" AutomationProperties.Name="{Binding Localization[ui_aria2_rpc_endpoint]}" AutomationProperties.AutomationId="Aria2RpcEndpoint"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_aria2_rpc_secret]}" Classes="form-label"/>
+                    <TextBox Text="{Binding Aria2RpcSecret}" PasswordChar="●" AutomationProperties.Name="{Binding Localization[ui_aria2_rpc_secret]}" AutomationProperties.AutomationId="Aria2RpcSecret"/>
+                  </StackPanel>
+                </Grid>
+                <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_aria2_executable_path]}" Classes="form-label"/>
+                    <TextBox Text="{Binding Aria2ExecutablePath}" AutomationProperties.Name="{Binding Localization[ui_aria2_executable_path]}" AutomationProperties.AutomationId="Aria2ExecutablePath"/>
+                  </StackPanel>
+                  <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2Executable_Click" VerticalAlignment="Bottom"/>
+                </Grid>
+                <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_aria2_session_file]}" Classes="form-label"/>
+                    <TextBox Text="{Binding Aria2SessionFilePath}" AutomationProperties.Name="{Binding Localization[ui_aria2_session_file]}" AutomationProperties.AutomationId="Aria2SessionFile"/>
+                  </StackPanel>
+                  <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2SessionFile_Click" VerticalAlignment="Bottom"/>
+                </Grid>
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="12">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_aria2_poll_interval_ms]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding Aria2PollIntervalMilliseconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="250" Maximum="60000" Increment="250" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_poll_interval_ms]}" AutomationProperties.AutomationId="Aria2PollInterval"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_aria2_rpc_timeout_seconds]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding Aria2RpcConnectTimeoutSeconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="300" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_rpc_timeout_seconds]}" AutomationProperties.AutomationId="Aria2RpcTimeout"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_aria2_max_concurrent]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding Aria2MaxConcurrentDownloads, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="1000" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_max_concurrent]}" AutomationProperties.AutomationId="Aria2MaximumConcurrent"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="3" Spacing="6">
+                    <TextBlock Text="{Binding Localization[ui_aria2_split_count]}" Classes="form-label"/>
+                    <NumericUpDown Value="{Binding Aria2SplitCount, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="64" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_split_count]}" AutomationProperties.AutomationId="Aria2SplitCount"/>
+                  </StackPanel>
+                </Grid>
+                <StackPanel Spacing="6">
+                  <TextBlock Text="{Binding Localization[ui_aria2_minimum_split_mib]}" Classes="form-label"/>
+                  <NumericUpDown Value="{Binding Aria2MinimumSplitSizeMegabytes, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="1048576" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_minimum_split_mib]}" AutomationProperties.AutomationId="Aria2MinimumSplitSize"/>
+                </StackPanel>
+                <WrapPanel Orientation="Horizontal">
+                  <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_auto_start]}" IsChecked="{Binding Aria2AutoStartManagedProcess}"/>
+                  <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_continue]}" IsChecked="{Binding Aria2ContinueDownloads}"/>
+                  <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_check_certificate]}" IsChecked="{Binding Aria2CheckCertificate}"/>
+                  <CheckBox Content="{Binding Localization[ui_aria2_save_session]}" IsChecked="{Binding Aria2SaveSession}"/>
+                </WrapPanel>
+                <TextBox AcceptsReturn="True" MinHeight="62" PlaceholderText="{Binding Localization[ui_aria2_additional_arguments]}" Text="{Binding Aria2AdditionalArguments}"/>
+                <WrapPanel Orientation="Horizontal">
+                  <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_apply_and_connect]}" Command="{Binding ApplyAria2ConfigurationCommand}"/>
+                  <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_start_managed_aria2]}" Command="{Binding StartManagedAria2Command}" IsEnabled="{Binding CanStartManagedAria2}"/>
+                  <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_stop_managed_aria2]}" Command="{Binding StopManagedAria2Command}"/>
+                  <Button Classes="secondary" Content="{Binding Localization[ui_refresh]}" Command="{Binding RefreshAria2Command}"/>
+                </WrapPanel>
+                <TextBlock Text="{Binding Localization[ui_aria2_security_note]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+                <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="12" Margin="0,4,0,0">
+                  <StackPanel Spacing="9">
+                    <TextBlock Text="{Binding Localization[ui_add_aria2_download]}" FontWeight="SemiBold" Foreground="{DynamicResource XdmSecondaryForeground}"/>
+                    <TextBox PlaceholderText="{Binding Localization[ui_aria2_url_or_magnet]}" Text="{Binding Aria2NewUrl}"/>
+                    <Grid ColumnDefinitions="2*,Auto,*" ColumnSpacing="9">
+                      <TextBox PlaceholderText="{Binding Localization[ui_destination_folder]}" Text="{Binding Aria2DestinationFolder}"/>
+                      <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2Destination_Click"/>
+                      <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_custom_filename_optional]}" Text="{Binding Aria2CustomFileName}"/>
+                    </Grid>
+                    <Button HorizontalAlignment="Left" Classes="primary" Content="{Binding Localization[ui_add_to_aria2]}" Command="{Binding AddAria2DownloadCommand}"/>
+                  </StackPanel>
+                </Border>
+                <ListBox ItemsSource="{Binding Aria2Tasks}" SelectedItem="{Binding SelectedAria2Task}" MaxHeight="310">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="2*,Auto" ColumnSpacing="12" RowSpacing="5" Margin="2">
+                        <StackPanel>
+                          <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodyForeground}" TextTrimming="CharacterEllipsis"/>
+                          <TextBlock Text="{Binding DestinationPath}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                          <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource XdmAccentForeground}" HorizontalAlignment="Right"/>
+                          <TextBlock Text="{Binding SpeedText}" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}" HorizontalAlignment="Right"/>
+                        </StackPanel>
+                        <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" IsIndeterminate="{Binding IsIndeterminate}" Height="7"/>
+                        <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                          <TextBlock Text="{Binding ProgressText}" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
+                          <TextBlock Grid.Column="1" Text="{Binding ConnectionsText, StringFormat='{}{0} connections'}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
+                        </Grid>
                       </Grid>
-                      <Button HorizontalAlignment="Left" Classes="primary" Content="{Binding Localization[ui_add_to_aria2]}" Command="{Binding AddAria2DownloadCommand}"/>
-                    </StackPanel>
-                  </Border>
-
-                  <ListBox ItemsSource="{Binding Aria2Tasks}" SelectedItem="{Binding SelectedAria2Task}" MaxHeight="310">
-                    <ListBox.ItemTemplate>
-                      <DataTemplate>
-                        <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="2*,Auto" ColumnSpacing="12" RowSpacing="5" Margin="2">
-                          <StackPanel>
-                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodyForeground}" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Text="{Binding DestinationPath}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextTrimming="CharacterEllipsis"/>
-                          </StackPanel>
-                          <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                            <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource XdmAccentForeground}" HorizontalAlignment="Right"/>
-                            <TextBlock Text="{Binding SpeedText}" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}" HorizontalAlignment="Right"/>
-                          </StackPanel>
-                          <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" IsIndeterminate="{Binding IsIndeterminate}" Height="7"/>
-                          <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                            <TextBlock Text="{Binding ProgressText}" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
-                            <TextBlock Grid.Column="1" Text="{Binding ConnectionsText, StringFormat='{}{0} connections'}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
-                          </Grid>
-                        </Grid>
-                      </DataTemplate>
-                    </ListBox.ItemTemplate>
-                  </ListBox>
-                  <WrapPanel Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_pause]}" Command="{Binding PauseSelectedAria2TaskCommand}" IsEnabled="{Binding SelectedAria2Task.CanPause}"/>
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_resume]}" Command="{Binding ResumeSelectedAria2TaskCommand}" IsEnabled="{Binding SelectedAria2Task.CanResume}"/>
-                    <Button Classes="secondary" Content="{Binding Localization[ui_remove]}" Command="{Binding RemoveSelectedAria2TaskCommand}" IsEnabled="{Binding SelectedAria2Task.CanRemove}"/>
-                  </WrapPanel>
-                </StackPanel>
-              </Border>
-
-              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="12">
-                  <TextBlock Text="{Binding Localization[ui_proxy]}" Classes="section-title"/>
-                  <Grid ColumnDefinitions="*,2*,*" ColumnSpacing="12">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_proxy_mode]}" Classes="form-label"/>
-                      <ComboBox ItemsSource="{Binding ProxyModes}" SelectedItem="{Binding SelectedProxyMode}" AutomationProperties.Name="{Binding Localization[ui_proxy_mode]}" AutomationProperties.AutomationId="ProxyMode"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_proxy_host]}" Classes="form-label"/>
-                      <TextBox Text="{Binding ProxyHost}" AutomationProperties.Name="{Binding Localization[ui_proxy_host]}" AutomationProperties.AutomationId="ProxyHost"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_port]}" Classes="form-label"/>
-                      <NumericUpDown Value="{Binding ProxyPort, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="65535" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_port]}" AutomationProperties.AutomationId="ProxyPort"/>
-                    </StackPanel>
-                  </Grid>
-                  <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
-                    <StackPanel Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_proxy_authentication_mode]}" Classes="form-label"/>
-                      <ComboBox ItemsSource="{Binding ProxyAuthenticationModes}" SelectedItem="{Binding SelectedProxyAuthenticationMode}" AutomationProperties.Name="{Binding Localization[ui_proxy_authentication_mode]}" AutomationProperties.AutomationId="ProxyAuthenticationMode"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_proxy_username]}" Classes="form-label"/>
-                      <TextBox Text="{Binding ProxyUsername}" AutomationProperties.Name="{Binding Localization[ui_proxy_username]}" AutomationProperties.AutomationId="ProxyUsername"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Spacing="6">
-                      <TextBlock Text="{Binding Localization[ui_proxy_password]}" Classes="form-label"/>
-                      <TextBox Text="{Binding ProxyPassword}" PasswordChar="●" AutomationProperties.Name="{Binding Localization[ui_proxy_password]}" AutomationProperties.AutomationId="ProxyPassword"/>
-                    </StackPanel>
-                  </Grid>
-                  <StackPanel Spacing="6">
-                    <TextBlock Text="{Binding Localization[ui_pac_url_http_https_or_file]}" Classes="form-label"/>
-                    <TextBox Text="{Binding ProxyAutomaticConfigurationUrl}" AutomationProperties.Name="{Binding Localization[ui_pac_url_http_https_or_file]}" AutomationProperties.AutomationId="ProxyPacUrl"/>
-                  </StackPanel>
-                  <TextBlock Text="{Binding Localization[ui_integrated_proxy_authentication_note]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
-                  <CheckBox Content="{Binding Localization[ui_bypass_proxy_for_local_addresses]}" IsChecked="{Binding ProxyBypassLocal}"/>
-                  <TextBox AcceptsReturn="True" MinHeight="70" PlaceholderText="{Binding Localization[ui_proxy_bypass_patterns_one_per_line]}" Text="{Binding ProxyBypassList}"/>
-                </StackPanel>
-              </Border>
-
-              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="12">
-                  <TextBlock Text="{Binding Localization[ui_server_credentials]}" Classes="section-title"/>
-                  <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="9">
-                    <TextBox PlaceholderText="{Binding Localization[ui_host_example_com]}" Text="{Binding CredentialHost}"/>
-                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_username]}" Text="{Binding CredentialUsername}"/>
-                    <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_password]}" Text="{Binding CredentialPassword}" PasswordChar="●"/>
-                  </Grid>
-                  <CheckBox Content="{Binding Localization[ui_include_subdomains]}" IsChecked="{Binding CredentialIncludesSubdomains}"/>
-                  <WrapPanel Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_add_or_replace]}" Command="{Binding AddServerCredentialCommand}"/>
-                    <Button Classes="danger" Content="{Binding Localization[ui_remove_selected]}" Command="{Binding RemoveSelectedServerCredentialCommand}"/>
-                  </WrapPanel>
-                  <ListBox ItemsSource="{Binding ServerCredentials}" SelectedItem="{Binding SelectedServerCredential}" MaxHeight="150">
-                    <ListBox.ItemTemplate>
-                      <DataTemplate>
-                        <Grid ColumnDefinitions="2*,*,Auto" ColumnSpacing="10" Margin="2">
-                          <TextBlock Text="{Binding Host}" Foreground="{DynamicResource XdmBodyForeground}"/>
-                          <TextBlock Grid.Column="1" Text="{Binding Username}" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
-                          <TextBlock Grid.Column="2" Text="Saved" Foreground="{DynamicResource XdmAccentForeground}"/>
-                        </Grid>
-                      </DataTemplate>
-                    </ListBox.ItemTemplate>
-                  </ListBox>
-                </StackPanel>
-              </Border>
-
-              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="12">
-                  <TextBlock Text="{Binding Localization[ui_import_export_and_xdm_8_migration]}" Classes="section-title"/>
-                  <Grid ColumnDefinitions="2*,Auto,Auto,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="{Binding Localization[ui_settings_file_or_legacy_settings_directory]}" Text="{Binding SettingsTransferPath}"/>
-                    <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_choose_file]}" Click="BrowseSettingsImport_Click"/>
-                    <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_choose_folder]}" Click="BrowseSettingsDirectory_Click"/>
-                    <Button Grid.Column="3" Classes="secondary" Content="{Binding Localization[ui_choose_export]}" Click="BrowseSettingsExport_Click"/>
-                  </Grid>
-                  <CheckBox Content="{Binding Localization[ui_include_proxy_and_server_passwords_in_export]}" IsChecked="{Binding IncludeSecretsInSettingsExport}"/>
-                  <WrapPanel Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_import_or_migrate]}" Command="{Binding ImportSettingsCommand}"/>
-                    <Button Classes="secondary" Content="{Binding Localization[ui_export_settings]}" Command="{Binding ExportSettingsCommand}"/>
-                  </WrapPanel>
-                  <TextBlock Text="{Binding SettingsTransferStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}"/>
-                  <TextBlock Text="{Binding Localization[ui_legacy_import_recognizes_json_java_properties_and_xml_files_modern_expor]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
-                </StackPanel>
-              </Border>
-
-              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="12">
-                  <TextBlock Text="{Binding Localization[ui_updates]}" Classes="section-title"/>
-                  <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
-                  <ProgressBar Minimum="0" Maximum="1" Value="{Binding UpdateProgress}" Height="8"/>
-                  <WrapPanel Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_check_for_updates]}" Command="{Binding CheckForUpdatesCommand}"/>
-                    <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_download_verified_package]}" Command="{Binding DownloadVerifiedUpdateCommand}"/>
-                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_open_staged_package]}" Command="{Binding OpenStagedUpdateCommand}"/>
-                    <Button Classes="secondary" Content="{Binding Localization[ui_cancel]}" Command="{Binding CancelUpdateOperationCommand}"/>
-                  </WrapPanel>
-                  <TextBlock Text="{Binding Localization[ui_verified_update_security_note]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
-                </StackPanel>
-              </Border>
-
-              <Button HorizontalAlignment="Left" Classes="primary" Content="{Binding Localization[ui_save_all_settings]}" Command="{Binding SaveSettingsCommand}" AutomationProperties.AutomationId="SaveSettings"/>
-            </StackPanel>
-          </ScrollViewer>
-
-          </UserControl>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+                <WrapPanel Orientation="Horizontal">
+                  <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_pause]}" Command="{Binding PauseSelectedAria2TaskCommand}" IsEnabled="{Binding SelectedAria2Task.CanPause}"/>
+                  <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_resume]}" Command="{Binding ResumeSelectedAria2TaskCommand}" IsEnabled="{Binding SelectedAria2Task.CanResume}"/>
+                  <Button Classes="secondary" Content="{Binding Localization[ui_remove]}" Command="{Binding RemoveSelectedAria2TaskCommand}" IsEnabled="{Binding SelectedAria2Task.CanRemove}"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="{Binding Localization[ui_settings_credentials]}">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Spacing="14" MaxWidth="920" Margin="0,14,12,14" HorizontalAlignment="Left">
+            <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="12">
+                <TextBlock Text="{Binding Localization[ui_server_credentials]}" Classes="section-title"/>
+                <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="9">
+                  <TextBox PlaceholderText="{Binding Localization[ui_host_example_com]}" Text="{Binding CredentialHost}"/>
+                  <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_username]}" Text="{Binding CredentialUsername}"/>
+                  <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_password]}" Text="{Binding CredentialPassword}" PasswordChar="●"/>
+                </Grid>
+                <CheckBox Content="{Binding Localization[ui_include_subdomains]}" IsChecked="{Binding CredentialIncludesSubdomains}"/>
+                <WrapPanel Orientation="Horizontal">
+                  <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_add_or_replace]}" Command="{Binding AddServerCredentialCommand}"/>
+                  <Button Classes="danger" Content="{Binding Localization[ui_remove_selected]}" Command="{Binding RemoveSelectedServerCredentialCommand}"/>
+                </WrapPanel>
+                <ListBox ItemsSource="{Binding ServerCredentials}" SelectedItem="{Binding SelectedServerCredential}" MaxHeight="150">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnDefinitions="2*,*,Auto" ColumnSpacing="10" Margin="2">
+                        <TextBlock Text="{Binding Host}" Foreground="{DynamicResource XdmBodyForeground}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Username}" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
+                        <TextBlock Grid.Column="2" Text="Saved" Foreground="{DynamicResource XdmAccentForeground}"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="{Binding Localization[ui_settings_data_updates]}">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Spacing="14" MaxWidth="920" Margin="0,14,12,14" HorizontalAlignment="Left">
+            <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="12">
+                <TextBlock Text="{Binding Localization[ui_import_export_and_xdm_8_migration]}" Classes="section-title"/>
+                <Grid ColumnDefinitions="2*,Auto,Auto,Auto" ColumnSpacing="9">
+                  <TextBox PlaceholderText="{Binding Localization[ui_settings_file_or_legacy_settings_directory]}" Text="{Binding SettingsTransferPath}"/>
+                  <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_choose_file]}" Click="BrowseSettingsImport_Click"/>
+                  <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_choose_folder]}" Click="BrowseSettingsDirectory_Click"/>
+                  <Button Grid.Column="3" Classes="secondary" Content="{Binding Localization[ui_choose_export]}" Click="BrowseSettingsExport_Click"/>
+                </Grid>
+                <CheckBox Content="{Binding Localization[ui_include_proxy_and_server_passwords_in_export]}" IsChecked="{Binding IncludeSecretsInSettingsExport}"/>
+                <WrapPanel Orientation="Horizontal">
+                  <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_import_or_migrate]}" Command="{Binding ImportSettingsCommand}"/>
+                  <Button Classes="secondary" Content="{Binding Localization[ui_export_settings]}" Command="{Binding ExportSettingsCommand}"/>
+                </WrapPanel>
+                <TextBlock Text="{Binding SettingsTransferStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}"/>
+                <TextBlock Text="{Binding Localization[ui_legacy_import_recognizes_json_java_properties_and_xml_files_modern_expor]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+              </StackPanel>
+            </Border>
+            <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="12">
+                <TextBlock Text="{Binding Localization[ui_updates]}" Classes="section-title"/>
+                <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
+                <ProgressBar Minimum="0" Maximum="1" Value="{Binding UpdateProgress}" Height="8"/>
+                <WrapPanel Orientation="Horizontal">
+                  <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_check_for_updates]}" Command="{Binding CheckForUpdatesCommand}"/>
+                  <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_download_verified_package]}" Command="{Binding DownloadVerifiedUpdateCommand}"/>
+                  <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_open_staged_package]}" Command="{Binding OpenStagedUpdateCommand}"/>
+                  <Button Classes="secondary" Content="{Binding Localization[ui_cancel]}" Command="{Binding CancelUpdateOperationCommand}"/>
+                </WrapPanel>
+                <TextBlock Text="{Binding Localization[ui_verified_update_security_note]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+    <Border Grid.Row="1" Background="{DynamicResource XdmPanelBackground}" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="0,1,0,0" Padding="14,12" AutomationProperties.AutomationId="SettingsSaveBar">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="2">
+          <TextBlock Text="{Binding Localization[ui_settings_save_title]}" Classes="card-title"/>
+          <TextBlock Text="{Binding Localization[ui_settings_save_hint]}" Classes="caption"/>
+        </StackPanel>
+        <Button Grid.Column="1" Classes="primary" Content="{Binding Localization[ui_save_all_settings]}" Command="{Binding SaveSettingsCommand}" AutomationProperties.AutomationId="SaveSettings"/>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

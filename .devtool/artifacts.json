@@ -977,6 +977,42 @@
       },
       "manifest": {},
       "history_id": "e04978d78bd741f4bbce358b6a40819a"
+    },
+    {
+      "applied_at": "2026-07-12T18:30:08.533360Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_workflow_settings_phase3_overlay.zip",
+      "artifact_name": "xdm_workflow_settings_phase3_overlay.zip",
+      "type": "overlay",
+      "sha256": "70f3d9c85602fe76fb8fce0b54bfec24b09035ecda9a1a35d73922572fd62763",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Redesign downloads workflow and settings navigation",
+      "commit_hash": "",
+      "file_count": 8,
+      "change_counts": {
+        "add": 2,
+        "modify": 6
+      },
+      "manifest": {},
+      "history_id": "92f2e31047ba4bbdb436d8b8b982d1ef"
+    },
+    {
+      "applied_at": "2026-07-12T18:35:31.155164Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_workflow_settings_phase3_overlay(1).zip",
+      "artifact_name": "xdm_workflow_settings_phase3_overlay(1).zip",
+      "type": "overlay",
+      "sha256": "71a2791774260e5e93a3611c76fe2a2e68a93908f1381b931fdb86688ec74ed0",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Redesign downloads workflow and settings navigation",
+      "commit_hash": "",
+      "file_count": 8,
+      "change_counts": {
+        "add": 2,
+        "modify": 6
+      },
+      "manifest": {},
+      "history_id": "ad7e898b2a544265aeefeb9671ae01da"
     }
   ]
 }

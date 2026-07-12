@@ -1,26 +1,26 @@
-# XDM Overlay — Responsive shell and dedicated page views
+# XDM Overlay — Downloads workflow and Settings categories
 
-This overlay implements the second UI architecture phase on top of commit `3772fbc`.
+This overlay implements Phase 3 on top of commit `10a012e`.
 
-It includes:
+## Downloads workflow
 
-- a responsive Avalonia `SplitView` shell;
-- full navigation at wide widths;
-- a compact icon rail at medium widths;
-- overlay navigation at narrow widths;
-- a reusable section header with the selected section icon, title, summary, and live operation status;
-- eight dedicated page views for Downloads, Queues, Scheduler, Browser Integration, Media, Conversion, Settings, and Diagnostics;
-- page-local file and folder picker behavior;
-- preserved Ctrl+N and Ctrl+F focus behavior through the extracted Downloads view;
-- application-scoped numeric conversion resources for extracted views;
-- shell architecture and page fixture qualification tests;
-- a reduced `MainWindow.axaml`, from 1,258 lines to under 400 lines.
+- replaces the always-visible action wall with a compact search and filter bar;
+- shows bulk operations only while downloads are checked;
+- tracks and announces the current bulk-selection count;
+- adds a resizable list/details split using `GridSplitter`;
+- keeps pause, resume, retry, and cancel immediately available for the selected download;
+- groups priority, queue-order, conversion, removal, file, source, relocation, history-transfer, and timeline operations inside the details pane;
+- preserves the virtualized list and all 32 existing command and picker bindings.
 
-The overlay does not change download-engine behavior, persistence formats, parity evidence, or the existing eight-section view-model contract.
+## Settings workflow
 
-Validation is limited to `app/XDM/XDM.Modern.sln`. Legacy WPF, GTK, WinForms, CoreFx, and MSIX projects are not included or built.
-Repair notes for this revision:
+- groups the existing settings into General, Network, aria2, Credentials, and Data and updates categories;
+- gives each category its own vertical scrolling surface;
+- keeps a persistent save footer visible while switching categories;
+- preserves all existing setting bindings, commands, and picker handlers.
 
-- compact navigation styles now target concrete Avalonia controls, preventing `AVLN2200`;
-- the shell architecture test uses the predicate overload of `Assert.Single`, preventing `xUnit2031`.
+## Qualification
 
+The overlay adds source-level workflow architecture tests that require contextual bulk actions, a resizable details pane, five Settings categories, and the persistent save bar.
+
+It does not change download-engine behavior, persistence formats, navigation sections, or parity evidence.
