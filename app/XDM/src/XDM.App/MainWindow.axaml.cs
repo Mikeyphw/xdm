@@ -162,11 +162,18 @@ public partial class MainWindow : Window
             NavigationSplitView.IsPaneOpen = false;
             UpdateNavigationVisualState();
         }
+
+        Dispatcher.UIThread.Post(FocusCurrentPageHeading);
     }
 
     private void UpdateResponsiveShell()
     {
         double width = Bounds.Width > 0 ? Bounds.Width : Width;
+        ApplyResponsiveShell(width);
+    }
+
+    internal void ApplyResponsiveShell(double width)
+    {
         int shellBand = width < 900 ? 0 : width < 1180 ? 1 : 2;
         if (shellBand != _responsiveShellBand)
         {
@@ -269,6 +276,24 @@ public partial class MainWindow : Window
 
     private void MainWindow_KeyDown(object? sender, KeyEventArgs eventArgs)
     {
+        if (eventArgs.Key == Key.F6)
+        {
+            ToggleShellFocus();
+            eventArgs.Handled = true;
+            return;
+        }
+
+        if (eventArgs.Key == Key.Escape
+            && NavigationSplitView.DisplayMode == SplitViewDisplayMode.Overlay
+            && NavigationSplitView.IsPaneOpen)
+        {
+            NavigationSplitView.IsPaneOpen = false;
+            UpdateNavigationVisualState();
+            FocusCurrentPageHeading();
+            eventArgs.Handled = true;
+            return;
+        }
+
         if (DataContext is not MainWindowViewModel viewModel)
         {
             return;
@@ -287,6 +312,16 @@ public partial class MainWindow : Window
         {
             viewModel.SelectSection("downloads");
             DownloadsPage.FocusSearch();
+            eventArgs.Handled = true;
+            return;
+        }
+
+        if (control && eventArgs.Key == Key.S && viewModel.IsSettingsVisible)
+        {
+            if (viewModel.SaveSettingsCommand.CanExecute(null))
+            {
+                viewModel.SaveSettingsCommand.Execute(null);
+            }
             eventArgs.Handled = true;
             return;
         }
@@ -322,6 +357,28 @@ public partial class MainWindow : Window
             viewModel.CancelPendingCompletionActionCommand.Execute(null);
             eventArgs.Handled = true;
         }
+    }
+
+    private void ToggleShellFocus()
+    {
+        if (PrimaryNavigation.IsKeyboardFocusWithin)
+        {
+            FocusCurrentPageHeading();
+            return;
+        }
+
+        if (NavigationSplitView.DisplayMode == SplitViewDisplayMode.Overlay)
+        {
+            NavigationSplitView.IsPaneOpen = true;
+            UpdateNavigationVisualState();
+        }
+
+        PrimaryNavigation.Focus();
+    }
+
+    private void FocusCurrentPageHeading()
+    {
+        PageTitleText.Focus();
     }
 
     private static bool TryGetSectionIndex(Key key, out int index)

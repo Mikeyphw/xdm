@@ -1,27 +1,27 @@
 {
-  "name": "xdm_workflow_settings_phase3_overlay",
+  "name": "xdm_accessibility_ui_validation_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "10a012e",
+  "baseCommit": "18a36ab",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "downloads-workflow-and-settings-categories",
-  "description": "Redesigns the Downloads workflow with contextual bulk actions and a resizable details pane, moves secondary actions into focused detail groups, and reorganizes Settings into five categories with a persistent save bar.",
+  "phase": "accessibility-and-ui-validation",
+  "description": "Adds semantic accessibility metadata, F6 shell focus navigation, accessible settings validation, complete form automation identifiers, Avalonia headless regression tests, and approval of the active XDM.App.Tests project in the modern-solution gate.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
     "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Redesign downloads workflow and settings navigation",
+  "commitMessage": "Add accessibility and headless UI validation",
   "constraints": [
-    "Apply on top of commit 10a012e",
+    "Apply on top of commit 18a36ab",
     "Validate only app/XDM/XDM.Modern.sln",
     "Do not restore or build WPF, GTK, WinForms, CoreFx or MSIX targets",
-    "Preserve every existing Downloads command and storage-picker workflow",
-    "Preserve every existing Settings command, setting binding and storage picker",
-    "Keep the download list virtualized",
-    "Keep high contrast, UI scaling, RTL flow direction and keyboard shortcuts functional",
+    "Preserve all existing navigation, download, settings and storage-picker behavior",
+    "Preserve high contrast, UI scaling, RTL flow direction and existing keyboard shortcuts",
+    "Keep automation IDs stable and unique across the shell and page views",
     "Require zero warnings and zero errors",
-    "Do not modify docs/parity/features.json"
+    "Do not modify docs/parity/features.json",
+    "Register XDM.App.Tests as an approved active project without changing parity feature evidence"
   ]
 }

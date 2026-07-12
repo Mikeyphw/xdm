@@ -1,9 +1,9 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.MediaView" mc:Ignorable="d"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.MediaView" mc:Ignorable="d" KeyboardNavigation.TabNavigation="Continue" AutomationProperties.LandmarkType="Main" AutomationProperties.AccessibilityView="Control"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="14">
               <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="13">
                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="{Binding Localization[ui_hls_dash_direct_media_or_a_page_supported_by_yt_dlp]}" Text="{Binding MediaSourceUrl}"/>
+                    <TextBox PlaceholderText="{Binding Localization[ui_hls_dash_direct_media_or_a_page_supported_by_yt_dlp]}" Text="{Binding MediaSourceUrl}" AutomationProperties.Name="{Binding Localization[ui_hls_dash_direct_media_or_a_page_supported_by_yt_dlp]}" AutomationProperties.AutomationId="Media_Localization_ui_hls_dash_direct_media_or_a_page_supported_by_yt_dlp"/>
                     <Button Grid.Column="1" Classes="primary" Content="{Binding Localization[ui_discover_formats]}" Command="{Binding ProbeMediaCommand}"/>
                   </Grid>
                   <TextBlock Text="{Binding MediaCatalogSummary}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}"/>
@@ -18,7 +18,7 @@
                 <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="10">
                     <TextBlock Text="{Binding Localization[ui_video]}" Classes="label"/>
-                    <ComboBox ItemsSource="{Binding MediaVideoFormats}" SelectedItem="{Binding SelectedMediaVideoFormat}">
+                    <ComboBox ItemsSource="{Binding MediaVideoFormats}" SelectedItem="{Binding SelectedMediaVideoFormat}" AutomationProperties.Name="Media Video Format" AutomationProperties.AutomationId="Media_SelectedMediaVideoFormat">
                       <ComboBox.ItemTemplate>
                         <DataTemplate>
                           <StackPanel Margin="2" Spacing="2">
@@ -33,7 +33,7 @@
                 <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="10">
                     <TextBlock Text="{Binding Localization[ui_audio]}" Classes="label"/>
-                    <ComboBox ItemsSource="{Binding MediaAudioFormats}" SelectedItem="{Binding SelectedMediaAudioFormat}">
+                    <ComboBox ItemsSource="{Binding MediaAudioFormats}" SelectedItem="{Binding SelectedMediaAudioFormat}" AutomationProperties.Name="Media Audio Format" AutomationProperties.AutomationId="Media_SelectedMediaAudioFormat">
                       <ComboBox.ItemTemplate>
                         <DataTemplate>
                           <StackPanel Margin="2" Spacing="2">
@@ -67,16 +67,16 @@
               <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="11">
                   <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="{Binding Localization[ui_destination_folder]}" Text="{Binding DestinationFolder}"/>
+                    <TextBox PlaceholderText="{Binding Localization[ui_destination_folder]}" Text="{Binding DestinationFolder}" AutomationProperties.Name="{Binding Localization[ui_destination_folder]}" AutomationProperties.AutomationId="Media_Localization_ui_destination_folder"/>
                     <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseDestination_Click"/>
                   </Grid>
                   <Grid ColumnDefinitions="2*,*" ColumnSpacing="9">
-                    <TextBox PlaceholderText="{Binding Localization[ui_output_filename_for_example_video_mp4]}" Text="{Binding MediaDestinationFile}"/>
-                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_live_capture_minutes]}" Text="{Binding MediaLiveDurationMinutes}"/>
+                    <TextBox PlaceholderText="{Binding Localization[ui_output_filename_for_example_video_mp4]}" Text="{Binding MediaDestinationFile}" AutomationProperties.Name="{Binding Localization[ui_output_filename_for_example_video_mp4]}" AutomationProperties.AutomationId="Media_Localization_ui_output_filename_for_example_video_mp4"/>
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_live_capture_minutes]}" Text="{Binding MediaLiveDurationMinutes}" AutomationProperties.Name="{Binding Localization[ui_live_capture_minutes]}" AutomationProperties.AutomationId="Media_Localization_ui_live_capture_minutes"/>
                   </Grid>
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
                     <CheckBox Content="{Binding Localization[ui_queue_conversion_after_download]}" IsChecked="{Binding MediaPostConversionEnabled}" VerticalAlignment="Center"/>
-                    <ComboBox Grid.Column="1" ItemsSource="{Binding ConversionPresets}" SelectedItem="{Binding MediaPostConversionPreset}" IsEnabled="{Binding MediaPostConversionEnabled}">
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding ConversionPresets}" SelectedItem="{Binding MediaPostConversionPreset}" IsEnabled="{Binding MediaPostConversionEnabled}" AutomationProperties.Name="Media Post Conversion Preset" AutomationProperties.AutomationId="Media_MediaPostConversionPreset">
                       <ComboBox.ItemTemplate>
                         <DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate>
                       </ComboBox.ItemTemplate>

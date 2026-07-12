@@ -1013,6 +1013,78 @@
       },
       "manifest": {},
       "history_id": "ad7e898b2a544265aeefeb9671ae01da"
+    },
+    {
+      "applied_at": "2026-07-12T18:50:33.144324Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_accessibility_ui_validation_overlay.zip",
+      "artifact_name": "xdm_accessibility_ui_validation_overlay.zip",
+      "type": "overlay",
+      "sha256": "055a23b984cdedb86bc19abe394078e5db836b03bac7b9bb3affcdd55a66dad1",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add accessibility and headless UI validation",
+      "commit_hash": "",
+      "file_count": 25,
+      "change_counts": {
+        "add": 7,
+        "modify": 18
+      },
+      "manifest": {},
+      "history_id": "7310e9d6402341bc978aaad0fb0ca742"
+    },
+    {
+      "applied_at": "2026-07-12T18:54:39.152276Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_accessibility_ui_validation_overlay.zip",
+      "artifact_name": "xdm_accessibility_ui_validation_overlay.zip",
+      "type": "overlay",
+      "sha256": "fa6e240e992c860c58c31a5bcc6d314711af15f7e31c4dc6421c008e21968d42",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add accessibility and headless UI validation",
+      "commit_hash": "",
+      "file_count": 25,
+      "change_counts": {
+        "add": 7,
+        "modify": 18
+      },
+      "manifest": {},
+      "history_id": "12785adb3d30425ba46d77ccc58da5de"
+    },
+    {
+      "applied_at": "2026-07-12T18:59:37.203423Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_accessibility_ui_validation_overlay.zip",
+      "artifact_name": "xdm_accessibility_ui_validation_overlay.zip",
+      "type": "overlay",
+      "sha256": "757091590b913e478bf2b6a585ad8dfb9903e2b7c0328b435a99b408aba5c970",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add accessibility and headless UI validation",
+      "commit_hash": "",
+      "file_count": 25,
+      "change_counts": {
+        "add": 7,
+        "modify": 18
+      },
+      "manifest": {},
+      "history_id": "57316410025645c39a1e4e81badab503"
+    },
+    {
+      "applied_at": "2026-07-12T19:04:47.772757Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_accessibility_ui_validation_overlay(3).zip",
+      "artifact_name": "xdm_accessibility_ui_validation_overlay(3).zip",
+      "type": "overlay",
+      "sha256": "aac01f6646a426860aead7d1fdb6b213acb08c4fc825a367cf464494d075f3f0",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add accessibility and headless UI validation",
+      "commit_hash": "",
+      "file_count": 26,
+      "change_counts": {
+        "add": 7,
+        "modify": 19
+      },
+      "manifest": {},
+      "history_id": "61fe4ba2b73d419da54c50ab61be5fa6"
     }
   ]
 }

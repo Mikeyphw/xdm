@@ -97,6 +97,12 @@ public partial class MainWindowViewModel
     [ObservableProperty]
     private string settingsTransferStatus = "Choose a modern export or a legacy XDM settings file/directory.";
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSettingsValidationError))]
+    private string settingsValidationMessage = string.Empty;
+
+    public bool HasSettingsValidationError => !string.IsNullOrWhiteSpace(SettingsValidationMessage);
+
     [RelayCommand]
     private void AddServerCredential()
     {
@@ -202,6 +208,52 @@ public partial class MainWindowViewModel
         {
             SettingsTransferStatus = exception.Message;
         }
+    }
+
+    private bool TryValidateSettingsEditor(out string message)
+    {
+        int defaultConnections = ParseInteger(DefaultConnectionCount, -1);
+        int maximumConnections = ParseInteger(MaximumConnectionCount, -1);
+        if (defaultConnections < 1 || maximumConnections < defaultConnections)
+        {
+            message = _localization["settings_validation_connections"];
+            return false;
+        }
+
+        if (SelectedProxyMode == ProxyMode.Manual && string.IsNullOrWhiteSpace(ProxyHost))
+        {
+            message = _localization["settings_validation_proxy_host"];
+            return false;
+        }
+
+        if (SelectedProxyMode == ProxyMode.AutomaticScript
+            && (!Uri.TryCreate(ProxyAutomaticConfigurationUrl, UriKind.Absolute, out Uri? pacUri)
+                || pacUri is null
+                || pacUri.Scheme is not ("http" or "https" or "file")))
+        {
+            message = _localization["settings_validation_pac_url"];
+            return false;
+        }
+
+        if (Aria2Enabled
+            && (!Uri.TryCreate(Aria2RpcEndpoint, UriKind.Absolute, out Uri? rpcUri)
+                || rpcUri is null
+                || rpcUri.Scheme is not ("http" or "https")))
+        {
+            message = _localization["settings_validation_aria2_endpoint"];
+            return false;
+        }
+
+        if (Aria2Enabled
+            && SelectedAria2ConnectionMode == Aria2ConnectionMode.ManagedProcess
+            && string.IsNullOrWhiteSpace(Aria2ExecutablePath))
+        {
+            message = _localization["settings_validation_aria2_executable"];
+            return false;
+        }
+
+        message = string.Empty;
+        return true;
     }
 
     private ApplicationSettings BuildSettingsFromEditor()

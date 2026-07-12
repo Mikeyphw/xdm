@@ -44,4 +44,7 @@
     <ProjectReference Include="../XDM.Persistence/XDM.Persistence.csproj" />
     <ProjectReference Include="../XDM.Platform/XDM.Platform.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="XDM.App.Tests" />
+  </ItemGroup>
 </Project>

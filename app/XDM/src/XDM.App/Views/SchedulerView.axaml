@@ -1,10 +1,10 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.SchedulerView" mc:Ignorable="d"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.SchedulerView" mc:Ignorable="d" KeyboardNavigation.TabNavigation="Continue" AutomationProperties.LandmarkType="Main" AutomationProperties.AccessibilityView="Control"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="14">
               <Grid ColumnDefinitions="320,*" ColumnSpacing="14">
                 <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="10">
                     <TextBlock Text="{Binding Localization[ui_queue_schedules]}" Classes="label"/>
-                    <ListBox ItemsSource="{Binding Schedules}" SelectedItem="{Binding SelectedSchedule}" MinHeight="220" MaxHeight="420">
+                    <ListBox ItemsSource="{Binding Schedules}" SelectedItem="{Binding SelectedSchedule}" MinHeight="220" MaxHeight="420" AutomationProperties.Name="Schedule" AutomationProperties.AutomationId="Scheduler_SelectedSchedule">
                       <ListBox.ItemTemplate>
                         <DataTemplate>
                           <Border Padding="10" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="7">
@@ -17,7 +17,7 @@
                         </DataTemplate>
                       </ListBox.ItemTemplate>
                     </ListBox>
-                    <TextBox PlaceholderText="{Binding Localization[ui_new_schedule_name]}" Text="{Binding NewScheduleName}"/>
+                    <TextBox PlaceholderText="{Binding Localization[ui_new_schedule_name]}" Text="{Binding NewScheduleName}" AutomationProperties.Name="{Binding Localization[ui_new_schedule_name]}" AutomationProperties.AutomationId="Scheduler_Localization_ui_new_schedule_name"/>
                     <WrapPanel Orientation="Horizontal">
                       <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_add_schedule]}" Command="{Binding AddScheduleCommand}"/>
                       <Button Classes="secondary" Content="{Binding Localization[ui_remove]}" Command="{Binding RemoveSelectedScheduleCommand}"/>
@@ -27,14 +27,14 @@
 
                 <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="12" MaxWidth="820" HorizontalAlignment="Left">
-                    <TextBlock Text="{Binding Localization[ui_schedule_and_completion_workflow]}" Classes="section-title"/>
+                    <TextBlock Text="{Binding Localization[ui_schedule_and_completion_workflow]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
                     <TextBlock Text="{Binding SchedulerRuntimeStatus}" Foreground="{DynamicResource XdmAccentForeground}" TextWrapping="Wrap"/>
                     <CheckBox Content="{Binding Localization[ui_enable_selected_schedule]}" IsChecked="{Binding SelectedSchedule.Enabled}"/>
-                    <TextBox PlaceholderText="{Binding Localization[ui_schedule_name]}" Text="{Binding SelectedSchedule.Name}"/>
+                    <TextBox PlaceholderText="{Binding Localization[ui_schedule_name]}" Text="{Binding SelectedSchedule.Name}" AutomationProperties.Name="{Binding Localization[ui_schedule_name]}" AutomationProperties.AutomationId="Scheduler_Localization_ui_schedule_name"/>
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
-                      <TextBox PlaceholderText="{Binding Localization[ui_start_hh_mm]}" Text="{Binding SelectedSchedule.StartTime}"/>
-                      <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_end_hh_mm]}" Text="{Binding SelectedSchedule.EndTime}"/>
-                      <ComboBox Grid.Column="2" ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedSchedule.Queue}">
+                      <TextBox PlaceholderText="{Binding Localization[ui_start_hh_mm]}" Text="{Binding SelectedSchedule.StartTime}" AutomationProperties.Name="{Binding Localization[ui_start_hh_mm]}" AutomationProperties.AutomationId="Scheduler_Localization_ui_start_hh_mm"/>
+                      <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_end_hh_mm]}" Text="{Binding SelectedSchedule.EndTime}" AutomationProperties.Name="{Binding Localization[ui_end_hh_mm]}" AutomationProperties.AutomationId="Scheduler_Localization_ui_end_hh_mm"/>
+                      <ComboBox Grid.Column="2" ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedSchedule.Queue}" AutomationProperties.Name="Schedule_ Queue" AutomationProperties.AutomationId="Scheduler_SelectedSchedule_Queue">
                         <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
                       </ComboBox>
                     </Grid>
@@ -48,22 +48,22 @@
                       <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_sat]}" IsChecked="{Binding SelectedSchedule.SaturdayEnabled}"/>
                       <CheckBox Content="{Binding Localization[ui_sun]}" IsChecked="{Binding SelectedSchedule.SundayEnabled}"/>
                     </WrapPanel>
-                    <ComboBox ItemsSource="{Binding SelectedSchedule.MissedRunOptions}" SelectedItem="{Binding SelectedSchedule.MissedRunPolicy}"/>
+                    <ComboBox ItemsSource="{Binding SelectedSchedule.MissedRunOptions}" SelectedItem="{Binding SelectedSchedule.MissedRunPolicy}" AutomationProperties.Name="Schedule_ Missed Run Policy" AutomationProperties.AutomationId="Scheduler_SelectedSchedule_MissedRunPolicy"/>
                     <TextBlock Text="{Binding Localization[ui_completion_action]}" Classes="label"/>
                     <Grid ColumnDefinitions="2*,*" ColumnSpacing="9">
-                      <ComboBox ItemsSource="{Binding SelectedSchedule.CompletionActionOptions}" SelectedItem="{Binding SelectedSchedule.CompletionAction}"/>
-                      <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_countdown_seconds]}" Text="{Binding SelectedSchedule.CountdownSeconds}"/>
+                      <ComboBox ItemsSource="{Binding SelectedSchedule.CompletionActionOptions}" SelectedItem="{Binding SelectedSchedule.CompletionAction}" AutomationProperties.Name="Schedule_ Completion Action" AutomationProperties.AutomationId="Scheduler_SelectedSchedule_CompletionAction"/>
+                      <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_countdown_seconds]}" Text="{Binding SelectedSchedule.CountdownSeconds}" AutomationProperties.Name="{Binding Localization[ui_countdown_seconds]}" AutomationProperties.AutomationId="Scheduler_Localization_ui_countdown_seconds"/>
                     </Grid>
-                    <TextBox PlaceholderText="{Binding Localization[ui_absolute_executable_path_for_runcommand]}" Text="{Binding SelectedSchedule.CommandPath}"/>
-                    <TextBox PlaceholderText="{Binding Localization[ui_one_command_argument_per_line]}" Text="{Binding SelectedSchedule.CommandArguments}" AcceptsReturn="True" MinHeight="72"/>
+                    <TextBox PlaceholderText="{Binding Localization[ui_absolute_executable_path_for_runcommand]}" Text="{Binding SelectedSchedule.CommandPath}" AutomationProperties.Name="{Binding Localization[ui_absolute_executable_path_for_runcommand]}" AutomationProperties.AutomationId="Scheduler_Localization_ui_absolute_executable_path_for_runcommand"/>
+                    <TextBox PlaceholderText="{Binding Localization[ui_one_command_argument_per_line]}" Text="{Binding SelectedSchedule.CommandArguments}" AcceptsReturn="True" MinHeight="72" AutomationProperties.Name="{Binding Localization[ui_one_command_argument_per_line]}" AutomationProperties.AutomationId="Scheduler_Localization_ui_one_command_argument_per_line"/>
 
                     <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12">
                       <StackPanel Spacing="8">
                         <TextBlock Text="{Binding Localization[ui_antivirus_scan_before_completion_action]}" Classes="label"/>
                         <CheckBox Content="{Binding Localization[ui_scan_files_completed_by_scheduled_runs]}" IsChecked="{Binding AntivirusEnabled}"/>
-                        <TextBox PlaceholderText="{Binding Localization[ui_absolute_antivirus_executable_path]}" Text="{Binding AntivirusExecutablePath}"/>
-                        <TextBox PlaceholderText="{Binding Localization[ui_one_argument_per_line_use_file_where_the_file_path_belongs]}" Text="{Binding AntivirusArguments}" AcceptsReturn="True" MinHeight="62"/>
-                        <TextBox PlaceholderText="{Binding Localization[ui_scan_timeout_seconds]}" Text="{Binding AntivirusTimeoutSeconds}"/>
+                        <TextBox PlaceholderText="{Binding Localization[ui_absolute_antivirus_executable_path]}" Text="{Binding AntivirusExecutablePath}" AutomationProperties.Name="{Binding Localization[ui_absolute_antivirus_executable_path]}" AutomationProperties.AutomationId="Scheduler_Localization_ui_absolute_antivirus_executable_path"/>
+                        <TextBox PlaceholderText="{Binding Localization[ui_one_argument_per_line_use_file_where_the_file_path_belongs]}" Text="{Binding AntivirusArguments}" AcceptsReturn="True" MinHeight="62" AutomationProperties.Name="{Binding Localization[ui_one_argument_per_line_use_file_where_the_file_path_belongs]}" AutomationProperties.AutomationId="Scheduler_Localization_ui_one_argument_per_line_use_file_where_the_file_path_belongs"/>
+                        <TextBox PlaceholderText="{Binding Localization[ui_scan_timeout_seconds]}" Text="{Binding AntivirusTimeoutSeconds}" AutomationProperties.Name="{Binding Localization[ui_scan_timeout_seconds]}" AutomationProperties.AutomationId="Scheduler_Localization_ui_scan_timeout_seconds"/>
                       </StackPanel>
                     </Border>
 

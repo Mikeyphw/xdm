@@ -1,14 +1,14 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.BrowserIntegrationView" mc:Ignorable="d"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.BrowserIntegrationView" mc:Ignorable="d" KeyboardNavigation.TabNavigation="Continue" AutomationProperties.LandmarkType="Main" AutomationProperties.AccessibilityView="Control"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="14">
               <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="13" MaxWidth="820" HorizontalAlignment="Left">
-                  <TextBlock Text="{Binding Localization[ui_browser_capture_service]}" Classes="section-title"/>
+                  <TextBlock Text="{Binding Localization[ui_browser_capture_service]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
                   <TextBlock Text="{Binding BrowserIntegrationStatus}" Foreground="{DynamicResource XdmAccentForeground}"/>
                   <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="8">
                     <TextBlock Text="{Binding Localization[ui_endpoint]}" Classes="label" VerticalAlignment="Center"/>
-                    <TextBox Grid.Column="1" Text="{Binding BrowserEndpoint}" IsReadOnly="True"/>
+                    <TextBox Grid.Column="1" Text="{Binding BrowserEndpoint}" IsReadOnly="True" AutomationProperties.Name="Browser Endpoint" AutomationProperties.AutomationId="BrowserIntegration_BrowserEndpoint"/>
                     <TextBlock Grid.Row="1" Text="{Binding Localization[ui_token]}" Classes="label" VerticalAlignment="Center"/>
-                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BrowserAuthenticationToken}" IsReadOnly="True"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BrowserAuthenticationToken}" IsReadOnly="True" AutomationProperties.Name="Browser Authentication Token" AutomationProperties.AutomationId="BrowserIntegration_BrowserAuthenticationToken"/>
                   </Grid>
                   <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button Classes="primary" Content="{Binding Localization[ui_restart_capture_service]}" Command="{Binding RestartBrowserIntegrationCommand}"/>
@@ -19,7 +19,7 @@
                       <TextBlock Text="{Binding Localization[ui_native_host]}" Classes="label"/>
                       <TextBlock Text="{Binding BrowserHostStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
                       <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                        <TextBox PlaceholderText="{Binding Localization[ui_chromium_extension_id_s_comma_separated_firefox_is_automatic]}" Text="{Binding BrowserExtensionId}"/>
+                        <TextBox PlaceholderText="{Binding Localization[ui_chromium_extension_id_s_comma_separated_firefox_is_automatic]}" Text="{Binding BrowserExtensionId}" AutomationProperties.Name="{Binding Localization[ui_chromium_extension_id_s_comma_separated_firefox_is_automatic]}" AutomationProperties.AutomationId="BrowserIntegration_Localization_ui_chromium_extension_id_s_comma_separated_firefox_is_automatic"/>
                         <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_install_repair]}" Command="{Binding RepairBrowserHostCommand}"/>
                         <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_uninstall]}" Command="{Binding UninstallBrowserHostCommand}"/>
                       </Grid>

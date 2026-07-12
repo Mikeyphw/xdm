@@ -123,7 +123,7 @@
       <Setter Property="BorderBrush" Value="{DynamicResource XdmDangerBrush}" />
       <Setter Property="BorderThickness" Value="1" />
     </Style>
-    <Style Selector="Button:focus">
+    <Style Selector="Button:focus-visible">
       <Setter Property="BorderBrush" Value="{DynamicResource XdmAccentForeground}" />
       <Setter Property="BorderThickness" Value="2" />
     </Style>
@@ -137,7 +137,7 @@
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="11,8" />
     </Style>
-    <Style Selector="TextBox:focus">
+    <Style Selector="TextBox:focus-visible">
       <Setter Property="BorderBrush" Value="{DynamicResource XdmAccentForeground}" />
       <Setter Property="BorderThickness" Value="2" />
     </Style>
@@ -151,7 +151,7 @@
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="8,5" />
     </Style>
-    <Style Selector="ComboBox:focus">
+    <Style Selector="ComboBox:focus-visible">
       <Setter Property="BorderBrush" Value="{DynamicResource XdmAccentForeground}" />
       <Setter Property="BorderThickness" Value="2" />
     </Style>
@@ -165,7 +165,7 @@
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="11,6" />
     </Style>
-    <Style Selector="NumericUpDown:focus">
+    <Style Selector="NumericUpDown:focus-visible">
       <Setter Property="BorderBrush" Value="{DynamicResource XdmAccentForeground}" />
       <Setter Property="BorderThickness" Value="2" />
     </Style>
@@ -180,6 +180,13 @@
       <Setter Property="CornerRadius" Value="8" />
     </Style>
     <Style Selector="ListBoxItem:selected">
+      <Setter Property="Background" Value="{DynamicResource XdmSelectedBackground}" />
+    </Style>
+    <Style Selector="ListBox:focus-visible">
+      <Setter Property="BorderBrush" Value="{DynamicResource XdmAccentForeground}" />
+      <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="TextBlock.page-title:focus-visible">
       <Setter Property="Background" Value="{DynamicResource XdmSelectedBackground}" />
     </Style>
     <Style Selector="PathIcon.navigation-icon">
@@ -243,6 +250,8 @@
                KeyboardNavigation.TabNavigation="Continue">
       <SplitView.Pane>
         <Border Background="{DynamicResource XdmPanelBackground}"
+                AutomationProperties.LandmarkType="Navigation"
+                AutomationProperties.AccessibilityView="Control"
                 BorderBrush="{DynamicResource XdmBorderBrush}"
                 BorderThickness="0,0,1,0"
                 Padding="12">
@@ -255,6 +264,8 @@
                       Click="ToggleNavigation_Click"
                       ToolTip.Tip="{Binding Localization[ui_application_sections]}"
                       AutomationProperties.Name="{Binding Localization[ui_application_sections]}"
+                      AutomationProperties.HelpText="Open or collapse the application navigation pane."
+                      AutomationProperties.AcceleratorKey="F6"
                       AutomationProperties.AutomationId="NavigationPaneToggle">
                 <PathIcon Data="M3,6 L21,6 M3,12 L21,12 M3,18 L21,18"
                           Width="20"
@@ -272,6 +283,8 @@
                      ItemsSource="{Binding Sections}"
                      AutomationProperties.Name="{Binding Localization[ui_application_sections]}"
                      AutomationProperties.AutomationId="PrimaryNavigation"
+                     AutomationProperties.HelpText="Use Up and Down Arrow to choose a section. Ctrl+1 through Ctrl+8 jump directly to a section."
+                     AutomationProperties.LandmarkType="Navigation"
                      AutomationProperties.AccessibilityView="Control"
                      SelectedItem="{Binding SelectedSection}"
                      SelectionChanged="PrimaryNavigation_SelectionChanged"
@@ -308,6 +321,8 @@
                     Click="ToggleNavigation_Click"
                     ToolTip.Tip="{Binding Localization[ui_application_sections]}"
                     AutomationProperties.Name="{Binding Localization[ui_application_sections]}"
+                    AutomationProperties.HelpText="Open the application navigation pane."
+                    AutomationProperties.AcceleratorKey="F6"
                     AutomationProperties.AutomationId="ContentNavigationToggle">
               <PathIcon Data="M3,6 L21,6 M3,12 L21,12 M3,18 L21,18"
                         Width="20"
@@ -319,7 +334,13 @@
                 <PathIcon Data="{Binding SelectedSection.IconData}" Width="21" Height="21" Foreground="{DynamicResource XdmAccentForeground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
               </Border>
               <StackPanel Grid.Column="1" Spacing="4">
-                <TextBlock Text="{Binding CurrentTitle}" Classes="page-title" />
+                <TextBlock x:Name="PageTitleText"
+                           Text="{Binding CurrentTitle}"
+                           Classes="page-title"
+                           Focusable="True"
+                           IsTabStop="False"
+                           AutomationProperties.HeadingLevel="1"
+                           AutomationProperties.AccessibilityView="Content" />
                 <TextBlock Text="{Binding CurrentSummary}" Classes="supporting" MaxWidth="760" TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
@@ -329,35 +350,46 @@
                          AutomationProperties.Name="{Binding Localization[ui_operation_status]}"
                          AutomationProperties.AutomationId="OperationStatus"
                          AutomationProperties.LiveSetting="Polite"
+                         AutomationProperties.LandmarkType="Region"
                          Foreground="{DynamicResource XdmAccentForeground}"
                          Classes="supporting"
                          TextWrapping="Wrap" />
             </Border>
           </Grid>
 
-          <Grid Grid.Row="1" RowDefinitions="Auto,*">
-            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" IsVisible="{Binding IsDashboardSummaryVisible}">
+          <Grid Grid.Row="1" RowDefinitions="Auto,*"
+                AutomationProperties.LandmarkType="Main"
+                AutomationProperties.AccessibilityView="Control">
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" IsVisible="{Binding IsDashboardSummaryVisible}"
+                  AutomationProperties.Name="Download activity summary"
+                  AutomationProperties.LandmarkType="Region">
               <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="10" Padding="15">
                 <StackPanel Spacing="6">
-                  <TextBlock Text="{Binding Localization[ui_active]}" Classes="label" />
+                  <TextBlock Text="{Binding Localization[ui_active]}" Classes="label" AutomationProperties.HeadingLevel="2" />
                   <TextBlock Text="{Binding ActiveDownloadCount}" Classes="metric" />
                 </StackPanel>
               </Border>
               <Border Grid.Column="1" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="10" Padding="15">
                 <StackPanel Spacing="6">
-                  <TextBlock Text="{Binding Localization[ui_speed]}" Classes="label" />
+                  <TextBlock Text="{Binding Localization[ui_speed]}" Classes="label" AutomationProperties.HeadingLevel="2" />
                   <TextBlock Text="{Binding AggregateSpeed}" Classes="metric" />
                 </StackPanel>
               </Border>
               <Border Grid.Column="2" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="10" Padding="15">
                 <StackPanel Spacing="6">
-                  <TextBlock Text="{Binding Localization[ui_core]}" Classes="label" />
+                  <TextBlock Text="{Binding Localization[ui_core]}" Classes="label" AutomationProperties.HeadingLevel="2" />
                   <TextBlock Text="{Binding CoreStatus}" Classes="metric" />
                 </StackPanel>
               </Border>
             </Grid>
 
-            <Grid Grid.Row="1" Margin="0,14,0,0">
+            <Grid x:Name="PageContentHost"
+                  Grid.Row="1"
+                  Margin="0,14,0,0"
+                  KeyboardNavigation.TabNavigation="Continue"
+                  AutomationProperties.Name="{Binding CurrentTitle}"
+                  AutomationProperties.LandmarkType="Main"
+                  AutomationProperties.AccessibilityView="Control">
               <views:DownloadsView x:Name="DownloadsPage" IsVisible="{Binding IsDownloadsVisible}" />
               <views:QueuesView IsVisible="{Binding IsQueuesVisible}" />
               <views:SchedulerView IsVisible="{Binding IsSchedulerVisible}" />
@@ -375,7 +407,9 @@
             </Grid>
           </Grid>
 
-          <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+          <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0"
+                AutomationProperties.LandmarkType="ContentInfo"
+                AutomationProperties.AccessibilityView="Control">
             <TextBlock Text="{Binding RuntimeDescription}" Classes="caption" />
             <TextBlock Grid.Column="1" Text="{Binding Localization[ui_localization_and_accessibility_parity_overlay_20]}" Classes="caption" Foreground="{DynamicResource XdmAccentForeground}" />
           </Grid>

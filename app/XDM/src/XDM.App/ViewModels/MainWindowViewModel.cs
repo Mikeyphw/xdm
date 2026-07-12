@@ -767,6 +767,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task SaveSettingsAsync()
     {
+        if (!TryValidateSettingsEditor(out string validationMessage))
+        {
+            SettingsValidationMessage = validationMessage;
+            OperationMessage = validationMessage;
+            return;
+        }
+
+        SettingsValidationMessage = string.Empty;
         ApplicationSettings current = _settingsService.Current;
         int concurrency = int.TryParse(
             MaxConcurrentDownloads,

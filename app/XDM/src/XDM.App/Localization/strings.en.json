@@ -296,5 +296,12 @@
   "ui_whole_request_timeout_seconds_0_unlimited": "Whole-request timeout seconds (0 = unlimited)",
   "ui_xdm": "XDM",
   "ui_xtreme_download_manager": "Xtreme Download Manager",
-  "unit_of": "of"
+  "unit_of": "of",
+  "ui_settings_validation_title": "Settings need attention",
+  "ui_settings_validation_hint": "Correct the highlighted configuration before saving.",
+  "settings_validation_connections": "Maximum connections must be greater than or equal to default connections, and both values must be at least 1.",
+  "settings_validation_proxy_host": "Enter a proxy host when manual proxy mode is selected.",
+  "settings_validation_pac_url": "Enter a valid HTTP, HTTPS, or file URL for the proxy auto-configuration script.",
+  "settings_validation_aria2_endpoint": "Enter a valid HTTP or HTTPS aria2 RPC endpoint.",
+  "settings_validation_aria2_executable": "Choose an aria2 executable when managed-process mode is enabled."
 }

@@ -32,6 +32,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.Parity", "src\XDM.Parit
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.Parity.Tests", "src\XDM.Parity.Tests\XDM.Parity.Tests.csproj", "{721A96E2-884F-4E7B-A829-48F173AF5802}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDM.App.Tests", "src\XDM.App.Tests\XDM.App.Tests.csproj", "{DE24102C-8369-49FF-9D83-157D61C8D6B1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -100,5 +102,9 @@ Global
 		{721A96E2-884F-4E7B-A829-48F173AF5802}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{721A96E2-884F-4E7B-A829-48F173AF5802}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{721A96E2-884F-4E7B-A829-48F173AF5802}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE24102C-8369-49FF-9D83-157D61C8D6B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE24102C-8369-49FF-9D83-157D61C8D6B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE24102C-8369-49FF-9D83-157D61C8D6B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE24102C-8369-49FF-9D83-157D61C8D6B1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

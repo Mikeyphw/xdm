@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-12T18:50:33.144324Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_accessibility_ui_validation_overlay.zip",
+  "artifact_name": "xdm_accessibility_ui_validation_overlay.zip",
+  "type": "overlay",
+  "sha256": "055a23b984cdedb86bc19abe394078e5db836b03bac7b9bb3affcdd55a66dad1",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Add accessibility and headless UI validation",
+  "commit_hash": "",
+  "file_count": 25,
+  "change_counts": {
+    "add": 7,
+    "modify": 18
+  },
+  "manifest": {},
+  "history_id": "7310e9d6402341bc978aaad0fb0ca742"
+}
