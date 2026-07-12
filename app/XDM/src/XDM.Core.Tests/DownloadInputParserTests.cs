@@ -5,7 +5,7 @@ namespace XDM.Core.Tests;
 public sealed class DownloadInputParserTests
 {
     [Fact]
-    public void ParsesDistinctHttpUrlsFromMultilineInput()
+    public void ParsesDistinctSupportedUrlsFromMultilineInput()
     {
         IReadOnlyList<Uri> urls = DownloadInputParser.ParseUrls("""
             https://example.test/a.zip
@@ -14,9 +14,10 @@ public sealed class DownloadInputParserTests
             ftp://example.test/nope
             """);
 
-        Assert.Equal(2, urls.Count);
+        Assert.Equal(3, urls.Count);
         Assert.Equal("https://example.test/a.zip", urls[0].AbsoluteUri);
         Assert.Equal("https://example.test/b.zip", urls[1].AbsoluteUri);
+        Assert.Equal("ftp://example.test/nope", urls[2].AbsoluteUri);
     }
 
     [Fact]

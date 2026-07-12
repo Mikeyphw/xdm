@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-07-12T14:33:10.698411Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_upstream_parity_corrections_overlay.zip",
+  "artifact_name": "xdm_upstream_parity_corrections_overlay.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "Close upstream parity gaps and strengthen final gate",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "c52528562b8a4abaa8a37da43a553446"
+}

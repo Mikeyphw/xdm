@@ -1,3 +1,5 @@
+using System.Net.Sockets;
+
 namespace XDM.DownloadEngine;
 
 public sealed class DownloadRetryPolicy
@@ -33,6 +35,7 @@ public sealed class DownloadRetryPolicy
 
     public static bool IsTransient(Exception exception)
         => exception is HttpRequestException
+            or SocketException
             or EndOfStreamException
             or TimeoutException
             or TaskCanceledException;

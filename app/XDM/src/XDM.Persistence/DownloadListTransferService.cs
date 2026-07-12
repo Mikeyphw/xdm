@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using XDM.Core.Downloads;
 using XDM.Core.Persistence;
+using XDM.Core.Product;
 
 namespace XDM.Persistence;
 
@@ -158,7 +159,7 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
         for (int index = 0; index < entryLimit; index++)
         {
             DownloadListEntry entry = entries[index];
-            if (!IsSafeHttpUri(entry.Source))
+            if (!IsSafeDownloadUri(entry.Source))
             {
                 ignored++;
                 continue;
@@ -179,6 +180,9 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
         ignored += Math.Max(0, entries.Count - MaximumEntries);
         return new DownloadListImportResult(normalized, ignored, sourceFormat);
     }
+
+    private static bool IsSafeDownloadUri(Uri? uri)
+        => ModernFeaturePolicy.IsSupportedDownloadUri(uri);
 
     private static bool IsSafeHttpUri(Uri? uri)
         => uri is { IsAbsoluteUri: true }

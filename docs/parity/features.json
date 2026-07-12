@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "baseline": "overlay-21-final-gate",
-  "updatedAt": "2026-07-12T15:00:00Z",
+  "baseline": "overlay-22-upstream-parity-corrections",
+  "updatedAt": "2026-07-12T16:00:00Z",
   "features": [
     {
       "id": "download.http-single-stream",
@@ -184,35 +184,41 @@
       "implementationPaths": [
         "app/XDM/src/XDM.Core/Settings/ProxySettings.cs",
         "app/XDM/src/XDM.Platform/ConfiguredHttpClientFactory.cs",
+        "app/XDM/src/XDM.Platform/PacProxy.cs",
         "app/XDM/src/XDM.App/MainWindow.axaml"
       ],
       "automatedTests": [
         "XDM.DownloadEngine.Tests.SettingsTransferServiceTests.ImportsRecordedLegacyPropertiesWithCategoriesQueuesAndProxy",
-        "XDM.Core.Tests.NetworkSettingsTests.ConfiguredClientUsesBoundedRequestTimeout"
+        "XDM.Core.Tests.NetworkSettingsTests.ConfiguredClientUsesBoundedRequestTimeout",
+        "XDM.Core.Tests.PacProxyTests.EvaluatesCommonSafePacRules",
+        "XDM.Core.Tests.PacProxyTests.IntegratedProxyAuthenticationUsesSignedInCredentials"
       ],
-      "targetOverlay": "18",
-      "notes": "System, direct, and manual proxy modes include bounded ports, bypass rules, and optional proxy authentication. The configured handler is created after settings initialization."
+      "targetOverlay": "22",
+      "notes": "System, direct, manual and PAC proxy modes support bypass rules, Basic credentials and integrated signed-in credentials for ISA/NTLM/Kerberos negotiation through the platform HTTP handler."
     },
     {
       "id": "download.ftp",
       "area": "network",
-      "name": "FTP/FTPS downloads",
-      "priority": "medium",
-      "status": "intentionallyReplaced",
+      "name": "FTP and FTPS downloads",
+      "priority": "high",
+      "status": "complete",
       "legacySources": [
         "README.md",
         "app/XDM/XDM.Core/FtpDownloader.cs"
       ],
       "implementationPaths": [
         "app/XDM/src/XDM.Core/Product/ModernFeaturePolicy.cs",
+        "app/XDM/src/XDM.DownloadEngine/FtpDownloadClient.cs",
         "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
       ],
       "automatedTests": [
-        "XDM.Core.Tests.ModernFeaturePolicyTests.SupportsOnlyModernHttpDownloadSchemes",
-        "XDM.Core.Tests.ModernFeaturePolicyTests.FtpReplacementIsExplicitAndActionable"
+        "XDM.DownloadEngine.Tests.FtpDownloadClientTests.DownloadsAndResumesFromPassiveFtpServer",
+        "XDM.DownloadEngine.Tests.FtpDownloadClientTests.ParsesExtendedPassiveResponses",
+        "XDM.DownloadEngine.Tests.FtpDownloadClientTests.RejectsCommandInjectionInRemotePath",
+        "XDM.Core.Tests.ModernFeaturePolicyTests.SupportsOriginalDownloadSchemes"
       ],
-      "targetOverlay": "21",
-      "notes": "Legacy FTP/FTPS transport is explicitly replaced by HTTPS downloads or a dedicated file-transfer client; the modern engine rejects those schemes with an actionable message."
+      "targetOverlay": "22",
+      "notes": "Passive FTP and FTPS support authenticated downloads, TLS-protected control/data channels, resume through REST, metadata probes, cancellation, progress and atomic finalization through the modern download engine."
     },
     {
       "id": "workflow.add-single",
@@ -1067,22 +1073,24 @@
       "area": "packaging",
       "name": "In-app update channel",
       "priority": "medium",
-      "status": "intentionallyReplaced",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/Updater.cs"
       ],
       "implementationPaths": [
-        "app/XDM/src/XDM.Core/Product/ModernFeaturePolicy.cs",
-        ".github/workflows/modern-prerelease.yml",
-        "app/XDM/eng/qualify-prerelease.sh",
-        "app/XDM/eng/qualify-prerelease.ps1"
+        "app/XDM/src/XDM.Core/Abstractions/IUpdateService.cs",
+        "app/XDM/src/XDM.Platform/VerifiedUpdateService.cs",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.UpdateParity.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
       ],
       "automatedTests": [
-        "XDM.Core.Tests.ModernFeaturePolicyTests.UpdatesUseExternalSignedPackageChannel",
-        "XDM.Parity.Tests.FinalParityGateTests.ModernPackagingQualificationScriptsExist"
+        "XDM.Core.Tests.VerifiedUpdateServiceTests.ChecksAndStagesMatchingVerifiedPackage",
+        "XDM.Core.Tests.VerifiedUpdateServiceTests.RejectsPackageHashMismatchAndDeletesTemporaryFile",
+        "XDM.Core.Tests.VerifiedUpdateServiceTests.RejectsUntrustedPackageHost",
+        "XDM.Core.Tests.ModernFeaturePolicyTests.UpdatesUseInApplicationVerifiedPackageChannel"
       ],
-      "targetOverlay": "21",
-      "notes": "Self-modifying in-process updates are replaced by externally installed, checksum-qualified release packages from the HTTPS release channel."
+      "targetOverlay": "22",
+      "notes": "XDM checks a bounded HTTPS manifest, selects the current RID, streams and verifies the declared size and SHA-256, stages atomically, and never executes the package automatically."
     },
     {
       "id": "browser.protocol-security",
@@ -1587,6 +1595,90 @@
       ],
       "targetOverlay": "21",
       "notes": "Known WPF, GTK, WinForms, legacy CoreFx, compatibility and legacy test application paths are absent and prohibited from the active solution."
+    },
+    {
+      "id": "download.proxy-pac-enterprise",
+      "area": "network",
+      "name": "Automatic proxy scripts and enterprise authentication",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "README.md",
+        "app/XDM/XDM.Core/ProxyConfig.cs",
+        "app/XDM/XDM.Core/Interop.WinHttp"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Platform/PacProxy.cs",
+        "app/XDM/src/XDM.Platform/ConfiguredHttpClientFactory.cs",
+        "app/XDM/src/XDM.Core/Settings/ProxyAuthenticationMode.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.PacProxyTests.EvaluatesCommonSafePacRules",
+        "XDM.Core.Tests.PacProxyTests.RejectsOversizedPacScripts",
+        "XDM.Core.Tests.PacProxyTests.IntegratedProxyAuthenticationUsesSignedInCredentials",
+        "XDM.Core.Tests.PacProxyTests.ProxyNormalizationPreservesValidPacAndBoundsAuthentication"
+      ],
+      "targetOverlay": "22",
+      "notes": "A bounded PAC evaluator covers common deterministic rules without executing arbitrary JavaScript. Integrated credentials delegate ISA, NTLM and Kerberos negotiation to the operating-system HTTP stack."
+    },
+    {
+      "id": "conversion.device-profiles",
+      "area": "conversion",
+      "name": "Device conversion profile catalog",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "README.md",
+        "app/XDM/XDM.Core/MediaConverter.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/DeviceProfileCatalog.cs",
+        "app/XDM/src/XDM.Media/ConversionPresetCatalog.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.DeviceProfileCatalogTests.ExposesMoreThanOneHundredDeviceProfiles",
+        "XDM.BrowserMedia.Tests.DeviceProfileCatalogTests.DeviceArgumentsAreFixedAndNeverContainShellTokens"
+      ],
+      "targetOverlay": "22",
+      "notes": "The fixed FFmpeg catalog exposes 120 phone, tablet, streaming-device, console and television profiles while preserving the safe no-shell conversion contract."
+    },
+    {
+      "id": "media.adobe-hds",
+      "area": "streaming-media",
+      "name": "Adobe HDS/F4M legacy protocol",
+      "priority": "medium",
+      "status": "notApplicable",
+      "legacySources": [
+        "README.md",
+        "app/XDM/XDM.Core/MediaParser"
+      ],
+      "implementationPaths": [
+        "docs/parity/UPSTREAM-PARITY-CORRECTIONS.md"
+      ],
+      "automatedTests": [
+        "XDM.Parity.Tests.FinalParityGateTests.UpstreamAdvertisedCapabilitiesHaveExplicitDisposition"
+      ],
+      "targetOverlay": "22",
+      "notes": "The upstream README advertises HDS, but the retained upstream media-parser source contains DASH, HLS and YouTube parsers and no working HDS/F4M implementation. The obsolete claim is recorded rather than fabricated as modern parity."
+    },
+    {
+      "id": "platform.macos",
+      "area": "platform",
+      "name": "macOS desktop qualification",
+      "priority": "medium",
+      "status": "notApplicable",
+      "legacySources": [
+        "README.md"
+      ],
+      "implementationPaths": [
+        "docs/parity/UPSTREAM-PARITY-CORRECTIONS.md"
+      ],
+      "automatedTests": [
+        "XDM.Parity.Tests.FinalParityGateTests.UpstreamAdvertisedCapabilitiesHaveExplicitDisposition"
+      ],
+      "targetOverlay": "22",
+      "notes": "The maintained modernization scope explicitly targets Linux and Windows. macOS is excluded by product decision and is not built or restored by the active solution qualification."
     }
   ]
 }

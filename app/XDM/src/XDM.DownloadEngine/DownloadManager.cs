@@ -28,6 +28,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private readonly IDiskSpaceProvider _diskSpaceProvider;
     private readonly DownloadRetryPolicy _retryPolicy;
     private readonly SegmentedDownloadExecutor _segmentedExecutor;
+    private readonly IFtpDownloadClient _ftpDownloadClient;
     private readonly ISettingsService _settingsService;
     private readonly SemaphoreSlim _concurrencyGate;
     private readonly ConcurrentDictionary<string, byte> _activeQueues = new(StringComparer.Ordinal);
@@ -67,7 +68,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         ILogger<DownloadManager> logger,
         IDiskSpaceProvider diskSpaceProvider,
         DownloadRetryPolicy retryPolicy,
-        SegmentedDownloadOptions? segmentedOptions = null)
+        SegmentedDownloadOptions? segmentedOptions = null,
+        IFtpDownloadClient? ftpDownloadClient = null)
     {
         _httpClient = httpClient;
         _applicationState = applicationState;
@@ -81,6 +83,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             diskSpaceProvider,
             retryPolicy,
             segmentedOptions ?? new SegmentedDownloadOptions());
+        _ftpDownloadClient = ftpDownloadClient ?? new FtpDownloadClient();
         _concurrencyGate = new SemaphoreSlim(settingsService.Current.MaxConcurrentDownloads);
         IReadOnlyList<DownloadQueueDefinition> configuredQueues = settingsService.Current.Queues;
         string defaultQueueId = configuredQueues.Count > 0 ? configuredQueues[0].Id : "default";
@@ -200,6 +203,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         if (method is not ("GET" or "POST"))
         {
             throw new ArgumentException("Only GET and POST download requests are supported.", nameof(request));
+        }
+
+        if (request.Source.Scheme is "ftp" or "ftps" && method != "GET")
+        {
+            throw new ArgumentException("FTP and FTPS downloads support GET semantics only.", nameof(request));
         }
 
         if (request.RequestBody is { Length: > 16 * 1024 })
@@ -558,7 +566,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         CancellationToken cancellationToken = default)
     {
         DownloadSession session = GetSession(downloadId);
-        ValidateHttpUri(source, nameof(source));
+        ValidateDownloadUri(source, nameof(source));
         if (sourcePage is not null)
         {
             ValidateHttpUri(sourcePage, nameof(sourcePage));
@@ -894,6 +902,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         {
             File.Delete(partialPath);
             existingLength = 0;
+        }
+
+        if (session.Source.Scheme is "ftp" or "ftps")
+        {
+            await ExecuteFtpDownloadAttemptAsync(session, partialPath, existingLength, cancellationToken)
+                .ConfigureAwait(false);
+            return;
         }
 
         if (session.Method == "GET" && existingLength == 0 && session.ConnectionCount > 1)
@@ -1397,6 +1412,68 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         throw new IOException("Could not find an available destination filename.");
     }
 
+    private async Task ExecuteFtpDownloadAttemptAsync(
+        DownloadSession session,
+        string partialPath,
+        long existingLength,
+        CancellationToken cancellationToken)
+    {
+        Stopwatch elapsed = Stopwatch.StartNew();
+        long lastDownloaded = existingLength;
+        DateTimeOffset lastProgress = DateTimeOffset.MinValue;
+        lock (session.Sync)
+        {
+            session.DownloadedBytes = existingLength;
+            session.State = DownloadState.Connecting;
+            session.ErrorMessage = null;
+        }
+        Publish(session, forcePersist: true);
+
+        FtpDownloadResult result = await _ftpDownloadClient.DownloadAsync(
+            session.Source,
+            partialPath,
+            existingLength,
+            session.Username,
+            session.Password,
+            async (downloaded, total) =>
+            {
+                DateTimeOffset now = DateTimeOffset.UtcNow;
+                double seconds = Math.Max(0.001, elapsed.Elapsed.TotalSeconds);
+                lock (session.Sync)
+                {
+                    session.DownloadedBytes = downloaded;
+                    session.TotalBytes = total;
+                    session.BytesPerSecond = Math.Max(0, downloaded - existingLength) / seconds;
+                    session.State = DownloadState.Downloading;
+                    session.ErrorMessage = null;
+                }
+
+                await ApplySpeedLimitAsync(session, elapsed, existingLength, cancellationToken)
+                    .ConfigureAwait(false);
+                if (now - lastProgress >= ProgressInterval || downloaded == total)
+                {
+                    lastProgress = now;
+                    lastDownloaded = downloaded;
+                    Publish(session, forcePersist: downloaded == total);
+                }
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        long completedBytes = Math.Max(result.DownloadedBytes, lastDownloaded);
+        lock (session.Sync)
+        {
+            session.DownloadedBytes = completedBytes;
+            session.TotalBytes = result.TotalBytes ?? completedBytes;
+            session.LastModified = result.LastModified;
+            session.BytesPerSecond = 0;
+            session.State = DownloadState.Finalizing;
+        }
+
+        WriteFinalizationMarker(session.DestinationPath, completedBytes);
+        Publish(session, forcePersist: true);
+        CompleteFromPartial(session, partialPath, completedBytes);
+    }
+
     private static void ApplyRequestMetadata(HttpRequestMessage request, DownloadSession session)
         => HttpRequestMetadata.Apply(
             request,
@@ -1551,6 +1628,15 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     File.Delete(temporaryPath);
                 }
             }
+        }
+    }
+
+    private static void ValidateDownloadUri(Uri uri, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(uri, parameterName);
+        if (!ModernFeaturePolicy.IsSupportedDownloadUri(uri))
+        {
+            throw new ArgumentException(ModernFeaturePolicy.GetUnsupportedDownloadMessage(uri), parameterName);
         }
     }
 

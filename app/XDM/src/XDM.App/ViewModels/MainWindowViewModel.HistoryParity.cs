@@ -153,17 +153,19 @@ public partial class MainWindowViewModel
     private async Task RefreshSelectedDownloadUrlAsync()
     {
         if (SelectedDownload is null
-            || !Uri.TryCreate(RefreshedDownloadUrl.Trim(), UriKind.Absolute, out Uri? source))
+            || !Uri.TryCreate(RefreshedDownloadUrl.Trim(), UriKind.Absolute, out Uri? source)
+            || !XDM.Core.Product.ModernFeaturePolicy.IsSupportedDownloadUri(source))
         {
-            OperationMessage = "Enter a valid absolute HTTP or HTTPS replacement URL.";
+            OperationMessage = "Enter a valid absolute HTTP, HTTPS, FTP, or FTPS replacement URL.";
             return;
         }
 
         Uri? sourcePage = null;
         if (!string.IsNullOrWhiteSpace(RefreshedSourcePage)
-            && !Uri.TryCreate(RefreshedSourcePage.Trim(), UriKind.Absolute, out sourcePage))
+            && (!Uri.TryCreate(RefreshedSourcePage.Trim(), UriKind.Absolute, out sourcePage)
+                || sourcePage.Scheme is not ("http" or "https")))
         {
-            OperationMessage = "The source-page URL is invalid.";
+            OperationMessage = "The source-page URL must use HTTP or HTTPS.";
             return;
         }
 

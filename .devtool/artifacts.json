@@ -742,6 +742,96 @@
       },
       "manifest": {},
       "history_id": "d3edc24e25a242f9af9ca2aae4ef5ca0"
+    },
+    {
+      "applied_at": "2026-07-12T14:32:39.304004Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_upstream_parity_corrections_overlay.zip",
+      "artifact_name": "xdm_upstream_parity_corrections_overlay.zip",
+      "type": "overlay",
+      "sha256": "ce55434d6e830bb92064b020171a21aaa730ff635fef49df9f3a5a0c0bee284e",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Close upstream parity gaps and strengthen final gate",
+      "commit_hash": "",
+      "file_count": 45,
+      "change_counts": {
+        "add": 44,
+        "modify": 1
+      },
+      "manifest": {},
+      "history_id": "0524295b06a943f3a6a8aa32c292e3a4"
+    },
+    {
+      "applied_at": "2026-07-12T14:33:10.698411Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_upstream_parity_corrections_overlay.zip",
+      "artifact_name": "xdm_upstream_parity_corrections_overlay.zip",
+      "type": "overlay",
+      "sha256": "",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "Close upstream parity gaps and strengthen final gate",
+      "commit_hash": "",
+      "file_count": 0,
+      "change_counts": {},
+      "manifest": {},
+      "history_id": "c52528562b8a4abaa8a37da43a553446"
+    },
+    {
+      "applied_at": "2026-07-12T14:39:38.667830Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_upstream_parity_corrections_overlay.zip",
+      "artifact_name": "xdm_upstream_parity_corrections_overlay.zip",
+      "type": "overlay",
+      "sha256": "215e82e44a126e34257b36507a770620c7de27429bca4c5b75a912de87dcb047",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Close upstream parity gaps and restore modern solution",
+      "commit_hash": "",
+      "file_count": 430,
+      "change_counts": {
+        "add": 425,
+        "modify": 1,
+        "unchanged": 4
+      },
+      "manifest": {},
+      "history_id": "5f999421147b46c2873ac7947ac1a766"
+    },
+    {
+      "applied_at": "2026-07-12T14:46:45.188252Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_upstream_parity_corrections_overlay.zip",
+      "artifact_name": "xdm_upstream_parity_corrections_overlay.zip",
+      "type": "overlay",
+      "sha256": "38490936131894caec61aba182f857c99eedb4a481eb0083871978e0ab8736fb",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Close upstream parity gaps and restore modern solution",
+      "commit_hash": "",
+      "file_count": 430,
+      "change_counts": {
+        "add": 425,
+        "modify": 1,
+        "unchanged": 4
+      },
+      "manifest": {},
+      "history_id": "a2053f3ec11d46279d43465816a65c6a"
+    },
+    {
+      "applied_at": "2026-07-12T14:53:54.663889Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_upstream_parity_corrections_overlay(3).zip",
+      "artifact_name": "xdm_upstream_parity_corrections_overlay(3).zip",
+      "type": "overlay",
+      "sha256": "94531366d713c68a7810ef86408d3ba5df2792f92f3b085fc73c06ab9a9473ec",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Close upstream parity gaps and restore modern solution",
+      "commit_hash": "",
+      "file_count": 430,
+      "change_counts": {
+        "add": 425,
+        "modify": 1,
+        "unchanged": 4
+      },
+      "manifest": {},
+      "history_id": "9d6c6ca26e2c44d19e4fec608a9f1848"
     }
   ]
 }

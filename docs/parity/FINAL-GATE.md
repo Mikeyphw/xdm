@@ -19,16 +19,17 @@ The gate fails unless:
 - Linux and Windows CI build, test, bootstrap, and smoke a self-contained package;
 - diagnostics remain at zero warnings and zero errors.
 
-## Remaining legacy product decisions
+## Upstream parity corrections
 
-FTP/FTPS transport is intentionally replaced. The modern download engine accepts
-HTTP and HTTPS and returns an actionable rejection for FTP schemes. Users who
-need file-transfer protocols should use an HTTPS source or a dedicated transfer
-client rather than routing credentials through the browser-download pipeline.
+Overlay 22 closes the original FTP/FTPS, PAC/enterprise proxy, device-profile
+and update-channel gaps. FTP/FTPS uses the same durable download lifecycle as
+HTTP, and update packages are staged only after HTTPS manifest, size and SHA-256
+verification. XDM never executes a staged package automatically.
 
-In-process binary self-update is intentionally replaced by externally installed,
-checksum-qualified packages from the HTTPS release channel. This avoids modifying
-running binaries and keeps package-manager ownership intact.
+macOS is outside the maintained Linux/Windows product scope. Adobe HDS is
+recorded as a stale upstream claim because the retained upstream parser source
+contains no working HDS/F4M implementation to qualify. See
+`UPSTREAM-PARITY-CORRECTIONS.md`.
 
 ## Unknown-length responses
 

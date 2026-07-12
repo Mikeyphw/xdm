@@ -1,0 +1,19 @@
+{
+  "applied_at": "2026-07-12T14:46:45.188252Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_upstream_parity_corrections_overlay.zip",
+  "artifact_name": "xdm_upstream_parity_corrections_overlay.zip",
+  "type": "overlay",
+  "sha256": "38490936131894caec61aba182f857c99eedb4a481eb0083871978e0ab8736fb",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Close upstream parity gaps and restore modern solution",
+  "commit_hash": "",
+  "file_count": 430,
+  "change_counts": {
+    "add": 425,
+    "modify": 1,
+    "unchanged": 4
+  },
+  "manifest": {},
+  "history_id": "a2053f3ec11d46279d43465816a65c6a"
+}

@@ -237,5 +237,13 @@
   "ui_whole_request_timeout_seconds_0_unlimited": "Whole-request timeout seconds (0 = unlimited)",
   "ui_xdm": "XDM",
   "ui_xtreme_download_manager": "Xtreme Download Manager",
-  "unit_of": "of"
+  "unit_of": "of",
+  "ui_proxy_authentication_mode": "Proxy authentication mode",
+  "ui_pac_url_http_https_or_file": "PAC URL (HTTP, HTTPS, or file)",
+  "ui_integrated_proxy_authentication_note": "System and integrated authentication use the signed-in operating-system credentials for ISA, NTLM, and Kerberos proxy negotiation.",
+  "ui_updates": "Updates",
+  "ui_check_for_updates": "Check for updates",
+  "ui_download_verified_package": "Download verified package",
+  "ui_open_staged_package": "Open staged package",
+  "ui_verified_update_security_note": "XDM downloads only a release package listed in the HTTPS manifest, verifies its declared size and SHA-256, and never executes it automatically."
 }

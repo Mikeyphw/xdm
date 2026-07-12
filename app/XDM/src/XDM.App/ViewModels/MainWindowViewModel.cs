@@ -70,7 +70,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IDiagnosticBundleService diagnosticBundleService,
         IRecoveryService recoveryService,
         IDesktopNotificationService desktopNotifications,
-        IBrowserHostInstaller browserHostInstaller)
+        IBrowserHostInstaller browserHostInstaller,
+        IUpdateService updateService)
     {
         _applicationState = applicationState;
         _downloadManager = downloadManager;
@@ -94,6 +95,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _diagnosticBundleService = diagnosticBundleService;
         _desktopNotifications = desktopNotifications;
         _browserHostInstaller = browserHostInstaller;
+        _updateService = updateService;
         PlatformDescription = platformInfo.DisplayName;
         RuntimeDescription = platformInfo.Runtime;
 
@@ -1418,6 +1420,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _disposed = true;
         _mediaDownloadCancellation?.Cancel();
         _mediaDownloadCancellation?.Dispose();
+        _updateCancellation?.Cancel();
+        _updateCancellation?.Dispose();
         _applicationState.Changed -= OnApplicationStateChanged;
         _settingsService.Changed -= OnSettingsChanged;
         _localization.Changed -= OnLocalizationChanged;

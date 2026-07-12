@@ -12,6 +12,8 @@ public partial class MainWindowViewModel
 
     public IReadOnlyList<ProxyMode> ProxyModes { get; } = Enum.GetValues<ProxyMode>();
 
+    public IReadOnlyList<ProxyAuthenticationMode> ProxyAuthenticationModes { get; } = Enum.GetValues<ProxyAuthenticationMode>();
+
     public ObservableCollection<ServerCredentialDefinition> ServerCredentials { get; } = [];
 
     [ObservableProperty]
@@ -52,6 +54,12 @@ public partial class MainWindowViewModel
 
     [ObservableProperty]
     private bool proxyBypassLocal = true;
+
+    [ObservableProperty]
+    private string proxyAutomaticConfigurationUrl = string.Empty;
+
+    [ObservableProperty]
+    private ProxyAuthenticationMode selectedProxyAuthenticationMode = ProxyAuthenticationMode.Integrated;
 
     [ObservableProperty]
     private string proxyBypassList = string.Empty;
@@ -227,7 +235,9 @@ public partial class MainWindowViewModel
                     EmptyToNull(ProxyUsername),
                     EmptyToNull(ProxyPassword),
                     ProxyBypassLocal,
-                    ProxyBypassList.Split(LineSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))),
+                    ProxyBypassList.Split(LineSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                    EmptyToNull(ProxyAutomaticConfigurationUrl),
+                    SelectedProxyAuthenticationMode)),
             DownloadBehavior = new DownloadBehaviorSettings(
                 SelectedDuplicateBehavior,
                 CreateDestinationDirectory,
@@ -257,6 +267,8 @@ public partial class MainWindowViewModel
         ProxyPassword = proxy.Password ?? string.Empty;
         ProxyBypassLocal = proxy.BypassLocal;
         ProxyBypassList = string.Join(Environment.NewLine, proxy.BypassList ?? []);
+        ProxyAutomaticConfigurationUrl = proxy.AutomaticConfigurationUrl ?? string.Empty;
+        SelectedProxyAuthenticationMode = proxy.AuthenticationMode;
         SelectedDuplicateBehavior = behavior.DefaultDuplicateBehavior;
         CreateDestinationDirectory = behavior.CreateDestinationDirectory;
         AutoSelectCategory = behavior.AutoSelectCategory;

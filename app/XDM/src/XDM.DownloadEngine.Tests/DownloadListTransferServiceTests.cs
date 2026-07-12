@@ -58,11 +58,12 @@ public sealed class DownloadListTransferServiceTests
 
         DownloadListImportResult result = await service.ImportAsync(path);
 
-        Assert.Equal(2, result.Downloads.Count);
-        Assert.Equal(2, result.IgnoredEntries);
+        Assert.Equal(3, result.Downloads.Count);
+        Assert.Equal(1, result.IgnoredEntries);
+        Assert.Contains(result.Downloads, static entry => entry.Source.Scheme == "ftp");
         Assert.All(
             result.Downloads,
-            static entry => Assert.True(entry.Source.Scheme is "http" or "https"));
+            static entry => Assert.True(entry.Source.Scheme is "http" or "https" or "ftp" or "ftps"));
     }
 
     [Fact]

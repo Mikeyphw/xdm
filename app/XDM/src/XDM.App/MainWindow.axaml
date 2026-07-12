@@ -804,10 +804,13 @@
                     <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_proxy_host]}" Text="{Binding ProxyHost}" />
                     <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_port]}" Text="{Binding ProxyPort}" />
                   </Grid>
-                  <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
-                    <TextBox PlaceholderText="{Binding Localization[ui_proxy_username]}" Text="{Binding ProxyUsername}" />
-                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_proxy_password]}" Text="{Binding ProxyPassword}" PasswordChar="●" />
+                  <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
+                    <ComboBox ItemsSource="{Binding ProxyAuthenticationModes}" SelectedItem="{Binding SelectedProxyAuthenticationMode}" AutomationProperties.Name="{Binding Localization[ui_proxy_authentication_mode]}" />
+                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_proxy_username]}" Text="{Binding ProxyUsername}" />
+                    <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_proxy_password]}" Text="{Binding ProxyPassword}" PasswordChar="●" />
                   </Grid>
+                  <TextBox PlaceholderText="{Binding Localization[ui_pac_url_http_https_or_file]}" Text="{Binding ProxyAutomaticConfigurationUrl}" />
+                  <TextBlock Text="{Binding Localization[ui_integrated_proxy_authentication_note]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
                   <CheckBox Content="{Binding Localization[ui_bypass_proxy_for_local_addresses]}" IsChecked="{Binding ProxyBypassLocal}" />
                   <TextBox AcceptsReturn="True" MinHeight="70" PlaceholderText="{Binding Localization[ui_proxy_bypass_patterns_one_per_line]}" Text="{Binding ProxyBypassList}" />
                 </StackPanel>
@@ -856,6 +859,21 @@
                   </WrapPanel>
                   <TextBlock Text="{Binding SettingsTransferStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmAccentForeground}" />
                   <TextBlock Text="{Binding Localization[ui_legacy_import_recognizes_json_java_properties_and_xml_files_modern_expor]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="{Binding Localization[ui_updates]}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource XdmPrimarySoftForeground}" />
+                  <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}" />
+                  <ProgressBar Minimum="0" Maximum="1" Value="{Binding UpdateProgress}" Height="8" />
+                  <WrapPanel Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_check_for_updates]}" Command="{Binding CheckForUpdatesCommand}" />
+                    <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_download_verified_package]}" Command="{Binding DownloadVerifiedUpdateCommand}" />
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_open_staged_package]}" Command="{Binding OpenStagedUpdateCommand}" />
+                    <Button Classes="secondary" Content="{Binding Localization[ui_cancel]}" Command="{Binding CancelUpdateOperationCommand}" />
+                  </WrapPanel>
+                  <TextBlock Text="{Binding Localization[ui_verified_update_security_note]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}" />
                 </StackPanel>
               </Border>
 

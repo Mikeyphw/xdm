@@ -191,6 +191,7 @@ public partial class App : Application
         services.AddSingleton<IQueueSchedulerRuntime, QueueSchedulerRuntime>();
         services.AddSingleton<IPlatformInfo, PlatformInfo>();
         services.AddSingleton<IPlatformService, DesktopPlatformService>();
+        services.AddSingleton<IUpdateService, VerifiedUpdateService>();
         services.AddSingleton<IDesktopNotificationService, DesktopNotificationService>();
         services.AddSingleton<IBrowserHostInstaller, BrowserHostInstaller>();
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();

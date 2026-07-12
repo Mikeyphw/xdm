@@ -13,12 +13,16 @@
 ## Functional smoke tests
 
 - [ ] Add, pause, resume, cancel, retry, remove, and complete a download
-- [ ] Resume against a range-capable server
+- [ ] Resume against a range-capable HTTP server
+- [ ] Download and resume a passive FTP source; verify explicit FTPS certificate validation
+- [ ] Exercise direct, manual, PAC, Basic, and integrated proxy modes
 - [ ] Verify safe restart when a server ignores Range or changes validators
 - [ ] Run two queues simultaneously and verify queue-specific limits
 - [ ] Verify an overnight schedule and missed-start behavior
 - [ ] Capture a browser download and repair the native host
 - [ ] Probe direct media, HLS, and DASH fixtures
+- [ ] Verify the device-profile catalog exposes at least 100 fixed presets
+- [ ] Check and stage a HTTPS-manifest update package without automatic execution
 - [ ] Verify tray restore, explicit exit, notification, and second-instance activation
 - [ ] Export a diagnostic bundle and inspect it for secrets
 - [ ] Recover from an interrupted finalization marker

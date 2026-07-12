@@ -127,6 +127,19 @@ fixtures exercise legacy XML/JSON settings, history, scheduler state and
 credential-redacted export. Unknown-length HTTP responses are covered through
 the segmented-probe fallback. Linux and Windows CI now build, test, bootstrap
 and smoke self-contained packages. Known legacy WPF, GTK, WinForms, CoreFx,
-compatibility and test application paths are prohibited. FTP/FTPS transport and
-in-process self-update are explicit modern replacements rather than silent gaps.
+compatibility and test application paths are prohibited. Overlay 22 subsequently
+closed the FTP/FTPS, enterprise proxy, device-profile, and verified update gaps.
 Details are documented in `docs/parity/FINAL-GATE.md`.
+
+
+## Overlay 22 upstream corrections
+
+An independent comparison against the original public feature contract exposed
+capabilities that were absent from the Overlay 21 inventory. The ledger now
+tracks and qualifies FTP/FTPS, PAC scripts, ISA/NTLM/Kerberos integrated proxy
+authentication, the 100+ device conversion profile promise, and verified
+in-application update staging. The package bootstrap gate also validates the
+actual eight-section shell on both supported operating systems.
+
+See `UPSTREAM-PARITY-CORRECTIONS.md` for the macOS scope decision and the
+source-backed Adobe HDS disposition.

@@ -4,5 +4,6 @@ public enum ProxyMode
 {
     System,
     None,
-    Manual
+    Manual,
+    AutomaticScript
 }

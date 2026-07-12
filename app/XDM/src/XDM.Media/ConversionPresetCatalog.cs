@@ -13,8 +13,8 @@ public static class ConversionPresetCatalog
                 ".mp4"),
             "mp4",
             ["-map", "0:v:0?", "-map", "0:a:0?", "-map_metadata", "0", "-c", "copy", "-movflags", "+faststart"],
-            new HashSet<string>(new[] { "h264", "hevc", "av1", "mpeg4" }, StringComparer.OrdinalIgnoreCase),
-            new HashSet<string>(new[] { "aac", "mp3", "ac3", "eac3", "alac" }, StringComparer.OrdinalIgnoreCase)),
+            new HashSet<string>(["h264", "hevc", "av1", "mpeg4"], StringComparer.OrdinalIgnoreCase),
+            new HashSet<string>(["aac", "mp3", "ac3", "eac3", "alac"], StringComparer.OrdinalIgnoreCase)),
         new(
             new ConversionPreset(
                 "mp4-h264-balanced",
@@ -58,7 +58,8 @@ public static class ConversionPresetCatalog
             "mp3",
             ["-vn", "-map", "0:a:0", "-map_metadata", "0", "-c:a", "libmp3lame", "-q:a", "0", "-id3v2_version", "3"],
             null,
-            null)
+            null),
+        .. DeviceProfileCatalog.CreateDefinitions()
     ];
 
     public static IReadOnlyList<ConversionPreset> Presets { get; } =

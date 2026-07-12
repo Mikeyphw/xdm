@@ -61,7 +61,9 @@ public sealed class SettingsTransferServiceTests
         Assert.Equal(6, result.Settings.Network!.MaximumRetryAttempts);
         Assert.Equal(8, result.Settings.Network.DefaultConnectionCount);
         Assert.Equal(ProxyMode.Manual, result.Settings.Network.Proxy!.Mode);
+        Assert.Equal(ProxyAuthenticationMode.Basic, result.Settings.Network.Proxy.AuthenticationMode);
         Assert.Equal("legacy-user", result.Settings.Network.Proxy.Username);
+        Assert.Equal("legacy-secret", result.Settings.Network.Proxy.Password);
         Assert.Equal("Videos", Assert.Single(result.Settings.Categories).Name);
         Assert.Equal("Night queue", Assert.Single(result.Settings.Queues).Name);
     }

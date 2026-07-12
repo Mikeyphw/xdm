@@ -58,6 +58,33 @@ public sealed class FinalParityGateTests
     }
 
     [Fact]
+    public async Task UpstreamAdvertisedCapabilitiesHaveExplicitDisposition()
+    {
+        ParityManifest manifest = await ParityManifestLoader.LoadAsync(ManifestPath);
+        Dictionary<string, ParityStatus> expected = new(StringComparer.Ordinal)
+        {
+            ["download.ftp"] = ParityStatus.Complete,
+            ["download.proxy-pac-enterprise"] = ParityStatus.Complete,
+            ["conversion.device-profiles"] = ParityStatus.Complete,
+            ["updates.in-app"] = ParityStatus.Complete,
+            ["media.adobe-hds"] = ParityStatus.NotApplicable,
+            ["platform.macos"] = ParityStatus.NotApplicable
+        };
+
+        foreach ((string id, ParityStatus status) in expected)
+        {
+            ParityFeature feature = Assert.Single(
+                manifest.Features,
+                feature => string.Equals(feature.Id, id, StringComparison.Ordinal));
+            Assert.Equal(status, feature.Status);
+        }
+
+        Assert.DoesNotContain(
+            manifest.Features,
+            static feature => feature.Status == ParityStatus.IntentionallyReplaced);
+    }
+
+    [Fact]
     public void ModernPackagingQualificationScriptsExist()
     {
         string[] required =

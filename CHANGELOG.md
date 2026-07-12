@@ -17,16 +17,19 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Self-contained Linux x64/ARM64 and Windows x64 packaging
 - Modern-only Linux/Windows CI, package qualification, final parity certification, and large-history performance checks
 - Full browser takeover, HLS/DASH media acquisition, conversion, completion actions, migration, file management, localization, and accessibility
+- FTP/FTPS transport with resume and TLS-protected data channels
+- Bounded PAC proxy rules, integrated enterprise proxy authentication, 120 device profiles, and verified update staging
 
 ### Changed
 
 - `app/XDM/XDM.Modern.sln` is the supported solution
 - WPF, GTK, WinForms, MSIX, and .NET Framework projects are no longer part of active builds
 
-### Intentional modern replacements and preview boundaries
+### Product scope and preview boundaries
 
-- FTP/FTPS transport is replaced by HTTPS downloads or a dedicated file-transfer client
-- In-process binary self-update is replaced by externally installed, checksum-qualified release packages
+- Verified update packages are staged in-app but never executed automatically
+- macOS is outside the maintained Linux/Windows modernization scope
+- Adobe HDS remains a documented stale upstream claim because no retained working parser exists
 - Browser extension store distribution and signing remain release-channel tasks
 - Linux desktop integration may vary between desktop environments
 - Retain a backup before migrating legacy state even though recorded migration fixtures are qualified

@@ -25,22 +25,17 @@ public static class ConfiguredHttpClientFactory
                 handler.UseProxy = false;
                 break;
             case ProxyMode.Manual:
-                WebProxy webProxy = new(BuildProxyUri(proxy))
-                {
-                    BypassProxyOnLocal = proxy.BypassLocal,
-                    BypassList = proxy.BypassList?.ToArray() ?? []
-                };
-                if (!string.IsNullOrWhiteSpace(proxy.Username))
-                {
-                    webProxy.Credentials = new NetworkCredential(proxy.Username, proxy.Password ?? string.Empty);
-                }
                 handler.UseProxy = true;
-                handler.Proxy = webProxy;
+                handler.Proxy = CreateManualProxy(proxy);
+                break;
+            case ProxyMode.AutomaticScript:
+                handler.UseProxy = true;
+                handler.Proxy = LoadPacProxy(proxy, network.ConnectTimeoutSeconds);
                 break;
             default:
                 handler.UseProxy = true;
                 handler.Proxy = null;
-                handler.DefaultProxyCredentials = CredentialCache.DefaultCredentials;
+                handler.DefaultProxyCredentials = ResolveCredentials(proxy);
                 break;
         }
 
@@ -50,6 +45,36 @@ public static class ConfiguredHttpClientFactory
                 ? Timeout.InfiniteTimeSpan
                 : TimeSpan.FromSeconds(network.RequestTimeoutSeconds)
         };
+    }
+
+    internal static ICredentials? ResolveCredentials(ProxySettings proxy)
+        => proxy.AuthenticationMode switch
+        {
+            ProxyAuthenticationMode.Integrated => CredentialCache.DefaultNetworkCredentials,
+            ProxyAuthenticationMode.Basic when !string.IsNullOrWhiteSpace(proxy.Username)
+                => new NetworkCredential(proxy.Username, proxy.Password ?? string.Empty),
+            _ => null
+        };
+
+    private static WebProxy CreateManualProxy(ProxySettings proxy)
+    {
+        WebProxy webProxy = new(BuildProxyUri(proxy))
+        {
+            BypassProxyOnLocal = proxy.BypassLocal,
+            BypassList = proxy.BypassList?.ToArray() ?? [],
+            Credentials = ResolveCredentials(proxy)
+        };
+        return webProxy;
+    }
+
+    private static PacProxy LoadPacProxy(ProxySettings proxy, int connectTimeoutSeconds)
+    {
+        Uri scriptUri = new(proxy.AutomaticConfigurationUrl
+            ?? throw new InvalidOperationException("Automatic proxy mode requires a PAC URL."));
+        return PacProxy.LoadAsync(
+            scriptUri,
+            ResolveCredentials(proxy),
+            TimeSpan.FromSeconds(connectTimeoutSeconds)).GetAwaiter().GetResult();
     }
 
     private static Uri BuildProxyUri(ProxySettings proxy)

@@ -7,11 +7,13 @@ built, tested, or packaged.
 
 ## Current preview capabilities
 
-- HTTP and HTTPS downloads with pause, resume, retry, cancellation, and history
+- HTTP, HTTPS, FTP, and FTPS downloads with pause, resume, retry, cancellation, and history
 - ETag/Last-Modified resume validation, range checking, disk preflight, and crash-safe finalization
 - Batch URLs, custom request metadata, authentication, categories, queues, schedules, and speed limits
 - Firefox and Chromium-family browser capture through an authenticated native host
-- Direct media, HLS, and DASH probing
+- Direct media, HLS, and DASH probing and acquisition
+- 120 fixed device conversion profiles and verified update-package staging
+- System, manual, and bounded PAC proxy modes with Basic or integrated authentication
 - Single-instance activation, tray/background operation, desktop notifications, diagnostics, and recovery
 - Self-contained Linux x64/ARM64 and Windows x64 publishing
 

@@ -188,14 +188,29 @@ public sealed class SettingsTransferService : ISettingsTransferService
         };
 
         string? proxyMode = Get(values, "proxyMode", "proxy.mode", "network.proxy.type");
+        string? proxyUsername = Get(values, "proxyUsername", "proxy.user", "http.proxyUser");
+        string? proxyPassword = Get(values, "proxyPassword", "proxy.password", "http.proxyPassword");
+        string? proxyAuthenticationMode = Get(
+            values,
+            "proxyAuthenticationMode",
+            "proxy.auth.mode",
+            "proxy.authentication");
+        ProxyAuthenticationMode authenticationFallback = !string.IsNullOrWhiteSpace(proxyUsername)
+            ? ProxyAuthenticationMode.Basic
+            : proxy.AuthenticationMode;
         proxy = proxy with
         {
             Mode = ParseProxyMode(proxyMode, proxy.Mode),
             Host = Get(values, "proxyHost", "proxy.host", "http.proxyHost") ?? proxy.Host,
             Port = GetInt(values, proxy.Port, "proxyPort", "proxy.port", "http.proxyPort"),
-            Username = Get(values, "proxyUsername", "proxy.user", "http.proxyUser") ?? proxy.Username,
-            Password = Get(values, "proxyPassword", "proxy.password", "http.proxyPassword") ?? proxy.Password,
-            BypassLocal = GetBool(values, proxy.BypassLocal, "proxyBypassLocal", "proxy.bypass.local")
+            Username = proxyUsername ?? proxy.Username,
+            Password = proxyPassword ?? proxy.Password,
+            BypassLocal = GetBool(values, proxy.BypassLocal, "proxyBypassLocal", "proxy.bypass.local"),
+            AutomaticConfigurationUrl = Get(values, "proxyAutomaticConfigurationUrl", "proxy.pac.url", "proxy.auto.config.url")
+                ?? proxy.AutomaticConfigurationUrl,
+            AuthenticationMode = ParseProxyAuthenticationMode(
+                proxyAuthenticationMode,
+                authenticationFallback)
         };
         network = network with { Proxy = proxy };
         behavior = behavior with
@@ -493,6 +508,19 @@ public sealed class SettingsTransferService : ISettingsTransferService
             "system" or "auto" or "0" => ProxyMode.System,
             "none" or "direct" or "1" => ProxyMode.None,
             "manual" or "custom" or "2" => ProxyMode.Manual,
+            "pac" or "automatic-script" or "script" or "3" => ProxyMode.AutomaticScript,
+            _ => fallback
+        };
+
+    private static ProxyAuthenticationMode ParseProxyAuthenticationMode(
+        string? value,
+        ProxyAuthenticationMode fallback)
+        => value?.Trim().ToLowerInvariant() switch
+        {
+            "none" or "0" => ProxyAuthenticationMode.None,
+            "basic" or "1" => ProxyAuthenticationMode.Basic,
+            "integrated" or "ntlm" or "kerberos" or "default" or "2"
+                => ProxyAuthenticationMode.Integrated,
             _ => fallback
         };
 
