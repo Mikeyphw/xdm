@@ -39,7 +39,11 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
                 item.CategoryId,
                 item.ConnectionCount,
                 item.Priority,
-                item.SourcePage))
+                item.SourcePage,
+                item.Mirrors,
+                item.ExpectedChecksumAlgorithm,
+                item.ExpectedChecksum,
+                item.TotalBytes))
             .ToArray();
         DownloadListEnvelope envelope = new(
             DownloadListEnvelope.CurrentSchemaVersion,
@@ -166,6 +170,15 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
             }
 
             Uri? sourcePage = IsSafeHttpUri(entry.SourcePage) ? entry.SourcePage : null;
+            Uri[] mirrors = (entry.Mirrors ?? Array.Empty<Uri>())
+                .Where(IsSafeDownloadUri)
+                .Where(uri => uri != entry.Source)
+                .DistinctBy(static uri => uri.AbsoluteUri, StringComparer.OrdinalIgnoreCase)
+                .Take(32)
+                .ToArray();
+            (string? checksumAlgorithm, string? checksum) = NormalizeChecksum(
+                entry.ExpectedChecksumAlgorithm,
+                entry.ExpectedChecksum);
             normalized.Add(entry with
             {
                 FileName = NormalizeFileName(entry.FileName),
@@ -173,12 +186,50 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
                 QueueId = NormalizeIdentifier(entry.QueueId),
                 CategoryId = NormalizeIdentifier(entry.CategoryId),
                 ConnectionCount = Math.Clamp(entry.ConnectionCount, 1, 32),
-                SourcePage = sourcePage
+                SourcePage = sourcePage,
+                Mirrors = mirrors,
+                ExpectedChecksumAlgorithm = checksumAlgorithm,
+                ExpectedChecksum = checksum,
+                ExpectedLength = entry.ExpectedLength is > 0 ? entry.ExpectedLength : null
             });
         }
 
         ignored += Math.Max(0, entries.Count - MaximumEntries);
         return new DownloadListImportResult(normalized, ignored, sourceFormat);
+    }
+
+    private static (string? Algorithm, string? Checksum) NormalizeChecksum(
+        string? algorithm,
+        string? checksum)
+    {
+        if (string.IsNullOrWhiteSpace(algorithm) || string.IsNullOrWhiteSpace(checksum))
+        {
+            return (null, null);
+        }
+
+        string normalizedAlgorithm = algorithm.Trim().ToUpperInvariant() switch
+        {
+            "SHA256" or "SHA-256" => "SHA-256",
+            "SHA512" or "SHA-512" => "SHA-512",
+            _ => string.Empty
+        };
+        if (normalizedAlgorithm.Length == 0)
+        {
+            return (null, null);
+        }
+
+        string normalizedChecksum = new(checksum
+            .Where(static character => !char.IsWhiteSpace(character) && character != ':')
+            .Select(char.ToUpperInvariant)
+            .ToArray());
+        int expectedLength = normalizedAlgorithm == "SHA-256" ? 64 : 128;
+        if (normalizedChecksum.Length != expectedLength
+            || normalizedChecksum.Any(static character => !Uri.IsHexDigit(character)))
+        {
+            return (null, null);
+        }
+
+        return (normalizedAlgorithm, normalizedChecksum);
     }
 
     private static bool IsSafeDownloadUri(Uri? uri)

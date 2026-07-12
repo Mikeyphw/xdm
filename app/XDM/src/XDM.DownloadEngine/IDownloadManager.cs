@@ -13,6 +13,21 @@ public interface IDownloadManager
 
     Task<string> AddAsync(DownloadRequest request, CancellationToken cancellationToken = default);
 
+
+    Task<DownloadVerificationResult> VerifyAsync(
+        string downloadId,
+        CancellationToken cancellationToken = default);
+
+    Task<DownloadRepairResult> RepairAsync(
+        string downloadId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<string>> AddMetalinkAsync(
+        Stream stream,
+        string destinationDirectory,
+        string? queueId = null,
+        CancellationToken cancellationToken = default);
+
     Task PauseAsync(string downloadId, CancellationToken cancellationToken = default);
 
     Task ResumeAsync(string downloadId, CancellationToken cancellationToken = default);

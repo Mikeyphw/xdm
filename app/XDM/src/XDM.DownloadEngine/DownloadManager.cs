@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using XDM.Core.Downloads;
 using XDM.Core.Persistence;
@@ -20,6 +21,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private const long DiskSafetyMarginBytes = 8L * 1024 * 1024;
     private static readonly TimeSpan ProgressInterval = TimeSpan.FromMilliseconds(150);
     private static readonly TimeSpan PersistenceInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan CheckpointInterval = TimeSpan.FromSeconds(1);
+    private const long CheckpointByteInterval = 4L * 1024 * 1024;
 
     private readonly HttpClient _httpClient;
     private readonly IApplicationState _applicationState;
@@ -28,6 +31,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private readonly IDiskSpaceProvider _diskSpaceProvider;
     private readonly DownloadRetryPolicy _retryPolicy;
     private readonly SegmentedDownloadExecutor _segmentedExecutor;
+    private readonly ResumeCheckpointStore _checkpointStore;
     private readonly IFtpDownloadClient _ftpDownloadClient;
     private readonly ISettingsService _settingsService;
     private readonly SemaphoreSlim _concurrencyGate;
@@ -69,7 +73,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         IDiskSpaceProvider diskSpaceProvider,
         DownloadRetryPolicy retryPolicy,
         SegmentedDownloadOptions? segmentedOptions = null,
-        IFtpDownloadClient? ftpDownloadClient = null)
+        IFtpDownloadClient? ftpDownloadClient = null,
+        ResumeCheckpointStore? checkpointStore = null)
     {
         _httpClient = httpClient;
         _applicationState = applicationState;
@@ -84,6 +89,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             retryPolicy,
             segmentedOptions ?? new SegmentedDownloadOptions());
         _ftpDownloadClient = ftpDownloadClient ?? new FtpDownloadClient();
+        _checkpointStore = checkpointStore ?? new ResumeCheckpointStore();
         _concurrencyGate = new SemaphoreSlim(settingsService.Current.MaxConcurrentDownloads);
         IReadOnlyList<DownloadQueueDefinition> configuredQueues = settingsService.Current.Queues;
         string defaultQueueId = configuredQueues.Count > 0 ? configuredQueues[0].Id : "default";
@@ -152,11 +158,24 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 null,
                 item.Priority,
                 item.SourcePage,
-                item.UpdatedAt);
+                item.UpdatedAt,
+                item.ExpectedChecksumAlgorithm,
+                item.ExpectedChecksum,
+                item.ActualChecksum,
+                item.LastVerifiedAt,
+                item.IntegrityStatus,
+                item.RecoveryRequired,
+                item.RecoveryMessage,
+                item.Mirrors);
 
             try
             {
-                RecoverInterruptedFinalization(session);
+                MigrateLegacyArtifacts(session.DestinationPath);
+                ResumeCheckpoint? checkpoint = await _checkpointStore
+                    .LoadAsync(session.DestinationPath, cancellationToken)
+                    .ConfigureAwait(false);
+                ReconcileRecoveredState(session, checkpoint);
+                await RecoverInterruptedFinalizationAsync(session, cancellationToken).ConfigureAwait(false);
             }
             catch (IOException exception)
             {
@@ -186,7 +205,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         PublishQueueRuntime();
     }
 
-    public Task<string> AddAsync(DownloadRequest request, CancellationToken cancellationToken = default)
+    public async Task<string> AddAsync(DownloadRequest request, CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(request);
@@ -226,6 +245,21 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             throw new ArgumentException("The request body content type is invalid or is not associated with a POST request.", nameof(request));
         }
 
+        if (request.ExpectedLength is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(request),
+                "Expected length must be greater than zero when provided.");
+        }
+
+        string? normalizedExpectedAlgorithm = NormalizeExpectedAlgorithm(
+            request.ExpectedChecksumAlgorithm,
+            request.ExpectedChecksum);
+        string? normalizedExpectedChecksum = NormalizeExpectedChecksum(
+            request.ExpectedChecksumAlgorithm,
+            request.ExpectedChecksum);
+        Uri[] normalizedRequestMirrors = NormalizeMirrors(request.Source, request.Mirrors);
+
         ArgumentException.ThrowIfNullOrWhiteSpace(request.DestinationDirectory);
         DownloadBehaviorSettings behavior = _settingsService.Current.DownloadBehavior
             ?? DownloadBehaviorSettings.Default;
@@ -241,6 +275,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         string fileName = request.ResolveFileName();
         string destinationPath = ResolveDestinationPath(request, fileName);
+        MigrateLegacyArtifacts(destinationPath);
         if (request.DuplicateBehavior == DuplicateFileBehavior.Overwrite)
         {
             string overwritePartialPath = GetPartialPath(destinationPath);
@@ -249,6 +284,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 File.Delete(overwritePartialPath);
             }
 
+            string legacyPartialPath = TransferArtifactPaths.GetLegacyPartialPath(destinationPath);
+            if (File.Exists(legacyPartialPath))
+            {
+                File.Delete(legacyPartialPath);
+            }
+
+            _checkpointStore.Delete(destinationPath);
             string overwriteMarkerPath = GetFinalizationMarkerPath(destinationPath);
             if (File.Exists(overwriteMarkerPath))
             {
@@ -259,6 +301,32 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             if (Directory.Exists(overwriteSegmentDirectory))
             {
                 Directory.Delete(overwriteSegmentDirectory, recursive: true);
+            }
+        }
+
+        ResumeCheckpoint? recoveryCheckpoint = null;
+        bool recoverLegacySegments = false;
+        if (request.DuplicateBehavior != DuplicateFileBehavior.Overwrite
+            && HasTransferArtifacts(destinationPath))
+        {
+            recoveryCheckpoint = await _checkpointStore
+                .LoadAsync(destinationPath, cancellationToken)
+                .ConfigureAwait(false);
+            if (!IsCheckpointCompatibleWithRequest(
+                    recoveryCheckpoint,
+                    request.Source,
+                    normalizedRequestMirrors,
+                    destinationPath,
+                    request.ExpectedLength,
+                    normalizedExpectedAlgorithm,
+                    normalizedExpectedChecksum))
+            {
+                recoverLegacySegments = CanAdoptLegacySegmentArtifacts(destinationPath);
+                if (!recoverLegacySegments)
+                {
+                    PreserveOrphanedTransferArtifacts(destinationPath);
+                }
+                recoveryCheckpoint = null;
             }
         }
 
@@ -275,11 +343,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         DownloadSession session = new(
             Guid.NewGuid().ToString("N"),
-            request.Source,
+            recoveryCheckpoint?.Source ?? request.Source,
             destinationPath,
             DownloadState.Queued,
             0,
-            null,
+            request.ExpectedLength ?? recoveryCheckpoint?.TotalBytes,
             null,
             request.Headers,
             request.Username,
@@ -291,29 +359,227 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             queueId,
             request.CategoryId,
             queueOrder,
-            null,
-            null,
+            recoveryCheckpoint?.EntityTag,
+            recoveryCheckpoint?.LastModified,
             method == "GET" ? Math.Clamp(request.ConnectionCount, 1, 32) : 1,
             method,
             request.RequestBody?.ToArray(),
             request.RequestBodyContentType,
             request.Priority,
             request.SourcePage,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            normalizedExpectedAlgorithm ?? recoveryCheckpoint?.ExpectedChecksumAlgorithm,
+            normalizedExpectedChecksum ?? recoveryCheckpoint?.ExpectedChecksum,
+            null,
+            null,
+            DownloadIntegrityStatus.Unknown,
+            false,
+            null,
+            new[] { request.Source }
+                .Concat(normalizedRequestMirrors)
+                .Concat(recoveryCheckpoint?.Mirrors ?? Array.Empty<Uri>())
+                .ToArray());
 
         if (!_sessions.TryAdd(session.Id, session))
         {
             throw new InvalidOperationException("Could not register the new download.");
         }
 
+        if (recoveryCheckpoint is not null || recoverLegacySegments)
+        {
+            ReconcileRecoveredState(session, recoveryCheckpoint, allowDownloadIdMismatch: true);
+            if (recoverLegacySegments)
+            {
+                lock (session.Sync)
+                {
+                    session.RecoveryMessage =
+                        "Recovered legacy segmented transfer state. The server will be probed and each range validated before reuse.";
+                }
+            }
+            await RecoverInterruptedFinalizationAsync(session, cancellationToken).ConfigureAwait(false);
+        }
+
         Publish(session, forcePersist: true);
-        if (IsQueueActive(session.QueueId))
+        if (session.State != DownloadState.Completed && !session.RecoveryRequired && IsQueueActive(session.QueueId))
         {
             Start(session);
         }
 
         PublishQueueRuntime();
-        return Task.FromResult(session.Id);
+        return session.Id;
+    }
+
+    public async Task<DownloadVerificationResult> VerifyAsync(
+        string downloadId,
+        CancellationToken cancellationToken = default)
+    {
+        DownloadSession session = GetSession(downloadId);
+        string filePath;
+        string algorithm;
+        string? expectedChecksum;
+        lock (session.Sync)
+        {
+            if (session.State != DownloadState.Completed)
+            {
+                throw new InvalidOperationException("Only completed downloads can be verified.");
+            }
+
+            filePath = session.DestinationPath;
+            algorithm = session.ExpectedChecksumAlgorithm ?? DownloadChecksumService.Sha256;
+            expectedChecksum = session.ExpectedChecksum;
+            session.IntegrityStatus = DownloadIntegrityStatus.Verifying;
+            session.RecoveryRequired = false;
+            session.RecoveryMessage = null;
+        }
+
+        if (!File.Exists(filePath))
+        {
+            lock (session.Sync)
+            {
+                session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+                session.RecoveryRequired = true;
+                session.RecoveryMessage = "The completed file is missing and must be downloaded again.";
+            }
+            Publish(session, forcePersist: true);
+            throw new FileNotFoundException("The completed download file no longer exists.", filePath);
+        }
+
+        Publish(session, forcePersist: false);
+        string actualChecksum = await DownloadChecksumService
+            .ComputeAsync(filePath, algorithm, cancellationToken)
+            .ConfigureAwait(false);
+        bool isMatch = expectedChecksum is null
+            || string.Equals(actualChecksum, expectedChecksum, StringComparison.OrdinalIgnoreCase);
+        DateTimeOffset verifiedAt = DateTimeOffset.UtcNow;
+        lock (session.Sync)
+        {
+            session.ActualChecksum = actualChecksum;
+            session.LastVerifiedAt = verifiedAt;
+            session.IntegrityStatus = isMatch
+                ? DownloadIntegrityStatus.Verified
+                : DownloadIntegrityStatus.Mismatch;
+            session.RecoveryRequired = !isMatch;
+            session.RecoveryMessage = isMatch
+                ? null
+                : "The downloaded file does not match its expected checksum. Use Repair to preserve it and download a clean copy.";
+            session.ErrorMessage = isMatch ? null : session.RecoveryMessage;
+        }
+
+        Publish(session, forcePersist: true);
+        string message = expectedChecksum is null
+            ? $"Recorded {algorithm} checksum {actualChecksum}."
+            : isMatch
+                ? $"{algorithm} verification succeeded."
+                : $"{algorithm} verification failed.";
+        return new DownloadVerificationResult(
+            session.Id,
+            filePath,
+            algorithm,
+            actualChecksum,
+            expectedChecksum,
+            isMatch,
+            new FileInfo(filePath).Length,
+            message);
+    }
+
+    public async Task<DownloadRepairResult> RepairAsync(
+        string downloadId,
+        CancellationToken cancellationToken = default)
+    {
+        DownloadSession session = GetSession(downloadId);
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (session.Sync)
+        {
+            if (session.State is DownloadState.Connecting or DownloadState.Downloading or DownloadState.Finalizing)
+            {
+                throw new InvalidOperationException("Pause the download before repairing it.");
+            }
+            session.IntegrityStatus = DownloadIntegrityStatus.Repairing;
+        }
+        Publish(session, forcePersist: false);
+
+        string? preservedPath = null;
+        string destinationPath;
+        lock (session.Sync)
+        {
+            destinationPath = session.DestinationPath;
+        }
+
+        if (File.Exists(destinationPath))
+        {
+            preservedPath = ResolveUniqueArtifactPath(
+                TransferArtifactPaths.GetCorruptBackupPath(destinationPath, DateTimeOffset.UtcNow));
+            await MoveFileAsync(destinationPath, preservedPath, overwrite: false, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        DeleteTransferArtifacts(destinationPath);
+        lock (session.Sync)
+        {
+            session.DownloadedBytes = 0;
+            session.BytesPerSecond = 0;
+            session.EntityTag = null;
+            session.LastModified = null;
+            session.ActualChecksum = null;
+            session.LastVerifiedAt = null;
+            session.IntegrityStatus = DownloadIntegrityStatus.Checkpointed;
+            session.RecoveryRequired = false;
+            session.RecoveryMessage = null;
+            session.ErrorMessage = null;
+            session.State = DownloadState.Paused;
+            session.Source = session.Mirrors[0];
+            session.MirrorIndex = 1;
+        }
+
+        Publish(session, forcePersist: true);
+        bool restarted = IsQueueActive(session.QueueId);
+        Start(session);
+        return new DownloadRepairResult(
+            session.Id,
+            restarted,
+            preservedPath,
+            preservedPath is null
+                ? restarted
+                    ? "The transfer state was reset and the download was restarted."
+                    : "The transfer state was reset and queued for the next queue start."
+                : restarted
+                    ? $"The suspect file was preserved as '{preservedPath}' and a clean download was started."
+                    : $"The suspect file was preserved as '{preservedPath}' and a clean download was queued.");
+    }
+
+    public async Task<IReadOnlyList<string>> AddMetalinkAsync(
+        Stream stream,
+        string destinationDirectory,
+        string? queueId = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destinationDirectory);
+        IReadOnlyList<MetalinkFileEntry> entries = MetalinkDocumentParser.Parse(stream);
+        if (entries.Count == 0)
+        {
+            throw new InvalidDataException("The Metalink document contains no supported download entries.");
+        }
+
+        List<string> ids = new(entries.Count);
+        foreach (MetalinkFileEntry entry in entries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Uri primary = entry.Sources[0];
+            string id = await AddAsync(
+                new DownloadRequest(
+                    primary,
+                    destinationDirectory,
+                    entry.FileName,
+                    QueueId: queueId,
+                    Mirrors: entry.Sources.Skip(1).ToArray(),
+                    ExpectedChecksumAlgorithm: entry.ChecksumAlgorithm,
+                    ExpectedChecksum: entry.Checksum,
+                    ExpectedLength: entry.Size),
+                cancellationToken).ConfigureAwait(false);
+            ids.Add(id);
+        }
+        return ids;
     }
 
     public Task PauseAsync(string downloadId, CancellationToken cancellationToken = default)
@@ -553,7 +819,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 duplicateBehavior,
                 session.ConnectionCount,
                 Priority: session.Priority,
-                SourcePage: session.SourcePage);
+                SourcePage: session.SourcePage,
+                Mirrors: session.Mirrors,
+                ExpectedChecksumAlgorithm: session.ExpectedChecksumAlgorithm,
+                ExpectedChecksum: session.ExpectedChecksum,
+                ExpectedLength: session.TotalBytes);
         }
 
         return AddAsync(request, cancellationToken);
@@ -592,6 +862,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
             session.Source = source;
             session.SourcePage = sourcePage;
+            session.Mirrors = new[] { source }
+                .Concat(session.Mirrors)
+                .Distinct()
+                .ToArray();
+            session.MirrorIndex = 1;
             session.EntityTag = null;
             session.LastModified = null;
             session.ErrorMessage = null;
@@ -809,38 +1084,59 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             queueConcurrencyAcquired = true;
 
             int maximumAttempts = session.Method == "GET" ? _retryPolicy.MaximumAttempts : 1;
-            for (int attempt = 1; attempt <= maximumAttempts; attempt++)
+            while (true)
             {
-                try
+                bool switchedMirror = false;
+                for (int attempt = 1; attempt <= maximumAttempts; attempt++)
                 {
-                    await ExecuteDownloadAttemptAsync(session, partialPath, cancellationToken).ConfigureAwait(false);
-                    return;
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-                catch (Exception exception) when (
-                    DownloadRetryPolicy.IsTransient(exception)
-                    && attempt < maximumAttempts)
-                {
-                    TimeSpan delay = _retryPolicy.GetDelay(attempt);
-                    lock (session.Sync)
+                    try
                     {
-                        session.State = DownloadState.Connecting;
-                        session.BytesPerSecond = 0;
-                        session.ErrorMessage = $"Temporary failure. Retrying in {delay.TotalSeconds:0.0}s.";
+                        await ExecuteDownloadAttemptAsync(session, partialPath, cancellationToken).ConfigureAwait(false);
+                        return;
                     }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception exception) when (DownloadRetryPolicy.IsTransient(exception))
+                    {
+                        if (attempt < maximumAttempts)
+                        {
+                            TimeSpan delay = _retryPolicy.GetDelay(attempt);
+                            lock (session.Sync)
+                            {
+                                session.State = DownloadState.Connecting;
+                                session.BytesPerSecond = 0;
+                                session.ErrorMessage = $"Temporary failure. Retrying in {delay.TotalSeconds:0.0}s.";
+                            }
 
-                    Publish(session, forcePersist: true);
-                    DownloadEngineLog.DownloadRetrying(
-                        _logger,
-                        session.Id,
-                        attempt + 1,
-                        maximumAttempts,
-                        delay.TotalMilliseconds,
-                        exception.Message);
-                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                            Publish(session, forcePersist: true);
+                            DownloadEngineLog.DownloadRetrying(
+                                _logger,
+                                session.Id,
+                                attempt + 1,
+                                maximumAttempts,
+                                delay.TotalMilliseconds,
+                                exception.Message);
+                            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                            continue;
+                        }
+
+                        if (TrySwitchToNextMirror(session))
+                        {
+                            ResetTransferForMirror(session);
+                            switchedMirror = true;
+                            Publish(session, forcePersist: true);
+                            break;
+                        }
+
+                        throw;
+                    }
+                }
+
+                if (!switchedMirror)
+                {
+                    return;
                 }
             }
         }
@@ -913,6 +1209,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         if (session.Method == "GET" && existingLength == 0 && session.ConnectionCount > 1)
         {
+            long? expectedSegmentedLength;
+            lock (session.Sync)
+            {
+                expectedSegmentedLength = session.TotalBytes;
+            }
+
             SegmentedDownloadContext context = new(
                 session.Source,
                 session.DestinationPath,
@@ -950,6 +1252,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 cancellationToken).ConfigureAwait(false);
             if (segmentedResult is not null)
             {
+                if (expectedSegmentedLength is long expectedLength
+                    && expectedLength != segmentedResult.TotalBytes)
+                {
+                    throw new DownloadIntegrityException(
+                        $"The remote file length changed. Expected {expectedLength}; received {segmentedResult.TotalBytes}.");
+                }
                 lock (session.Sync)
                 {
                     session.DownloadedBytes = segmentedResult.TotalBytes;
@@ -960,9 +1268,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     session.State = DownloadState.Finalizing;
                 }
 
-                WriteFinalizationMarker(session.DestinationPath, segmentedResult.TotalBytes);
+                await VerifyPartialIfExpectedAsync(session, partialPath, cancellationToken).ConfigureAwait(false);
+                WriteFinalizationMarker(session, segmentedResult.TotalBytes);
                 Publish(session, forcePersist: true);
-                CompleteFromPartial(session, partialPath, segmentedResult.TotalBytes);
+                await CompleteFromPartialAsync(session, partialPath, segmentedResult.TotalBytes).ConfigureAwait(false);
                 return;
             }
         }
@@ -994,7 +1303,15 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             long? remoteLength = response.Content.Headers.ContentRange?.Length;
             if (remoteLength == existingLength)
             {
-                CompleteFromPartial(session, partialPath, existingLength);
+                await VerifyPartialIfExpectedAsync(session, partialPath, cancellationToken).ConfigureAwait(false);
+                lock (session.Sync)
+                {
+                    session.State = DownloadState.Finalizing;
+                    session.BytesPerSecond = 0;
+                }
+                WriteFinalizationMarker(session, existingLength);
+                Publish(session, forcePersist: true);
+                await CompleteFromPartialAsync(session, partialPath, existingLength).ConfigureAwait(false);
                 return;
             }
         }
@@ -1004,13 +1321,32 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         bool append = false;
         if (existingLength > 0 && response.StatusCode == HttpStatusCode.PartialContent)
         {
-            ValidateContentRange(response, existingLength);
+            ValidateContentRange(response, existingLength, session.TotalBytes);
             ValidateResumeValidators(response, session);
             append = true;
         }
         else if (existingLength > 0)
         {
             DownloadEngineLog.RangeIgnored(_logger, session.Id, existingLength, response.StatusCode);
+            bool hadValidator;
+            lock (session.Sync)
+            {
+                hadValidator = !string.IsNullOrWhiteSpace(session.EntityTag) || session.LastModified is not null;
+            }
+
+            if (hadValidator && File.Exists(partialPath))
+            {
+                string stalePath = ResolveUniqueArtifactPath(
+                    TransferArtifactPaths.GetStalePartialPath(
+                        session.DestinationPath,
+                        DateTimeOffset.UtcNow));
+                File.Move(partialPath, stalePath, overwrite: false);
+                lock (session.Sync)
+                {
+                    session.RecoveryMessage = $"The remote file changed or rejected validated resume. The old partial data was preserved as '{stalePath}'.";
+                }
+            }
+
             existingLength = 0;
             lock (session.Sync)
             {
@@ -1025,6 +1361,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             totalBytes = existingLength + contentLength;
         }
 
+        if (totalBytes is long knownTotalBytes)
+        {
+            ValidateKnownLength(session, knownTotalBytes);
+        }
         EnsureDiskCapacity(session.DestinationPath, existingLength, totalBytes);
 
         lock (session.Sync)
@@ -1110,7 +1450,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         // Windows does not permit moving the partial file while its stream is open.
         // Keep finalization outside the FileStream scope so all platforms observe
         // the same handle-lifetime semantics.
-        WriteFinalizationMarker(session.DestinationPath, downloadedBytes);
+        await VerifyPartialIfExpectedAsync(session, partialPath, cancellationToken).ConfigureAwait(false);
+        WriteFinalizationMarker(session, downloadedBytes);
         lock (session.Sync)
         {
             session.State = DownloadState.Finalizing;
@@ -1118,7 +1459,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         Publish(session, forcePersist: true);
-        CompleteFromPartial(session, partialPath, downloadedBytes);
+        await CompleteFromPartialAsync(session, partialPath, downloadedBytes).ConfigureAwait(false);
     }
 
     private static void ApplyIfRangeValidator(HttpRequestMessage request, DownloadSession session)
@@ -1145,13 +1486,39 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
     }
 
-    private static void ValidateContentRange(HttpResponseMessage response, long expectedStart)
+    private static void ValidateKnownLength(DownloadSession session, long actualLength)
+    {
+        long? expectedLength;
+        lock (session.Sync)
+        {
+            expectedLength = session.TotalBytes;
+        }
+
+        if (expectedLength is long expected && expected != actualLength)
+        {
+            throw new DownloadIntegrityException(
+                $"The remote file length changed. Expected {expected}; received {actualLength}.");
+        }
+    }
+
+    private static void ValidateContentRange(
+        HttpResponseMessage response,
+        long expectedStart,
+        long? expectedTotalBytes)
     {
         ContentRangeHeaderValue? contentRange = response.Content.Headers.ContentRange;
         if (contentRange?.From != expectedStart)
         {
             throw new DownloadIntegrityException(
                 $"The server returned an invalid range start. Expected {expectedStart.ToString(System.Globalization.CultureInfo.InvariantCulture)}; received {contentRange?.From?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "none"}.");
+        }
+
+        if (expectedTotalBytes is long expectedTotal
+            && contentRange?.Length is long actualTotal
+            && actualTotal != expectedTotal)
+        {
+            throw new DownloadIntegrityException(
+                $"The remote file length changed while resuming. Expected {expectedTotal}; received {actualTotal}.");
         }
     }
 
@@ -1166,19 +1533,31 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         string? responseEntityTag = response.Headers.ETag?.ToString();
-        if (!string.IsNullOrWhiteSpace(expectedEntityTag)
-            && !string.IsNullOrWhiteSpace(responseEntityTag)
-            && !string.Equals(expectedEntityTag, responseEntityTag, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(expectedEntityTag))
         {
-            throw new DownloadIntegrityException("The remote file entity tag changed while resuming.");
+            if (string.IsNullOrWhiteSpace(responseEntityTag))
+            {
+                throw new DownloadIntegrityException("The server omitted the entity tag required to validate this resume.");
+            }
+
+            if (!string.Equals(expectedEntityTag, responseEntityTag, StringComparison.Ordinal))
+            {
+                throw new DownloadIntegrityException("The remote file entity tag changed while resuming.");
+            }
         }
 
         DateTimeOffset? responseLastModified = response.Content.Headers.LastModified;
-        if (expectedLastModified is DateTimeOffset expected
-            && responseLastModified is DateTimeOffset actual
-            && expected != actual)
+        if (expectedLastModified is DateTimeOffset expected)
         {
-            throw new DownloadIntegrityException("The remote file modification date changed while resuming.");
+            if (responseLastModified is not DateTimeOffset actual)
+            {
+                throw new DownloadIntegrityException("The server omitted the modification date required to validate this resume.");
+            }
+
+            if (expected != actual)
+            {
+                throw new DownloadIntegrityException("The remote file modification date changed while resuming.");
+            }
         }
     }
 
@@ -1201,11 +1580,27 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
     }
 
-    private static void WriteFinalizationMarker(string destinationPath, long downloadedBytes)
+    private static void WriteFinalizationMarker(DownloadSession session, long downloadedBytes)
     {
+        string destinationPath;
+        string? checksumAlgorithm;
+        string? checksum;
+        lock (session.Sync)
+        {
+            destinationPath = session.DestinationPath;
+            checksumAlgorithm = session.ActualChecksum is null ? null : session.ExpectedChecksumAlgorithm;
+            checksum = session.ActualChecksum;
+        }
+
         string markerPath = GetFinalizationMarkerPath(destinationPath);
         string temporaryPath = $"{markerPath}.tmp";
-        byte[] payload = Encoding.UTF8.GetBytes(downloadedBytes.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        FinalizationMarker marker = new(
+            FinalizationMarker.CurrentVersion,
+            downloadedBytes,
+            checksumAlgorithm,
+            checksum,
+            DateTimeOffset.UtcNow);
+        byte[] payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(marker));
         using (FileStream stream = new(
             temporaryPath,
             FileMode.Create,
@@ -1221,7 +1616,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         File.Move(temporaryPath, markerPath, overwrite: true);
     }
 
-    private static void RecoverInterruptedFinalization(DownloadSession session)
+    private static async Task RecoverInterruptedFinalizationAsync(
+        DownloadSession session,
+        CancellationToken cancellationToken)
     {
         string markerPath = GetFinalizationMarkerPath(session.DestinationPath);
         if (!File.Exists(markerPath))
@@ -1229,35 +1626,116 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             return;
         }
 
+        FinalizationMarker marker = await ReadFinalizationMarkerAsync(markerPath, cancellationToken)
+            .ConfigureAwait(false);
         string partialPath = GetPartialPath(session.DestinationPath);
+        string candidatePath;
         if (File.Exists(session.DestinationPath))
         {
-            long completedLength = new FileInfo(session.DestinationPath).Length;
-            session.DownloadedBytes = completedLength;
-            session.TotalBytes ??= completedLength;
-            session.State = DownloadState.Completed;
-            session.ErrorMessage = null;
-            File.Delete(markerPath);
-            return;
+            candidatePath = session.DestinationPath;
         }
-
-        if (File.Exists(partialPath))
+        else if (File.Exists(partialPath))
         {
-            long completedLength = new FileInfo(partialPath).Length;
-            File.Move(partialPath, session.DestinationPath, overwrite: true);
-            session.DownloadedBytes = completedLength;
-            session.TotalBytes ??= completedLength;
-            session.State = DownloadState.Completed;
-            session.ErrorMessage = null;
-            File.Delete(markerPath);
+            candidatePath = partialPath;
+        }
+        else
+        {
+            session.State = DownloadState.Failed;
+            session.RecoveryRequired = true;
+            session.RecoveryMessage = "Finalization was interrupted and the completed partial file is missing.";
+            session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+            session.ErrorMessage = session.RecoveryMessage;
             return;
         }
 
-        session.State = DownloadState.Failed;
-        session.ErrorMessage = "Finalization was interrupted and the partial file is missing.";
+        long completedLength = new FileInfo(candidatePath).Length;
+        if (completedLength != marker.ExpectedLength)
+        {
+            session.State = DownloadState.Failed;
+            session.RecoveryRequired = true;
+            session.RecoveryMessage = $"Interrupted finalization expected {marker.ExpectedLength} bytes, but found {completedLength}.";
+            session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+            session.ErrorMessage = session.RecoveryMessage;
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(marker.ChecksumAlgorithm)
+            && !string.IsNullOrWhiteSpace(marker.Checksum))
+        {
+            string actual = await DownloadChecksumService
+                .ComputeAsync(candidatePath, marker.ChecksumAlgorithm, cancellationToken)
+                .ConfigureAwait(false);
+            if (!string.Equals(actual, marker.Checksum, StringComparison.OrdinalIgnoreCase))
+            {
+                session.State = DownloadState.Failed;
+                session.RecoveryRequired = true;
+                session.RecoveryMessage = "Interrupted finalization failed checksum verification.";
+                session.IntegrityStatus = DownloadIntegrityStatus.Mismatch;
+                session.ErrorMessage = session.RecoveryMessage;
+                return;
+            }
+            session.ActualChecksum = actual;
+            session.LastVerifiedAt = DateTimeOffset.UtcNow;
+            session.IntegrityStatus = DownloadIntegrityStatus.Verified;
+        }
+
+        if (!string.Equals(candidatePath, session.DestinationPath, StringComparison.Ordinal))
+        {
+            File.Move(candidatePath, session.DestinationPath, overwrite: true);
+        }
+
+        session.DownloadedBytes = completedLength;
+        session.TotalBytes ??= completedLength;
+        session.State = DownloadState.Completed;
+        session.ErrorMessage = null;
+        session.RecoveryRequired = false;
+        session.RecoveryMessage = "Recovered a download that was interrupted during finalization.";
+        File.Delete(markerPath);
+        string checkpointPath = TransferArtifactPaths.GetCheckpointPath(session.DestinationPath);
+        if (File.Exists(checkpointPath))
+        {
+            File.Delete(checkpointPath);
+        }
     }
 
-    private void CompleteFromPartial(DownloadSession session, string partialPath, long downloadedBytes)
+    private static async Task<FinalizationMarker> ReadFinalizationMarkerAsync(
+        string markerPath,
+        CancellationToken cancellationToken)
+    {
+        string payload = await File.ReadAllTextAsync(markerPath, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            FinalizationMarker? marker = JsonSerializer.Deserialize<FinalizationMarker>(payload);
+            if (marker is { Version: FinalizationMarker.CurrentVersion })
+            {
+                return marker;
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        if (long.TryParse(
+            payload,
+            System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out long legacyLength))
+        {
+            return new FinalizationMarker(
+                FinalizationMarker.CurrentVersion,
+                legacyLength,
+                null,
+                null,
+                DateTimeOffset.UtcNow);
+        }
+
+        throw new InvalidDataException("The finalization marker is invalid.");
+    }
+
+    private async Task CompleteFromPartialAsync(
+        DownloadSession session,
+        string partialPath,
+        long downloadedBytes)
     {
         File.Move(partialPath, session.DestinationPath, overwrite: true);
         string markerPath = GetFinalizationMarkerPath(session.DestinationPath);
@@ -1273,6 +1751,16 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.BytesPerSecond = 0;
             session.State = DownloadState.Completed;
             session.ErrorMessage = null;
+        }
+
+        await session.CheckpointGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            _checkpointStore.Delete(session.DestinationPath);
+        }
+        finally
+        {
+            session.CheckpointGate.Release();
         }
 
         Publish(session, forcePersist: true);
@@ -1301,6 +1789,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         _applicationState.UpsertDownload(CreateSnapshot(session));
         _ = PersistSafelyAsync(forcePersist);
+        _ = PersistCheckpointSafelyAsync(session, forcePersist);
     }
 
     private async Task PersistSafelyAsync(bool force)
@@ -1367,7 +1856,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             string.Equals(session.DestinationPath, candidate, StringComparison.OrdinalIgnoreCase));
         bool fileCollision = File.Exists(candidate);
 
-        // A matching .part file is resumable state, not a destination collision.
+        // A matching transactional partial file is resumable state, not a destination collision.
         // Overwrite handling removes it after this method returns; the normal
         // auto-rename path must preserve the established resume behavior.
         if (!sessionCollision && !fileCollision)
@@ -1400,6 +1889,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             string renamed = Path.Combine(directory, $"{stem} ({index}){extension}");
             bool isUsed = File.Exists(renamed)
                 || File.Exists(GetPartialPath(renamed))
+                || File.Exists(TransferArtifactPaths.GetLegacyPartialPath(renamed))
+                || File.Exists(TransferArtifactPaths.GetCheckpointPath(renamed))
                 || Directory.Exists(SegmentedDownloadExecutor.GetSegmentDirectory(renamed))
                 || _sessions.Values.Any(session =>
                     string.Equals(session.DestinationPath, renamed, StringComparison.OrdinalIgnoreCase));
@@ -1428,6 +1919,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.ErrorMessage = null;
         }
         Publish(session, forcePersist: true);
+
+        long? expectedFtpLength;
+        lock (session.Sync)
+        {
+            expectedFtpLength = session.TotalBytes;
+        }
 
         FtpDownloadResult result = await _ftpDownloadClient.DownloadAsync(
             session.Source,
@@ -1460,18 +1957,26 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             cancellationToken).ConfigureAwait(false);
 
         long completedBytes = Math.Max(result.DownloadedBytes, lastDownloaded);
+        long actualFtpLength = result.TotalBytes ?? completedBytes;
+        if (expectedFtpLength is long expectedLength && expectedLength != actualFtpLength)
+        {
+            throw new DownloadIntegrityException(
+                $"The remote file length changed. Expected {expectedLength}; received {actualFtpLength}.");
+        }
+
         lock (session.Sync)
         {
             session.DownloadedBytes = completedBytes;
-            session.TotalBytes = result.TotalBytes ?? completedBytes;
+            session.TotalBytes = actualFtpLength;
             session.LastModified = result.LastModified;
             session.BytesPerSecond = 0;
             session.State = DownloadState.Finalizing;
         }
 
-        WriteFinalizationMarker(session.DestinationPath, completedBytes);
+        await VerifyPartialIfExpectedAsync(session, partialPath, cancellationToken).ConfigureAwait(false);
+        WriteFinalizationMarker(session, completedBytes);
         Publish(session, forcePersist: true);
-        CompleteFromPartial(session, partialPath, completedBytes);
+        await CompleteFromPartialAsync(session, partialPath, completedBytes).ConfigureAwait(false);
     }
 
     private static void ApplyRequestMetadata(HttpRequestMessage request, DownloadSession session)
@@ -1569,16 +2074,45 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             File.Delete(partialPath);
         }
 
+        string legacyPartialPath = TransferArtifactPaths.GetLegacyPartialPath(destinationPath);
+        if (File.Exists(legacyPartialPath))
+        {
+            File.Delete(legacyPartialPath);
+        }
+
+        string checkpointPath = TransferArtifactPaths.GetCheckpointPath(destinationPath);
+        if (File.Exists(checkpointPath))
+        {
+            File.Delete(checkpointPath);
+        }
+        DeleteIfExists($"{checkpointPath}.tmp");
+        DeleteIfExists($"{partialPath}.merge");
+
         string markerPath = GetFinalizationMarkerPath(destinationPath);
         if (File.Exists(markerPath))
         {
             File.Delete(markerPath);
+        }
+        DeleteIfExists($"{markerPath}.tmp");
+
+        string legacyMarkerPath = TransferArtifactPaths.GetLegacyFinalizationMarkerPath(destinationPath);
+        if (File.Exists(legacyMarkerPath))
+        {
+            File.Delete(legacyMarkerPath);
         }
 
         string segmentDirectory = SegmentedDownloadExecutor.GetSegmentDirectory(destinationPath);
         if (Directory.Exists(segmentDirectory))
         {
             Directory.Delete(segmentDirectory, recursive: true);
+        }
+    }
+
+    private static void DeleteIfExists(string path)
+    {
+        if (File.Exists(path))
+        {
+            File.Delete(path);
         }
     }
 
@@ -1650,10 +2184,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     }
 
     private static string GetPartialPath(string destinationPath)
-        => $"{destinationPath}.part";
+        => TransferArtifactPaths.GetPartialPath(destinationPath);
 
     private static string GetFinalizationMarkerPath(string destinationPath)
-        => $"{destinationPath}.finalizing";
+        => TransferArtifactPaths.GetFinalizationMarkerPath(destinationPath);
 
     private static DownloadSnapshot CreateSnapshot(DownloadSession session)
     {
@@ -1675,7 +2209,15 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.QueueOrder,
                 session.ConnectionCount,
                 session.Priority,
-                session.SourcePage);
+                session.SourcePage,
+                session.ExpectedChecksumAlgorithm,
+                session.ExpectedChecksum,
+                session.ActualChecksum,
+                session.LastVerifiedAt,
+                session.IntegrityStatus,
+                session.RecoveryRequired,
+                session.RecoveryMessage,
+                session.Mirrors);
         }
     }
 
@@ -1700,8 +2242,485 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.ConnectionCount,
                 session.Method,
                 session.Priority,
-                session.SourcePage);
+                session.SourcePage,
+                session.ExpectedChecksumAlgorithm,
+                session.ExpectedChecksum,
+                session.ActualChecksum,
+                session.LastVerifiedAt,
+                session.IntegrityStatus,
+                session.RecoveryRequired,
+                session.RecoveryMessage,
+                session.Mirrors);
         }
+    }
+
+    private async Task PersistCheckpointSafelyAsync(DownloadSession session, bool force)
+    {
+        try
+        {
+            await PersistCheckpointAsync(session, force, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (IOException exception)
+        {
+            DownloadEngineLog.HistoryPersistenceFailed(_logger, exception.Message, exception);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            DownloadEngineLog.HistoryPersistenceFailed(_logger, exception.Message, exception);
+        }
+    }
+
+    private async Task PersistCheckpointAsync(
+        DownloadSession session,
+        bool force,
+        CancellationToken cancellationToken)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        long downloadedBytes;
+        string destinationPath;
+        lock (session.Sync)
+        {
+            if (session.Method != "GET" || session.State == DownloadState.Completed)
+            {
+                return;
+            }
+
+            downloadedBytes = session.DownloadedBytes;
+            destinationPath = session.DestinationPath;
+            if (!force
+                && now - session.LastCheckpointAt < CheckpointInterval
+                && downloadedBytes - session.LastCheckpointBytes < CheckpointByteInterval)
+            {
+                return;
+            }
+        }
+
+        string partialPath = GetPartialPath(destinationPath);
+        Dictionary<int, long> segmentLengths = GetSegmentLengths(destinationPath);
+        long actualBytes = File.Exists(partialPath)
+            ? new FileInfo(partialPath).Length
+            : segmentLengths.Values.Sum();
+        if (actualBytes == 0 && segmentLengths.Count == 0)
+        {
+            return;
+        }
+
+        await session.CheckpointGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ResumeCheckpoint checkpoint;
+            lock (session.Sync)
+            {
+                if (session.State == DownloadState.Completed)
+                {
+                    return;
+                }
+
+                checkpoint = new ResumeCheckpoint(
+                    ResumeCheckpoint.CurrentVersion,
+                    session.Id,
+                    session.Source,
+                    session.DestinationPath,
+                    actualBytes,
+                    session.TotalBytes,
+                    session.EntityTag,
+                    session.LastModified,
+                    session.ConnectionCount,
+                    now,
+                    session.ExpectedChecksumAlgorithm,
+                    session.ExpectedChecksum,
+                    session.Mirrors,
+                    segmentLengths);
+            }
+
+            await _checkpointStore.SaveAsync(checkpoint, cancellationToken).ConfigureAwait(false);
+            lock (session.Sync)
+            {
+                session.LastCheckpointAt = now;
+                session.LastCheckpointBytes = actualBytes;
+                if (session.IntegrityStatus == DownloadIntegrityStatus.Unknown)
+                {
+                    session.IntegrityStatus = DownloadIntegrityStatus.Checkpointed;
+                }
+            }
+        }
+        finally
+        {
+            session.CheckpointGate.Release();
+        }
+    }
+
+    private static Dictionary<int, long> GetSegmentLengths(string destinationPath)
+    {
+        string directory = SegmentedDownloadExecutor.GetSegmentDirectory(destinationPath);
+        if (!Directory.Exists(directory))
+        {
+            return new Dictionary<int, long>();
+        }
+
+        Dictionary<int, long> lengths = [];
+        foreach (string path in Directory.EnumerateFiles(directory, "*.part", SearchOption.TopDirectoryOnly))
+        {
+            if (int.TryParse(
+                Path.GetFileNameWithoutExtension(path),
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out int index))
+            {
+                lengths[index] = new FileInfo(path).Length;
+            }
+        }
+        return lengths;
+    }
+
+    private static bool HasTransferArtifacts(string destinationPath)
+        => File.Exists(GetPartialPath(destinationPath))
+            || File.Exists($"{GetPartialPath(destinationPath)}.merge")
+            || File.Exists(TransferArtifactPaths.GetCheckpointPath(destinationPath))
+            || File.Exists(GetFinalizationMarkerPath(destinationPath))
+            || Directory.Exists(SegmentedDownloadExecutor.GetSegmentDirectory(destinationPath));
+
+    private static bool CanAdoptLegacySegmentArtifacts(string destinationPath)
+    {
+        string segmentDirectory = SegmentedDownloadExecutor.GetSegmentDirectory(destinationPath);
+        return Directory.Exists(segmentDirectory)
+            && !File.Exists(GetPartialPath(destinationPath))
+            && !File.Exists($"{GetPartialPath(destinationPath)}.merge")
+            && !File.Exists(TransferArtifactPaths.GetCheckpointPath(destinationPath))
+            && !File.Exists(GetFinalizationMarkerPath(destinationPath))
+            && Directory.EnumerateFiles(segmentDirectory, "*.part", SearchOption.TopDirectoryOnly).Any();
+    }
+
+    private static bool IsCheckpointCompatibleWithRequest(
+        ResumeCheckpoint? checkpoint,
+        Uri source,
+        Uri[] mirrors,
+        string destinationPath,
+        long? expectedLength,
+        string? expectedChecksumAlgorithm,
+        string? expectedChecksum)
+    {
+        if (checkpoint is null)
+        {
+            return false;
+        }
+
+        bool hasPartialData = File.Exists(GetPartialPath(destinationPath))
+            || GetSegmentLengths(destinationPath).Count > 0;
+        if (!hasPartialData)
+        {
+            return false;
+        }
+
+        bool sourceMatches = checkpoint.Source == source
+            || mirrors.Contains(checkpoint.Source)
+            || (checkpoint.Mirrors?.Contains(source) ?? false);
+        if (!sourceMatches
+            || !string.Equals(
+                Path.GetFullPath(checkpoint.DestinationPath),
+                Path.GetFullPath(destinationPath),
+                StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (expectedLength is long requestedLength
+            && checkpoint.TotalBytes is long checkpointLength
+            && requestedLength != checkpointLength)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(expectedChecksum)
+            && !string.IsNullOrWhiteSpace(checkpoint.ExpectedChecksum)
+            && (!string.Equals(
+                    expectedChecksumAlgorithm,
+                    checkpoint.ExpectedChecksumAlgorithm,
+                    StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(
+                    expectedChecksum,
+                    checkpoint.ExpectedChecksum,
+                    StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static void PreserveOrphanedTransferArtifacts(string destinationPath)
+    {
+        DateTimeOffset timestamp = DateTimeOffset.UtcNow;
+        string partialPath = GetPartialPath(destinationPath);
+        MoveArtifactIfExists(
+            partialPath,
+            TransferArtifactPaths.GetStalePartialPath(destinationPath, timestamp));
+        MoveArtifactIfExists(
+            $"{partialPath}.merge",
+            $"{destinationPath}.stale-{timestamp:yyyyMMddHHmmss}.xdm.part.merge");
+        MoveArtifactIfExists(
+            TransferArtifactPaths.GetCheckpointPath(destinationPath),
+            $"{destinationPath}.stale-{timestamp:yyyyMMddHHmmss}.xdm.resume.json");
+        MoveArtifactIfExists(
+            GetFinalizationMarkerPath(destinationPath),
+            $"{destinationPath}.stale-{timestamp:yyyyMMddHHmmss}.xdm.finalizing");
+
+        string segmentDirectory = SegmentedDownloadExecutor.GetSegmentDirectory(destinationPath);
+        if (Directory.Exists(segmentDirectory))
+        {
+            Directory.Move(
+                segmentDirectory,
+                ResolveUniqueArtifactPath($"{destinationPath}.stale-{timestamp:yyyyMMddHHmmss}.segments"));
+        }
+    }
+
+    private static void MoveArtifactIfExists(string sourcePath, string targetBasePath)
+    {
+        if (File.Exists(sourcePath))
+        {
+            File.Move(sourcePath, ResolveUniqueArtifactPath(targetBasePath));
+        }
+    }
+
+    private static void MigrateLegacyArtifacts(string destinationPath)
+    {
+        string legacyPartial = TransferArtifactPaths.GetLegacyPartialPath(destinationPath);
+        string currentPartial = GetPartialPath(destinationPath);
+        if (File.Exists(legacyPartial) && !File.Exists(currentPartial))
+        {
+            File.Move(legacyPartial, currentPartial);
+        }
+
+        string legacyMarker = TransferArtifactPaths.GetLegacyFinalizationMarkerPath(destinationPath);
+        string currentMarker = GetFinalizationMarkerPath(destinationPath);
+        if (File.Exists(legacyMarker) && !File.Exists(currentMarker))
+        {
+            File.Move(legacyMarker, currentMarker);
+        }
+    }
+
+    private static void ReconcileRecoveredState(
+        DownloadSession session,
+        ResumeCheckpoint? checkpoint,
+        bool allowDownloadIdMismatch = false)
+    {
+        string partialPath = GetPartialPath(session.DestinationPath);
+        long partialBytes = File.Exists(partialPath) ? new FileInfo(partialPath).Length : 0;
+        long segmentBytes = GetSegmentLengths(session.DestinationPath).Values.Sum();
+        long actualBytes = Math.Max(partialBytes, segmentBytes);
+
+        if (checkpoint is not null)
+        {
+            bool sourceMatches = checkpoint.Source == session.Source
+                || session.Mirrors.Contains(checkpoint.Source)
+                || (checkpoint.Mirrors?.Contains(checkpoint.Source) ?? false);
+            bool identityMatches = (allowDownloadIdMismatch
+                    || string.Equals(checkpoint.DownloadId, session.Id, StringComparison.Ordinal))
+                && sourceMatches
+                && string.Equals(
+                    Path.GetFullPath(checkpoint.DestinationPath),
+                    Path.GetFullPath(session.DestinationPath),
+                    StringComparison.Ordinal);
+            if (!identityMatches)
+            {
+                session.RecoveryRequired = true;
+                session.RecoveryMessage = "The resume checkpoint does not belong to this download.";
+                session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+                session.State = DownloadState.Paused;
+                return;
+            }
+
+            Uri[] restoredMirrors = session.Mirrors
+                .Concat(checkpoint.Mirrors ?? Array.Empty<Uri>())
+                .Distinct()
+                .ToArray();
+            if (!restoredMirrors.Contains(checkpoint.Source))
+            {
+                restoredMirrors = new[] { checkpoint.Source }
+                    .Concat(restoredMirrors)
+                    .ToArray();
+            }
+            session.Source = checkpoint.Source;
+            session.Mirrors = restoredMirrors;
+            int restoredMirrorIndex = Array.FindIndex(restoredMirrors, mirror => mirror == session.Source);
+            session.MirrorIndex = restoredMirrorIndex >= 0 ? restoredMirrorIndex + 1 : 0;
+            session.TotalBytes = checkpoint.TotalBytes ?? session.TotalBytes;
+            session.EntityTag ??= checkpoint.EntityTag;
+            session.LastModified ??= checkpoint.LastModified;
+            session.ExpectedChecksumAlgorithm ??= checkpoint.ExpectedChecksumAlgorithm;
+            session.ExpectedChecksum ??= checkpoint.ExpectedChecksum;
+        }
+
+        if (session.State == DownloadState.Completed)
+        {
+            if (!File.Exists(session.DestinationPath))
+            {
+                session.State = DownloadState.Failed;
+                session.RecoveryRequired = true;
+                session.RecoveryMessage = "The completed file is missing. Repair can start a clean download.";
+                session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+            }
+            return;
+        }
+
+        if (actualBytes > 0)
+        {
+            session.DownloadedBytes = actualBytes;
+            session.LastCheckpointBytes = actualBytes;
+            session.LastCheckpointAt = checkpoint?.UpdatedAt ?? DateTimeOffset.UtcNow;
+            session.State = DownloadState.Paused;
+            session.IntegrityStatus = DownloadIntegrityStatus.Checkpointed;
+            session.RecoveryRequired = false;
+            session.RecoveryMessage = "Recovered durable transfer state. Resume will validate the server before appending data.";
+            if (session.TotalBytes is long total && actualBytes > total)
+            {
+                session.RecoveryRequired = true;
+                session.RecoveryMessage = "The partial data is larger than the expected file and requires repair.";
+                session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+            }
+        }
+        else if (checkpoint is not null && checkpoint.DownloadedBytes > 0)
+        {
+            session.State = DownloadState.Failed;
+            session.DownloadedBytes = 0;
+            session.RecoveryRequired = true;
+            session.RecoveryMessage = "A resume checkpoint exists, but its partial data is missing.";
+            session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+        }
+    }
+
+    private static bool TrySwitchToNextMirror(DownloadSession session)
+    {
+        lock (session.Sync)
+        {
+            if (session.MirrorIndex >= session.Mirrors.Length)
+            {
+                return false;
+            }
+
+            Uri previous = session.Source;
+            Uri next = session.Mirrors[session.MirrorIndex++];
+            session.Source = next;
+            session.EntityTag = null;
+            session.LastModified = null;
+            session.ActualChecksum = null;
+            session.LastVerifiedAt = null;
+            session.IntegrityStatus = DownloadIntegrityStatus.Checkpointed;
+            session.RecoveryRequired = false;
+            session.RecoveryMessage = $"The source {previous.Host} failed; retrying from mirror {next.Host}.";
+            session.ErrorMessage = session.RecoveryMessage;
+            return true;
+        }
+    }
+
+    private static void ResetTransferForMirror(DownloadSession session)
+    {
+        string destinationPath;
+        lock (session.Sync)
+        {
+            destinationPath = session.DestinationPath;
+            session.DownloadedBytes = 0;
+            session.BytesPerSecond = 0;
+        }
+        DeleteTransferArtifacts(destinationPath);
+    }
+
+    private static async Task VerifyPartialIfExpectedAsync(
+        DownloadSession session,
+        string partialPath,
+        CancellationToken cancellationToken)
+    {
+        string? algorithm;
+        string? expected;
+        lock (session.Sync)
+        {
+            algorithm = session.ExpectedChecksumAlgorithm;
+            expected = session.ExpectedChecksum;
+        }
+
+        if (string.IsNullOrWhiteSpace(algorithm) || string.IsNullOrWhiteSpace(expected))
+        {
+            return;
+        }
+
+        string actual = await DownloadChecksumService
+            .ComputeAsync(partialPath, algorithm, cancellationToken)
+            .ConfigureAwait(false);
+        bool matches = string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase);
+        lock (session.Sync)
+        {
+            session.ActualChecksum = actual;
+            session.LastVerifiedAt = DateTimeOffset.UtcNow;
+            session.IntegrityStatus = matches
+                ? DownloadIntegrityStatus.Verified
+                : DownloadIntegrityStatus.Mismatch;
+            session.RecoveryRequired = !matches;
+            session.RecoveryMessage = matches
+                ? null
+                : "The completed partial file failed checksum verification and was not finalized.";
+        }
+
+        if (!matches)
+        {
+            throw new DownloadIntegrityException(
+                $"{algorithm} checksum mismatch. Expected {expected}; received {actual}.");
+        }
+    }
+
+    private static string ResolveUniqueArtifactPath(string basePath)
+    {
+        if (!File.Exists(basePath) && !Directory.Exists(basePath))
+        {
+            return basePath;
+        }
+
+        for (int suffix = 2; suffix < 10_000; suffix++)
+        {
+            string candidate = $"{basePath}-{suffix}";
+            if (!File.Exists(candidate) && !Directory.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        throw new IOException("Could not allocate a unique recovery artifact path.");
+    }
+
+    private static string? NormalizeExpectedAlgorithm(string? algorithm, string? checksum)
+        => string.IsNullOrWhiteSpace(checksum)
+            ? null
+            : DownloadChecksumService.NormalizeAlgorithm(algorithm);
+
+    private static string? NormalizeExpectedChecksum(string? algorithm, string? checksum)
+        => string.IsNullOrWhiteSpace(checksum)
+            ? null
+            : DownloadChecksumService.NormalizeChecksum(
+                checksum,
+                DownloadChecksumService.NormalizeAlgorithm(algorithm));
+
+    private static Uri[] NormalizeMirrors(
+        Uri primary,
+        IReadOnlyList<Uri>? mirrors)
+    {
+        if (mirrors is null || mirrors.Count == 0)
+        {
+            return [];
+        }
+
+        List<Uri> normalized = [];
+        foreach (Uri mirror in mirrors)
+        {
+            ValidateDownloadUri(mirror, nameof(mirrors));
+            if (mirror != primary && !normalized.Contains(mirror))
+            {
+                normalized.Add(mirror);
+                if (normalized.Count == 31)
+                {
+                    break;
+                }
+            }
+        }
+        return normalized.ToArray();
     }
 
     private static DownloadRetryPolicy CreateRetryPolicy(ApplicationSettings settings)
@@ -1752,7 +2771,15 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             string? requestBodyContentType = null,
             DownloadPriority priority = DownloadPriority.Normal,
             Uri? sourcePage = null,
-            DateTimeOffset? updatedAt = null)
+            DateTimeOffset? updatedAt = null,
+            string? expectedChecksumAlgorithm = null,
+            string? expectedChecksum = null,
+            string? actualChecksum = null,
+            DateTimeOffset? lastVerifiedAt = null,
+            DownloadIntegrityStatus integrityStatus = DownloadIntegrityStatus.Unknown,
+            bool recoveryRequired = false,
+            string? recoveryMessage = null,
+            IReadOnlyList<Uri>? mirrors = null)
         {
             Id = id;
             Source = source;
@@ -1780,9 +2807,26 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             Priority = priority;
             SourcePage = sourcePage;
             UpdatedAt = updatedAt ?? DateTimeOffset.UtcNow;
+            ExpectedChecksumAlgorithm = expectedChecksumAlgorithm;
+            ExpectedChecksum = expectedChecksum;
+            ActualChecksum = actualChecksum;
+            LastVerifiedAt = lastVerifiedAt;
+            IntegrityStatus = integrityStatus;
+            RecoveryRequired = recoveryRequired;
+            RecoveryMessage = recoveryMessage;
+            Uri[] normalizedMirrors = new[] { source }
+                .Concat(mirrors ?? Array.Empty<Uri>())
+                .Distinct()
+                .Take(32)
+                .ToArray();
+            Mirrors = normalizedMirrors;
+            int currentMirrorIndex = Array.FindIndex(normalizedMirrors, mirror => mirror == source);
+            MirrorIndex = currentMirrorIndex + 1;
         }
 
         public object Sync { get; } = new();
+
+        public SemaphoreSlim CheckpointGate { get; } = new(1, 1);
 
         public string Id { get; }
 
@@ -1815,6 +2859,28 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         public string? Referer { get; }
 
         public string? UserAgent { get; }
+
+        public string? ExpectedChecksumAlgorithm { get; set; }
+
+        public string? ExpectedChecksum { get; set; }
+
+        public string? ActualChecksum { get; set; }
+
+        public DateTimeOffset? LastVerifiedAt { get; set; }
+
+        public DownloadIntegrityStatus IntegrityStatus { get; set; }
+
+        public bool RecoveryRequired { get; set; }
+
+        public string? RecoveryMessage { get; set; }
+
+        public Uri[] Mirrors { get; set; }
+
+        public int MirrorIndex { get; set; }
+
+        public DateTimeOffset LastCheckpointAt { get; set; } = DateTimeOffset.MinValue;
+
+        public long LastCheckpointBytes { get; set; }
 
         public long? SpeedLimitBytesPerSecond { get; }
 

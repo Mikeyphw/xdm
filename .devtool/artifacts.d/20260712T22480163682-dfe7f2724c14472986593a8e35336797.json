@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-12T22:48:01.636822Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_resume_integrity_recovery_overlay.zip",
+  "artifact_name": "xdm_resume_integrity_recovery_overlay.zip",
+  "type": "overlay",
+  "sha256": "f50d4a61cc31895f8c259948e55eec396e6c6e07ac0ed66b8575bd431b28cbe0",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Add durable resume integrity and crash recovery",
+  "commit_hash": "",
+  "file_count": 33,
+  "change_counts": {
+    "add": 14,
+    "modify": 19
+  },
+  "manifest": {},
+  "history_id": "dfe7f2724c14472986593a8e35336797"
+}

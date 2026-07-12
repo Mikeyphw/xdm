@@ -44,7 +44,7 @@ internal sealed class SegmentedDownloadExecutor
             _options.MaximumConnectionCount);
         SegmentedDownloadPlan plan = SegmentedDownloadPlan.Create(probe.TotalBytes, connectionCount);
         plan.Validate();
-        string partialPath = $"{context.DestinationPath}.part";
+        string partialPath = TransferArtifactPaths.GetPartialPath(context.DestinationPath);
         string segmentDirectory = GetSegmentDirectory(context.DestinationPath);
         Directory.CreateDirectory(segmentDirectory);
         string mergePath = $"{partialPath}.merge";

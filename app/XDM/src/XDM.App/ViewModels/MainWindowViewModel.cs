@@ -137,10 +137,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             static preset => string.Equals(preset.Id, "mp4-h264-balanced", StringComparison.Ordinal));
         ApplyConversionQueue(conversionQueueService.Current);
         ApplyDiagnostics();
+        PreviousSessionWasUnclean = recoveryService.PreviousSessionWasUnclean;
+        OnPropertyChanged(nameof(ShowRecoveryReview));
+        OnPropertyChanged(nameof(RecoveryReviewSummary));
         RecoveryStatus = recoveryService.SafeMode
             ? "Safe mode is active; browser integration and scheduler startup were skipped."
             : recoveryService.PreviousSessionWasUnclean
-                ? "The previous session did not shut down cleanly."
+                ? "The previous session did not shut down cleanly. Review recovered downloads before resuming them."
                 : "No recovery action is currently required.";
         applicationState.Changed += OnApplicationStateChanged;
         settingsService.Changed += OnSettingsChanged;
@@ -185,6 +188,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public ObservableCollection<ConversionJobViewModel> ConversionJobs { get; } = [];
 
     public IReadOnlyList<string> DuplicateBehaviors { get; }
+
+    public IReadOnlyList<string> ChecksumAlgorithms { get; } =
+        [DownloadChecksumService.Sha256, DownloadChecksumService.Sha512];
 
     public IReadOnlyList<DownloadPriority> DownloadPriorities { get; } = Enum.GetValues<DownloadPriority>();
 
@@ -257,6 +263,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string newDownloadUrls = string.Empty;
 
     [ObservableProperty]
+    private string mirrorUrls = string.Empty;
+
+    [ObservableProperty]
+    private string expectedChecksumAlgorithm = DownloadChecksumService.Sha256;
+
+    [ObservableProperty]
+    private string expectedChecksum = string.Empty;
+
+    [ObservableProperty]
+    private bool previousSessionWasUnclean;
+
+    [ObservableProperty]
     private string destinationFolder = string.Empty;
 
     [ObservableProperty]
@@ -312,6 +330,23 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool HasSelectedDownload => SelectedDownload is not null;
 
     public bool HasNoSelectedDownload => SelectedDownload is null;
+
+    public int RecoveryItemCount => Downloads.Count(static item => item.RecoveryRequired);
+
+    public bool HasRecoveryItems => RecoveryItemCount > 0;
+
+    public bool ShowRecoveryReview => PreviousSessionWasUnclean || HasRecoveryItems;
+
+    public string RecoveryReviewSummary
+        => RecoveryItemCount switch
+        {
+            0 => _localization["ui_recovery_unclean_no_damage"],
+            1 => _localization["ui_recovery_items_one"],
+            _ => string.Format(
+                _localization.Culture,
+                _localization["ui_recovery_items_many"],
+                RecoveryItemCount)
+        };
 
     [ObservableProperty]
     private string maxConcurrentDownloads = "4";
@@ -644,7 +679,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     duplicateBehavior,
                     ConnectionCount: ParseInteger(DefaultConnectionCount, 4),
                     Priority: NewDownloadPriority,
-                    SourcePage: ParseOptionalHttpUri(Referer));
+                    SourcePage: ParseOptionalHttpUri(Referer),
+                    Mirrors: DownloadInputParser.ParseUrls(MirrorUrls),
+                    ExpectedChecksumAlgorithm: EmptyToNull(ExpectedChecksumAlgorithm),
+                    ExpectedChecksum: EmptyToNull(ExpectedChecksum));
 
                 await _downloadManager.AddAsync(request);
                 added++;
@@ -666,6 +704,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         if (added > 0)
         {
             NewDownloadUrls = string.Empty;
+            MirrorUrls = string.Empty;
+            ExpectedChecksum = string.Empty;
             CustomFileName = string.Empty;
             if (!RememberLastRequestMetadata)
             {
@@ -706,6 +746,112 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         => SelectedDownload is null
             ? Task.CompletedTask
             : _downloadManager.RetryAsync(SelectedDownload.Id);
+
+    [RelayCommand]
+    private async Task VerifySelectedDownloadAsync()
+    {
+        if (SelectedDownload is null)
+        {
+            return;
+        }
+
+        try
+        {
+            DownloadVerificationResult result = await _downloadManager.VerifyAsync(SelectedDownload.Id);
+            OperationMessage = result.Message;
+        }
+        catch (IOException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+        catch (InvalidOperationException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task RepairSelectedDownloadAsync()
+    {
+        if (SelectedDownload is null)
+        {
+            return;
+        }
+
+        try
+        {
+            DownloadRepairResult result = await _downloadManager.RepairAsync(SelectedDownload.Id);
+            OperationMessage = result.Message;
+        }
+        catch (IOException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+        catch (InvalidOperationException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+    }
+
+    [RelayCommand]
+    private void ReviewRecoveryItems()
+    {
+        SelectedDownload = Downloads.FirstOrDefault(static item => item.RecoveryRequired)
+            ?? Downloads.FirstOrDefault();
+        PreviousSessionWasUnclean = false;
+        OnPropertyChanged(nameof(ShowRecoveryReview));
+        OperationMessage = RecoveryReviewSummary;
+    }
+
+    public async Task ImportMetalinkAsync(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (string.IsNullOrWhiteSpace(DestinationFolder))
+        {
+            OperationMessage = "Choose a destination folder before importing a Metalink file.";
+            return;
+        }
+
+        try
+        {
+            await using FileStream stream = new(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                16 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            IReadOnlyList<string> ids = await _downloadManager.AddMetalinkAsync(
+                stream,
+                DestinationFolder,
+                SelectedQueue?.Id);
+            OperationMessage = $"Added {ids.Count} download{(ids.Count == 1 ? string.Empty : "s")} from Metalink.";
+        }
+        catch (InvalidDataException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+        catch (IOException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+        catch (ArgumentException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+    }
 
     [RelayCommand]
     private async Task RemoveSelectedAsync()
@@ -1828,6 +1974,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         RefreshBulkSelectionState();
         RefreshFilteredDownloads();
+        OnPropertyChanged(nameof(RecoveryItemCount));
+        OnPropertyChanged(nameof(HasRecoveryItems));
+        OnPropertyChanged(nameof(ShowRecoveryReview));
+        OnPropertyChanged(nameof(RecoveryReviewSummary));
     }
 
     private void ApplyQueueRuntime(QueueRuntimeSnapshot snapshot)
@@ -2235,6 +2385,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         RefreshDownloadStatusFilters();
         OnPropertyChanged(nameof(BulkSelectionSummary));
+        OnPropertyChanged(nameof(RecoveryReviewSummary));
         foreach (DownloadItemViewModel download in Downloads)
         {
             download.RefreshLocalization(_localization);

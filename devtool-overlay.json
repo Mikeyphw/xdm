@@ -1,25 +1,27 @@
 {
-  "name": "xdm_flat_icon_overlay",
+  "name": "xdm_resume_integrity_recovery_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
   "baseCommit": "d9c9756",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "flat-application-icon",
-  "description": "Replaces the legacy XDM artwork with a modern flat icon across the app window, tray, executable, raster/vector assets, and Linux package integration.",
+  "phase": "reliable-transfer-foundation",
+  "description": "Adds transactional partial files, durable resume checkpoints, server identity validation, checksum verification, mirror and Metalink support, crash recovery, and Verify/Repair UX.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
     "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Replace XDM icon with modern flat artwork",
+  "commitMessage": "Add durable resume integrity and crash recovery",
   "constraints": [
     "Apply on top of commit d9c9756",
     "Validate only app/XDM/XDM.Modern.sln",
-    "Use one consistent icon design for window, tray, executable, and Linux launcher packaging",
-    "Preserve transparent rounded corners and flat colors",
     "Require zero warnings and zero errors",
-    "Do not modify docs/parity/features.json",
-    "Do not change application behavior or persistence formats"
+    "Preserve existing HTTP, FTP, queue, scheduler, browser capture, media and aria2 behavior",
+    "Preserve legacy partial and finalization migration",
+    "Do not trust orphaned single-stream partial data without a compatible durable checkpoint",
+    "Migrate legacy segmented parts only through the probed range-validation path",
+    "Do not finalize data that fails expected size or checksum validation",
+    "Do not modify docs/parity/features.json"
   ]
 }

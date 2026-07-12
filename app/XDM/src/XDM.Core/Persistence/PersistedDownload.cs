@@ -19,4 +19,12 @@ public sealed record PersistedDownload(
     int ConnectionCount = 4,
     string Method = "GET",
     DownloadPriority Priority = DownloadPriority.Normal,
-    Uri? SourcePage = null);
+    Uri? SourcePage = null,
+    string? ExpectedChecksumAlgorithm = null,
+    string? ExpectedChecksum = null,
+    string? ActualChecksum = null,
+    DateTimeOffset? LastVerifiedAt = null,
+    DownloadIntegrityStatus IntegrityStatus = DownloadIntegrityStatus.Unknown,
+    bool RecoveryRequired = false,
+    string? RecoveryMessage = null,
+    IReadOnlyList<Uri>? Mirrors = null);

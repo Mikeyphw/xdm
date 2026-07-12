@@ -280,7 +280,11 @@ public partial class MainWindowViewModel
                         DuplicateBehavior: DuplicateFileBehavior.AutoRename,
                         ConnectionCount: entry.ConnectionCount,
                         Priority: entry.Priority,
-                        SourcePage: entry.SourcePage));
+                        SourcePage: entry.SourcePage,
+                        Mirrors: entry.Mirrors,
+                        ExpectedChecksumAlgorithm: entry.ExpectedChecksumAlgorithm,
+                        ExpectedChecksum: entry.ExpectedChecksum,
+                        ExpectedLength: entry.ExpectedLength));
                     added++;
                 }
                 catch (ArgumentException)

@@ -19,7 +19,11 @@ public sealed record DownloadRequest(
     byte[]? RequestBody = null,
     string? RequestBodyContentType = null,
     XDM.Core.Downloads.DownloadPriority Priority = XDM.Core.Downloads.DownloadPriority.Normal,
-    Uri? SourcePage = null)
+    Uri? SourcePage = null,
+    IReadOnlyList<Uri>? Mirrors = null,
+    string? ExpectedChecksumAlgorithm = null,
+    string? ExpectedChecksum = null,
+    long? ExpectedLength = null)
 {
     public string ResolveFileName()
     {

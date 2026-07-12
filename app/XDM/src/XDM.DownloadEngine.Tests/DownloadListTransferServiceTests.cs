@@ -28,7 +28,13 @@ public sealed class DownloadListTransferServiceTests
                 CategoryId: "general",
                 ConnectionCount: 8,
                 Priority: DownloadPriority.High,
-                SourcePage: new Uri("https://example.test/page"))
+                SourcePage: new Uri("https://example.test/page"),
+                ExpectedChecksumAlgorithm: "SHA-256",
+                ExpectedChecksum: new string('A', 64),
+                Mirrors:
+                [
+                    new Uri("https://mirror.example.test/file.bin")
+                ])
         ];
         DownloadListTransferService service = new();
 
@@ -41,6 +47,12 @@ public sealed class DownloadListTransferServiceTests
         Assert.Equal(8, entry.ConnectionCount);
         Assert.Equal(DownloadPriority.High, entry.Priority);
         Assert.Equal(snapshots[0].SourcePage, entry.SourcePage);
+        Assert.Equal("SHA-256", entry.ExpectedChecksumAlgorithm);
+        Assert.Equal(new string('A', 64), entry.ExpectedChecksum);
+        Assert.Equal(100L, entry.ExpectedLength);
+        Assert.Equal(
+            new Uri("https://mirror.example.test/file.bin"),
+            Assert.Single(entry.Mirrors ?? Array.Empty<Uri>()));
         string json = await File.ReadAllTextAsync(path);
         Assert.DoesNotContain("password", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("cookie", json, StringComparison.OrdinalIgnoreCase);

@@ -170,6 +170,17 @@ public partial class DownloadsView : UserControl
         }
     }
 
+    private async void ImportMetalink_Click(object? sender, RoutedEventArgs e)
+    {
+        string? path = await StoragePickerHelper.PickFileAsync(
+            this,
+            Localize("picker_metalink_import", "Choose a Metalink file"));
+        if (!string.IsNullOrWhiteSpace(path) && ViewModel is { } viewModel)
+        {
+            await viewModel.ImportMetalinkAsync(path);
+        }
+    }
+
     private async void BrowseRelocationDestination_Click(object? sender, RoutedEventArgs e)
     {
         string suggestedName = ViewModel?.SelectedDownload?.FileName ?? "download.bin";

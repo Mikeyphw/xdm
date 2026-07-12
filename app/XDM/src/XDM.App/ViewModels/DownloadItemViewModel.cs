@@ -54,6 +54,24 @@ public sealed partial class DownloadItemViewModel : ObservableObject
     private string? errorMessage;
 
     [ObservableProperty]
+    private string integrityStatusText = string.Empty;
+
+    [ObservableProperty]
+    private string? recoveryMessage;
+
+    [ObservableProperty]
+    private string? expectedChecksum;
+
+    [ObservableProperty]
+    private string? actualChecksum;
+
+    [ObservableProperty]
+    private string? lastVerifiedText;
+
+    [ObservableProperty]
+    private int mirrorCount;
+
+    [ObservableProperty]
     private string queueId = "default";
 
     [ObservableProperty]
@@ -78,6 +96,16 @@ public sealed partial class DownloadItemViewModel : ObservableObject
 
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
+    public bool HasRecoveryMessage => !string.IsNullOrWhiteSpace(RecoveryMessage);
+
+    public bool RecoveryRequired => _snapshot.RecoveryRequired;
+
+    public bool CanVerify => _snapshot.State == DownloadState.Completed;
+
+    public bool CanRepair => _snapshot.RecoveryRequired
+        || _snapshot.IntegrityStatus == DownloadIntegrityStatus.Mismatch
+        || _snapshot.State is DownloadState.Failed or DownloadState.Cancelled or DownloadState.Paused;
+
     public void Apply(DownloadSnapshot snapshot, LocalizationService localization)
     {
         ArgumentNullException.ThrowIfNull(localization);
@@ -101,6 +129,20 @@ public sealed partial class DownloadItemViewModel : ObservableObject
             : "—";
         ErrorMessage = snapshot.ErrorMessage;
         OnPropertyChanged(nameof(HasError));
+        IntegrityStatusText = localization.Get(
+            $"integrity_{snapshot.IntegrityStatus.ToString().ToLowerInvariant()}",
+            snapshot.IntegrityStatus.ToString());
+        RecoveryMessage = snapshot.RecoveryMessage;
+        ExpectedChecksum = snapshot.ExpectedChecksum is null
+            ? null
+            : $"{snapshot.ExpectedChecksumAlgorithm}: {snapshot.ExpectedChecksum}";
+        ActualChecksum = snapshot.ActualChecksum;
+        LastVerifiedText = snapshot.LastVerifiedAt?.ToLocalTime().ToString("g", localization.Culture);
+        MirrorCount = Math.Max(0, (snapshot.Mirrors?.Count ?? 1) - 1);
+        OnPropertyChanged(nameof(HasRecoveryMessage));
+        OnPropertyChanged(nameof(RecoveryRequired));
+        OnPropertyChanged(nameof(CanVerify));
+        OnPropertyChanged(nameof(CanRepair));
         QueueId = snapshot.QueueId;
         QueueOrder = snapshot.QueueOrder;
         Priority = snapshot.Priority;

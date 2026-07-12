@@ -134,6 +134,31 @@ public sealed class QueueSchedulerRuntimeTests
         public Task<string> AddAsync(DownloadRequest request, CancellationToken cancellationToken = default)
             => Task.FromResult(Guid.NewGuid().ToString("N"));
 
+        public Task<DownloadVerificationResult> VerifyAsync(
+            string downloadId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(new DownloadVerificationResult(
+                downloadId,
+                string.Empty,
+                DownloadChecksumService.Sha256,
+                string.Empty,
+                null,
+                true,
+                0,
+                "Verified"));
+
+        public Task<DownloadRepairResult> RepairAsync(
+            string downloadId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(new DownloadRepairResult(downloadId, false, null, "No repair required"));
+
+        public Task<IReadOnlyList<string>> AddMetalinkAsync(
+            Stream stream,
+            string destinationDirectory,
+            string? queueId = null,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<string>>([]);
+
         public Task PauseAsync(string downloadId, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task ResumeAsync(string downloadId, CancellationToken cancellationToken = default) => Task.CompletedTask;

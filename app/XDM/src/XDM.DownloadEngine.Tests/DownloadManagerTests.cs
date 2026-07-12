@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using Microsoft.Extensions.Logging.Abstractions;
 using XDM.Core.Downloads;
 using XDM.Core.Persistence;
@@ -38,7 +39,19 @@ public sealed class DownloadManagerTests
         const int partialLength = 2048;
         using TemporaryDirectory directory = new();
         string destination = Path.Combine(directory.Path, "resume.bin");
+        Uri source = new("https://example.test/resume.bin");
         await File.WriteAllBytesAsync($"{destination}.part", payload[..partialLength]);
+        await new ResumeCheckpointStore().SaveAsync(new ResumeCheckpoint(
+            ResumeCheckpoint.CurrentVersion,
+            "legacy-resume",
+            source,
+            destination,
+            partialLength,
+            payload.Length,
+            null,
+            null,
+            1,
+            DateTimeOffset.UtcNow));
 
         RangeHandler handler = new(payload);
         using HttpClient client = new(handler);
@@ -46,7 +59,7 @@ public sealed class DownloadManagerTests
         using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
 
         string id = await manager.AddAsync(new DownloadRequest(
-            new Uri("https://example.test/resume.bin"),
+            source,
             directory.Path,
             "resume.bin"));
 
@@ -62,7 +75,19 @@ public sealed class DownloadManagerTests
         byte[] payload = CreatePayload(4096, 193);
         using TemporaryDirectory directory = new();
         string destination = Path.Combine(directory.Path, "ignored-range.bin");
+        Uri source = new("https://example.test/ignored-range.bin");
         await File.WriteAllBytesAsync($"{destination}.part", payload[..1024]);
+        await new ResumeCheckpointStore().SaveAsync(new ResumeCheckpoint(
+            ResumeCheckpoint.CurrentVersion,
+            "legacy-ignored-range",
+            source,
+            destination,
+            1024,
+            payload.Length,
+            null,
+            null,
+            1,
+            DateTimeOffset.UtcNow));
 
         IgnoreRangeHandler handler = new(payload);
         using HttpClient client = new(handler);
@@ -70,7 +95,7 @@ public sealed class DownloadManagerTests
         using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
 
         string id = await manager.AddAsync(new DownloadRequest(
-            new Uri("https://example.test/ignored-range.bin"),
+            source,
             directory.Path,
             "ignored-range.bin"));
 
@@ -78,6 +103,45 @@ public sealed class DownloadManagerTests
 
         Assert.Equal(1024, handler.RequestedRangeStart);
         Assert.Equal(payload, await File.ReadAllBytesAsync(destination));
+    }
+
+
+    [Fact]
+    public async Task PreservesOrphanedPartialWhenCheckpointSourceDoesNotMatch()
+    {
+        byte[] oldPayload = CreatePayload(1024, 61);
+        byte[] newPayload = CreatePayload(2048, 59);
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "orphan.bin");
+        string partialPath = TransferArtifactPaths.GetPartialPath(destination);
+        await File.WriteAllBytesAsync(partialPath, oldPayload);
+        await new ResumeCheckpointStore().SaveAsync(new ResumeCheckpoint(
+            ResumeCheckpoint.CurrentVersion,
+            "orphan",
+            new Uri("https://old.example.test/orphan.bin"),
+            destination,
+            oldPayload.Length,
+            oldPayload.Length * 2,
+            null,
+            null,
+            1,
+            DateTimeOffset.UtcNow));
+        RangeHandler handler = new(newPayload);
+        using HttpClient client = new(handler);
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://new.example.test/orphan.bin"),
+            directory.Path,
+            "orphan.bin",
+            ConnectionCount: 1));
+        await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        Assert.Null(handler.LastRangeStart);
+        Assert.Equal(newPayload, await File.ReadAllBytesAsync(destination));
+        string preservedPartial = Assert.Single(Directory.EnumerateFiles(directory.Path, "orphan.bin.stale-*.xdm.part"));
+        Assert.Equal(oldPayload, await File.ReadAllBytesAsync(preservedPartial));
     }
 
     [Fact]
@@ -119,7 +183,7 @@ public sealed class DownloadManagerTests
         const int partialLength = 1024;
         using TemporaryDirectory directory = new();
         string destination = Path.Combine(directory.Path, "changed.bin");
-        string partialPath = $"{destination}.part";
+        string partialPath = TransferArtifactPaths.GetPartialPath(destination);
         await File.WriteAllBytesAsync(partialPath, payload[..partialLength]);
 
         PersistedDownload persisted = new(
@@ -194,7 +258,7 @@ public sealed class DownloadManagerTests
         DownloadSnapshot failed = await WaitForStateAsync(state, id, DownloadState.Failed);
 
         Assert.Contains("Not enough free space", failed.ErrorMessage, StringComparison.Ordinal);
-        Assert.False(File.Exists(Path.Combine(directory.Path, "no-space.bin.part")));
+        Assert.False(File.Exists(TransferArtifactPaths.GetPartialPath(Path.Combine(directory.Path, "no-space.bin"))));
     }
 
     [Fact]
@@ -419,7 +483,7 @@ public sealed class DownloadManagerTests
         Assert.Equal(replacement, snapshot.Source);
         Assert.Equal(sourcePage, snapshot.SourcePage);
         Assert.Equal(DownloadState.Paused, snapshot.State);
-        Assert.True(File.Exists($"{destination}.part"));
+        Assert.True(File.Exists(TransferArtifactPaths.GetPartialPath(destination)));
     }
 
     [Fact]
@@ -511,6 +575,295 @@ public sealed class DownloadManagerTests
         Assert.Equal("history-0", state.Current.Downloads[0].Id);
     }
 
+
+    [Fact]
+    public async Task RejectsResponseThatDoesNotMatchDeclaredLength()
+    {
+        byte[] payload = CreatePayload(1024, 67);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/declared-length.bin"),
+            directory.Path,
+            "declared-length.bin",
+            ConnectionCount: 1,
+            ExpectedLength: payload.Length * 2L));
+
+        DownloadSnapshot failed = await WaitForStateAsync(state, id, DownloadState.Failed);
+
+        Assert.Contains("length changed", failed.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(failed.DestinationPath));
+        Assert.False(File.Exists(TransferArtifactPaths.GetPartialPath(failed.DestinationPath)));
+    }
+
+    [Fact]
+    public async Task AutomaticallyVerifiesExpectedChecksumBeforeFinalization()
+    {
+        byte[] payload = CreatePayload(4096, 113);
+        string expected = Convert.ToHexString(SHA256.HashData(payload));
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/verified.bin"),
+            directory.Path,
+            "verified.bin",
+            ConnectionCount: 1,
+            ExpectedChecksumAlgorithm: DownloadChecksumService.Sha256,
+            ExpectedChecksum: expected));
+
+        DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        Assert.Equal(DownloadIntegrityStatus.Verified, completed.IntegrityStatus);
+        Assert.Equal(expected, completed.ActualChecksum);
+        Assert.False(completed.RecoveryRequired);
+        Assert.False(File.Exists(TransferArtifactPaths.GetCheckpointPath(completed.DestinationPath)));
+    }
+
+    [Fact]
+    public async Task KeepsTransactionalPartialWhenChecksumDoesNotMatch()
+    {
+        byte[] payload = CreatePayload(4096, 109);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+        string destination = Path.Combine(directory.Path, "mismatch.bin");
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/mismatch.bin"),
+            directory.Path,
+            "mismatch.bin",
+            ConnectionCount: 1,
+            ExpectedChecksumAlgorithm: DownloadChecksumService.Sha256,
+            ExpectedChecksum: new string('0', 64)));
+
+        DownloadSnapshot failed = await WaitForStateAsync(state, id, DownloadState.Failed);
+
+        Assert.Equal(DownloadIntegrityStatus.Mismatch, failed.IntegrityStatus);
+        Assert.True(failed.RecoveryRequired);
+        Assert.True(File.Exists(TransferArtifactPaths.GetPartialPath(destination)));
+        Assert.False(File.Exists(destination));
+    }
+
+    [Fact]
+    public async Task RestoresActualPartialLengthFromDurableCheckpointAfterCrash()
+    {
+        byte[] payload = CreatePayload(4096, 103);
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "checkpoint.bin");
+        string partialPath = TransferArtifactPaths.GetPartialPath(destination);
+        await File.WriteAllBytesAsync(partialPath, payload[..1024]);
+        PersistedDownload persisted = new(
+            "checkpoint",
+            new Uri("https://example.test/checkpoint.bin"),
+            destination,
+            512,
+            payload.Length,
+            DownloadState.Downloading,
+            DateTimeOffset.UtcNow,
+            EntityTag: "\"checkpoint-v1\"");
+        ResumeCheckpointStore checkpointStore = new();
+        await checkpointStore.SaveAsync(new ResumeCheckpoint(
+            ResumeCheckpoint.CurrentVersion,
+            persisted.Id,
+            persisted.Source,
+            destination,
+            1024,
+            payload.Length,
+            persisted.EntityTag,
+            null,
+            1,
+            DateTimeOffset.UtcNow));
+        ApplicationState state = new();
+        using HttpClient client = new(new RangeHandler(payload, "\"checkpoint-v1\""));
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore([persisted]));
+
+        await manager.InitializeAsync();
+
+        DownloadSnapshot restored = Assert.Single(state.Current.Downloads);
+        Assert.Equal(DownloadState.Paused, restored.State);
+        Assert.Equal(1024, restored.DownloadedBytes);
+        Assert.Equal(DownloadIntegrityStatus.Checkpointed, restored.IntegrityStatus);
+        Assert.Contains("Recovered durable transfer state", restored.RecoveryMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RejectsInterruptedFinalizationWhenLengthDoesNotMatchMarker()
+    {
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "invalid-finalization.bin");
+        await File.WriteAllBytesAsync(TransferArtifactPaths.GetPartialPath(destination), new byte[128]);
+        await File.WriteAllTextAsync(
+            TransferArtifactPaths.GetFinalizationMarkerPath(destination),
+            "1024");
+        PersistedDownload persisted = new(
+            "invalid-finalization",
+            new Uri("https://example.test/invalid-finalization.bin"),
+            destination,
+            128,
+            1024,
+            DownloadState.Finalizing,
+            DateTimeOffset.UtcNow);
+        ApplicationState state = new();
+        using HttpClient client = new(new RangeHandler(new byte[1024]));
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore([persisted]));
+
+        await manager.InitializeAsync();
+
+        DownloadSnapshot recovered = Assert.Single(state.Current.Downloads);
+        Assert.Equal(DownloadState.Failed, recovered.State);
+        Assert.True(recovered.RecoveryRequired);
+        Assert.False(File.Exists(destination));
+    }
+
+    [Fact]
+    public async Task VerificationAndRepairPreserveSuspectFileAndDownloadCleanCopy()
+    {
+        byte[] expectedPayload = CreatePayload(2048, 97);
+        byte[] corruptPayload = CreatePayload(2048, 89);
+        string expectedChecksum = Convert.ToHexString(SHA256.HashData(expectedPayload));
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "repair.bin");
+        await File.WriteAllBytesAsync(destination, corruptPayload);
+        PersistedDownload persisted = new(
+            "repair",
+            new Uri("https://example.test/repair.bin"),
+            destination,
+            corruptPayload.Length,
+            corruptPayload.Length,
+            DownloadState.Completed,
+            DateTimeOffset.UtcNow,
+            ExpectedChecksumAlgorithm: DownloadChecksumService.Sha256,
+            ExpectedChecksum: expectedChecksum);
+        ApplicationState state = new();
+        using HttpClient client = new(new RangeHandler(expectedPayload));
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore([persisted]));
+        await manager.InitializeAsync();
+
+        DownloadVerificationResult verification = await manager.VerifyAsync("repair");
+        Assert.False(verification.IsMatch);
+
+        DownloadRepairResult repair = await manager.RepairAsync("repair");
+        await WaitForStateAsync(state, "repair", DownloadState.Completed);
+
+        Assert.NotNull(repair.PreservedCorruptPath);
+        Assert.True(File.Exists(repair.PreservedCorruptPath));
+        Assert.Equal(corruptPayload, await File.ReadAllBytesAsync(repair.PreservedCorruptPath));
+        Assert.Equal(expectedPayload, await File.ReadAllBytesAsync(destination));
+    }
+
+
+    [Fact]
+    public async Task VerifiesChecksumBeforeCompletingFromRangeAlreadySatisfiedResponse()
+    {
+        byte[] payload = CreatePayload(2048, 79);
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "already-complete.bin");
+        string partialPath = TransferArtifactPaths.GetPartialPath(destination);
+        await File.WriteAllBytesAsync(partialPath, payload);
+        PersistedDownload persisted = new(
+            "already-complete",
+            new Uri("https://example.test/already-complete.bin"),
+            destination,
+            payload.Length,
+            payload.Length,
+            DownloadState.Paused,
+            DateTimeOffset.UtcNow,
+            ExpectedChecksumAlgorithm: DownloadChecksumService.Sha256,
+            ExpectedChecksum: new string('0', 64));
+        ApplicationState state = new();
+        using HttpClient client = new(new RangeAlreadySatisfiedHandler(payload.Length));
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore([persisted]));
+
+        await manager.InitializeAsync();
+        await manager.ResumeAsync(persisted.Id);
+        DownloadSnapshot failed = await WaitForStateAsync(state, persisted.Id, DownloadState.Failed);
+
+        Assert.Equal(DownloadIntegrityStatus.Mismatch, failed.IntegrityStatus);
+        Assert.True(File.Exists(partialPath));
+        Assert.False(File.Exists(destination));
+    }
+
+    [Fact]
+    public async Task RestoresCheckpointThatWasWrittenAfterMirrorFailover()
+    {
+        byte[] payload = CreatePayload(2048, 73);
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "mirror-recovery.bin");
+        string partialPath = TransferArtifactPaths.GetPartialPath(destination);
+        await File.WriteAllBytesAsync(partialPath, payload[..512]);
+        Uri primary = new("https://primary.example.test/mirror-recovery.bin");
+        Uri mirror = new("https://mirror.example.test/mirror-recovery.bin");
+        PersistedDownload persisted = new(
+            "mirror-recovery",
+            primary,
+            destination,
+            256,
+            payload.Length,
+            DownloadState.Downloading,
+            DateTimeOffset.UtcNow,
+            Mirrors: [mirror]);
+        ResumeCheckpointStore checkpointStore = new();
+        await checkpointStore.SaveAsync(new ResumeCheckpoint(
+            ResumeCheckpoint.CurrentVersion,
+            persisted.Id,
+            mirror,
+            destination,
+            512,
+            payload.Length,
+            "\"mirror-v1\"",
+            null,
+            1,
+            DateTimeOffset.UtcNow,
+            Mirrors: [mirror]));
+        ApplicationState state = new();
+        using HttpClient client = new(new RangeHandler(payload, "\"mirror-v1\""));
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore([persisted]));
+
+        await manager.InitializeAsync();
+
+        DownloadSnapshot restored = Assert.Single(state.Current.Downloads);
+        Assert.Equal(mirror, restored.Source);
+        Assert.Equal(512L, restored.DownloadedBytes);
+        Assert.Equal(DownloadState.Paused, restored.State);
+        Assert.False(restored.RecoveryRequired);
+    }
+
+    [Fact]
+    public async Task FailsOverToMirrorAfterPrimaryExhaustsRetries()
+    {
+        byte[] payload = CreatePayload(1024, 83);
+        using TemporaryDirectory directory = new();
+        MirrorFailoverHandler handler = new(payload);
+        using HttpClient client = new(handler);
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(
+            client,
+            state,
+            new InMemoryHistoryStore(),
+            retryPolicy: new DownloadRetryPolicy(1, TimeSpan.FromMilliseconds(1), 0));
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://primary.example.test/file.bin"),
+            directory.Path,
+            "mirror.bin",
+            ConnectionCount: 1,
+            Mirrors: [new Uri("https://mirror.example.test/file.bin")]));
+
+        DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        Assert.Equal("mirror.example.test", completed.Source.Host);
+        Assert.Equal(1, handler.PrimaryRequests);
+        Assert.Equal(1, handler.MirrorRequests);
+        Assert.Equal(payload, await File.ReadAllBytesAsync(completed.DestinationPath));
+    }
+
     private static DownloadManager CreateManager(
         HttpClient client,
         ApplicationState state,
@@ -598,6 +951,50 @@ public sealed class DownloadManagerTests
                     payload.Length);
             }
 
+            return Task.FromResult(response);
+        }
+    }
+
+
+    private sealed class RangeAlreadySatisfiedHandler(long payloadLength) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Assert.NotNull(request.Headers.Range);
+            ByteArrayContent content = new(Array.Empty<byte>());
+            content.Headers.TryAddWithoutValidation("Content-Range", $"bytes */{payloadLength}");
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable)
+            {
+                Content = content
+            });
+        }
+    }
+
+    private sealed class MirrorFailoverHandler(byte[] payload) : HttpMessageHandler
+    {
+        public int PrimaryRequests { get; private set; }
+
+        public int MirrorRequests { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (string.Equals(request.RequestUri?.Host, "primary.example.test", StringComparison.Ordinal))
+            {
+                PrimaryRequests++;
+                throw new HttpRequestException("Primary unavailable");
+            }
+
+            MirrorRequests++;
+            ByteArrayContent content = new(payload);
+            content.Headers.ContentLength = payload.Length;
+            HttpResponseMessage response = new(HttpStatusCode.OK) { Content = content };
+            response.Headers.ETag = EntityTagHeaderValue.Parse("\"mirror-v1\"");
             return Task.FromResult(response);
         }
     }

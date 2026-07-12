@@ -16,7 +16,15 @@ public sealed record DownloadSnapshot(
     int QueueOrder = 0,
     int ConnectionCount = 1,
     DownloadPriority Priority = DownloadPriority.Normal,
-    Uri? SourcePage = null)
+    Uri? SourcePage = null,
+    string? ExpectedChecksumAlgorithm = null,
+    string? ExpectedChecksum = null,
+    string? ActualChecksum = null,
+    DateTimeOffset? LastVerifiedAt = null,
+    DownloadIntegrityStatus IntegrityStatus = DownloadIntegrityStatus.Unknown,
+    bool RecoveryRequired = false,
+    string? RecoveryMessage = null,
+    IReadOnlyList<Uri>? Mirrors = null)
 {
     public double? ProgressFraction
         => TotalBytes is > 0

@@ -10,7 +10,11 @@ public sealed record DownloadListEntry(
     string? CategoryId = null,
     int ConnectionCount = 4,
     DownloadPriority Priority = DownloadPriority.Normal,
-    Uri? SourcePage = null);
+    Uri? SourcePage = null,
+    IReadOnlyList<Uri>? Mirrors = null,
+    string? ExpectedChecksumAlgorithm = null,
+    string? ExpectedChecksum = null,
+    long? ExpectedLength = null);
 
 public sealed record DownloadListEnvelope(
     int SchemaVersion,
