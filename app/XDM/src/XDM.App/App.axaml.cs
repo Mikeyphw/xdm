@@ -1,4 +1,3 @@
-using System.Net;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -161,16 +160,8 @@ public partial class App : Application
             builder.SetMinimumLevel(LogLevel.Information);
         });
 
-        services.AddSingleton(new HttpClient(new SocketsHttpHandler
-        {
-            AutomaticDecompression = DecompressionMethods.All,
-            AllowAutoRedirect = true,
-            MaxAutomaticRedirections = 10,
-            ConnectTimeout = TimeSpan.FromSeconds(30)
-        })
-        {
-            Timeout = Timeout.InfiniteTimeSpan
-        });
+        services.AddSingleton(static provider =>
+            ConfiguredHttpClientFactory.Create(provider.GetRequiredService<ISettingsService>().Current));
 
         services.AddSingleton<IDiagnosticEventStore, DiagnosticEventStore>();
         services.AddSingleton<IRecoveryService, RecoveryService>();
@@ -188,6 +179,7 @@ public partial class App : Application
         services.AddSingleton<IDownloadHistoryStore, JsonDownloadHistoryStore>();
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<ISettingsTransferService, SettingsTransferService>();
         services.AddSingleton<ISchedulerStateStore, JsonSchedulerStateStore>();
         services.AddSingleton<IApplicationLifetimeService, AvaloniaApplicationLifetimeService>();
         services.AddSingleton<IPlatformCommandRunner, PlatformCommandRunner>();

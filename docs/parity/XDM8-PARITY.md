@@ -13,12 +13,12 @@ This ledger is executable through `XDM.Parity.Tests`. The source of truth is
 
 ## Current baseline
 
-The manifest inventories 62 feature contracts across the download engine,
+The manifest inventories 66 feature contracts across the download engine,
 browser integration, media, conversion, queues, settings, desktop integration,
 diagnostics, localization, packaging and migration.
 
 Overlay 13 completed segmented transfer, Overlay 14 completed browser takeover,
-Overlay 15 completed streaming media, Overlay 16 completed conversion, and Overlay 17 completes queue scheduling and completion actions. Later parity overlays must
+Overlay 15 completed streaming media, Overlay 16 completed conversion, Overlay 17 completed queue scheduling and completion actions, and Overlay 18 completes settings and workflow parity. Later parity overlays must
 update the status, implementation paths and tests in the same commit that
 supplies the behavior.
 
@@ -83,3 +83,15 @@ action, or launch one configured executable without a shell. Platform support,
 timeouts and safety constraints are documented in
 `docs/parity/QUEUE-COMPLETION.md`.
 
+
+
+## Overlay 18 result
+
+Settings and workflow parity is complete for the planned modern scope. XDM now
+persists bounded timeout, retry, connection, segmentation, proxy, authentication,
+and download-behavior defaults. The shared HTTP stack applies system, direct, or
+manual authenticated proxy settings after restart. A versioned modern settings
+export redacts secrets by default, while the importer accepts modern JSON and
+legacy JSON, properties, or XML fixtures without executing source content.
+Migration behavior and supported keys are documented in
+`docs/parity/SETTINGS-WORKFLOW.md`.

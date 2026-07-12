@@ -1,11 +1,11 @@
 {
-  "name": "xdm_queue_completion_overlay",
+  "name": "xdm_settings_workflow_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "92c63a4",
+  "baseCommit": "1a0eb3a",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "functional-parity-17",
-  "description": "Adds multiple persisted queue schedules, missed-run policies, per-download priority, antivirus scanning, platform capability checks, and cancellable queue-completion actions.",
+  "phase": "functional-parity-18",
+  "description": "Adds bounded network and download defaults, authenticated proxy support, host credentials, versioned settings transfer, and legacy XDM settings/category/queue migration.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
@@ -13,12 +13,12 @@
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
     "focusedTests": "dotnet test app/XDM/src/XDM.DownloadEngine.Tests/XDM.DownloadEngine.Tests.csproj --configuration Release --no-build"
   },
-  "commitMessage": "Add queue completion actions and multiple schedules",
+  "commitMessage": "Add settings workflow and legacy migration",
   "constraints": [
     "Validate only app/XDM/XDM.Modern.sln",
     "Do not restore or build WPF, GTK, WinForms or MSIX targets",
-    "Launch completion commands and antivirus scanners directly without a shell",
-    "Require absolute existing executable paths for configurable commands",
-    "Expose destructive actions only after capability checks and a cancellable countdown"
+    "Do not execute imported settings content",
+    "Redact proxy and server passwords from exports by default",
+    "Apply proxy and HTTP handler changes after restart"
   ]
 }

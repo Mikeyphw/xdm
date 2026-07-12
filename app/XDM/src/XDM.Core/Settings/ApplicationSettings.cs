@@ -13,9 +13,12 @@ public sealed record ApplicationSettings(
     IReadOnlyList<DownloadQueueDefinition> Queues,
     DownloadSchedulerSettings Scheduler,
     IReadOnlyList<QueueScheduleDefinition>? Schedules = null,
-    AntivirusScanSettings? Antivirus = null)
+    AntivirusScanSettings? Antivirus = null,
+    NetworkSettings? Network = null,
+    DownloadBehaviorSettings? DownloadBehavior = null,
+    IReadOnlyList<ServerCredentialDefinition>? Credentials = null)
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public static ApplicationSettings CreateDefault()
     {
@@ -47,7 +50,10 @@ public sealed record ApplicationSettings(
                 WeekDays.EveryDay,
                 MissedRunPolicy.Skip,
                 ScheduleCompletionAction.None)],
-            AntivirusScanSettings.Disabled);
+            AntivirusScanSettings.Disabled,
+            NetworkSettings.Default,
+            DownloadBehaviorSettings.Default,
+            []);
     }
 
     public ApplicationSettings Normalize()
@@ -106,6 +112,12 @@ public sealed record ApplicationSettings(
         }
 
         QueueScheduleDefinition primarySchedule = schedules[0];
+        ServerCredentialDefinition[] credentials = Credentials?
+            .Select(static credential => credential.Normalize())
+            .Where(static credential => credential.Host.Length > 0 && credential.Username.Length > 0)
+            .DistinctBy(static credential => credential.Host, StringComparer.OrdinalIgnoreCase)
+            .Take(256)
+            .ToArray() ?? [];
         return this with
         {
             SchemaVersion = CurrentSchemaVersion,
@@ -121,7 +133,10 @@ public sealed record ApplicationSettings(
                 primarySchedule.EndTime,
                 primarySchedule.Days),
             Schedules = schedules,
-            Antivirus = (Antivirus ?? AntivirusScanSettings.Disabled).Normalize()
+            Antivirus = (Antivirus ?? AntivirusScanSettings.Disabled).Normalize(),
+            Network = (Network ?? NetworkSettings.Default).Normalize(),
+            DownloadBehavior = (DownloadBehavior ?? DownloadBehaviorSettings.Default).Normalize(),
+            Credentials = credentials
         };
     }
 }

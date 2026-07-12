@@ -633,23 +633,112 @@
           </ScrollViewer>
 
           <ScrollViewer IsVisible="{Binding IsSettingsVisible}">
-            <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
-              <StackPanel Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
-                <TextBlock Text="Download behavior" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
-                <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
-                  <TextBox PlaceholderText="Default download directory" Text="{Binding DestinationFolder}" />
-                  <Button Grid.Column="1" Classes="secondary" Content="Browse" Click="BrowseDestination_Click" />
-                </Grid>
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
-                  <TextBox PlaceholderText="Maximum concurrent downloads" Text="{Binding MaxConcurrentDownloads}" />
-                  <TextBox Grid.Column="1" PlaceholderText="Default speed limit KB/s (0 = unlimited)" Text="{Binding DefaultSpeedLimitKbps}" />
-                </Grid>
-                <CheckBox Content="Monitor clipboard for HTTP/HTTPS links" IsChecked="{Binding ClipboardMonitoringEnabled}" />
-                <CheckBox Content="Automatically add links captured from clipboard" IsChecked="{Binding AutoAddClipboardLinks}" />
-                <TextBlock Text="Concurrency is initialized when XDM starts; changing it currently takes effect after restart. Speed-limit changes apply to active downloads." TextWrapping="Wrap" Foreground="#7F8B9B" />
-                <Button HorizontalAlignment="Left" Classes="primary" Content="Save settings" Command="{Binding SaveSettingsCommand}" />
-              </StackPanel>
-            </Border>
+            <StackPanel Spacing="14" MaxWidth="920" HorizontalAlignment="Left">
+              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="Download behavior" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="Default download directory" Text="{Binding DestinationFolder}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="Browse" Click="BrowseDestination_Click" />
+                  </Grid>
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
+                    <TextBox PlaceholderText="Maximum concurrent downloads" Text="{Binding MaxConcurrentDownloads}" />
+                    <TextBox Grid.Column="1" PlaceholderText="Default speed limit KB/s (0 = unlimited)" Text="{Binding DefaultSpeedLimitKbps}" />
+                  </Grid>
+                  <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
+                    <ComboBox ItemsSource="{Binding DuplicateBehaviors}" SelectedItem="{Binding SelectedDuplicateBehavior}" />
+                    <TextBox Grid.Column="1" PlaceholderText="Default connections" Text="{Binding DefaultConnectionCount}" />
+                    <TextBox Grid.Column="2" PlaceholderText="Maximum connections" Text="{Binding MaximumConnectionCount}" />
+                  </Grid>
+                  <CheckBox Content="Create destination directories when missing" IsChecked="{Binding CreateDestinationDirectory}" />
+                  <CheckBox Content="Automatically select categories by extension" IsChecked="{Binding AutoSelectCategory}" />
+                  <CheckBox Content="Remember the last request metadata in the download dialog" IsChecked="{Binding RememberLastRequestMetadata}" />
+                  <CheckBox Content="Monitor clipboard for HTTP/HTTPS links" IsChecked="{Binding ClipboardMonitoringEnabled}" />
+                  <CheckBox Content="Automatically add links captured from clipboard" IsChecked="{Binding AutoAddClipboardLinks}" />
+                </StackPanel>
+              </Border>
+
+              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="Network, retries, and segmented transfers" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
+                    <TextBox PlaceholderText="Connect timeout seconds" Text="{Binding ConnectTimeoutSeconds}" />
+                    <TextBox Grid.Column="1" PlaceholderText="Whole-request timeout seconds (0 = unlimited)" Text="{Binding RequestTimeoutSeconds}" />
+                    <TextBox Grid.Column="2" PlaceholderText="Maximum retry attempts" Text="{Binding MaximumRetryAttempts}" />
+                  </Grid>
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
+                    <TextBox PlaceholderText="Retry base delay milliseconds" Text="{Binding RetryBaseDelayMilliseconds}" />
+                    <TextBox Grid.Column="1" PlaceholderText="Minimum segmented size MiB" Text="{Binding MinimumSegmentedSizeMegabytes}" />
+                  </Grid>
+                  <TextBlock Text="Network handler, proxy, retry, and segment settings apply to new processes after restart. Per-download connection counts use the saved default immediately." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                </StackPanel>
+              </Border>
+
+              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="Proxy" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <Grid ColumnDefinitions="*,2*,*" ColumnSpacing="9">
+                    <ComboBox ItemsSource="{Binding ProxyModes}" SelectedItem="{Binding SelectedProxyMode}" />
+                    <TextBox Grid.Column="1" PlaceholderText="Proxy host" Text="{Binding ProxyHost}" />
+                    <TextBox Grid.Column="2" PlaceholderText="Port" Text="{Binding ProxyPort}" />
+                  </Grid>
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
+                    <TextBox PlaceholderText="Proxy username" Text="{Binding ProxyUsername}" />
+                    <TextBox Grid.Column="1" PlaceholderText="Proxy password" Text="{Binding ProxyPassword}" PasswordChar="●" />
+                  </Grid>
+                  <CheckBox Content="Bypass proxy for local addresses" IsChecked="{Binding ProxyBypassLocal}" />
+                  <TextBox AcceptsReturn="True" MinHeight="70" PlaceholderText="Proxy bypass patterns, one per line" Text="{Binding ProxyBypassList}" />
+                </StackPanel>
+              </Border>
+
+              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="Server credentials" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="9">
+                    <TextBox PlaceholderText="Host (example.com)" Text="{Binding CredentialHost}" />
+                    <TextBox Grid.Column="1" PlaceholderText="Username" Text="{Binding CredentialUsername}" />
+                    <TextBox Grid.Column="2" PlaceholderText="Password" Text="{Binding CredentialPassword}" PasswordChar="●" />
+                  </Grid>
+                  <CheckBox Content="Include subdomains" IsChecked="{Binding CredentialIncludesSubdomains}" />
+                  <WrapPanel Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="Add or replace" Command="{Binding AddServerCredentialCommand}" />
+                    <Button Classes="secondary" Content="Remove selected" Command="{Binding RemoveSelectedServerCredentialCommand}" />
+                  </WrapPanel>
+                  <ListBox ItemsSource="{Binding ServerCredentials}" SelectedItem="{Binding SelectedServerCredential}" MaxHeight="150">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="2*,*,Auto" ColumnSpacing="10" Margin="2">
+                          <TextBlock Text="{Binding Host}" Foreground="#E8EEF7" />
+                          <TextBlock Grid.Column="1" Text="{Binding Username}" Foreground="#BAC7D8" />
+                          <TextBlock Grid.Column="2" Text="Saved" Foreground="#8FB5FF" />
+                        </Grid>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </StackPanel>
+              </Border>
+
+              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="Import, export, and XDM 8 migration" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                  <Grid ColumnDefinitions="2*,Auto,Auto,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="Settings file or legacy settings directory" Text="{Binding SettingsTransferPath}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="Choose file" Click="BrowseSettingsImport_Click" />
+                    <Button Grid.Column="2" Classes="secondary" Content="Choose folder" Click="BrowseSettingsDirectory_Click" />
+                    <Button Grid.Column="3" Classes="secondary" Content="Choose export" Click="BrowseSettingsExport_Click" />
+                  </Grid>
+                  <CheckBox Content="Include proxy and server passwords in export" IsChecked="{Binding IncludeSecretsInSettingsExport}" />
+                  <WrapPanel Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="Import or migrate" Command="{Binding ImportSettingsCommand}" />
+                    <Button Classes="secondary" Content="Export settings" Command="{Binding ExportSettingsCommand}" />
+                  </WrapPanel>
+                  <TextBlock Text="{Binding SettingsTransferStatus}" TextWrapping="Wrap" Foreground="#8FB5FF" />
+                  <TextBlock Text="Legacy import recognizes JSON, Java properties, and XML files. Modern exports redact passwords unless explicitly included." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                </StackPanel>
+              </Border>
+
+              <Button HorizontalAlignment="Left" Classes="primary" Content="Save all settings" Command="{Binding SaveSettingsCommand}" />
+            </StackPanel>
           </ScrollViewer>
 
           <ScrollViewer IsVisible="{Binding IsDiagnosticsVisible}">
@@ -705,7 +794,7 @@
 
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
         <TextBlock Text="{Binding RuntimeDescription}" FontSize="11" Foreground="#687586" />
-        <TextBlock Grid.Column="1" Text="Queue completion parity • overlay 17" FontSize="11" Foreground="#8FB5FF" />
+        <TextBlock Grid.Column="1" Text="Settings and workflow parity • overlay 18" FontSize="11" Foreground="#8FB5FF" />
       </Grid>
     </Grid>
   </Grid>

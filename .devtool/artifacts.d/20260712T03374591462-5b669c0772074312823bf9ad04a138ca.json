@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-12T03:37:45.914622Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_settings_workflow_overlay.zip",
+  "artifact_name": "xdm_settings_workflow_overlay.zip",
+  "type": "overlay",
+  "sha256": "26303c57cdc8d62b4bea4f911b9d28dd6df43cc1c27ecbfd6f99787156463c4a",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Add settings workflow and legacy migration",
+  "commit_hash": "",
+  "file_count": 25,
+  "change_counts": {
+    "add": 13,
+    "modify": 12
+  },
+  "manifest": {},
+  "history_id": "5b669c0772074312823bf9ad04a138ca"
+}

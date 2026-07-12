@@ -48,6 +48,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IPlatformInfo platformInfo,
         IDownloadManager downloadManager,
         ISettingsService settingsService,
+        ISettingsTransferService settingsTransferService,
         IQueueSchedulerRuntime queueSchedulerRuntime,
         ICompletionActionService completionActionService,
         IUiDispatcher dispatcher,
@@ -68,6 +69,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _applicationState = applicationState;
         _downloadManager = downloadManager;
         _settingsService = settingsService;
+        _settingsTransferService = settingsTransferService;
         _queueSchedulerRuntime = queueSchedulerRuntime;
         _completionActionService = completionActionService;
         _dispatcher = dispatcher;
@@ -536,20 +538,22 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 string? fileName = sources.Count == 1 && !string.IsNullOrWhiteSpace(CustomFileName)
                     ? CustomFileName.Trim()
                     : null;
+                (string? savedUsername, string? savedPassword) = ResolveServerCredential(source);
                 DownloadRequest request = new(
                     source,
                     DestinationFolder,
                     fileName,
                     headers,
-                    EmptyToNull(Username),
-                    EmptyToNull(Password),
+                    EmptyToNull(Username) ?? savedUsername,
+                    EmptyToNull(Password) ?? savedPassword,
                     EmptyToNull(Cookie),
                     EmptyToNull(Referer),
                     EmptyToNull(UserAgent),
                     SelectedQueue?.Id,
-                    SelectedCategory?.Id,
+                    ResolveCategoryId(source, SelectedCategory?.Id),
                     speedLimit,
                     duplicateBehavior,
+                    ConnectionCount: ParseInteger(DefaultConnectionCount, 4),
                     Priority: NewDownloadPriority);
 
                 await _downloadManager.AddAsync(request);
@@ -573,6 +577,15 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             NewDownloadUrls = string.Empty;
             CustomFileName = string.Empty;
+            if (!RememberLastRequestMetadata)
+            {
+                RequestHeaders = string.Empty;
+                Username = string.Empty;
+                Password = string.Empty;
+                Cookie = string.Empty;
+                Referer = string.Empty;
+                UserAgent = string.Empty;
+            }
         }
 
         OperationMessage = failures.Count == 0
@@ -731,6 +744,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 : 120;
         string[] antivirusArguments = AntivirusArguments
             .Split(LineSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        ApplicationSettings editorSettings = BuildSettingsFromEditor();
         ApplicationSettings updated = current with
         {
             DefaultDownloadDirectory = DestinationFolder,
@@ -751,11 +765,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 AntivirusEnabled,
                 EmptyToNull(AntivirusExecutablePath),
                 antivirusArguments,
-                antivirusTimeout)
+                antivirusTimeout),
+            Network = editorSettings.Network,
+            DownloadBehavior = editorSettings.DownloadBehavior,
+            Credentials = ServerCredentials.ToArray()
         };
 
         await _settingsService.UpdateAsync(updated);
-        OperationMessage = "Settings saved. Concurrency changes apply after restart.";
+        OperationMessage = "Settings saved. Concurrency, proxy, timeout, retry, and segment policy changes apply after restart.";
     }
 
     [RelayCommand]
@@ -1544,17 +1561,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             ApplicationSettings settings = _settingsService.Current;
+            (string? savedUsername, string? savedPassword) = ResolveServerCredential(request.Url);
+            NetworkSettings network = settings.Network ?? NetworkSettings.Default;
             DownloadRequest downloadRequest = new(
                 request.Url,
                 settings.DefaultDownloadDirectory,
                 request.FileName,
                 request.Headers,
+                Username: savedUsername,
+                Password: savedPassword,
                 Cookie: request.Cookie,
                 Referer: request.Referer,
                 UserAgent: request.UserAgent,
                 QueueId: request.QueueId,
-                CategoryId: request.CategoryId,
-                ConnectionCount: request.Method == "GET" ? 4 : 1,
+                CategoryId: ResolveCategoryId(request.Url, request.CategoryId),
+                ConnectionCount: request.Method == "GET" ? network.DefaultConnectionCount : 1,
                 Method: request.Method,
                 RequestBody: request.GetRequestBody(),
                 RequestBodyContentType: request.RequestBodyContentType);
@@ -1856,6 +1877,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         AntivirusArguments = string.Join(Environment.NewLine, antivirus.Arguments ?? []);
         AntivirusTimeoutSeconds = antivirus.TimeoutSeconds
             .ToString(System.Globalization.CultureInfo.InvariantCulture);
+        ApplySettingsParity(settings);
         ApplyQueueRuntime(_downloadManager.QueueRuntime);
         ApplySchedulerRuntime(_queueSchedulerRuntime.Current);
     }

@@ -140,6 +140,53 @@ public partial class MainWindow : Window
         }
     }
 
+
+    private async void BrowseSettingsImport_Click(object? sender, RoutedEventArgs e)
+    {
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(
+            new FilePickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = "Choose modern or legacy XDM settings"
+            });
+        string? path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
+        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.SettingsTransferPath = path;
+        }
+    }
+
+    private async void BrowseSettingsDirectory_Click(object? sender, RoutedEventArgs e)
+    {
+        IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(
+            new FolderPickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = "Choose legacy XDM settings directory"
+            });
+        string? path = folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
+        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.SettingsTransferPath = path;
+        }
+    }
+
+    private async void BrowseSettingsExport_Click(object? sender, RoutedEventArgs e)
+    {
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(
+            new FilePickerSaveOptions
+            {
+                Title = "Export XDM settings",
+                SuggestedFileName = "xdm-settings.json",
+                DefaultExtension = "json"
+            });
+        string? path = file?.TryGetLocalPath();
+        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.SettingsTransferPath = path;
+        }
+    }
+
     private async void ClipboardTimer_Tick(object? sender, EventArgs e)
     {
         if (_clipboardReadInProgress

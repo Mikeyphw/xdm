@@ -1,6 +1,6 @@
-# XDM Overlay 17 — queue completion actions
+# XDM Overlay 18 — settings and workflow parity
 
-Base: confirmed functional commit `92c63a4`
+Base: confirmed successful commit `1a0eb3a`
 
 Target: `xdm_modern`
 
@@ -8,31 +8,32 @@ Active solution: `app/XDM/XDM.Modern.sln`
 
 ## Included
 
-- Multiple independent queue schedules with day masks and overnight windows.
-- Atomic persisted scheduler checkpoints and `Skip` / `RunImmediately`
-  missed-run policies.
-- Low, normal and high per-download priority with durable queue ordering.
-- Queue-run completion tracking across application-state transitions.
-- Optional antivirus scan before completion actions.
-- Cancellable countdown for exit, shutdown, sleep, hibernate, logout and direct
-  executable actions.
-- Linux, Windows and macOS capability discovery without shell scripts.
-- Avalonia schedule editor, capability health, pending-action status and cancel
-  control.
-- Deterministic scheduler, persistence, command-safety, antivirus and priority
-  tests.
-- The deferred `CA1861` conversion-queue test warning fix.
-- Executable parity-ledger and documentation updates.
+- Schema-v3 bounded network and download behavior settings.
+- Connection and whole-request timeouts.
+- Retry attempts and exponential retry base delay.
+- Default/maximum segmented connections and minimum segmented file size.
+- System, direct, and manual authenticated proxy modes with bypass rules.
+- Exact-host and optional-subdomain server credential manager.
+- Default duplicate handling, category selection, directory creation, clipboard,
+  and request-metadata behavior.
+- Versioned atomic settings exports with passwords redacted by default.
+- Modern JSON plus legacy JSON, Java-properties, XML, and directory migration.
+- Recorded legacy settings/category/queue fixture and deterministic tests.
+- Settings, migration, and parity documentation updates.
 
-## Safety properties
+## Runtime behavior
 
-Configurable commands and antivirus scanners require absolute existing
-executable paths. Arguments are passed through `ProcessStartInfo.ArgumentList`;
-no shell is started and argument text is never interpreted as shell syntax.
-Output capture is bounded, execution has a timeout, and cancellation terminates
-the process tree. Platform power actions use only fixed discovered system
-commands. A failed or unavailable antivirus scan prevents the later destructive
-action.
+Settings are initialized before the shared HTTP client is created. Proxy,
+timeout, retry, and segmentation policy changes therefore apply to the next XDM
+process. New downloads use the saved default connection count immediately.
+Explicit request credentials always take precedence over saved host credentials.
+
+## Safety
+
+Imports are parsed as bounded data only and are never executed. All imported
+values pass through the normal settings schema limits. Exports omit proxy and
+server passwords unless the user explicitly enables secret export. Files are
+written through a private temporary path and atomically replaced.
 
 ## Validation scope
 

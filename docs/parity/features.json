@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "baseline": "92c63a4",
-  "updatedAt": "2026-07-12T03:00:00-03:00",
+  "baseline": "overlay-18-settings-workflow",
+  "updatedAt": "2026-07-12",
   "features": [
     {
       "id": "download.http-single-stream",
@@ -174,14 +174,21 @@
       "area": "network",
       "name": "HTTP proxy and proxy authentication",
       "priority": "critical",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/ProxyConfig.cs"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Settings/ProxySettings.cs",
+        "app/XDM/src/XDM.Platform/ConfiguredHttpClientFactory.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.SettingsTransferServiceTests.ImportsRecordedLegacyPropertiesWithCategoriesQueuesAndProxy",
+        "XDM.Core.Tests.NetworkSettingsTests.ConfiguredClientUsesBoundedRequestTimeout"
+      ],
       "targetOverlay": "18",
-      "notes": "Proxy configuration and proxy authentication remain owned by Overlay 18 settings and workflow parity."
+      "notes": "System, direct, and manual proxy modes include bounded ports, bypass rules, and optional proxy authentication. The configured handler is created after settings initialization."
     },
     {
       "id": "download.ftp",
@@ -691,14 +698,21 @@
       "area": "settings-migration",
       "name": "Import XDM 8 settings and queues",
       "priority": "critical",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/Config.cs"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
-      "targetOverlay": "21",
-      "notes": "Requires real legacy fixtures."
+      "implementationPaths": [
+        "app/XDM/src/XDM.Persistence/SettingsTransferService.cs",
+        "app/XDM/src/XDM.DownloadEngine.Tests/Fixtures/Legacy/xdm8-settings.properties",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.SettingsParity.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.SettingsTransferServiceTests.ImportsRecordedLegacyPropertiesWithCategoriesQueuesAndProxy",
+        "XDM.DownloadEngine.Tests.SettingsTransferServiceTests.ImportsFlattenedLegacyJson"
+      ],
+      "targetOverlay": "18",
+      "notes": "Modern JSON plus legacy JSON, Java properties, XML, and conventional legacy directories are imported through bounded normalization with recorded fixtures."
     },
     {
       "id": "history.persistence",
@@ -1200,6 +1214,87 @@
       ],
       "targetOverlay": "16",
       "notes": "ProcessStartInfo.ArgumentList is used with shell execution disabled; private temporary output is atomically moved only after success."
+    },
+    {
+      "id": "settings.network-policy",
+      "area": "settings-migration",
+      "name": "Timeout, retry, and segmented-transfer defaults",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/Lang/English.txt",
+        "app/XDM/XDM.Core/Config.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Settings/NetworkSettings.cs",
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.NetworkSettingsTests.NormalizationBoundsTimeoutRetryAndConnectionValues"
+      ],
+      "targetOverlay": "18",
+      "notes": "Connection/request timeouts, retry attempts/delay, default/max connections, and segmented-transfer minimum size are bounded and persisted."
+    },
+    {
+      "id": "settings.transfer",
+      "area": "settings-migration",
+      "name": "Versioned settings import and export",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/Lang/English.txt"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Settings/SettingsTransferModels.cs",
+        "app/XDM/src/XDM.Persistence/SettingsTransferService.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.SettingsTransferServiceTests.ExportsPasswordsRedactedByDefaultAndRoundTripsModernEnvelope"
+      ],
+      "targetOverlay": "18",
+      "notes": "Atomic versioned exports redact secrets by default; modern and legacy imports reuse schema normalization."
+    },
+    {
+      "id": "settings.credentials",
+      "area": "settings-migration",
+      "name": "Host credential manager",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/Lang/English.txt"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Settings/ServerCredentialDefinition.cs",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.SettingsParity.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.NetworkSettingsTests.ServerCredentialsMatchExactHostsAndOptionalSubdomains"
+      ],
+      "targetOverlay": "18",
+      "notes": "Exact-host and opt-in subdomain credentials fill only otherwise unspecified request authentication; exports redact passwords by default."
+    },
+    {
+      "id": "settings.download-defaults",
+      "area": "settings-migration",
+      "name": "Download dialog and workflow defaults",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/Lang/English.txt"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Settings/DownloadBehaviorSettings.cs",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.JsonSettingsStoreTests"
+      ],
+      "targetOverlay": "18",
+      "notes": "Default duplicate behavior, connection count, directory creation, category selection, clipboard behavior, and request-metadata preference are persisted in the modern schema."
     }
   ]
 }

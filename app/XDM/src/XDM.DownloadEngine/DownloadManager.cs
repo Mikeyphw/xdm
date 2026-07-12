@@ -53,7 +53,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             settingsService,
             logger,
             new SystemDiskSpaceProvider(),
-            new DownloadRetryPolicy())
+            CreateRetryPolicy(settingsService.Current),
+            CreateSegmentedOptions(settingsService.Current))
     {
     }
 
@@ -202,7 +203,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         ArgumentException.ThrowIfNullOrWhiteSpace(request.DestinationDirectory);
-        Directory.CreateDirectory(request.DestinationDirectory);
+        DownloadBehaviorSettings behavior = _settingsService.Current.DownloadBehavior
+            ?? DownloadBehaviorSettings.Default;
+        if (!Directory.Exists(request.DestinationDirectory))
+        {
+            if (!behavior.CreateDestinationDirectory)
+            {
+                throw new DirectoryNotFoundException(
+                    $"The destination directory does not exist: {request.DestinationDirectory}");
+            }
+            Directory.CreateDirectory(request.DestinationDirectory);
+        }
 
         string fileName = request.ResolveFileName();
         string destinationPath = ResolveDestinationPath(request, fileName);
@@ -1306,6 +1317,23 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.Method,
                 session.Priority);
         }
+    }
+
+    private static DownloadRetryPolicy CreateRetryPolicy(ApplicationSettings settings)
+    {
+        NetworkSettings network = (settings.Network ?? NetworkSettings.Default).Normalize();
+        return new DownloadRetryPolicy(
+            network.MaximumRetryAttempts,
+            TimeSpan.FromMilliseconds(network.RetryBaseDelayMilliseconds));
+    }
+
+    private static SegmentedDownloadOptions CreateSegmentedOptions(ApplicationSettings settings)
+    {
+        NetworkSettings network = (settings.Network ?? NetworkSettings.Default).Normalize();
+        return new SegmentedDownloadOptions(
+            network.DefaultConnectionCount,
+            network.MaximumConnectionCount,
+            network.MinimumSegmentedSizeBytes);
     }
 
     private void ThrowIfDisposed()
