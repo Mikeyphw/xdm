@@ -47,6 +47,9 @@ public sealed partial class DownloadItemViewModel : ObservableObject
     private int queueOrder;
 
     [ObservableProperty]
+    private DownloadPriority priority = DownloadPriority.Normal;
+
+    [ObservableProperty]
     private bool canPause;
 
     [ObservableProperty]
@@ -75,6 +78,7 @@ public sealed partial class DownloadItemViewModel : ObservableObject
         ErrorMessage = snapshot.ErrorMessage;
         QueueId = snapshot.QueueId;
         QueueOrder = snapshot.QueueOrder;
+        Priority = snapshot.Priority;
         CanPause = snapshot.State is DownloadState.Connecting or DownloadState.Downloading;
         CanResume = snapshot.State is DownloadState.Paused or DownloadState.Failed or DownloadState.Cancelled;
         CanCancel = snapshot.State is DownloadState.Queued

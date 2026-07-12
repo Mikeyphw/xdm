@@ -20,6 +20,11 @@ public interface IDownloadManager
 
     Task RetryAsync(string downloadId, CancellationToken cancellationToken = default);
 
+    Task SetPriorityAsync(
+        string downloadId,
+        XDM.Core.Downloads.DownloadPriority priority,
+        CancellationToken cancellationToken = default);
+
     Task RemoveAsync(string downloadId, bool deletePartialFile = false, CancellationToken cancellationToken = default);
 
     Task StartQueueAsync(string queueId, CancellationToken cancellationToken = default);

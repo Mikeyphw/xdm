@@ -133,7 +133,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 item.EntityTag,
                 item.LastModified,
                 item.ConnectionCount,
-                restoredMethod);
+                restoredMethod,
+                null,
+                null,
+                item.Priority);
 
             try
             {
@@ -156,7 +159,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         foreach (DownloadSession session in _sessions.Values
             .Where(session => session.State == DownloadState.Queued && IsQueueActive(session.QueueId))
-            .OrderBy(static session => session.QueueOrder))
+            .OrderByDescending(static session => session.Priority)
+            .ThenBy(static session => session.QueueOrder))
         {
             Start(session);
         }
@@ -257,7 +261,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             method == "GET" ? Math.Clamp(request.ConnectionCount, 1, 32) : 1,
             method,
             request.RequestBody?.ToArray(),
-            request.RequestBodyContentType);
+            request.RequestBodyContentType,
+            request.Priority);
 
         if (!_sessions.TryAdd(session.Id, session))
         {
@@ -347,6 +352,22 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     public Task RetryAsync(string downloadId, CancellationToken cancellationToken = default)
         => ResumeAsync(downloadId, cancellationToken);
 
+    public async Task SetPriorityAsync(
+        string downloadId,
+        DownloadPriority priority,
+        CancellationToken cancellationToken = default)
+    {
+        DownloadSession session = GetSession(downloadId);
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (session.Sync)
+        {
+            session.Priority = priority;
+        }
+
+        _applicationState.UpsertDownload(CreateSnapshot(session));
+        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task RemoveAsync(
         string downloadId,
         bool deletePartialFile = false,
@@ -398,7 +419,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         foreach (DownloadSession session in _sessions.Values
             .Where(session => string.Equals(session.QueueId, queueId, StringComparison.Ordinal)
                 && session.State == DownloadState.Queued)
-            .OrderBy(static session => session.QueueOrder))
+            .OrderByDescending(static session => session.Priority)
+            .ThenBy(static session => session.QueueOrder))
         {
             Start(session);
         }
@@ -1257,7 +1279,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.QueueId,
                 session.CategoryId,
                 session.QueueOrder,
-                session.ConnectionCount);
+                session.ConnectionCount,
+                session.Priority);
         }
     }
 
@@ -1280,7 +1303,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.EntityTag,
                 session.LastModified,
                 session.ConnectionCount,
-                session.Method);
+                session.Method,
+                session.Priority);
         }
     }
 
@@ -1312,7 +1336,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             int connectionCount = 4,
             string method = "GET",
             byte[]? requestBody = null,
-            string? requestBodyContentType = null)
+            string? requestBodyContentType = null,
+            DownloadPriority priority = DownloadPriority.Normal)
         {
             Id = id;
             Source = source;
@@ -1337,6 +1362,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             Method = method;
             RequestBody = requestBody;
             RequestBodyContentType = requestBodyContentType;
+            Priority = priority;
         }
 
         public object Sync { get; } = new();
@@ -1388,6 +1414,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         public byte[]? RequestBody { get; }
 
         public string? RequestBodyContentType { get; }
+
+        public DownloadPriority Priority { get; set; }
 
         public bool PauseRequested { get; set; }
 

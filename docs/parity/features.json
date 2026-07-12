@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "baseline": "2f03229",
-  "updatedAt": "2026-07-11T23:40:00-03:00",
+  "baseline": "92c63a4",
+  "updatedAt": "2026-07-12T03:00:00-03:00",
   "features": [
     {
       "id": "download.http-single-stream",
@@ -180,8 +180,8 @@
       ],
       "implementationPaths": [],
       "automatedTests": [],
-      "targetOverlay": "17",
-      "notes": "Modern HttpClient construction does not expose complete proxy configuration."
+      "targetOverlay": "18",
+      "notes": "Proxy configuration and proxy authentication remain owned by Overlay 18 settings and workflow parity."
     },
     {
       "id": "download.ftp",
@@ -293,14 +293,20 @@
       "area": "queues-scheduler",
       "name": "Per-download priority",
       "priority": "high",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/QueueManager.cs"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Downloads/DownloadPriority.cs",
+        "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.PersistsAndPublishesPerDownloadPriority"
+      ],
       "targetOverlay": "17",
-      "notes": "Queue ordering exists but explicit priority classes are absent."
+      "notes": "Low, normal and high priorities persist with each download and order queued starts before stable queue position."
     },
     {
       "id": "scheduler.windows",
@@ -312,27 +318,101 @@
         "app/XDM/XDM.Core/Scheduler.cs"
       ],
       "implementationPaths": [
-        "app/XDM/src/XDM.Core/Scheduling/DownloadSchedule.cs"
+        "app/XDM/src/XDM.Core/Scheduling/DownloadSchedule.cs",
+        "app/XDM/src/XDM.Core/Scheduling/ScheduleWindowCalculator.cs",
+        "app/XDM/src/XDM.DownloadEngine/Queues/QueueSchedulerRuntime.cs"
       ],
       "automatedTests": [
-        "XDM.Core.Tests.DownloadScheduleTests"
+        "XDM.Core.Tests.DownloadScheduleTests.OvernightScheduleCarriesIntoTheNextDay",
+        "XDM.Core.Tests.ScheduleWindowCalculatorTests.ResolvesOvernightWindowToPreviousLocalDay",
+        "XDM.DownloadEngine.Tests.QueueSchedulerRuntimeTests.StartsMultipleSchedulesForIndependentQueues"
       ],
       "targetOverlay": "17",
-      "notes": "Timezone-aware schedule evaluation is implemented."
+      "notes": "Multiple timezone-aware day/time windows run independently and preserve overnight behavior."
     },
     {
       "id": "scheduler.completion-actions",
       "area": "queues-scheduler",
       "name": "Shutdown, sleep, exit and command completion actions",
       "priority": "high",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/Scheduler.cs"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.DownloadEngine/Queues/QueueSchedulerRuntime.cs",
+        "app/XDM/src/XDM.Platform/PlatformCompletionActionService.cs",
+        "app/XDM/src/XDM.Core/Scheduling/CompletionActionCountdown.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.PlatformCompletionActionServiceTests.RunsConfiguredExecutableWithoutShellExpansion",
+        "XDM.Core.Tests.PlatformCompletionActionServiceTests.ExitActionUsesApplicationLifetime",
+        "XDM.Core.Tests.CompletionActionCountdownTests.ZeroSecondCountdownPublishesExecutionTick"
+      ],
       "targetOverlay": "17",
-      "notes": "Requires confirmation and cancellable countdown."
+      "notes": "Queue completion can exit XDM, run a direct executable, or request supported shutdown, sleep, hibernate and logout actions after a cancellable countdown."
+    },
+    {
+      "id": "scheduler.multiple-schedules",
+      "area": "queues-scheduler",
+      "name": "Multiple independent queue schedules",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Scheduler.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Scheduling/QueueScheduleDefinition.cs",
+        "app/XDM/src/XDM.DownloadEngine/Queues/QueueSchedulerRuntime.cs",
+        "app/XDM/src/XDM.App/ViewModels/ScheduleEditorViewModel.cs"
+      ],
+      "automatedTests": [
+        "XDM.DownloadEngine.Tests.QueueSchedulerRuntimeTests.StartsMultipleSchedulesForIndependentQueues"
+      ],
+      "targetOverlay": "17",
+      "notes": "Up to 64 independently enabled schedule definitions can target separate queues."
+    },
+    {
+      "id": "scheduler.missed-run-policy",
+      "area": "queues-scheduler",
+      "name": "Persisted missed-run policy",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Scheduler.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Core/Scheduling/ScheduleWindowCalculator.cs",
+        "app/XDM/src/XDM.Persistence/JsonSchedulerStateStore.cs",
+        "app/XDM/src/XDM.DownloadEngine/Queues/QueueSchedulerRuntime.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.ScheduleWindowCalculatorTests.FindsLatestMissedStartBetweenEvaluations",
+        "XDM.DownloadEngine.Tests.JsonSchedulerStateStoreTests.RoundTripsLastEvaluationAndStartedWindows"
+      ],
+      "targetOverlay": "17",
+      "notes": "Skip and run-immediately policies use an atomic persisted evaluation checkpoint to avoid duplicate windows."
+    },
+    {
+      "id": "scheduler.platform-capabilities",
+      "area": "queues-scheduler",
+      "name": "Completion-action platform capability checks",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Scheduler.cs"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Platform/PlatformPowerCommandCatalog.cs",
+        "app/XDM/src/XDM.Platform/PlatformCompletionActionService.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.PlatformCompletionActionServiceTests.RunsConfiguredExecutableWithoutShellExpansion"
+      ],
+      "targetOverlay": "17",
+      "notes": "The UI reports availability and the service rejects unavailable platform actions before execution."
     },
     {
       "id": "browser.loopback",
@@ -786,14 +866,20 @@
       "area": "security",
       "name": "Automatic antivirus scanning",
       "priority": "medium",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/Antivirus.cs"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Platform/AntivirusScanner.cs",
+        "app/XDM/src/XDM.Core/Scheduling/AntivirusScanSettings.cs",
+        "app/XDM/src/XDM.DownloadEngine/Queues/QueueSchedulerRuntime.cs"
+      ],
+      "automatedTests": [
+        "XDM.Core.Tests.AntivirusScannerTests.ReplacesFilePlaceholderAndDoesNotInvokeShell"
+      ],
       "targetOverlay": "17",
-      "notes": "Needs explicit executable allow-listing and timeout."
+      "notes": "Completed scheduled files can be scanned by an absolute configured executable with bounded arguments, timeout and no shell expansion."
     },
     {
       "id": "localization.resources",

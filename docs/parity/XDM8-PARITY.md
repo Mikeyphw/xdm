@@ -13,12 +13,12 @@ This ledger is executable through `XDM.Parity.Tests`. The source of truth is
 
 ## Current baseline
 
-The manifest inventories 59 feature contracts across the download engine,
+The manifest inventories 62 feature contracts across the download engine,
 browser integration, media, conversion, queues, settings, desktop integration,
 diagnostics, localization, packaging and migration.
 
 Overlay 13 completed segmented transfer, Overlay 14 completed browser takeover,
-Overlay 15 completed streaming media, and Overlay 16 completes conversion. Later parity overlays must
+Overlay 15 completed streaming media, Overlay 16 completed conversion, and Overlay 17 completes queue scheduling and completion actions. Later parity overlays must
 update the status, implementation paths and tests in the same commit that
 supplies the behavior.
 
@@ -71,3 +71,15 @@ process starts. Conversion jobs run sequentially with structured progress,
 cancellation and atomic output publication. Completed downloads and media
 captures can be sent directly to the conversion queue. Design and safety
 details are documented in `docs/parity/CONVERSION.md`.
+
+## Overlay 17 result
+
+Queue scheduling and completion-action parity is complete for the planned
+modern scope. XDM now stores multiple independent queue schedules, detects
+persisted missed windows, preserves overnight behavior, and supports per-download
+priority. Completed scheduled runs can scan output files and then, after a
+visible cancellable countdown, exit XDM, invoke a supported platform power
+action, or launch one configured executable without a shell. Platform support,
+timeouts and safety constraints are documented in
+`docs/parity/QUEUE-COMPLETION.md`.
+

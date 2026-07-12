@@ -4,6 +4,7 @@ namespace XDM.BrowserMedia.Tests;
 
 public sealed class ConversionQueueServiceTests
 {
+    private static readonly string[] ExpectedSources = ["one.mp4", "two.mp4"];
     [Fact]
     public async Task ProcessesQueuedJobsSeriallyAndPublishesProgress()
     {
@@ -15,7 +16,7 @@ public sealed class ConversionQueueServiceTests
         await WaitUntilAsync(() => queue.Current.Jobs.All(static job => job.State == ConversionJobState.Completed));
 
         Assert.Equal(1, conversion.MaximumConcurrentCalls);
-        Assert.Equal(new[] { "one.mp4", "two.mp4" }, conversion.Sources);
+        Assert.Equal(ExpectedSources, conversion.Sources);
         Assert.All(queue.Current.Jobs, static job =>
         {
             Assert.True(job.ProgressFraction.HasValue);

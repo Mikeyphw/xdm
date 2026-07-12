@@ -175,6 +175,8 @@
                 <Button Margin="0,0,8,0" Classes="secondary" Content="Retry" Command="{Binding RetrySelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
                 <Button Margin="0,0,8,0" Classes="secondary" Content="Remove" Command="{Binding RemoveSelectedCommand}" />
                 <Button Margin="0,0,8,0" Classes="secondary" Content="Convert" Command="{Binding PrepareSelectedDownloadConversionCommand}" />
+                <ComboBox Width="110" Margin="0,0,8,0" ItemsSource="{Binding DownloadPriorities}" SelectedItem="{Binding SelectedDownloadPriority}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Set priority" Command="{Binding ApplySelectedDownloadPriorityCommand}" />
                 <Button Margin="0,0,8,0" Classes="secondary" Content="Earlier" Command="{Binding MoveSelectedDownloadEarlierCommand}" />
                 <Button Margin="0,0,8,0" Classes="secondary" Content="Later" Command="{Binding MoveSelectedDownloadLaterCommand}" />
                 <Button Margin="12,0,8,0" Classes="secondary" Content="Select visible" Command="{Binding SelectAllVisibleCommand}" />
@@ -204,7 +206,10 @@
                           <StackPanel Grid.Column="1">
                             <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" Foreground="#F1F5FA" />
                             <TextBlock Text="{Binding Source}" FontSize="11" Foreground="#718095" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Text="{Binding QueueId}" FontSize="10" Foreground="#58739A" />
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                              <TextBlock Text="{Binding QueueId}" FontSize="10" Foreground="#58739A" />
+                              <TextBlock Text="{Binding Priority}" FontSize="10" Foreground="#8FB5FF" />
+                            </StackPanel>
                           </StackPanel>
                           <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="#8FB5FF" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="3" Text="{Binding SpeedText}" Foreground="#C8D1DE" VerticalAlignment="Center" />
@@ -314,21 +319,91 @@
             </StackPanel>
           </ScrollViewer>
 
-          <Border IsVisible="{Binding IsSchedulerVisible}" Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
-            <StackPanel Spacing="14" MaxWidth="680" HorizontalAlignment="Left">
-              <TextBlock Text="Queue scheduler" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
-              <CheckBox Content="Enable scheduled queue window" IsChecked="{Binding SchedulerEnabled}" />
-              <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
-                <TextBox PlaceholderText="Start HH:mm" Text="{Binding SchedulerStartTime}" />
-                <TextBox Grid.Column="1" PlaceholderText="End HH:mm" Text="{Binding SchedulerEndTime}" />
-                <ComboBox Grid.Column="2" ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SchedulerQueue}">
-                  <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
-                </ComboBox>
+          <ScrollViewer IsVisible="{Binding IsSchedulerVisible}">
+            <StackPanel Spacing="14">
+              <Grid ColumnDefinitions="320,*" ColumnSpacing="14">
+                <Border Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                  <StackPanel Spacing="10">
+                    <TextBlock Text="QUEUE SCHEDULES" Classes="label" />
+                    <ListBox ItemsSource="{Binding Schedules}"
+                             SelectedItem="{Binding SelectedSchedule}"
+                             MinHeight="220"
+                             MaxHeight="420">
+                      <ListBox.ItemTemplate>
+                        <DataTemplate>
+                          <Border Padding="10" Background="#151B23" CornerRadius="7">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                              <TextBlock Grid.Column="1" Text="{Binding Enabled}" Foreground="#8FB5FF" />
+                              <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Queue.Name}" FontSize="11" Foreground="#7F8B9B" />
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBox PlaceholderText="New schedule name" Text="{Binding NewScheduleName}" />
+                    <WrapPanel Orientation="Horizontal">
+                      <Button Margin="0,0,8,0" Classes="primary" Content="Add schedule" Command="{Binding AddScheduleCommand}" />
+                      <Button Classes="secondary" Content="Remove" Command="{Binding RemoveSelectedScheduleCommand}" />
+                    </WrapPanel>
+                  </StackPanel>
+                </Border>
+
+                <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+                  <StackPanel Spacing="12" MaxWidth="820" HorizontalAlignment="Left">
+                    <TextBlock Text="Schedule and completion workflow" FontSize="19" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                    <TextBlock Text="{Binding SchedulerRuntimeStatus}" Foreground="#8FB5FF" TextWrapping="Wrap" />
+                    <CheckBox Content="Enable selected schedule" IsChecked="{Binding SelectedSchedule.Enabled}" />
+                    <TextBox PlaceholderText="Schedule name" Text="{Binding SelectedSchedule.Name}" />
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
+                      <TextBox PlaceholderText="Start HH:mm" Text="{Binding SelectedSchedule.StartTime}" />
+                      <TextBox Grid.Column="1" PlaceholderText="End HH:mm" Text="{Binding SelectedSchedule.EndTime}" />
+                      <ComboBox Grid.Column="2" ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedSchedule.Queue}">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </Grid>
+                    <TextBlock Text="Run on days" Classes="label" />
+                    <WrapPanel Orientation="Horizontal">
+                      <CheckBox Margin="0,0,10,0" Content="Mon" IsChecked="{Binding SelectedSchedule.MondayEnabled}" />
+                      <CheckBox Margin="0,0,10,0" Content="Tue" IsChecked="{Binding SelectedSchedule.TuesdayEnabled}" />
+                      <CheckBox Margin="0,0,10,0" Content="Wed" IsChecked="{Binding SelectedSchedule.WednesdayEnabled}" />
+                      <CheckBox Margin="0,0,10,0" Content="Thu" IsChecked="{Binding SelectedSchedule.ThursdayEnabled}" />
+                      <CheckBox Margin="0,0,10,0" Content="Fri" IsChecked="{Binding SelectedSchedule.FridayEnabled}" />
+                      <CheckBox Margin="0,0,10,0" Content="Sat" IsChecked="{Binding SelectedSchedule.SaturdayEnabled}" />
+                      <CheckBox Content="Sun" IsChecked="{Binding SelectedSchedule.SundayEnabled}" />
+                    </WrapPanel>
+                    <ComboBox ItemsSource="{Binding SelectedSchedule.MissedRunOptions}" SelectedItem="{Binding SelectedSchedule.MissedRunPolicy}" />
+                    <TextBlock Text="Completion action" Classes="label" />
+                    <Grid ColumnDefinitions="2*,*" ColumnSpacing="9">
+                      <ComboBox ItemsSource="{Binding SelectedSchedule.CompletionActionOptions}" SelectedItem="{Binding SelectedSchedule.CompletionAction}" />
+                      <TextBox Grid.Column="1" PlaceholderText="Countdown seconds" Text="{Binding SelectedSchedule.CountdownSeconds}" />
+                    </Grid>
+                    <TextBox PlaceholderText="Absolute executable path for RunCommand" Text="{Binding SelectedSchedule.CommandPath}" />
+                    <TextBox PlaceholderText="One command argument per line" Text="{Binding SelectedSchedule.CommandArguments}" AcceptsReturn="True" MinHeight="72" />
+
+                    <Border Background="#171D25" CornerRadius="8" Padding="12">
+                      <StackPanel Spacing="8">
+                        <TextBlock Text="ANTIVIRUS SCAN BEFORE COMPLETION ACTION" Classes="label" />
+                        <CheckBox Content="Scan files completed by scheduled runs" IsChecked="{Binding AntivirusEnabled}" />
+                        <TextBox PlaceholderText="Absolute antivirus executable path" Text="{Binding AntivirusExecutablePath}" />
+                        <TextBox PlaceholderText="One argument per line; use {file} where the file path belongs" Text="{Binding AntivirusArguments}" AcceptsReturn="True" MinHeight="62" />
+                        <TextBox PlaceholderText="Scan timeout seconds" Text="{Binding AntivirusTimeoutSeconds}" />
+                      </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="{Binding CompletionCapabilitySummary}" TextWrapping="Wrap" Foreground="#7F8B9B" />
+                    <TextBlock Text="{Binding PendingCompletionAction}" TextWrapping="Wrap" Foreground="#F5C66A" />
+                    <WrapPanel Orientation="Horizontal">
+                      <Button Margin="0,0,8,0" Classes="primary" Content="Save schedules" Command="{Binding SaveSettingsCommand}" />
+                      <Button Margin="0,0,8,0" Classes="secondary" Content="Refresh capabilities" Command="{Binding RefreshCompletionCapabilitiesCommand}" />
+                      <Button Classes="secondary" Content="Cancel pending action" Command="{Binding CancelPendingCompletionActionCommand}" IsEnabled="{Binding HasPendingCompletionAction}" />
+                    </WrapPanel>
+                    <TextBlock Text="Commands are launched directly without a shell. Shutdown, sleep, hibernate and logout are enabled only when a compatible platform command is present." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  </StackPanel>
+                </Border>
               </Grid>
-              <TextBlock Text="The scheduler is live, timezone-aware, supports overnight windows, and evaluates immediately at startup and after settings changes." TextWrapping="Wrap" Foreground="#7F8B9B" />
-              <Button HorizontalAlignment="Left" Classes="primary" Content="Save schedule" Command="{Binding SaveSettingsCommand}" />
             </StackPanel>
-          </Border>
+          </ScrollViewer>
 
           <ScrollViewer IsVisible="{Binding IsBrowserIntegrationVisible}">
             <StackPanel Spacing="14">
@@ -630,7 +705,7 @@
 
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
         <TextBlock Text="{Binding RuntimeDescription}" FontSize="11" Foreground="#687586" />
-        <TextBlock Grid.Column="1" Text="Conversion parity • overlay 16" FontSize="11" Foreground="#8FB5FF" />
+        <TextBlock Grid.Column="1" Text="Queue completion parity • overlay 17" FontSize="11" Foreground="#8FB5FF" />
       </Grid>
     </Grid>
   </Grid>

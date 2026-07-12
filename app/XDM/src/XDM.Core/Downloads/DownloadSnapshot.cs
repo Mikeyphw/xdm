@@ -14,7 +14,8 @@ public sealed record DownloadSnapshot(
     string QueueId = "default",
     string? CategoryId = null,
     int QueueOrder = 0,
-    int ConnectionCount = 1)
+    int ConnectionCount = 1,
+    DownloadPriority Priority = DownloadPriority.Normal)
 {
     public double? ProgressFraction
         => TotalBytes is > 0

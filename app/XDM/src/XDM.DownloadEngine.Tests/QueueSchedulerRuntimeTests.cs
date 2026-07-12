@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using XDM.Core.Queues;
+using XDM.Core.Scheduling;
 using XDM.Core.Settings;
 using XDM.DownloadEngine.Queues;
 
@@ -27,18 +28,77 @@ public sealed class QueueSchedulerRuntimeTests
         Assert.Contains("night", manager.StoppedQueues);
     }
 
+    [Fact]
+    public async Task StartsMultipleSchedulesForIndependentQueues()
+    {
+        ApplicationSettings defaults = ApplicationSettings.CreateDefault();
+        ApplicationSettings configured = defaults with
+        {
+            Queues =
+            [
+                new DownloadQueueDefinition("first", "First", 1, 0),
+                new DownloadQueueDefinition("second", "Second", 1, 0)
+            ],
+            Schedules =
+            [
+                new QueueScheduleDefinition(
+                    "first-schedule",
+                    "First",
+                    true,
+                    "first",
+                    new TimeOnly(0, 0),
+                    new TimeOnly(23, 59),
+                    WeekDays.EveryDay,
+                    MissedRunPolicy.Skip,
+                    ScheduleCompletionAction.None),
+                new QueueScheduleDefinition(
+                    "second-schedule",
+                    "Second",
+                    true,
+                    "second",
+                    new TimeOnly(0, 0),
+                    new TimeOnly(23, 59),
+                    WeekDays.EveryDay,
+                    MissedRunPolicy.Skip,
+                    ScheduleCompletionAction.None)
+            ]
+        };
+        RecordingDownloadManager manager = new();
+        MutableSettingsService settings = new(configured);
+        await using QueueSchedulerRuntime runtime = new(
+            manager,
+            settings,
+            NullLogger<QueueSchedulerRuntime>.Instance);
+
+        await runtime.InitializeAsync();
+
+        Assert.Contains("first", manager.StartedQueues);
+        Assert.Contains("second", manager.StartedQueues);
+    }
+
     private static ApplicationSettings CreateSettings(bool enabled)
     {
         ApplicationSettings defaults = ApplicationSettings.CreateDefault();
+        QueueScheduleDefinition schedule = new(
+            "night-schedule",
+            "Night",
+            enabled,
+            "night",
+            new TimeOnly(0, 0),
+            new TimeOnly(23, 59),
+            WeekDays.EveryDay,
+            MissedRunPolicy.Skip,
+            ScheduleCompletionAction.None);
         return defaults with
         {
             Queues = [new DownloadQueueDefinition("night", "Night", 2, 0)],
             Scheduler = new DownloadSchedulerSettings(
                 enabled,
                 "night",
-                new TimeOnly(0, 0),
-                new TimeOnly(23, 59),
-                XDM.Core.Scheduling.WeekDays.EveryDay)
+                schedule.StartTime,
+                schedule.EndTime,
+                schedule.Days),
+            Schedules = [schedule]
         };
     }
 
@@ -81,6 +141,12 @@ public sealed class QueueSchedulerRuntimeTests
         public Task CancelAsync(string downloadId, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task RetryAsync(string downloadId, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task SetPriorityAsync(
+            string downloadId,
+            XDM.Core.Downloads.DownloadPriority priority,
+            CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
 
         public Task RemoveAsync(string downloadId, bool deletePartialFile = false, CancellationToken cancellationToken = default)
             => Task.CompletedTask;

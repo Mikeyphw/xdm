@@ -1,24 +1,24 @@
 {
-  "name": "xdm_conversion_overlay",
+  "name": "xdm_queue_completion_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "2f03229",
+  "baseCommit": "92c63a4",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "functional-parity-16",
-  "description": "Adds validated MP4 remux/transcode and MP3 extraction, fixed presets, structured FFmpeg progress, a cancellable sequential conversion queue, atomic output publication and post-download conversion workflows.",
+  "phase": "functional-parity-17",
+  "description": "Adds multiple persisted queue schedules, missed-run policies, per-download priority, antivirus scanning, platform capability checks, and cancellable queue-completion actions.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore",
     "tests": "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build",
-    "focusedTests": "dotnet test app/XDM/src/XDM.BrowserMedia.Tests/XDM.BrowserMedia.Tests.csproj --configuration Release --no-build"
+    "focusedTests": "dotnet test app/XDM/src/XDM.DownloadEngine.Tests/XDM.DownloadEngine.Tests.csproj --configuration Release --no-build"
   },
-  "commitMessage": "Add validated media conversion queue",
+  "commitMessage": "Add queue completion actions and multiple schedules",
   "constraints": [
     "Validate only app/XDM/XDM.Modern.sln",
     "Do not restore or build WPF, GTK, WinForms or MSIX targets",
-    "Do not invoke FFmpeg or FFprobe through a shell",
-    "Do not accept arbitrary external-tool arguments",
-    "Preserve source and existing destination files on conversion failure"
+    "Launch completion commands and antivirus scanners directly without a shell",
+    "Require absolute existing executable paths for configurable commands",
+    "Expose destructive actions only after capability checks and a cancellable countdown"
   ]
 }

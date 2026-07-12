@@ -11,9 +11,11 @@ public sealed record ApplicationSettings(
     bool AutoAddClipboardLinks,
     IReadOnlyList<DownloadCategoryDefinition> Categories,
     IReadOnlyList<DownloadQueueDefinition> Queues,
-    DownloadSchedulerSettings Scheduler)
+    DownloadSchedulerSettings Scheduler,
+    IReadOnlyList<QueueScheduleDefinition>? Schedules = null,
+    AntivirusScanSettings? Antivirus = null)
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public static ApplicationSettings CreateDefault()
     {
@@ -34,7 +36,18 @@ public sealed record ApplicationSettings(
                 new DownloadCategoryDefinition("video", "Video", ["mp4", "mkv", "webm"], defaultDirectory)
             ],
             [new DownloadQueueDefinition("default", "Default", 4, 0)],
-            new DownloadSchedulerSettings(false, "default", new TimeOnly(0, 0), new TimeOnly(23, 59), WeekDays.EveryDay));
+            new DownloadSchedulerSettings(false, "default", new TimeOnly(0, 0), new TimeOnly(23, 59), WeekDays.EveryDay),
+            [new QueueScheduleDefinition(
+                "default-schedule",
+                "Default schedule",
+                false,
+                "default",
+                new TimeOnly(0, 0),
+                new TimeOnly(23, 59),
+                WeekDays.EveryDay,
+                MissedRunPolicy.Skip,
+                ScheduleCompletionAction.None)],
+            AntivirusScanSettings.Disabled);
     }
 
     public ApplicationSettings Normalize()
@@ -69,7 +82,30 @@ public sealed record ApplicationSettings(
         string schedulerQueue = queues.Any(queue => string.Equals(queue.Id, scheduler.QueueId, StringComparison.Ordinal))
             ? scheduler.QueueId
             : queues[0].Id;
+        QueueScheduleDefinition[] schedules = Schedules?
+            .Select(schedule => schedule.Normalize(schedulerQueue))
+            .Where(schedule => queues.Any(queue => string.Equals(queue.Id, schedule.QueueId, StringComparison.Ordinal)))
+            .DistinctBy(static schedule => schedule.Id, StringComparer.Ordinal)
+            .Take(64)
+            .ToArray() ?? [];
+        if (schedules.Length == 0)
+        {
+            schedules =
+            [
+                new QueueScheduleDefinition(
+                    "legacy-schedule",
+                    "Imported schedule",
+                    scheduler.Enabled,
+                    schedulerQueue,
+                    scheduler.StartTime,
+                    scheduler.EndTime,
+                    scheduler.Days,
+                    MissedRunPolicy.Skip,
+                    ScheduleCompletionAction.None)
+            ];
+        }
 
+        QueueScheduleDefinition primarySchedule = schedules[0];
         return this with
         {
             SchemaVersion = CurrentSchemaVersion,
@@ -78,7 +114,14 @@ public sealed record ApplicationSettings(
             DefaultSpeedLimitBytesPerSecond = speedLimit,
             Categories = categories,
             Queues = queues,
-            Scheduler = scheduler with { QueueId = schedulerQueue }
+            Scheduler = new DownloadSchedulerSettings(
+                primarySchedule.Enabled,
+                primarySchedule.QueueId,
+                primarySchedule.StartTime,
+                primarySchedule.EndTime,
+                primarySchedule.Days),
+            Schedules = schedules,
+            Antivirus = (Antivirus ?? AntivirusScanSettings.Disabled).Normalize()
         };
     }
 }

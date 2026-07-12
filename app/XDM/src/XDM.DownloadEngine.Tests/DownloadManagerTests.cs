@@ -252,6 +252,30 @@ public sealed class DownloadManagerTests
     }
 
     [Fact]
+    public async Task PersistsAndPublishesPerDownloadPriority()
+    {
+        using TemporaryDirectory directory = new();
+        byte[] payload = [1, 2, 3];
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        InMemoryHistoryStore history = new();
+        using DownloadManager manager = CreateManager(client, state, history);
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/priority.bin"),
+            directory.Path,
+            "priority.bin",
+            QueueId: "night",
+            Priority: DownloadPriority.High));
+
+        Assert.Equal(DownloadPriority.High, state.Current.Downloads.Single(item => item.Id == id).Priority);
+        await manager.SetPriorityAsync(id, DownloadPriority.Low);
+
+        Assert.Equal(DownloadPriority.Low, state.Current.Downloads.Single(item => item.Id == id).Priority);
+        Assert.Equal(DownloadPriority.Low, history.Downloads.Single(item => item.Id == id).Priority);
+    }
+
+    [Fact]
     public async Task AppliesRequestMetadataAndRenamesCollisions()
     {
         byte[] payload = [1, 2, 3, 4];

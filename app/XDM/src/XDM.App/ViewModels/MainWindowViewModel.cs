@@ -5,10 +5,12 @@ using XDM.BrowserIntegration;
 using XDM.Core.Abstractions;
 using XDM.Core.Downloads;
 using XDM.Core.Queues;
+using XDM.Core.Scheduling;
 using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.Diagnostics;
 using XDM.DownloadEngine;
+using XDM.DownloadEngine.Queues;
 using XDM.Media;
 using XDM.Platform;
 
@@ -16,9 +18,12 @@ namespace XDM.App.ViewModels;
 
 public partial class MainWindowViewModel : ObservableObject, IDisposable
 {
+    private static readonly string[] LineSeparators = ["\r\n", "\n"];
     private readonly IApplicationState _applicationState;
     private readonly IDownloadManager _downloadManager;
     private readonly ISettingsService _settingsService;
+    private readonly IQueueSchedulerRuntime _queueSchedulerRuntime;
+    private readonly ICompletionActionService _completionActionService;
     private readonly IUiDispatcher _dispatcher;
     private readonly IBrowserIntegrationService _browserIntegrationService;
     private readonly IMediaProbeService _mediaProbeService;
@@ -43,6 +48,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IPlatformInfo platformInfo,
         IDownloadManager downloadManager,
         ISettingsService settingsService,
+        IQueueSchedulerRuntime queueSchedulerRuntime,
+        ICompletionActionService completionActionService,
         IUiDispatcher dispatcher,
         IBrowserIntegrationService browserIntegrationService,
         IMediaProbeService mediaProbeService,
@@ -61,6 +68,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _applicationState = applicationState;
         _downloadManager = downloadManager;
         _settingsService = settingsService;
+        _queueSchedulerRuntime = queueSchedulerRuntime;
+        _completionActionService = completionActionService;
         _dispatcher = dispatcher;
         _browserIntegrationService = browserIntegrationService;
         _mediaProbeService = mediaProbeService;
@@ -94,6 +103,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         ApplySettings(settingsService.Current);
         ApplySnapshot(applicationState.Current);
         ApplyQueueRuntime(downloadManager.QueueRuntime);
+        ApplySchedulerRuntime(queueSchedulerRuntime.Current);
+        CompletionCapabilitySummary = FormatCompletionCapabilities(completionActionService.GetCapabilities());
         ApplyBrowserStatus(browserIntegrationService.Current);
         BrowserHostStatus = browserHostInstaller.GetStatus().Message;
         foreach (ConversionPreset preset in conversionService.Presets)
@@ -114,6 +125,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         applicationState.Changed += OnApplicationStateChanged;
         settingsService.Changed += OnSettingsChanged;
         downloadManager.QueueRuntimeChanged += OnQueueRuntimeChanged;
+        queueSchedulerRuntime.Changed += OnSchedulerRuntimeChanged;
         browserIntegrationService.StatusChanged += OnBrowserStatusChanged;
         browserIntegrationService.CaptureReceived += OnBrowserCaptureReceived;
         diagnosticEvents.Changed += OnDiagnosticsChanged;
@@ -130,6 +142,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<DownloadQueueDefinition> QueueDefinitions { get; } = [];
 
+    public ObservableCollection<ScheduleEditorViewModel> Schedules { get; } = [];
+
     public ObservableCollection<DiagnosticEvent> DiagnosticEvents { get; } = [];
 
     public ObservableCollection<DownloadTimelineEntry> SelectedDownloadTimeline { get; } = [];
@@ -145,6 +159,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public ObservableCollection<ConversionJobViewModel> ConversionJobs { get; } = [];
 
     public IReadOnlyList<string> DuplicateBehaviors { get; }
+
+    public IReadOnlyList<DownloadPriority> DownloadPriorities { get; } = Enum.GetValues<DownloadPriority>();
 
     public IReadOnlyList<string> DownloadStatusFilters { get; } =
         ["All", "Queued", "Connecting", "Downloading", "Paused", "Finalizing", "Completed", "Failed", "Cancelled"];
@@ -217,6 +233,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string selectedDuplicateBehavior = nameof(DuplicateFileBehavior.AutoRename);
 
     [ObservableProperty]
+    private DownloadPriority newDownloadPriority = DownloadPriority.Normal;
+
+    [ObservableProperty]
+    private DownloadPriority selectedDownloadPriority = DownloadPriority.Normal;
+
+    [ObservableProperty]
     private string speedLimitKbps = string.Empty;
 
     [ObservableProperty]
@@ -257,6 +279,36 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private DownloadQueueDefinition? schedulerQueue;
+
+    [ObservableProperty]
+    private ScheduleEditorViewModel? selectedSchedule;
+
+    [ObservableProperty]
+    private string newScheduleName = string.Empty;
+
+    [ObservableProperty]
+    private string schedulerRuntimeStatus = "Scheduler is not running.";
+
+    [ObservableProperty]
+    private string pendingCompletionAction = "No completion action is pending.";
+
+    [ObservableProperty]
+    private bool hasPendingCompletionAction;
+
+    [ObservableProperty]
+    private string completionCapabilitySummary = string.Empty;
+
+    [ObservableProperty]
+    private bool antivirusEnabled;
+
+    [ObservableProperty]
+    private string antivirusExecutablePath = string.Empty;
+
+    [ObservableProperty]
+    private string antivirusArguments = string.Empty;
+
+    [ObservableProperty]
+    private string antivirusTimeoutSeconds = "120";
 
     [ObservableProperty]
     private string queueRuntimeStatus = "No active queues";
@@ -408,7 +460,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         => RefreshFilteredDownloads();
 
     partial void OnSelectedDownloadChanged(DownloadItemViewModel? value)
-        => RefreshSelectedDownloadTimeline(value?.Id);
+    {
+        RefreshSelectedDownloadTimeline(value?.Id);
+        SelectedDownloadPriority = value?.Priority ?? DownloadPriority.Normal;
+    }
 
     partial void OnSelectedMediaVideoFormatChanged(MediaFormatViewModel? value)
     {
@@ -494,7 +549,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     SelectedQueue?.Id,
                     SelectedCategory?.Id,
                     speedLimit,
-                    duplicateBehavior);
+                    duplicateBehavior,
+                    Priority: NewDownloadPriority);
 
                 await _downloadManager.AddAsync(request);
                 added++;
@@ -644,25 +700,37 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 ? parsedConcurrency
                 : current.MaxConcurrentDownloads;
         long defaultSpeed = ParseKilobytesPerSecond(DefaultSpeedLimitKbps) ?? 0;
-        TimeOnly startTime = TimeOnly.TryParseExact(
-            SchedulerStartTime,
-            "HH:mm",
-            System.Globalization.CultureInfo.InvariantCulture,
-            System.Globalization.DateTimeStyles.None,
-            out TimeOnly parsedStart)
-                ? parsedStart
-                : current.Scheduler.StartTime;
-        TimeOnly endTime = TimeOnly.TryParseExact(
-            SchedulerEndTime,
-            "HH:mm",
-            System.Globalization.CultureInfo.InvariantCulture,
-            System.Globalization.DateTimeStyles.None,
-            out TimeOnly parsedEnd)
-                ? parsedEnd
-                : current.Scheduler.EndTime;
-        string schedulerQueueId = SchedulerQueue?.Id
-            ?? (QueueDefinitions.Count > 0 ? QueueDefinitions[0].Id : "default");
+        QueueScheduleDefinition[] schedules = Schedules
+            .Select(static schedule => schedule.ToDefinition())
+            .ToArray();
+        if (schedules.Length == 0)
+        {
+            string fallbackQueueId = QueueDefinitions.Count > 0 ? QueueDefinitions[0].Id : "default";
+            schedules =
+            [
+                new QueueScheduleDefinition(
+                    "default-schedule",
+                    "Default schedule",
+                    false,
+                    fallbackQueueId,
+                    new TimeOnly(0, 0),
+                    new TimeOnly(23, 59),
+                    WeekDays.EveryDay,
+                    MissedRunPolicy.Skip,
+                    ScheduleCompletionAction.None)
+            ];
+        }
 
+        QueueScheduleDefinition primarySchedule = schedules[0];
+        int antivirusTimeout = int.TryParse(
+            AntivirusTimeoutSeconds,
+            System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out int parsedAntivirusTimeout)
+                ? parsedAntivirusTimeout
+                : 120;
+        string[] antivirusArguments = AntivirusArguments
+            .Split(LineSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         ApplicationSettings updated = current with
         {
             DefaultDownloadDirectory = DestinationFolder,
@@ -672,17 +740,83 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             AutoAddClipboardLinks = AutoAddClipboardLinks,
             Categories = CategoryDefinitions.ToArray(),
             Queues = QueueDefinitions.ToArray(),
-            Scheduler = current.Scheduler with
-            {
-                Enabled = SchedulerEnabled,
-                QueueId = schedulerQueueId,
-                StartTime = startTime,
-                EndTime = endTime
-            }
+            Scheduler = new DownloadSchedulerSettings(
+                primarySchedule.Enabled,
+                primarySchedule.QueueId,
+                primarySchedule.StartTime,
+                primarySchedule.EndTime,
+                primarySchedule.Days),
+            Schedules = schedules,
+            Antivirus = new AntivirusScanSettings(
+                AntivirusEnabled,
+                EmptyToNull(AntivirusExecutablePath),
+                antivirusArguments,
+                antivirusTimeout)
         };
 
         await _settingsService.UpdateAsync(updated);
         OperationMessage = "Settings saved. Concurrency changes apply after restart.";
+    }
+
+    [RelayCommand]
+    private void AddSchedule()
+    {
+        if (QueueDefinitions.Count == 0)
+        {
+            OperationMessage = "Create a queue before adding a schedule.";
+            return;
+        }
+
+        string name = string.IsNullOrWhiteSpace(NewScheduleName)
+            ? $"Schedule {Schedules.Count + 1}"
+            : NewScheduleName.Trim();
+        string id = CreateStableId(name, Schedules.Select(static schedule => schedule.Id));
+        QueueScheduleDefinition definition = new(
+            id,
+            name,
+            false,
+            SelectedQueue?.Id ?? QueueDefinitions[0].Id,
+            new TimeOnly(0, 0),
+            new TimeOnly(23, 59),
+            WeekDays.EveryDay,
+            MissedRunPolicy.Skip,
+            ScheduleCompletionAction.None);
+        ScheduleEditorViewModel editor = new(definition, QueueDefinitions);
+        Schedules.Add(editor);
+        SelectedSchedule = editor;
+        NewScheduleName = string.Empty;
+        OperationMessage = "Schedule added; save settings to activate it.";
+    }
+
+    [RelayCommand]
+    private void RemoveSelectedSchedule()
+    {
+        if (SelectedSchedule is null)
+        {
+            return;
+        }
+
+        int index = Schedules.IndexOf(SelectedSchedule);
+        Schedules.Remove(SelectedSchedule);
+        SelectedSchedule = Schedules.Count == 0
+            ? null
+            : Schedules[Math.Clamp(index, 0, Schedules.Count - 1)];
+        OperationMessage = "Schedule removed; save settings to persist the change.";
+    }
+
+    [RelayCommand]
+    private void CancelPendingCompletionAction()
+    {
+        OperationMessage = _queueSchedulerRuntime.CancelPendingAction()
+            ? "Completion action cancellation requested."
+            : "No completion action is pending.";
+    }
+
+    [RelayCommand]
+    private void RefreshCompletionCapabilities()
+    {
+        CompletionCapabilitySummary = FormatCompletionCapabilities(_completionActionService.GetCapabilities());
+        OperationMessage = "Platform completion capabilities refreshed.";
     }
 
     [RelayCommand]
@@ -740,6 +874,19 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         await _downloadManager.MoveToQueueAsync(SelectedDownload.Id, SelectedQueue.Id);
         OperationMessage = $"Moved '{SelectedDownload.FileName}' to '{SelectedQueue.Name}'.";
+    }
+
+    [RelayCommand]
+    private async Task ApplySelectedDownloadPriorityAsync()
+    {
+        if (SelectedDownload is null)
+        {
+            OperationMessage = "Select a download first.";
+            return;
+        }
+
+        await _downloadManager.SetPriorityAsync(SelectedDownload.Id, SelectedDownloadPriority);
+        OperationMessage = $"Priority changed to {SelectedDownloadPriority}.";
     }
 
     [RelayCommand]
@@ -1217,6 +1364,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _applicationState.Changed -= OnApplicationStateChanged;
         _settingsService.Changed -= OnSettingsChanged;
         _downloadManager.QueueRuntimeChanged -= OnQueueRuntimeChanged;
+        _queueSchedulerRuntime.Changed -= OnSchedulerRuntimeChanged;
         _browserIntegrationService.StatusChanged -= OnBrowserStatusChanged;
         _browserIntegrationService.CaptureReceived -= OnBrowserCaptureReceived;
         _diagnosticEvents.Changed -= OnDiagnosticsChanged;
@@ -1314,6 +1462,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         else
         {
             _dispatcher.Post(() => ApplyQueueRuntime(snapshot));
+        }
+    }
+
+    private void OnSchedulerRuntimeChanged(object? sender, SchedulerRuntimeSnapshot snapshot)
+    {
+        if (_dispatcher.CheckAccess())
+        {
+            ApplySchedulerRuntime(snapshot);
+        }
+        else
+        {
+            _dispatcher.Post(() => ApplySchedulerRuntime(snapshot));
         }
     }
 
@@ -1523,6 +1683,15 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsSelectedQueueActive));
     }
 
+    private void ApplySchedulerRuntime(SchedulerRuntimeSnapshot snapshot)
+    {
+        SchedulerRuntimeStatus = snapshot.StatusMessage;
+        PendingCompletionAction = snapshot.PendingAction is null
+            ? "No completion action is pending."
+            : $"{snapshot.PendingAction.ScheduleName}: {snapshot.PendingAction.Message}";
+        HasPendingCompletionAction = snapshot.PendingAction is not null;
+    }
+
     private void ApplyBrowserStatus(BrowserIntegrationStatus status)
     {
         BrowserIntegrationStatus = status.IsListening
@@ -1649,6 +1818,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         string? selectedCategoryId = SelectedCategory?.Id;
         string? selectedQueueId = SelectedQueue?.Id;
+        string? selectedScheduleId = SelectedSchedule?.Id;
         CategoryDefinitions.Clear();
         foreach (DownloadCategoryDefinition category in settings.Categories)
         {
@@ -1670,9 +1840,33 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         SchedulerQueue = QueueDefinitions.FirstOrDefault(queue =>
             string.Equals(queue.Id, settings.Scheduler.QueueId, StringComparison.Ordinal))
             ?? (QueueDefinitions.Count > 0 ? QueueDefinitions[0] : null);
+
+        Schedules.Clear();
+        foreach (QueueScheduleDefinition schedule in settings.Schedules ?? [])
+        {
+            Schedules.Add(new ScheduleEditorViewModel(schedule, QueueDefinitions));
+        }
+
+        SelectedSchedule = Schedules.FirstOrDefault(schedule =>
+            string.Equals(schedule.Id, selectedScheduleId, StringComparison.Ordinal))
+            ?? (Schedules.Count > 0 ? Schedules[0] : null);
+        AntivirusScanSettings antivirus = settings.Antivirus ?? AntivirusScanSettings.Disabled;
+        AntivirusEnabled = antivirus.Enabled;
+        AntivirusExecutablePath = antivirus.ExecutablePath ?? string.Empty;
+        AntivirusArguments = string.Join(Environment.NewLine, antivirus.Arguments ?? []);
+        AntivirusTimeoutSeconds = antivirus.TimeoutSeconds
+            .ToString(System.Globalization.CultureInfo.InvariantCulture);
         ApplyQueueRuntime(_downloadManager.QueueRuntime);
+        ApplySchedulerRuntime(_queueSchedulerRuntime.Current);
     }
 
+
+    private static string FormatCompletionCapabilities(IReadOnlyList<CompletionActionCapability> capabilities)
+        => string.Join(
+            " • ",
+            capabilities
+                .Where(static capability => capability.Kind != ScheduleCompletionActionKind.None)
+                .Select(static capability => $"{capability.Kind}: {(capability.IsSupported ? "available" : "unavailable")}"));
 
     private DownloadItemViewModel[] GetActionTargets()
     {

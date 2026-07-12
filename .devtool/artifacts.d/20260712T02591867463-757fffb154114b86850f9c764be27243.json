@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-12T02:59:18.674631Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_queue_completion_overlay.zip",
+  "artifact_name": "xdm_queue_completion_overlay.zip",
+  "type": "overlay",
+  "sha256": "497c59f0e7c526907fb23b5d02bed05f8d1de6873e92d45d29809c4a4c75b5f9",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Add queue completion actions and multiple schedules",
+  "commit_hash": "",
+  "file_count": 49,
+  "change_counts": {
+    "add": 31,
+    "modify": 18
+  },
+  "manifest": {},
+  "history_id": "757fffb154114b86850f9c764be27243"
+}

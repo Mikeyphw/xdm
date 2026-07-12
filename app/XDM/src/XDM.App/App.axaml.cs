@@ -10,6 +10,7 @@ using XDM.App.ViewModels;
 using XDM.BrowserIntegration;
 using XDM.Core.Abstractions;
 using XDM.Core.Persistence;
+using XDM.Core.Scheduling;
 using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.Diagnostics;
@@ -23,7 +24,7 @@ namespace XDM.App;
 
 public partial class App : Application
 {
-    internal static bool ExitRequested { get; private set; }
+    internal static bool ExitRequested { get; set; }
     internal static StartupOptions LaunchOptions { get; set; } = StartupOptions.Default;
 
     internal static SingleInstanceCoordinator? InstanceCoordinator { get; set; }
@@ -187,6 +188,11 @@ public partial class App : Application
         services.AddSingleton<IDownloadHistoryStore, JsonDownloadHistoryStore>();
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<ISchedulerStateStore, JsonSchedulerStateStore>();
+        services.AddSingleton<IApplicationLifetimeService, AvaloniaApplicationLifetimeService>();
+        services.AddSingleton<IPlatformCommandRunner, PlatformCommandRunner>();
+        services.AddSingleton<ICompletionActionService, PlatformCompletionActionService>();
+        services.AddSingleton<IAntivirusScanner, AntivirusScanner>();
         services.AddSingleton<IDownloadManager, DownloadManager>();
         services.AddSingleton<IQueueSchedulerRuntime, QueueSchedulerRuntime>();
         services.AddSingleton<IPlatformInfo, PlatformInfo>();
