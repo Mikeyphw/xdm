@@ -124,6 +124,22 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void BrowseConversionSource_Click(object? sender, RoutedEventArgs e)
+    {
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(
+            new FilePickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = "Choose media to convert"
+            });
+
+        string? path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
+        if (!string.IsNullOrWhiteSpace(path) && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.SetConversionSourcePath(path);
+        }
+    }
+
     private async void ClipboardTimer_Tick(object? sender, EventArgs e)
     {
         if (_clipboardReadInProgress

@@ -26,6 +26,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IMediaDownloadService _mediaDownloadService;
     private readonly IFfmpegService _ffmpegService;
     private readonly IYtDlpProvider _ytDlpProvider;
+    private readonly IConversionService _conversionService;
+    private readonly IConversionQueueService _conversionQueueService;
     private readonly IDiagnosticEventStore _diagnosticEvents;
     private readonly IDiagnosticBundleService _diagnosticBundleService;
     private readonly IDesktopNotificationService _desktopNotifications;
@@ -48,6 +50,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IMediaDownloadService mediaDownloadService,
         IFfmpegService ffmpegService,
         IYtDlpProvider ytDlpProvider,
+        IConversionService conversionService,
+        IConversionQueueService conversionQueueService,
         IDiagnosticEventStore diagnosticEvents,
         IDiagnosticBundleService diagnosticBundleService,
         IRecoveryService recoveryService,
@@ -64,6 +68,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _mediaDownloadService = mediaDownloadService;
         _ffmpegService = ffmpegService;
         _ytDlpProvider = ytDlpProvider;
+        _conversionService = conversionService;
+        _conversionQueueService = conversionQueueService;
         _diagnosticEvents = diagnosticEvents;
         _diagnosticBundleService = diagnosticBundleService;
         _desktopNotifications = desktopNotifications;
@@ -78,6 +84,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             new("Scheduler", "◷", "Time windows for unattended queue runs."),
             new("Browser Integration", "◉", "Extension, native host, and capture health."),
             new("Media", "▶", "HLS, DASH, yt-dlp discovery, formats, subtitles, and live capture."),
+            new("Conversion", "⇄", "Safe FFmpeg remuxing, transcoding, MP3 extraction, and queued post-download jobs."),
             new("Settings", "⚙", "Folders, limits, clipboard monitoring, and behavior."),
             new("Diagnostics", "◇", "Startup, runtime, browser, and engine diagnostics.")
         };
@@ -89,6 +96,15 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         ApplyQueueRuntime(downloadManager.QueueRuntime);
         ApplyBrowserStatus(browserIntegrationService.Current);
         BrowserHostStatus = browserHostInstaller.GetStatus().Message;
+        foreach (ConversionPreset preset in conversionService.Presets)
+        {
+            ConversionPresets.Add(preset);
+        }
+
+        SelectedConversionPreset = ConversionPresets.Count > 0 ? ConversionPresets[0] : null;
+        MediaPostConversionPreset = ConversionPresets.FirstOrDefault(
+            static preset => string.Equals(preset.Id, "mp4-h264-balanced", StringComparison.Ordinal));
+        ApplyConversionQueue(conversionQueueService.Current);
         ApplyDiagnostics();
         RecoveryStatus = recoveryService.SafeMode
             ? "Safe mode is active; browser integration and scheduler startup were skipped."
@@ -101,6 +117,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         browserIntegrationService.StatusChanged += OnBrowserStatusChanged;
         browserIntegrationService.CaptureReceived += OnBrowserCaptureReceived;
         diagnosticEvents.Changed += OnDiagnosticsChanged;
+        conversionQueueService.Changed += OnConversionQueueChanged;
     }
 
     public ObservableCollection<NavigationItem> Sections { get; }
@@ -122,6 +139,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public ObservableCollection<MediaFormatViewModel> MediaAudioFormats { get; } = [];
 
     public ObservableCollection<MediaFormatViewModel> MediaSubtitleFormats { get; } = [];
+
+    public ObservableCollection<ConversionPreset> ConversionPresets { get; } = [];
+
+    public ObservableCollection<ConversionJobViewModel> ConversionJobs { get; } = [];
 
     public IReadOnlyList<string> DuplicateBehaviors { get; }
 
@@ -295,6 +316,33 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string mediaToolHealth = "Tool health has not been checked.";
 
     [ObservableProperty]
+    private string conversionSourcePath = string.Empty;
+
+    [ObservableProperty]
+    private string conversionDestinationPath = string.Empty;
+
+    [ObservableProperty]
+    private ConversionPreset? selectedConversionPreset;
+
+    [ObservableProperty]
+    private ConversionJobViewModel? selectedConversionJob;
+
+    [ObservableProperty]
+    private bool conversionOverwriteExisting;
+
+    [ObservableProperty]
+    private string conversionHealth = "Conversion tool health has not been checked.";
+
+    [ObservableProperty]
+    private string conversionStatus = "No conversion job is active.";
+
+    [ObservableProperty]
+    private bool mediaPostConversionEnabled;
+
+    [ObservableProperty]
+    private ConversionPreset? mediaPostConversionPreset;
+
+    [ObservableProperty]
     private string recoveryStatus = "Checking recovery state";
 
     [ObservableProperty]
@@ -318,6 +366,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsMediaVisible
         => string.Equals(SelectedSection?.Title, "Media", StringComparison.Ordinal);
 
+    public bool IsConversionVisible
+        => string.Equals(SelectedSection?.Title, "Conversion", StringComparison.Ordinal);
+
     public bool IsSettingsVisible
         => string.Equals(SelectedSection?.Title, "Settings", StringComparison.Ordinal);
 
@@ -330,6 +381,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             && !IsSchedulerVisible
             && !IsBrowserIntegrationVisible
             && !IsMediaVisible
+            && !IsConversionVisible
             && !IsSettingsVisible
             && !IsDiagnosticsVisible;
 
@@ -342,6 +394,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsSchedulerVisible));
         OnPropertyChanged(nameof(IsBrowserIntegrationVisible));
         OnPropertyChanged(nameof(IsMediaVisible));
+        OnPropertyChanged(nameof(IsConversionVisible));
         OnPropertyChanged(nameof(IsSettingsVisible));
         OnPropertyChanged(nameof(IsDiagnosticsVisible));
         OnPropertyChanged(nameof(IsPlaceholderVisible));
@@ -362,6 +415,22 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         if (value?.Format.StreamKind == MediaStreamKind.Muxed)
         {
             SelectedMediaAudioFormat = null;
+        }
+    }
+
+    partial void OnConversionSourcePathChanged(string value)
+    {
+        if (!string.IsNullOrWhiteSpace(value) && SelectedConversionPreset is not null)
+        {
+            UpdateSuggestedConversionDestination(value, SelectedConversionPreset);
+        }
+    }
+
+    partial void OnSelectedConversionPresetChanged(ConversionPreset? value)
+    {
+        if (value is not null && !string.IsNullOrWhiteSpace(ConversionSourcePath))
+        {
+            UpdateSuggestedConversionDestination(ConversionSourcePath, value);
         }
     }
 
@@ -887,6 +956,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 progress,
                 _mediaDownloadCancellation.Token);
             MediaDownloadStatus = $"Completed • {result.DownloadedFragments} fragment(s) • {FormatBytes(result.DownloadedBytes)} • {result.DestinationPath}";
+            if (MediaPostConversionEnabled && MediaPostConversionPreset is not null)
+            {
+                string conversionDestination = ConversionDestinationPlanner.CreatePostDownloadDestination(result.DestinationPath, MediaPostConversionPreset);
+                string jobId = _conversionQueueService.Enqueue(new ConversionRequest(
+                    result.DestinationPath,
+                    conversionDestination,
+                    MediaPostConversionPreset.Id));
+                MediaDownloadStatus += $" • queued {MediaPostConversionPreset.Name} job {jobId[..8]}";
+            }
+
             MediaDownloadProgress = 1;
             MediaDownloadIndeterminate = false;
             await _desktopNotifications.ShowAsync("Media download completed", Path.GetFileName(result.DestinationPath));
@@ -942,6 +1021,101 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         ExternalToolHealth ffmpeg = await ffmpegTask;
         ExternalToolHealth ytDlp = await ytDlpTask;
         MediaToolHealth = $"FFmpeg: {(ffmpeg.IsAvailable ? ffmpeg.Version ?? "available" : ffmpeg.Message)} • yt-dlp: {(ytDlp.IsAvailable ? ytDlp.Version ?? "available" : ytDlp.Message)}";
+    }
+
+    public void SetConversionSourcePath(string sourcePath)
+    {
+        ConversionSourcePath = sourcePath;
+        if (SelectedConversionPreset is not null)
+        {
+            UpdateSuggestedConversionDestination(sourcePath, SelectedConversionPreset);
+        }
+    }
+
+    [RelayCommand]
+    private void PrepareSelectedDownloadConversion()
+    {
+        if (SelectedDownload is null)
+        {
+            OperationMessage = "Select a completed download to convert.";
+            return;
+        }
+
+        if (!string.Equals(SelectedDownload.StatusText, nameof(DownloadState.Completed), StringComparison.Ordinal)
+            || !File.Exists(SelectedDownload.DestinationPath))
+        {
+            OperationMessage = "Only a completed download whose file still exists can be converted.";
+            return;
+        }
+
+        SetConversionSourcePath(SelectedDownload.DestinationPath);
+        SelectedSection = Sections.FirstOrDefault(static section => section.Title == "Conversion") ?? SelectedSection;
+        ConversionStatus = $"Ready to convert {SelectedDownload.FileName}.";
+    }
+
+    [RelayCommand]
+    private void EnqueueConversion()
+    {
+        if (SelectedConversionPreset is null)
+        {
+            ConversionStatus = "Choose a conversion preset.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(ConversionSourcePath)
+            || string.IsNullOrWhiteSpace(ConversionDestinationPath))
+        {
+            ConversionStatus = "Choose a source file and destination path.";
+            return;
+        }
+
+        try
+        {
+            string jobId = _conversionQueueService.Enqueue(new ConversionRequest(
+                ConversionSourcePath.Trim(),
+                ConversionDestinationPath.Trim(),
+                SelectedConversionPreset.Id,
+                ConversionOverwriteExisting));
+            ConversionStatus = $"Queued {SelectedConversionPreset.Name} job {jobId[..8]}.";
+        }
+        catch (ArgumentException exception)
+        {
+            ConversionStatus = $"Unable to queue conversion: {exception.Message}";
+        }
+        catch (InvalidOperationException exception)
+        {
+            ConversionStatus = $"Unable to queue conversion: {exception.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void CancelSelectedConversion()
+    {
+        if (SelectedConversionJob is not null
+            && _conversionQueueService.Cancel(SelectedConversionJob.Id))
+        {
+            ConversionStatus = "Conversion cancellation requested.";
+        }
+    }
+
+    [RelayCommand]
+    private void RemoveSelectedConversion()
+    {
+        if (SelectedConversionJob is not null
+            && _conversionQueueService.Remove(SelectedConversionJob.Id))
+        {
+            ConversionStatus = "Conversion job removed from history.";
+        }
+    }
+
+    [RelayCommand]
+    private async Task RefreshConversionHealthAsync()
+    {
+        ConversionHealth = "Checking FFmpeg and FFprobe…";
+        ExternalToolHealth health = await _conversionService.GetHealthAsync();
+        ConversionHealth = health.IsAvailable
+            ? $"{health.Version ?? "FFmpeg available"} • FFprobe available • safe no-shell invocation"
+            : health.Message;
     }
 
     [RelayCommand]
@@ -1046,6 +1220,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _browserIntegrationService.StatusChanged -= OnBrowserStatusChanged;
         _browserIntegrationService.CaptureReceived -= OnBrowserCaptureReceived;
         _diagnosticEvents.Changed -= OnDiagnosticsChanged;
+        _conversionQueueService.Changed -= OnConversionQueueChanged;
         GC.SuppressFinalize(this);
     }
 
@@ -1059,6 +1234,52 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             _dispatcher.Post(ApplyDiagnostics);
         }
+    }
+
+    private void OnConversionQueueChanged(object? sender, ConversionQueueSnapshot snapshot)
+    {
+        if (_dispatcher.CheckAccess())
+        {
+            ApplyConversionQueue(snapshot);
+        }
+        else
+        {
+            _dispatcher.Post(() => ApplyConversionQueue(snapshot));
+        }
+    }
+
+    private void ApplyConversionQueue(ConversionQueueSnapshot snapshot)
+    {
+        string? selectedId = SelectedConversionJob?.Id;
+        Dictionary<string, ConversionJobViewModel> existing = ConversionJobs
+            .ToDictionary(static job => job.Id, StringComparer.Ordinal);
+        ConversionJobs.Clear();
+        foreach (ConversionJobSnapshot job in snapshot.Jobs.Reverse())
+        {
+            if (!existing.TryGetValue(job.Id, out ConversionJobViewModel? viewModel))
+            {
+                viewModel = new ConversionJobViewModel(job);
+            }
+            else
+            {
+                viewModel.Apply(job);
+            }
+
+            ConversionJobs.Add(viewModel);
+        }
+
+        SelectedConversionJob = ConversionJobs.FirstOrDefault(
+            job => string.Equals(job.Id, selectedId, StringComparison.Ordinal))
+            ?? (ConversionJobs.Count > 0 ? ConversionJobs[0] : null);
+        ConversionJobSnapshot? active = snapshot.ActiveJobId is null
+            ? null
+            : snapshot.Jobs.FirstOrDefault(
+                job => string.Equals(job.Id, snapshot.ActiveJobId, StringComparison.Ordinal));
+        ConversionStatus = active is null
+            ? snapshot.Jobs.Any(static job => job.State == ConversionJobState.Queued)
+                ? "Conversion jobs are waiting in the queue."
+                : "No conversion job is active."
+            : active.StatusMessage;
     }
 
     private void ApplyDiagnostics()
@@ -1526,6 +1747,23 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         if (SelectedDownload is not null && !FilteredDownloads.Contains(SelectedDownload))
         {
             SelectedDownload = FilteredDownloads.Count > 0 ? FilteredDownloads[0] : null;
+        }
+    }
+
+    private void UpdateSuggestedConversionDestination(string sourcePath, ConversionPreset preset)
+    {
+        try
+        {
+            ConversionDestinationPath = ConversionDestinationPlanner.CreatePostDownloadDestination(sourcePath, preset);
+        }
+        catch (ArgumentException)
+        {
+        }
+        catch (NotSupportedException)
+        {
+        }
+        catch (PathTooLongException)
+        {
         }
     }
 

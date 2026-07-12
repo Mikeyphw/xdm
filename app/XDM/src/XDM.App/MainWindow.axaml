@@ -174,6 +174,7 @@
                 <Button Margin="0,0,8,0" Classes="secondary" Content="Cancel" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanCancel}" />
                 <Button Margin="0,0,8,0" Classes="secondary" Content="Retry" Command="{Binding RetrySelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}" />
                 <Button Margin="0,0,8,0" Classes="secondary" Content="Remove" Command="{Binding RemoveSelectedCommand}" />
+                <Button Margin="0,0,8,0" Classes="secondary" Content="Convert" Command="{Binding PrepareSelectedDownloadConversionCommand}" />
                 <Button Margin="0,0,8,0" Classes="secondary" Content="Earlier" Command="{Binding MoveSelectedDownloadEarlierCommand}" />
                 <Button Margin="0,0,8,0" Classes="secondary" Content="Later" Command="{Binding MoveSelectedDownloadLaterCommand}" />
                 <Button Margin="12,0,8,0" Classes="secondary" Content="Select visible" Command="{Binding SelectAllVisibleCommand}" />
@@ -452,6 +453,14 @@
                     <TextBox PlaceholderText="Output filename, for example video.mp4" Text="{Binding MediaDestinationFile}" />
                     <TextBox Grid.Column="1" PlaceholderText="Live capture minutes" Text="{Binding MediaLiveDurationMinutes}" />
                   </Grid>
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                    <CheckBox Content="Queue conversion after download" IsChecked="{Binding MediaPostConversionEnabled}" VerticalAlignment="Center" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding ConversionPresets}" SelectedItem="{Binding MediaPostConversionPreset}" IsEnabled="{Binding MediaPostConversionEnabled}">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </Grid>
                   <ProgressBar Minimum="0" Maximum="1" Value="{Binding MediaDownloadProgress}" IsIndeterminate="{Binding MediaDownloadIndeterminate}" Height="6" />
                   <TextBlock Text="{Binding MediaDownloadStatus}" TextWrapping="Wrap" Foreground="#BAC7D8" />
                   <StackPanel Orientation="Horizontal" Spacing="8">
@@ -460,6 +469,91 @@
                   </StackPanel>
                 </StackPanel>
               </Border>
+            </StackPanel>
+          </ScrollViewer>
+
+          <ScrollViewer IsVisible="{Binding IsConversionVisible}">
+            <StackPanel Spacing="14">
+              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="12">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <StackPanel Spacing="5">
+                      <TextBlock Text="FFMPEG CONVERSION" Classes="label" />
+                      <TextBlock Text="{Binding ConversionHealth}" TextWrapping="Wrap" Foreground="#BAC7D8" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="secondary" Content="Check FFmpeg + FFprobe" Command="{Binding RefreshConversionHealthCommand}" />
+                  </Grid>
+                  <TextBlock Text="Preset IDs select fixed argument templates. XDM never executes user-provided commands or invokes a shell." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                </StackPanel>
+              </Border>
+
+              <Border Background="#12171E" CornerRadius="10" Padding="20" BorderBrush="#202833" BorderThickness="1">
+                <StackPanel Spacing="11">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
+                    <TextBox PlaceholderText="Source media file" Text="{Binding ConversionSourcePath}" />
+                    <Button Grid.Column="1" Classes="secondary" Content="Browse" Click="BrowseConversionSource_Click" />
+                  </Grid>
+                  <TextBox PlaceholderText="Destination .mp4 or .mp3 path" Text="{Binding ConversionDestinationPath}" />
+                  <ComboBox ItemsSource="{Binding ConversionPresets}" SelectedItem="{Binding SelectedConversionPreset}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Margin="2" Spacing="2">
+                          <TextBlock Text="{Binding Name}" Foreground="#E8EEF7" />
+                          <TextBlock Text="{Binding Description}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <CheckBox Content="Overwrite an existing destination only after conversion succeeds" IsChecked="{Binding ConversionOverwriteExisting}" />
+                  <TextBlock Text="{Binding ConversionStatus}" TextWrapping="Wrap" Foreground="#8FB5FF" />
+                  <Button HorizontalAlignment="Left" Classes="primary" Content="Add to conversion queue" Command="{Binding EnqueueConversionCommand}" />
+                </StackPanel>
+              </Border>
+
+              <Grid ColumnDefinitions="2*,*" ColumnSpacing="14" MinHeight="300">
+                <Border Background="#12171E" CornerRadius="10" BorderBrush="#202833" BorderThickness="1">
+                  <ListBox ItemsSource="{Binding ConversionJobs}"
+                           SelectedItem="{Binding SelectedConversionJob}"
+                           Background="Transparent"
+                           BorderThickness="0"
+                           Padding="7">
+                    <ListBox.ItemsPanel>
+                      <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                      <DataTemplate>
+                        <Border Padding="12" Background="#151B23" CornerRadius="8">
+                          <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <StackPanel>
+                              <TextBlock Text="{Binding PresetName}" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                              <TextBlock Text="{Binding SourcePath}" FontSize="11" Foreground="#718095" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding State}" Foreground="#8FB5FF" VerticalAlignment="Center" />
+                            <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Margin="0,9,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" IsIndeterminate="{Binding IsIndeterminate}" />
+                            <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding OutputSize}" FontSize="11" Foreground="#BAC7D8" HorizontalAlignment="Right" />
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </Border>
+
+                <Border Grid.Column="1" Background="#12171E" CornerRadius="10" Padding="18" BorderBrush="#202833" BorderThickness="1">
+                  <StackPanel Spacing="10">
+                    <TextBlock Text="SELECTED JOB" Classes="label" />
+                    <TextBlock Text="{Binding SelectedConversionJob.PresetName}" FontWeight="SemiBold" Foreground="#F1F5FA" />
+                    <TextBlock Text="{Binding SelectedConversionJob.SourcePath}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedConversionJob.DestinationPath}" FontSize="11" Foreground="#7F8B9B" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedConversionJob.ErrorMessage}" Foreground="#FF8F8F" TextWrapping="Wrap" />
+                    <WrapPanel Orientation="Horizontal">
+                      <Button Margin="0,0,8,0" Classes="secondary" Content="Cancel" Command="{Binding CancelSelectedConversionCommand}" IsEnabled="{Binding SelectedConversionJob.CanCancel}" />
+                      <Button Classes="secondary" Content="Remove" Command="{Binding RemoveSelectedConversionCommand}" IsEnabled="{Binding SelectedConversionJob.CanRemove}" />
+                    </WrapPanel>
+                    <TextBlock Text="Conversions run one at a time. Cancellation terminates the FFmpeg process tree, removes only the private temporary output, and leaves the source untouched." TextWrapping="Wrap" Foreground="#7F8B9B" />
+                  </StackPanel>
+                </Border>
+              </Grid>
             </StackPanel>
           </ScrollViewer>
 
@@ -536,7 +630,7 @@
 
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
         <TextBlock Text="{Binding RuntimeDescription}" FontSize="11" Foreground="#687586" />
-        <TextBlock Grid.Column="1" Text="Streaming media parity • overlay 15" FontSize="11" Foreground="#8FB5FF" />
+        <TextBlock Grid.Column="1" Text="Conversion parity • overlay 16" FontSize="11" Foreground="#8FB5FF" />
       </Grid>
     </Grid>
   </Grid>

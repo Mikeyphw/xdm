@@ -13,12 +13,12 @@ This ledger is executable through `XDM.Parity.Tests`. The source of truth is
 
 ## Current baseline
 
-The manifest inventories 55 feature contracts across the download engine,
+The manifest inventories 59 feature contracts across the download engine,
 browser integration, media, conversion, queues, settings, desktop integration,
 diagnostics, localization, packaging and migration.
 
 Overlay 13 completed segmented transfer, Overlay 14 completed browser takeover,
-and Overlay 15 completes the streaming-media phase. Later parity overlays must
+Overlay 15 completed streaming media, and Overlay 16 completes conversion. Later parity overlays must
 update the status, implementation paths and tests in the same commit that
 supplies the behavior.
 
@@ -61,3 +61,13 @@ manifests, resumes fragment checkpoints, decrypts supported AES-128 HLS, selects
 audio/video/subtitle representations, discovers yt-dlp and FFmpeg safely, and
 finalizes streams through no-shell FFmpeg argument lists. Design and safety
 details are documented in `docs/parity/STREAMING-MEDIA.md`.
+
+## Overlay 16 result
+
+Conversion parity is complete for the planned modern scope. Fixed capability
+presets now provide validated MP4 remux/transcode and MP3 extraction. FFprobe
+checks streams and codec/container compatibility before a no-shell FFmpeg
+process starts. Conversion jobs run sequentially with structured progress,
+cancellation and atomic output publication. Completed downloads and media
+captures can be sent directly to the conversion queue. Design and safety
+details are documented in `docs/parity/CONVERSION.md`.

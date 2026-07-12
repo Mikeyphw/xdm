@@ -580,6 +580,24 @@
       },
       "manifest": {},
       "history_id": "643c2decca654c4e8259163ad3e00d39"
+    },
+    {
+      "applied_at": "2026-07-12T02:27:21.089885Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_conversion_overlay.zip",
+      "artifact_name": "xdm_conversion_overlay.zip",
+      "type": "overlay",
+      "sha256": "2be5a33ce1ad674ceed48bcc1070ad58de3bdd99d887cb319c03794ddda1e9d3",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add validated media conversion queue",
+      "commit_hash": "",
+      "file_count": 36,
+      "change_counts": {
+        "add": 28,
+        "modify": 8
+      },
+      "manifest": {},
+      "history_id": "23f82e3edbee4642b0772591927c85ee"
     }
   ]
 }

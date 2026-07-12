@@ -178,6 +178,8 @@ public partial class App : Application
         services.AddSingleton<IExternalToolRunner, ExternalToolRunner>();
         services.AddSingleton<IYtDlpProvider, YtDlpProvider>();
         services.AddSingleton<IFfmpegService, FfmpegService>();
+        services.AddSingleton<IConversionService, ConversionService>();
+        services.AddSingleton<IConversionQueueService, ConversionQueueService>();
         services.AddSingleton<IMediaCatalogService, MediaCatalogService>();
         services.AddSingleton<IMediaDownloadService, MediaDownloadService>();
         services.AddSingleton<IMediaProbeService, MediaProbeService>();

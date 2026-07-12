@@ -1,6 +1,6 @@
-# XDM Overlay 15 — streaming media parity
+# XDM Overlay 16 — conversion parity
 
-Base: confirmed successful commit `e2d5bc3`
+Base: confirmed successful commit `2f03229`
 
 Target: `xdm_modern`
 
@@ -8,26 +8,28 @@ Active solution: `app/XDM/XDM.Modern.sln`
 
 ## Included
 
-- Native HLS master/media parsing and acquisition with alternate audio,
-  subtitles, byte ranges, initialization maps and discontinuities.
-- Native DASH MPD parsing with BaseURL inheritance, SegmentTemplate timelines,
-  SegmentList and static/dynamic representation acquisition.
-- Live HLS/DASH manifest refresh with a bounded capture duration.
-- Atomic fragment checkpoints, deterministic resume, bounded retries and
-  cancellation-aware backoff.
-- Identity-key AES-128 HLS decryption with explicit or media-sequence IVs.
-- Structured yt-dlp format discovery using a private temporary metadata config.
-- FFmpeg discovery, compatibility health and stream-copy finalization.
-- Avalonia format, audio, subtitle and live-duration workflow with progress and
-  cancellation.
-- Recorded deterministic fixtures and executable parity-ledger updates.
+- Fixed capability presets for MP4 remux, H.264/AAC MP4 transcode and MP3
+  extraction.
+- FFprobe stream inspection and codec/container compatibility validation.
+- Safe FFmpeg process execution through `ProcessStartInfo.ArgumentList` with
+  shell execution disabled.
+- Structured FFmpeg progress parsing, bounded diagnostics, cancellation and
+  process-tree termination.
+- Atomic output publication that preserves an existing destination on failure.
+- Sequential conversion queue with progress, cancellation and removable
+  terminal history.
+- Avalonia conversion page, completed-download handoff and optional
+  post-streaming conversion.
+- Deterministic tests and executable parity-ledger updates.
 
 ## Safety properties
 
-Only HTTP and HTTPS media URLs are accepted. XML DTD processing is prohibited.
-Manifest and key responses have explicit limits. Unsupported HLS encryption and
-DRM are rejected. External tools use `ProcessStartInfo.ArgumentList` with shell
-execution disabled. Sensitive headers do not appear in command-line arguments.
+Conversion requests select only application-owned preset IDs. No user command,
+executable or FFmpeg argument fragment is accepted. Source and destination paths
+must differ, output extensions must match the preset, FFprobe validates required
+streams, and stream-copy codecs are allowlisted. FFmpeg writes to a private
+same-directory temporary file; XDM publishes it only after a successful,
+non-empty result.
 
 ## Validation scope
 

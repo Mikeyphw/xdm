@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "baseline": "e2d5bc3",
-  "updatedAt": "2026-07-11T23:58:00-03:00",
+  "baseline": "2f03229",
+  "updatedAt": "2026-07-11T23:40:00-03:00",
   "features": [
     {
       "id": "download.http-single-stream",
@@ -549,28 +549,44 @@
       "area": "conversion",
       "name": "Audio extraction and MP3 conversion",
       "priority": "high",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/Conversion/"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/ConversionPresetCatalog.cs",
+        "app/XDM/src/XDM.Media/ConversionService.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.ConversionServiceTests.ExtractsMp3WithFixedSafeArgumentsAndAtomicPublication",
+        "XDM.BrowserMedia.Tests.ConversionPresetTests.PresetsHaveUniqueStableIdsAndSupportedExtensions"
+      ],
       "targetOverlay": "16",
-      "notes": "Replace device-specific presets with capability presets."
+      "notes": "Fixed capability presets extract audio through libmp3lame with validated streams, structured progress, cancellation and atomic publication."
     },
     {
       "id": "conversion.video",
       "area": "conversion",
       "name": "MP4 remux/transcode",
       "priority": "high",
-      "status": "missing",
+      "status": "complete",
       "legacySources": [
         "app/XDM/XDM.Core/Conversion/"
       ],
-      "implementationPaths": [],
-      "automatedTests": [],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/ConversionPresetCatalog.cs",
+        "app/XDM/src/XDM.Media/ConversionService.cs",
+        "app/XDM/src/XDM.Media/FfprobeMediaInspectionService.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.ConversionServiceTests.RejectsIncompatibleMp4RemuxBeforeStartingFfmpeg",
+        "XDM.BrowserMedia.Tests.ConversionServiceTests.FailedConversionPreservesExistingDestination",
+        "XDM.BrowserMedia.Tests.FfprobeMediaInspectionTests.ParsesDurationContainerAndFirstAudioVideoCodecs"
+      ],
       "targetOverlay": "16",
-      "notes": "Requires codec/container checks and cancellable progress."
+      "notes": "MP4 remux and H.264/AAC transcode presets validate stream compatibility and publish output atomically."
     },
     {
       "id": "settings.persistence",
@@ -1013,6 +1029,91 @@
       ],
       "targetOverlay": "15",
       "notes": "Identity-key AES-128 HLS is supported with explicit or media-sequence-derived IVs; unsupported DRM schemes are rejected."
+    },
+    {
+      "id": "conversion.presets-validation",
+      "area": "conversion",
+      "name": "Capability presets and codec/container validation",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Conversion/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/ConversionPresetCatalog.cs",
+        "app/XDM/src/XDM.Media/FfprobeMediaInspectionService.cs",
+        "app/XDM/src/XDM.Media/ConversionService.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.ConversionPresetTests.PresetsHaveUniqueStableIdsAndSupportedExtensions",
+        "XDM.BrowserMedia.Tests.ConversionServiceTests.ValidatesPresetDestinationExtension"
+      ],
+      "targetOverlay": "16",
+      "notes": "User choices resolve only to fixed preset IDs; FFprobe validates streams before FFmpeg starts."
+    },
+    {
+      "id": "conversion.queue",
+      "area": "conversion",
+      "name": "Conversion queue, progress and cancellation",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Conversion/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/ConversionQueueService.cs",
+        "app/XDM/src/XDM.Media/FfmpegConversionProcessRunner.cs",
+        "app/XDM/src/XDM.App/ViewModels/ConversionJobViewModel.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.ConversionQueueServiceTests.ProcessesQueuedJobsSeriallyAndPublishesProgress",
+        "XDM.BrowserMedia.Tests.ConversionQueueServiceTests.CancelsActiveJobAndContinuesWithLaterJobs",
+        "XDM.BrowserMedia.Tests.FfmpegProgressParserTests.ParsesStructuredProgressTime"
+      ],
+      "targetOverlay": "16",
+      "notes": "Jobs run sequentially, parse structured FFmpeg progress and terminate the process tree on cancellation."
+    },
+    {
+      "id": "conversion.post-download",
+      "area": "conversion",
+      "name": "Post-download conversion workflow",
+      "priority": "high",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Conversion/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/ConversionDestinationPlanner.cs",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.cs",
+        "app/XDM/src/XDM.App/MainWindow.axaml"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.ConversionDestinationPlannerTests.CreatesDistinctPostDownloadDestinationForSelectedPreset",
+        "XDM.BrowserMedia.Tests.ConversionQueueServiceTests.ProcessesQueuedJobsSeriallyAndPublishesProgress"
+      ],
+      "targetOverlay": "16",
+      "notes": "Completed downloads can be sent to the queue and media downloads can optionally enqueue a conversion preset automatically."
+    },
+    {
+      "id": "conversion.safe-ffmpeg",
+      "area": "conversion",
+      "name": "Safe FFmpeg invocation and atomic output",
+      "priority": "critical",
+      "status": "complete",
+      "legacySources": [
+        "app/XDM/XDM.Core/Conversion/"
+      ],
+      "implementationPaths": [
+        "app/XDM/src/XDM.Media/FfmpegConversionProcessRunner.cs",
+        "app/XDM/src/XDM.Media/ConversionService.cs"
+      ],
+      "automatedTests": [
+        "XDM.BrowserMedia.Tests.ConversionServiceTests.ExtractsMp3WithFixedSafeArgumentsAndAtomicPublication",
+        "XDM.BrowserMedia.Tests.ConversionServiceTests.FailedConversionPreservesExistingDestination"
+      ],
+      "targetOverlay": "16",
+      "notes": "ProcessStartInfo.ArgumentList is used with shell execution disabled; private temporary output is atomically moved only after success."
     }
   ]
 }
