@@ -1,48 +1,47 @@
-# XDM Overlay — Safe native and aria2 backend selection
+# XDM Overlay — Media detection inbox and workflow overhaul
 
-This overlay applies on top of commit `fdd2615`.
+This overlay applies on top of commit `98133bd`.
 
-## Unified backend ownership
+## Detection inbox
 
-- adds per-download Automatic, Native, and aria2 backend preferences;
-- records the selected backend, aria2 task identifier, fallback policy, and routing reason in history and snapshots;
-- keeps one XDM download as the owner of each backend task;
-- restores persisted aria2 ownership without silently switching to native while aria2 is unavailable;
-- adopts matching active aria2 tasks after restart when adoption is enabled;
-- verifies the destination and expected length before accepting an adopted task;
-- blocks active/waiting/paused aria2 destination collisions instead of starting a second writer;
-- permits reuse after terminal aria2 tasks no longer own the destination.
+- replaces disruptive browser-media navigation with a session detection inbox;
+- groups each detected video/page with its complete stream catalog and source metadata;
+- deduplicates repeated detections and keeps the newest catalog at the top;
+- caps the inbox at 100 entries;
+- supports refresh, removal, and clearing without affecting downloads;
+- retains browser request headers, cookies, referer, and user agent for the selected item.
 
-## Automatic selection
+## Stream planning
 
-- keeps the native engine as the default and mandatory backend for unsupported request types and FTPS;
-- recommends aria2 for large downloads, mirrored downloads, FTP, and high requested connection counts;
-- exposes configurable large-file and connection-count thresholds;
-- supports global and per-download native fallback controls;
-- allows fallback only before aria2 task ownership is established;
-- refreshes aria2 before replacing a persisted task that appears to be missing.
+- adds Best, bounded-resolution, smallest-video, and audio-only quality policies;
+- adds preferred audio and subtitle language selection;
+- keeps exact video/audio overrides and individual subtitle toggles;
+- displays stream type, quality, bitrate, language, container, codec, encryption, protocol, and live/VOD status;
+- estimates output size when duration and bitrate metadata are available;
+- reads duration metadata from yt-dlp catalogs.
 
-## aria2 integration
+## Live capture safety
 
-- passes mirrors and expected SHA-256/SHA-512 checksums to `aria2.addUri`;
-- rejects malformed checksum text rather than stripping invalid characters;
-- routes ordinary HTTP, HTTPS, and FTP tasks created from the aria2 settings panel through the unified XDM manager;
-- leaves non-XDM protocols such as magnet links as explicitly external aria2 tasks;
-- routes pause, resume, retry, cancel, delete, repair, completion, and integrity verification through the owning backend.
+- adds independent duration and maximum-size limits;
+- enforces the byte limit while streaming direct files, HLS fragments, DASH segments, and yt-dlp fragments;
+- preserves existing fragment checkpoints for cancellation and recovery;
+- removes bounded temporary files after failed direct transfers;
+- keeps the existing seven-day duration and 10 TiB safety ceilings.
 
-## Persistence and UI
+## FFmpeg and post-processing
 
-- advances portable download-list exports to schema version 2;
-- preserves backend preference and fallback settings while importing schema version 1 safely;
-- adds backend selection to the new-download form;
-- shows backend ownership, task ID, and routing reason in download details;
-- adds automatic-routing and task-adoption controls to aria2 settings.
+- probes FFmpeg encoder capabilities for H.264, H.265, AV1, AAC, MP3, and Opus;
+- reports toolchain capabilities beside yt-dlp health;
+- preserves all existing remux, transcode, audio extraction, and device presets;
+- keeps queued post-processing separate from the media download lifecycle.
 
 ## Quality
 
-- fixes the existing `CA1861` warning in `QueueDependencyTests`;
-- adds backend advisor, collision, persistence, RPC, settings, manager, and UI architecture tests;
-- preserves all native transfer, resume-integrity, queue-policy, browser-security, and secure-update behavior;
+- fixes the existing `CA1859` warning by returning `Dictionary<string, string>` from `BuildAria2Headers`;
+- exposes accessible names and stable automation IDs for every Media form control;
+- keeps media quality options instance-backed to satisfy `CA1822` without suppressions;
+- adds selection-policy, size-estimation, duration, byte-limit, FFmpeg-capability, headless, and UI-architecture tests;
+- preserves native/aria2 ownership, resume integrity, browser security, smart queues, and rollback-safe updates;
 - does not modify `docs/parity/features.json`.
 
 ## Validation

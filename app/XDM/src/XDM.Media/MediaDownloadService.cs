@@ -64,6 +64,7 @@ public sealed class MediaDownloadService(
         Stopwatch stopwatch = Stopwatch.StartNew();
         List<StreamDownloadResult> mainStreams = [];
         List<string> subtitlePaths = [];
+        long consumedBytes = 0;
         bool usedFfmpeg = false;
         bool completedSuccessfully = false;
         try
@@ -77,14 +78,17 @@ public sealed class MediaDownloadService(
                     mainFormats.Count,
                     mainStreams.Sum(static stream => stream.DownloadedBytes),
                     $"Preparing {format.DisplayName}."));
-                mainStreams.Add(await DownloadFormatAsync(
+                StreamDownloadResult stream = await DownloadFormatAsync(
                     catalog.Kind,
                     format,
                     workspace,
                     metadata,
                     request.LiveDuration,
+                    RemainingLimit(request.MaximumBytes, consumedBytes),
                     progress,
-                    cancellationToken).ConfigureAwait(false));
+                    cancellationToken).ConfigureAwait(false);
+                mainStreams.Add(stream);
+                consumedBytes = checked(consumedBytes + stream.DownloadedBytes);
                 formatIndex++;
             }
 
@@ -96,8 +100,10 @@ public sealed class MediaDownloadService(
                     workspace,
                     metadata,
                     request.LiveDuration,
+                    RemainingLimit(request.MaximumBytes, consumedBytes),
                     progress,
                     cancellationToken).ConfigureAwait(false);
+                consumedBytes = checked(consumedBytes + subtitleStream.DownloadedBytes);
                 string language = SanitizeFileComponent(subtitle.Language ?? subtitle.Name ?? subtitle.Id);
                 string subtitlePath = Path.Combine(
                     Path.GetDirectoryName(destinationPath)!,
@@ -171,6 +177,7 @@ public sealed class MediaDownloadService(
         string workspace,
         MediaRequestMetadata metadata,
         TimeSpan? liveDuration,
+        long? maximumBytes,
         IProgress<MediaDownloadProgress>? progress,
         CancellationToken cancellationToken)
     {
@@ -181,6 +188,7 @@ public sealed class MediaDownloadService(
                 workspace,
                 metadata,
                 liveDuration,
+                maximumBytes,
                 progress,
                 cancellationToken).ConfigureAwait(false);
         }
@@ -192,6 +200,7 @@ public sealed class MediaDownloadService(
                 workspace,
                 metadata,
                 liveDuration,
+                maximumBytes,
                 progress,
                 cancellationToken).ConfigureAwait(false);
         }
@@ -204,6 +213,7 @@ public sealed class MediaDownloadService(
                 externalData,
                 workspace,
                 metadata,
+                maximumBytes,
                 progress,
                 cancellationToken).ConfigureAwait(false);
         }
@@ -219,6 +229,7 @@ public sealed class MediaDownloadService(
                 outputPath,
                 null,
                 null,
+                maximumBytes,
                 token),
             cancellationToken).ConfigureAwait(false);
         progress?.Report(new MediaDownloadProgress(
@@ -305,6 +316,22 @@ public sealed class MediaDownloadService(
         }
     }
 
+    private static long? RemainingLimit(long? maximumBytes, long consumedBytes)
+    {
+        if (maximumBytes is not long limit)
+        {
+            return null;
+        }
+
+        long remaining = limit - consumedBytes;
+        if (remaining <= 0)
+        {
+            throw new InvalidDataException($"Media capture exceeded the configured {limit} byte limit.");
+        }
+
+        return remaining;
+    }
+
     private static string CreateFinalizationPath(string destinationPath)
     {
         string directory = Path.GetDirectoryName(destinationPath)!;
@@ -340,6 +367,11 @@ public sealed class MediaDownloadService(
             && (duration < TimeSpan.FromSeconds(5) || duration > TimeSpan.FromDays(7)))
         {
             throw new ArgumentOutOfRangeException(nameof(request), "Live capture duration must be between 5 seconds and 7 days.");
+        }
+
+        if (request.MaximumBytes is <= 0 or > 10L * 1024 * 1024 * 1024 * 1024)
+        {
+            throw new ArgumentOutOfRangeException(nameof(request), "Media size limit must be between 1 byte and 10 TiB.");
         }
     }
 

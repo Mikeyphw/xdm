@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-13T02:11:13.157207Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_media_workflow_overhaul_overlay.zip",
+  "artifact_name": "xdm_media_workflow_overhaul_overlay.zip",
+  "type": "overlay",
+  "sha256": "377fb4c71e69be9e667dcaa380be9d4832a7838021e8ae9943489250e9a93350",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Overhaul media detection and stream workflow",
+  "commit_hash": "",
+  "file_count": 31,
+  "change_counts": {
+    "add": 11,
+    "modify": 20
+  },
+  "manifest": {},
+  "history_id": "013b46bda963460397f623d4aee05ab3"
+}

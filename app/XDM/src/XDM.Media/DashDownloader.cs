@@ -6,11 +6,21 @@ internal sealed class DashDownloader(HttpClient httpClient)
 {
     private const int MaximumSegmentBytes = 1024 * 1024 * 1024;
 
+    public Task<StreamDownloadResult> DownloadAsync(
+        MediaFormat format,
+        string workspace,
+        MediaRequestMetadata metadata,
+        TimeSpan? liveDuration,
+        IProgress<MediaDownloadProgress>? progress,
+        CancellationToken cancellationToken)
+        => DownloadAsync(format, workspace, metadata, liveDuration, null, progress, cancellationToken);
+
     public async Task<StreamDownloadResult> DownloadAsync(
         MediaFormat format,
         string workspace,
         MediaRequestMetadata metadata,
         TimeSpan? liveDuration,
+        long? maximumBytes,
         IProgress<MediaDownloadProgress>? progress,
         CancellationToken cancellationToken)
     {
@@ -66,6 +76,7 @@ internal sealed class DashDownloader(HttpClient httpClient)
                         partPath,
                         null,
                         null,
+                        RemainingLimit(maximumBytes, downloadedBytes),
                         token),
                     cancellationToken).ConfigureAwait(false);
                 if (bytes > MaximumSegmentBytes)
@@ -106,6 +117,22 @@ internal sealed class DashDownloader(HttpClient httpClient)
         await AssembleAsync(fragmentsDirectory, outputPath, cancellationToken).ConfigureAwait(false);
         int fragmentCount = completed.Count(static id => !id.Equals("init", StringComparison.Ordinal));
         return new StreamDownloadResult(outputPath, fragmentCount, downloadedBytes, dynamic);
+    }
+
+    private static long? RemainingLimit(long? maximumBytes, long downloadedBytes)
+    {
+        if (maximumBytes is not long limit)
+        {
+            return null;
+        }
+
+        long remaining = limit - downloadedBytes;
+        if (remaining <= 0)
+        {
+            throw new InvalidDataException($"Media capture exceeded the configured {limit} byte limit.");
+        }
+
+        return remaining;
     }
 
     private static async Task AssembleAsync(

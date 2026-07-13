@@ -159,6 +159,10 @@ public sealed class YtDlpProvider : IYtDlpProvider
             throw new InvalidDataException("yt-dlp did not return any usable HTTP media formats.");
         }
 
+        double? durationSeconds = GetDouble(root, "duration");
+        TimeSpan? duration = durationSeconds is > 0 and <= 604800
+            ? TimeSpan.FromSeconds(durationSeconds.Value)
+            : null;
         return new MediaCatalog(
             source,
             MediaKind.ExternalProvider,
@@ -166,7 +170,8 @@ public sealed class YtDlpProvider : IYtDlpProvider
             isLive,
             formats,
             $"yt-dlp returned {formats.Count} selectable format(s).",
-            "yt-dlp");
+            "yt-dlp",
+            duration);
     }
 
     private static MediaFormat? ParseFormat(JsonElement format)

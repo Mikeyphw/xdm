@@ -7,7 +7,8 @@ public sealed record MediaCatalog(
     bool IsLive,
     IReadOnlyList<MediaFormat> Formats,
     string Description,
-    string Provider)
+    string Provider,
+    TimeSpan? Duration = null)
 {
     public IReadOnlyList<MediaFormat> VideoFormats
         => Formats.Where(static format => format.StreamKind is MediaStreamKind.Video or MediaStreamKind.Muxed).ToArray();

@@ -74,6 +74,41 @@ public sealed class MediaDownloadServiceTests
         }
     }
 
+
+    [Fact]
+    public async Task StopsDirectMediaAtConfiguredSizeLimit()
+    {
+        byte[] payload = new byte[4096];
+        using HttpClient client = new(new RoutingHandler(_ => RoutingHandler.Bytes(payload)));
+        Uri source = new("https://media.example.test/large.mp4");
+        MediaCatalog catalog = new(
+            source,
+            MediaKind.DirectFile,
+            "large.mp4",
+            false,
+            [new MediaFormat("direct", MediaStreamKind.Muxed, source, "mp4", null, null, null, null, null, null, "direct", true, false)],
+            "direct",
+            "direct");
+        string directory = Path.Combine(Path.GetTempPath(), $"xdm-media-limit-{Guid.NewGuid():N}");
+        string destination = Path.Combine(directory, "large.mp4");
+        try
+        {
+            MediaDownloadService service = new(client, new FixedCatalogService(catalog), new FakeFfmpegService());
+
+            await Assert.ThrowsAsync<InvalidDataException>(() => service.DownloadAsync(
+                new MediaDownloadRequest(source, destination, MaximumBytes: 1024)));
+
+            Assert.False(File.Exists(destination));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
     private sealed class FixedCatalogService(MediaCatalog catalog) : IMediaCatalogService
     {
         public Task<MediaCatalog> GetCatalogAsync(

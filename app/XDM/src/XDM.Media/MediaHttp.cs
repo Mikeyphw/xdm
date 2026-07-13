@@ -77,6 +77,24 @@ internal static class MediaHttp
         return bytes;
     }
 
+    public static Task<long> DownloadToFileAsync(
+        HttpClient client,
+        Uri uri,
+        MediaRequestMetadata metadata,
+        string destinationPath,
+        long? rangeOffset,
+        long? rangeLength,
+        CancellationToken cancellationToken)
+        => DownloadToFileAsync(
+            client,
+            uri,
+            metadata,
+            destinationPath,
+            rangeOffset,
+            rangeLength,
+            null,
+            cancellationToken);
+
     public static async Task<long> DownloadToFileAsync(
         HttpClient client,
         Uri uri,
@@ -84,6 +102,7 @@ internal static class MediaHttp
         string destinationPath,
         long? rangeOffset,
         long? rangeLength,
+        long? maximumBytes,
         CancellationToken cancellationToken)
     {
         using HttpRequestMessage request = CreateRequest(
@@ -100,28 +119,66 @@ internal static class MediaHttp
         string fullPath = Path.GetFullPath(destinationPath);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         string temporaryPath = $"{fullPath}.downloading";
-        await using (Stream source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
-        await using (FileStream destination = new(
-            temporaryPath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            128 * 1024,
-            FileOptions.Asynchronous | FileOptions.SequentialScan))
+        bool completed = false;
+        try
         {
-            await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
-            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
+            await using (Stream source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
+            await using (FileStream destination = new(
+                temporaryPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                128 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan))
+            {
+                await CopyBoundedToFileAsync(source, destination, maximumBytes, cancellationToken).ConfigureAwait(false);
+                await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
 
-        long downloadedLength = new FileInfo(temporaryPath).Length;
-        if (rangeLength is long expected && downloadedLength != expected)
+            long downloadedLength = new FileInfo(temporaryPath).Length;
+            if (rangeLength is long expected && downloadedLength != expected)
+            {
+                throw new InvalidDataException($"Expected {expected} byte(s) but received {downloadedLength}.");
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+            completed = true;
+            return downloadedLength;
+        }
+        finally
         {
-            File.Delete(temporaryPath);
-            throw new InvalidDataException($"Expected {expected} byte(s) but received {downloadedLength}.");
+            if (!completed && File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
+    }
 
-        File.Move(temporaryPath, fullPath, overwrite: true);
-        return downloadedLength;
+
+    private static async Task CopyBoundedToFileAsync(
+        Stream source,
+        Stream destination,
+        long? maximumBytes,
+        CancellationToken cancellationToken)
+    {
+        byte[] buffer = new byte[128 * 1024];
+        long total = 0;
+        while (true)
+        {
+            int read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            if (read == 0)
+            {
+                return;
+            }
+
+            total = checked(total + read);
+            if (maximumBytes is long limit && total > limit)
+            {
+                throw new InvalidDataException($"Media capture exceeded the configured {limit} byte limit.");
+            }
+
+            await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private static void ValidateRangeResponse(HttpResponseMessage response, long? rangeOffset)

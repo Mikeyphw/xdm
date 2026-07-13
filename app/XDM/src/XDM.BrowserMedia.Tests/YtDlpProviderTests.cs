@@ -18,6 +18,35 @@ public sealed class YtDlpProviderTests
         Assert.Contains(catalog.Formats, static format => format.StreamKind == MediaStreamKind.Audio && format.Language == "en");
     }
 
+
+    [Fact]
+    public void ReadsDurationForSizeEstimation()
+    {
+        const string json = """
+            {
+              "title": "Timed page",
+              "duration": 90.5,
+              "formats": [
+                {
+                  "format_id": "video",
+                  "url": "https://cdn.example.test/video.mp4",
+                  "ext": "mp4",
+                  "vcodec": "h264",
+                  "acodec": "aac",
+                  "height": 720,
+                  "tbr": 2500
+                }
+              ]
+            }
+            """;
+
+        MediaCatalog catalog = YtDlpProvider.ParseCatalog(
+            new Uri("https://video.example.test/watch/timed"),
+            json);
+
+        Assert.Equal(TimeSpan.FromSeconds(90.5), catalog.Duration);
+    }
+
     [Fact]
     public void RejectsCatalogWithoutUsableHttpFormats()
     {

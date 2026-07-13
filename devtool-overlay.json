@@ -1,27 +1,28 @@
 {
-  "name": "xdm_backend_selection_overlay",
+  "name": "xdm_media_workflow_overhaul_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "fdd2615",
+  "baseCommit": "98133bd",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "native-aria2-backend-selection",
-  "description": "Adds safe per-download native/aria2 ownership, automatic backend recommendations, persisted task adoption, pre-ownership fallback, collision protection, and unified UI controls.",
+  "phase": "media-workflow-overhaul",
+  "description": "Adds a grouped media detection inbox, stream quality and language planning, bounded live recording, FFmpeg capability diagnostics, and richer HLS/DASH workflow UI.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
     "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Add safe native and aria2 backend selection",
+  "commitMessage": "Overhaul media detection and stream workflow",
   "constraints": [
-    "Apply on top of commit fdd2615",
+    "Apply on top of commit 98133bd",
     "Validate only app/XDM/XDM.Modern.sln",
     "Require zero warnings and zero errors",
-    "Keep the native backend as the safe default",
-    "Never fall back to native after an aria2 task identifier has been established",
-    "Never allow two active backends to write the same destination",
-    "Preserve persisted aria2 ownership until task absence is confirmed by a healthy RPC refresh",
-    "Preserve resume integrity, queue policies, browser security, and rollback-safe updates",
+    "Keep browser media detections non-disruptive",
+    "Preserve request metadata for detected media",
+    "Enforce live capture duration and byte limits during transfer",
+    "Preserve HLS and DASH checkpoints",
+    "Preserve existing conversion presets and FFmpeg finalization",
+    "Fix the existing BuildAria2Headers CA1859 warning",
     "Do not modify docs/parity/features.json"
   ]
 }

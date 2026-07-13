@@ -150,4 +150,14 @@ public sealed class AccessibilityLayoutTests
         Assert.False(sectionIcon.IsVisible);
     }
 
+    [AvaloniaFact]
+    public void MediaViewExposesInboxQualityAndLiveLimitControls()
+    {
+        MediaView view = new();
+
+        Assert.NotNull(view.FindControl<ListBox>("MediaInboxList"));
+        Assert.NotNull(view.FindControl<ComboBox>("MediaQualitySelector"));
+        Assert.NotNull(view.FindControl<TextBox>("MediaLiveMaximumSizeInput"));
+    }
+
 }

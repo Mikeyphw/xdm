@@ -8,7 +8,8 @@ public sealed record MediaDownloadRequest(
     IReadOnlyList<string>? SubtitleFormatIds = null,
     TimeSpan? LiveDuration = null,
     MediaRequestMetadata? Metadata = null,
-    bool KeepPartialFiles = false)
+    bool KeepPartialFiles = false,
+    long? MaximumBytes = null)
 {
     public IReadOnlyList<string> SubtitleIds => SubtitleFormatIds ?? [];
 }

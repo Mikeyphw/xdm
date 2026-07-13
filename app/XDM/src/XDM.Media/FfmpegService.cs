@@ -62,6 +62,60 @@ public sealed class FfmpegService : IFfmpegService
         }
     }
 
+
+    public async Task<FfmpegCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken = default)
+    {
+        ExternalToolHealth health = await GetHealthAsync(cancellationToken).ConfigureAwait(false);
+        if (!health.IsAvailable || string.IsNullOrWhiteSpace(health.ExecutablePath))
+        {
+            return new FfmpegCapabilities(health, false, false, false, false, false, false);
+        }
+
+        try
+        {
+            ExternalToolResult result = await _runner.RunAsync(
+                health.ExecutablePath,
+                ["-hide_banner", "-encoders"],
+                TimeSpan.FromSeconds(15),
+                4 * 1024 * 1024,
+                cancellationToken).ConfigureAwait(false);
+            return ParseCapabilities(health, result.StandardOutput);
+        }
+        catch (IOException)
+        {
+            return new FfmpegCapabilities(health, false, false, false, false, false, false);
+        }
+        catch (InvalidOperationException)
+        {
+            return new FfmpegCapabilities(health, false, false, false, false, false, false);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return new FfmpegCapabilities(health, false, false, false, false, false, false);
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return new FfmpegCapabilities(health, false, false, false, false, false, false);
+        }
+        catch (TimeoutException)
+        {
+            return new FfmpegCapabilities(health, false, false, false, false, false, false);
+        }
+    }
+
+    internal static FfmpegCapabilities ParseCapabilities(ExternalToolHealth health, string output)
+    {
+        string normalized = output.ToLowerInvariant();
+        return new FfmpegCapabilities(
+            health,
+            normalized.Contains("libx264", StringComparison.Ordinal) || normalized.Contains(" h264 ", StringComparison.Ordinal),
+            normalized.Contains("libx265", StringComparison.Ordinal) || normalized.Contains(" hevc ", StringComparison.Ordinal),
+            normalized.Contains("libaom-av1", StringComparison.Ordinal) || normalized.Contains(" av1 ", StringComparison.Ordinal),
+            normalized.Contains(" aac ", StringComparison.Ordinal),
+            normalized.Contains("libmp3lame", StringComparison.Ordinal) || normalized.Contains(" mp3 ", StringComparison.Ordinal),
+            normalized.Contains("libopus", StringComparison.Ordinal) || normalized.Contains(" opus ", StringComparison.Ordinal));
+    }
+
     public async Task MuxAsync(
         IReadOnlyList<string> inputPaths,
         string destinationPath,

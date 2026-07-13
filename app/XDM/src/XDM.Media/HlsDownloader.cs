@@ -10,11 +10,21 @@ internal sealed class HlsDownloader(HttpClient httpClient)
     private const int MaximumFragments = 1_000_000;
     private const int MaximumSegmentBytes = 1024 * 1024 * 1024;
 
+    public Task<StreamDownloadResult> DownloadAsync(
+        MediaFormat format,
+        string workspace,
+        MediaRequestMetadata metadata,
+        TimeSpan? liveDuration,
+        IProgress<MediaDownloadProgress>? progress,
+        CancellationToken cancellationToken)
+        => DownloadAsync(format, workspace, metadata, liveDuration, null, progress, cancellationToken);
+
     public async Task<StreamDownloadResult> DownloadAsync(
         MediaFormat format,
         string workspace,
         MediaRequestMetadata metadata,
         TimeSpan? liveDuration,
+        long? maximumBytes,
         IProgress<MediaDownloadProgress>? progress,
         CancellationToken cancellationToken)
     {
@@ -63,9 +73,11 @@ internal sealed class HlsDownloader(HttpClient httpClient)
                     continue;
                 }
 
+                long? remainingBytes = RemainingLimit(maximumBytes, downloadedBytes);
                 long bytes = await FragmentRetryPolicy.ExecuteAsync(
-                    token => DownloadSegmentAsync(segment, partPath, formatDirectory, metadata, token),
+                    token => DownloadSegmentAsync(segment, partPath, formatDirectory, metadata, remainingBytes, token),
                     cancellationToken).ConfigureAwait(false);
+                EnsureWithinLimit(downloadedBytes, bytes, maximumBytes);
                 downloadedBytes = checked(downloadedBytes + bytes);
                 completed.Add(id);
                 await checkpointStore.SaveAsync(
@@ -98,18 +110,58 @@ internal sealed class HlsDownloader(HttpClient httpClient)
         return new StreamDownloadResult(outputPath, completed.Count, downloadedBytes, observedLive);
     }
 
+    private static int MaximumReadBytes(long? maximumBytes)
+    {
+        if (maximumBytes is not long limit)
+        {
+            return MaximumSegmentBytes;
+        }
+
+        if (limit <= 0)
+        {
+            throw new InvalidDataException("Media capture reached its configured size limit.");
+        }
+
+        return checked((int)Math.Min(limit, MaximumSegmentBytes));
+    }
+
+    private static long? RemainingLimit(long? maximumBytes, long downloadedBytes)
+    {
+        if (maximumBytes is not long limit)
+        {
+            return null;
+        }
+
+        long remaining = limit - downloadedBytes;
+        if (remaining <= 0)
+        {
+            throw new InvalidDataException($"Media capture exceeded the configured {limit} byte limit.");
+        }
+
+        return remaining;
+    }
+
+    private static void EnsureWithinLimit(long downloadedBytes, long nextBytes, long? maximumBytes)
+    {
+        if (maximumBytes is long limit && checked(downloadedBytes + nextBytes) > limit)
+        {
+            throw new InvalidDataException($"Media capture exceeded the configured {limit} byte limit.");
+        }
+    }
+
     private async Task<long> DownloadSegmentAsync(
         HlsSegment segment,
         string destinationPath,
         string formatDirectory,
         MediaRequestMetadata metadata,
+        long? maximumBytes,
         CancellationToken cancellationToken)
     {
         byte[] encrypted = await MediaHttp.ReadBytesAsync(
             httpClient,
             segment.Uri,
             metadata,
-            MaximumSegmentBytes,
+            MaximumReadBytes(maximumBytes),
             segment.ByteRangeOffset,
             segment.ByteRangeLength,
             cancellationToken).ConfigureAwait(false);

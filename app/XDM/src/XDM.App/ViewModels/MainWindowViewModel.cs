@@ -706,6 +706,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             SelectedMediaAudioFormat = null;
         }
+
+        RefreshMediaSelectionSummary();
     }
 
     partial void OnConversionSourcePathChanged(string value)
@@ -1486,11 +1488,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         MediaCatalogSummary = "Discovering native and provider formats…";
         try
         {
+            MediaRequestMetadata metadata = BuildMediaMetadata();
             MediaCatalog catalog = await _mediaCatalogService.GetCatalogAsync(
                 source,
-                BuildMediaMetadata(),
+                metadata,
                 CancellationToken.None);
-            ApplyMediaCatalog(catalog);
+            if (catalog.Kind == MediaKind.Unknown || catalog.Formats.Count == 0)
+            {
+                MediaCatalogSummary = catalog.Description;
+                return;
+            }
+
+            AddMediaInboxEntry(catalog, metadata, null, null, select: true);
         }
         catch (HttpRequestException exception)
         {
@@ -1522,10 +1531,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (!Uri.TryCreate(MediaSourceUrl.Trim(), UriKind.Absolute, out Uri? source)
+        Uri? source = _currentMediaCatalog?.Source;
+        if (source is null
+            || !source.IsAbsoluteUri
             || source.Scheme is not ("http" or "https"))
         {
-            MediaDownloadStatus = "Discover a valid media URL first.";
+            MediaDownloadStatus = "Select a detected media item first.";
             return;
         }
 
@@ -1555,7 +1566,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             SelectedMediaAudioFormat?.Id,
             subtitleIds,
             liveDuration,
-            BuildMediaMetadata());
+            _currentMediaMetadata,
+            MaximumBytes: ParseMediaMaximumBytes());
         _mediaDownloadCancellation?.Dispose();
         _mediaDownloadCancellation = new CancellationTokenSource();
         MediaDownloadActive = true;
@@ -1629,12 +1641,15 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private async Task RefreshMediaToolHealthAsync()
     {
         MediaToolHealth = "Checking FFmpeg and yt-dlp…";
-        Task<ExternalToolHealth> ffmpegTask = _ffmpegService.GetHealthAsync();
+        Task<FfmpegCapabilities> ffmpegTask = _ffmpegService.GetCapabilitiesAsync();
         Task<ExternalToolHealth> ytDlpTask = _ytDlpProvider.GetHealthAsync();
         await Task.WhenAll(ffmpegTask, ytDlpTask);
-        ExternalToolHealth ffmpeg = await ffmpegTask;
+        FfmpegCapabilities ffmpeg = await ffmpegTask;
         ExternalToolHealth ytDlp = await ytDlpTask;
-        MediaToolHealth = $"FFmpeg: {(ffmpeg.IsAvailable ? ffmpeg.Version ?? "available" : ffmpeg.Message)} • yt-dlp: {(ytDlp.IsAvailable ? ytDlp.Version ?? "available" : ytDlp.Message)}";
+        string ffmpegVersion = ffmpeg.Health.IsAvailable
+            ? ffmpeg.Health.Version ?? "available"
+            : ffmpeg.Health.Message;
+        MediaToolHealth = $"FFmpeg: {ffmpegVersion} • {ffmpeg.Summary} • yt-dlp: {(ytDlp.IsAvailable ? ytDlp.Version ?? "available" : ytDlp.Message)}";
     }
 
     public void SetConversionSourcePath(string sourcePath)
@@ -1995,17 +2010,28 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             try
             {
+                MediaRequestMetadata metadata = new(request.Headers, request.Cookie, request.Referer, request.UserAgent);
                 MediaCatalog catalog = await _mediaCatalogService.GetCatalogAsync(
                     request.Url,
-                    new MediaRequestMetadata(request.Headers, request.Cookie, request.Referer, request.UserAgent))
+                    metadata)
                     .ConfigureAwait(false);
+                if (catalog.Kind == MediaKind.Unknown || catalog.Formats.Count == 0)
+                {
+                    eventArgs.Reject(catalog.Description);
+                    SetBrowserCaptureFailure(catalog.Description);
+                    return;
+                }
+
                 eventArgs.Accept($"media-{Guid.NewGuid():N}");
                 _dispatcher.Post(() =>
                 {
-                    MediaSourceUrl = request.Url.AbsoluteUri;
-                    ApplyMediaCatalog(catalog);
-                    SelectedSection = Sections.FirstOrDefault(static section => section.Title == "Media") ?? SelectedSection;
-                    OperationMessage = $"Media formats discovered from {request.Browser ?? "browser"}.";
+                    AddMediaInboxEntry(
+                        catalog,
+                        metadata,
+                        request.SourcePage,
+                        request.Browser,
+                        select: SelectedMediaInboxItem is null);
+                    OperationMessage = $"Added media from {request.Browser ?? "browser"} to the detection inbox.";
                 });
             }
             catch (HttpRequestException exception)
@@ -2264,50 +2290,6 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         => result.IsMedia
             ? $"{result.Kind} • {result.VariantCount} stream/variant(s) • {result.Description}"
             : result.Description;
-
-    private void ApplyMediaCatalog(MediaCatalog catalog)
-    {
-        _currentMediaCatalog = catalog;
-        MediaVideoFormats.Clear();
-        MediaAudioFormats.Clear();
-        MediaSubtitleFormats.Clear();
-        foreach (MediaFormat format in catalog.Formats)
-        {
-            MediaFormatViewModel viewModel = new(format);
-            switch (format.StreamKind)
-            {
-                case MediaStreamKind.Muxed:
-                case MediaStreamKind.Video:
-                    MediaVideoFormats.Add(viewModel);
-                    break;
-                case MediaStreamKind.Audio:
-                    MediaAudioFormats.Add(viewModel);
-                    break;
-                case MediaStreamKind.Subtitle:
-                    viewModel.IsSelected = format.IsDefault;
-                    MediaSubtitleFormats.Add(viewModel);
-                    break;
-            }
-        }
-
-        SelectedMediaVideoFormat = MediaVideoFormats
-            .OrderByDescending(static format => format.Format.IsDefault)
-            .ThenByDescending(static format => format.Format.Height ?? 0)
-            .ThenByDescending(static format => format.Format.Bandwidth ?? 0)
-            .FirstOrDefault();
-        SelectedMediaAudioFormat = SelectedMediaVideoFormat?.Format.StreamKind == MediaStreamKind.Muxed
-            ? null
-            : MediaAudioFormats
-                .OrderByDescending(static format => format.Format.IsDefault)
-                .ThenByDescending(static format => format.Format.Bandwidth ?? 0)
-                .FirstOrDefault();
-        MediaCatalogSummary = $"{catalog.Title} • {catalog.Kind} • {(catalog.IsLive ? "live" : "VOD")} • {catalog.Formats.Count} format(s) • {catalog.Provider}";
-        if (string.IsNullOrWhiteSpace(MediaDestinationFile) || MediaDestinationFile == "video.mp4")
-        {
-            string safeTitle = SanitizeMediaFileName(catalog.Title);
-            MediaDestinationFile = $"{safeTitle}.mp4";
-        }
-    }
 
     private void OnMediaProgress(MediaDownloadProgress progress)
     {

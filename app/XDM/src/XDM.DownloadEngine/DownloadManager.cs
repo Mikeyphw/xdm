@@ -1775,7 +1775,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             _aria2Service.Current.Tasks);
     }
 
-    private static IReadOnlyDictionary<string, string> BuildAria2Headers(DownloadSession session)
+    private static Dictionary<string, string> BuildAria2Headers(DownloadSession session)
     {
         Dictionary<string, string> headers = session.Headers is null
             ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
