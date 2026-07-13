@@ -1,26 +1,27 @@
 {
-  "name": "xdm_browser_security_diagnostics_overlay",
+  "name": "xdm_secure_release_update_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "aee5671",
+  "baseCommit": "417e5c6",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "browser-extension-security-diagnostics",
-  "description": "Adds least-privilege browser permissions, per-site capture modes, pending confirmation, native-host identity/version checks, authenticated extension health, and a diagnostics workbench.",
+  "phase": "professional-release-update-infrastructure",
+  "description": "Adds stable, beta, and nightly release channels; deterministic Windows/Linux x64 and ARM64 packaging; checksums, SBOMs, attestations, optional Authenticode signing; and rollback-safe in-application updates through an external updater helper.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
     "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Harden browser integration security and diagnostics",
+  "commitMessage": "Add secure release channels and rollback-safe updates",
   "constraints": [
-    "Apply on top of commit aee5671",
+    "Apply on top of commit 417e5c6",
     "Validate only app/XDM/XDM.Modern.sln",
     "Require zero warnings and zero errors",
-    "Preserve acknowledged download takeover and explicit context-menu capture",
-    "Do not require cookie, webRequest, or broad host access for URL-only takeover",
-    "Do not capture private/incognito downloads unless explicitly enabled",
-    "Do not expose the browser loopback authentication token",
+    "Preserve existing download, browser, media, scheduler, diagnostics, aria2, resume-integrity, and recovery behavior",
+    "Keep stable, beta, and nightly update channels isolated through channel-specific manifests",
+    "Do not apply an update unless package size and SHA-256 match; verify SHA-512 when present",
+    "Keep the updater executable outside the installation while swapping directories",
+    "Preserve a rollback backup until the updated application creates its main window and marks the transaction healthy",
     "Do not modify docs/parity/features.json"
   ]
 }

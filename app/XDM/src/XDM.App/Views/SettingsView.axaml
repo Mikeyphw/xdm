@@ -342,12 +342,19 @@
             <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
               <StackPanel Spacing="12">
                 <TextBlock Text="{Binding Localization[ui_updates]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
-                <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
+                <Grid ColumnDefinitions="Auto,220" ColumnSpacing="12">
+                  <TextBlock Text="{Binding Localization[ui_update_channel]}" Classes="label" VerticalAlignment="Center"/>
+                  <ComboBox Grid.Column="1" ItemsSource="{Binding UpdateChannels}" SelectedItem="{Binding SelectedUpdateChannel}" AutomationProperties.Name="{Binding Localization[ui_update_channel]}" AutomationProperties.AutomationId="Settings_UpdateChannel"/>
+                </Grid>
+                <CheckBox Content="{Binding Localization[ui_automatic_update_checks]}" IsChecked="{Binding AutomaticUpdateChecks}" AutomationProperties.AutomationId="Settings_AutomaticUpdateChecks"/>
+                <CheckBox Content="{Binding Localization[ui_notify_when_update_staged]}" IsChecked="{Binding NotifyWhenUpdateStaged}" AutomationProperties.AutomationId="Settings_NotifyWhenUpdateStaged"/>
+                <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}" AutomationProperties.LiveSetting="Polite"/>
                 <ProgressBar Minimum="0" Maximum="1" Value="{Binding UpdateProgress}" Height="8"/>
                 <WrapPanel Orientation="Horizontal">
                   <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_check_for_updates]}" Command="{Binding CheckForUpdatesCommand}"/>
                   <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_download_verified_package]}" Command="{Binding DownloadVerifiedUpdateCommand}"/>
                   <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_open_staged_package]}" Command="{Binding OpenStagedUpdateCommand}"/>
+                  <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_apply_staged_update]}" Command="{Binding ApplyStagedUpdateCommand}" AutomationProperties.AutomationId="Settings_ApplyStagedUpdate"/>
                   <Button Classes="secondary" Content="{Binding Localization[ui_cancel]}" Command="{Binding CancelUpdateOperationCommand}"/>
                 </WrapPanel>
                 <TextBlock Text="{Binding Localization[ui_verified_update_security_note]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>

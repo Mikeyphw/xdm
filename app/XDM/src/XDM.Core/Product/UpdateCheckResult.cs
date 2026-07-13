@@ -6,10 +6,16 @@ public sealed record UpdateCheckResult(
     bool UpdateAvailable,
     Uri? ReleaseNotes,
     UpdatePackageDescriptor? Package,
-    string Message);
+    string Message,
+    UpdateChannel Channel = UpdateChannel.Stable,
+    bool IsMandatory = false,
+    DateTimeOffset? PublishedAtUtc = null);
 
 public sealed record StagedUpdateResult(
     string Version,
     string PackagePath,
     string Sha256,
-    long SizeBytes);
+    long SizeBytes,
+    string? Sha512 = null,
+    string? ReceiptPath = null,
+    string? TransactionPath = null);

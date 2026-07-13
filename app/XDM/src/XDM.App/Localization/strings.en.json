@@ -290,7 +290,7 @@
   "ui_use_the_operating_system_language": "Use the operating system language",
   "ui_user_agent": "User-Agent",
   "ui_username": "Username",
-  "ui_verified_update_security_note": "XDM downloads only a release package listed in the HTTPS manifest, verifies its declared size and SHA-256, and never executes it automatically.",
+  "ui_verified_update_security_note": "Packages use trusted HTTPS release hosts, declared sizes, SHA-256, optional SHA-512, SBOM/provenance links, and durable rollback transaction metadata.",
   "ui_video": "VIDEO",
   "ui_wed": "Wed",
   "ui_whole_request_timeout_seconds_0_unlimited": "Whole-request timeout seconds (0 = unlimited)",
@@ -353,5 +353,10 @@
   "ui_native_host_registration": "Native host registration",
   "ui_chromium_extension_ids": "Chromium extension IDs",
   "ui_extension_permissions_capabilities": "Permissions and capabilities",
-  "ui_extension_permissions_hint": "Cookies, request bodies, and request headers are read only after the user grants optional enhanced access in the extension popup. URL-only takeover remains available without it."
+  "ui_extension_permissions_hint": "Cookies, request bodies, and request headers are read only after the user grants optional enhanced access in the extension popup. URL-only takeover remains available without it.",
+  "ui_update_channel": "Release channel",
+  "ui_automatic_update_checks": "Check this release channel automatically",
+  "ui_notify_when_update_staged": "Notify me when a verified package is staged",
+  "ui_release_security_note": "Packages are verified with SHA-256 and SHA-512 when published, then accompanied by a receipt and rollback transaction.",
+  "ui_apply_staged_update": "Apply and restart"
 }

@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-13T00:35:04.153290Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_secure_release_update_overlay(1).zip",
+  "artifact_name": "xdm_secure_release_update_overlay(1).zip",
+  "type": "overlay",
+  "sha256": "341213c18310bec971ec8012d292736591b5661d0ccbde73db705c842715468a",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Add secure release channels and rollback-safe updates",
+  "commit_hash": "",
+  "file_count": 35,
+  "change_counts": {
+    "add": 15,
+    "modify": 20
+  },
+  "manifest": {},
+  "history_id": "228c21c6e6104613bbf600b719dfa1de"
+}

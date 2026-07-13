@@ -10,7 +10,19 @@ public partial class MainWindowViewModel
     private readonly IUpdateService _updateService;
     private UpdateCheckResult? _availableUpdate;
     private string? _stagedUpdatePath;
+    private StagedUpdateResult? _stagedUpdate;
     private CancellationTokenSource? _updateCancellation;
+
+    public IReadOnlyList<UpdateChannel> UpdateChannels { get; } = Enum.GetValues<UpdateChannel>();
+
+    [ObservableProperty]
+    private UpdateChannel selectedUpdateChannel = UpdateChannel.Stable;
+
+    [ObservableProperty]
+    private bool automaticUpdateChecks = true;
+
+    [ObservableProperty]
+    private bool notifyWhenUpdateStaged = true;
 
     [ObservableProperty]
     private string updateStatus = $"Current version: {ProductVersion.Current}";
@@ -20,6 +32,16 @@ public partial class MainWindowViewModel
 
     [ObservableProperty]
     private bool updateOperationActive;
+
+    public async Task InitializeAutomaticUpdateCheckAsync()
+    {
+        if (!AutomaticUpdateChecks)
+        {
+            return;
+        }
+
+        await CheckForUpdatesAsync();
+    }
 
     [RelayCommand]
     private async Task CheckForUpdatesAsync()
@@ -35,7 +57,7 @@ public partial class MainWindowViewModel
         _updateCancellation = cancellation;
         try
         {
-            _availableUpdate = await _updateService.CheckAsync(cancellation.Token);
+            _availableUpdate = await _updateService.CheckAsync(SelectedUpdateChannel, cancellation.Token);
             UpdateStatus = _availableUpdate.Message;
         }
         catch (OperationCanceledException)
@@ -49,6 +71,10 @@ public partial class MainWindowViewModel
         catch (InvalidDataException exception)
         {
             UpdateStatus = $"Update manifest rejected: {exception.Message}";
+        }
+        catch (ObjectDisposedException)
+        {
+            UpdateStatus = "Update check stopped because XDM is closing.";
         }
         finally
         {
@@ -80,9 +106,16 @@ public partial class MainWindowViewModel
                 _availableUpdate,
                 progress,
                 cancellation.Token);
+            _stagedUpdate = result;
             _stagedUpdatePath = result.PackagePath;
             UpdateProgress = 1;
-            UpdateStatus = $"Verified XDM {result.Version} package staged at {result.PackagePath}.";
+            UpdateStatus = $"Verified XDM {result.Version} package staged. Receipt: {result.ReceiptPath}. Rollback transaction: {result.TransactionPath}.";
+            if (NotifyWhenUpdateStaged)
+            {
+                _ = _desktopNotifications.ShowAsync(
+                    "XDM update ready",
+                    $"XDM {result.Version} is verified and ready to apply.");
+            }
         }
         catch (OperationCanceledException)
         {
@@ -111,6 +144,43 @@ public partial class MainWindowViewModel
                 _updateCancellation = null;
             }
             UpdateOperationActive = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ApplyStagedUpdateAsync()
+    {
+        if (_stagedUpdate is null || string.IsNullOrWhiteSpace(_stagedUpdate.TransactionPath))
+        {
+            UpdateStatus = "No rollback-safe update transaction has been staged.";
+            return;
+        }
+
+        try
+        {
+            await _updateService.LaunchStagedUpdateAsync(_stagedUpdate, Environment.ProcessId);
+            UpdateStatus = "Updater launched. XDM will close and restart after the verified directory swap.";
+            await _applicationLifetimeService.RequestShutdownAsync();
+        }
+        catch (FileNotFoundException exception)
+        {
+            UpdateStatus = $"Automatic update is unavailable: {exception.Message}";
+        }
+        catch (InvalidOperationException exception)
+        {
+            UpdateStatus = $"Automatic update could not start: {exception.Message}";
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            UpdateStatus = $"Automatic update needs permission to modify this installation: {exception.Message}";
+        }
+        catch (IOException exception)
+        {
+            UpdateStatus = $"Automatic update could not prepare its external runner: {exception.Message}";
+        }
+        catch (System.ComponentModel.Win32Exception exception)
+        {
+            UpdateStatus = $"Automatic update could not launch its external runner: {exception.Message}";
         }
     }
 

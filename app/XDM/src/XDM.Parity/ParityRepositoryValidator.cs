@@ -38,7 +38,8 @@ public static partial class ParityRepositoryValidator
         "XDM.NativeHost",
         "XDM.Parity",
         "XDM.Parity.Tests",
-        "XDM.App.Tests"
+        "XDM.App.Tests",
+        "XDM.Updater"
     ];
 
     public static string[] ValidateEvidence(ParityManifest manifest, string repositoryRoot)

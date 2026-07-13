@@ -1226,6 +1226,111 @@
       },
       "manifest": {},
       "history_id": "0823b20499114133aa6ff099d47dd8ac"
+    },
+    {
+      "applied_at": "2026-07-13T00:26:32.237491Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_secure_release_update_overlay.zip",
+      "artifact_name": "xdm_secure_release_update_overlay.zip",
+      "type": "overlay",
+      "sha256": "eba9c33f2ed6ba5b0ef22a58b8977526b0df4a22dadb838ad49715cdb9e497ff",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add secure release channels and rollback-safe updates",
+      "commit_hash": "",
+      "file_count": 35,
+      "change_counts": {
+        "add": 15,
+        "modify": 20
+      },
+      "manifest": {},
+      "history_id": "0c6613de522540e1b6f04951255978e4"
+    },
+    {
+      "applied_at": "2026-07-13T00:26:40.877789Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_secure_release_update_overlay.zip",
+      "artifact_name": "xdm_secure_release_update_overlay.zip",
+      "type": "overlay",
+      "sha256": "",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "Add secure release channels and rollback-safe updates",
+      "commit_hash": "",
+      "file_count": 0,
+      "change_counts": {},
+      "manifest": {},
+      "history_id": "008b0acdc184498e841f0786e1a9f8ff"
+    },
+    {
+      "applied_at": "2026-07-13T00:27:13.731535Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_secure_release_update_overlay.zip",
+      "artifact_name": "xdm_secure_release_update_overlay.zip",
+      "type": "overlay",
+      "sha256": "eba9c33f2ed6ba5b0ef22a58b8977526b0df4a22dadb838ad49715cdb9e497ff",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add secure release channels and rollback-safe updates",
+      "commit_hash": "",
+      "file_count": 35,
+      "change_counts": {
+        "add": 15,
+        "modify": 20
+      },
+      "manifest": {},
+      "history_id": "1c39442d73994554a6b036fdb6d4bfd8"
+    },
+    {
+      "applied_at": "2026-07-13T00:28:21.618492Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_secure_release_update_overlay.zip",
+      "artifact_name": "xdm_secure_release_update_overlay.zip",
+      "type": "overlay",
+      "sha256": "eba9c33f2ed6ba5b0ef22a58b8977526b0df4a22dadb838ad49715cdb9e497ff",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add secure release channels and rollback-safe updates",
+      "commit_hash": "",
+      "file_count": 35,
+      "change_counts": {
+        "add": 15,
+        "modify": 20
+      },
+      "manifest": {},
+      "history_id": "5ce488aa48364ee4ad5ef0948b5bc1d4"
+    },
+    {
+      "applied_at": "2026-07-13T00:35:04.153290Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_secure_release_update_overlay(1).zip",
+      "artifact_name": "xdm_secure_release_update_overlay(1).zip",
+      "type": "overlay",
+      "sha256": "341213c18310bec971ec8012d292736591b5661d0ccbde73db705c842715468a",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add secure release channels and rollback-safe updates",
+      "commit_hash": "",
+      "file_count": 35,
+      "change_counts": {
+        "add": 15,
+        "modify": 20
+      },
+      "manifest": {},
+      "history_id": "228c21c6e6104613bbf600b719dfa1de"
+    },
+    {
+      "applied_at": "2026-07-13T00:38:01.951550Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_secure_release_update_overlay(2).zip",
+      "artifact_name": "xdm_secure_release_update_overlay(2).zip",
+      "type": "overlay",
+      "sha256": "8aadca28108a6e987cdd12401915ff0c70892d5324f16bf74f363fa6ec688a5e",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add secure release channels and rollback-safe updates",
+      "commit_hash": "",
+      "file_count": 34,
+      "change_counts": {
+        "add": 14,
+        "modify": 20
+      },
+      "manifest": {},
+      "history_id": "2d5e619d85f14567a7dc4c33e6d4f8f7"
     }
   ]
 }

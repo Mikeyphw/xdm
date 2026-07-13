@@ -87,6 +87,11 @@ public partial class App : Application
             desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
             MainWindow mainWindow = services.GetRequiredService<MainWindow>();
             desktop.MainWindow = mainWindow;
+            InitializeService(
+                "XDM-STARTUP-UPDATE-HEALTH",
+                () => services.GetRequiredService<IUpdateService>().MarkCurrentVersionHealthyAsync(),
+                diagnostics);
+            _ = services.GetRequiredService<MainWindowViewModel>().InitializeAutomaticUpdateCheckAsync();
             if (InstanceCoordinator is not null)
             {
                 InstanceCoordinator.ActivationRequested += (_, _) =>

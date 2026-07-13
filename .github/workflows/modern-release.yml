@@ -1,0 +1,213 @@
+name: XDM Modern Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Release channel
+        required: true
+        type: choice
+        options: [stable, beta, nightly]
+      version:
+        description: Semantic version (blank uses VERSION; nightly adds run metadata)
+        required: false
+        type: string
+      minimum_supported_version:
+        description: Oldest version allowed to remain without a mandatory update
+        required: false
+        type: string
+  push:
+    tags:
+      - 'v*'
+      - 'beta-v*'
+  schedule:
+    - cron: '23 3 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xdm-modern-release-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.release.outputs.channel }}
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+      published_at: ${{ steps.release.outputs.published_at }}
+      minimum_supported: ${{ steps.release.outputs.minimum_supported }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: release
+        shell: bash
+        env:
+          INPUT_CHANNEL: ${{ inputs.channel }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_MINIMUM: ${{ inputs.minimum_supported_version }}
+        run: |
+          set -euo pipefail
+          base_version="$(tr -d '[:space:]' < VERSION)"
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            channel=nightly
+            version="${base_version%%-*}-nightly.$(date -u +%Y%m%d).${{ github.run_number }}"
+            tag=nightly
+          elif [[ "${{ github.ref_name }}" == beta-v* ]]; then
+            channel=beta
+            version="${{ github.ref_name }}"
+            version="${version#beta-v}"
+            tag=beta
+          elif [[ "${{ github.ref_name }}" == v* ]]; then
+            channel=stable
+            version="${{ github.ref_name }}"
+            version="${version#v}"
+            tag="${{ github.ref_name }}"
+          else
+            channel="${INPUT_CHANNEL:-stable}"
+            version="${INPUT_VERSION:-$base_version}"
+            tag="$([[ "$channel" == stable ]] && printf 'v%s' "$version" || printf '%s' "$channel")"
+          fi
+          prerelease=$([[ "$channel" == stable ]] && echo false || echo true)
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "published_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          echo "minimum_supported=${INPUT_MINIMUM:-}" >> "$GITHUB_OUTPUT"
+
+  qualify:
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore app/XDM/XDM.Modern.sln
+      - run: dotnet build app/XDM/XDM.Modern.sln -c Release --no-restore -p:Version=${{ needs.resolve.outputs.version }} -p:ContinuousIntegrationBuild=true
+      - run: dotnet test app/XDM/XDM.Modern.sln -c Release --no-build
+      - run: dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj -c Release --no-build -- --validate-bootstrap
+
+  package:
+    needs: [resolve, qualify]
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            shell: bash
+          - os: ubuntu-latest
+            rid: linux-arm64
+            shell: bash
+          - os: windows-latest
+            rid: win-x64
+            shell: pwsh
+          - os: windows-latest
+            rid: win-arm64
+            shell: pwsh
+    runs-on: ${{ matrix.os }}
+    env:
+      WINDOWS_SIGNING_CERTIFICATE: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE }}
+      WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Publish and package Linux
+        if: runner.os == 'Linux'
+        run: app/XDM/eng/publish-one.sh ${{ matrix.rid }} ${{ needs.resolve.outputs.version }}
+      - name: Publish and package Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./app/XDM/eng/publish-one.ps1 -Runtime ${{ matrix.rid }} -Version ${{ needs.resolve.outputs.version }}
+      - name: Authenticode-sign Windows executables
+        if: runner.os == 'Windows' && env.WINDOWS_SIGNING_CERTIFICATE != ''
+        shell: pwsh
+        run: ./app/XDM/eng/sign-windows.ps1 -PublishDirectory artifacts/publish/${{ matrix.rid }} -CertificateBase64 $env:WINDOWS_SIGNING_CERTIFICATE -CertificatePassword $env:WINDOWS_SIGNING_PASSWORD
+      - name: Repackage signed Windows build
+        if: runner.os == 'Windows' && env.WINDOWS_SIGNING_CERTIFICATE != ''
+        shell: pwsh
+        run: python app/XDM/eng/package-portable.py --source artifacts/publish/${{ matrix.rid }} --output artifacts/packages --name xdm-modern-${{ needs.resolve.outputs.version }}-${{ matrix.rid }}
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: artifacts/publish/${{ matrix.rid }}
+          format: spdx-json
+          output-file: artifacts/packages/xdm-modern-${{ needs.resolve.outputs.version }}-${{ matrix.rid }}.zip.spdx.json
+          artifact-name: xdm-${{ matrix.rid }}-sbom.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+      - name: Attest portable package and SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: artifacts/packages/xdm-modern-${{ needs.resolve.outputs.version }}-${{ matrix.rid }}.zip
+          sbom-path: artifacts/packages/xdm-modern-${{ needs.resolve.outputs.version }}-${{ matrix.rid }}.zip.spdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.rid }}
+          path: artifacts/packages/*
+          if-no-files-found: error
+
+  release:
+    needs: [resolve, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          path: artifacts/packages
+          merge-multiple: true
+      - name: Generate checksums and update manifest
+        shell: bash
+        run: |
+          python3 app/XDM/eng/generate-release-metadata.py \
+            --packages artifacts/packages \
+            --channel '${{ needs.resolve.outputs.channel }}' \
+            --version '${{ needs.resolve.outputs.version }}' \
+            --base-url 'https://github.com/${{ github.repository }}/releases/download/${{ needs.resolve.outputs.tag }}' \
+            --release-notes-url 'https://github.com/${{ github.repository }}/releases/tag/${{ needs.resolve.outputs.tag }}' \
+            --published-at '${{ needs.resolve.outputs.published_at }}' \
+            --minimum-supported-version '${{ needs.resolve.outputs.minimum_supported }}' \
+            --output artifacts/packages
+      - name: Attest release metadata
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            artifacts/packages/SHA256SUMS
+            artifacts/packages/SHA512SUMS
+            artifacts/packages/xdm-update-${{ needs.resolve.outputs.channel }}.json
+            artifacts/packages/release-metadata.json
+      - name: Move prerelease channel tag
+        if: needs.resolve.outputs.channel != 'stable'
+        shell: bash
+        run: |
+          git tag --force '${{ needs.resolve.outputs.tag }}' '${{ github.sha }}'
+          git push origin 'refs/tags/${{ needs.resolve.outputs.tag }}' --force
+      - name: Create or update GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.resolve.outputs.tag }}
+          name: XDM ${{ needs.resolve.outputs.version }} (${{ needs.resolve.outputs.channel }})
+          prerelease: ${{ needs.resolve.outputs.prerelease }}
+          generate_release_notes: true
+          make_latest: ${{ needs.resolve.outputs.channel == 'stable' }}
+          files: artifacts/packages/*
+          fail_on_unmatched_files: true

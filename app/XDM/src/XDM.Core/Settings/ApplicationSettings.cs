@@ -21,9 +21,10 @@ public sealed record ApplicationSettings(
     HistoryRetentionSettings? History = null,
     LocalizationSettings? Localization = null,
     AccessibilitySettings? Accessibility = null,
-    Aria2IntegrationSettings? Aria2 = null)
+    Aria2IntegrationSettings? Aria2 = null,
+    UpdateSettings? Updates = null)
 {
-    public const int CurrentSchemaVersion = 5;
+    public const int CurrentSchemaVersion = 6;
 
     public static ApplicationSettings CreateDefault()
     {
@@ -62,7 +63,8 @@ public sealed record ApplicationSettings(
             HistoryRetentionSettings.Default,
             LocalizationSettings.Default,
             AccessibilitySettings.Default,
-            Aria2IntegrationSettings.Default);
+            Aria2IntegrationSettings.Default,
+            UpdateSettings.Default);
     }
 
     public ApplicationSettings Normalize()
@@ -149,7 +151,8 @@ public sealed record ApplicationSettings(
             History = (History ?? HistoryRetentionSettings.Default).Normalize(),
             Localization = (Localization ?? LocalizationSettings.Default).Normalize(),
             Accessibility = (Accessibility ?? AccessibilitySettings.Default).Normalize(),
-            Aria2 = (Aria2 ?? Aria2IntegrationSettings.Default).Normalize()
+            Aria2 = (Aria2 ?? Aria2IntegrationSettings.Default).Normalize(),
+            Updates = (Updates ?? UpdateSettings.Default).Normalize()
         };
     }
 }

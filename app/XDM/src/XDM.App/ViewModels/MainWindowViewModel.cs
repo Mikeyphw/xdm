@@ -43,6 +43,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IDiagnosticBundleService _diagnosticBundleService;
     private readonly IDesktopNotificationService _desktopNotifications;
     private readonly IBrowserHostInstaller _browserHostInstaller;
+    private readonly IApplicationLifetimeService _applicationLifetimeService;
     private readonly Dictionary<string, DownloadState> _lastDownloadStates = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<DownloadTimelineEntry>> _downloadTimelines = new(StringComparer.Ordinal);
     private CancellationTokenSource? _mediaDownloadCancellation;
@@ -75,6 +76,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IRecoveryService recoveryService,
         IDesktopNotificationService desktopNotifications,
         IBrowserHostInstaller browserHostInstaller,
+        IApplicationLifetimeService applicationLifetimeService,
         IUpdateService updateService)
     {
         _applicationState = applicationState;
@@ -100,6 +102,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _diagnosticBundleService = diagnosticBundleService;
         _desktopNotifications = desktopNotifications;
         _browserHostInstaller = browserHostInstaller;
+        _applicationLifetimeService = applicationLifetimeService;
         _updateService = updateService;
         PlatformDescription = platformInfo.DisplayName;
         RuntimeDescription = platformInfo.Runtime;
@@ -1056,7 +1059,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 HighContrastEnabled,
                 ParseUiScalePercent(UiScalePercent),
                 AnnounceStatusChanges),
-            Aria2 = BuildAria2Settings()
+            Aria2 = BuildAria2Settings(),
+            Updates = new UpdateSettings(SelectedUpdateChannel, AutomaticUpdateChecks, NotifyWhenUpdateStaged)
         };
 
         await _settingsService.UpdateAsync(updated);
@@ -2233,6 +2237,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         ApplySettingsParity(settings);
         ApplyAria2Settings(settings);
         ApplyHistorySettings(settings);
+        UpdateSettings updateSettings = (settings.Updates ?? UpdateSettings.Default).Normalize();
+        SelectedUpdateChannel = updateSettings.Channel;
+        AutomaticUpdateChecks = updateSettings.AutomaticChecks;
+        NotifyWhenUpdateStaged = updateSettings.NotifyWhenStaged;
         ApplyQueueRuntime(_downloadManager.QueueRuntime);
         ApplySchedulerRuntime(_queueSchedulerRuntime.Current);
     }
