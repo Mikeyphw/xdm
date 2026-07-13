@@ -1,46 +1,277 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.DiagnosticsView" mc:Ignorable="d"
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             x:Class="XDM.App.Views.DiagnosticsView"
+             mc:Ignorable="d"
              KeyboardNavigation.TabNavigation="Continue"
              AutomationProperties.LandmarkType="Main"
-             AutomationProperties.AccessibilityView="Control"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="14">
-              <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
-                <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                  <StackPanel Spacing="8">
-                    <TextBlock Text="{Binding Localization[ui_recovery]}" Classes="label"/>
-                    <TextBlock Text="{Binding RecoveryStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
-                    <TextBlock Text="{Binding Localization[ui_launch_with_safe_mode_to_skip_browser_and_scheduler_startup_or_reset_win]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
-                  </StackPanel>
-                </Border>
-                <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                  <StackPanel Spacing="8">
-                    <TextBlock Text="{Binding Localization[ui_diagnostic_bundle]}" Classes="label"/>
-                    <TextBlock Text="{Binding DiagnosticBundlePath}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                      <Button Classes="primary" Content="{Binding Localization[ui_export_bundle]}" Command="{Binding ExportDiagnosticsCommand}"/>
-                      <Button Classes="secondary" Content="{Binding Localization[ui_clear_events]}" Command="{Binding ClearDiagnosticsCommand}"/>
-                    </StackPanel>
-                  </StackPanel>
-                </Border>
-              </Grid>
-
-              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="10">
-                  <TextBlock Text="{Binding Localization[ui_recent_events]}" Classes="label"/>
-                  <ItemsControl ItemsSource="{Binding DiagnosticEvents}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                        <Grid ColumnDefinitions="150,100,180,*" ColumnSpacing="10" Margin="0,3">
-                          <TextBlock Text="{Binding Timestamp}" FontFamily="monospace" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
-                          <TextBlock Grid.Column="1" Text="{Binding Severity}" FontSize="11" Foreground="{DynamicResource XdmAccentForeground}"/>
-                          <TextBlock Grid.Column="2" Text="{Binding Code}" FontFamily="monospace" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
-                          <TextBlock Grid.Column="3" Text="{Binding Message}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmBodyForeground}"/>
-                        </Grid>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
-              </Border>
+             AutomationProperties.AccessibilityView="Control">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="14">
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+        <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{Binding Localization[ui_recovery]}" Classes="label"/>
+            <TextBlock Text="{Binding RecoveryStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
+            <TextBlock Text="{Binding Localization[ui_launch_with_safe_mode_to_skip_browser_and_scheduler_startup_or_reset_win]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{Binding Localization[ui_diagnostic_bundle]}" Classes="label"/>
+            <TextBlock Text="{Binding DiagnosticBundlePath}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Classes="primary" Content="{Binding Localization[ui_export_bundle]}" Command="{Binding ExportDiagnosticsCommand}"/>
+              <Button Classes="secondary" Content="{Binding Localization[ui_clear_events]}" Command="{Binding ClearDiagnosticsCommand}"/>
             </StackPanel>
-          </ScrollViewer>
+          </StackPanel>
+        </Border>
+      </Grid>
 
-          </UserControl>
+      <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <StackPanel Spacing="4">
+              <TextBlock Text="SUBSYSTEM HEALTH &amp; REPAIR" Classes="label" AutomationProperties.HeadingLevel="2"/>
+              <TextBlock Text="Browser bridge, native-host registration, aria2 RPC, FFmpeg, proxy configuration, and destination-disk access." TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Classes="primary"
+                    Content="Refresh health"
+                    Command="{Binding RefreshSubsystemHealthCommand}"
+                    IsEnabled="{Binding CanRefreshSubsystemHealth}"
+                    AutomationProperties.AutomationId="Diagnostics_RefreshSubsystemHealth"/>
+          </Grid>
+          <TextBlock Text="{Binding SubsystemHealthStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
+          <ItemsControl ItemsSource="{Binding SubsystemHealthChecks}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Margin="0,3" Padding="12" CornerRadius="7" Background="{DynamicResource XdmPanelAltBackground}" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <StackPanel Spacing="4">
+                      <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Status}" Foreground="{DynamicResource XdmAccentForeground}"/>
+                        <TextBlock Grid.Column="2" Text="{Binding DurationText}" HorizontalAlignment="Right" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmMutedForeground}"/>
+                      </Grid>
+                      <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
+                      <TextBlock Text="{Binding Details}" TextWrapping="Wrap" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmMutedForeground}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Classes="secondary"
+                            Content="{Binding RepairLabel}"
+                            Command="{Binding RepairCommand}"
+                            IsVisible="{Binding CanRepair}"
+                            IsEnabled="{Binding CanRepair}"
+                            VerticalAlignment="Top"/>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+              <StackPanel Spacing="4">
+                <TextBlock Text="DETERMINISTIC TEST DOWNLOAD" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                <TextBlock Text="{Binding DeterministicDownloadTestStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
+                <TextBlock Text="{Binding DeterministicDownloadTestDetails}" TextWrapping="Wrap" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmMutedForeground}"/>
+              </StackPanel>
+              <Button Grid.Column="1"
+                      Classes="primary"
+                      Content="Run 1 MiB test"
+                      Command="{Binding RunDeterministicDownloadTestCommand}"
+                      IsEnabled="{Binding CanRunDeterministicDownloadTest}"
+                      VerticalAlignment="Top"
+                      AutomationProperties.AutomationId="Diagnostics_RunDeterministicDownloadTest"/>
+            </Grid>
+          </Border>
+        </StackPanel>
+      </Border>
+
+      <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <StackPanel Spacing="4">
+              <TextBlock Text="SELECTED-TRANSFER WORKBENCH" Classes="label" AutomationProperties.HeadingLevel="2"/>
+              <TextBlock Text="Instrumented engine events and bounded live checks for one transfer." TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+            </StackPanel>
+            <ComboBox Grid.Column="1"
+                      MinWidth="300"
+                      ItemsSource="{Binding Downloads}"
+                      SelectedItem="{Binding SelectedDownload}"
+                      AutomationProperties.AutomationId="Diagnostics_TransferSelector"
+                      AutomationProperties.Name="Transfer to diagnose">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel>
+                    <TextBlock Text="{Binding FileName}"/>
+                    <TextBlock Text="{Binding Source}" FontSize="10" Foreground="{DynamicResource XdmMutedForeground}"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+
+          <TextBlock Text="{Binding SelectedTransferDiagnosticSummary}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
+
+          <Grid ColumnDefinitions="2*,3*" ColumnSpacing="14">
+            <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="10">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="LIVE CONNECTION PROBE" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                    <TextBlock Text="DNS, direct TCP, TLS, configured HTTP/range, and a 1 MiB destination write." TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
+                  </StackPanel>
+                  <Button Grid.Column="1"
+                          Classes="primary"
+                          Content="Run probe"
+                          Command="{Binding RunTransferHealthProbeCommand}"
+                          IsEnabled="{Binding CanRunTransferHealthProbe}"
+                          AutomationProperties.AutomationId="Diagnostics_RunTransferProbe"
+                          AutomationProperties.Name="Run bounded transfer health probe"/>
+                </Grid>
+                <TextBlock Text="{Binding TransferHealthProbeStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
+                <ItemsControl ItemsSource="{Binding TransferHealthProbeStages}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Margin="0,3" Padding="10" CornerRadius="6" Background="{DynamicResource XdmPanelBackground}">
+                        <StackPanel Spacing="3">
+                          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Status}" Foreground="{DynamicResource XdmAccentForeground}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding DurationText}" FontFamily="monospace" Foreground="{DynamicResource XdmMutedForeground}"/>
+                          </Grid>
+                          <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmBodyForeground}"/>
+                          <TextBlock Text="{Binding DetailsText}" TextWrapping="Wrap" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmMutedForeground}"/>
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="10">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="TRANSFER TIMELINE" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                    <TextBlock Text="Scheduling → backend → proxy/connection → HTTP/resume → retry → disk → verification → finalization" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
+                  </StackPanel>
+                  <Button Grid.Column="1"
+                          Classes="secondary"
+                          Content="Clear selected"
+                          Command="{Binding ClearSelectedTransferDiagnosticsCommand}"
+                          IsEnabled="{Binding HasSelectedDownload}"
+                          AutomationProperties.AutomationId="Diagnostics_ClearSelectedTimeline"
+                          AutomationProperties.Name="Clear selected transfer timeline"/>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding SelectedTransferDiagnostics}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Margin="0,3" Padding="10" CornerRadius="6" Background="{DynamicResource XdmPanelBackground}">
+                        <StackPanel Spacing="3">
+                          <Grid ColumnDefinitions="90,100,90,*" ColumnSpacing="8">
+                            <TextBlock Text="{Binding Timestamp}" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmMutedForeground}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Stage}" FontWeight="SemiBold" FontSize="11"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Severity}" FontSize="10" Foreground="{DynamicResource XdmAccentForeground}"/>
+                            <TextBlock Grid.Column="3" Text="{Binding Code}" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
+                          </Grid>
+                          <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmBodyForeground}"/>
+                          <TextBlock Text="{Binding Details}" TextWrapping="Wrap" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmMutedForeground}"/>
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="14">
+            <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="8">
+                <TextBlock Text="RESUME AVAILABILITY" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                <TextBlock Text="{Binding SelectedTransferResumeSummary}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
+              </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="8">
+                <TextBlock Text="SANITIZED RESPONSE HEADERS" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                <ItemsControl ItemsSource="{Binding SelectedTransferResponseHeaders}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnDefinitions="140,*" ColumnSpacing="8" Margin="0,2">
+                        <TextBlock Text="{Binding Name}" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmBodyForeground}"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
+            <Border Grid.Row="1" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="8">
+                <TextBlock Text="RETRY HISTORY" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                <ItemsControl ItemsSource="{Binding SelectedTransferRetryHistory}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel Margin="0,3" Spacing="2">
+                        <Grid ColumnDefinitions="90,90,*" ColumnSpacing="8">
+                          <TextBlock Text="{Binding Timestamp}" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmMutedForeground}"/>
+                          <TextBlock Grid.Column="1" Text="{Binding Code}" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
+                          <TextBlock Grid.Column="2" Text="{Binding Message}" TextWrapping="Wrap" FontSize="10"/>
+                        </Grid>
+                        <TextBlock Text="{Binding Details}" TextWrapping="Wrap" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmMutedForeground}"/>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
+            <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="8">
+                <TextBlock Text="SEGMENT MAP" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                <ItemsControl ItemsSource="{Binding SelectedTransferSegments}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnDefinitions="48,120,90,*" ColumnSpacing="8" Margin="0,3">
+                        <TextBlock Text="{Binding Index}" FontFamily="monospace" FontSize="10"/>
+                        <TextBlock Grid.Column="1" Text="{Binding RangeText}" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmMutedForeground}"/>
+                        <TextBlock Grid.Column="2" Text="{Binding State}" FontSize="10" Foreground="{DynamicResource XdmAccentForeground}"/>
+                        <TextBlock Grid.Column="3" Text="{Binding ProgressText}" HorizontalAlignment="Right" FontFamily="monospace" FontSize="10"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{Binding Localization[ui_recent_events]}" Classes="label"/>
+          <ItemsControl ItemsSource="{Binding DiagnosticEvents}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="150,100,180,*" ColumnSpacing="10" Margin="0,3">
+                  <TextBlock Text="{Binding Timestamp}" FontFamily="monospace" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Severity}" FontSize="11" Foreground="{DynamicResource XdmAccentForeground}"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Code}" FontFamily="monospace" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
+                  <TextBlock Grid.Column="3" Text="{Binding Message}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmBodyForeground}"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

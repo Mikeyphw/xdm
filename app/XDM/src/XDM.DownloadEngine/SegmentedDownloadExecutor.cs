@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
+using XDM.Core.Diagnostics;
 
 namespace XDM.DownloadEngine;
 
@@ -12,17 +13,20 @@ internal sealed class SegmentedDownloadExecutor
     private readonly IDiskSpaceProvider _diskSpaceProvider;
     private readonly DownloadRetryPolicy _retryPolicy;
     private readonly SegmentedDownloadOptions _options;
+    private readonly ITransferDiagnosticSink _diagnostics;
 
     public SegmentedDownloadExecutor(
         HttpClient httpClient,
         IDiskSpaceProvider diskSpaceProvider,
         DownloadRetryPolicy retryPolicy,
-        SegmentedDownloadOptions options)
+        SegmentedDownloadOptions options,
+        ITransferDiagnosticSink? diagnostics = null)
     {
         _httpClient = httpClient;
         _diskSpaceProvider = diskSpaceProvider;
         _retryPolicy = retryPolicy;
         _options = options.Normalize();
+        _diagnostics = diagnostics ?? NullTransferDiagnosticSink.Instance;
     }
 
     public async Task<SegmentedDownloadResult?> TryDownloadAsync(
@@ -30,11 +34,15 @@ internal sealed class SegmentedDownloadExecutor
         Func<long, long, double, ValueTask> progress,
         CancellationToken cancellationToken)
     {
+        Record(context, TransferDiagnosticStage.Http, TransferDiagnosticSeverity.Information,
+            "XDM-TRANSFER-SEGMENT-PROBE", "Probing range support for segmented transfer.");
         ProbeResult? probe = await ProbeAsync(context, cancellationToken).ConfigureAwait(false);
         if (probe is null
             || probe.TotalBytes < _options.MinimumFileSizeBytes
             || context.ConnectionCount <= 1)
         {
+            Record(context, TransferDiagnosticStage.Http, TransferDiagnosticSeverity.Information,
+                "XDM-TRANSFER-SEGMENT-BYPASS", "Segmented transfer was not selected after the bounded range probe.");
             return null;
         }
 
@@ -55,6 +63,13 @@ internal sealed class SegmentedDownloadExecutor
 
         long existingBytes = GetExistingBytes(plan, segmentDirectory);
         EnsureDiskCapacity(context.DestinationPath, plan.TotalLength, existingBytes);
+        Record(context, TransferDiagnosticStage.Disk, TransferDiagnosticSeverity.Information,
+            "XDM-TRANSFER-SEGMENT-DISK", "Destination capacity was checked for segment files and the merge file.",
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["totalBytes"] = plan.TotalLength.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["existingSegmentBytes"] = existingBytes.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            });
         long completedBytes = existingBytes;
         long progressStartBytes = existingBytes;
         Stopwatch speedWatch = Stopwatch.StartNew();
@@ -92,6 +107,13 @@ internal sealed class SegmentedDownloadExecutor
         File.Move(mergePath, partialPath, overwrite: true);
         Directory.Delete(segmentDirectory, recursive: true);
         await progress(plan.TotalLength, plan.TotalLength, 0).ConfigureAwait(false);
+        Record(context, TransferDiagnosticStage.Resume, TransferDiagnosticSeverity.Information,
+            "XDM-TRANSFER-SEGMENT-VALIDATED", "All segment ranges were validated and merged.",
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["segments"] = plan.Segments.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["totalBytes"] = plan.TotalLength.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            });
         return new SegmentedDownloadResult(plan.TotalLength, probe.EntityTag, probe.LastModified);
     }
 
@@ -117,6 +139,13 @@ internal sealed class SegmentedDownloadExecutor
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken).ConfigureAwait(false);
 
+        Record(context, TransferDiagnosticStage.Http,
+            response.StatusCode == HttpStatusCode.PartialContent
+                ? TransferDiagnosticSeverity.Information
+                : TransferDiagnosticSeverity.Warning,
+            "XDM-TRANSFER-SEGMENT-PROBE-RESPONSE",
+            $"Segment probe returned HTTP {(int)response.StatusCode} {response.ReasonPhrase}.",
+            CreateResponseDiagnosticContext(response));
         if (response.StatusCode != HttpStatusCode.PartialContent)
         {
             return null;
@@ -150,8 +179,14 @@ internal sealed class SegmentedDownloadExecutor
             existingLength = 0;
         }
 
+        Record(context, TransferDiagnosticStage.Http, TransferDiagnosticSeverity.Information,
+            "XDM-TRANSFER-SEGMENT-STATE", $"Segment {segment.Index} is ready for transfer.",
+            CreateSegmentContext(segment, existingLength));
         if (existingLength == segment.Length)
         {
+            Record(context, TransferDiagnosticStage.Http, TransferDiagnosticSeverity.Information,
+                "XDM-TRANSFER-SEGMENT-COMPLETED", $"Segment {segment.Index} was already complete.",
+                CreateSegmentContext(segment, existingLength));
             return;
         }
 
@@ -173,6 +208,9 @@ internal sealed class SegmentedDownloadExecutor
                     limiter,
                     reportBytes,
                     cancellationToken).ConfigureAwait(false);
+                Record(context, TransferDiagnosticStage.Http, TransferDiagnosticSeverity.Information,
+                    "XDM-TRANSFER-SEGMENT-COMPLETED", $"Segment {segment.Index} completed and was length-validated.",
+                    CreateSegmentContext(segment, segment.Length));
                 return;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -184,7 +222,19 @@ internal sealed class SegmentedDownloadExecutor
                 && attempt < _retryPolicy.MaximumAttempts)
             {
                 existingLength = File.Exists(segmentPath) ? new FileInfo(segmentPath).Length : 0;
-                await Task.Delay(_retryPolicy.GetDelay(attempt), cancellationToken).ConfigureAwait(false);
+                TimeSpan delay = _retryPolicy.GetDelay(attempt);
+                Record(context, TransferDiagnosticStage.Retry, TransferDiagnosticSeverity.Warning,
+                    "XDM-TRANSFER-SEGMENT-RETRY", $"Segment {segment.Index} failed transiently and will be retried.",
+                    new Dictionary<string, string?>(StringComparer.Ordinal)
+                    {
+                        ["attempt"] = attempt.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ["delayMilliseconds"] = delay.TotalMilliseconds.ToString("0", System.Globalization.CultureInfo.InvariantCulture),
+                        ["exception"] = exception.GetType().Name,
+                        ["segmentIndex"] = segment.Index.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ["segmentStart"] = segment.Start.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ["segmentEnd"] = segment.End.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    });
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }
     }
@@ -375,6 +425,73 @@ internal sealed class SegmentedDownloadExecutor
             && expected != actual)
         {
             throw new DownloadIntegrityException("The remote file modification date changed during segmented transfer.");
+        }
+    }
+
+
+    private static Dictionary<string, string?> CreateResponseDiagnosticContext(HttpResponseMessage response)
+    {
+        Dictionary<string, string?> context = new(StringComparer.Ordinal)
+        {
+            ["statusCode"] = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["httpVersion"] = response.Version.ToString(),
+            ["contentLength"] = response.Content.Headers.ContentLength?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["contentRange"] = response.Content.Headers.ContentRange?.ToString(),
+            ["acceptRanges"] = string.Join(",", response.Headers.AcceptRanges)
+        };
+        AddDiagnosticHeader(context, response, "Content-Type");
+        AddDiagnosticHeader(context, response, "Content-Length");
+        AddDiagnosticHeader(context, response, "Content-Range");
+        AddDiagnosticHeader(context, response, "Accept-Ranges");
+        AddDiagnosticHeader(context, response, "ETag");
+        AddDiagnosticHeader(context, response, "Last-Modified");
+        AddDiagnosticHeader(context, response, "Retry-After");
+        AddDiagnosticHeader(context, response, "Content-Disposition");
+        return context;
+    }
+
+    private static void AddDiagnosticHeader(
+        Dictionary<string, string?> context,
+        HttpResponseMessage response,
+        string name)
+    {
+        if (response.Headers.TryGetValues(name, out IEnumerable<string>? responseValues))
+        {
+            context[$"header.{name}"] = string.Join(", ", responseValues.Take(16));
+            return;
+        }
+
+        if (response.Content.Headers.TryGetValues(name, out IEnumerable<string>? contentValues))
+        {
+            context[$"header.{name}"] = string.Join(", ", contentValues.Take(16));
+        }
+    }
+
+    private static Dictionary<string, string?> CreateSegmentContext(DownloadSegment segment, long existingBytes)
+        => new(StringComparer.Ordinal)
+        {
+            ["segmentIndex"] = segment.Index.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["segmentStart"] = segment.Start.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["segmentEnd"] = segment.End.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["segmentLength"] = segment.Length.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["segmentBytes"] = existingBytes.ToString(System.Globalization.CultureInfo.InvariantCulture)
+        };
+
+    private void Record(
+        SegmentedDownloadContext context,
+        TransferDiagnosticStage stage,
+        TransferDiagnosticSeverity severity,
+        string code,
+        string message,
+        IReadOnlyDictionary<string, string?>? details = null)
+    {
+        try
+        {
+            _diagnostics.Record(context.DownloadId, stage, severity, code, message, details);
+        }
+        catch
+        {
+            // Diagnostics must never interrupt a transfer.
         }
     }
 

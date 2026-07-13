@@ -125,6 +125,8 @@ public sealed class QueueSchedulerRuntimeTests
 
         public QueueRuntimeSnapshot QueueRuntime { get; private set; } = QueueRuntimeSnapshot.Empty;
 
+        public int UndoableRemovalCount => 0;
+
         public List<string> StartedQueues { get; } = [];
 
         public List<string> StoppedQueues { get; } = [];
@@ -175,6 +177,9 @@ public sealed class QueueSchedulerRuntimeTests
 
         public Task RemoveAsync(string downloadId, bool deletePartialFile = false, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
+
+        public Task<string?> UndoLastRemovalAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<string?>(null);
 
         public Task DeleteAsync(
             string downloadId,

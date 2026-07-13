@@ -46,3 +46,16 @@ Metalink v4 imports support ordered URLs, declared size, SHA-256, and SHA-512. X
 ## Persistence and portability
 
 History snapshots and XDM download-list exports retain expected checksums, expected lengths, mirrors, actual checksum, verification time, recovery state, and integrity status. Existing JSON remains compatible because all added fields are optional.
+
+## Deterministic HTTP fault laboratory
+
+The download-engine test project includes a loopback HTTP/1.1 fault server that exercises the real `SocketsHttpHandler` path instead of only mocked `HttpMessageHandler` responses. Tests can deterministically vary status codes, headers, declared body length, bytes actually written, entity validators, and behavior by request attempt.
+
+The initial reliability matrix covers:
+
+- interrupted responses followed by a validated range resume;
+- changed entity tags on a `416 Range Not Satisfiable` completion candidate;
+- contradictory `Content-Range` and `Content-Length` values;
+- real socket behavior for premature response termination.
+
+The same fixture can model ignored ranges, redirects, expiring URLs, authentication challenges, rate limiting, incorrect lengths, and mirror failures without calling public internet services. TLS, proxy, HLS, DASH, and very-large logical-file scenarios remain separate extensions because they require protocol-specific listeners or fixtures.

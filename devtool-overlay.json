@@ -1,27 +1,27 @@
 {
-  "name": "xdm_organization_duplicate_prevention_overlay",
+  "name": "xdm_desktop_productivity_fixed_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "595bc5d",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "organization-duplicate-prevention",
-  "description": "Adds tags, smart collections, destination routing rules, duplicate URL/content detection, archive protection, filename conflict previews, missing-file detection, and safe relinking.",
+  "phase": "desktop-productivity-workflows-fixed",
+  "description": "Implements the high-value desktop UX phase with Avalonia 12-compatible tray, flyout, and data-transfer access, plus native multi-selection, context actions, undoable history removal, notification center, drag and drop, command palette, tray controls, compact window, advanced search discoverability, and persisted workspace preferences.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
     "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Add organization and duplicate prevention workflows",
+  "commitMessage": "Add desktop productivity workflows",
   "constraints": [
-    "Apply on top of commit 595bc5d",
+    "Apply after xdm_diagnostics_warning_cleanup_overlay.zip",
     "Validate only app/XDM/XDM.Modern.sln",
     "Require zero warnings and zero errors",
-    "Preserve download ownership, resume integrity, media workflows, and smart queues",
-    "Persist organization metadata through history and portable download lists",
-    "Protect archived entries from automatic history pruning",
-    "Never overwrite or delete an unrelated file during relinking",
-    "Drain active transfer and persistence work before DownloadManager disposal returns",
-    "Do not modify docs/parity/features.json"
+    "Preserve reliable-transfer, diagnostics, browser-integration, media, queue, and organization behavior",
+    "Keep history undo bounded and do not delete completed files for history-only removal",
+    "Keep notification and preference storage bounded or best-effort so UI features cannot interrupt transfers",
+    "Do not weaken per-download desktop-notification controls or clipboard review defaults",
+    "Resolve application tray icons through TrayIcon.GetIcons(Application), not generated XAML fields",
+    "Resolve button flyouts through Button.Flyout, not generated Flyout names",
+    "Use IDataTransfer.TryGetFiles for Avalonia 12 drag-and-drop file extraction"
   ]
 }

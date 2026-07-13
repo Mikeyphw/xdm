@@ -32,4 +32,10 @@ internal static partial class DownloadEngineLog
         string downloadId,
         long offset,
         HttpStatusCode statusCode);
+
+    [LoggerMessage(EventId = 2006, Level = LogLevel.Debug, Message = "Transfer diagnostics sink failed for download {DownloadId}.")]
+    public static partial void TransferDiagnosticsSinkFailed(
+        ILogger logger,
+        string downloadId,
+        Exception exception);
 }

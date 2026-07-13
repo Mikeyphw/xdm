@@ -1,6 +1,7 @@
 namespace XDM.DownloadEngine;
 
 internal sealed record SegmentedDownloadContext(
+    string DownloadId,
     Uri Source,
     string DestinationPath,
     IReadOnlyDictionary<string, string>? Headers,
