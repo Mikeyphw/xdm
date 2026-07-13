@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-13T02:56:41.353673Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_organization_duplicate_prevention_overlay.zip",
+  "artifact_name": "xdm_organization_duplicate_prevention_overlay.zip",
+  "type": "overlay",
+  "sha256": "cd5da2a96ab08cc23502f52ad02f6f28cc0efae545e86a6e9426476679a4fe5d",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Add organization and duplicate prevention workflows",
+  "commit_hash": "",
+  "file_count": 28,
+  "change_counts": {
+    "add": 7,
+    "modify": 21
+  },
+  "manifest": {},
+  "history_id": "b1de9c9d3ab546b799555f3492281f91"
+}
