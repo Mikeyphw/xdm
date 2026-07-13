@@ -17,6 +17,7 @@ public sealed class AccessibilityLayoutTests
         window.ApplyResponsiveShell(760);
 
         Assert.Single(window.GetLogicalDescendants().OfType<DownloadsView>());
+        Assert.Single(window.GetLogicalDescendants().OfType<RecoveryView>());
         Assert.Single(window.GetLogicalDescendants().OfType<QueuesView>());
         Assert.Single(window.GetLogicalDescendants().OfType<SchedulerView>());
         Assert.Single(window.GetLogicalDescendants().OfType<BrowserIntegrationView>());
@@ -135,7 +136,8 @@ public sealed class AccessibilityLayoutTests
         Assert.Single(optionsGrid.RowDefinitions);
         Assert.Equal(3, searchGrid.ColumnDefinitions.Count);
         Assert.Equal(2d, workspace.ColumnDefinitions[0].Width.Value);
-        Assert.Equal(1d, workspace.ColumnDefinitions[2].Width.Value);
+        Assert.Equal(GridUnitType.Pixel, workspace.ColumnDefinitions[2].Width.GridUnitType);
+        Assert.Equal(360d, workspace.ColumnDefinitions[2].Width.Value);
     }
 
     [AvaloniaFact]
@@ -148,6 +150,19 @@ public sealed class AccessibilityLayoutTests
         Assert.NotNull(window.FindControl<Border>("OperationStatusBanner"));
         Border sectionIcon = Assert.IsType<Border>(window.FindControl<Border>("SectionIcon"));
         Assert.False(sectionIcon.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public void DesktopProductivityControlsAreAvailable()
+    {
+        MainWindow window = new();
+        DownloadsView downloads = Assert.Single(window.GetLogicalDescendants().OfType<DownloadsView>());
+
+        Assert.NotNull(window.FindControl<Button>("CommandPaletteButton"));
+        Assert.NotNull(window.FindControl<Button>("NotificationCenterButton"));
+        ListBox list = Assert.IsType<ListBox>(downloads.FindControl<ListBox>("DownloadsList"));
+        Assert.True(list.SelectionMode.HasFlag(SelectionMode.Multiple));
+        Assert.NotNull(downloads.FindControl<GridSplitter>("DownloadWorkspaceSplitter"));
     }
 
     [AvaloniaFact]

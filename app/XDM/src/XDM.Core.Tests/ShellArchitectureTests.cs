@@ -14,6 +14,7 @@ public sealed class ShellArchitectureTests
         "ConversionView",
         "SettingsView",
         "DiagnosticsView",
+        "RecoveryView",
     ];
 
     [Fact]

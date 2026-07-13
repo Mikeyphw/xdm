@@ -433,5 +433,7 @@
   "ui_media_source": "Source",
   "ui_media_protocol": "Protocol",
   "ui_media_status": "Status",
-  "ui_media_post_processing_preset": "Post-processing preset"
+  "ui_media_post_processing_preset": "Post-processing preset",
+  "nav_recovery": "Recovery",
+  "nav_recovery_summary": "Review interrupted transfers and durable partial artifacts before resuming them."
 }

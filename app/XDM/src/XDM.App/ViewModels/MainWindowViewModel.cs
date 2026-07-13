@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XDM.BrowserIntegration;
 using XDM.Core.Abstractions;
+using XDM.Core.Diagnostics;
 using XDM.Core.Downloads;
 using XDM.Core.Localization;
 using XDM.Core.Policies;
@@ -27,6 +28,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private static readonly string[] LineSeparators = ["\r\n", "\n"];
     private readonly IApplicationState _applicationState;
     private readonly IDownloadManager _downloadManager;
+    private readonly IDownloadRecoveryCoordinator _downloadRecoveryCoordinator;
+    private readonly IRecoveryService _recoveryService;
     private readonly ISettingsService _settingsService;
     private readonly LocalizationService _localization;
     private readonly IQueueSchedulerRuntime _queueSchedulerRuntime;
@@ -43,6 +46,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IConversionQueueService _conversionQueueService;
     private readonly IDiagnosticEventStore _diagnosticEvents;
     private readonly IDiagnosticBundleService _diagnosticBundleService;
+    private readonly ITransferDiagnosticSource _transferDiagnosticSource;
+    private readonly ITransferHealthProbe _transferHealthProbe;
     private readonly IDesktopNotificationService _desktopNotifications;
     private readonly IBrowserHostInstaller _browserHostInstaller;
     private readonly IApplicationLifetimeService _applicationLifetimeService;
@@ -56,6 +61,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IApplicationState applicationState,
         IPlatformInfo platformInfo,
         IDownloadManager downloadManager,
+        IDownloadRecoveryCoordinator downloadRecoveryCoordinator,
         IAria2Service aria2Service,
         ISettingsService settingsService,
         LocalizationService localization,
@@ -76,14 +82,22 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IConversionQueueService conversionQueueService,
         IDiagnosticEventStore diagnosticEvents,
         IDiagnosticBundleService diagnosticBundleService,
+        ITransferDiagnosticSource transferDiagnosticSource,
+        ITransferHealthProbe transferHealthProbe,
+        ISubsystemHealthService subsystemHealthService,
+        IDeterministicDownloadTestService deterministicDownloadTestService,
         IRecoveryService recoveryService,
         IDesktopNotificationService desktopNotifications,
+        INotificationCenterService notificationCenter,
+        DesktopProductivityStateStore productivityStateStore,
         IBrowserHostInstaller browserHostInstaller,
         IApplicationLifetimeService applicationLifetimeService,
         IUpdateService updateService)
     {
         _applicationState = applicationState;
         _downloadManager = downloadManager;
+        _downloadRecoveryCoordinator = downloadRecoveryCoordinator;
+        _recoveryService = recoveryService;
         _aria2Service = aria2Service;
         _settingsService = settingsService;
         _localization = localization;
@@ -104,7 +118,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _conversionQueueService = conversionQueueService;
         _diagnosticEvents = diagnosticEvents;
         _diagnosticBundleService = diagnosticBundleService;
+        _transferDiagnosticSource = transferDiagnosticSource;
+        _transferHealthProbe = transferHealthProbe;
+        _subsystemHealthService = subsystemHealthService;
+        _deterministicDownloadTestService = deterministicDownloadTestService;
         _desktopNotifications = desktopNotifications;
+        _notificationCenter = notificationCenter;
+        _productivityStateStore = productivityStateStore;
         _browserHostInstaller = browserHostInstaller;
         _applicationLifetimeService = applicationLifetimeService;
         _updateService = updateService;
@@ -115,6 +135,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         Sections = new ObservableCollection<NavigationItem>
         {
             new("downloads", "nav_downloads", "M12 3V14.17L16.59 9.59L18 11L11 18L4 11L5.41 9.59L10 14.17V3H12M4 19H18V21H4V19Z", "nav_downloads_summary", localization),
+            new("recovery", "nav_recovery", "M12 2A10 10 0 1 0 22 12H20A8 8 0 1 1 17.66 6.34L15 9H22V2L19.08 4.92A9.96 9.96 0 0 0 12 2Z", "nav_recovery_summary", localization),
             new("queues", "nav_queues", "M3 5H5V7H3V5M7 5H21V7H7V5M3 11H5V13H3V11M7 11H21V13H7V11M3 17H5V19H3V17M7 17H21V19H7V17Z", "nav_queues_summary", localization),
             new("scheduler", "nav_scheduler", "M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2M13 7V11.59L16.2 14.79L14.79 16.2L11 12.41V7H13Z", "nav_scheduler_summary", localization),
             new("browser", "nav_browser", "M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2M19.93 11H16.95A15.7 15.7 0 0 0 15.84 6.65A8.03 8.03 0 0 1 19.93 11M12 4C13.38 5.67 14.19 8.05 14.41 11H9.59C9.81 8.05 10.62 5.67 12 4M4.07 13H7.05C7.18 14.54 7.52 16 8.05 17.35A8.03 8.03 0 0 1 4.07 13M9.59 13H14.41C14.19 15.95 13.38 18.33 12 20C10.62 18.33 9.81 15.95 9.59 13M15.95 17.35C16.48 16 16.82 14.54 16.95 13H19.93A8.03 8.03 0 0 1 15.95 17.35M8.05 6.65C7.52 8 7.18 9.46 7.05 11H4.07A8.03 8.03 0 0 1 8.05 6.65Z", "nav_browser_summary", localization),
@@ -146,6 +167,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             static preset => string.Equals(preset.Id, "mp4-h264-balanced", StringComparison.Ordinal));
         ApplyConversionQueue(conversionQueueService.Current);
         ApplyDiagnostics();
+        ApplySelectedTransferDiagnostics();
+        ApplyHealthProbeResult(transferHealthProbe.LastResult);
+        ApplySubsystemHealth(subsystemHealthService.Current);
+        if (deterministicDownloadTestService.LastResult is DeterministicDownloadTestResult testResult)
+        {
+            ApplyDeterministicDownloadTest(testResult);
+        }
         PreviousSessionWasUnclean = recoveryService.PreviousSessionWasUnclean;
         OnPropertyChanged(nameof(ShowRecoveryReview));
         OnPropertyChanged(nameof(RecoveryReviewSummary));
@@ -154,6 +182,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             : recoveryService.PreviousSessionWasUnclean
                 ? "The previous session did not shut down cleanly. Review recovered downloads before resuming them."
                 : "No recovery action is currently required.";
+        ApplyRecoveryCandidates(downloadRecoveryCoordinator.Current);
+        downloadRecoveryCoordinator.Changed += OnRecoveryCandidatesChanged;
+        if (recoveryService.PreviousSessionWasUnclean)
+        {
+            SelectedSection = Sections.First(section => string.Equals(section.Id, "recovery", StringComparison.Ordinal));
+        }
         applicationState.Changed += OnApplicationStateChanged;
         settingsService.Changed += OnSettingsChanged;
         localization.Changed += OnLocalizationChanged;
@@ -163,6 +197,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         browserIntegrationService.StatusChanged += OnBrowserStatusChanged;
         browserIntegrationService.CaptureReceived += OnBrowserCaptureReceived;
         diagnosticEvents.Changed += OnDiagnosticsChanged;
+        transferDiagnosticSource.Changed += OnTransferDiagnosticsChanged;
+        transferHealthProbe.Changed += OnTransferHealthProbeChanged;
+        subsystemHealthService.Changed += OnSubsystemHealthChanged;
+        deterministicDownloadTestService.Changed += OnDeterministicDownloadTestChanged;
+        notificationCenter.Changed += OnNotificationCenterChanged;
+        InitializeProductivity();
         conversionQueueService.Changed += OnConversionQueueChanged;
         aria2Service.Changed += OnAria2SnapshotChanged;
     }
@@ -188,6 +228,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public ObservableCollection<DownloadQueueDefinition> SelectedQueueDependencies { get; } = [];
 
     public ObservableCollection<DiagnosticEvent> DiagnosticEvents { get; } = [];
+
+    public ObservableCollection<TransferDiagnosticEntryViewModel> SelectedTransferDiagnostics { get; } = [];
+
+    public ObservableCollection<TransferHealthProbeStage> TransferHealthProbeStages { get; } = [];
+
+    public bool CanRunTransferHealthProbe => HasSelectedDownload && !IsTransferHealthProbeRunning;
 
     public ObservableCollection<DownloadTimelineEntry> SelectedDownloadTimeline { get; } = [];
 
@@ -369,7 +415,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public bool HasNoSelectedDownload => SelectedDownload is null;
 
-    public int RecoveryItemCount => Downloads.Count(static item => item.RecoveryRequired);
+    public int RecoveryItemCount => RecoveryCandidates.Count;
 
     public bool HasRecoveryItems => RecoveryItemCount > 0;
 
@@ -596,6 +642,15 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string diagnosticBundlePath = "No diagnostic bundle exported yet";
 
+    [ObservableProperty]
+    private string selectedTransferDiagnosticSummary = "Select a download to inspect its instrumented transfer timeline.";
+
+    [ObservableProperty]
+    private string transferHealthProbeStatus = "Select a download, then run the bounded live probe.";
+
+    [ObservableProperty]
+    private bool isTransferHealthProbeRunning;
+
     public IEnumerable<DownloadQueueDefinition> QueueDependencyCandidates
     {
         get
@@ -618,6 +673,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public bool IsDownloadsVisible
         => string.Equals(SelectedSection?.Id, "downloads", StringComparison.Ordinal);
+
+    public bool IsRecoveryVisible
+        => string.Equals(SelectedSection?.Id, "recovery", StringComparison.Ordinal);
 
     public bool IsQueuesVisible
         => string.Equals(SelectedSection?.Id, "queues", StringComparison.Ordinal);
@@ -645,6 +703,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public bool IsPlaceholderVisible
         => !IsDownloadsVisible
+            && !IsRecoveryVisible
             && !IsQueuesVisible
             && !IsSchedulerVisible
             && !IsBrowserIntegrationVisible
@@ -658,6 +717,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         CurrentTitle = value?.Title ?? _localization["nav_downloads"];
         CurrentSummary = value?.Summary ?? string.Empty;
         OnPropertyChanged(nameof(IsDownloadsVisible));
+        OnPropertyChanged(nameof(IsRecoveryVisible));
         OnPropertyChanged(nameof(IsQueuesVisible));
         OnPropertyChanged(nameof(IsSchedulerVisible));
         OnPropertyChanged(nameof(IsBrowserIntegrationVisible));
@@ -679,13 +739,23 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     partial void OnSelectedDownloadChanged(DownloadItemViewModel? value)
     {
         RefreshSelectedDownloadTimeline(value?.Id);
+        ApplySelectedTransferDiagnostics();
+        TransferHealthProbeStages.Clear();
+        TransferHealthProbeStatus = value is null
+            ? "Select a download, then run the bounded live probe."
+            : $"Ready to probe {value.Source.GetLeftPart(UriPartial.Authority)} and the destination disk.";
         SelectedDownloadPriority = value?.Priority ?? DownloadPriority.Normal;
         ApplySelectedHistoryItem(value);
         SelectedDownloadTags = value?.TagsText ?? string.Empty;
+        RefreshSelectedDownloadNotificationState();
         RelinkDestinationPath = value?.DestinationPath ?? string.Empty;
         OnPropertyChanged(nameof(HasSelectedDownload));
         OnPropertyChanged(nameof(HasNoSelectedDownload));
+        OnPropertyChanged(nameof(CanRunTransferHealthProbe));
     }
+
+    partial void OnIsTransferHealthProbeRunningChanged(bool value)
+        => OnPropertyChanged(nameof(CanRunTransferHealthProbe));
 
     partial void OnOperationMessageChanged(string value)
         => IsOperationMessageVisible = !string.IsNullOrWhiteSpace(value);
@@ -950,8 +1020,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ReviewRecoveryItems()
     {
-        SelectedDownload = Downloads.FirstOrDefault(static item => item.RecoveryRequired)
-            ?? Downloads.FirstOrDefault();
+        SelectedSection = Sections.FirstOrDefault(static section =>
+                string.Equals(section.Id, "recovery", StringComparison.Ordinal))
+            ?? SelectedSection;
+        SelectedRecoveryCandidate ??= RecoveryCandidates.FirstOrDefault();
         PreviousSessionWasUnclean = false;
         OnPropertyChanged(nameof(ShowRecoveryReview));
         OperationMessage = RecoveryReviewSummary;
@@ -1009,7 +1081,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         string id = SelectedDownload.Id;
         await _downloadManager.RemoveAsync(id);
-        OperationMessage = "Download removed from history.";
+        CanUndoHistoryRemoval = _downloadManager.UndoableRemovalCount > 0;
+        OperationMessage = "Download removed from history. Use Undo to restore it.";
     }
 
 
@@ -1096,7 +1169,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             await _downloadManager.RemoveAsync(download.Id);
         }
 
-        OperationMessage = $"Removed {targets.Length} download(s) from history.";
+        CanUndoHistoryRemoval = _downloadManager.UndoableRemovalCount > 0;
+        OperationMessage = $"Removed {targets.Length} download(s) from history. Use Undo to restore them one at a time.";
     }
 
     [RelayCommand]
@@ -1845,12 +1919,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             return;
         }
 
-        NewDownloadUrls = string.Join(Environment.NewLine, urls.Select(static uri => uri.AbsoluteUri));
-        OperationMessage = $"Captured {urls.Count} URL{(urls.Count == 1 ? string.Empty : "s")} from the clipboard.";
         if (AutoAddClipboardLinks)
         {
+            NewDownloadUrls = string.Join(Environment.NewLine, urls.Select(static uri => uri.AbsoluteUri));
+            OperationMessage = $"Captured {urls.Count} URL{(urls.Count == 1 ? string.Empty : "s")} from the clipboard.";
             await AddDownloadAsync();
+            return;
         }
+
+        SetClipboardReview(urls);
+        OperationMessage = $"Clipboard link{(urls.Count == 1 ? string.Empty : "s")} ready for review.";
     }
 
     public void Dispose()
@@ -1874,6 +1952,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _browserIntegrationService.StatusChanged -= OnBrowserStatusChanged;
         _browserIntegrationService.CaptureReceived -= OnBrowserCaptureReceived;
         _diagnosticEvents.Changed -= OnDiagnosticsChanged;
+        _transferDiagnosticSource.Changed -= OnTransferDiagnosticsChanged;
+        _transferHealthProbe.Changed -= OnTransferHealthProbeChanged;
+        _subsystemHealthService.Changed -= OnSubsystemHealthChanged;
+        _deterministicDownloadTestService.Changed -= OnDeterministicDownloadTestChanged;
+        _notificationCenter.Changed -= OnNotificationCenterChanged;
+        _downloadRecoveryCoordinator.Changed -= OnRecoveryCandidatesChanged;
         _conversionQueueService.Changed -= OnConversionQueueChanged;
         _aria2Service.Changed -= OnAria2SnapshotChanged;
         foreach (DownloadItemViewModel download in Downloads)
@@ -1882,6 +1966,129 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         GC.SuppressFinalize(this);
+    }
+
+    private void OnTransferDiagnosticsChanged(object? sender, EventArgs eventArgs)
+    {
+        if (_dispatcher.CheckAccess())
+        {
+            ApplySelectedTransferDiagnostics();
+        }
+        else
+        {
+            _dispatcher.Post(ApplySelectedTransferDiagnostics);
+        }
+    }
+
+    private void OnTransferHealthProbeChanged(object? sender, EventArgs eventArgs)
+    {
+        if (_dispatcher.CheckAccess())
+        {
+            ApplyHealthProbeResult(_transferHealthProbe.LastResult);
+        }
+        else
+        {
+            _dispatcher.Post(() => ApplyHealthProbeResult(_transferHealthProbe.LastResult));
+        }
+    }
+
+    private void ApplySelectedTransferDiagnostics()
+    {
+        SelectedTransferDiagnostics.Clear();
+        if (SelectedDownload is null)
+        {
+            SelectedTransferDiagnosticSummary = "Select a download to inspect its instrumented transfer timeline.";
+            ApplySelectedTransferInsights([]);
+            return;
+        }
+
+        IReadOnlyList<TransferDiagnosticEvent> events = _transferDiagnosticSource.Snapshot(SelectedDownload.Id);
+        foreach (TransferDiagnosticEvent item in events.Reverse().Take(250))
+        {
+            SelectedTransferDiagnostics.Add(new TransferDiagnosticEntryViewModel(item));
+        }
+
+        SelectedTransferDiagnosticSummary = events.Count == 0
+            ? $"No structured transfer events have been recorded for {SelectedDownload.FileName} yet."
+            : $"{events.Count} structured event{(events.Count == 1 ? string.Empty : "s")} for {SelectedDownload.FileName}; newest first.";
+        ApplySelectedTransferInsights(events);
+    }
+
+    private void ApplyHealthProbeResult(TransferHealthProbeResult? result)
+    {
+        TransferHealthProbeStages.Clear();
+        if (result is null)
+        {
+            return;
+        }
+
+        foreach (TransferHealthProbeStage stage in result.Stages)
+        {
+            TransferHealthProbeStages.Add(stage);
+        }
+
+        TransferHealthProbeStatus = $"{result.Summary} Target: {result.TargetOrigin}.";
+    }
+
+    [RelayCommand]
+    private async Task RunTransferHealthProbeAsync()
+    {
+        if (SelectedDownload is null || IsTransferHealthProbeRunning)
+        {
+            return;
+        }
+
+        IsTransferHealthProbeRunning = true;
+        TransferHealthProbeStatus = "Running bounded DNS, TCP, TLS, HTTP/range, and destination-disk checks…";
+        try
+        {
+            string destinationDirectory = Path.GetDirectoryName(SelectedDownload.DestinationPath)
+                ?? _settingsService.Current.DefaultDownloadDirectory;
+            TransferHealthProbeResult result = await _transferHealthProbe
+                .ProbeAsync(SelectedDownload.Source, destinationDirectory)
+                .ConfigureAwait(false);
+            await _dispatcher.InvokeAsync(() =>
+            {
+                ApplyHealthProbeResult(result);
+                return Task.CompletedTask;
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            await _dispatcher.InvokeAsync(() =>
+            {
+                TransferHealthProbeStatus = "The live health probe was cancelled.";
+                return Task.CompletedTask;
+            });
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            await _dispatcher.InvokeAsync(() =>
+            {
+                TransferHealthProbeStatus = $"Health probe failed: {exception.Message}";
+                return Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            await _dispatcher.InvokeAsync(() =>
+            {
+                IsTransferHealthProbeRunning = false;
+                return Task.CompletedTask;
+            });
+        }
+    }
+
+    [RelayCommand]
+    private void ClearSelectedTransferDiagnostics()
+    {
+        if (SelectedDownload is null)
+        {
+            return;
+        }
+
+        _transferDiagnosticSource.Clear(SelectedDownload.Id);
+        OperationMessage = "Selected transfer diagnostics cleared.";
     }
 
     private void OnDiagnosticsChanged(object? sender, EventArgs eventArgs)
@@ -2180,8 +2387,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         foreach (DownloadSnapshot download in snapshot.Downloads)
         {
-            bool stateChanged = !_lastDownloadStates.TryGetValue(download.Id, out DownloadState previousState)
-                || previousState != download.State;
+            bool hadPreviousState = _lastDownloadStates.TryGetValue(download.Id, out DownloadState previousState);
+            bool stateChanged = !hadPreviousState || previousState != download.State;
             _lastDownloadStates[download.Id] = download.State;
 
             if (existing.Remove(download.Id, out DownloadItemViewModel? item))
@@ -2198,13 +2405,23 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             if (stateChanged)
             {
                 AppendTimeline(download);
-                if (download.State == DownloadState.Completed)
+                if (hadPreviousState && download.State == DownloadState.Completed)
                 {
-                    _ = _desktopNotifications.ShowAsync("Download completed", download.FileName);
+                    _ = _notificationCenter.PublishAsync(
+                        "Download completed",
+                        download.FileName,
+                        NotificationCenterSeverity.Success,
+                        download.Id,
+                        ShouldShowDesktopNotification(download.Id));
                 }
-                else if (download.State == DownloadState.Failed)
+                else if (hadPreviousState && download.State == DownloadState.Failed)
                 {
-                    _ = _desktopNotifications.ShowAsync("Download failed", download.FileName);
+                    _ = _notificationCenter.PublishAsync(
+                        "Download failed",
+                        download.FileName,
+                        NotificationCenterSeverity.Error,
+                        download.Id,
+                        ShouldShowDesktopNotification(download.Id));
                 }
             }
         }
@@ -2218,6 +2435,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         RefreshBulkSelectionState();
         RefreshFilteredDownloads();
         RefreshDestinationConflictPreview();
+        OnPropertyChanged(nameof(AggregateProgressText));
+        OnPropertyChanged(nameof(MiniDownloads));
         OnPropertyChanged(nameof(RecoveryItemCount));
         OnPropertyChanged(nameof(HasRecoveryItems));
         OnPropertyChanged(nameof(ShowRecoveryReview));
@@ -2717,6 +2936,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             download.RefreshLocalization(_localization);
         }
         RefreshAria2Localization();
+        ApplyRecoveryCandidates(_downloadRecoveryCoordinator.Current);
 
         CurrentTitle = SelectedSection?.Title ?? _localization["nav_downloads"];
         CurrentSummary = SelectedSection?.Summary ?? string.Empty;

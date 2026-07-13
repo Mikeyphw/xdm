@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="XDM.App.Views.RecoveryView"
+             AutomationProperties.Name="Recovery workbench">
+  <Grid RowDefinitions="Auto,*" RowSpacing="12">
+    <Border Background="{DynamicResource XdmPanelBackground}"
+            BorderBrush="{DynamicResource XdmBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="10"
+            Padding="16">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Startup recovery workbench" Classes="section-title"/>
+          <TextBlock Text="{Binding RecoveryCandidateSummary}"
+                     Classes="supporting"
+                     TextWrapping="Wrap"/>
+          <TextBlock Text="Recovered jobs remain paused until you explicitly validate, resume, repair, or restart them."
+                     Classes="caption"
+                     TextWrapping="Wrap"/>
+        </StackPanel>
+        <Button Grid.Column="1"
+                Classes="secondary"
+                Content="Scan again"
+                Command="{Binding RefreshRecoveryCommand}"/>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="2*,3*" ColumnSpacing="12">
+      <Border Background="{DynamicResource XdmPanelBackground}"
+              BorderBrush="{DynamicResource XdmBorderBrush}"
+              BorderThickness="1"
+              CornerRadius="10"
+              Padding="10">
+        <Grid RowDefinitions="Auto,*" RowSpacing="8">
+          <TextBlock Text="Recovery items" Classes="card-title" Margin="4"/>
+          <ListBox Grid.Row="1"
+                   ItemsSource="{Binding RecoveryCandidates}"
+                   SelectedItem="{Binding SelectedRecoveryCandidate}"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   AutomationProperties.Name="Recovery candidates">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="8" RowSpacing="3">
+                  <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                  <Border Grid.Column="1" Background="{DynamicResource XdmSelectedBackground}" CornerRadius="6" Padding="7,3">
+                    <TextBlock Text="{Binding ClassificationText}" Classes="caption" Foreground="{DynamicResource XdmAccentForeground}"/>
+                  </Border>
+                  <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding SourceText}" Classes="caption" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding PartialBytesText, StringFormat=Partial: {0}}" Classes="supporting"/>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1"
+              Background="{DynamicResource XdmPanelBackground}"
+              BorderBrush="{DynamicResource XdmBorderBrush}"
+              BorderThickness="1"
+              CornerRadius="10"
+              Padding="16">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Spacing="14" IsVisible="{Binding HasSelectedRecoveryCandidate}">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding SelectedRecoveryCandidate.FileName}" Classes="section-title"/>
+              <TextBlock Text="{Binding SelectedRecoveryCandidate.DestinationPath}" Classes="caption" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding SelectedRecoveryCandidate.SourceText}" Classes="supporting" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="7">
+              <TextBlock Text="Classification" Classes="form-label"/>
+              <TextBlock Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.ClassificationText}" Foreground="{DynamicResource XdmAccentForeground}"/>
+              <TextBlock Grid.Row="1" Text="Partial bytes" Classes="form-label"/>
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.PartialBytesText}"/>
+              <TextBlock Grid.Row="2" Text="Expected total" Classes="form-label"/>
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.ExpectedTotalText}"/>
+              <TextBlock Grid.Row="3" Text="Last checkpoint" Classes="form-label"/>
+              <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.CheckpointText}"/>
+              <TextBlock Grid.Row="4" Text="Resume validators" Classes="form-label"/>
+              <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.ValidatorText}"/>
+              <TextBlock Grid.Row="5" Text="ETag" Classes="form-label"/>
+              <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.EntityTagText}" Classes="caption" TextWrapping="Wrap"/>
+              <TextBlock Grid.Row="6" Text="Last-Modified" Classes="form-label"/>
+              <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.LastModifiedText}"/>
+              <TextBlock Grid.Row="7" Text="Expected checksum" Classes="form-label"/>
+              <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.ChecksumText}" Classes="caption" TextWrapping="Wrap"/>
+            </Grid>
+
+            <Border Background="{DynamicResource XdmInfoSoftBrush}" CornerRadius="8" Padding="12">
+              <StackPanel Spacing="5">
+                <TextBlock Text="Recommended action" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding SelectedRecoveryCandidate.RecommendedAction}" Classes="supporting" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+            <Border Classes="error-state" Padding="12">
+              <StackPanel Spacing="5">
+                <TextBlock Text="Why normal resume may be unsafe" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding SelectedRecoveryCandidate.UnsafeReason}" Classes="supporting" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+
+            <WrapPanel Orientation="Horizontal">
+              <Button Margin="0,0,8,8" Classes="primary" Content="Resume selected" Command="{Binding ResumeRecoveryCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanResume}"/>
+              <Button Margin="0,0,8,8" Classes="secondary" Content="Validate selected" Command="{Binding ValidateRecoveryCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanValidate}"/>
+              <Button Margin="0,0,8,8" Classes="secondary" Content="Verify and repair" Command="{Binding VerifyAndRepairRecoveryCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanRepair}"/>
+              <Button Margin="0,0,8,8" Classes="danger" Content="Restart from zero" Command="{Binding RestartRecoveryFromZeroCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanRepair}"/>
+              <Button Margin="0,0,8,8" Classes="quiet" Content="Locate partial file" Command="{Binding LocateRecoveryPartialCommand}"/>
+              <Button Margin="0,0,8,8" Classes="quiet" Content="Open partial-file folder" Command="{Binding OpenRecoveryFolderCommand}"/>
+              <Button Margin="0,0,8,8" Classes="quiet" Content="Remove recovery record" Command="{Binding RemoveRecoveryRecordCommand}"/>
+            </WrapPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

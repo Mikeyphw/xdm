@@ -15,6 +15,7 @@
         MinHeight="680"
         Background="{DynamicResource XdmWindowBackground}"
         KeyDown="MainWindow_KeyDown"
+        DragDrop.AllowDrop="True"
         AutomationProperties.Name="{Binding Localization[ui_xtreme_download_manager]}">
 
   <Window.Resources>
@@ -375,31 +376,97 @@
                 <TextBlock Text="{Binding CurrentSummary}" Classes="supporting" MaxWidth="760" TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
-            <Border x:Name="OperationStatusBanner" Grid.Column="2" Classes="notification-banner" VerticalAlignment="Center" MaxWidth="390" IsVisible="{Binding IsOperationMessageVisible}">
-              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
-                <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource XdmBrandBrush}" VerticalAlignment="Center" />
-                <TextBlock x:Name="OperationStatusText"
-                           Grid.Column="1"
-                           Text="{Binding OperationMessage}"
-                           AutomationProperties.Name="{Binding Localization[ui_operation_status]}"
-                           AutomationProperties.AutomationId="OperationStatus"
-                           AutomationProperties.LiveSetting="Polite"
-                           AutomationProperties.LandmarkType="Region"
-                           Foreground="{DynamicResource XdmAccentForeground}"
-                           Classes="supporting"
-                           TextWrapping="Wrap" />
-                <Button Grid.Column="2"
-                        Classes="quiet"
-                        Width="30"
-                        Height="30"
-                        Padding="4"
-                        Content="×"
-                        Command="{Binding DismissOperationMessageCommand}"
-                        ToolTip.Tip="{Binding Localization[ui_dismiss_status]}"
-                        AutomationProperties.Name="{Binding Localization[ui_dismiss_status]}"
-                        AutomationProperties.AutomationId="DismissOperationStatus" />
-              </Grid>
-            </Border>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Button x:Name="CommandPaletteButton" Classes="quiet" Content="⌘" Width="38" Height="38" ToolTip.Tip="Command palette (Ctrl+K)" Click="CommandPaletteButton_Click">
+                <Button.Flyout>
+                  <Flyout Placement="BottomEdgeAlignedRight" Opened="CommandPaletteFlyout_Opened" Closed="CommandPaletteFlyout_Closed">
+                    <Border Width="430" MaxHeight="520" Padding="8">
+                      <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                        <TextBox x:Name="CommandPaletteInput" Text="{Binding CommandPaletteQuery}" PlaceholderText="Type a command…" KeyDown="CommandPaletteInput_KeyDown"/>
+                        <ListBox x:Name="CommandPaletteList" Grid.Row="1" ItemsSource="{Binding FilteredCommandPaletteItems}" Background="Transparent" BorderThickness="0" DoubleTapped="CommandPaletteList_DoubleTapped">
+                          <ListBox.ItemTemplate>
+                            <DataTemplate>
+                              <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="6">
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Shortcut}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
+                                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Description}" Classes="caption" Foreground="{DynamicResource XdmSubtleForeground}" TextWrapping="Wrap"/>
+                              </Grid>
+                            </DataTemplate>
+                          </ListBox.ItemTemplate>
+                        </ListBox>
+                      </Grid>
+                    </Border>
+                  </Flyout>
+                </Button.Flyout>
+              </Button>
+
+              <Button x:Name="NotificationCenterButton" Classes="quiet" Width="46" Height="38" ToolTip.Tip="Notification center">
+                <Grid ColumnDefinitions="Auto,Auto">
+                  <TextBlock Text="●" Foreground="{DynamicResource XdmAccentForeground}" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="{Binding NotificationCount}" Classes="caption" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                </Grid>
+                <Button.Flyout>
+                  <Flyout Placement="BottomEdgeAlignedRight">
+                    <Border Width="440" MaxHeight="560" Padding="8">
+                      <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <StackPanel>
+                            <TextBlock Text="Notification center" Classes="section-title"/>
+                            <TextBlock Text="Recent transfer and application events" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
+                          </StackPanel>
+                          <Button Grid.Column="1" Classes="quiet" Content="Clear" Command="{Binding ClearNotificationsCommand}" IsEnabled="{Binding HasNotifications}"/>
+                        </Grid>
+                        <ScrollViewer Grid.Row="1" MaxHeight="460" VerticalScrollBarVisibility="Auto">
+                          <ItemsControl ItemsSource="{Binding Notifications}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate>
+                                <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="10" Margin="0,0,0,7">
+                                  <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+                                    <Button Grid.Column="1" Classes="quiet" Content="×" Click="DismissNotification_Click" Width="28" Height="28" Padding="2"/>
+                                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Message}" TextWrapping="Wrap" Classes="supporting"/>
+                                    <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="0,5,0,0">
+                                      <TextBlock Text="{Binding Severity}" Classes="caption" Foreground="{DynamicResource XdmAccentForeground}"/>
+                                      <TextBlock Text="{Binding TimestampText}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
+                                    </StackPanel>
+                                  </Grid>
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </ScrollViewer>
+                      </Grid>
+                    </Border>
+                  </Flyout>
+                </Button.Flyout>
+              </Button>
+
+              <Border x:Name="OperationStatusBanner" Classes="notification-banner" VerticalAlignment="Center" MaxWidth="390" IsVisible="{Binding IsOperationMessageVisible}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+                  <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource XdmBrandBrush}" VerticalAlignment="Center" />
+                  <TextBlock x:Name="OperationStatusText"
+                             Grid.Column="1"
+                             Text="{Binding OperationMessage}"
+                             AutomationProperties.Name="{Binding Localization[ui_operation_status]}"
+                             AutomationProperties.AutomationId="OperationStatus"
+                             AutomationProperties.LiveSetting="Polite"
+                             AutomationProperties.LandmarkType="Region"
+                             Foreground="{DynamicResource XdmAccentForeground}"
+                             Classes="supporting"
+                             TextWrapping="Wrap" />
+                  <Button Grid.Column="2"
+                          Classes="quiet"
+                          Width="30"
+                          Height="30"
+                          Padding="4"
+                          Content="×"
+                          Command="{Binding DismissOperationMessageCommand}"
+                          ToolTip.Tip="{Binding Localization[ui_dismiss_status]}"
+                          AutomationProperties.Name="{Binding Localization[ui_dismiss_status]}"
+                          AutomationProperties.AutomationId="DismissOperationStatus" />
+                </Grid>
+              </Border>
+            </StackPanel>
           </Grid>
 
           <Grid Grid.Row="1" RowDefinitions="Auto,*"
@@ -436,6 +503,7 @@
                   AutomationProperties.LandmarkType="Main"
                   AutomationProperties.AccessibilityView="Control">
               <views:DownloadsView x:Name="DownloadsPage" IsVisible="{Binding IsDownloadsVisible}" />
+              <views:RecoveryView IsVisible="{Binding IsRecoveryVisible}" />
               <views:QueuesView IsVisible="{Binding IsQueuesVisible}" />
               <views:SchedulerView IsVisible="{Binding IsSchedulerVisible}" />
               <views:BrowserIntegrationView IsVisible="{Binding IsBrowserIntegrationVisible}" />

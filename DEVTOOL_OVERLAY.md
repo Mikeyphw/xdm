@@ -1,49 +1,24 @@
-# XDM Protocol Regression Laboratory Fixed Overlay
+# XDM startup recovery coordinator and workbench overlay
 
 ## Purpose
 
-This overlay completes priority 10 from the modernization plan and includes the six
-deferred desktop-productivity warning fixes.
+Implements the first two parts of the crash-recovery plan on top of commit `b80102c`:
 
-## Protocol laboratory
+1. A startup recovery coordinator that scans persisted records and durable transfer artifacts.
+2. A dedicated recovery workbench shown after an unclean shutdown.
 
-- Expands the existing deterministic raw TCP server with:
-  - optional self-signed TLS,
-  - chunked transfer framing,
-  - declared-length mismatches,
-  - bounded response delays,
-  - connection aborts,
-  - raw malformed response headers.
-- Adds named loopback scenarios for:
-  - valid, invalid, ignored, and unsatisfied ranges,
-  - redirect chains,
-  - expiring URLs,
-  - changed ETags,
-  - interrupted transfers,
-  - chunked responses,
-  - incorrect content lengths,
-  - Basic authentication,
-  - proxy authentication failures,
-  - rate limiting,
-  - TLS trust failures,
-  - 5 TiB logical files,
-  - malformed filenames and headers,
-  - HLS and DASH manifests and segments.
-- Adds 17 laboratory behavior tests and 7 real download-engine integration tests.
-- Restores real-socket resume-integrity coverage that later full-file overlays had displaced.
+## Included
 
-## Warning cleanup
-
-- Uses `string[]` for the concrete drag-and-drop path collection (`CA1859`).
-- Adds a public parameterless `MiniWindow` constructor for Avalonia runtime loading (`AVLN3001`).
-- Reuses a static expected-ID array in productivity tests (`CA1861`).
-- Passes `TestContext.Current.CancellationToken` through asynchronous productivity tests (`xUnit1051`).
+- Classifies known transfers as ready to resume, requiring validation, requiring repair, missing partial data, changed remote file, or recovered interrupted finalization.
+- Discovers orphaned `.xdm.part`, `.xdm.resume.json`, and `.xdm.finalizing` artifacts in configured destination roots.
+- Keeps interrupted active transfers paused; the coordinator never starts downloads.
+- Adds a bounded remote identity validation action using length, ETag, Last-Modified, and range behavior.
+- Adds a dedicated Recovery navigation page with the requested metadata and actions.
+- Opens the Recovery page automatically after an unclean shutdown, including when the scan finds no damaged state.
+- Adds coordinator regression tests and extends the app layout test for the new page.
 
 ## Validation
 
-The artifact requests restore, build, and all tests for `app/XDM/XDM.Modern.sln` and is
-intended to finish with zero warnings and zero errors.
+Devtool should restore, build, and test `app/XDM/XDM.Modern.sln` with zero warnings and zero errors.
 
-## Compile correction
-
-- Uses `paths.Length` after the drag-and-drop collection was intentionally materialized as a `string[]`; this fixes the `CS0019` method-group comparison reported by the first artifact.
+- Updates the shell architecture contract to include the dedicated `RecoveryView`.
