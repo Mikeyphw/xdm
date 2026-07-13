@@ -1,5 +1,7 @@
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Input.Platform;
@@ -55,16 +57,24 @@ public partial class MainWindow : Window
     private WindowStateStore _windowStateStore;
     private LocalizationService? _localization;
     private int _responsiveShellBand = -1;
+    private readonly FlyoutBase _commandPaletteFlyout;
+    private readonly FlyoutBase _notificationCenterFlyout;
 
     public MainWindow()
     {
         _windowStateStore = new WindowStateStore();
         InitializeComponent();
+        _commandPaletteFlyout = CommandPaletteButton.Flyout
+            ?? throw new InvalidOperationException("The command-palette button must define a flyout.");
+        _notificationCenterFlyout = NotificationCenterButton.Flyout
+            ?? throw new InvalidOperationException("The notification-center button must define a flyout.");
         _clipboardTimer.Tick += ClipboardTimer_Tick;
         Opened += MainWindow_Opened;
         Closing += MainWindow_Closing;
         Closed += (_, _) => _clipboardTimer.Stop();
         SizeChanged += (_, _) => UpdateResponsiveShell();
+        DragDrop.AddDropHandler(this, MainWindow_Drop);
+        DragDrop.AddDragOverHandler(this, MainWindow_DragOver);
     }
 
     public MainWindow(
@@ -77,9 +87,14 @@ public partial class MainWindow : Window
         _windowStateStore = windowStateStore;
         _localization = localization;
         DataContext = viewModel;
+        viewModel.UiActionRequested += ViewModel_UiActionRequested;
         localization.Changed += Localization_Changed;
         ApplyLocalizationAndAccessibility();
-        Closed += (_, _) => localization.Changed -= Localization_Changed;
+        Closed += (_, _) =>
+        {
+            localization.Changed -= Localization_Changed;
+            viewModel.UiActionRequested -= ViewModel_UiActionRequested;
+        };
         AppLog.MainWindowInitialized(logger);
     }
 
@@ -105,6 +120,7 @@ public partial class MainWindow : Window
         _clipboardTimer.Start();
         ApplyLocalizationAndAccessibility();
         UpdateResponsiveShell();
+        DownloadsPage.ApplyPersistedDetailsWidth();
         if (App.LaunchOptions.ResetWindowState)
         {
             await _windowStateStore.ResetAsync();
@@ -291,6 +307,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (eventArgs.Key == Key.Escape && _commandPaletteFlyout.IsOpen)
+        {
+            _commandPaletteFlyout.Hide();
+            eventArgs.Handled = true;
+            return;
+        }
+
         if (eventArgs.Key == Key.Escape
             && NavigationSplitView.DisplayMode == SplitViewDisplayMode.Overlay
             && NavigationSplitView.IsPaneOpen)
@@ -308,6 +331,20 @@ public partial class MainWindow : Window
         }
 
         bool control = (eventArgs.KeyModifiers & KeyModifiers.Control) != 0;
+        if (control && eventArgs.Key == Key.K)
+        {
+            OpenCommandPalette();
+            eventArgs.Handled = true;
+            return;
+        }
+
+        if (control && eventArgs.Key == Key.Z)
+        {
+            viewModel.UndoHistoryRemovalCommand.Execute(null);
+            eventArgs.Handled = true;
+            return;
+        }
+
         if (control && eventArgs.Key == Key.N)
         {
             viewModel.SelectSection("downloads");
@@ -364,6 +401,162 @@ public partial class MainWindow : Window
             viewModel.CancelSelectedConversionCommand.Execute(null);
             viewModel.CancelPendingCompletionActionCommand.Execute(null);
             eventArgs.Handled = true;
+        }
+    }
+
+    private void CommandPaletteButton_Click(object? sender, RoutedEventArgs e)
+        => OpenCommandPalette();
+
+    private void OpenCommandPalette()
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.IsCommandPaletteOpen = true;
+            viewModel.CommandPaletteQuery = string.Empty;
+        }
+
+        _commandPaletteFlyout.ShowAt(CommandPaletteButton);
+        Dispatcher.UIThread.Post(() =>
+        {
+            CommandPaletteInput.Focus();
+            CommandPaletteInput.SelectAll();
+        });
+    }
+
+    private void CommandPaletteFlyout_Opened(object? sender, EventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.IsCommandPaletteOpen = true;
+        }
+
+        Dispatcher.UIThread.Post(() => CommandPaletteInput.Focus());
+    }
+
+    private void CommandPaletteFlyout_Closed(object? sender, EventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.IsCommandPaletteOpen = false;
+            viewModel.CommandPaletteQuery = string.Empty;
+        }
+    }
+
+    private async void CommandPaletteInput_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Down && CommandPaletteList.ItemCount > 0)
+        {
+            CommandPaletteList.SelectedIndex = Math.Min(
+                CommandPaletteList.ItemCount - 1,
+                CommandPaletteList.SelectedIndex + 1);
+            if (CommandPaletteList.SelectedItem is { } selectedItem)
+            {
+                CommandPaletteList.ScrollIntoView(selectedItem);
+            }
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Up && CommandPaletteList.ItemCount > 0)
+        {
+            CommandPaletteList.SelectedIndex = Math.Max(0, CommandPaletteList.SelectedIndex - 1);
+            if (CommandPaletteList.SelectedItem is { } selectedItem)
+            {
+                CommandPaletteList.ScrollIntoView(selectedItem);
+            }
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Enter)
+        {
+            await ExecuteSelectedCommandPaletteItemAsync();
+            e.Handled = true;
+        }
+    }
+
+    private async void CommandPaletteList_DoubleTapped(object? sender, TappedEventArgs e)
+        => await ExecuteSelectedCommandPaletteItemAsync();
+
+    private async Task ExecuteSelectedCommandPaletteItemAsync()
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        CommandPaletteItemViewModel? item = CommandPaletteList.SelectedItem as CommandPaletteItemViewModel
+            ?? viewModel.FilteredCommandPaletteItems.FirstOrDefault();
+        if (item is not null)
+        {
+            await viewModel.ExecuteCommandPaletteItemAsync(item);
+            _commandPaletteFlyout.Hide();
+        }
+    }
+
+    private void DismissNotification_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: NotificationCenterEntryViewModel entry }
+            && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.DismissNotificationCommand.Execute(entry);
+        }
+    }
+
+    private void ViewModel_UiActionRequested(object? sender, string action)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            switch (action)
+            {
+                case "focus-new-download":
+                    DownloadsPage.FocusNewDownload();
+                    break;
+                case "focus-download-search":
+                    DownloadsPage.FocusSearch();
+                    break;
+                case "open-notifications":
+                    _notificationCenterFlyout.ShowAt(NotificationCenterButton);
+                    break;
+                case "open-mini-window":
+                    (Application.Current as App)?.ShowMiniWindow();
+                    break;
+            }
+        });
+    }
+
+    private void MainWindow_DragOver(object? sender, DragEventArgs e)
+    {
+        bool acceptsFiles = e.DataTransfer.Formats.Contains(DataFormat.File);
+        bool acceptsText = e.DataTransfer.Formats.Contains(DataFormat.Text);
+        e.DragEffects = acceptsFiles || acceptsText
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+    }
+
+    private async void MainWindow_Drop(object? sender, DragEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        string[] paths = e.DataTransfer.TryGetFiles()?
+            .Select(static file => file.Path.LocalPath)
+            .Where(static path => !string.IsNullOrWhiteSpace(path))
+            .ToArray() ?? [];
+        if (paths.Length > 0)
+        {
+            await viewModel.HandleDroppedFilesAsync(paths);
+            e.DragEffects = DragDropEffects.Copy;
+            return;
+        }
+
+        string? text = e.DataTransfer.TryGetText();
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            await viewModel.HandleDroppedTextAsync(text);
+            e.DragEffects = DragDropEffects.Copy;
         }
     }
 

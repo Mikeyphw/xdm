@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-13T12:31:24.220262Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_reliable_transfer_fault_lab_overlay.zip",
+  "artifact_name": "xdm_reliable_transfer_fault_lab_overlay.zip",
+  "type": "overlay",
+  "sha256": "f1247ca7cbc2eaf09c29a8f811c1de0f74963278bc7721d28550b67b616ffe3a",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 8,
+  "change_counts": {
+    "add": 2,
+    "modify": 6
+  },
+  "manifest": {},
+  "history_id": "3cc12bc421824d83b8bcba2a7b5cd07d"
+}

@@ -1,53 +1,49 @@
-# XDM Overlay — Organization and duplicate prevention
+# XDM Protocol Regression Laboratory Fixed Overlay
 
-This overlay applies on top of commit `595bc5d`.
+## Purpose
 
-## Organization
+This overlay completes priority 10 from the modernization plan and includes the six
+deferred desktop-productivity warning fixes.
 
-- adds normalized per-download tags that persist in history and portable download lists;
-- adds saved searches/smart collections with built-in Active, Needs attention, Duplicates, Missing files, and Archive collections;
-- adds query operators for `status:`, `tag:`, `site:`, `queue:`, `category:`, `archived:`, `missing:`, `duplicate:`, and byte-size comparisons such as `size:>1GB`;
-- hides archived items by default while allowing explicit archive searches;
-- protects archived history entries from age and count pruning;
-- adds a manual library refresh for moved/missing files.
+## Protocol laboratory
 
-## Duplicate prevention
+- Expands the existing deterministic raw TCP server with:
+  - optional self-signed TLS,
+  - chunked transfer framing,
+  - declared-length mismatches,
+  - bounded response delays,
+  - connection aborts,
+  - raw malformed response headers.
+- Adds named loopback scenarios for:
+  - valid, invalid, ignored, and unsatisfied ranges,
+  - redirect chains,
+  - expiring URLs,
+  - changed ETags,
+  - interrupted transfers,
+  - chunked responses,
+  - incorrect content lengths,
+  - Basic authentication,
+  - proxy authentication failures,
+  - rate limiting,
+  - TLS trust failures,
+  - 5 TiB logical files,
+  - malformed filenames and headers,
+  - HLS and DASH manifests and segments.
+- Adds 17 laboratory behavior tests and 7 real download-engine integration tests.
+- Restores real-socket resume-integrity coverage that later full-file overlays had displaced.
 
-- adds configurable duplicate-URL behavior: focus the existing item, reject the new request, or allow both;
-- normalizes URL identity across host casing, default ports, and fragments;
-- makes duplicate admission atomic for concurrent URL additions;
-- computes optional SHA-256 content identities after completion;
-- links later downloads to matching completed content;
-- reuses a manual SHA-256 verification result instead of hashing the file twice;
-- preserves URL-duplicate relationships when equal URLs later produce different content.
+## Warning cleanup
 
-## Destination and filename handling
-
-- adds ordered destination rules matching host suffix and/or file extension;
-- rules can select a destination, category, and tags;
-- shows a pre-add destination and filename-conflict preview;
-- keeps the existing overwrite, auto-rename, resume, and skip behavior as the execution policy;
-- routes only through saved/active rules so unsaved Settings edits never misrepresent actual behavior.
-
-## Archive and relink workflows
-
-- adds Archive/Restore for terminal downloads;
-- adds missing-file indicators;
-- safely relinks a history item to an existing file;
-- rejects relinking while a transfer is active or when another download owns the destination;
-- refreshes content identity after relinking and clears stale identity metadata first.
-
-## Migration and quality
-
-- upgrades application settings to schema version 8;
-- upgrades portable download lists to schema version 3 while retaining version 1 and 2 compatibility;
-- adds deterministic tests for rule matching, search parsing, tag normalization, URL identity, URL/content duplicate handling, relinking, archive retention, list round-trips, migration, and UI exposure;
-- updates every `IDownloadManager` test double for the organization API and keeps analyzer diagnostics at zero;
-- makes `DownloadManager.Dispose()` quiescent by cancelling and draining active transfers, checkpoint writes, history persistence, and adopted aria2 finalization before releasing gates;
-- prevents shutdown races from recreating partial/checkpoint files while callers remove or relocate the destination directory;
-- preserves all existing accessibility labels and automation identifiers;
-- does not modify `docs/parity/features.json`.
+- Uses `string[]` for the concrete drag-and-drop path collection (`CA1859`).
+- Adds a public parameterless `MiniWindow` constructor for Avalonia runtime loading (`AVLN3001`).
+- Reuses a static expected-ID array in productivity tests (`CA1861`).
+- Passes `TestContext.Current.CancellationToken` through asynchronous productivity tests (`xUnit1051`).
 
 ## Validation
 
-Devtool must restore, build, and test only `app/XDM/XDM.Modern.sln`. The build must have zero warnings and zero errors.
+The artifact requests restore, build, and all tests for `app/XDM/XDM.Modern.sln` and is
+intended to finish with zero warnings and zero errors.
+
+## Compile correction
+
+- Uses `paths.Length` after the drag-and-drop collection was intentionally materialized as a `string[]`; this fixes the `CS0019` method-group comparison reported by the first artifact.

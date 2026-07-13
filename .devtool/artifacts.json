@@ -1573,6 +1573,432 @@
       },
       "manifest": {},
       "history_id": "c7f5202f510e480bac95747c5b778909"
+    },
+    {
+      "applied_at": "2026-07-13T12:25:20.440852Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_reliable_transfer_fault_lab_overlay.zip",
+      "artifact_name": "xdm_reliable_transfer_fault_lab_overlay.zip",
+      "type": "overlay",
+      "sha256": "f1247ca7cbc2eaf09c29a8f811c1de0f74963278bc7721d28550b67b616ffe3a",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 8,
+      "change_counts": {
+        "add": 2,
+        "modify": 6
+      },
+      "manifest": {},
+      "history_id": "25e2f34b413d47f9a70680610b42071d"
+    },
+    {
+      "applied_at": "2026-07-13T12:26:50.523805Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_reliable_transfer_fault_lab_overlay.zip",
+      "artifact_name": "xdm_reliable_transfer_fault_lab_overlay.zip",
+      "type": "overlay",
+      "sha256": "",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 0,
+      "change_counts": {},
+      "manifest": {},
+      "history_id": "3474fd13744b4837a793fa752c339131"
+    },
+    {
+      "applied_at": "2026-07-13T12:31:24.220262Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_reliable_transfer_fault_lab_overlay.zip",
+      "artifact_name": "xdm_reliable_transfer_fault_lab_overlay.zip",
+      "type": "overlay",
+      "sha256": "f1247ca7cbc2eaf09c29a8f811c1de0f74963278bc7721d28550b67b616ffe3a",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 8,
+      "change_counts": {
+        "add": 2,
+        "modify": 6
+      },
+      "manifest": {},
+      "history_id": "3cc12bc421824d83b8bcba2a7b5cd07d"
+    },
+    {
+      "applied_at": "2026-07-13T13:06:48.179484Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_actionable_transfer_diagnostics_overlay.zip",
+      "artifact_name": "xdm_actionable_transfer_diagnostics_overlay.zip",
+      "type": "overlay",
+      "sha256": "e2d4f3d6abd19dbb3f715df4e01b5c89328105fe9bb65ded43187b08230a242b",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 28,
+      "change_counts": {
+        "add": 18,
+        "modify": 10
+      },
+      "manifest": {},
+      "history_id": "0bc3d8c205a245bdae6448aea3efaa23"
+    },
+    {
+      "applied_at": "2026-07-13T13:32:24.041938Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_diagnostics_health_repair_overlay.zip",
+      "artifact_name": "xdm_diagnostics_health_repair_overlay.zip",
+      "type": "overlay",
+      "sha256": "ed00fa05ed9fcce61a98b1020d7af3236f1f0850ae4ef4b778fd2ffbc3538370",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 29,
+      "change_counts": {
+        "add": 18,
+        "modify": 11
+      },
+      "manifest": {},
+      "history_id": "511463cd75c646ad8f4b93422d9459cd"
+    },
+    {
+      "applied_at": "2026-07-13T13:45:34.457507Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_diagnostics_warning_cleanup_overlay.zip",
+      "artifact_name": "xdm_diagnostics_warning_cleanup_overlay.zip",
+      "type": "overlay",
+      "sha256": "194d1c0589cd0f9a269ab243ab5ac97501b9bc81af0993396df41d16ac3b04c0",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 9,
+      "change_counts": {
+        "modify": 9
+      },
+      "manifest": {},
+      "history_id": "c9e9d44d3626402b99ead5be2c2bd79e"
+    },
+    {
+      "applied_at": "2026-07-13T14:37:10.666665Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_desktop_productivity_overlay.zip",
+      "artifact_name": "xdm_desktop_productivity_overlay.zip",
+      "type": "overlay",
+      "sha256": "e13559dbc3dbdc6307aed51918b2012fec69d9bd095ce62152ac658e9977cf40",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 21,
+      "change_counts": {
+        "add": 7,
+        "modify": 14
+      },
+      "manifest": {},
+      "history_id": "240ea865116242ae8c5ce53c886e6e33"
+    },
+    {
+      "applied_at": "2026-07-13T15:17:00.924645Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_desktop_productivity_fixed_overlay.zip",
+      "artifact_name": "xdm_desktop_productivity_fixed_overlay.zip",
+      "type": "overlay",
+      "sha256": "2e01380bdbf1e2db142292c35d17bed459bff8f2d8590139529701cfe79a9dc3",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 21,
+      "change_counts": {
+        "add": 7,
+        "modify": 14
+      },
+      "manifest": {},
+      "history_id": "065c9ff640e64e459e0aefd4fb7284e6"
+    },
+    {
+      "applied_at": "2026-07-13T15:38:08.887019Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_protocol_regression_lab_overlay.zip",
+      "artifact_name": "xdm_protocol_regression_lab_overlay.zip",
+      "type": "overlay",
+      "sha256": "3732eca79cf296e557cfb6b912d29c660a97d61b92e550a7be256c62b281566d",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 11,
+      "change_counts": {
+        "add": 4,
+        "modify": 7
+      },
+      "manifest": {},
+      "history_id": "e6ca01f942cd424081fa883b03b56f4b"
+    },
+    {
+      "applied_at": "2026-07-13T16:48:15.566993Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_protocol_regression_lab_fixed_overlay(1).zip",
+      "artifact_name": "xdm_protocol_regression_lab_fixed_overlay(1).zip",
+      "type": "overlay",
+      "sha256": "ab91c477f5a95f29ba2b159b6b620c69ae63ead8259eef3058edc58aa11e305c",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add protocol regression laboratory and clean UX warnings",
+      "commit_hash": "",
+      "file_count": 10,
+      "change_counts": {
+        "add": 4,
+        "modify": 6
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM protocol regression laboratory",
+        "description": "Adds a deterministic loopback HTTP/TLS protocol laboratory, real download-engine regression coverage, and fixes the deferred desktop-productivity warnings.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Modern",
+          "root": "app/XDM"
+        },
+        "target": "xdm_modern",
+        "solution": "app/XDM/XDM.Modern.sln",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "DEVTOOL_OVERLAY.md",
+              "action": "modify",
+              "source_sha256": "100c0ed02715b4d75aabc412d9c3435a7a0f11c6d7839649f9cd4cd8d470195d",
+              "sha256": "6c680d55cb5b57cfea3adaab2cd6f20de2e459687615384b45b3f89c40593206",
+              "size": 1807
+            },
+            {
+              "path": "app/XDM/src/XDM.App/MainWindow.axaml.cs",
+              "action": "modify",
+              "source_sha256": "d325f43cc79815f26239acd867c5da9b8bb584fda9780a4aae5cf11f37039c16",
+              "sha256": "b3eb963763313711233c2fcc6b19ceb1ec0b88bac4167b46f83dec38c369f64d",
+              "size": 20204
+            },
+            {
+              "path": "app/XDM/src/XDM.App/MiniWindow.axaml.cs",
+              "action": "modify",
+              "source_sha256": "133939d22237e2131baedec821516fb11f535abed23ca4ab7693e139b3ff372b",
+              "sha256": "7f9635d4a82a3c773bcb0e4b2f7c43a1b236b2f832fe2c7606c35cf97094ec8b",
+              "size": 1061
+            },
+            {
+              "path": "app/XDM/src/XDM.App.Tests/DesktopProductivityServiceTests.cs",
+              "action": "modify",
+              "source_sha256": "3a9b6c6bd4b3f82afd91669b469420b2fed461b57748849188803b7a68c4aac8",
+              "sha256": "a05238f5007dde7fa175396e617cc008d00af253ad06fce0b43f5cc29340fd47",
+              "size": 2824
+            },
+            {
+              "path": "app/XDM/src/XDM.DownloadEngine.Tests/DownloadManagerProtocolLabTests.cs",
+              "action": "add",
+              "sha256": "10b9739f595aceb514f5e9160e148a6b114e9ff01c7e6d7034029b7405dd4025",
+              "size": 14068
+            },
+            {
+              "path": "app/XDM/src/XDM.DownloadEngine.Tests/FaultLab/DeterministicHttpFaultServer.cs",
+              "action": "modify",
+              "source_sha256": "a5eb52f607186dc5904c9fa1d2cf6cbd43de2cd88fbebc04b4f6e7a889b1bc2b",
+              "sha256": "cdbf2ad038db319160ee046e51db6d15f1081b8f3a6c31d21cbb5727d31ec946",
+              "size": 17293
+            },
+            {
+              "path": "app/XDM/src/XDM.DownloadEngine.Tests/FaultLab/ProtocolLabScenarioServer.cs",
+              "action": "add",
+              "sha256": "423c8d8ea379a5058bcb1a9276722f767b8895e6d08b6d461b8dabca7777c138",
+              "size": 9925
+            },
+            {
+              "path": "app/XDM/src/XDM.DownloadEngine.Tests/ProtocolRegressionLabTests.cs",
+              "action": "add",
+              "sha256": "b6e4c1fe14f1a4e6830ccee8c754ad2b2436dbef1d3715607d69915533e46472",
+              "size": 13477
+            },
+            {
+              "path": "docs/reliability/HTTP-FAULT-LAB.md",
+              "action": "modify",
+              "source_sha256": "a5d3de501623d94cd48716e41486d58357202ddd4cda643c9e8d139b021bbaae",
+              "sha256": "e7e948aefdc079b7a9c2c052cf45052e9211e7b97e215f4c1ef67e3c96520d18",
+              "size": 1934
+            },
+            {
+              "path": "docs/reliability/PROTOCOL-REGRESSION-LAB.md",
+              "action": "add",
+              "sha256": "611e1004b4645b723a9781330f794ab19b184dc43ea22d2e84da44993a2efd5e",
+              "size": 2559
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add protocol regression laboratory and clean UX warnings"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "expected": {
+            "restore": "pass",
+            "build": "pass",
+            "tests": "pass",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Apply after the desktop productivity overlay.",
+          "All protocol servers are loopback-only, bounded, deterministic, and disposable.",
+          "Preserves reliable-transfer validation, transactional partial files, diagnostics, browser integration, media, queue, organization, and desktop-productivity behavior.",
+          "Uses real SocketsHttpHandler connections for protocol framing regressions.",
+          "Very-large-file scenarios remain logical and do not allocate payloads proportional to advertised length."
+        ]
+      },
+      "history_id": "ed6a9deca17945f394cc3d92cb973b85"
+    },
+    {
+      "applied_at": "2026-07-13T16:56:59.875831Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_protocol_regression_lab_fixed_overlay(2).zip",
+      "artifact_name": "xdm_protocol_regression_lab_fixed_overlay(2).zip",
+      "type": "overlay",
+      "sha256": "a06349467e53de929deac2883d6a5505aaddff1728f164395067dcaab1a83e44",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add protocol regression laboratory and clean UX warnings",
+      "commit_hash": "",
+      "file_count": 10,
+      "change_counts": {
+        "add": 4,
+        "modify": 6
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM protocol regression laboratory",
+        "description": "Adds a deterministic loopback HTTP/TLS protocol laboratory, real download-engine regression coverage, and fixes the deferred desktop-productivity warnings.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Modern",
+          "root": "app/XDM"
+        },
+        "target": "xdm_modern",
+        "solution": "app/XDM/XDM.Modern.sln",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "DEVTOOL_OVERLAY.md",
+              "action": "modify",
+              "source_sha256": "100c0ed02715b4d75aabc412d9c3435a7a0f11c6d7839649f9cd4cd8d470195d",
+              "sha256": "6c680d55cb5b57cfea3adaab2cd6f20de2e459687615384b45b3f89c40593206",
+              "size": 1807
+            },
+            {
+              "path": "app/XDM/src/XDM.App/MainWindow.axaml.cs",
+              "action": "modify",
+              "source_sha256": "d325f43cc79815f26239acd867c5da9b8bb584fda9780a4aae5cf11f37039c16",
+              "sha256": "b3eb963763313711233c2fcc6b19ceb1ec0b88bac4167b46f83dec38c369f64d",
+              "size": 20204
+            },
+            {
+              "path": "app/XDM/src/XDM.App/MiniWindow.axaml.cs",
+              "action": "modify",
+              "source_sha256": "133939d22237e2131baedec821516fb11f535abed23ca4ab7693e139b3ff372b",
+              "sha256": "7f9635d4a82a3c773bcb0e4b2f7c43a1b236b2f832fe2c7606c35cf97094ec8b",
+              "size": 1061
+            },
+            {
+              "path": "app/XDM/src/XDM.App.Tests/DesktopProductivityServiceTests.cs",
+              "action": "modify",
+              "source_sha256": "3a9b6c6bd4b3f82afd91669b469420b2fed461b57748849188803b7a68c4aac8",
+              "sha256": "a05238f5007dde7fa175396e617cc008d00af253ad06fce0b43f5cc29340fd47",
+              "size": 2824
+            },
+            {
+              "path": "app/XDM/src/XDM.DownloadEngine.Tests/DownloadManagerProtocolLabTests.cs",
+              "action": "add",
+              "sha256": "dc5bd1ae37b0a8c37e56f37ec339ce4db316adab2b7337500b0261e70ee330e6",
+              "size": 14069
+            },
+            {
+              "path": "app/XDM/src/XDM.DownloadEngine.Tests/FaultLab/DeterministicHttpFaultServer.cs",
+              "action": "modify",
+              "source_sha256": "a5eb52f607186dc5904c9fa1d2cf6cbd43de2cd88fbebc04b4f6e7a889b1bc2b",
+              "sha256": "cdbf2ad038db319160ee046e51db6d15f1081b8f3a6c31d21cbb5727d31ec946",
+              "size": 17293
+            },
+            {
+              "path": "app/XDM/src/XDM.DownloadEngine.Tests/FaultLab/ProtocolLabScenarioServer.cs",
+              "action": "add",
+              "sha256": "dd7747916a2a8ec97c3bce02c626ba47332286cb88a6f73acfeec597ae96f2a2",
+              "size": 9646
+            },
+            {
+              "path": "app/XDM/src/XDM.DownloadEngine.Tests/ProtocolRegressionLabTests.cs",
+              "action": "add",
+              "sha256": "1945ed14e5c820a737c39ee3041bf9a0cb5b361e2c3b3db46c0173ae9d9bf71b",
+              "size": 13964
+            },
+            {
+              "path": "docs/reliability/HTTP-FAULT-LAB.md",
+              "action": "modify",
+              "source_sha256": "a5d3de501623d94cd48716e41486d58357202ddd4cda643c9e8d139b021bbaae",
+              "sha256": "e7e948aefdc079b7a9c2c052cf45052e9211e7b97e215f4c1ef67e3c96520d18",
+              "size": 1934
+            },
+            {
+              "path": "docs/reliability/PROTOCOL-REGRESSION-LAB.md",
+              "action": "add",
+              "sha256": "611e1004b4645b723a9781330f794ab19b184dc43ea22d2e84da44993a2efd5e",
+              "size": 2559
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add protocol regression laboratory and clean UX warnings"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "expected": {
+            "restore": "pass",
+            "build": "pass",
+            "tests": "pass",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Apply after the desktop productivity overlay.",
+          "All protocol servers are loopback-only, bounded, deterministic, and disposable.",
+          "Preserves reliable-transfer validation, transactional partial files, diagnostics, browser integration, media, queue, organization, and desktop-productivity behavior.",
+          "Uses real SocketsHttpHandler connections for protocol framing regressions.",
+          "Very-large-file scenarios remain logical and do not allocate payloads proportional to advertised length."
+        ]
+      },
+      "history_id": "1e75d9d0fc0d4515994db247f0f0bf15"
     }
   ]
 }

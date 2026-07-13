@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-13T14:37:10.666665Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_desktop_productivity_overlay.zip",
+  "artifact_name": "xdm_desktop_productivity_overlay.zip",
+  "type": "overlay",
+  "sha256": "e13559dbc3dbdc6307aed51918b2012fec69d9bd095ce62152ac658e9977cf40",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 21,
+  "change_counts": {
+    "add": 7,
+    "modify": 14
+  },
+  "manifest": {},
+  "history_id": "240ea865116242ae8c5ce53c886e6e33"
+}
