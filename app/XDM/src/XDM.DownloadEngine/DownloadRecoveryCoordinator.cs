@@ -16,7 +16,8 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
     [
         ".xdm.part",
         ".xdm.resume.json",
-        ".xdm.finalizing"
+        ".xdm.finalizing",
+        ".xdm.promoting"
     ];
     private static readonly EnumerationOptions ArtifactEnumerationOptions = new()
     {
@@ -63,6 +64,8 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
 
     public async Task ScanAsync(
         bool previousSessionWasUnclean,
+        IReadOnlyCollection<string>? previousActiveDownloadIds = null,
+        bool? checkpointFlushSucceeded = null,
         CancellationToken cancellationToken = default)
     {
         IReadOnlyList<PersistedDownload> persisted = await _historyStore
@@ -72,6 +75,9 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
             .ToDictionary(static item => item.Id, StringComparer.Ordinal);
         List<DownloadRecoveryCandidate> candidates = [];
         HashSet<string> knownDestinations = new(GetPathComparer());
+        HashSet<string> previouslyActive = !previousSessionWasUnclean || previousActiveDownloadIds is null
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : new HashSet<string>(previousActiveDownloadIds, StringComparer.Ordinal);
 
         foreach (PersistedDownload item in persisted)
         {
@@ -83,6 +89,8 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
                 item,
                 snapshot,
                 previousSessionWasUnclean,
+                previouslyActive.Contains(item.Id),
+                checkpointFlushSucceeded,
                 cancellationToken).ConfigureAwait(false);
             if (candidate is not null)
             {
@@ -191,6 +199,8 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
         PersistedDownload persisted,
         DownloadSnapshot? snapshot,
         bool previousSessionWasUnclean,
+        bool wasTrackedActive,
+        bool? checkpointFlushSucceeded,
         CancellationToken cancellationToken)
     {
         string destination = Path.GetFullPath(persisted.DestinationPath);
@@ -202,12 +212,13 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
             .ConfigureAwait(false);
         FinalizationMarker? finalization = await ReadFinalizationMarkerAsync(finalizationPath, cancellationToken)
             .ConfigureAwait(false);
-        bool wasActive = persisted.State is DownloadState.Connecting
+        bool wasActive = wasTrackedActive || persisted.State is DownloadState.Connecting
             or DownloadState.Downloading
             or DownloadState.Finalizing;
         bool hasArtifacts = partialBytes > 0
             || File.Exists(checkpointPath)
             || File.Exists(finalizationPath)
+            || File.Exists(TransferArtifactPaths.GetFinalizationStagingPath(destination))
             || Directory.Exists(SegmentedDownloadExecutor.GetSegmentDirectory(destination));
         bool recoveredFinalization = snapshot?.State == DownloadState.Completed
             && snapshot.RecoveryMessage?.Contains("interrupted during finalization", StringComparison.OrdinalIgnoreCase) == true;
@@ -215,7 +226,8 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
             && !hasArtifacts
             && snapshot?.RecoveryRequired != true
             && !recoveredFinalization
-            && !(previousSessionWasUnclean && persisted.State == DownloadState.Paused && persisted.DownloadedBytes > 0))
+            && !(previousSessionWasUnclean && persisted.State == DownloadState.Paused && persisted.DownloadedBytes > 0)
+            && !(previousSessionWasUnclean && wasTrackedActive))
         {
             return null;
         }
@@ -223,9 +235,11 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
         DownloadRecoveryClassification classification;
         string action;
         string reason;
+        string stagingPath = TransferArtifactPaths.GetFinalizationStagingPath(destination);
         bool finalizationLooksComplete = finalization is not null
             && ((File.Exists(destination) && new FileInfo(destination).Length == finalization.ExpectedLength)
-                || partialBytes == finalization.ExpectedLength);
+                || partialBytes == finalization.ExpectedLength
+                || (File.Exists(stagingPath) && new FileInfo(stagingPath).Length == finalization.ExpectedLength));
         if (recoveredFinalization || finalizationLooksComplete)
         {
             classification = DownloadRecoveryClassification.AlreadyCompleteNotFinalized;
@@ -256,6 +270,12 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
             action = "Review the local artifacts, then use Verify and repair or restart from zero.";
             reason = snapshot?.RecoveryMessage
                 ?? "The local artifact lengths or checkpoint ownership are inconsistent.";
+        }
+        else if (wasTrackedActive && checkpointFlushSucceeded == false)
+        {
+            classification = DownloadRecoveryClassification.NeedsRemoteValidation;
+            action = "Validate the remote identity and local artifact length before resuming.";
+            reason = "The previous shutdown did not complete its checkpoint flush for this active transfer.";
         }
         else if (partialBytes > 0 && HasUsableValidator(checkpoint?.EntityTag ?? persisted.EntityTag, checkpoint?.LastModified ?? persisted.LastModified))
         {
@@ -305,6 +325,7 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
         bool hasArtifact = bytes > 0
             || File.Exists(checkpointPath)
             || File.Exists(finalizationPath)
+            || File.Exists(TransferArtifactPaths.GetFinalizationStagingPath(destination))
             || Directory.Exists(SegmentedDownloadExecutor.GetSegmentDirectory(destination));
         if (!hasArtifact)
         {
@@ -482,6 +503,11 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
     {
         string partial = TransferArtifactPaths.GetPartialPath(destination);
         long bytes = File.Exists(partial) ? new FileInfo(partial).Length : 0;
+        string staging = TransferArtifactPaths.GetFinalizationStagingPath(destination);
+        if (File.Exists(staging))
+        {
+            bytes = Math.Max(bytes, new FileInfo(staging).Length);
+        }
         string segmentDirectory = SegmentedDownloadExecutor.GetSegmentDirectory(destination);
         if (!Directory.Exists(segmentDirectory))
         {
@@ -514,7 +540,10 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
             await using FileStream stream = File.OpenRead(path);
             FinalizationMarker? marker = await JsonSerializer.DeserializeAsync<FinalizationMarker>(stream, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-            return marker is { Version: FinalizationMarker.CurrentVersion } ? marker : null;
+            return marker is not null
+                && (marker.Version is 1 or FinalizationMarker.CurrentVersion)
+                    ? marker
+                    : null;
         }
         catch (JsonException)
         {

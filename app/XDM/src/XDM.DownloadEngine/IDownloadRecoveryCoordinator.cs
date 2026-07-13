@@ -10,6 +10,8 @@ public interface IDownloadRecoveryCoordinator
 
     Task ScanAsync(
         bool previousSessionWasUnclean,
+        IReadOnlyCollection<string>? previousActiveDownloadIds = null,
+        bool? checkpointFlushSucceeded = null,
         CancellationToken cancellationToken = default);
 
     Task<DownloadRecoveryCandidate> ValidateAsync(

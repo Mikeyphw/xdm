@@ -17,6 +17,9 @@ public static class TransferArtifactPaths
     public static string GetLegacyFinalizationMarkerPath(string destinationPath)
         => $"{destinationPath}.finalizing";
 
+    public static string GetFinalizationStagingPath(string destinationPath)
+        => $"{destinationPath}.xdm.promoting";
+
     public static string GetChecksumStatePath(string destinationPath)
         => $"{destinationPath}.xdm.checksums.json";
 

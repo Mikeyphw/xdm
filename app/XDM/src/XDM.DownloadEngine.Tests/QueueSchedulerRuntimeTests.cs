@@ -133,6 +133,19 @@ public sealed class QueueSchedulerRuntimeTests
 
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
+        public Task<DownloadShutdownReport> PrepareForShutdownAsync(
+            CancellationToken cancellationToken = default)
+        {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            return Task.FromResult(new DownloadShutdownReport(
+                [],
+                0,
+                0,
+                [],
+                now,
+                now));
+        }
+
         public Task<string> AddAsync(DownloadRequest request, CancellationToken cancellationToken = default)
             => Task.FromResult(Guid.NewGuid().ToString("N"));
 

@@ -46,36 +46,42 @@ public sealed class ApplicationState : IApplicationState
         ApplicationSnapshot next;
         lock (_sync)
         {
-            IReadOnlyList<DownloadSnapshot> currentDownloads = _current.Downloads;
+            DownloadSnapshot[] current = _current.Downloads as DownloadSnapshot[]
+                ?? _current.Downloads.ToArray();
             DownloadSnapshot[] updated;
             if (_downloadIndexes.TryGetValue(download.Id, out int existingIndex))
             {
-                updated = new DownloadSnapshot[currentDownloads.Count];
-                updated[0] = download;
+                updated = new DownloadSnapshot[current.Length];
                 if (existingIndex > 0)
                 {
+                    Array.Copy(current, 0, updated, 1, existingIndex);
                     for (int index = 0; index < existingIndex; index++)
                     {
-                        updated[index + 1] = currentDownloads[index];
+                        _downloadIndexes[current[index].Id] = index + 1;
                     }
                 }
 
-                for (int index = existingIndex + 1; index < currentDownloads.Count; index++)
+                int tailLength = current.Length - existingIndex - 1;
+                if (tailLength > 0)
                 {
-                    updated[index] = currentDownloads[index];
+                    Array.Copy(current, existingIndex + 1, updated, existingIndex + 1, tailLength);
                 }
+
+                updated[0] = download;
+                _downloadIndexes[download.Id] = 0;
             }
             else
             {
-                updated = new DownloadSnapshot[currentDownloads.Count + 1];
+                updated = new DownloadSnapshot[current.Length + 1];
+                Array.Copy(current, 0, updated, 1, current.Length);
                 updated[0] = download;
-                for (int index = 0; index < currentDownloads.Count; index++)
+                _downloadIndexes[download.Id] = 0;
+                for (int index = 0; index < current.Length; index++)
                 {
-                    updated[index + 1] = currentDownloads[index];
+                    _downloadIndexes[current[index].Id] = index + 1;
                 }
             }
 
-            RebuildIndexes(updated);
             next = _current with { Downloads = updated };
             _current = next;
         }

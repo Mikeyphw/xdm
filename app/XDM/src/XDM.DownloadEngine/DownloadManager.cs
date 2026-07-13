@@ -41,6 +41,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private readonly ResumeCheckpointStore _checkpointStore;
     private readonly DownloadChecksumWorkflowStore _checksumWorkflowStore;
     private readonly IPartialFileRepairService _partialFileRepairService;
+    private readonly FinalizationJournalStore _finalizationJournalStore;
+    private readonly IFinalizationFilePromoter _finalizationFilePromoter;
     private readonly IFtpDownloadClient _ftpDownloadClient;
     private readonly ISettingsService _settingsService;
     private readonly ITransferPolicyRuntime _transferPolicyRuntime;
@@ -152,6 +154,36 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         IDownloadHistoryStore historyStore,
         ISettingsService settingsService,
         ILogger<DownloadManager> logger,
+        IAria2Service aria2Service,
+        ITransferDiagnosticSink transferDiagnostics,
+        DownloadChecksumWorkflowStore checksumWorkflowStore,
+        IPartialFileRepairService partialFileRepairService,
+        FinalizationJournalStore finalizationJournalStore,
+        IFinalizationFilePromoter finalizationFilePromoter)
+        : this(
+            httpClient,
+            applicationState,
+            historyStore,
+            settingsService,
+            logger,
+            new SystemDiskSpaceProvider(),
+            CreateRetryPolicy(settingsService.Current),
+            CreateSegmentedOptions(settingsService.Current),
+            aria2Service: aria2Service,
+            transferDiagnostics: transferDiagnostics,
+            checksumWorkflowStore: checksumWorkflowStore,
+            partialFileRepairService: partialFileRepairService,
+            finalizationJournalStore: finalizationJournalStore,
+            finalizationFilePromoter: finalizationFilePromoter)
+    {
+    }
+
+    public DownloadManager(
+        HttpClient httpClient,
+        IApplicationState applicationState,
+        IDownloadHistoryStore historyStore,
+        ISettingsService settingsService,
+        ILogger<DownloadManager> logger,
         IDiskSpaceProvider diskSpaceProvider,
         DownloadRetryPolicy retryPolicy,
         SegmentedDownloadOptions? segmentedOptions = null,
@@ -161,7 +193,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         IAria2Service? aria2Service = null,
         ITransferDiagnosticSink? transferDiagnostics = null,
         DownloadChecksumWorkflowStore? checksumWorkflowStore = null,
-        IPartialFileRepairService? partialFileRepairService = null)
+        IPartialFileRepairService? partialFileRepairService = null,
+        FinalizationJournalStore? finalizationJournalStore = null,
+        IFinalizationFilePromoter? finalizationFilePromoter = null)
     {
         _httpClient = httpClient;
         _applicationState = applicationState;
@@ -181,6 +215,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         _checkpointStore = checkpointStore ?? new ResumeCheckpointStore();
         _checksumWorkflowStore = checksumWorkflowStore ?? new DownloadChecksumWorkflowStore();
         _partialFileRepairService = partialFileRepairService ?? new PartialFileRepairService(httpClient);
+        _finalizationJournalStore = finalizationJournalStore ?? new FinalizationJournalStore();
+        _finalizationFilePromoter = finalizationFilePromoter ?? new FinalizationFilePromoter(_finalizationJournalStore);
         _transferPolicyRuntime = transferPolicyRuntime ?? UnrestrictedTransferPolicyRuntime.Instance;
         _aria2Service = aria2Service;
         _transferPolicyRuntime.Changed += OnTransferPolicyChanged;
@@ -1665,6 +1701,105 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         PublishQueueRuntime();
         await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<DownloadShutdownReport> PrepareForShutdownAsync(
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        DateTimeOffset startedAt = DateTimeOffset.UtcNow;
+        DownloadSession[] activeSessions = _sessions.Values
+            .Where(static session => session.State is DownloadState.Connecting
+                or DownloadState.Downloading
+                or DownloadState.Finalizing)
+            .OrderBy(static session => session.Id, StringComparer.Ordinal)
+            .ToArray();
+        string[] activeIds = activeSessions.Select(static session => session.Id).ToArray();
+        List<Task> activeTasks = [];
+        foreach (DownloadSession session in activeSessions)
+        {
+            lock (session.Sync)
+            {
+                session.PauseRequested = true;
+                session.OperationCancellation?.Cancel();
+                if (session.ActiveTask is { IsCompleted: false } task)
+                {
+                    activeTasks.Add(task);
+                }
+            }
+        }
+
+        bool operationDrainTimedOut = false;
+        if (activeTasks.Count > 0)
+        {
+            try
+            {
+                await Task.WhenAll(activeTasks)
+                    .WaitAsync(TimeSpan.FromSeconds(15), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                operationDrainTimedOut = true;
+                // Checkpoint whatever has reached stable storage, but do not allow the application
+                // session to be marked clean while transfer tasks are still running.
+            }
+        }
+
+        List<string> failedIds = operationDrainTimedOut
+            ? activeIds.ToList()
+            : [];
+        int attempted = 0;
+        int written = 0;
+        foreach (DownloadSession session in activeSessions)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            attempted++;
+            try
+            {
+                lock (session.Sync)
+                {
+                    if (session.State is DownloadState.Connecting
+                        or DownloadState.Downloading
+                        or DownloadState.Finalizing
+                        or DownloadState.Cancelled)
+                    {
+                        session.State = DownloadState.Paused;
+                        session.BytesPerSecond = 0;
+                    }
+                }
+                await PersistCheckpointAsync(session, force: true, cancellationToken).ConfigureAwait(false);
+                if (File.Exists(TransferArtifactPaths.GetCheckpointPath(session.DestinationPath))
+                    || File.Exists(TransferArtifactPaths.GetFinalizationMarkerPath(session.DestinationPath)))
+                {
+                    written++;
+                }
+                Publish(session, forcePersist: false);
+            }
+            catch (IOException)
+            {
+                if (!failedIds.Contains(session.Id))
+                {
+                    failedIds.Add(session.Id);
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                if (!failedIds.Contains(session.Id))
+                {
+                    failedIds.Add(session.Id);
+                }
+            }
+        }
+
+        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        return new DownloadShutdownReport(
+            activeIds,
+            attempted,
+            written,
+            failedIds,
+            startedAt,
+            DateTimeOffset.UtcNow);
     }
 
     public void Dispose()
@@ -3234,7 +3369,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             checksumAlgorithm,
             checksum,
             DateTimeOffset.UtcNow,
-            localIntegrityRecordOnly);
+            localIntegrityRecordOnly,
+            FinalizationStage.Prepared,
+            GetPartialPath(destinationPath),
+            null,
+            DateTimeOffset.UtcNow);
         byte[] payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(marker));
         using (FileStream stream = new(
             temporaryPath,
@@ -3251,72 +3390,143 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         File.Move(temporaryPath, markerPath, overwrite: true);
     }
 
-    private static async Task RecoverInterruptedFinalizationAsync(
+    private async Task RecoverInterruptedFinalizationAsync(
         DownloadSession session,
         CancellationToken cancellationToken)
     {
-        string markerPath = GetFinalizationMarkerPath(session.DestinationPath);
-        if (!File.Exists(markerPath))
-        {
-            return;
-        }
-
-        FinalizationMarker marker = await ReadFinalizationMarkerAsync(markerPath, cancellationToken)
+        FinalizationMarker? marker = await _finalizationJournalStore
+            .LoadAsync(session.DestinationPath, cancellationToken)
             .ConfigureAwait(false);
-        string partialPath = GetPartialPath(session.DestinationPath);
-        string candidatePath;
-        if (File.Exists(session.DestinationPath))
+        if (marker is null)
         {
-            candidatePath = session.DestinationPath;
+            return;
         }
-        else if (File.Exists(partialPath))
+
+        string destinationPath = session.DestinationPath;
+        string sourcePath = !string.IsNullOrWhiteSpace(marker.SourcePath)
+            ? marker.SourcePath
+            : GetPartialPath(destinationPath);
+        string stagingPath = !string.IsNullOrWhiteSpace(marker.StagingPath)
+            ? marker.StagingPath
+            : TransferArtifactPaths.GetFinalizationStagingPath(destinationPath);
+
+        bool destinationValid = await IsFinalizationCandidateValidAsync(destinationPath, marker, cancellationToken)
+            .ConfigureAwait(false);
+        if (!destinationValid)
         {
-            candidatePath = partialPath;
+            bool stagingValid = await IsFinalizationCandidateValidAsync(stagingPath, marker, cancellationToken)
+                .ConfigureAwait(false);
+            if (stagingValid)
+            {
+                File.Move(stagingPath, destinationPath, overwrite: true);
+                await _finalizationJournalStore.SaveAsync(
+                    destinationPath,
+                    marker with
+                    {
+                        Stage = FinalizationStage.DestinationCommitted,
+                        StagingPath = stagingPath
+                    },
+                    cancellationToken).ConfigureAwait(false);
+                destinationValid = true;
+            }
+            else if (File.Exists(sourcePath))
+            {
+                try
+                {
+                    if (File.Exists(destinationPath))
+                    {
+                        File.Move(
+                            destinationPath,
+                            ResolveUniqueArtifactPath($"{destinationPath}.stale-finalization"));
+                    }
+                    await _finalizationFilePromoter
+                        .PromoteAsync(sourcePath, destinationPath, marker, cancellationToken)
+                        .ConfigureAwait(false);
+                    destinationValid = true;
+                }
+                catch (InvalidDataException exception)
+                {
+                    session.State = DownloadState.Failed;
+                    session.RecoveryRequired = true;
+                    session.RecoveryMessage = $"Finalization recovery rejected the available candidate: {exception.Message}";
+                    session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+                    session.ErrorMessage = session.RecoveryMessage;
+                    return;
+                }
+                catch (IOException exception)
+                {
+                    session.State = DownloadState.Failed;
+                    session.RecoveryRequired = true;
+                    session.RecoveryMessage = $"Finalization recovery rejected the available candidate: {exception.Message}";
+                    session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+                    session.ErrorMessage = session.RecoveryMessage;
+                    return;
+                }
+                catch (UnauthorizedAccessException exception)
+                {
+                    session.State = DownloadState.Failed;
+                    session.RecoveryRequired = true;
+                    session.RecoveryMessage = $"Finalization recovery could not access the available candidate: {exception.Message}";
+                    session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+                    session.ErrorMessage = session.RecoveryMessage;
+                    return;
+                }
+            }
         }
-        else
+
+        if (!destinationValid)
         {
             session.State = DownloadState.Failed;
             session.RecoveryRequired = true;
-            session.RecoveryMessage = "Finalization was interrupted and the completed partial file is missing.";
+            session.RecoveryMessage = "Finalization was interrupted and no complete verified candidate remains.";
             session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
             session.ErrorMessage = session.RecoveryMessage;
             return;
         }
 
-        long completedLength = new FileInfo(candidatePath).Length;
-        if (completedLength != marker.ExpectedLength)
+        try
+        {
+            await FinalizationFilePromoter.ValidateCandidateAsync(destinationPath, marker, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (InvalidDataException exception)
         {
             session.State = DownloadState.Failed;
             session.RecoveryRequired = true;
-            session.RecoveryMessage = $"Interrupted finalization expected {marker.ExpectedLength} bytes, but found {completedLength}.";
+            session.RecoveryMessage = $"Finalization recovery rejected the completed candidate: {exception.Message}";
             session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
             session.ErrorMessage = session.RecoveryMessage;
             return;
         }
-
+        catch (IOException exception)
+        {
+            session.State = DownloadState.Failed;
+            session.RecoveryRequired = true;
+            session.RecoveryMessage = $"Finalization recovery could not read the completed candidate: {exception.Message}";
+            session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+            session.ErrorMessage = session.RecoveryMessage;
+            return;
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            session.State = DownloadState.Failed;
+            session.RecoveryRequired = true;
+            session.RecoveryMessage = $"Finalization recovery could not access the completed candidate: {exception.Message}";
+            session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+            session.ErrorMessage = session.RecoveryMessage;
+            return;
+        }
         if (!string.IsNullOrWhiteSpace(marker.ChecksumAlgorithm)
             && !string.IsNullOrWhiteSpace(marker.Checksum))
         {
-            string actual = await DownloadChecksumService
-                .ComputeAsync(candidatePath, marker.ChecksumAlgorithm, cancellationToken)
-                .ConfigureAwait(false);
-            if (!string.Equals(actual, marker.Checksum, StringComparison.OrdinalIgnoreCase))
-            {
-                session.State = DownloadState.Failed;
-                session.RecoveryRequired = true;
-                session.RecoveryMessage = "Interrupted finalization failed checksum verification.";
-                session.IntegrityStatus = DownloadIntegrityStatus.Mismatch;
-                session.ErrorMessage = session.RecoveryMessage;
-                return;
-            }
-            session.ActualChecksum = actual;
+            session.ActualChecksum = marker.Checksum;
             if (string.Equals(marker.ChecksumAlgorithm, DownloadChecksumService.Sha512, StringComparison.Ordinal))
             {
-                session.ActualSha512 = actual;
+                session.ActualSha512 = marker.Checksum;
             }
             else
             {
-                session.ActualSha256 = actual;
+                session.ActualSha256 = marker.Checksum;
             }
             session.LastVerifiedAt = DateTimeOffset.UtcNow;
             session.LocalIntegrityRecordOnly = marker.LocalIntegrityRecordOnly;
@@ -3325,57 +3535,56 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 : DownloadIntegrityStatus.Verified;
         }
 
-        if (!string.Equals(candidatePath, session.DestinationPath, StringComparison.Ordinal))
+        PromoteRepairManifest(session, sourcePath);
+        if (!string.Equals(sourcePath, destinationPath, StringComparison.Ordinal)
+            && File.Exists(sourcePath))
         {
-            File.Move(candidatePath, session.DestinationPath, overwrite: true);
+            File.Delete(sourcePath);
         }
-
-        session.DownloadedBytes = completedLength;
-        session.TotalBytes ??= completedLength;
+        session.DownloadedBytes = marker.ExpectedLength;
+        session.TotalBytes ??= marker.ExpectedLength;
         session.State = DownloadState.Completed;
         session.ErrorMessage = null;
         session.RecoveryRequired = false;
         session.RecoveryMessage = "Recovered a download that was interrupted during finalization.";
-        File.Delete(markerPath);
-        string checkpointPath = TransferArtifactPaths.GetCheckpointPath(session.DestinationPath);
-        if (File.Exists(checkpointPath))
+        session.UpdatedAt = DateTimeOffset.UtcNow;
+        _checkpointStore.Delete(destinationPath);
+        _applicationState.UpsertDownload(CreateSnapshot(session));
+        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        await _finalizationJournalStore.SaveAsync(
+            destinationPath,
+            marker with { Stage = FinalizationStage.MetadataCommitted },
+            cancellationToken).ConfigureAwait(false);
+        FinalizationJournalStore.Delete(destinationPath);
+        if (File.Exists(stagingPath))
         {
-            File.Delete(checkpointPath);
+            File.Delete(stagingPath);
         }
     }
 
-    private static async Task<FinalizationMarker> ReadFinalizationMarkerAsync(
-        string markerPath,
+    private static async Task<bool> IsFinalizationCandidateValidAsync(
+        string path,
+        FinalizationMarker marker,
         CancellationToken cancellationToken)
     {
-        string payload = await File.ReadAllTextAsync(markerPath, cancellationToken).ConfigureAwait(false);
+        if (!File.Exists(path))
+        {
+            return false;
+        }
         try
         {
-            FinalizationMarker? marker = JsonSerializer.Deserialize<FinalizationMarker>(payload);
-            if (marker is { Version: FinalizationMarker.CurrentVersion })
-            {
-                return marker;
-            }
+            await FinalizationFilePromoter.ValidateCandidateAsync(path, marker, cancellationToken)
+                .ConfigureAwait(false);
+            return true;
         }
-        catch (JsonException)
+        catch (InvalidDataException)
         {
+            return false;
         }
-
-        if (long.TryParse(
-            payload,
-            System.Globalization.NumberStyles.Integer,
-            System.Globalization.CultureInfo.InvariantCulture,
-            out long legacyLength))
+        catch (DownloadIntegrityException)
         {
-            return new FinalizationMarker(
-                FinalizationMarker.CurrentVersion,
-                legacyLength,
-                null,
-                null,
-                DateTimeOffset.UtcNow);
+            return false;
         }
-
-        throw new InvalidDataException("The finalization marker is invalid.");
     }
 
     private async Task CompleteFromPartialAsync(
@@ -3383,13 +3592,24 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         string partialPath,
         long downloadedBytes)
     {
-        File.Move(partialPath, session.DestinationPath, overwrite: true);
+        FinalizationMarker marker = await _finalizationJournalStore
+            .LoadAsync(session.DestinationPath)
+            .ConfigureAwait(false)
+            ?? new FinalizationMarker(
+                FinalizationMarker.CurrentVersion,
+                downloadedBytes,
+                session.ExpectedChecksumAlgorithm,
+                session.ActualChecksum,
+                DateTimeOffset.UtcNow,
+                session.LocalIntegrityRecordOnly,
+                FinalizationStage.Prepared,
+                partialPath,
+                null,
+                DateTimeOffset.UtcNow);
+        FinalizationPromotionResult promotion = await _finalizationFilePromoter
+            .PromoteAsync(partialPath, session.DestinationPath, marker)
+            .ConfigureAwait(false);
         PromoteRepairManifest(session, partialPath);
-        string markerPath = GetFinalizationMarkerPath(session.DestinationPath);
-        if (File.Exists(markerPath))
-        {
-            File.Delete(markerPath);
-        }
 
         lock (session.Sync)
         {
@@ -3398,6 +3618,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.BytesPerSecond = 0;
             session.State = DownloadState.Completed;
             session.ErrorMessage = null;
+            session.RecoveryRequired = false;
+            session.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
         await session.CheckpointGate.WaitAsync().ConfigureAwait(false);
@@ -3411,17 +3633,33 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         await RefreshContentIdentityAsync(session, CancellationToken.None).ConfigureAwait(false);
+        _applicationState.UpsertDownload(CreateSnapshot(session));
+        await PersistAsync(force: true, CancellationToken.None).ConfigureAwait(false);
+        await _finalizationJournalStore.SaveAsync(
+            session.DestinationPath,
+            marker with
+            {
+                Stage = FinalizationStage.MetadataCommitted,
+                SourcePath = partialPath,
+                StagingPath = promotion.UsedCrossFileSystemFallback
+                    ? TransferArtifactPaths.GetFinalizationStagingPath(session.DestinationPath)
+                    : null
+            }).ConfigureAwait(false);
+        FinalizationJournalStore.Delete(session.DestinationPath);
+
         RecordTransferDiagnostic(
             session,
             TransferDiagnosticStage.Finalization,
             TransferDiagnosticSeverity.Information,
             "XDM-TRANSFER-FINALIZED",
-            "The partial file was atomically promoted to its final destination.",
+            promotion.UsedCrossFileSystemFallback
+                ? "The completed file was durably copied across file systems and atomically promoted at the destination."
+                : "The partial file was atomically promoted to its final destination.",
             new Dictionary<string, string?>(StringComparer.Ordinal)
             {
-                ["bytes"] = downloadedBytes.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                ["bytes"] = downloadedBytes.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["crossFileSystemFallback"] = promotion.UsedCrossFileSystemFallback.ToString(System.Globalization.CultureInfo.InvariantCulture)
             });
-        Publish(session, forcePersist: true);
         DownloadEngineLog.DownloadCompleted(_logger, session.Id, session.DestinationPath);
     }
 
@@ -4170,6 +4408,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             File.Delete(markerPath);
         }
         DeleteIfExists($"{markerPath}.tmp");
+        DeleteIfExists(TransferArtifactPaths.GetFinalizationStagingPath(destinationPath));
 
         string legacyMarkerPath = TransferArtifactPaths.GetLegacyFinalizationMarkerPath(destinationPath);
         if (File.Exists(legacyMarkerPath))
@@ -4480,6 +4719,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             || File.Exists($"{GetPartialPath(destinationPath)}.merge")
             || File.Exists(TransferArtifactPaths.GetCheckpointPath(destinationPath))
             || File.Exists(GetFinalizationMarkerPath(destinationPath))
+            || File.Exists(TransferArtifactPaths.GetFinalizationStagingPath(destinationPath))
             || Directory.Exists(SegmentedDownloadExecutor.GetSegmentDirectory(destinationPath));
 
     private static bool CanAdoptLegacySegmentArtifacts(string destinationPath)
@@ -4490,6 +4730,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             && !File.Exists($"{GetPartialPath(destinationPath)}.merge")
             && !File.Exists(TransferArtifactPaths.GetCheckpointPath(destinationPath))
             && !File.Exists(GetFinalizationMarkerPath(destinationPath))
+            && !File.Exists(TransferArtifactPaths.GetFinalizationStagingPath(destinationPath))
             && Directory.EnumerateFiles(segmentDirectory, "*.part", SearchOption.TopDirectoryOnly).Any();
     }
 
@@ -4566,6 +4807,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         MoveArtifactIfExists(
             GetFinalizationMarkerPath(destinationPath),
             $"{destinationPath}.stale-{timestamp:yyyyMMddHHmmss}.xdm.finalizing");
+        MoveArtifactIfExists(
+            TransferArtifactPaths.GetFinalizationStagingPath(destinationPath),
+            $"{destinationPath}.stale-{timestamp:yyyyMMddHHmmss}.xdm.promoting");
 
         string segmentDirectory = SegmentedDownloadExecutor.GetSegmentDirectory(destinationPath);
         if (Directory.Exists(segmentDirectory))

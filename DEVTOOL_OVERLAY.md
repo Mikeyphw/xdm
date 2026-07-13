@@ -1,26 +1,29 @@
-# XDM selective repair and checksum workflow overlay
+# XDM atomic finalization recovery and shutdown tracking
 
-## Purpose
+This overlay adds staged finalization recovery and durable application-session tracking on top of the validated verify/repair and checksum workflow.
 
-Implements recovery plan items 3 and 4 on top of commit `9ed4807`:
+## Finalization recovery
 
-1. A range-preserving verify-and-repair service.
-2. A complete SHA-256/SHA-512 verification workflow.
+- Persists a versioned finalization journal through prepared, promotion, destination-ready, destination-committed, and metadata-committed stages.
+- Keeps same-filesystem completion atomic through rename.
+- Uses a destination-local, write-through staging file when a direct move crosses filesystems.
+- Validates destination length and checksum before committing recovered files.
+- Preserves conflicting destination files as `.stale-finalization` artifacts.
+- Converts invalid or truncated recovery candidates into a paused/recovery-required failure instead of aborting application startup.
+- Persists content-hash and duplicate metadata before the first observable completed snapshot.
 
-## Included
+## Shutdown tracking
 
-- Persists independent expected and calculated SHA-256/SHA-512 values in an atomic sidecar.
-- Migrates legacy and Metalink checksums into the dual-checksum workflow.
-- Calculates configured hashes in one pass and exposes verification progress separately from download progress.
-- Records a clearly labeled local SHA-256 integrity value when no independent expected checksum exists.
-- Builds verified 4 MiB block manifests so later repair requests only suspicious or missing ranges.
-- Validates remote length, strong ETag, Last-Modified, range boundaries, and response lengths before writes.
-- Reconstructs partial files from segment artifacts at their planned offsets.
-- Rebuilds checkpoints and atomically finalizes only after checksum verification succeeds.
-- Keeps Verify, selective Verify and repair, and destructive Restart from zero as separate actions.
-- Adds clipboard/checksum-file import, calculated-checksum copy, and download-list schema v4 support.
-- Adds regression coverage for dual automatic verification, persisted state, local-only records, and single-range repair.
+- Persists a session UUID, startup/shutdown timestamps, active download IDs, checkpoint flush counts, and failed checkpoint IDs.
+- Marks shutdown clean only after active operations drain and durable checkpoints are flushed.
+- Leaves the session unclean when draining or checkpoint persistence fails.
+- Feeds previous active-transfer state into startup recovery and support bundles.
+
+## Performance continuity
+
+- Keeps large-history updates indexed while replacing managed per-item copies and full dictionary rebuilds with `Array.Copy` and incremental index updates.
+- Preserves immutable application snapshots while avoiding the ARM64 chroot performance regression covered by `LargeHistoryPerformanceTests`.
 
 ## Validation
 
-Devtool should restore, build, and test `app/XDM/XDM.Modern.sln` with zero warnings and zero errors.
+The artifact requires restore, build, tests, and zero warnings. It includes regression coverage for interrupted finalization, cross-filesystem promotion, shutdown checkpoint flushing, clean/unclean session tracking, content-duplicate publication, and large-history update performance.

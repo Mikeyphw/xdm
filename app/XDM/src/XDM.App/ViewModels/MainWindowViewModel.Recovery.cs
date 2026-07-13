@@ -35,7 +35,10 @@ public partial class MainWindowViewModel
     private async Task RefreshRecoveryAsync()
     {
         await RunRecoveryActionAsync(
-            () => _downloadRecoveryCoordinator.ScanAsync(_recoveryService.PreviousSessionWasUnclean),
+            () => _downloadRecoveryCoordinator.ScanAsync(
+                _recoveryService.PreviousSessionWasUnclean,
+                _recoveryService.PreviousSession?.ActiveDownloadIds,
+                _recoveryService.PreviousSession?.CheckpointFlushSucceeded),
             "Recovery scan completed.");
     }
 

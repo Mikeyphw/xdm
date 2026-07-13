@@ -81,7 +81,9 @@ public sealed class DiagnosticBundleService : IDiagnosticBundleService
             operatingSystem = _platformInfo.OperatingSystem,
             architecture = _platformInfo.Architecture,
             safeMode = _recoveryService.SafeMode,
-            previousSessionWasUnclean = _recoveryService.PreviousSessionWasUnclean
+            currentSessionId = _recoveryService.SessionId,
+            previousSessionWasUnclean = _recoveryService.PreviousSessionWasUnclean,
+            previousSession = _recoveryService.PreviousSession
         }, cancellationToken).ConfigureAwait(false);
         await AddJsonAsync(archive, "events.json", _events.Snapshot(), cancellationToken).ConfigureAwait(false);
         IReadOnlyList<TransferDiagnosticEvent> transferTimeline = _transferDiagnostics.Snapshot();

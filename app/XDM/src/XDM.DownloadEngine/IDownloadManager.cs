@@ -11,6 +11,9 @@ public interface IDownloadManager
 
     Task InitializeAsync(CancellationToken cancellationToken = default);
 
+    Task<DownloadShutdownReport> PrepareForShutdownAsync(
+        CancellationToken cancellationToken = default);
+
     Task<string> AddAsync(DownloadRequest request, CancellationToken cancellationToken = default);
 
 

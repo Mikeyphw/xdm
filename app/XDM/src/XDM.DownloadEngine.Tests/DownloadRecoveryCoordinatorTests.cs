@@ -43,7 +43,7 @@ public sealed class DownloadRecoveryCoordinatorTests
         using HttpClient client = CreateNoopClient();
         DownloadRecoveryCoordinator coordinator = CreateCoordinator(directory.Path, state, [persisted], client);
 
-        await coordinator.ScanAsync(previousSessionWasUnclean: true, cancellationToken);
+        await coordinator.ScanAsync(previousSessionWasUnclean: true, cancellationToken: cancellationToken);
 
         DownloadRecoveryCandidate candidate = Assert.Single(coordinator.Current);
         Assert.Equal(DownloadRecoveryClassification.ReadyToResume, candidate.Classification);
@@ -65,12 +65,66 @@ public sealed class DownloadRecoveryCoordinatorTests
         using HttpClient client = CreateNoopClient();
         DownloadRecoveryCoordinator coordinator = CreateCoordinator(directory.Path, state, [], client);
 
-        await coordinator.ScanAsync(previousSessionWasUnclean: false, cancellationToken);
+        await coordinator.ScanAsync(previousSessionWasUnclean: false, cancellationToken: cancellationToken);
 
         DownloadRecoveryCandidate candidate = Assert.Single(coordinator.Current);
         Assert.Equal(DownloadRecoveryClassification.OrphanedArtifact, candidate.Classification);
         Assert.True(candidate.IsOrphaned);
         Assert.Null(candidate.DownloadId);
+    }
+
+    [Fact]
+    public async Task ScanUsesTrackedActiveDownloadsWhenCheckpointFlushFailed()
+    {
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "tracked.bin");
+        PersistedDownload persisted = CreatePersisted(
+            "tracked",
+            destination,
+            DownloadState.Paused,
+            downloadedBytes: 0,
+            entityTag: null);
+        ApplicationState state = new();
+        state.ReplaceDownloads([CreateSnapshot(persisted, DownloadState.Paused)]);
+        using HttpClient client = CreateNoopClient();
+        DownloadRecoveryCoordinator coordinator = CreateCoordinator(directory.Path, state, [persisted], client);
+
+        string[] previouslyActive = [persisted.Id];
+        await coordinator.ScanAsync(
+            previousSessionWasUnclean: true,
+            previousActiveDownloadIds: previouslyActive,
+            checkpointFlushSucceeded: false,
+            cancellationToken: CancellationToken.None);
+
+        DownloadRecoveryCandidate candidate = Assert.Single(coordinator.Current);
+        Assert.Equal(DownloadRecoveryClassification.NeedsRemoteValidation, candidate.Classification);
+        Assert.Contains("checkpoint flush", candidate.UnsafeReason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CleanPreviousSessionDoesNotSurfaceTrackedActiveDownloads()
+    {
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "clean.bin");
+        PersistedDownload persisted = CreatePersisted(
+            "clean",
+            destination,
+            DownloadState.Paused,
+            downloadedBytes: 0,
+            entityTag: null);
+        ApplicationState state = new();
+        state.ReplaceDownloads([CreateSnapshot(persisted, DownloadState.Paused)]);
+        using HttpClient client = CreateNoopClient();
+        DownloadRecoveryCoordinator coordinator = CreateCoordinator(directory.Path, state, [persisted], client);
+
+        string[] previouslyActive = [persisted.Id];
+        await coordinator.ScanAsync(
+            previousSessionWasUnclean: false,
+            previousActiveDownloadIds: previouslyActive,
+            checkpointFlushSucceeded: true,
+            cancellationToken: CancellationToken.None);
+
+        Assert.Empty(coordinator.Current);
     }
 
     [Fact]
@@ -103,7 +157,7 @@ public sealed class DownloadRecoveryCoordinatorTests
             return response;
         }));
         DownloadRecoveryCoordinator coordinator = CreateCoordinator(directory.Path, state, [persisted], client);
-        await coordinator.ScanAsync(previousSessionWasUnclean: true, cancellationToken);
+        await coordinator.ScanAsync(previousSessionWasUnclean: true, cancellationToken: cancellationToken);
 
         DownloadRecoveryCandidate validated = await coordinator.ValidateAsync(persisted.Id, cancellationToken);
 

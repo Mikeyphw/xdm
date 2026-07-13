@@ -16,6 +16,7 @@ using XDM.Core.Scheduling;
 using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.Core.Diagnostics;
+using XDM.Core.Downloads;
 using XDM.Diagnostics;
 using XDM.DownloadEngine;
 using XDM.DownloadEngine.Aria2;
@@ -57,7 +58,11 @@ public partial class App : Application
             new Dictionary<string, string?>
             {
                 ["safeMode"] = recovery.SafeMode ? "true" : "false",
-                ["uncleanPreviousSession"] = recovery.PreviousSessionWasUnclean ? "true" : "false"
+                ["sessionId"] = recovery.SessionId,
+                ["uncleanPreviousSession"] = recovery.PreviousSessionWasUnclean ? "true" : "false",
+                ["previousActiveDownloads"] = (recovery.PreviousSession?.ActiveDownloadIds.Length ?? 0)
+                    .ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["previousCheckpointFlushSucceeded"] = recovery.PreviousSession?.CheckpointFlushSucceeded?.ToString()
             });
 
         InitializeService(
@@ -75,7 +80,10 @@ public partial class App : Application
         InitializeService(
             "XDM-STARTUP-RECOVERY-COORDINATOR",
             () => services.GetRequiredService<IDownloadRecoveryCoordinator>()
-                .ScanAsync(recovery.PreviousSessionWasUnclean),
+                .ScanAsync(
+                    recovery.PreviousSessionWasUnclean,
+                    recovery.PreviousSession?.ActiveDownloadIds,
+                    recovery.PreviousSession?.CheckpointFlushSucceeded),
             diagnostics);
 
         if (!recovery.SafeMode)
@@ -128,19 +136,7 @@ public partial class App : Application
             }
 
             desktop.Exit += (_, _) =>
-            {
-                recovery.MarkCleanShutdown();
-                diagnostics.Record(
-                    DiagnosticSeverity.Information,
-                    "XDM-SHUTDOWN-001",
-                    "Application shutdown completed cleanly.");
-                if (_trayViewModel is not null)
-                {
-                    _trayViewModel.PropertyChanged -= TrayViewModel_PropertyChanged;
-                }
-                services.Dispose();
-                _services = null;
-            };
+                HandleDesktopExit(services, recovery, diagnostics);
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -168,6 +164,75 @@ public partial class App : Application
 
 #pragma warning restore CA1031
 
+
+
+    private void HandleDesktopExit(
+        ServiceProvider services,
+        IRecoveryService recovery,
+        IDiagnosticEventStore diagnostics)
+    {
+        try
+        {
+            string[] activeIds = services.GetRequiredService<IApplicationState>()
+                .Current.Downloads
+                .Where(static download => download.State is DownloadState.Connecting
+                    or DownloadState.Downloading
+                    or DownloadState.Finalizing)
+                .Select(static download => download.Id)
+                .OrderBy(static id => id, StringComparer.Ordinal)
+                .ToArray();
+            recovery.BeginShutdown(activeIds);
+            DownloadShutdownReport report = services.GetRequiredService<IDownloadManager>()
+                .PrepareForShutdownAsync()
+                .GetAwaiter()
+                .GetResult();
+            recovery.RecordCheckpointFlush(
+                report.CheckpointFlushSucceeded,
+                report.CheckpointsAttempted,
+                report.CheckpointsWritten,
+                report.FailedDownloadIds);
+            if (report.CheckpointFlushSucceeded)
+            {
+                recovery.MarkCleanShutdown();
+                diagnostics.Record(
+                    DiagnosticSeverity.Information,
+                    "XDM-SHUTDOWN-001",
+                    "Application shutdown completed cleanly after transfer checkpoints were flushed.",
+                    new Dictionary<string, string?>
+                    {
+                        ["sessionId"] = recovery.SessionId,
+                        ["activeDownloads"] = report.ActiveDownloadIds.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ["checkpointsWritten"] = report.CheckpointsWritten.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    });
+            }
+            else
+            {
+                diagnostics.Record(
+                    DiagnosticSeverity.Warning,
+                    "XDM-SHUTDOWN-CHECKPOINTS",
+                    "Shutdown completed without a fully successful checkpoint flush; recovery will treat the session as unclean.");
+            }
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or InvalidOperationException
+            or TimeoutException)
+        {
+            diagnostics.Record(
+                DiagnosticSeverity.Error,
+                "XDM-SHUTDOWN-FAILED",
+                $"Shutdown tracking could not be completed: {exception.Message}");
+        }
+        finally
+        {
+            if (_trayViewModel is not null)
+            {
+                _trayViewModel.PropertyChanged -= TrayViewModel_PropertyChanged;
+            }
+            services.Dispose();
+            _services = null;
+        }
+    }
 
     private void TrayOpen_Click(object? sender, EventArgs eventArgs)
     {
@@ -307,6 +372,8 @@ public partial class App : Application
         services.AddSingleton<ITransferEnvironmentProbe, SystemTransferEnvironmentProbe>();
         services.AddSingleton<ITransferPolicyRuntime, TransferPolicyRuntime>();
         services.AddSingleton<DownloadChecksumWorkflowStore>();
+        services.AddSingleton<FinalizationJournalStore>();
+        services.AddSingleton<IFinalizationFilePromoter, FinalizationFilePromoter>();
         services.AddSingleton<IPartialFileRepairService>(static provider =>
             new PartialFileRepairService(provider.GetRequiredService<HttpClient>()));
         services.AddSingleton<IDownloadManager, DownloadManager>();

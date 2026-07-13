@@ -1317,6 +1317,117 @@ public sealed class DownloadManagerTests
             retryPolicy ?? new DownloadRetryPolicy(3, TimeSpan.FromMilliseconds(1), 0),
             aria2Service: aria2Service);
 
+    [Fact]
+    public async Task RecoversDestinationCommitBeforeDatabaseCompletion()
+    {
+        byte[] payload = CreatePayload(4096, 137);
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "committed-before-database.bin");
+        await File.WriteAllBytesAsync(destination, payload, CancellationToken.None);
+        string duplicatePartial = TransferArtifactPaths.GetPartialPath(destination);
+        await File.WriteAllBytesAsync(duplicatePartial, payload, CancellationToken.None);
+        FinalizationJournalStore journal = new();
+        await journal.SaveAsync(destination, new FinalizationMarker(
+            FinalizationMarker.CurrentVersion,
+            payload.Length,
+            DownloadChecksumService.Sha256,
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(payload)),
+            DateTimeOffset.UtcNow,
+            Stage: FinalizationStage.DestinationCommitted,
+            SourcePath: TransferArtifactPaths.GetPartialPath(destination),
+            UpdatedAt: DateTimeOffset.UtcNow),
+            CancellationToken.None);
+        PersistedDownload persisted = new(
+            "committed-before-database",
+            new Uri("https://example.test/committed-before-database.bin"),
+            destination,
+            payload.Length,
+            payload.Length,
+            DownloadState.Finalizing,
+            DateTimeOffset.UtcNow);
+        ApplicationState state = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore([persisted]));
+
+        await manager.InitializeAsync(CancellationToken.None);
+
+        DownloadSnapshot completed = Assert.Single(state.Current.Downloads);
+        Assert.Equal(DownloadState.Completed, completed.State);
+        Assert.Equal(DownloadIntegrityStatus.Verified, completed.IntegrityStatus);
+        Assert.Equal(
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(payload)),
+            completed.ActualChecksum);
+        Assert.Equal(payload, await File.ReadAllBytesAsync(destination, CancellationToken.None));
+        Assert.False(File.Exists(duplicatePartial));
+        Assert.False(File.Exists(TransferArtifactPaths.GetFinalizationMarkerPath(destination)));
+    }
+
+    [Fact]
+    public async Task RecoversCompletedCrossFilesystemStagingFile()
+    {
+        byte[] payload = CreatePayload(8192, 131);
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "staged-finalization.bin");
+        string staging = TransferArtifactPaths.GetFinalizationStagingPath(destination);
+        await File.WriteAllBytesAsync(staging, payload, CancellationToken.None);
+        FinalizationJournalStore journal = new();
+        await journal.SaveAsync(destination, new FinalizationMarker(
+            FinalizationMarker.CurrentVersion,
+            payload.Length,
+            DownloadChecksumService.Sha256,
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(payload)),
+            DateTimeOffset.UtcNow,
+            Stage: FinalizationStage.DestinationReady,
+            SourcePath: TransferArtifactPaths.GetPartialPath(destination),
+            StagingPath: staging,
+            UpdatedAt: DateTimeOffset.UtcNow),
+            CancellationToken.None);
+        PersistedDownload persisted = new(
+            "staged-finalization",
+            new Uri("https://example.test/staged-finalization.bin"),
+            destination,
+            payload.Length,
+            payload.Length,
+            DownloadState.Finalizing,
+            DateTimeOffset.UtcNow);
+        ApplicationState state = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore([persisted]));
+
+        await manager.InitializeAsync(CancellationToken.None);
+
+        DownloadSnapshot completed = Assert.Single(state.Current.Downloads);
+        Assert.Equal(DownloadState.Completed, completed.State);
+        Assert.Equal(payload, await File.ReadAllBytesAsync(destination, CancellationToken.None));
+        Assert.False(File.Exists(staging));
+    }
+
+    [Fact]
+    public async Task PrepareForShutdownPausesActiveTransferAndFlushesCheckpoint()
+    {
+        byte[] payload = CreatePayload(2 * 1024 * 1024, 127);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new SlowResponseHandler(payload));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/shutdown.bin"),
+            directory.Path,
+            "shutdown.bin",
+            ConnectionCount: 1));
+        await WaitForStateAsync(state, id, DownloadState.Downloading);
+
+        DownloadShutdownReport report = await manager.PrepareForShutdownAsync(CancellationToken.None);
+
+        Assert.Contains(id, report.ActiveDownloadIds);
+        Assert.True(report.CheckpointFlushSucceeded);
+        Assert.Equal(1, report.CheckpointsAttempted);
+        Assert.Equal(1, report.CheckpointsWritten);
+        Assert.True(File.Exists(TransferArtifactPaths.GetCheckpointPath(
+            Path.Combine(directory.Path, "shutdown.bin"))));
+        Assert.Equal(DownloadState.Paused, state.Current.Downloads.Single(item => item.Id == id).State);
+    }
+
     private static async Task<DownloadSnapshot> WaitForStateAsync(
         ApplicationState state,
         string id,
@@ -1519,6 +1630,32 @@ public sealed class DownloadManagerTests
             }
 
             return Task.FromResult(response);
+        }
+    }
+
+    private sealed class SlowResponseHandler(byte[] payload) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            StreamContent content = new(new SlowReadStream(payload));
+            content.Headers.ContentLength = payload.Length;
+            HttpResponseMessage response = new(HttpStatusCode.OK) { Content = content };
+            response.Headers.ETag = EntityTagHeaderValue.Parse("\"shutdown-v1\"");
+            return Task.FromResult(response);
+        }
+    }
+
+    private sealed class SlowReadStream(byte[] payload) : MemoryStream(payload, writable: false)
+    {
+        public override async ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(15, cancellationToken);
+            return await base.ReadAsync(buffer, cancellationToken);
         }
     }
 
