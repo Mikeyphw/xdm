@@ -38,6 +38,15 @@
                         <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
                       </ComboBox>
                     </Grid>
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="{Binding Localization[ui_schedule_bandwidth_profile]}" Classes="label"/>
+                      <ComboBox ItemsSource="{Binding SelectedSchedule.Profiles}"
+                                SelectedItem="{Binding SelectedSchedule.BandwidthProfile}"
+                                AutomationProperties.Name="{Binding Localization[ui_schedule_bandwidth_profile]}"
+                                AutomationProperties.AutomationId="Scheduler_BandwidthProfile">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </StackPanel>
                     <TextBlock Text="{Binding Localization[ui_run_on_days]}" Classes="label"/>
                     <WrapPanel Orientation="Horizontal">
                       <CheckBox Margin="0,0,10,0" Content="{Binding Localization[ui_mon]}" IsChecked="{Binding SelectedSchedule.MondayEnabled}"/>

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using XDM.Core.Abstractions;
 using XDM.Core.Downloads;
+using XDM.Core.Policies;
 using XDM.Core.Scheduling;
 using XDM.Core.Settings;
 using XDM.Core.State;
@@ -41,6 +42,7 @@ public sealed class QueueSchedulerRuntime : IQueueSchedulerRuntime
     private readonly ICompletionActionService _completionActions;
     private readonly IAntivirusScanner _antivirusScanner;
     private readonly ILogger<QueueSchedulerRuntime> _logger;
+    private readonly ITransferPolicyRuntime _transferPolicyRuntime;
     private readonly SemaphoreSlim _evaluationGate = new(1, 1);
     private readonly Dictionary<string, ActiveScheduleRun> _runs = new(StringComparer.Ordinal);
     private readonly HashSet<string> _managedQueues = new(StringComparer.Ordinal);
@@ -74,7 +76,8 @@ public sealed class QueueSchedulerRuntime : IQueueSchedulerRuntime
         ISchedulerStateStore stateStore,
         ICompletionActionService completionActions,
         IAntivirusScanner antivirusScanner,
-        ILogger<QueueSchedulerRuntime> logger)
+        ILogger<QueueSchedulerRuntime> logger,
+        ITransferPolicyRuntime? transferPolicyRuntime = null)
     {
         _downloadManager = downloadManager;
         _settingsService = settingsService;
@@ -83,6 +86,7 @@ public sealed class QueueSchedulerRuntime : IQueueSchedulerRuntime
         _completionActions = completionActions;
         _antivirusScanner = antivirusScanner;
         _logger = logger;
+        _transferPolicyRuntime = transferPolicyRuntime ?? XDM.DownloadEngine.Policies.UnrestrictedTransferPolicyRuntime.Instance;
     }
 
     public bool IsRunning => _loopTask is { IsCompleted: false };
@@ -201,6 +205,14 @@ public sealed class QueueSchedulerRuntime : IQueueSchedulerRuntime
                 }
             }
 
+            string[] activeProfileIds = enabledSchedules
+                .Where(schedule => activeScheduleIds.Contains(schedule.Id))
+                .Select(static schedule => schedule.BandwidthProfileId)
+                .Where(static profileId => !string.IsNullOrWhiteSpace(profileId))
+                .Select(static profileId => profileId!)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            _transferPolicyRuntime.SetScheduleProfileOverrides(activeProfileIds);
             await SynchronizeManagedQueuesAsync(desiredQueues, cancellationToken).ConfigureAwait(false);
 
             _state = new SchedulerRuntimeState(now, lastStarts);
@@ -245,6 +257,7 @@ public sealed class QueueSchedulerRuntime : IQueueSchedulerRuntime
         }
 
         _disposed = true;
+        _transferPolicyRuntime.SetScheduleProfileOverrides([]);
         _settingsService.Changed -= OnSettingsChanged;
         _applicationState.Changed -= OnApplicationStateChanged;
         _pendingActionCancellation?.Cancel();

@@ -1,69 +1,212 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.QueuesView" mc:Ignorable="d" KeyboardNavigation.TabNavigation="Continue" AutomationProperties.LandmarkType="Main" AutomationProperties.AccessibilityView="Control"><ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="14">
-              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="12">
-                  <TextBlock Text="{Binding Localization[ui_queue_definitions]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
-                  <ItemsControl ItemsSource="{Binding QueueDefinitions}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                        <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12" Margin="0,0,0,7">
-                          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="18">
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodyForeground}"/>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
-                              <TextBlock Text="{Binding MaxConcurrentDownloads}" Foreground="{DynamicResource XdmAccentForeground}"/>
-                              <TextBlock Text="concurrent" Foreground="{DynamicResource XdmAccentForeground}"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
-                              <TextBlock Text="{Binding SpeedLimitBytesPerSecond}" Foreground="{DynamicResource XdmMutedForeground}"/>
-                              <TextBlock Text="B/s limit" Foreground="{DynamicResource XdmMutedForeground}"/>
-                            </StackPanel>
-                          </Grid>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <TextBlock Text="{Binding QueueRuntimeStatus}" Foreground="{DynamicResource XdmAccentForeground}" TextWrapping="Wrap"/>
-                  <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="9">
-                    <ComboBox ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedQueue}" AutomationProperties.Name="Queue" AutomationProperties.AutomationId="Queues_SelectedQueue">
-                      <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <Button Grid.Column="1" Classes="primary" Content="{Binding Localization[ui_start]}" Command="{Binding StartSelectedQueueCommand}"/>
-                    <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_stop]}" Command="{Binding StopSelectedQueueCommand}"/>
-                    <Button Grid.Column="3" Classes="secondary" Content="{Binding Localization[ui_move_selected_download]}" Command="{Binding MoveSelectedDownloadToQueueCommand}"/>
-                  </Grid>
-                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="{Binding Localization[ui_new_queue_name]}" Text="{Binding NewQueueName}" AutomationProperties.Name="{Binding Localization[ui_new_queue_name]}" AutomationProperties.AutomationId="Queues_Localization_ui_new_queue_name"/>
-                    <Button Grid.Column="1" Classes="primary" Content="{Binding Localization[ui_add_queue]}" Command="{Binding AddQueueCommand}"/>
-                  </Grid>
-                  <TextBlock Text="{Binding Localization[ui_queues_execute_independently_global_and_per_queue_concurrency_and_speed]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             x:Class="XDM.App.Views.QueuesView"
+             mc:Ignorable="d"
+             KeyboardNavigation.TabNavigation="Continue"
+             AutomationProperties.LandmarkType="Main"
+             AutomationProperties.AccessibilityView="Control">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="14">
+      <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+        <StackPanel Spacing="12">
+          <TextBlock Text="{Binding Localization[ui_smart_transfer_policy]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
+          <TextBlock Text="{Binding Localization[ui_smart_transfer_policy_hint]}" Classes="supporting" TextWrapping="Wrap"/>
+          <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12">
+            <StackPanel Spacing="10">
+              <CheckBox Content="{Binding Localization[ui_enable_smart_transfer_policy]}"
+                        IsChecked="{Binding SmartTransfersEnabled}"
+                        AutomationProperties.AutomationId="Queues_SmartTransfersEnabled"/>
+              <TextBlock Text="{Binding TransferPolicyStatus}" Foreground="{DynamicResource XdmAccentForeground}" TextWrapping="Wrap"
+                         AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="Queues_TransferPolicyStatus"/>
+              <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="{Binding Localization[ui_active_profile]}" Classes="label"/>
+                  <ComboBox ItemsSource="{Binding BandwidthProfiles}" SelectedItem="{Binding ActiveBandwidthProfile}"
+                            AutomationProperties.Name="{Binding Localization[ui_active_profile]}"
+                            AutomationProperties.AutomationId="Queues_ActiveBandwidthProfile">
+                    <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                  </ComboBox>
                 </StackPanel>
-              </Border>
-
-              <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="12">
-                  <TextBlock Text="{Binding Localization[ui_categories]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
-                  <ItemsControl ItemsSource="{Binding CategoryDefinitions}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                        <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12" Margin="0,0,0,7">
-                          <Grid ColumnDefinitions="*,2*" ColumnSpacing="18">
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodyForeground}"/>
-                            <TextBlock Grid.Column="1" Text="{Binding DestinationDirectory}" Foreground="{DynamicResource XdmMutedForeground}" TextTrimming="CharacterEllipsis"/>
-                          </Grid>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <Grid ColumnDefinitions="*,*,2*,Auto" ColumnSpacing="9">
-                    <TextBox PlaceholderText="{Binding Localization[ui_category_name]}" Text="{Binding NewCategoryName}" AutomationProperties.Name="{Binding Localization[ui_category_name]}" AutomationProperties.AutomationId="Queues_Localization_ui_category_name"/>
-                    <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_extensions_zip_7z_rar]}" Text="{Binding NewCategoryExtensions}" AutomationProperties.Name="{Binding Localization[ui_extensions_zip_7z_rar]}" AutomationProperties.AutomationId="Queues_Localization_ui_extensions_zip_7z_rar"/>
-                    <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_destination_blank_current]}" Text="{Binding NewCategoryDestination}" AutomationProperties.Name="{Binding Localization[ui_destination_blank_current]}" AutomationProperties.AutomationId="Queues_Localization_ui_destination_blank_current"/>
-                    <Button Grid.Column="3" Classes="primary" Content="{Binding Localization[ui_add_category]}" Command="{Binding AddCategoryCommand}"/>
-                  </Grid>
-                  <Button HorizontalAlignment="Left" Classes="secondary" Content="{Binding Localization[ui_save_definitions]}" Command="{Binding SaveSettingsCommand}"/>
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Text="{Binding Localization[ui_network_cost_override]}" Classes="label"/>
+                  <ComboBox ItemsSource="{Binding NetworkCostOverrides}" SelectedItem="{Binding SelectedNetworkCostOverride}"
+                            AutomationProperties.Name="{Binding Localization[ui_network_cost_override]}"
+                            AutomationProperties.AutomationId="Queues_NetworkCostOverride"/>
                 </StackPanel>
-              </Border>
+                <StackPanel Grid.Column="2" Spacing="6">
+                  <TextBlock Text="{Binding Localization[ui_power_source_override]}" Classes="label"/>
+                  <ComboBox ItemsSource="{Binding PowerSourceOverrides}" SelectedItem="{Binding SelectedPowerSourceOverride}"
+                            AutomationProperties.Name="{Binding Localization[ui_power_source_override]}"
+                            AutomationProperties.AutomationId="Queues_PowerSourceOverride"/>
+                </StackPanel>
+              </Grid>
+              <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="{Binding Localization[ui_metered_behavior]}" Classes="label"/>
+                  <ComboBox ItemsSource="{Binding TransferPolicyBehaviors}" SelectedItem="{Binding SelectedMeteredBehavior}"
+                            AutomationProperties.Name="{Binding Localization[ui_metered_behavior]}"
+                            AutomationProperties.AutomationId="Queues_MeteredBehavior"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Text="{Binding Localization[ui_metered_profile]}" Classes="label"/>
+                  <ComboBox ItemsSource="{Binding BandwidthProfiles}" SelectedItem="{Binding MeteredBandwidthProfile}"
+                            AutomationProperties.Name="{Binding Localization[ui_metered_profile]}"
+                            AutomationProperties.AutomationId="Queues_MeteredProfile">
+                    <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                  </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="6">
+                  <TextBlock Text="{Binding Localization[ui_battery_behavior]}" Classes="label"/>
+                  <ComboBox ItemsSource="{Binding TransferPolicyBehaviors}" SelectedItem="{Binding SelectedBatteryBehavior}"
+                            AutomationProperties.Name="{Binding Localization[ui_battery_behavior]}"
+                            AutomationProperties.AutomationId="Queues_BatteryBehavior"/>
+                </StackPanel>
+                <StackPanel Grid.Column="3" Spacing="6">
+                  <TextBlock Text="{Binding Localization[ui_battery_profile]}" Classes="label"/>
+                  <ComboBox ItemsSource="{Binding BandwidthProfiles}" SelectedItem="{Binding BatteryBandwidthProfile}"
+                            AutomationProperties.Name="{Binding Localization[ui_battery_profile]}"
+                            AutomationProperties.AutomationId="Queues_BatteryProfile">
+                    <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                  </ComboBox>
+                </StackPanel>
+              </Grid>
+              <WrapPanel Orientation="Horizontal">
+                <CheckBox Margin="0,0,14,0" Content="{Binding Localization[ui_pause_when_offline]}" IsChecked="{Binding PauseTransfersWhenOffline}"
+                          AutomationProperties.AutomationId="Queues_PauseWhenOffline"/>
+                <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_refresh_environment]}" Command="{Binding RefreshTransferPolicyCommand}"/>
+                <Button Classes="primary" Content="{Binding Localization[ui_save_definitions]}" Command="{Binding SaveSettingsCommand}"/>
+              </WrapPanel>
             </StackPanel>
-          </ScrollViewer>
+          </Border>
 
-          </UserControl>
+          <Grid ColumnDefinitions="2*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="10">
+            <StackPanel Spacing="6">
+              <TextBlock Text="{Binding Localization[ui_edit_profile]}" Classes="label"/>
+              <ComboBox ItemsSource="{Binding BandwidthProfiles}" SelectedItem="{Binding SelectedBandwidthProfile}"
+                        AutomationProperties.Name="{Binding Localization[ui_edit_profile]}"
+                        AutomationProperties.AutomationId="Queues_SelectedBandwidthProfile">
+                <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Grid.ColumnSpan="2" Spacing="6">
+              <TextBlock Text="{Binding Localization[ui_profile_name]}" Classes="label"/>
+              <TextBox Text="{Binding SelectedBandwidthProfile.Name}"
+                       AutomationProperties.Name="{Binding Localization[ui_profile_name]}" AutomationProperties.AutomationId="Queues_ProfileName"/>
+            </StackPanel>
+            <StackPanel Grid.Row="1" Spacing="6">
+              <TextBlock Text="{Binding Localization[ui_profile_concurrency]}" Classes="label"/>
+              <NumericUpDown Value="{Binding SelectedBandwidthProfile.MaxConcurrentDownloads, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}"
+                             Minimum="1" Maximum="32" Increment="1" FormatString="0"
+                             AutomationProperties.Name="{Binding Localization[ui_profile_concurrency]}" AutomationProperties.AutomationId="Queues_ProfileConcurrency"/>
+            </StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="1" Spacing="6">
+              <TextBlock Text="{Binding Localization[ui_profile_per_host]}" Classes="label"/>
+              <NumericUpDown Value="{Binding SelectedBandwidthProfile.MaxConcurrentPerHost, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}"
+                             Minimum="1" Maximum="16" Increment="1" FormatString="0"
+                             AutomationProperties.Name="{Binding Localization[ui_profile_per_host]}" AutomationProperties.AutomationId="Queues_ProfilePerHost"/>
+            </StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="2" Spacing="6">
+              <TextBlock Text="{Binding Localization[ui_profile_speed_kib]}" Classes="label"/>
+              <NumericUpDown Value="{Binding SelectedBandwidthProfile.SpeedLimitKbps, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}"
+                             Minimum="0" Maximum="104857600" Increment="100" FormatString="0"
+                             AutomationProperties.Name="{Binding Localization[ui_profile_speed_kib]}" AutomationProperties.AutomationId="Queues_ProfileSpeed"/>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+        <StackPanel Spacing="12">
+          <TextBlock Text="{Binding Localization[ui_queue_definitions]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
+          <ItemsControl ItemsSource="{Binding QueueDefinitions}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12" Margin="0,0,0,7">
+                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="18">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodyForeground}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                      <TextBlock Text="{Binding MaxConcurrentDownloads}" Foreground="{DynamicResource XdmAccentForeground}"/>
+                      <TextBlock Text="concurrent" Foreground="{DynamicResource XdmAccentForeground}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                      <TextBlock Text="{Binding SpeedLimitBytesPerSecond}" Foreground="{DynamicResource XdmMutedForeground}"/>
+                      <TextBlock Text="B/s limit" Foreground="{DynamicResource XdmMutedForeground}"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="{Binding QueueRuntimeStatus}" Foreground="{DynamicResource XdmAccentForeground}" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding SelectedQueueBlockedReason}" Foreground="{DynamicResource XdmWarningForeground}" TextWrapping="Wrap"
+                     AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="Queues_SelectedQueueBlockedReason"/>
+          <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="9">
+            <ComboBox ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedQueue}" AutomationProperties.Name="Queue" AutomationProperties.AutomationId="Queues_SelectedQueue">
+              <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <Button Grid.Column="1" Classes="primary" Content="{Binding Localization[ui_start]}" Command="{Binding StartSelectedQueueCommand}"/>
+            <Button Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_stop]}" Command="{Binding StopSelectedQueueCommand}"/>
+            <Button Grid.Column="3" Classes="secondary" Content="{Binding Localization[ui_move_selected_download]}" Command="{Binding MoveSelectedDownloadToQueueCommand}"/>
+          </Grid>
+
+          <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12">
+            <StackPanel Spacing="10">
+              <TextBlock Text="{Binding Localization[ui_queue_dependencies]}" Classes="label"/>
+              <TextBlock Text="{Binding Localization[ui_queue_dependencies_hint]}" Classes="supporting" TextWrapping="Wrap"/>
+              <Grid ColumnDefinitions="*,Auto,*,Auto" ColumnSpacing="9">
+                <ComboBox ItemsSource="{Binding QueueDependencyCandidates}" SelectedItem="{Binding SelectedQueueDependencyCandidate}"
+                          AutomationProperties.Name="{Binding Localization[ui_dependency_queue]}"
+                          AutomationProperties.AutomationId="Queues_DependencyCandidate">
+                  <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_add_dependency]}" Command="{Binding AddQueueDependencyCommand}"/>
+                <ComboBox Grid.Column="2" ItemsSource="{Binding SelectedQueueDependencies}" SelectedItem="{Binding SelectedExistingQueueDependency}"
+                          AutomationProperties.Name="{Binding Localization[ui_queue_dependencies]}"
+                          AutomationProperties.AutomationId="Queues_ExistingDependency">
+                  <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Grid.Column="3" Classes="secondary" Content="{Binding Localization[ui_remove_dependency]}" Command="{Binding RemoveQueueDependencyCommand}"/>
+              </Grid>
+              <CheckBox Content="{Binding Localization[ui_require_successful_dependencies]}"
+                        IsChecked="{Binding SelectedQueueRequiresSuccessfulDependencies}"
+                        AutomationProperties.AutomationId="Queues_RequireSuccessfulDependencies"/>
+            </StackPanel>
+          </Border>
+
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
+            <TextBox PlaceholderText="{Binding Localization[ui_new_queue_name]}" Text="{Binding NewQueueName}" AutomationProperties.Name="{Binding Localization[ui_new_queue_name]}" AutomationProperties.AutomationId="Queues_Localization_ui_new_queue_name"/>
+            <Button Grid.Column="1" Classes="primary" Content="{Binding Localization[ui_add_queue]}" Command="{Binding AddQueueCommand}"/>
+          </Grid>
+          <TextBlock Text="{Binding Localization[ui_queues_execute_independently_global_and_per_queue_concurrency_and_speed]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+        </StackPanel>
+      </Border>
+
+      <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+        <StackPanel Spacing="12">
+          <TextBlock Text="{Binding Localization[ui_categories]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
+          <ItemsControl ItemsSource="{Binding CategoryDefinitions}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Background="{DynamicResource XdmInputBackground}" CornerRadius="8" Padding="12" Margin="0,0,0,7">
+                  <Grid ColumnDefinitions="*,2*" ColumnSpacing="18">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodyForeground}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding DestinationDirectory}" Foreground="{DynamicResource XdmMutedForeground}" TextTrimming="CharacterEllipsis"/>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Grid ColumnDefinitions="*,*,2*,Auto" ColumnSpacing="9">
+            <TextBox PlaceholderText="{Binding Localization[ui_category_name]}" Text="{Binding NewCategoryName}" AutomationProperties.Name="{Binding Localization[ui_category_name]}" AutomationProperties.AutomationId="Queues_Localization_ui_category_name"/>
+            <TextBox Grid.Column="1" PlaceholderText="{Binding Localization[ui_extensions_zip_7z_rar]}" Text="{Binding NewCategoryExtensions}" AutomationProperties.Name="{Binding Localization[ui_extensions_zip_7z_rar]}" AutomationProperties.AutomationId="Queues_Localization_ui_extensions_zip_7z_rar"/>
+            <TextBox Grid.Column="2" PlaceholderText="{Binding Localization[ui_destination_blank_current]}" Text="{Binding NewCategoryDestination}" AutomationProperties.Name="{Binding Localization[ui_destination_blank_current]}" AutomationProperties.AutomationId="Queues_Localization_ui_destination_blank_current"/>
+            <Button Grid.Column="3" Classes="primary" Content="{Binding Localization[ui_add_category]}" Command="{Binding AddCategoryCommand}"/>
+          </Grid>
+          <Button HorizontalAlignment="Left" Classes="secondary" Content="{Binding Localization[ui_save_definitions]}" Command="{Binding SaveSettingsCommand}"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

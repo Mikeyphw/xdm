@@ -8,6 +8,7 @@ using XDM.BrowserIntegration;
 using XDM.Core.Abstractions;
 using XDM.Core.Downloads;
 using XDM.Core.Localization;
+using XDM.Core.Policies;
 using XDM.Core.Queues;
 using XDM.Core.Scheduling;
 using XDM.Core.Settings;
@@ -29,6 +30,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly ISettingsService _settingsService;
     private readonly LocalizationService _localization;
     private readonly IQueueSchedulerRuntime _queueSchedulerRuntime;
+    private readonly ITransferPolicyRuntime _transferPolicyRuntime;
     private readonly ICompletionActionService _completionActionService;
     private readonly IUiDispatcher _dispatcher;
     private readonly IBrowserIntegrationService _browserIntegrationService;
@@ -61,6 +63,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         XDM.Core.Persistence.IDownloadListTransferService downloadListTransferService,
         IPlatformService platformService,
         IQueueSchedulerRuntime queueSchedulerRuntime,
+        ITransferPolicyRuntime transferPolicyRuntime,
         ICompletionActionService completionActionService,
         IUiDispatcher dispatcher,
         IBrowserIntegrationService browserIntegrationService,
@@ -88,6 +91,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _downloadListTransferService = downloadListTransferService;
         _platformService = platformService;
         _queueSchedulerRuntime = queueSchedulerRuntime;
+        _transferPolicyRuntime = transferPolicyRuntime;
         _completionActionService = completionActionService;
         _dispatcher = dispatcher;
         _browserIntegrationService = browserIntegrationService;
@@ -128,6 +132,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         ApplySnapshot(applicationState.Current);
         ApplyQueueRuntime(downloadManager.QueueRuntime);
         ApplySchedulerRuntime(queueSchedulerRuntime.Current);
+        ApplyTransferPolicy(transferPolicyRuntime.Current);
         CompletionCapabilitySummary = FormatCompletionCapabilities(completionActionService.GetCapabilities());
         ApplyBrowserStatus(browserIntegrationService.Current);
         BrowserHostStatus = browserHostInstaller.GetStatus().Message;
@@ -154,6 +159,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         localization.Changed += OnLocalizationChanged;
         downloadManager.QueueRuntimeChanged += OnQueueRuntimeChanged;
         queueSchedulerRuntime.Changed += OnSchedulerRuntimeChanged;
+        transferPolicyRuntime.Changed += OnTransferPolicyChanged;
         browserIntegrationService.StatusChanged += OnBrowserStatusChanged;
         browserIntegrationService.CaptureReceived += OnBrowserCaptureReceived;
         diagnosticEvents.Changed += OnDiagnosticsChanged;
@@ -177,6 +183,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<ScheduleEditorViewModel> Schedules { get; } = [];
 
+    public ObservableCollection<BandwidthProfileEditorViewModel> BandwidthProfiles { get; } = [];
+
+    public ObservableCollection<DownloadQueueDefinition> SelectedQueueDependencies { get; } = [];
+
     public ObservableCollection<DiagnosticEvent> DiagnosticEvents { get; } = [];
 
     public ObservableCollection<DownloadTimelineEntry> SelectedDownloadTimeline { get; } = [];
@@ -197,6 +207,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         [DownloadChecksumService.Sha256, DownloadChecksumService.Sha512];
 
     public IReadOnlyList<DownloadPriority> DownloadPriorities { get; } = Enum.GetValues<DownloadPriority>();
+
+    public IReadOnlyList<TransferPolicyBehavior> TransferPolicyBehaviors { get; } = Enum.GetValues<TransferPolicyBehavior>();
+
+    public IReadOnlyList<NetworkCostOverride> NetworkCostOverrides { get; } = Enum.GetValues<NetworkCostOverride>();
+
+    public IReadOnlyList<PowerSourceOverride> PowerSourceOverrides { get; } = Enum.GetValues<PowerSourceOverride>();
 
     public ObservableCollection<string> DownloadStatusFilters { get; } = [];
 
@@ -247,6 +263,15 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private DownloadQueueDefinition? selectedQueue;
+
+    [ObservableProperty]
+    private DownloadQueueDefinition? selectedQueueDependencyCandidate;
+
+    [ObservableProperty]
+    private DownloadQueueDefinition? selectedExistingQueueDependency;
+
+    [ObservableProperty]
+    private bool selectedQueueRequiresSuccessfulDependencies = true;
 
     [ObservableProperty]
     private string currentTitle = "Downloads";
@@ -422,6 +447,42 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string queueRuntimeStatus = "No active queues";
 
     [ObservableProperty]
+    private string selectedQueueBlockedReason = string.Empty;
+
+    [ObservableProperty]
+    private bool smartTransfersEnabled = true;
+
+    [ObservableProperty]
+    private BandwidthProfileEditorViewModel? selectedBandwidthProfile;
+
+    [ObservableProperty]
+    private BandwidthProfileEditorViewModel? activeBandwidthProfile;
+
+    [ObservableProperty]
+    private TransferPolicyBehavior selectedMeteredBehavior = TransferPolicyBehavior.UseProfile;
+
+    [ObservableProperty]
+    private BandwidthProfileEditorViewModel? meteredBandwidthProfile;
+
+    [ObservableProperty]
+    private TransferPolicyBehavior selectedBatteryBehavior = TransferPolicyBehavior.UseProfile;
+
+    [ObservableProperty]
+    private BandwidthProfileEditorViewModel? batteryBandwidthProfile;
+
+    [ObservableProperty]
+    private NetworkCostOverride selectedNetworkCostOverride = NetworkCostOverride.Auto;
+
+    [ObservableProperty]
+    private PowerSourceOverride selectedPowerSourceOverride = PowerSourceOverride.Auto;
+
+    [ObservableProperty]
+    private bool pauseTransfersWhenOffline = true;
+
+    [ObservableProperty]
+    private string transferPolicyStatus = "Smart transfer policy is starting.";
+
+    [ObservableProperty]
     private string browserIntegrationStatus = "Stopped";
 
     [ObservableProperty]
@@ -525,6 +586,23 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string diagnosticBundlePath = "No diagnostic bundle exported yet";
+
+    public IEnumerable<DownloadQueueDefinition> QueueDependencyCandidates
+    {
+        get
+        {
+            HashSet<string> excluded = new(SelectedQueue?.DependsOnQueueIds ?? [], StringComparer.Ordinal)
+            {
+                SelectedQueue?.Id ?? string.Empty
+            };
+            return QueueDefinitions.Where(queue =>
+                !excluded.Contains(queue.Id)
+                && (SelectedQueue is null
+                    || !DownloadQueueDependencyGraph
+                        .GetStartOrder(queue.Id, QueueDefinitions)
+                        .Contains(SelectedQueue.Id, StringComparer.Ordinal)));
+        }
+    }
 
     public bool IsSelectedQueueActive
         => SelectedQueue is not null && _downloadManager.QueueRuntime.IsActive(SelectedQueue.Id);
@@ -639,7 +717,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     partial void OnSelectedQueueChanged(DownloadQueueDefinition? value)
     {
+        SelectedQueueRequiresSuccessfulDependencies = value?.RequireSuccessfulDependencies ?? true;
+        RefreshSelectedQueueDependencies();
         OnPropertyChanged(nameof(IsSelectedQueueActive));
+        OnPropertyChanged(nameof(QueueDependencyCandidates));
+        ApplyQueueRuntime(_downloadManager.QueueRuntime);
+    }
+
+    partial void OnSelectedQueueRequiresSuccessfulDependenciesChanged(bool value)
+    {
+        if (SelectedQueue is null || SelectedQueue.RequireSuccessfulDependencies == value)
+        {
+            return;
+        }
+
+        ReplaceSelectedQueue(SelectedQueue with { RequireSuccessfulDependencies = value });
     }
 
     partial void OnSelectedCategoryChanged(DownloadCategoryDefinition? value)
@@ -1060,7 +1152,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 ParseUiScalePercent(UiScalePercent),
                 AnnounceStatusChanges),
             Aria2 = BuildAria2Settings(),
-            Updates = new UpdateSettings(SelectedUpdateChannel, AutomaticUpdateChecks, NotifyWhenUpdateStaged)
+            Updates = new UpdateSettings(SelectedUpdateChannel, AutomaticUpdateChecks, NotifyWhenUpdateStaged),
+            SmartTransfers = BuildSmartTransferSettings()
         };
 
         await _settingsService.UpdateAsync(updated);
@@ -1090,7 +1183,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             WeekDays.EveryDay,
             MissedRunPolicy.Skip,
             ScheduleCompletionAction.None);
-        ScheduleEditorViewModel editor = new(definition, QueueDefinitions);
+        ScheduleEditorViewModel editor = new(definition, QueueDefinitions, GetProfileDefinitions());
         Schedules.Add(editor);
         SelectedSchedule = editor;
         NewScheduleName = string.Empty;
@@ -1147,6 +1240,47 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private void AddQueueDependency()
+    {
+        if (SelectedQueue is null || SelectedQueueDependencyCandidate is null)
+        {
+            OperationMessage = "Select a queue and a dependency first.";
+            return;
+        }
+
+        string[] dependencies = (SelectedQueue.DependsOnQueueIds ?? [])
+            .Append(SelectedQueueDependencyCandidate.Id)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        ReplaceSelectedQueue(SelectedQueue with { DependsOnQueueIds = dependencies });
+        SelectedQueueDependencyCandidate = null;
+        OperationMessage = "Queue dependency added; save settings to persist it.";
+    }
+
+    [RelayCommand]
+    private void RemoveQueueDependency()
+    {
+        if (SelectedQueue is null || SelectedExistingQueueDependency is null)
+        {
+            return;
+        }
+
+        string[] dependencies = (SelectedQueue.DependsOnQueueIds ?? [])
+            .Where(id => !string.Equals(id, SelectedExistingQueueDependency.Id, StringComparison.Ordinal))
+            .ToArray();
+        ReplaceSelectedQueue(SelectedQueue with { DependsOnQueueIds = dependencies });
+        SelectedExistingQueueDependency = null;
+        OperationMessage = "Queue dependency removed; save settings to persist it.";
+    }
+
+    [RelayCommand]
+    private async Task RefreshTransferPolicyAsync()
+    {
+        await _transferPolicyRuntime.RefreshAsync();
+        OperationMessage = "Smart transfer environment refreshed.";
+    }
+
+    [RelayCommand]
     private async Task StartSelectedQueueAsync()
     {
         if (SelectedQueue is null)
@@ -1156,7 +1290,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         await _downloadManager.StartQueueAsync(SelectedQueue.Id);
-        OperationMessage = $"Queue '{SelectedQueue.Name}' started.";
+        string? blockedReason = _downloadManager.QueueRuntime.GetBlockedReason(SelectedQueue.Id);
+        OperationMessage = blockedReason is null
+            ? $"Queue '{SelectedQueue.Name}' started."
+            : $"Queue '{SelectedQueue.Name}' is waiting: {blockedReason}";
     }
 
     [RelayCommand]
@@ -1687,6 +1824,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _localization.Changed -= OnLocalizationChanged;
         _downloadManager.QueueRuntimeChanged -= OnQueueRuntimeChanged;
         _queueSchedulerRuntime.Changed -= OnSchedulerRuntimeChanged;
+        _transferPolicyRuntime.Changed -= OnTransferPolicyChanged;
         _browserIntegrationService.StatusChanged -= OnBrowserStatusChanged;
         _browserIntegrationService.CaptureReceived -= OnBrowserCaptureReceived;
         _diagnosticEvents.Changed -= OnDiagnosticsChanged;
@@ -1804,6 +1942,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             _dispatcher.Post(() => ApplySchedulerRuntime(snapshot));
         }
     }
+
+    private void OnTransferPolicyChanged(object? sender, TransferPolicySnapshot snapshot)
+    {
+        if (_dispatcher.CheckAccess())
+        {
+            ApplyTransferPolicy(snapshot);
+        }
+        else
+        {
+            _dispatcher.Post(() => ApplyTransferPolicy(snapshot));
+        }
+    }
+
+    private void ApplyTransferPolicy(TransferPolicySnapshot snapshot)
+        => TransferPolicyStatus = snapshot.StatusMessage;
 
     private void OnBrowserStatusChanged(object? sender, BrowserStatusChangedEventArgs eventArgs)
     {
@@ -2019,9 +2172,19 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             .Where(queue => snapshot.IsActive(queue.Id))
             .Select(queue => $"{queue.Name} ({snapshot.GetRunningCount(queue.Id)} running)")
             .ToArray();
+        string[] blocked = QueueDefinitions
+            .Select(queue => (Queue: queue, Reason: snapshot.GetBlockedReason(queue.Id)))
+            .Where(static item => item.Reason is not null)
+            .Select(static item => $"{item.Queue.Name}: {item.Reason}")
+            .ToArray();
         QueueRuntimeStatus = active.Length == 0
-            ? "No active queues"
-            : string.Join(" • ", active);
+            ? blocked.Length == 0 ? "No active queues" : string.Join(" • ", blocked)
+            : blocked.Length == 0
+                ? string.Join(" • ", active)
+                : $"{string.Join(" • ", active)} • Waiting: {string.Join(" • ", blocked)}";
+        SelectedQueueBlockedReason = SelectedQueue is null
+            ? string.Empty
+            : snapshot.GetBlockedReason(SelectedQueue.Id) ?? string.Empty;
         OnPropertyChanged(nameof(IsSelectedQueueActive));
     }
 
@@ -2188,6 +2351,29 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         string? selectedCategoryId = SelectedCategory?.Id;
         string? selectedQueueId = SelectedQueue?.Id;
         string? selectedScheduleId = SelectedSchedule?.Id;
+        string? selectedProfileId = SelectedBandwidthProfile?.Id;
+        SmartTransferSettings smartTransfers = (settings.SmartTransfers ?? SmartTransferSettings.Default).Normalize();
+        BandwidthProfiles.Clear();
+        foreach (BandwidthProfile profile in smartTransfers.Profiles)
+        {
+            BandwidthProfiles.Add(new BandwidthProfileEditorViewModel(profile));
+        }
+
+        SmartTransfersEnabled = smartTransfers.Enabled;
+        SelectedMeteredBehavior = smartTransfers.MeteredBehavior;
+        SelectedBatteryBehavior = smartTransfers.BatteryBehavior;
+        SelectedNetworkCostOverride = smartTransfers.NetworkCostOverride;
+        SelectedPowerSourceOverride = smartTransfers.PowerSourceOverride;
+        PauseTransfersWhenOffline = smartTransfers.PauseWhenOffline;
+        SelectedBandwidthProfile = BandwidthProfiles.FirstOrDefault(profile =>
+            string.Equals(profile.Id, selectedProfileId, StringComparison.Ordinal))
+            ?? BandwidthProfiles.FirstOrDefault();
+        ActiveBandwidthProfile = BandwidthProfiles.FirstOrDefault(profile =>
+            string.Equals(profile.Id, smartTransfers.ActiveProfileId, StringComparison.Ordinal));
+        MeteredBandwidthProfile = BandwidthProfiles.FirstOrDefault(profile =>
+            string.Equals(profile.Id, smartTransfers.MeteredProfileId, StringComparison.Ordinal));
+        BatteryBandwidthProfile = BandwidthProfiles.FirstOrDefault(profile =>
+            string.Equals(profile.Id, smartTransfers.BatteryProfileId, StringComparison.Ordinal));
         CategoryDefinitions.Clear();
         foreach (DownloadCategoryDefinition category in settings.Categories)
         {
@@ -2213,7 +2399,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         Schedules.Clear();
         foreach (QueueScheduleDefinition schedule in settings.Schedules ?? [])
         {
-            Schedules.Add(new ScheduleEditorViewModel(schedule, QueueDefinitions));
+            Schedules.Add(new ScheduleEditorViewModel(schedule, QueueDefinitions, GetProfileDefinitions()));
         }
 
         SelectedSchedule = Schedules.FirstOrDefault(schedule =>
@@ -2243,8 +2429,70 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         NotifyWhenUpdateStaged = updateSettings.NotifyWhenStaged;
         ApplyQueueRuntime(_downloadManager.QueueRuntime);
         ApplySchedulerRuntime(_queueSchedulerRuntime.Current);
+        ApplyTransferPolicy(_transferPolicyRuntime.Current);
     }
 
+    private BandwidthProfile[] GetProfileDefinitions()
+        => BandwidthProfiles.Select(static profile => profile.ToDefinition()).ToArray();
+
+    private SmartTransferSettings BuildSmartTransferSettings()
+    {
+        BandwidthProfile[] profiles = GetProfileDefinitions();
+        string fallback = profiles.FirstOrDefault()?.Id ?? SmartTransferSettings.Default.ActiveProfileId;
+        return new SmartTransferSettings(
+            SmartTransfersEnabled,
+            ActiveBandwidthProfile?.Id ?? fallback,
+            SelectedMeteredBehavior,
+            MeteredBandwidthProfile?.Id ?? fallback,
+            SelectedBatteryBehavior,
+            BatteryBandwidthProfile?.Id ?? fallback,
+            SelectedNetworkCostOverride,
+            SelectedPowerSourceOverride,
+            PauseTransfersWhenOffline,
+            profiles).Normalize();
+    }
+
+    private void RefreshSelectedQueueDependencies()
+    {
+        SelectedQueueDependencies.Clear();
+        if (SelectedQueue is null)
+        {
+            SelectedQueueBlockedReason = string.Empty;
+            return;
+        }
+
+        foreach (string dependencyId in SelectedQueue.DependsOnQueueIds ?? [])
+        {
+            DownloadQueueDefinition? dependency = QueueDefinitions.FirstOrDefault(queue =>
+                string.Equals(queue.Id, dependencyId, StringComparison.Ordinal));
+            if (dependency is not null)
+            {
+                SelectedQueueDependencies.Add(dependency);
+            }
+        }
+    }
+
+    private void ReplaceSelectedQueue(DownloadQueueDefinition replacement)
+    {
+        DownloadQueueDefinition? current = SelectedQueue;
+        if (current is null)
+        {
+            return;
+        }
+
+        int index = QueueDefinitions.IndexOf(current);
+        if (index < 0)
+        {
+            return;
+        }
+
+        QueueDefinitions[index] = replacement;
+        SelectedQueue = replacement;
+        SchedulerQueue = string.Equals(SchedulerQueue?.Id, replacement.Id, StringComparison.Ordinal)
+            ? replacement
+            : SchedulerQueue;
+        OnPropertyChanged(nameof(QueueDependencyCandidates));
+    }
 
     private static string FormatCompletionCapabilities(IReadOnlyList<CompletionActionCapability> capabilities)
         => string.Join(

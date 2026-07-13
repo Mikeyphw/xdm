@@ -7,11 +7,14 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using XDM.Core.Downloads;
 using XDM.Core.Persistence;
+using XDM.Core.Policies;
 using XDM.Core.Product;
 using XDM.Core.Queues;
 using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.DownloadEngine.Logging;
+using XDM.DownloadEngine.Policies;
+using XDM.DownloadEngine.Queues;
 
 namespace XDM.DownloadEngine;
 
@@ -34,9 +37,14 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private readonly ResumeCheckpointStore _checkpointStore;
     private readonly IFtpDownloadClient _ftpDownloadClient;
     private readonly ISettingsService _settingsService;
-    private readonly SemaphoreSlim _concurrencyGate;
+    private readonly ITransferPolicyRuntime _transferPolicyRuntime;
     private readonly ConcurrentDictionary<string, byte> _activeQueues = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _queueGates = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, byte> _requestedQueueRoots = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, byte> _requestedQueues = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, string> _blockedQueues = new(StringComparer.Ordinal);
+    private readonly AdaptiveConcurrencyLimiter _policyConcurrencyLimiter = new();
+    private readonly AdaptiveConcurrencyLimiter _hostConcurrencyLimiter = new();
+    private readonly AdaptiveConcurrencyLimiter _queueConcurrencyLimiter = new();
     private readonly ConcurrentDictionary<string, DownloadSession> _sessions = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _persistenceGate = new(1, 1);
     private DateTimeOffset _lastPersistence = DateTimeOffset.MinValue;
@@ -74,7 +82,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         DownloadRetryPolicy retryPolicy,
         SegmentedDownloadOptions? segmentedOptions = null,
         IFtpDownloadClient? ftpDownloadClient = null,
-        ResumeCheckpointStore? checkpointStore = null)
+        ResumeCheckpointStore? checkpointStore = null,
+        ITransferPolicyRuntime? transferPolicyRuntime = null)
     {
         _httpClient = httpClient;
         _applicationState = applicationState;
@@ -90,10 +99,14 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             segmentedOptions ?? new SegmentedDownloadOptions());
         _ftpDownloadClient = ftpDownloadClient ?? new FtpDownloadClient();
         _checkpointStore = checkpointStore ?? new ResumeCheckpointStore();
-        _concurrencyGate = new SemaphoreSlim(settingsService.Current.MaxConcurrentDownloads);
+        _transferPolicyRuntime = transferPolicyRuntime ?? UnrestrictedTransferPolicyRuntime.Instance;
+        _transferPolicyRuntime.Changed += OnTransferPolicyChanged;
+        _settingsService.Changed += OnSettingsChanged;
         IReadOnlyList<DownloadQueueDefinition> configuredQueues = settingsService.Current.Queues;
         string defaultQueueId = configuredQueues.Count > 0 ? configuredQueues[0].Id : "default";
-        _activeQueues.TryAdd(defaultQueueId, 0);
+        _requestedQueueRoots.TryAdd(defaultQueueId, 0);
+        RebuildRequestedQueues();
+        ReconcileRequestedQueues();
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -193,6 +206,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         _applicationState.ReplaceDownloads(restoredSnapshots);
+        ReconcileRequestedQueues();
 
         foreach (DownloadSession session in _sessions.Values
             .Where(session => session.State == DownloadState.Queued && IsQueueActive(session.QueueId))
@@ -918,17 +932,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(queueId);
         cancellationToken.ThrowIfCancellationRequested();
 
-        _activeQueues.TryAdd(queueId, 0);
-        foreach (DownloadSession session in _sessions.Values
-            .Where(session => string.Equals(session.QueueId, queueId, StringComparison.Ordinal)
-                && session.State == DownloadState.Queued)
-            .OrderByDescending(static session => session.Priority)
-            .ThenBy(static session => session.QueueOrder))
-        {
-            Start(session);
-        }
-
-        PublishQueueRuntime();
+        _requestedQueueRoots.TryAdd(queueId, 0);
+        RebuildRequestedQueues();
+        ReconcileRequestedQueues();
+        PublishQueueRuntime(reconcile: false);
         return Task.CompletedTask;
     }
 
@@ -938,21 +945,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(queueId);
         cancellationToken.ThrowIfCancellationRequested();
 
-        _activeQueues.TryRemove(queueId, out _);
-        foreach (DownloadSession session in _sessions.Values
-            .Where(session => string.Equals(session.QueueId, queueId, StringComparison.Ordinal)))
-        {
-            lock (session.Sync)
-            {
-                if (session.State is DownloadState.Connecting or DownloadState.Downloading)
-                {
-                    session.QueueStopRequested = true;
-                    session.PauseRequested = true;
-                    session.OperationCancellation?.Cancel();
-                }
-            }
-        }
-
+        RemoveQueueRequestTree(queueId);
+        RebuildRequestedQueues();
         PublishQueueRuntime();
         return Task.CompletedTask;
     }
@@ -1015,6 +1009,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         _disposed = true;
+        _transferPolicyRuntime.Changed -= OnTransferPolicyChanged;
+        _settingsService.Changed -= OnSettingsChanged;
         foreach (DownloadSession session in _sessions.Values)
         {
             lock (session.Sync)
@@ -1025,22 +1021,18 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
         }
 
-        foreach (SemaphoreSlim gate in _queueGates.Values)
-        {
-            gate.Dispose();
-        }
-
         _persistenceGate.Dispose();
-        _concurrencyGate.Dispose();
     }
 
     private void Start(DownloadSession session)
     {
-        if (!IsQueueActive(session.QueueId))
+        TransferPolicySnapshot policy = _transferPolicyRuntime.Current;
+        if (!IsQueueActive(session.QueueId) || policy.IsPaused)
         {
             lock (session.Sync)
             {
                 session.State = DownloadState.Queued;
+                session.ErrorMessage = policy.IsPaused ? policy.StatusMessage : null;
             }
 
             Publish(session, forcePersist: false);
@@ -1072,16 +1064,29 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     {
         string partialPath = GetPartialPath(session.DestinationPath);
 
-        bool concurrencyAcquired = false;
-        bool queueConcurrencyAcquired = false;
-        SemaphoreSlim? queueGate = null;
+        IDisposable? policyLease = null;
+        IDisposable? queueLease = null;
         try
         {
-            await _concurrencyGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-            concurrencyAcquired = true;
-            queueGate = GetQueueGate(session.QueueId);
-            await queueGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-            queueConcurrencyAcquired = true;
+            queueLease = await _queueConcurrencyLimiter
+                .AcquireAsync(session.QueueId, () => ResolveQueueConcurrency(session.QueueId), cancellationToken)
+                .ConfigureAwait(false);
+            TransferPolicySnapshot policy = _transferPolicyRuntime.Current;
+            if (policy.IsPaused)
+            {
+                lock (session.Sync)
+                {
+                    session.State = DownloadState.Queued;
+                    session.ErrorMessage = policy.StatusMessage;
+                }
+
+                Publish(session, forcePersist: true);
+                return;
+            }
+
+            policyLease = await _policyConcurrencyLimiter
+                .AcquireAsync("global", ResolveConcurrentDownloadLimit, cancellationToken)
+                .ConfigureAwait(false);
 
             int maximumAttempts = session.Method == "GET" ? _retryPolicy.MaximumAttempts : 1;
             while (true)
@@ -1091,6 +1096,26 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 {
                     try
                     {
+                        TransferPolicySnapshot attemptPolicy = _transferPolicyRuntime.Current;
+                        if (attemptPolicy.IsPaused)
+                        {
+                            lock (session.Sync)
+                            {
+                                session.State = DownloadState.Queued;
+                                session.BytesPerSecond = 0;
+                                session.ErrorMessage = attemptPolicy.StatusMessage;
+                            }
+
+                            Publish(session, forcePersist: true);
+                            return;
+                        }
+
+                        using IDisposable hostLease = await _hostConcurrencyLimiter
+                            .AcquireAsync(
+                                session.Source.IdnHost,
+                                () => _transferPolicyRuntime.Current.EffectiveProfile.MaxConcurrentPerHost,
+                                cancellationToken)
+                            .ConfigureAwait(false);
                         await ExecuteDownloadAttemptAsync(session, partialPath, cancellationToken).ConfigureAwait(false);
                         return;
                     }
@@ -1173,16 +1198,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
         finally
         {
-            if (queueConcurrencyAcquired)
-            {
-                queueGate!.Release();
-            }
-
-            if (concurrencyAcquired)
-            {
-                _concurrencyGate.Release();
-            }
-
+            policyLease?.Dispose();
+            queueLease?.Dispose();
             PublishQueueRuntime();
         }
     }
@@ -2018,13 +2035,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private bool IsQueueActive(string queueId)
         => _activeQueues.ContainsKey(queueId);
 
-    private SemaphoreSlim GetQueueGate(string queueId)
-    {
-        int concurrency = _settingsService.Current.Queues
-            .FirstOrDefault(queue => string.Equals(queue.Id, queueId, StringComparison.Ordinal))
-            ?.MaxConcurrentDownloads ?? _settingsService.Current.MaxConcurrentDownloads;
-        return _queueGates.GetOrAdd(queueId, _ => new SemaphoreSlim(Math.Max(1, concurrency)));
-    }
+    private int ResolveConcurrentDownloadLimit()
+        => Math.Min(
+            Math.Max(1, _settingsService.Current.MaxConcurrentDownloads),
+            Math.Max(1, _transferPolicyRuntime.Current.EffectiveProfile.MaxConcurrentDownloads));
+
+    private int ResolveQueueConcurrency(string queueId)
+        => Math.Max(
+            1,
+            _settingsService.Current.Queues
+                .FirstOrDefault(queue => string.Equals(queue.Id, queueId, StringComparison.Ordinal))
+                ?.MaxConcurrentDownloads ?? _settingsService.Current.MaxConcurrentDownloads);
 
     private long ResolveSpeedLimit(DownloadSession session)
     {
@@ -2033,7 +2054,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             ?.SpeedLimitBytesPerSecond ?? 0;
         long defaultLimit = _settingsService.Current.DefaultSpeedLimitBytesPerSecond;
         long requestLimit = session.SpeedLimitBytesPerSecond ?? 0;
-        long[] limits = [requestLimit, queueLimit, defaultLimit];
+        long policyLimit = _transferPolicyRuntime.Current.EffectiveProfile.SpeedLimitBytesPerSecond;
+        long[] limits = [requestLimit, queueLimit, defaultLimit, policyLimit];
         return limits.Where(static value => value > 0).DefaultIfEmpty(0).Min();
     }
 
@@ -2060,11 +2082,157 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             .Where(session => session.State is DownloadState.Connecting or DownloadState.Downloading or DownloadState.Finalizing)
             .GroupBy(static session => session.QueueId, StringComparer.Ordinal)
             .ToDictionary(static group => group.Key, static group => group.Count(), StringComparer.Ordinal);
-        return new QueueRuntimeSnapshot(activeQueues, runningCounts, DateTimeOffset.UtcNow);
+        return new QueueRuntimeSnapshot(
+            activeQueues,
+            runningCounts,
+            DateTimeOffset.UtcNow,
+            new HashSet<string>(_requestedQueues.Keys, StringComparer.Ordinal),
+            new Dictionary<string, string>(_blockedQueues, StringComparer.Ordinal));
     }
 
-    private void PublishQueueRuntime()
-        => QueueRuntimeChanged?.Invoke(this, CreateQueueRuntimeSnapshot());
+    private void PublishQueueRuntime(bool reconcile = true)
+    {
+        if (reconcile)
+        {
+            ReconcileRequestedQueues();
+        }
+
+        QueueRuntimeChanged?.Invoke(this, CreateQueueRuntimeSnapshot());
+    }
+
+    private void RemoveQueueRequestTree(string queueId)
+    {
+        IReadOnlyList<DownloadQueueDefinition> queues = _settingsService.Current.Normalize().Queues;
+        foreach (string rootId in _requestedQueueRoots.Keys.ToArray())
+        {
+            string[] startOrder = DownloadQueueDependencyGraph.GetStartOrder(rootId, queues);
+            if (startOrder.Contains(queueId, StringComparer.Ordinal))
+            {
+                _requestedQueueRoots.TryRemove(rootId, out _);
+            }
+        }
+    }
+
+    private void RebuildRequestedQueues()
+    {
+        IReadOnlyList<DownloadQueueDefinition> queues = _settingsService.Current.Normalize().Queues;
+        HashSet<string> desired = new(StringComparer.Ordinal);
+        foreach (string rootId in _requestedQueueRoots.Keys)
+        {
+            desired.UnionWith(DownloadQueueDependencyGraph.GetStartOrder(rootId, queues));
+        }
+
+        foreach (string requestedId in desired)
+        {
+            _requestedQueues.TryAdd(requestedId, 0);
+        }
+
+        foreach (string removedId in _requestedQueues.Keys.Where(id => !desired.Contains(id)).ToArray())
+        {
+            _requestedQueues.TryRemove(removedId, out _);
+            _blockedQueues.TryRemove(removedId, out _);
+            if (_activeQueues.TryRemove(removedId, out _))
+            {
+                CancelQueueTransfers(removedId);
+            }
+        }
+    }
+
+    private void CancelQueueTransfers(string queueId)
+    {
+        foreach (DownloadSession session in _sessions.Values.Where(session =>
+            string.Equals(session.QueueId, queueId, StringComparison.Ordinal)))
+        {
+            lock (session.Sync)
+            {
+                if (session.State is DownloadState.Connecting or DownloadState.Downloading)
+                {
+                    session.QueueStopRequested = true;
+                    session.PauseRequested = true;
+                    session.OperationCancellation?.Cancel();
+                }
+            }
+        }
+    }
+
+    private void ReconcileRequestedQueues()
+    {
+        IReadOnlyList<DownloadQueueDefinition> queues = _settingsService.Current.Normalize().Queues;
+        IReadOnlyList<DownloadSnapshot> downloads = _applicationState.Current.Downloads;
+        foreach (string queueId in _requestedQueues.Keys)
+        {
+            QueueDependencyEvaluation evaluation = QueueDependencyEvaluator.Evaluate(queueId, queues, downloads);
+            if (!evaluation.CanStart)
+            {
+                _blockedQueues[queueId] = evaluation.BlockedReason ?? "Queue dependencies are not satisfied.";
+                if (_activeQueues.TryRemove(queueId, out _))
+                {
+                    CancelQueueTransfers(queueId);
+                }
+
+                continue;
+            }
+
+            _blockedQueues.TryRemove(queueId, out _);
+            bool becameActive = _activeQueues.TryAdd(queueId, 0);
+            if (!becameActive)
+            {
+                continue;
+            }
+
+            foreach (DownloadSession session in _sessions.Values
+                .Where(session => string.Equals(session.QueueId, queueId, StringComparison.Ordinal)
+                    && session.State == DownloadState.Queued)
+                .OrderByDescending(static session => session.Priority)
+                .ThenBy(static session => session.QueueOrder))
+            {
+                Start(session);
+            }
+        }
+    }
+
+    private void OnTransferPolicyChanged(object? sender, TransferPolicySnapshot snapshot)
+    {
+        _policyConcurrencyLimiter.NotifyLimitsChanged();
+        _hostConcurrencyLimiter.NotifyLimitsChanged();
+        if (snapshot.IsPaused)
+        {
+            foreach (DownloadSession session in _sessions.Values)
+            {
+                lock (session.Sync)
+                {
+                    if (session.State is DownloadState.Connecting or DownloadState.Downloading)
+                    {
+                        session.QueueStopRequested = true;
+                        session.OperationCancellation?.Cancel();
+                    }
+                }
+            }
+        }
+        else
+        {
+            ReconcileRequestedQueues();
+            foreach (DownloadSession session in _sessions.Values
+                .Where(session => session.State == DownloadState.Queued && IsQueueActive(session.QueueId))
+                .OrderByDescending(static session => session.Priority)
+                .ThenBy(static session => session.QueueOrder))
+            {
+                Start(session);
+            }
+        }
+
+        PublishQueueRuntime(reconcile: false);
+    }
+
+    private void OnSettingsChanged(object? sender, ApplicationSettings settings)
+    {
+        _policyConcurrencyLimiter.NotifyLimitsChanged();
+        _queueConcurrencyLimiter.NotifyLimitsChanged();
+        _hostConcurrencyLimiter.NotifyLimitsChanged();
+        RebuildRequestedQueues();
+        ReconcileRequestedQueues();
+        PublishQueueRuntime(reconcile: false);
+    }
 
     private static void DeleteTransferArtifacts(string destinationPath)
     {

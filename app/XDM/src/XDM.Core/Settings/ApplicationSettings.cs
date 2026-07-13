@@ -1,4 +1,5 @@
 using XDM.Core.Localization;
+using XDM.Core.Queues;
 using XDM.Core.Scheduling;
 
 namespace XDM.Core.Settings;
@@ -22,9 +23,10 @@ public sealed record ApplicationSettings(
     LocalizationSettings? Localization = null,
     AccessibilitySettings? Accessibility = null,
     Aria2IntegrationSettings? Aria2 = null,
-    UpdateSettings? Updates = null)
+    UpdateSettings? Updates = null,
+    SmartTransferSettings? SmartTransfers = null)
 {
-    public const int CurrentSchemaVersion = 6;
+    public const int CurrentSchemaVersion = 7;
 
     public static ApplicationSettings CreateDefault()
     {
@@ -64,7 +66,8 @@ public sealed record ApplicationSettings(
             LocalizationSettings.Default,
             AccessibilitySettings.Default,
             Aria2IntegrationSettings.Default,
-            UpdateSettings.Default);
+            UpdateSettings.Default,
+            SmartTransferSettings.Default);
     }
 
     public ApplicationSettings Normalize()
@@ -95,6 +98,8 @@ public sealed record ApplicationSettings(
             queues = [new DownloadQueueDefinition("default", "Default", maxConcurrent, speedLimit)];
         }
 
+        queues = DownloadQueueDependencyGraph.Normalize(queues);
+        SmartTransferSettings smartTransfers = (SmartTransfers ?? SmartTransferSettings.Default).Normalize();
         DownloadSchedulerSettings scheduler = Scheduler ?? CreateDefault().Scheduler;
         string schedulerQueue = queues.Any(queue => string.Equals(queue.Id, scheduler.QueueId, StringComparison.Ordinal))
             ? scheduler.QueueId
@@ -102,6 +107,13 @@ public sealed record ApplicationSettings(
         QueueScheduleDefinition[] schedules = Schedules?
             .Select(schedule => schedule.Normalize(schedulerQueue))
             .Where(schedule => queues.Any(queue => string.Equals(queue.Id, schedule.QueueId, StringComparison.Ordinal)))
+            .Select(schedule => schedule with
+            {
+                BandwidthProfileId = smartTransfers.Profiles.Any(profile =>
+                    string.Equals(profile.Id, schedule.BandwidthProfileId, StringComparison.Ordinal))
+                        ? schedule.BandwidthProfileId
+                        : null
+            })
             .DistinctBy(static schedule => schedule.Id, StringComparer.Ordinal)
             .Take(64)
             .ToArray() ?? [];
@@ -152,7 +164,8 @@ public sealed record ApplicationSettings(
             Localization = (Localization ?? LocalizationSettings.Default).Normalize(),
             Accessibility = (Accessibility ?? AccessibilitySettings.Default).Normalize(),
             Aria2 = (Aria2 ?? Aria2IntegrationSettings.Default).Normalize(),
-            Updates = (Updates ?? UpdateSettings.Default).Normalize()
+            Updates = (Updates ?? UpdateSettings.Default).Normalize(),
+            SmartTransfers = smartTransfers
         };
     }
 }
@@ -183,7 +196,9 @@ public sealed record DownloadQueueDefinition(
     string Id,
     string Name,
     int MaxConcurrentDownloads,
-    long SpeedLimitBytesPerSecond)
+    long SpeedLimitBytesPerSecond,
+    IReadOnlyList<string>? DependsOnQueueIds = null,
+    bool RequireSuccessfulDependencies = true)
 {
     public DownloadQueueDefinition Normalize()
         => this with
@@ -191,7 +206,13 @@ public sealed record DownloadQueueDefinition(
             Id = Id.Trim(),
             Name = Name.Trim(),
             MaxConcurrentDownloads = Math.Clamp(MaxConcurrentDownloads, 1, 32),
-            SpeedLimitBytesPerSecond = Math.Max(0, SpeedLimitBytesPerSecond)
+            SpeedLimitBytesPerSecond = Math.Max(0, SpeedLimitBytesPerSecond),
+            DependsOnQueueIds = DependsOnQueueIds?
+                .Where(static dependency => !string.IsNullOrWhiteSpace(dependency))
+                .Select(static dependency => dependency.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .Take(32)
+                .ToArray() ?? []
         };
 }
 

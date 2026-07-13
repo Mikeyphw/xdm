@@ -9,10 +9,15 @@ public partial class ScheduleEditorViewModel : ObservableObject
     private static readonly string[] LineSeparators = ["\r\n", "\n"];
     public ScheduleEditorViewModel(
         QueueScheduleDefinition definition,
-        IReadOnlyList<DownloadQueueDefinition> queues)
+        IReadOnlyList<DownloadQueueDefinition> queues,
+        IReadOnlyList<BandwidthProfile> profiles)
     {
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(queues);
+        ArgumentNullException.ThrowIfNull(profiles);
+        Profiles = new[] { new BandwidthProfile(string.Empty, "No profile override", 1, 1, 0) }
+            .Concat(profiles)
+            .ToArray();
         Id = definition.Id;
         name = definition.Name;
         enabled = definition.Enabled;
@@ -33,9 +38,13 @@ public partial class ScheduleEditorViewModel : ObservableObject
             .ToString(System.Globalization.CultureInfo.InvariantCulture);
         commandPath = definition.CompletionAction.ExecutablePath ?? string.Empty;
         commandArguments = string.Join(Environment.NewLine, definition.CompletionAction.Arguments ?? []);
+        bandwidthProfile = Profiles.FirstOrDefault(profile =>
+            string.Equals(profile.Id, definition.BandwidthProfileId ?? string.Empty, StringComparison.Ordinal));
     }
 
     public string Id { get; }
+
+    public IReadOnlyList<BandwidthProfile> Profiles { get; }
 
     public IReadOnlyList<MissedRunPolicy> MissedRunOptions { get; } = Enum.GetValues<MissedRunPolicy>();
 
@@ -93,6 +102,9 @@ public partial class ScheduleEditorViewModel : ObservableObject
     [ObservableProperty]
     private string commandArguments;
 
+    [ObservableProperty]
+    private BandwidthProfile? bandwidthProfile;
+
     public QueueScheduleDefinition ToDefinition()
     {
         TimeOnly parsedStart = TimeOnly.TryParseExact(
@@ -142,6 +154,7 @@ public partial class ScheduleEditorViewModel : ObservableObject
             parsedEnd,
             selectedDays,
             MissedRunPolicy,
-            action).Normalize(Queue?.Id ?? "default");
+            action,
+            string.IsNullOrWhiteSpace(BandwidthProfile?.Id) ? null : BandwidthProfile.Id).Normalize(Queue?.Id ?? "default");
     }
 }

@@ -28,6 +28,8 @@ public sealed class MigrationQualificationTests
         Assert.NotNull(result.Settings.Network);
         Assert.NotNull(result.Settings.Localization);
         Assert.NotNull(result.Settings.Accessibility);
+        SmartTransferSettings smartTransfers = Assert.IsType<SmartTransferSettings>(result.Settings.SmartTransfers);
+        Assert.NotEmpty(smartTransfers.Profiles);
         Assert.Equal(XDM.Core.Product.UpdateChannel.Stable, result.Settings.Updates?.Channel);
     }
 

@@ -9,12 +9,14 @@ using XDM.App.ViewModels;
 using XDM.BrowserIntegration;
 using XDM.Core.Abstractions;
 using XDM.Core.Persistence;
+using XDM.Core.Policies;
 using XDM.Core.Scheduling;
 using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.Diagnostics;
 using XDM.DownloadEngine;
 using XDM.DownloadEngine.Aria2;
+using XDM.DownloadEngine.Policies;
 using XDM.DownloadEngine.Queues;
 using XDM.Media;
 using XDM.Persistence;
@@ -53,6 +55,10 @@ public partial class App : Application
         InitializeService(
             "XDM-STARTUP-SETTINGS",
             () => services.GetRequiredService<ISettingsService>().InitializeAsync(),
+            diagnostics);
+        InitializeService(
+            "XDM-STARTUP-TRANSFER-POLICY",
+            () => services.GetRequiredService<ITransferPolicyRuntime>().InitializeAsync(),
             diagnostics);
         InitializeService(
             "XDM-STARTUP-DOWNLOADS",
@@ -198,6 +204,8 @@ public partial class App : Application
         services.AddSingleton<IPlatformCommandRunner, PlatformCommandRunner>();
         services.AddSingleton<ICompletionActionService, PlatformCompletionActionService>();
         services.AddSingleton<IAntivirusScanner, AntivirusScanner>();
+        services.AddSingleton<ITransferEnvironmentProbe, SystemTransferEnvironmentProbe>();
+        services.AddSingleton<ITransferPolicyRuntime, TransferPolicyRuntime>();
         services.AddSingleton<IDownloadManager, DownloadManager>();
         services.AddSingleton<IQueueSchedulerRuntime, QueueSchedulerRuntime>();
         services.AddSingleton<IPlatformInfo, PlatformInfo>();

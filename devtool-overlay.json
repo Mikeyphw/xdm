@@ -1,27 +1,27 @@
 {
-  "name": "xdm_secure_release_update_overlay",
+  "name": "xdm_smart_bandwidth_queue_automation_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "417e5c6",
+  "baseCommit": "fc33a2b",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "professional-release-update-infrastructure",
-  "description": "Adds stable, beta, and nightly release channels; deterministic Windows/Linux x64 and ARM64 packaging; checksums, SBOMs, attestations, optional Authenticode signing; and rollback-safe in-application updates through an external updater helper.",
+  "phase": "smart-bandwidth-queue-automation",
+  "description": "Adds live bandwidth profiles, metered and battery policies, dynamic global/queue/per-host concurrency, prerequisite-aware queues, and schedule-specific transfer profiles.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
     "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Add secure release channels and rollback-safe updates",
+  "commitMessage": "Add smart bandwidth profiles and queue automation",
   "constraints": [
-    "Apply on top of commit 417e5c6",
+    "Apply on top of commit fc33a2b",
     "Validate only app/XDM/XDM.Modern.sln",
     "Require zero warnings and zero errors",
-    "Preserve existing download, browser, media, scheduler, diagnostics, aria2, resume-integrity, and recovery behavior",
-    "Keep stable, beta, and nightly update channels isolated through channel-specific manifests",
-    "Do not apply an update unless package size and SHA-256 match; verify SHA-512 when present",
-    "Keep the updater executable outside the installation while swapping directories",
-    "Preserve a rollback backup until the updated application creates its main window and marks the transaction healthy",
+    "Preserve existing download, browser, media, scheduler, diagnostics, aria2, resume-integrity, recovery, and secure-update behavior",
+    "Treat per-host limits as concurrent downloads per host, not HTTP segment connections",
+    "Apply lower concurrency limits as existing slots finish and wake waiting transfers immediately when limits increase",
+    "Automatically request queue prerequisites and prevent circular dependency selection",
+    "Preserve existing completion actions while allowing schedules to apply transfer profiles",
     "Do not modify docs/parity/features.json"
   ]
 }
