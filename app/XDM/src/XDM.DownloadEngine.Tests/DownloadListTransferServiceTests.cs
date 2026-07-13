@@ -34,7 +34,12 @@ public sealed class DownloadListTransferServiceTests
                 Mirrors:
                 [
                     new Uri("https://mirror.example.test/file.bin")
-                ])
+                ],
+                BackendPreference: DownloadBackendPreference.Aria2,
+                Backend: DownloadBackendKind.Aria2,
+                BackendTaskId: "gid-export",
+                BackendDecisionReason: "aria2 selected",
+                AllowBackendFallback: false)
         ];
         DownloadListTransferService service = new();
 
@@ -50,6 +55,8 @@ public sealed class DownloadListTransferServiceTests
         Assert.Equal("SHA-256", entry.ExpectedChecksumAlgorithm);
         Assert.Equal(new string('A', 64), entry.ExpectedChecksum);
         Assert.Equal(100L, entry.ExpectedLength);
+        Assert.Equal(DownloadBackendPreference.Aria2, entry.BackendPreference);
+        Assert.False(entry.AllowBackendFallback);
         Assert.Equal(
             new Uri("https://mirror.example.test/file.bin"),
             Assert.Single(entry.Mirrors ?? Array.Empty<Uri>()));
@@ -76,6 +83,23 @@ public sealed class DownloadListTransferServiceTests
         Assert.All(
             result.Downloads,
             static entry => Assert.True(entry.Source.Scheme is "http" or "https" or "ftp" or "ftps"));
+    }
+
+    [Fact]
+    public async Task ImportsVersionOneListsWithSafeBackendDefaults()
+    {
+        using TemporaryDirectory directory = new();
+        string path = Path.Combine(directory.Path, "downloads-v1.json");
+        await File.WriteAllTextAsync(
+            path,
+            """{"schemaVersion":1,"exportedAt":"2026-07-13T00:00:00Z","downloads":[{"source":"https://example.test/file.bin"}]}""");
+        DownloadListTransferService service = new();
+
+        DownloadListImportResult result = await service.ImportAsync(path);
+
+        DownloadListEntry entry = Assert.Single(result.Downloads);
+        Assert.Equal(DownloadBackendPreference.Automatic, entry.BackendPreference);
+        Assert.True(entry.AllowBackendFallback);
     }
 
     [Fact]

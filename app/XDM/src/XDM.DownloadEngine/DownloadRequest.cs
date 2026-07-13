@@ -23,7 +23,9 @@ public sealed record DownloadRequest(
     IReadOnlyList<Uri>? Mirrors = null,
     string? ExpectedChecksumAlgorithm = null,
     string? ExpectedChecksum = null,
-    long? ExpectedLength = null)
+    long? ExpectedLength = null,
+    XDM.Core.Downloads.DownloadBackendPreference BackendPreference = XDM.Core.Downloads.DownloadBackendPreference.Automatic,
+    bool AllowBackendFallback = true)
 {
     public string ResolveFileName()
     {

@@ -1,0 +1,18 @@
+{
+  "applied_at": "2026-07-13T01:46:53.303870Z",
+  "artifact": "/mnt/extra/home/Downloads/xdm_backend_selection_overlay.zip",
+  "artifact_name": "xdm_backend_selection_overlay.zip",
+  "type": "overlay",
+  "sha256": "452912e8a8b7b94f44799fad1688dbc945bb37b73ae53ad431dfd18038bac242",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Add safe native and aria2 backend selection",
+  "commit_hash": "",
+  "file_count": 31,
+  "change_counts": {
+    "add": 8,
+    "modify": 23
+  },
+  "manifest": {},
+  "history_id": "110199ab25474b3bb4db7a6bba00798f"
+}

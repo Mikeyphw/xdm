@@ -1,48 +1,50 @@
-# XDM Overlay — Smart bandwidth and queue automation
+# XDM Overlay — Safe native and aria2 backend selection
 
-This overlay applies on top of commit `fc33a2b`.
+This overlay applies on top of commit `fdd2615`.
 
-## Transfer profiles
+## Unified backend ownership
 
-- adds editable Balanced, Focus, Gaming, Metered, Battery saver, and Overnight profiles;
-- each profile controls total concurrent downloads, concurrent downloads per host, and a per-transfer speed ceiling;
-- combines the base profile, environment profile, and active schedule profiles using the most restrictive limits;
-- applies profile and settings changes live;
-- immediately wakes waiting transfers when limits increase;
-- lets active transfers finish their current slots when limits decrease.
+- adds per-download Automatic, Native, and aria2 backend preferences;
+- records the selected backend, aria2 task identifier, fallback policy, and routing reason in history and snapshots;
+- keeps one XDM download as the owner of each backend task;
+- restores persisted aria2 ownership without silently switching to native while aria2 is unavailable;
+- adopts matching active aria2 tasks after restart when adoption is enabled;
+- verifies the destination and expected length before accepting an adopted task;
+- blocks active/waiting/paused aria2 destination collisions instead of starting a second writer;
+- permits reuse after terminal aria2 tasks no longer own the destination.
 
-## Environment policy
+## Automatic selection
 
-- detects network availability through platform APIs;
-- detects Linux battery discharge state through `/sys/class/power_supply`;
-- supports Auto, Metered/Unmetered, and Battery/AC overrides in the UI;
-- supports deterministic managed overrides through `XDM_NETWORK_METERED` and `XDM_ON_BATTERY`;
-- can ignore an environment, apply a stricter profile, or pause transfers;
-- automatically returns policy-paused transfers to their queues and resumes them when eligible.
+- keeps the native engine as the default and mandatory backend for unsupported request types and FTPS;
+- recommends aria2 for large downloads, mirrored downloads, FTP, and high requested connection counts;
+- exposes configurable large-file and connection-count thresholds;
+- supports global and per-download native fallback controls;
+- allows fallback only before aria2 task ownership is established;
+- refreshes aria2 before replacing a persisted task that appears to be missing.
 
-## Queue automation
+## aria2 integration
 
-- adds acyclic queue dependencies;
-- starting a queue recursively requests all prerequisites;
-- dependent queues wait for prerequisite downloads to become terminal;
-- successful-only mode blocks when a prerequisite fails or is cancelled;
-- stopping a root queue releases prerequisite queues that are no longer needed;
-- exposes requested, active, and blocked queue state in the UI;
-- keeps global, per-queue, and per-host concurrency live without restart.
+- passes mirrors and expected SHA-256/SHA-512 checksums to `aria2.addUri`;
+- rejects malformed checksum text rather than stripping invalid characters;
+- routes ordinary HTTP, HTTPS, and FTP tasks created from the aria2 settings panel through the unified XDM manager;
+- leaves non-XDM protocols such as magnet links as explicitly external aria2 tasks;
+- routes pause, resume, retry, cancel, delete, repair, completion, and integrity verification through the owning backend.
 
-## Scheduling
+## Persistence and UI
 
-- lets every schedule select an optional bandwidth profile;
-- keeps that profile active for the schedule window and its tracked run;
-- preserves existing missed-run and completion-action behavior.
+- advances portable download-list exports to schema version 2;
+- preserves backend preference and fallback settings while importing schema version 1 safely;
+- adds backend selection to the new-download form;
+- shows backend ownership, task ID, and routing reason in download details;
+- adds automatic-routing and task-adoption controls to aria2 settings.
 
-## Settings and migration
+## Quality
 
-- advances settings schema to version 7;
-- migrates older settings to the default smart-transfer profiles;
-- normalizes invalid profile references and circular queue dependencies;
-- preserves new profile and dependency settings through the existing settings import/export path.
+- fixes the existing `CA1861` warning in `QueueDependencyTests`;
+- adds backend advisor, collision, persistence, RPC, settings, manager, and UI architecture tests;
+- preserves all native transfer, resume-integrity, queue-policy, browser-security, and secure-update behavior;
+- does not modify `docs/parity/features.json`.
 
 ## Validation
 
-Devtool must restore, build, and test only `app/XDM/XDM.Modern.sln`. The build must have zero warnings and zero errors. The parity feature manifest is unchanged.
+Devtool must restore, build, and test only `app/XDM/XDM.Modern.sln`. The build must have zero warnings and zero errors.

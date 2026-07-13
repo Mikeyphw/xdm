@@ -7,6 +7,7 @@ namespace XDM.DownloadEngine.Tests;
 
 public sealed class QueueDependencyTests
 {
+    private static readonly string[] ExpectedStartOrder = ["fetch", "verify", "install"];
     [Fact]
     public void BlocksUntilDependencyFinishes()
     {
@@ -96,7 +97,7 @@ public sealed class QueueDependencyTests
 
         string[] order = DownloadQueueDependencyGraph.GetStartOrder("install", queues);
 
-        Assert.Equal(new[] { "fetch", "verify", "install" }, order);
+        Assert.Equal(ExpectedStartOrder, order);
     }
 
     private static DownloadSnapshot CreateDownload(string queueId, DownloadState state)

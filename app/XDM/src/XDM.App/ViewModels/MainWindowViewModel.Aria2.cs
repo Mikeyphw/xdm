@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using XDM.Core.Downloads;
 using XDM.Core.Settings;
+using XDM.DownloadEngine;
 using XDM.DownloadEngine.Aria2;
 
 namespace XDM.App.ViewModels;
@@ -61,6 +63,24 @@ public partial class MainWindowViewModel
 
     [ObservableProperty]
     private bool aria2SaveSession = true;
+
+    [ObservableProperty]
+    private bool aria2AutomaticRoutingEnabled = true;
+
+    [ObservableProperty]
+    private bool aria2AllowNativeFallback = true;
+
+    [ObservableProperty]
+    private bool aria2PreferForMirrors = true;
+
+    [ObservableProperty]
+    private bool aria2AdoptExistingTasks = true;
+
+    [ObservableProperty]
+    private string aria2AutomaticRoutingMinimumMegabytes = "128";
+
+    [ObservableProperty]
+    private string aria2AutomaticRoutingMinimumConnections = "8";
 
     [ObservableProperty]
     private string aria2NewUrl = string.Empty;
@@ -170,13 +190,30 @@ public partial class MainWindowViewModel
             string destination = string.IsNullOrWhiteSpace(Aria2DestinationFolder)
                 ? DestinationFolder
                 : Aria2DestinationFolder;
-            string gid = await _aria2Service.AddAsync(new Aria2AddRequest(
-                source,
-                destination,
-                string.IsNullOrWhiteSpace(Aria2CustomFileName) ? null : Aria2CustomFileName.Trim()));
+            string? customFileName = string.IsNullOrWhiteSpace(Aria2CustomFileName)
+                ? null
+                : Aria2CustomFileName.Trim();
+            if (source.Scheme is "http" or "https" or "ftp")
+            {
+                string downloadId = await _downloadManager.AddAsync(new DownloadRequest(
+                    source,
+                    destination,
+                    customFileName,
+                    BackendPreference: DownloadBackendPreference.Aria2,
+                    AllowBackendFallback: false));
+                OperationMessage = $"aria2-owned XDM download {downloadId} added.";
+            }
+            else
+            {
+                string gid = await _aria2Service.AddAsync(new Aria2AddRequest(
+                    source,
+                    destination,
+                    customFileName));
+                OperationMessage = $"External aria2 task {gid} added.";
+            }
+
             Aria2NewUrl = string.Empty;
             Aria2CustomFileName = string.Empty;
-            OperationMessage = $"aria2 task {gid} added.";
         }
         catch (Exception exception) when (IsExpectedAria2Exception(exception))
         {
@@ -264,7 +301,20 @@ public partial class MainWindowViewModel
             Aria2AutoStartManagedProcess,
             Aria2ContinueDownloads,
             Aria2CheckCertificate,
-            Aria2SaveSession).Normalize();
+            Aria2SaveSession)
+        {
+            AutomaticRoutingEnabled = Aria2AutomaticRoutingEnabled,
+            AllowNativeFallback = Aria2AllowNativeFallback,
+            PreferForMirrors = Aria2PreferForMirrors,
+            AdoptExistingTasks = Aria2AdoptExistingTasks,
+            AutomaticRoutingMinimumBytes = checked((long)(Math.Clamp(
+                ParseDouble(Aria2AutomaticRoutingMinimumMegabytes, 128d),
+                16d,
+                16_384d) * 1024 * 1024)),
+            AutomaticRoutingMinimumConnections = ParseInteger(
+                Aria2AutomaticRoutingMinimumConnections,
+                current.AutomaticRoutingMinimumConnections)
+        }.Normalize();
     }
 
     private void ApplyAria2Settings(ApplicationSettings settings)
@@ -287,6 +337,15 @@ public partial class MainWindowViewModel
         Aria2ContinueDownloads = aria2.ContinueDownloads;
         Aria2CheckCertificate = aria2.CheckCertificate;
         Aria2SaveSession = aria2.SaveSession;
+        Aria2AutomaticRoutingEnabled = aria2.AutomaticRoutingEnabled;
+        Aria2AllowNativeFallback = aria2.AllowNativeFallback;
+        Aria2PreferForMirrors = aria2.PreferForMirrors;
+        Aria2AdoptExistingTasks = aria2.AdoptExistingTasks;
+        Aria2AutomaticRoutingMinimumMegabytes = (aria2.AutomaticRoutingMinimumBytes / 1024d / 1024d)
+            .ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        Aria2AutomaticRoutingMinimumConnections = aria2.AutomaticRoutingMinimumConnections
+            .ToString(System.Globalization.CultureInfo.InvariantCulture);
+        NewDownloadAllowBackendFallback = aria2.AllowNativeFallback;
         if (string.IsNullOrWhiteSpace(Aria2DestinationFolder))
         {
             Aria2DestinationFolder = settings.DefaultDownloadDirectory;

@@ -16,7 +16,9 @@ public sealed class Aria2IntegrationSettingsTests
             RpcConnectTimeoutSeconds = 500,
             MaxConcurrentDownloads = 0,
             SplitCount = 500,
-            MinimumSplitSizeBytes = 1
+            MinimumSplitSizeBytes = 1,
+            AutomaticRoutingMinimumBytes = long.MaxValue,
+            AutomaticRoutingMinimumConnections = 500
         };
 
         Aria2IntegrationSettings normalized = settings.Normalize();
@@ -27,6 +29,8 @@ public sealed class Aria2IntegrationSettingsTests
         Assert.Equal(1, normalized.MaxConcurrentDownloads);
         Assert.Equal(64, normalized.SplitCount);
         Assert.Equal(1024 * 1024, normalized.MinimumSplitSizeBytes);
+        Assert.Equal(16L * 1024 * 1024 * 1024, normalized.AutomaticRoutingMinimumBytes);
+        Assert.Equal(64, normalized.AutomaticRoutingMinimumConnections);
     }
 
     [Fact]

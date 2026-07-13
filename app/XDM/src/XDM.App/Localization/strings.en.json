@@ -384,5 +384,19 @@
   "ui_whole_request_timeout_seconds_0_unlimited": "Whole-request timeout seconds (0 = unlimited)",
   "ui_xdm": "XDM",
   "ui_xtreme_download_manager": "Xtreme Download Manager",
-  "unit_of": "of"
+  "unit_of": "of",
+  "ui_download_backend": "Download backend",
+  "ui_allow_native_fallback": "Fall back to the native backend when aria2 cannot safely take ownership",
+  "ui_backend_ownership": "Backend ownership",
+  "ui_backend_in_use": "Backend in use",
+  "ui_backend_preference": "Requested backend",
+  "ui_backend_task_id": "Backend task ID",
+  "ui_backend_decision": "Selection reason",
+  "ui_aria2_automatic_routing": "Automatic backend selection",
+  "ui_enable_automatic_backend_selection": "Route suitable downloads to aria2 automatically",
+  "ui_aria2_prefer_mirrors": "Prefer aria2 for mirrored downloads",
+  "ui_aria2_adopt_tasks": "Adopt matching aria2 tasks after restart",
+  "ui_aria2_routing_minimum_size_mib": "Large-file threshold (MiB)",
+  "ui_aria2_routing_minimum_connections": "Connection-count threshold",
+  "ui_backend_ownership_note": "XDM assigns exactly one backend to each download. Destination collisions block aria2 ownership, and fallback occurs only before a task ID has been established."
 }

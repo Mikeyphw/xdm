@@ -284,7 +284,9 @@ public partial class MainWindowViewModel
                         Mirrors: entry.Mirrors,
                         ExpectedChecksumAlgorithm: entry.ExpectedChecksumAlgorithm,
                         ExpectedChecksum: entry.ExpectedChecksum,
-                        ExpectedLength: entry.ExpectedLength));
+                        ExpectedLength: entry.ExpectedLength,
+                        BackendPreference: entry.BackendPreference,
+                        AllowBackendFallback: entry.AllowBackendFallback));
                     added++;
                 }
                 catch (ArgumentException)

@@ -87,10 +87,15 @@ public sealed class Aria2RpcClient
         {
             options["max-download-limit"] = speedLimit.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
+        if (normalized.ExpectedChecksumAlgorithm is string algorithm
+            && normalized.ExpectedChecksum is string checksum)
+        {
+            options["checksum"] = $"{algorithm}={checksum}";
+        }
 
         JsonElement result = await InvokeAsync(
             "aria2.addUri",
-            [new[] { normalized.Source.AbsoluteUri }, options],
+            [normalized.GetSources().Select(static uri => uri.AbsoluteUri).ToArray(), options],
             cancellationToken).ConfigureAwait(false);
         return result.GetString()
             ?? throw new InvalidDataException("aria2.addUri returned an empty task identifier.");

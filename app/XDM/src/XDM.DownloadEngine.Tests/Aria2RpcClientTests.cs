@@ -58,6 +58,35 @@ public sealed class Aria2RpcClientTests
     }
 
     [Fact]
+    public async Task AddUriIncludesMirrorsAndExpectedChecksum()
+    {
+        RecordingHandler handler = new(request =>
+        {
+            JsonElement parameters = request.GetProperty("params");
+            Assert.Equal(2, parameters[0].GetArrayLength());
+            Assert.Equal("https://example.test/file.bin", parameters[0][0].GetString());
+            Assert.Equal("https://mirror.example.test/file.bin", parameters[0][1].GetString());
+            Assert.Equal(
+                "sha-256=" + new string('a', 64),
+                parameters[1].GetProperty("checksum").GetString());
+            return """{"jsonrpc":"2.0","id":"1","result":"mirror-gid"}""";
+        });
+        Aria2RpcClient client = CreateClient(handler);
+        Aria2AddRequest request = new(
+            new Uri("https://example.test/file.bin"),
+            Path.GetTempPath())
+        {
+            Mirrors = [new Uri("https://mirror.example.test/file.bin")],
+            ExpectedChecksumAlgorithm = "SHA-256",
+            ExpectedChecksum = new string('A', 64)
+        };
+
+        string gid = await client.AddUriAsync(request, 8, 1024 * 1024);
+
+        Assert.Equal("mirror-gid", gid);
+    }
+
+    [Fact]
     public async Task TellActiveParsesProgressPathSpeedAndCapabilities()
     {
         RecordingHandler handler = new(_ => """
@@ -126,6 +155,21 @@ public sealed class Aria2RpcClientTests
 
     private static Aria2RpcClient CreateClient(RecordingHandler handler, string secret = "")
         => new(new HttpClient(handler), new Uri("http://127.0.0.1:6800/jsonrpc"), secret);
+
+    [Fact]
+    public void Aria2RequestRejectsChecksumWithNonHexCharacters()
+    {
+        Aria2AddRequest normalized = new Aria2AddRequest(
+            new Uri("https://example.test/file.bin"),
+            Path.GetTempPath())
+        {
+            ExpectedChecksumAlgorithm = "SHA-256",
+            ExpectedChecksum = new string('A', 64) + "Z"
+        }.Normalize();
+
+        Assert.Null(normalized.ExpectedChecksumAlgorithm);
+        Assert.Null(normalized.ExpectedChecksum);
+    }
 
     private sealed class RecordingHandler(Func<JsonElement, string> responseFactory) : HttpMessageHandler
     {

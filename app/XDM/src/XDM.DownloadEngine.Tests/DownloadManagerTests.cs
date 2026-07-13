@@ -7,6 +7,7 @@ using XDM.Core.Persistence;
 using XDM.Core.Settings;
 using XDM.Core.State;
 
+using XDM.DownloadEngine.Aria2;
 namespace XDM.DownloadEngine.Tests;
 
 public sealed class DownloadManagerTests
@@ -864,20 +865,134 @@ public sealed class DownloadManagerTests
         Assert.Equal(payload, await File.ReadAllBytesAsync(completed.DestinationPath));
     }
 
+    [Fact]
+    public async Task ForcedAria2DownloadIsOwnedAndCompletedThroughUnifiedManager()
+    {
+        using TemporaryDirectory directory = new();
+        byte[] payload = CreatePayload(4096, 197);
+        ApplicationState state = new();
+        TestSettingsService settings = new(ApplicationSettings.CreateDefault() with
+        {
+            Aria2 = Aria2IntegrationSettings.Default with { Enabled = true }
+        });
+        FakeAria2Service aria2 = new(payload);
+        using DownloadManager manager = CreateManager(
+            new HttpClient(new RangeHandler(payload)),
+            state,
+            new InMemoryHistoryStore(),
+            settingsService: settings,
+            aria2Service: aria2);
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/aria2.bin"),
+            directory.Path,
+            "aria2.bin",
+            BackendPreference: DownloadBackendPreference.Aria2,
+            AllowBackendFallback: false));
+
+        DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        Assert.Equal(DownloadBackendKind.Aria2, completed.Backend);
+        Assert.Equal("fake-gid", completed.BackendTaskId);
+        Assert.Equal(payload, await File.ReadAllBytesAsync(completed.DestinationPath));
+        Assert.Equal(1, aria2.AddCount);
+    }
+
+    [Fact]
+    public async Task Aria2DestinationCollisionBlocksDualOwnership()
+    {
+        using TemporaryDirectory directory = new();
+        byte[] payload = CreatePayload(2048, 113);
+        string destination = Path.Combine(directory.Path, "collision.bin");
+        ApplicationState state = new();
+        TestSettingsService settings = new(ApplicationSettings.CreateDefault() with
+        {
+            Aria2 = Aria2IntegrationSettings.Default with { Enabled = true }
+        });
+        FakeAria2Service aria2 = new(payload, destination);
+        using DownloadManager manager = CreateManager(
+            new HttpClient(new RangeHandler(payload)),
+            state,
+            new InMemoryHistoryStore(),
+            settingsService: settings,
+            aria2Service: aria2);
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/collision.bin"),
+            directory.Path,
+            "collision.bin",
+            ConnectionCount: 1,
+            BackendPreference: DownloadBackendPreference.Aria2,
+            AllowBackendFallback: true));
+
+        DownloadSnapshot failed = await WaitForStateAsync(state, id, DownloadState.Failed);
+
+        Assert.Equal(DownloadBackendKind.Aria2, failed.Backend);
+        Assert.Contains("owns the destination", failed.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, aria2.AddCount);
+        Assert.False(File.Exists(destination));
+    }
+
+    [Fact]
+    public async Task PersistedAria2OwnershipNeverFallsBackWhileServiceIsUnavailable()
+    {
+        using TemporaryDirectory directory = new();
+        byte[] payload = CreatePayload(1024, 101);
+        string destination = Path.Combine(directory.Path, "owned.bin");
+        PersistedDownload persisted = new(
+            "owned",
+            new Uri("https://example.test/owned.bin"),
+            destination,
+            0,
+            payload.Length,
+            DownloadState.Paused,
+            DateTimeOffset.UtcNow,
+            BackendPreference: DownloadBackendPreference.Automatic,
+            Backend: DownloadBackendKind.Aria2,
+            BackendTaskId: "persisted-gid",
+            AllowBackendFallback: true);
+        ApplicationState state = new();
+        RangeHandler handler = new(payload);
+        TestSettingsService settings = new(ApplicationSettings.CreateDefault() with
+        {
+            Aria2 = Aria2IntegrationSettings.Default with { Enabled = true }
+        });
+        FakeAria2Service aria2 = new(payload, available: false);
+        using DownloadManager manager = CreateManager(
+            new HttpClient(handler),
+            state,
+            new InMemoryHistoryStore([persisted]),
+            settingsService: settings,
+            aria2Service: aria2);
+        await manager.InitializeAsync();
+
+        await manager.ResumeAsync("owned");
+        DownloadSnapshot failed = await WaitForStateAsync(state, "owned", DownloadState.Failed);
+
+        Assert.Equal(DownloadBackendKind.Aria2, failed.Backend);
+        Assert.Equal("persisted-gid", failed.BackendTaskId);
+        Assert.True(failed.RecoveryRequired);
+        Assert.Equal(0, handler.RequestCount);
+        Assert.False(File.Exists(destination));
+    }
+
     private static DownloadManager CreateManager(
         HttpClient client,
         ApplicationState state,
         InMemoryHistoryStore history,
         IDiskSpaceProvider? diskSpaceProvider = null,
-        DownloadRetryPolicy? retryPolicy = null)
+        DownloadRetryPolicy? retryPolicy = null,
+        ISettingsService? settingsService = null,
+        IAria2Service? aria2Service = null)
         => new(
             client,
             state,
             history,
-            new TestSettingsService(),
+            settingsService ?? new TestSettingsService(),
             NullLogger<DownloadManager>.Instance,
             diskSpaceProvider ?? new FixedDiskSpaceProvider(long.MaxValue),
-            retryPolicy ?? new DownloadRetryPolicy(3, TimeSpan.FromMilliseconds(1), 0));
+            retryPolicy ?? new DownloadRetryPolicy(3, TimeSpan.FromMilliseconds(1), 0),
+            aria2Service: aria2Service);
 
     private static async Task<DownloadSnapshot> WaitForStateAsync(
         ApplicationState state,
@@ -909,6 +1024,8 @@ public sealed class DownloadManagerTests
 
     private sealed class RangeHandler(byte[] payload, string entityTag = "\"stable\"") : HttpMessageHandler
     {
+        public int RequestCount { get; private set; }
+
         public long? LastRangeStart { get; private set; }
 
         public string? LastIfRangeEntityTag { get; private set; }
@@ -924,6 +1041,7 @@ public sealed class DownloadManagerTests
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            RequestCount++;
             LastTestHeader = request.Headers.TryGetValues("X-Test", out IEnumerable<string>? testValues)
                 ? testValues.Single()
                 : null;
@@ -1106,9 +1224,109 @@ public sealed class DownloadManagerTests
         }
     }
 
+    private sealed class FakeAria2Service : IAria2Service
+    {
+        private readonly byte[] _payload;
+
+        public FakeAria2Service(
+            byte[] payload,
+            string? occupiedDestination = null,
+            bool available = true)
+        {
+            _payload = payload;
+            Current = new Aria2ServiceSnapshot(
+                available
+                    ? new Aria2Health(true, true, "aria2 test service is ready.", "test")
+                    : Aria2Health.Disabled,
+                occupiedDestination is null
+                    ? []
+                    : [CreateTask("occupied-gid", occupiedDestination, Aria2TaskStatus.Active, 0, payload.Length)],
+                DateTimeOffset.UtcNow,
+                false);
+        }
+
+        public int AddCount { get; private set; }
+
+        public Aria2ServiceSnapshot Current { get; private set; }
+
+        public event EventHandler<Aria2ServiceSnapshot>? Changed;
+
+        public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task ConfigureAsync(Aria2IntegrationSettings settings, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task StartManagedProcessAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task StopManagedProcessAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task RefreshAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public async Task<string> AddAsync(Aria2AddRequest request, CancellationToken cancellationToken = default)
+        {
+            AddCount++;
+            string path = Path.Combine(request.DestinationDirectory, request.FileName ?? "download.bin");
+            await File.WriteAllBytesAsync(path, _payload, cancellationToken);
+            Aria2TaskSnapshot task = CreateTask(
+                "fake-gid",
+                path,
+                Aria2TaskStatus.Complete,
+                _payload.Length,
+                _payload.Length);
+            Current = Current with { Tasks = [task], RefreshedAt = DateTimeOffset.UtcNow };
+            Changed?.Invoke(this, Current);
+            return task.Gid;
+        }
+
+        public Task PauseAsync(string gid, CancellationToken cancellationToken = default)
+            => SetStatusAsync(gid, Aria2TaskStatus.Paused);
+
+        public Task ResumeAsync(string gid, CancellationToken cancellationToken = default)
+            => SetStatusAsync(gid, Aria2TaskStatus.Active);
+
+        public Task RemoveAsync(string gid, CancellationToken cancellationToken = default)
+            => SetStatusAsync(gid, Aria2TaskStatus.Removed);
+
+        private Task SetStatusAsync(string gid, Aria2TaskStatus status)
+        {
+            Aria2TaskSnapshot[] tasks = Current.Tasks
+                .Select(task => string.Equals(task.Gid, gid, StringComparison.Ordinal)
+                    ? task with { Status = status }
+                    : task)
+                .ToArray();
+            Current = Current with { Tasks = tasks, RefreshedAt = DateTimeOffset.UtcNow };
+            Changed?.Invoke(this, Current);
+            return Task.CompletedTask;
+        }
+
+        private static Aria2TaskSnapshot CreateTask(
+            string gid,
+            string path,
+            Aria2TaskStatus status,
+            long completed,
+            long total)
+            => new(
+                gid,
+                status,
+                Path.GetFileName(path),
+                path,
+                completed,
+                total,
+                0,
+                0,
+                1,
+                null,
+                null);
+    }
+
     private sealed class TestSettingsService : ISettingsService
     {
-        public ApplicationSettings Current { get; private set; } = ApplicationSettings.CreateDefault();
+        public TestSettingsService(ApplicationSettings? settings = null)
+        {
+            Current = (settings ?? ApplicationSettings.CreateDefault()).Normalize();
+        }
+
+        public ApplicationSettings Current { get; private set; }
 
         public event EventHandler<ApplicationSettings>? Changed;
 

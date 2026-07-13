@@ -43,7 +43,9 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
                 item.Mirrors,
                 item.ExpectedChecksumAlgorithm,
                 item.ExpectedChecksum,
-                item.TotalBytes))
+                item.TotalBytes,
+                item.BackendPreference,
+                item.AllowBackendFallback))
             .ToArray();
         DownloadListEnvelope envelope = new(
             DownloadListEnvelope.CurrentSchemaVersion,
@@ -112,12 +114,19 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
     private static DownloadListImportResult ImportJson(string content)
     {
         DownloadListEnvelope? envelope = JsonSerializer.Deserialize<DownloadListEnvelope>(content, SerializerOptions);
-        if (envelope is null || envelope.SchemaVersion != DownloadListEnvelope.CurrentSchemaVersion)
+        if (envelope is null
+            || envelope.SchemaVersion < 1
+            || envelope.SchemaVersion > DownloadListEnvelope.CurrentSchemaVersion)
         {
             throw new InvalidDataException("The download-list schema version is unsupported.");
         }
 
-        return NormalizeEntries(envelope.Downloads, "XDM download-list JSON");
+        IReadOnlyList<DownloadListEntry> entries = envelope.SchemaVersion == 1
+            ? envelope.Downloads
+                .Select(static entry => entry with { AllowBackendFallback = true })
+                .ToArray()
+            : envelope.Downloads;
+        return NormalizeEntries(entries, "XDM download-list JSON");
     }
 
     private static DownloadListImportResult ImportText(string content)
@@ -190,7 +199,10 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
                 Mirrors = mirrors,
                 ExpectedChecksumAlgorithm = checksumAlgorithm,
                 ExpectedChecksum = checksum,
-                ExpectedLength = entry.ExpectedLength is > 0 ? entry.ExpectedLength : null
+                ExpectedLength = entry.ExpectedLength is > 0 ? entry.ExpectedLength : null,
+                BackendPreference = Enum.IsDefined(entry.BackendPreference)
+                    ? entry.BackendPreference
+                    : DownloadBackendPreference.Automatic
             });
         }
 

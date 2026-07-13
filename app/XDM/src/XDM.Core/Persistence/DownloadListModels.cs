@@ -14,14 +14,16 @@ public sealed record DownloadListEntry(
     IReadOnlyList<Uri>? Mirrors = null,
     string? ExpectedChecksumAlgorithm = null,
     string? ExpectedChecksum = null,
-    long? ExpectedLength = null);
+    long? ExpectedLength = null,
+    DownloadBackendPreference BackendPreference = DownloadBackendPreference.Automatic,
+    bool AllowBackendFallback = true);
 
 public sealed record DownloadListEnvelope(
     int SchemaVersion,
     DateTimeOffset ExportedAt,
     IReadOnlyList<DownloadListEntry> Downloads)
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 }
 
 public sealed record DownloadListImportResult(

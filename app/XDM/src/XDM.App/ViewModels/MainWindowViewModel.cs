@@ -208,6 +208,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public IReadOnlyList<DownloadPriority> DownloadPriorities { get; } = Enum.GetValues<DownloadPriority>();
 
+    public IReadOnlyList<DownloadBackendPreference> DownloadBackendPreferences { get; } =
+        Enum.GetValues<DownloadBackendPreference>();
+
     public IReadOnlyList<TransferPolicyBehavior> TransferPolicyBehaviors { get; } = Enum.GetValues<TransferPolicyBehavior>();
 
     public IReadOnlyList<NetworkCostOverride> NetworkCostOverrides { get; } = Enum.GetValues<NetworkCostOverride>();
@@ -332,6 +335,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private DownloadPriority newDownloadPriority = DownloadPriority.Normal;
+
+    [ObservableProperty]
+    private DownloadBackendPreference newDownloadBackendPreference = DownloadBackendPreference.Automatic;
+
+    [ObservableProperty]
+    private bool newDownloadAllowBackendFallback = true;
 
     [ObservableProperty]
     private DownloadPriority selectedDownloadPriority = DownloadPriority.Normal;
@@ -796,7 +805,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     SourcePage: ParseOptionalHttpUri(Referer),
                     Mirrors: DownloadInputParser.ParseUrls(MirrorUrls),
                     ExpectedChecksumAlgorithm: EmptyToNull(ExpectedChecksumAlgorithm),
-                    ExpectedChecksum: EmptyToNull(ExpectedChecksum));
+                    ExpectedChecksum: EmptyToNull(ExpectedChecksum),
+                    BackendPreference: NewDownloadBackendPreference,
+                    AllowBackendFallback: NewDownloadAllowBackendFallback);
 
                 await _downloadManager.AddAsync(request);
                 added++;

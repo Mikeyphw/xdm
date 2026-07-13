@@ -24,7 +24,12 @@ public sealed record DownloadSnapshot(
     DownloadIntegrityStatus IntegrityStatus = DownloadIntegrityStatus.Unknown,
     bool RecoveryRequired = false,
     string? RecoveryMessage = null,
-    IReadOnlyList<Uri>? Mirrors = null)
+    IReadOnlyList<Uri>? Mirrors = null,
+    DownloadBackendPreference BackendPreference = DownloadBackendPreference.Automatic,
+    DownloadBackendKind Backend = DownloadBackendKind.Native,
+    string? BackendTaskId = null,
+    string? BackendDecisionReason = null,
+    bool AllowBackendFallback = true)
 {
     public double? ProgressFraction
         => TotalBytes is > 0

@@ -43,6 +43,14 @@
               </StackPanel>
             </Grid>
 
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+              <StackPanel Spacing="6">
+                <TextBlock Text="{Binding Localization[ui_download_backend]}" Classes="form-label"/>
+                <ComboBox ItemsSource="{Binding DownloadBackendPreferences}" SelectedItem="{Binding NewDownloadBackendPreference}" AutomationProperties.Name="{Binding Localization[ui_download_backend]}" AutomationProperties.AutomationId="NewDownloadBackendPreference"/>
+              </StackPanel>
+              <CheckBox Grid.Column="1" Content="{Binding Localization[ui_allow_native_fallback]}" IsChecked="{Binding NewDownloadAllowBackendFallback}" VerticalAlignment="Bottom" Margin="0,0,0,8" AutomationProperties.AutomationId="NewDownloadAllowBackendFallback"/>
+            </Grid>
+
             <Expander Header="{Binding Localization[ui_request_details_and_authentication]}">
               <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,*" ColumnSpacing="9" RowSpacing="9">
                 <TextBox PlaceholderText="{Binding Localization[ui_custom_filename_single_url_only]}" Text="{Binding CustomFileName}" AutomationProperties.Name="{Binding Localization[ui_custom_filename_single_url_only]}" AutomationProperties.AutomationId="Downloads_Localization_ui_custom_filename_single_url_only"/>
@@ -127,6 +135,7 @@
                   </StackPanel>
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <Border Width="7" Height="7" CornerRadius="4" Background="{DynamicResource XdmBrandBrush}"/>
+                    <TextBlock Text="{Binding BackendText}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
                     <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource XdmAccentForeground}" TextTrimming="CharacterEllipsis"/>
                   </StackPanel>
                   <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,10,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}"/>
@@ -212,6 +221,19 @@
               <Button Margin="0,0,8,8" Classes="secondary" Content="{Binding Localization[ui_retry]}" Command="{Binding RetrySelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}"/>
               <Button Margin="0,0,8,8" Classes="danger" Content="{Binding Localization[ui_cancel]}" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanCancel}"/>
             </WrapPanel>
+
+            <Expander Header="{Binding Localization[ui_backend_ownership]}">
+              <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*" ColumnSpacing="10" RowSpacing="5">
+                <TextBlock Text="{Binding Localization[ui_backend_in_use]}" Classes="form-label"/>
+                <TextBlock Grid.Column="1" Text="{Binding SelectedDownload.BackendText}" Foreground="{DynamicResource XdmAccentForeground}"/>
+                <TextBlock Grid.Row="1" Text="{Binding Localization[ui_backend_preference]}" Classes="form-label"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedDownload.BackendPreferenceText}"/>
+                <TextBlock Grid.Row="2" Text="{Binding Localization[ui_backend_task_id]}" Classes="form-label"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedDownload.BackendTaskId}" Classes="caption" TextWrapping="Wrap"/>
+                <TextBlock Grid.Row="3" Text="{Binding Localization[ui_backend_decision]}" Classes="form-label"/>
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedDownload.BackendDecisionReason}" Classes="supporting" TextWrapping="Wrap"/>
+              </Grid>
+            </Expander>
 
             <Expander Header="{Binding Localization[ui_integrity_recovery]}" IsExpanded="{Binding SelectedDownload.RecoveryRequired}">
               <StackPanel Margin="0,8,0,0" Spacing="8">

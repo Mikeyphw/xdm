@@ -72,6 +72,18 @@ public sealed partial class DownloadItemViewModel : ObservableObject
     private int mirrorCount;
 
     [ObservableProperty]
+    private string backendText = string.Empty;
+
+    [ObservableProperty]
+    private string backendPreferenceText = string.Empty;
+
+    [ObservableProperty]
+    private string? backendTaskId;
+
+    [ObservableProperty]
+    private string? backendDecisionReason;
+
+    [ObservableProperty]
     private string queueId = "default";
 
     [ObservableProperty]
@@ -139,6 +151,10 @@ public sealed partial class DownloadItemViewModel : ObservableObject
         ActualChecksum = snapshot.ActualChecksum;
         LastVerifiedText = snapshot.LastVerifiedAt?.ToLocalTime().ToString("g", localization.Culture);
         MirrorCount = Math.Max(0, (snapshot.Mirrors?.Count ?? 1) - 1);
+        BackendText = snapshot.Backend == DownloadBackendKind.Aria2 ? "aria2" : "Native";
+        BackendPreferenceText = snapshot.BackendPreference.ToString();
+        BackendTaskId = snapshot.BackendTaskId;
+        BackendDecisionReason = snapshot.BackendDecisionReason;
         OnPropertyChanged(nameof(HasRecoveryMessage));
         OnPropertyChanged(nameof(RecoveryRequired));
         OnPropertyChanged(nameof(CanVerify));

@@ -18,6 +18,19 @@ public sealed record Aria2IntegrationSettings(
     bool CheckCertificate,
     bool SaveSession)
 {
+
+    public bool AutomaticRoutingEnabled { get; init; } = true;
+
+    public bool AllowNativeFallback { get; init; } = true;
+
+    public bool PreferForMirrors { get; init; } = true;
+
+    public bool AdoptExistingTasks { get; init; } = true;
+
+    public long AutomaticRoutingMinimumBytes { get; init; } = 128L * 1024 * 1024;
+
+    public int AutomaticRoutingMinimumConnections { get; init; } = 8;
+
     public static Aria2IntegrationSettings Default
     {
         get
@@ -74,6 +87,8 @@ public sealed record Aria2IntegrationSettings(
             MaxConcurrentDownloads = Math.Clamp(MaxConcurrentDownloads, 1, 64),
             SplitCount = Math.Clamp(SplitCount, 1, 64),
             MinimumSplitSizeBytes = Math.Clamp(MinimumSplitSizeBytes, 1024 * 1024, 1024L * 1024 * 1024),
+            AutomaticRoutingMinimumBytes = Math.Clamp(AutomaticRoutingMinimumBytes, 16L * 1024 * 1024, 16L * 1024 * 1024 * 1024),
+            AutomaticRoutingMinimumConnections = Math.Clamp(AutomaticRoutingMinimumConnections, 2, 64),
             AdditionalArguments = arguments
         };
     }

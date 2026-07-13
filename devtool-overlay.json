@@ -1,27 +1,27 @@
 {
-  "name": "xdm_smart_bandwidth_queue_automation_overlay",
+  "name": "xdm_backend_selection_overlay",
   "repository": "https://github.com/Mikeyphw/xdm",
-  "baseCommit": "fc33a2b",
+  "baseCommit": "fdd2615",
   "target": "xdm_modern",
   "targetFramework": "net10.0",
-  "phase": "smart-bandwidth-queue-automation",
-  "description": "Adds live bandwidth profiles, metered and battery policies, dynamic global/queue/per-host concurrency, prerequisite-aware queues, and schedule-specific transfer profiles.",
+  "phase": "native-aria2-backend-selection",
+  "description": "Adds safe per-download native/aria2 ownership, automatic backend recommendations, persisted task adoption, pre-ownership fallback, collision protection, and unified UI controls.",
   "validation": {
     "solution": "app/XDM/XDM.Modern.sln",
     "restore": "dotnet restore app/XDM/XDM.Modern.sln",
     "build": "dotnet build --no-restore app/XDM/XDM.Modern.sln",
     "tests": "dotnet test --no-build app/XDM/XDM.Modern.sln"
   },
-  "commitMessage": "Add smart bandwidth profiles and queue automation",
+  "commitMessage": "Add safe native and aria2 backend selection",
   "constraints": [
-    "Apply on top of commit fc33a2b",
+    "Apply on top of commit fdd2615",
     "Validate only app/XDM/XDM.Modern.sln",
     "Require zero warnings and zero errors",
-    "Preserve existing download, browser, media, scheduler, diagnostics, aria2, resume-integrity, recovery, and secure-update behavior",
-    "Treat per-host limits as concurrent downloads per host, not HTTP segment connections",
-    "Apply lower concurrency limits as existing slots finish and wake waiting transfers immediately when limits increase",
-    "Automatically request queue prerequisites and prevent circular dependency selection",
-    "Preserve existing completion actions while allowing schedules to apply transfer profiles",
+    "Keep the native backend as the safe default",
+    "Never fall back to native after an aria2 task identifier has been established",
+    "Never allow two active backends to write the same destination",
+    "Preserve persisted aria2 ownership until task absence is confirmed by a healthy RPC refresh",
+    "Preserve resume integrity, queue policies, browser security, and rollback-safe updates",
     "Do not modify docs/parity/features.json"
   ]
 }

@@ -9,6 +9,19 @@ public sealed record Aria2AddRequest(
     string? Password = null,
     long? SpeedLimitBytesPerSecond = null)
 {
+    public IReadOnlyList<Uri>? Mirrors { get; init; }
+
+    public string? ExpectedChecksumAlgorithm { get; init; }
+
+    public string? ExpectedChecksum { get; init; }
+
+    public IReadOnlyList<Uri> GetSources()
+        => new[] { Source }
+            .Concat(Mirrors ?? Array.Empty<Uri>())
+            .DistinctBy(static uri => uri.AbsoluteUri, StringComparer.OrdinalIgnoreCase)
+            .Take(32)
+            .ToArray();
+
     public Aria2AddRequest Normalize()
     {
         ArgumentNullException.ThrowIfNull(Source);
@@ -34,6 +47,34 @@ public sealed record Aria2AddRequest(
                 static pair => pair.Value?.Trim() ?? string.Empty,
                 StringComparer.OrdinalIgnoreCase)
             ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        Uri[] mirrors = (Mirrors ?? Array.Empty<Uri>())
+            .Where(static uri => uri is { IsAbsoluteUri: true })
+            .Where(static uri => uri.Scheme is "http" or "https" or "ftp")
+            .Where(uri => uri != Source)
+            .DistinctBy(static uri => uri.AbsoluteUri, StringComparer.OrdinalIgnoreCase)
+            .Take(31)
+            .ToArray();
+        string? checksumAlgorithm = string.IsNullOrWhiteSpace(ExpectedChecksumAlgorithm)
+            ? null
+            : ExpectedChecksumAlgorithm.Trim().ToUpperInvariant() switch
+            {
+                "SHA256" or "SHA-256" => "sha-256",
+                "SHA512" or "SHA-512" => "sha-512",
+                _ => null
+            };
+        string? checksum = checksumAlgorithm is null || string.IsNullOrWhiteSpace(ExpectedChecksum)
+            ? null
+            : new string(ExpectedChecksum
+                .Where(static character => !char.IsWhiteSpace(character) && character != ':')
+                .Select(char.ToLowerInvariant)
+                .ToArray());
+        int expectedChecksumLength = checksumAlgorithm == "sha-256" ? 64 : 128;
+        if (checksum?.Length != expectedChecksumLength
+            || checksum.Any(static character => !Uri.IsHexDigit(character)))
+        {
+            checksumAlgorithm = null;
+            checksum = null;
+        }
 
         return this with
         {
@@ -42,7 +83,10 @@ public sealed record Aria2AddRequest(
             Headers = headers,
             Username = string.IsNullOrWhiteSpace(Username) ? null : Username.Trim(),
             Password = string.IsNullOrWhiteSpace(Password) ? null : Password,
-            SpeedLimitBytesPerSecond = SpeedLimitBytesPerSecond is > 0 ? SpeedLimitBytesPerSecond : null
+            SpeedLimitBytesPerSecond = SpeedLimitBytesPerSecond is > 0 ? SpeedLimitBytesPerSecond : null,
+            Mirrors = mirrors,
+            ExpectedChecksumAlgorithm = checksumAlgorithm,
+            ExpectedChecksum = checksum
         };
     }
 }

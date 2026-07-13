@@ -179,6 +179,28 @@
                   <ProgressBar Grid.Column="1" Width="90" Height="6" IsIndeterminate="{Binding Aria2IsRefreshing}" IsVisible="{Binding Aria2IsRefreshing}"/>
                 </Grid>
                 <CheckBox Content="{Binding Localization[ui_enable_aria2_backend]}" IsChecked="{Binding Aria2Enabled}"/>
+                <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="12">
+                  <StackPanel Spacing="10">
+                    <TextBlock Text="{Binding Localization[ui_aria2_automatic_routing]}" Classes="card-title"/>
+                    <WrapPanel Orientation="Horizontal">
+                      <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_enable_automatic_backend_selection]}" IsChecked="{Binding Aria2AutomaticRoutingEnabled}" AutomationProperties.AutomationId="Aria2AutomaticRoutingEnabled"/>
+                      <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_allow_native_fallback]}" IsChecked="{Binding Aria2AllowNativeFallback}" AutomationProperties.AutomationId="Aria2AllowNativeFallback"/>
+                      <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_prefer_mirrors]}" IsChecked="{Binding Aria2PreferForMirrors}" AutomationProperties.AutomationId="Aria2PreferForMirrors"/>
+                      <CheckBox Content="{Binding Localization[ui_aria2_adopt_tasks]}" IsChecked="{Binding Aria2AdoptExistingTasks}" AutomationProperties.AutomationId="Aria2AdoptExistingTasks"/>
+                    </WrapPanel>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                      <StackPanel Spacing="6">
+                        <TextBlock Text="{Binding Localization[ui_aria2_routing_minimum_size_mib]}" Classes="form-label"/>
+                        <NumericUpDown Value="{Binding Aria2AutomaticRoutingMinimumMegabytes, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="16" Maximum="16384" Increment="16" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_routing_minimum_size_mib]}" AutomationProperties.AutomationId="Aria2RoutingMinimumSize"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Spacing="6">
+                        <TextBlock Text="{Binding Localization[ui_aria2_routing_minimum_connections]}" Classes="form-label"/>
+                        <NumericUpDown Value="{Binding Aria2AutomaticRoutingMinimumConnections, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="2" Maximum="64" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_routing_minimum_connections]}" AutomationProperties.AutomationId="Aria2RoutingMinimumConnections"/>
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Text="{Binding Localization[ui_backend_ownership_note]}" Classes="supporting" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
                 <Grid ColumnDefinitions="*,2*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_aria2_connection_mode]}" Classes="form-label"/>
