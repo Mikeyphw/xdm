@@ -202,6 +202,24 @@ public sealed class QueueSchedulerRuntimeTests
             CancellationToken cancellationToken = default)
             => Task.CompletedTask;
 
+        public Task SetTagsAsync(
+            string downloadId,
+            IReadOnlyList<string> tags,
+            CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task SetArchivedAsync(
+            string downloadId,
+            bool archived,
+            CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task RelinkAsync(
+            string downloadId,
+            string existingPath,
+            CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
         public Task<int> PruneHistoryAsync(CancellationToken cancellationToken = default)
             => Task.FromResult(0);
 

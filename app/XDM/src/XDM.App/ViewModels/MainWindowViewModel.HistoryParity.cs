@@ -286,7 +286,8 @@ public partial class MainWindowViewModel
                         ExpectedChecksum: entry.ExpectedChecksum,
                         ExpectedLength: entry.ExpectedLength,
                         BackendPreference: entry.BackendPreference,
-                        AllowBackendFallback: entry.AllowBackendFallback));
+                        AllowBackendFallback: entry.AllowBackendFallback,
+                        Tags: entry.Tags));
                     added++;
                 }
                 catch (ArgumentException)

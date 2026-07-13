@@ -47,6 +47,28 @@ public sealed class HistoryRetentionPolicyTests
     }
 
     [Fact]
+    public void ArchivedEntriesAreProtectedFromExpiryAndCountLimits()
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        PersistedDownload archived = Create("archived", DownloadState.Completed, now.AddYears(-5)) with
+        {
+            IsArchived = true
+        };
+        PersistedDownload[] downloads =
+        [
+            archived,
+            Create("recent", DownloadState.Completed, now)
+        ];
+
+        IReadOnlyList<PersistedDownload> retained = HistoryRetentionPolicy.Apply(
+            downloads,
+            new HistoryRetentionSettings(true, 1, 1),
+            now);
+
+        Assert.Contains(retained, static item => item.Id == "archived");
+    }
+
+    [Fact]
     public void MaximumEntryLimitDropsOldestTerminalEntriesOnly()
     {
         DateTimeOffset now = DateTimeOffset.UtcNow;

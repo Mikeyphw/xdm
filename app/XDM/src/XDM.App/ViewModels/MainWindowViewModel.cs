@@ -681,6 +681,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         RefreshSelectedDownloadTimeline(value?.Id);
         SelectedDownloadPriority = value?.Priority ?? DownloadPriority.Normal;
         ApplySelectedHistoryItem(value);
+        SelectedDownloadTags = value?.TagsText ?? string.Empty;
+        RelinkDestinationPath = value?.DestinationPath ?? string.Empty;
         OnPropertyChanged(nameof(HasSelectedDownload));
         OnPropertyChanged(nameof(HasNoSelectedDownload));
     }
@@ -778,6 +780,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IReadOnlyDictionary<string, string> headers = DownloadInputParser.ParseHeaders(RequestHeaders);
         long? speedLimit = ParseKilobytesPerSecond(SpeedLimitKbps);
         int added = 0;
+        int focusedExisting = 0;
+        HashSet<string> existingIds = Downloads.Select(static item => item.Id).ToHashSet(StringComparer.Ordinal);
         List<string> failures = [];
 
         foreach (Uri source in sources)
@@ -809,10 +813,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     ExpectedChecksumAlgorithm: EmptyToNull(ExpectedChecksumAlgorithm),
                     ExpectedChecksum: EmptyToNull(ExpectedChecksum),
                     BackendPreference: NewDownloadBackendPreference,
-                    AllowBackendFallback: NewDownloadAllowBackendFallback);
+                    AllowBackendFallback: NewDownloadAllowBackendFallback,
+                    Tags: DownloadMetadata.ParseTags(NewDownloadTags));
 
-                await _downloadManager.AddAsync(request);
-                added++;
+                string downloadId = await _downloadManager.AddAsync(request);
+                DownloadItemViewModel? existingDownload = Downloads.FirstOrDefault(item =>
+                    string.Equals(item.Id, downloadId, StringComparison.Ordinal));
+                if (existingIds.Add(downloadId))
+                {
+                    added++;
+                }
+                else
+                {
+                    SelectedDownload = existingDownload;
+                    focusedExisting++;
+                }
             }
             catch (ArgumentException exception)
             {
@@ -833,6 +848,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             NewDownloadUrls = string.Empty;
             MirrorUrls = string.Empty;
             ExpectedChecksum = string.Empty;
+            NewDownloadTags = string.Empty;
             CustomFileName = string.Empty;
             if (!RememberLastRequestMetadata)
             {
@@ -845,9 +861,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             }
         }
 
+        string focusMessage = focusedExisting > 0
+            ? $" Focused {focusedExisting} existing duplicate URL{(focusedExisting == 1 ? string.Empty : "s")}."
+            : string.Empty;
         OperationMessage = failures.Count == 0
-            ? $"Added {added} download{(added == 1 ? string.Empty : "s")}."
-            : $"Added {added}; {failures.Count} failed: {failures[0]}";
+            ? $"Added {added} download{(added == 1 ? string.Empty : "s")}.{focusMessage}"
+            : $"Added {added}; {failures.Count} failed: {failures[0]}{focusMessage}";
     }
 
     [RelayCommand]
@@ -1166,7 +1185,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 AnnounceStatusChanges),
             Aria2 = BuildAria2Settings(),
             Updates = new UpdateSettings(SelectedUpdateChannel, AutomaticUpdateChecks, NotifyWhenUpdateStaged),
-            SmartTransfers = BuildSmartTransferSettings()
+            SmartTransfers = BuildSmartTransferSettings(),
+            Organization = BuildOrganizationSettings()
         };
 
         await _settingsService.UpdateAsync(updated);
@@ -2197,6 +2217,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         RefreshBulkSelectionState();
         RefreshFilteredDownloads();
+        RefreshDestinationConflictPreview();
         OnPropertyChanged(nameof(RecoveryItemCount));
         OnPropertyChanged(nameof(HasRecoveryItems));
         OnPropertyChanged(nameof(ShowRecoveryReview));
@@ -2416,6 +2437,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         ApplySettingsParity(settings);
         ApplyAria2Settings(settings);
         ApplyHistorySettings(settings);
+        ApplyOrganizationSettings(settings);
         UpdateSettings updateSettings = (settings.Updates ?? UpdateSettings.Default).Normalize();
         SelectedUpdateChannel = updateSettings.Channel;
         AutomaticUpdateChecks = updateSettings.AutomaticChecks;
@@ -2569,14 +2591,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         FilteredDownloads.Clear();
         foreach (DownloadItemViewModel download in Downloads)
         {
+            download.RefreshFilePresence();
             bool statusMatches = string.Equals(status, _localization["status_all"], StringComparison.OrdinalIgnoreCase)
                 || string.Equals(download.StatusText, status, StringComparison.OrdinalIgnoreCase);
-            bool searchMatches = search.Length == 0
-                || download.FileName.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || download.Source.AbsoluteUri.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || download.DestinationPath.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || download.QueueId.Contains(search, StringComparison.OrdinalIgnoreCase);
-            if (statusMatches && searchMatches)
+            bool archiveMatches = search.Contains("archived:", StringComparison.OrdinalIgnoreCase)
+                || !download.IsArchived;
+            bool searchMatches = download.MatchesSearch(search);
+            if (statusMatches && archiveMatches && searchMatches)
             {
                 FilteredDownloads.Add(download);
             }

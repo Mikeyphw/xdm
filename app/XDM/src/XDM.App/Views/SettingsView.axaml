@@ -47,6 +47,35 @@
             </Border>
             <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
               <StackPanel Spacing="12">
+                <TextBlock Text="Organization and duplicate prevention" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="Duplicate URL behavior" Classes="form-label"/>
+                    <ComboBox ItemsSource="{Binding DuplicateUrlBehaviors}" SelectedItem="{Binding SelectedDuplicateUrlBehavior}" AutomationProperties.Name="Duplicate URL behavior" AutomationProperties.AutomationId="DuplicateUrlBehavior"/>
+                  </StackPanel>
+                  <CheckBox Grid.Column="1" Content="Compute SHA-256 content identity after completion" IsChecked="{Binding ComputeContentHashes}" VerticalAlignment="Bottom" Margin="0,0,0,8" AutomationProperties.AutomationId="ComputeContentHashes"/>
+                </Grid>
+                <TextBlock Text="Destination rules" Classes="card-title"/>
+                <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                  <TextBox Text="{Binding NewDestinationRuleName}" PlaceholderText="Rule name" AutomationProperties.Name="Destination rule name" AutomationProperties.AutomationId="DestinationRuleName"/>
+                  <TextBox Grid.Column="1" Text="{Binding NewDestinationRuleHost}" PlaceholderText="Host suffix, e.g. github.com" AutomationProperties.Name="Destination rule host" AutomationProperties.AutomationId="DestinationRuleHost"/>
+                  <TextBox Grid.Column="2" Text="{Binding NewDestinationRuleExtensions}" PlaceholderText="Extensions: zip, 7z" AutomationProperties.Name="Destination rule extensions" AutomationProperties.AutomationId="DestinationRuleExtensions"/>
+                  <TextBox Grid.Row="1" Text="{Binding NewDestinationRuleDirectory}" PlaceholderText="Destination directory" AutomationProperties.Name="Destination rule directory" AutomationProperties.AutomationId="DestinationRuleDirectory"/>
+                  <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding NewDestinationRuleTags}" PlaceholderText="Tags" AutomationProperties.Name="Destination rule tags" AutomationProperties.AutomationId="DestinationRuleTags"/>
+                  <Button Grid.Row="1" Grid.Column="2" Classes="secondary" Content="Add rule" Command="{Binding AddDestinationRuleCommand}"/>
+                </Grid>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <ComboBox ItemsSource="{Binding DestinationRules}" SelectedItem="{Binding SelectedDestinationRule}" AutomationProperties.Name="Destination rules" AutomationProperties.AutomationId="DestinationRules">
+                    <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <Button Grid.Column="1" Classes="danger" Content="Remove selected rule" Command="{Binding RemoveSelectedDestinationRuleCommand}"/>
+                </Grid>
+                <TextBlock Text="Rules are evaluated in order. A rule can match by host and/or file extension, choose a directory, and add tags." Classes="supporting" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="12">
                 <TextBlock Text="{Binding Localization[ui_language_and_accessibility]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
                 <Grid ColumnDefinitions="2*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">

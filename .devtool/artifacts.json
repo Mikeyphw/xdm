@@ -546,6 +546,24 @@
       "history_id": "a537cd4e0fd04f2c822463106418ee34"
     },
     {
+      "applied_at": "2026-07-12T01:37:19.247248Z",
+      "artifact": "/storage/emulated/0/Download/xdm_streaming_media_overlay.zip",
+      "artifact_name": "xdm_streaming_media_overlay.zip",
+      "type": "overlay",
+      "sha256": "e3f6c5c657067c0012304172bae8419c5556f42ca3fa35eaf6337e0555bd4a72",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add resilient streaming media pipeline",
+      "commit_hash": "",
+      "file_count": 59,
+      "change_counts": {
+        "add": 49,
+        "modify": 10
+      },
+      "manifest": {},
+      "history_id": "62bd4701ea334193a902645eff372459"
+    },
+    {
       "applied_at": "2026-07-12T02:02:26.271072Z",
       "artifact": "/mnt/extra/home/Downloads/xdm_streaming_media_overlay.zip",
       "artifact_name": "xdm_streaming_media_overlay.zip",
@@ -1421,6 +1439,140 @@
       },
       "manifest": {},
       "history_id": "b1de9c9d3ab546b799555f3492281f91"
+    },
+    {
+      "applied_at": "2026-07-13T03:12:39.539797Z",
+      "artifact": "/storage/emulated/0/Download/xdm_organization_duplicate_prevention_overlay.zip",
+      "artifact_name": "xdm_organization_duplicate_prevention_overlay.zip",
+      "type": "overlay",
+      "sha256": "bfcbb4c6f4c2f4e5f1c91248cd92fe329fc071f36efa325ad0cc6e7228d8ad4c",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add organization and duplicate prevention workflows",
+      "commit_hash": "",
+      "file_count": 29,
+      "change_counts": {
+        "add": 7,
+        "modify": 22
+      },
+      "manifest": {},
+      "history_id": "5069a84a189b4886a0c9b1e28c1afa8e"
+    },
+    {
+      "applied_at": "2026-07-13T03:13:25.680520Z",
+      "artifact": "/storage/emulated/0/Download/xdm_organization_duplicate_prevention_overlay.zip",
+      "artifact_name": "xdm_organization_duplicate_prevention_overlay.zip",
+      "type": "overlay",
+      "sha256": "bfcbb4c6f4c2f4e5f1c91248cd92fe329fc071f36efa325ad0cc6e7228d8ad4c",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add organization and duplicate prevention workflows",
+      "commit_hash": "",
+      "file_count": 29,
+      "change_counts": {
+        "add": 7,
+        "modify": 22
+      },
+      "manifest": {},
+      "history_id": "23ec475600ed470d9d5d5833922430bb"
+    },
+    {
+      "applied_at": "2026-07-13T03:25:18.452169Z",
+      "artifact": "/storage/emulated/0/Download/xdm_organization_duplicate_prevention_overlay.zip",
+      "artifact_name": "xdm_organization_duplicate_prevention_overlay.zip",
+      "type": "overlay",
+      "sha256": "bfcbb4c6f4c2f4e5f1c91248cd92fe329fc071f36efa325ad0cc6e7228d8ad4c",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add organization and duplicate prevention workflows",
+      "commit_hash": "",
+      "file_count": 29,
+      "change_counts": {
+        "unchanged": 29
+      },
+      "manifest": {},
+      "history_id": "c5d7eba1678d41a48edabe56c1d44757"
+    },
+    {
+      "applied_at": "2026-07-13T03:26:47.433058Z",
+      "artifact": "/sdcard/Download/xdm_organization_duplicate_prevention_overlay.zip",
+      "artifact_name": "xdm_organization_duplicate_prevention_overlay.zip",
+      "type": "overlay",
+      "sha256": "bfcbb4c6f4c2f4e5f1c91248cd92fe329fc071f36efa325ad0cc6e7228d8ad4c",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add organization and duplicate prevention workflows",
+      "commit_hash": "",
+      "file_count": 29,
+      "change_counts": {
+        "add": 7,
+        "modify": 22
+      },
+      "manifest": {},
+      "history_id": "f5fdfc5b36b440768b962d6766f4e7be"
+    },
+    {
+      "applied_at": "2026-07-13T03:38:52.197120Z",
+      "artifact": "/sdcard/Download/xdm_organization_duplicate_prevention_overlay.zip",
+      "artifact_name": "xdm_organization_duplicate_prevention_overlay.zip",
+      "type": "overlay",
+      "sha256": "",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "Add organization and duplicate prevention workflows",
+      "commit_hash": "",
+      "file_count": 0,
+      "change_counts": {},
+      "manifest": {},
+      "history_id": "f0aed6cbb9334e4f8952d32ea2adc998"
+    },
+    {
+      "applied_at": "2026-07-13T03:41:35.038053Z",
+      "artifact": "/storage/emulated/0/Download/xdm_organization_duplicate_prevention_overlay.zip",
+      "artifact_name": "xdm_organization_duplicate_prevention_overlay.zip",
+      "type": "overlay",
+      "sha256": "",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "Add organization and duplicate prevention workflows",
+      "commit_hash": "",
+      "file_count": 0,
+      "change_counts": {},
+      "manifest": {},
+      "history_id": "583270c328ca48b993237b6dffbda542"
+    },
+    {
+      "applied_at": "2026-07-13T03:41:50.947903Z",
+      "artifact": "/storage/emulated/0/Download/xdm_organization_duplicate_prevention_overlay.zip",
+      "artifact_name": "xdm_organization_duplicate_prevention_overlay.zip",
+      "type": "overlay",
+      "sha256": "",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "Add organization and duplicate prevention workflows",
+      "commit_hash": "",
+      "file_count": 0,
+      "change_counts": {},
+      "manifest": {},
+      "history_id": "17c7d6911dea49aea996b5657cb9f7e4"
+    },
+    {
+      "applied_at": "2026-07-13T03:45:38.104419Z",
+      "artifact": "/storage/emulated/0/Download/xdm_organization_duplicate_prevention_overlay.zip",
+      "artifact_name": "xdm_organization_duplicate_prevention_overlay.zip",
+      "type": "overlay",
+      "sha256": "353fdac326a7799cd4e00a03c6ace07b809b1979fc4d9db9e21c606bad0cf048",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add organization and duplicate prevention workflows",
+      "commit_hash": "",
+      "file_count": 29,
+      "change_counts": {
+        "add": 7,
+        "modify": 22
+      },
+      "manifest": {},
+      "history_id": "c7f5202f510e480bac95747c5b778909"
     }
   ]
 }

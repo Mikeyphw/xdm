@@ -65,6 +65,21 @@ public interface IDownloadManager
         Uri? sourcePage = null,
         CancellationToken cancellationToken = default);
 
+    Task SetTagsAsync(
+        string downloadId,
+        IReadOnlyList<string> tags,
+        CancellationToken cancellationToken = default);
+
+    Task SetArchivedAsync(
+        string downloadId,
+        bool archived,
+        CancellationToken cancellationToken = default);
+
+    Task RelinkAsync(
+        string downloadId,
+        string existingPath,
+        CancellationToken cancellationToken = default);
+
     Task<int> PruneHistoryAsync(CancellationToken cancellationToken = default);
 
     Task StartQueueAsync(string queueId, CancellationToken cancellationToken = default);

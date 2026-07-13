@@ -51,6 +51,12 @@
               <CheckBox Grid.Column="1" Content="{Binding Localization[ui_allow_native_fallback]}" IsChecked="{Binding NewDownloadAllowBackendFallback}" VerticalAlignment="Bottom" Margin="0,0,0,8" AutomationProperties.AutomationId="NewDownloadAllowBackendFallback"/>
             </Grid>
 
+            <StackPanel Spacing="6">
+              <TextBlock Text="Tags" Classes="form-label"/>
+              <TextBox Text="{Binding NewDownloadTags}" PlaceholderText="work, games, archive" AutomationProperties.Name="Download tags" AutomationProperties.AutomationId="NewDownloadTags"/>
+            </StackPanel>
+            <TextBlock Text="{Binding DestinationConflictPreview}" Classes="supporting" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+
             <Expander Header="{Binding Localization[ui_request_details_and_authentication]}">
               <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,*" ColumnSpacing="9" RowSpacing="9">
                 <TextBox PlaceholderText="{Binding Localization[ui_custom_filename_single_url_only]}" Text="{Binding CustomFileName}" AutomationProperties.Name="{Binding Localization[ui_custom_filename_single_url_only]}" AutomationProperties.AutomationId="Downloads_Localization_ui_custom_filename_single_url_only"/>
@@ -97,7 +103,14 @@
     </Border>
 
     <Grid x:Name="DownloadSearchGrid" Grid.Row="2" ColumnDefinitions="*,220,Auto" ColumnSpacing="9" RowSpacing="9" AutomationProperties.LandmarkType="Search" AutomationProperties.AccessibilityView="Control">
-      <TextBox x:Name="DownloadSearchInput" AutomationProperties.AutomationId="DownloadSearch" AutomationProperties.AcceleratorKey="Ctrl+F" AutomationProperties.Name="{Binding Localization[ui_search_downloads]}" PlaceholderText="{Binding Localization[ui_search_filename_url_destination_or_queue]}" Text="{Binding DownloadSearchText}"/>
+      <Grid x:Name="DownloadSearchPrimary" ColumnDefinitions="*,190,Auto,Auto" ColumnSpacing="8">
+        <TextBox x:Name="DownloadSearchInput" AutomationProperties.AutomationId="DownloadSearch" AutomationProperties.AcceleratorKey="Ctrl+F" AutomationProperties.Name="{Binding Localization[ui_search_downloads]}" PlaceholderText="Search or use tag:, site:, queue:, size:, missing:, duplicate:, archived:" Text="{Binding DownloadSearchText}"/>
+        <ComboBox Grid.Column="1" ItemsSource="{Binding SavedSearches}" SelectedItem="{Binding SelectedSavedSearch}" AutomationProperties.Name="Smart collection" AutomationProperties.AutomationId="SavedSearchSelector">
+          <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button Grid.Column="2" Classes="quiet" Content="Apply" Command="{Binding ApplySavedSearchCommand}" AutomationProperties.AutomationId="ApplySavedSearch"/>
+        <Button Grid.Column="3" Classes="quiet" Content="Refresh" Command="{Binding RefreshOrganizationStateCommand}" AutomationProperties.Name="Refresh file and duplicate status" AutomationProperties.AutomationId="RefreshOrganizationState"/>
+      </Grid>
       <ComboBox x:Name="DownloadStatusFilter" Grid.Column="1" ItemsSource="{Binding DownloadStatusFilters}" SelectedItem="{Binding SelectedDownloadStatus}" AutomationProperties.AutomationId="DownloadStatusFilter" AutomationProperties.Name="Download Status"/>
       <Button x:Name="SelectVisibleDownloads" Grid.Column="2" Classes="quiet" Content="{Binding Localization[ui_select_visible]}" Command="{Binding SelectAllVisibleCommand}" AutomationProperties.AutomationId="SelectVisibleDownloads"/>
     </Grid>
@@ -144,6 +157,10 @@
                       <TextBlock Text="{Binding ProgressText}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
                       <TextBlock Text="{Binding QueueId}" Classes="caption" Foreground="{DynamicResource XdmDisabledForeground}"/>
                       <TextBlock Text="{Binding Priority}" Classes="caption" Foreground="{DynamicResource XdmAccentForeground}"/>
+                      <TextBlock Text="{Binding TagsText}" Classes="caption" Foreground="{DynamicResource XdmSubtleForeground}" IsVisible="{Binding HasTags}"/>
+                      <TextBlock Text="Archived" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}" IsVisible="{Binding IsArchived}"/>
+                      <TextBlock Text="Missing file" Classes="caption" Foreground="{DynamicResource XdmErrorForeground}" IsVisible="{Binding IsFileMissing}"/>
+                      <TextBlock Text="Duplicate content" Classes="caption" Foreground="{DynamicResource XdmWarningForeground}" IsVisible="{Binding IsDuplicate}"/>
                     </StackPanel>
                     <TextBlock Grid.Column="1" Text="{Binding SpeedText}" Classes="caption" Foreground="{DynamicResource XdmSecondaryDimForeground}"/>
                     <TextBlock Grid.Column="2" Text="{Binding RemainingText}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
@@ -256,6 +273,35 @@
                   <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_verify]}" Command="{Binding VerifySelectedDownloadCommand}" IsEnabled="{Binding SelectedDownload.CanVerify}"/>
                   <Button Classes="danger" Content="{Binding Localization[ui_repair]}" Command="{Binding RepairSelectedDownloadCommand}" IsEnabled="{Binding SelectedDownload.CanRepair}"/>
                 </WrapPanel>
+              </StackPanel>
+            </Expander>
+
+            <Expander Header="Organization and duplicates" IsExpanded="True">
+              <StackPanel Margin="0,8,0,0" Spacing="10">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="Tags" Classes="form-label"/>
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox Text="{Binding SelectedDownloadTags}" AutomationProperties.Name="Download tags" AutomationProperties.AutomationId="SelectedDownloadTags"/>
+                    <Button Grid.Column="1" Classes="secondary" Content="Apply" Command="{Binding ApplySelectedDownloadTagsCommand}"/>
+                  </Grid>
+                </StackPanel>
+                <Border Classes="error-state" IsVisible="{Binding SelectedDownload.IsDuplicate}">
+                  <TextBlock Text="{Binding SelectedDownload.DuplicateReason}" TextWrapping="Wrap"/>
+                </Border>
+                <TextBlock Text="{Binding SelectedDownload.ContentHashSha256}" Classes="caption" TextWrapping="Wrap"/>
+                <WrapPanel Orientation="Horizontal">
+                  <Button Margin="0,0,8,8" Classes="secondary" Content="Archive / restore" Command="{Binding ToggleSelectedDownloadArchiveCommand}"/>
+                </WrapPanel>
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                  <TextBox Text="{Binding RelinkDestinationPath}" AutomationProperties.Name="Existing file to relink" AutomationProperties.AutomationId="RelinkDestinationPath"/>
+                  <Button Grid.Column="1" Classes="secondary" Content="Choose file" Click="BrowseRelinkDestination_Click"/>
+                  <Button Grid.Column="2" Classes="secondary" Content="Relink" Command="{Binding RelinkSelectedDownloadCommand}"/>
+                </Grid>
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                  <TextBox Text="{Binding NewSavedSearchName}" PlaceholderText="Collection name" AutomationProperties.Name="Smart collection name" AutomationProperties.AutomationId="NewSavedSearchName"/>
+                  <Button Grid.Column="1" Classes="secondary" Content="Save current search" Command="{Binding SaveCurrentSearchCommand}"/>
+                  <Button Grid.Column="2" Classes="danger" Content="Remove collection" Command="{Binding RemoveSelectedSavedSearchCommand}"/>
+                </Grid>
               </StackPanel>
             </Expander>
 

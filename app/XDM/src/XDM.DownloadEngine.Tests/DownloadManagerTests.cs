@@ -976,6 +976,172 @@ public sealed class DownloadManagerTests
         Assert.False(File.Exists(destination));
     }
 
+    [Fact]
+    public async Task FocusesExistingDownloadWhenUrlAlreadyExists()
+    {
+        byte[] payload = CreatePayload(2048, 71);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        ApplicationSettings settings = ApplicationSettings.CreateDefault() with
+        {
+            Organization = OrganizationSettings.Default with
+            {
+                DuplicateUrlBehavior = DuplicateUrlBehavior.FocusExisting
+            }
+        };
+        using DownloadManager manager = CreateManager(
+            client,
+            state,
+            new InMemoryHistoryStore(),
+            settingsService: new TestSettingsService(settings));
+        Uri source = new("https://example.test/same.bin");
+
+        string first = await manager.AddAsync(new DownloadRequest(source, directory.Path, "first.bin"));
+        string second = await manager.AddAsync(new DownloadRequest(source, directory.Path, "second.bin"));
+
+        Assert.Equal(first, second);
+        Assert.Single(state.Current.Downloads);
+    }
+
+    [Fact]
+    public async Task ConcurrentDuplicateUrlsResolveToOneOwnedDownload()
+    {
+        byte[] payload = CreatePayload(2048, 73);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        ApplicationSettings settings = ApplicationSettings.CreateDefault() with
+        {
+            Organization = OrganizationSettings.Default with
+            {
+                DuplicateUrlBehavior = DuplicateUrlBehavior.FocusExisting
+            }
+        };
+        using DownloadManager manager = CreateManager(
+            client,
+            state,
+            new InMemoryHistoryStore(),
+            settingsService: new TestSettingsService(settings));
+        Uri source = new("https://example.test/concurrent.bin");
+
+        Task<string>[] additions = Enumerable.Range(0, 8)
+            .Select(index => manager.AddAsync(new DownloadRequest(
+                source,
+                directory.Path,
+                $"concurrent-{index}.bin")))
+            .ToArray();
+        string[] ids = await Task.WhenAll(additions);
+
+        Assert.Single(ids.Distinct(StringComparer.Ordinal));
+        Assert.Single(state.Current.Downloads);
+    }
+
+    [Fact]
+    public async Task DestinationRuleChangesFolderAndAddsTags()
+    {
+        byte[] payload = CreatePayload(1024, 67);
+        using TemporaryDirectory directory = new();
+        string routed = Path.Combine(directory.Path, "routed");
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        ApplicationSettings settings = ApplicationSettings.CreateDefault() with
+        {
+            Organization = new OrganizationSettings(
+                DuplicateUrlBehavior.Allow,
+                false,
+                [new DestinationRuleDefinition(
+                    "example",
+                    "Example files",
+                    true,
+                    0,
+                    routed,
+                    HostSuffix: "example.test",
+                    Extensions: ["zip"],
+                    Tags: ["mirror", "release"])],
+                [])
+        };
+        using DownloadManager manager = CreateManager(
+            client,
+            state,
+            new InMemoryHistoryStore(),
+            settingsService: new TestSettingsService(settings));
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/package.zip"),
+            directory.Path,
+            "package.zip"));
+        DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        Assert.Equal(Path.Combine(routed, "package.zip"), completed.DestinationPath);
+        Assert.Collection(
+            Assert.IsAssignableFrom<IReadOnlyList<string>>(completed.Tags),
+            static tag => Assert.Equal("mirror", tag),
+            static tag => Assert.Equal("release", tag));
+    }
+
+    [Fact]
+    public async Task MarksCompletedFileAsContentDuplicate()
+    {
+        byte[] payload = CreatePayload(4096, 83);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        ApplicationSettings settings = ApplicationSettings.CreateDefault() with
+        {
+            Organization = OrganizationSettings.Default with
+            {
+                DuplicateUrlBehavior = DuplicateUrlBehavior.Allow,
+                ComputeContentHashes = true
+            }
+        };
+        using DownloadManager manager = CreateManager(
+            client,
+            state,
+            new InMemoryHistoryStore(),
+            settingsService: new TestSettingsService(settings));
+
+        string firstId = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/first.bin"), directory.Path, "first.bin"));
+        await WaitForStateAsync(state, firstId, DownloadState.Completed);
+        string secondId = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://mirror.test/second.bin"), directory.Path, "second.bin"));
+        DownloadSnapshot second = await WaitForStateAsync(state, secondId, DownloadState.Completed);
+
+        Assert.NotNull(second.ContentHashSha256);
+        Assert.Equal(firstId, second.DuplicateOfDownloadId);
+        Assert.NotNull(second.DuplicateReason);
+    }
+
+    [Fact]
+    public async Task TagsArchiveAndRelinkArePersisted()
+    {
+        byte[] payload = CreatePayload(512, 37);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        InMemoryHistoryStore history = new();
+        using DownloadManager manager = CreateManager(client, state, history);
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/organize.bin"), directory.Path, "organize.bin"));
+        await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        await manager.SetTagsAsync(id, ["Work", "work", "Release"]);
+        await manager.SetArchivedAsync(id, true);
+        string moved = Path.Combine(directory.Path, "moved.bin");
+        File.Move(Path.Combine(directory.Path, "organize.bin"), moved);
+        await manager.RelinkAsync(id, moved);
+
+        DownloadSnapshot snapshot = Assert.Single(state.Current.Downloads, item => item.Id == id);
+        Assert.Collection(
+            Assert.IsAssignableFrom<IReadOnlyList<string>>(snapshot.Tags),
+            static tag => Assert.Equal("Work", tag),
+            static tag => Assert.Equal("Release", tag));
+        Assert.True(snapshot.IsArchived);
+        Assert.Equal(moved, snapshot.DestinationPath);
+        Assert.Contains(history.Downloads, item => item.Id == id && item.IsArchived);
+    }
+
     private static DownloadManager CreateManager(
         HttpClient client,
         ApplicationState state,

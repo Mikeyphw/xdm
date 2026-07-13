@@ -21,7 +21,7 @@ public static class HistoryRetentionPolicy
 
         DateTimeOffset cutoff = now - TimeSpan.FromDays(normalized.RetentionDays);
         List<PersistedDownload> retained = downloads
-            .Where(item => !IsTerminal(item.State) || item.UpdatedAt >= cutoff)
+            .Where(item => item.IsArchived || !IsTerminal(item.State) || item.UpdatedAt >= cutoff)
             .OrderByDescending(static item => item.UpdatedAt)
             .ToList();
 
@@ -30,14 +30,14 @@ public static class HistoryRetentionPolicy
             return retained;
         }
 
-        List<PersistedDownload> active = retained
-            .Where(static item => !IsTerminal(item.State))
+        List<PersistedDownload> protectedEntries = retained
+            .Where(static item => item.IsArchived || !IsTerminal(item.State))
             .ToList();
-        int terminalCapacity = Math.Max(0, normalized.MaximumEntries - active.Count);
-        active.AddRange(retained
-            .Where(static item => IsTerminal(item.State))
+        int terminalCapacity = Math.Max(0, normalized.MaximumEntries - protectedEntries.Count);
+        protectedEntries.AddRange(retained
+            .Where(static item => !item.IsArchived && IsTerminal(item.State))
             .Take(terminalCapacity));
-        return active
+        return protectedEntries
             .OrderByDescending(static item => item.UpdatedAt)
             .ToArray();
     }

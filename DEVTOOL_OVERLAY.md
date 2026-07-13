@@ -1,47 +1,51 @@
-# XDM Overlay — Media detection inbox and workflow overhaul
+# XDM Overlay — Organization and duplicate prevention
 
-This overlay applies on top of commit `98133bd`.
+This overlay applies on top of commit `595bc5d`.
 
-## Detection inbox
+## Organization
 
-- replaces disruptive browser-media navigation with a session detection inbox;
-- groups each detected video/page with its complete stream catalog and source metadata;
-- deduplicates repeated detections and keeps the newest catalog at the top;
-- caps the inbox at 100 entries;
-- supports refresh, removal, and clearing without affecting downloads;
-- retains browser request headers, cookies, referer, and user agent for the selected item.
+- adds normalized per-download tags that persist in history and portable download lists;
+- adds saved searches/smart collections with built-in Active, Needs attention, Duplicates, Missing files, and Archive collections;
+- adds query operators for `status:`, `tag:`, `site:`, `queue:`, `category:`, `archived:`, `missing:`, `duplicate:`, and byte-size comparisons such as `size:>1GB`;
+- hides archived items by default while allowing explicit archive searches;
+- protects archived history entries from age and count pruning;
+- adds a manual library refresh for moved/missing files.
 
-## Stream planning
+## Duplicate prevention
 
-- adds Best, bounded-resolution, smallest-video, and audio-only quality policies;
-- adds preferred audio and subtitle language selection;
-- keeps exact video/audio overrides and individual subtitle toggles;
-- displays stream type, quality, bitrate, language, container, codec, encryption, protocol, and live/VOD status;
-- estimates output size when duration and bitrate metadata are available;
-- reads duration metadata from yt-dlp catalogs.
+- adds configurable duplicate-URL behavior: focus the existing item, reject the new request, or allow both;
+- normalizes URL identity across host casing, default ports, and fragments;
+- makes duplicate admission atomic for concurrent URL additions;
+- computes optional SHA-256 content identities after completion;
+- links later downloads to matching completed content;
+- reuses a manual SHA-256 verification result instead of hashing the file twice;
+- preserves URL-duplicate relationships when equal URLs later produce different content.
 
-## Live capture safety
+## Destination and filename handling
 
-- adds independent duration and maximum-size limits;
-- enforces the byte limit while streaming direct files, HLS fragments, DASH segments, and yt-dlp fragments;
-- preserves existing fragment checkpoints for cancellation and recovery;
-- removes bounded temporary files after failed direct transfers;
-- keeps the existing seven-day duration and 10 TiB safety ceilings.
+- adds ordered destination rules matching host suffix and/or file extension;
+- rules can select a destination, category, and tags;
+- shows a pre-add destination and filename-conflict preview;
+- keeps the existing overwrite, auto-rename, resume, and skip behavior as the execution policy;
+- routes only through saved/active rules so unsaved Settings edits never misrepresent actual behavior.
 
-## FFmpeg and post-processing
+## Archive and relink workflows
 
-- probes FFmpeg encoder capabilities for H.264, H.265, AV1, AAC, MP3, and Opus;
-- reports toolchain capabilities beside yt-dlp health;
-- preserves all existing remux, transcode, audio extraction, and device presets;
-- keeps queued post-processing separate from the media download lifecycle.
+- adds Archive/Restore for terminal downloads;
+- adds missing-file indicators;
+- safely relinks a history item to an existing file;
+- rejects relinking while a transfer is active or when another download owns the destination;
+- refreshes content identity after relinking and clears stale identity metadata first.
 
-## Quality
+## Migration and quality
 
-- fixes the existing `CA1859` warning by returning `Dictionary<string, string>` from `BuildAria2Headers`;
-- exposes accessible names and stable automation IDs for every Media form control;
-- keeps media quality options instance-backed to satisfy `CA1822` without suppressions;
-- adds selection-policy, size-estimation, duration, byte-limit, FFmpeg-capability, headless, and UI-architecture tests;
-- preserves native/aria2 ownership, resume integrity, browser security, smart queues, and rollback-safe updates;
+- upgrades application settings to schema version 8;
+- upgrades portable download lists to schema version 3 while retaining version 1 and 2 compatibility;
+- adds deterministic tests for rule matching, search parsing, tag normalization, URL identity, URL/content duplicate handling, relinking, archive retention, list round-trips, migration, and UI exposure;
+- updates every `IDownloadManager` test double for the organization API and keeps analyzer diagnostics at zero;
+- makes `DownloadManager.Dispose()` quiescent by cancelling and draining active transfers, checkpoint writes, history persistence, and adopted aria2 finalization before releasing gates;
+- prevents shutdown races from recreating partial/checkpoint files while callers remove or relocate the destination directory;
+- preserves all existing accessibility labels and automation identifiers;
 - does not modify `docs/parity/features.json`.
 
 ## Validation

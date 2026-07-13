@@ -93,9 +93,9 @@ public partial class DownloadsView : UserControl
             DownloadSearchGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
             DownloadSearchGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
             DownloadSearchGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-            Grid.SetColumn(DownloadSearchInput, 0);
-            Grid.SetColumnSpan(DownloadSearchInput, 2);
-            Grid.SetRow(DownloadSearchInput, 0);
+            Grid.SetColumn(DownloadSearchPrimary, 0);
+            Grid.SetColumnSpan(DownloadSearchPrimary, 2);
+            Grid.SetRow(DownloadSearchPrimary, 0);
             Grid.SetColumn(DownloadStatusFilter, 0);
             Grid.SetRow(DownloadStatusFilter, 1);
             Grid.SetColumn(SelectVisibleDownloads, 1);
@@ -107,9 +107,9 @@ public partial class DownloadsView : UserControl
         DownloadSearchGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(220)));
         DownloadSearchGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
         DownloadSearchGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-        Grid.SetColumn(DownloadSearchInput, 0);
-        Grid.SetColumnSpan(DownloadSearchInput, 1);
-        Grid.SetRow(DownloadSearchInput, 0);
+        Grid.SetColumn(DownloadSearchPrimary, 0);
+        Grid.SetColumnSpan(DownloadSearchPrimary, 1);
+        Grid.SetRow(DownloadSearchPrimary, 0);
         Grid.SetColumn(DownloadStatusFilter, 1);
         Grid.SetRow(DownloadStatusFilter, 0);
         Grid.SetColumn(SelectVisibleDownloads, 2);
@@ -191,6 +191,17 @@ public partial class DownloadsView : UserControl
         if (!string.IsNullOrWhiteSpace(path) && ViewModel is { } viewModel)
         {
             viewModel.RelocationDestinationPath = path;
+        }
+    }
+
+    private async void BrowseRelinkDestination_Click(object? sender, RoutedEventArgs e)
+    {
+        string? path = await StoragePickerHelper.PickFileAsync(
+            this,
+            "Choose the existing file to relink");
+        if (!string.IsNullOrWhiteSpace(path) && ViewModel is { } viewModel)
+        {
+            viewModel.RelinkDestinationPath = path;
         }
     }
 

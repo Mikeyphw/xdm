@@ -39,7 +39,8 @@ public sealed class DownloadListTransferServiceTests
                 Backend: DownloadBackendKind.Aria2,
                 BackendTaskId: "gid-export",
                 BackendDecisionReason: "aria2 selected",
-                AllowBackendFallback: false)
+                AllowBackendFallback: false,
+                Tags: ["release", "work"])
         ];
         DownloadListTransferService service = new();
 
@@ -57,6 +58,10 @@ public sealed class DownloadListTransferServiceTests
         Assert.Equal(100L, entry.ExpectedLength);
         Assert.Equal(DownloadBackendPreference.Aria2, entry.BackendPreference);
         Assert.False(entry.AllowBackendFallback);
+        Assert.Collection(
+            Assert.IsAssignableFrom<IReadOnlyList<string>>(entry.Tags),
+            static tag => Assert.Equal("release", tag),
+            static tag => Assert.Equal("work", tag));
         Assert.Equal(
             new Uri("https://mirror.example.test/file.bin"),
             Assert.Single(entry.Mirrors ?? Array.Empty<Uri>()));

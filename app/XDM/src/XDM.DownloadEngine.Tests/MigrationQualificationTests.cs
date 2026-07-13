@@ -31,6 +31,8 @@ public sealed class MigrationQualificationTests
         SmartTransferSettings smartTransfers = Assert.IsType<SmartTransferSettings>(result.Settings.SmartTransfers);
         Assert.NotEmpty(smartTransfers.Profiles);
         Assert.Equal(XDM.Core.Product.UpdateChannel.Stable, result.Settings.Updates?.Channel);
+        Assert.NotNull(result.Settings.Organization);
+        Assert.NotEmpty(result.Settings.Organization!.SavedSearches);
     }
 
     [Fact]

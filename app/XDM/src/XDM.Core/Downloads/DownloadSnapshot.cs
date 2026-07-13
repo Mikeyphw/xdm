@@ -29,7 +29,12 @@ public sealed record DownloadSnapshot(
     DownloadBackendKind Backend = DownloadBackendKind.Native,
     string? BackendTaskId = null,
     string? BackendDecisionReason = null,
-    bool AllowBackendFallback = true)
+    bool AllowBackendFallback = true,
+    IReadOnlyList<string>? Tags = null,
+    bool IsArchived = false,
+    string? ContentHashSha256 = null,
+    string? DuplicateOfDownloadId = null,
+    string? DuplicateReason = null)
 {
     public double? ProgressFraction
         => TotalBytes is > 0

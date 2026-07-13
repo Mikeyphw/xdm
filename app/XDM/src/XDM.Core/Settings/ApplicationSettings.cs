@@ -24,9 +24,10 @@ public sealed record ApplicationSettings(
     AccessibilitySettings? Accessibility = null,
     Aria2IntegrationSettings? Aria2 = null,
     UpdateSettings? Updates = null,
-    SmartTransferSettings? SmartTransfers = null)
+    SmartTransferSettings? SmartTransfers = null,
+    OrganizationSettings? Organization = null)
 {
-    public const int CurrentSchemaVersion = 7;
+    public const int CurrentSchemaVersion = 8;
 
     public static ApplicationSettings CreateDefault()
     {
@@ -67,7 +68,8 @@ public sealed record ApplicationSettings(
             AccessibilitySettings.Default,
             Aria2IntegrationSettings.Default,
             UpdateSettings.Default,
-            SmartTransferSettings.Default);
+            SmartTransferSettings.Default,
+            OrganizationSettings.Default);
     }
 
     public ApplicationSettings Normalize()
@@ -165,7 +167,8 @@ public sealed record ApplicationSettings(
             Accessibility = (Accessibility ?? AccessibilitySettings.Default).Normalize(),
             Aria2 = (Aria2 ?? Aria2IntegrationSettings.Default).Normalize(),
             Updates = (Updates ?? UpdateSettings.Default).Normalize(),
-            SmartTransfers = smartTransfers
+            SmartTransfers = smartTransfers,
+            Organization = (Organization ?? OrganizationSettings.Default).Normalize()
         };
     }
 }

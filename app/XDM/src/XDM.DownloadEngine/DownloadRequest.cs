@@ -25,7 +25,10 @@ public sealed record DownloadRequest(
     string? ExpectedChecksum = null,
     long? ExpectedLength = null,
     XDM.Core.Downloads.DownloadBackendPreference BackendPreference = XDM.Core.Downloads.DownloadBackendPreference.Automatic,
-    bool AllowBackendFallback = true)
+    bool AllowBackendFallback = true,
+    IReadOnlyList<string>? Tags = null,
+    bool ApplyDestinationRules = true,
+    bool AllowDuplicateUrl = false)
 {
     public string ResolveFileName()
     {

@@ -72,6 +72,27 @@ public sealed partial class DownloadItemViewModel : ObservableObject
     private int mirrorCount;
 
     [ObservableProperty]
+    private string tagsText = string.Empty;
+
+    [ObservableProperty]
+    private string categoryId = string.Empty;
+
+    [ObservableProperty]
+    private bool isArchived;
+
+    [ObservableProperty]
+    private bool isFileMissing;
+
+    [ObservableProperty]
+    private string? duplicateReason;
+
+    [ObservableProperty]
+    private string? contentHashSha256;
+
+    [ObservableProperty]
+    private long? totalBytes;
+
+    [ObservableProperty]
     private string backendText = string.Empty;
 
     [ObservableProperty]
@@ -109,6 +130,10 @@ public sealed partial class DownloadItemViewModel : ObservableObject
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
     public bool HasRecoveryMessage => !string.IsNullOrWhiteSpace(RecoveryMessage);
+
+    public bool HasTags => !string.IsNullOrWhiteSpace(TagsText);
+
+    public bool IsDuplicate => !string.IsNullOrWhiteSpace(DuplicateReason);
 
     public bool RecoveryRequired => _snapshot.RecoveryRequired;
 
@@ -151,6 +176,15 @@ public sealed partial class DownloadItemViewModel : ObservableObject
         ActualChecksum = snapshot.ActualChecksum;
         LastVerifiedText = snapshot.LastVerifiedAt?.ToLocalTime().ToString("g", localization.Culture);
         MirrorCount = Math.Max(0, (snapshot.Mirrors?.Count ?? 1) - 1);
+        TagsText = string.Join(", ", snapshot.Tags ?? []);
+        CategoryId = snapshot.CategoryId ?? string.Empty;
+        IsArchived = snapshot.IsArchived;
+        IsFileMissing = snapshot.State == DownloadState.Completed && !File.Exists(snapshot.DestinationPath);
+        DuplicateReason = snapshot.DuplicateReason;
+        ContentHashSha256 = snapshot.ContentHashSha256;
+        TotalBytes = snapshot.TotalBytes;
+        OnPropertyChanged(nameof(HasTags));
+        OnPropertyChanged(nameof(IsDuplicate));
         BackendText = snapshot.Backend == DownloadBackendKind.Aria2 ? "aria2" : "Native";
         BackendPreferenceText = snapshot.BackendPreference.ToString();
         BackendTaskId = snapshot.BackendTaskId;
@@ -169,6 +203,25 @@ public sealed partial class DownloadItemViewModel : ObservableObject
             or DownloadState.Downloading
             or DownloadState.Paused;
     }
+
+    public void RefreshFilePresence()
+        => IsFileMissing = State == DownloadState.Completed && !File.Exists(DestinationPath);
+
+    public bool MatchesSearch(string query)
+        => DownloadSearchExpression.Matches(
+            query,
+            new DownloadSearchDocument(
+                FileName,
+                Source,
+                DestinationPath,
+                State,
+                QueueId,
+                CategoryId,
+                DownloadMetadata.ParseTags(TagsText),
+                TotalBytes,
+                IsArchived,
+                IsFileMissing,
+                IsDuplicate));
 
     public void RefreshLocalization(LocalizationService localization)
         => Apply(_snapshot, localization);

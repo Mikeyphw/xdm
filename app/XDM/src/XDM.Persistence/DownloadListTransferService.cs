@@ -45,7 +45,8 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
                 item.ExpectedChecksum,
                 item.TotalBytes,
                 item.BackendPreference,
-                item.AllowBackendFallback))
+                item.AllowBackendFallback,
+                item.Tags))
             .ToArray();
         DownloadListEnvelope envelope = new(
             DownloadListEnvelope.CurrentSchemaVersion,
@@ -202,7 +203,8 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
                 ExpectedLength = entry.ExpectedLength is > 0 ? entry.ExpectedLength : null,
                 BackendPreference = Enum.IsDefined(entry.BackendPreference)
                     ? entry.BackendPreference
-                    : DownloadBackendPreference.Automatic
+                    : DownloadBackendPreference.Automatic,
+                Tags = DownloadMetadata.NormalizeTags(entry.Tags)
             });
         }
 

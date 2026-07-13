@@ -49,8 +49,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private readonly AdaptiveConcurrencyLimiter _hostConcurrencyLimiter = new();
     private readonly AdaptiveConcurrencyLimiter _queueConcurrencyLimiter = new();
     private readonly ConcurrentDictionary<string, DownloadSession> _sessions = new(StringComparer.Ordinal);
+    private readonly object _organizationAdmissionSync = new();
+    private readonly object _backgroundTaskSync = new();
+    private readonly Dictionary<long, Task> _backgroundTasks = [];
     private readonly SemaphoreSlim _persistenceGate = new(1, 1);
     private DateTimeOffset _lastPersistence = DateTimeOffset.MinValue;
+    private long _nextBackgroundTaskId;
+    private bool _backgroundTrackingClosed;
     private bool _disposed;
 
     public event EventHandler<QueueRuntimeSnapshot>? QueueRuntimeChanged;
@@ -213,7 +218,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 item.Backend,
                 item.BackendTaskId,
                 item.BackendDecisionReason,
-                item.AllowBackendFallback);
+                item.AllowBackendFallback,
+                item.Tags,
+                item.IsArchived,
+                item.ContentHashSha256,
+                item.DuplicateOfDownloadId,
+                item.DuplicateReason);
 
             try
             {
@@ -316,23 +326,40 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 .Normalize()
                 .AllowNativeFallback;
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(request.DestinationDirectory);
+        string fileName = request.ResolveFileName();
+        OrganizationSettings organization = (_settingsService.Current.Organization ?? OrganizationSettings.Default).Normalize();
+        DownloadSession? duplicateUrl = request.AllowDuplicateUrl
+            ? null
+            : FindDuplicateUrlSession(request.Source);
+        if (duplicateUrl is not null)
+        {
+            if (organization.DuplicateUrlBehavior == DuplicateUrlBehavior.FocusExisting)
+            {
+                return duplicateUrl.Id;
+            }
+            if (organization.DuplicateUrlBehavior == DuplicateUrlBehavior.Reject)
+            {
+                throw new IOException($"The URL is already present as '{Path.GetFileName(duplicateUrl.DestinationPath)}'.");
+            }
+        }
+
+        DownloadRequest effectiveRequest = ApplyDestinationRule(request, fileName, organization);
+        ArgumentException.ThrowIfNullOrWhiteSpace(effectiveRequest.DestinationDirectory);
         DownloadBehaviorSettings behavior = _settingsService.Current.DownloadBehavior
             ?? DownloadBehaviorSettings.Default;
-        if (!Directory.Exists(request.DestinationDirectory))
+        if (!Directory.Exists(effectiveRequest.DestinationDirectory))
         {
             if (!behavior.CreateDestinationDirectory)
             {
                 throw new DirectoryNotFoundException(
-                    $"The destination directory does not exist: {request.DestinationDirectory}");
+                    $"The destination directory does not exist: {effectiveRequest.DestinationDirectory}");
             }
-            Directory.CreateDirectory(request.DestinationDirectory);
+            Directory.CreateDirectory(effectiveRequest.DestinationDirectory);
         }
 
-        string fileName = request.ResolveFileName();
-        string destinationPath = ResolveDestinationPath(request, fileName);
+        string destinationPath = ResolveDestinationPath(effectiveRequest, fileName);
         MigrateLegacyArtifacts(destinationPath);
-        if (request.DuplicateBehavior == DuplicateFileBehavior.Overwrite)
+        if (effectiveRequest.DuplicateBehavior == DuplicateFileBehavior.Overwrite)
         {
             string overwritePartialPath = GetPartialPath(destinationPath);
             if (File.Exists(overwritePartialPath))
@@ -362,7 +389,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         ResumeCheckpoint? recoveryCheckpoint = null;
         bool recoverLegacySegments = false;
-        if (request.DuplicateBehavior != DuplicateFileBehavior.Overwrite
+        if (effectiveRequest.DuplicateBehavior != DuplicateFileBehavior.Overwrite
             && HasTransferArtifacts(destinationPath))
         {
             recoveryCheckpoint = await _checkpointStore
@@ -373,7 +400,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     request.Source,
                     normalizedRequestMirrors,
                     destinationPath,
-                    request.ExpectedLength,
+                    effectiveRequest.ExpectedLength,
                     normalizedExpectedAlgorithm,
                     normalizedExpectedChecksum))
             {
@@ -388,9 +415,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         IReadOnlyList<DownloadQueueDefinition> configuredQueues = _settingsService.Current.Queues;
         string fallbackQueueId = configuredQueues.Count > 0 ? configuredQueues[0].Id : "default";
-        string queueId = string.IsNullOrWhiteSpace(request.QueueId)
+        string queueId = string.IsNullOrWhiteSpace(effectiveRequest.QueueId)
             ? fallbackQueueId
-            : request.QueueId;
+            : effectiveRequest.QueueId;
         int queueOrder = _sessions.Values
             .Where(session => string.Equals(session.QueueId, queueId, StringComparison.Ordinal))
             .Select(static session => session.QueueOrder)
@@ -403,26 +430,26 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             destinationPath,
             DownloadState.Queued,
             0,
-            request.ExpectedLength ?? recoveryCheckpoint?.TotalBytes,
+            effectiveRequest.ExpectedLength ?? recoveryCheckpoint?.TotalBytes,
             null,
-            request.Headers,
-            request.Username,
-            request.Password,
-            request.Cookie,
-            request.Referer,
-            request.UserAgent,
-            request.SpeedLimitBytesPerSecond,
+            effectiveRequest.Headers,
+            effectiveRequest.Username,
+            effectiveRequest.Password,
+            effectiveRequest.Cookie,
+            effectiveRequest.Referer,
+            effectiveRequest.UserAgent,
+            effectiveRequest.SpeedLimitBytesPerSecond,
             queueId,
-            request.CategoryId,
+            effectiveRequest.CategoryId,
             queueOrder,
             recoveryCheckpoint?.EntityTag,
             recoveryCheckpoint?.LastModified,
-            method == "GET" ? Math.Clamp(request.ConnectionCount, 1, 32) : 1,
+            method == "GET" ? Math.Clamp(effectiveRequest.ConnectionCount, 1, 32) : 1,
             method,
-            request.RequestBody?.ToArray(),
-            request.RequestBodyContentType,
-            request.Priority,
-            request.SourcePage,
+            effectiveRequest.RequestBody?.ToArray(),
+            effectiveRequest.RequestBodyContentType,
+            effectiveRequest.Priority,
+            effectiveRequest.SourcePage,
             DateTimeOffset.UtcNow,
             normalizedExpectedAlgorithm ?? recoveryCheckpoint?.ExpectedChecksumAlgorithm,
             normalizedExpectedChecksum ?? recoveryCheckpoint?.ExpectedChecksum,
@@ -435,15 +462,43 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 .Concat(normalizedRequestMirrors)
                 .Concat(recoveryCheckpoint?.Mirrors ?? Array.Empty<Uri>())
                 .ToArray(),
-            request.BackendPreference,
+            effectiveRequest.BackendPreference,
             DownloadBackendKind.Native,
             null,
             null,
-            allowBackendFallback);
+            allowBackendFallback,
+            effectiveRequest.Tags,
+            false,
+            null,
+            duplicateUrl?.Id,
+            duplicateUrl is null ? null : "The source URL matches an existing download.");
 
-        if (!_sessions.TryAdd(session.Id, session))
+        lock (_organizationAdmissionSync)
         {
-            throw new InvalidOperationException("Could not register the new download.");
+            if (!request.AllowDuplicateUrl)
+            {
+                DownloadSession? admittedDuplicate = FindDuplicateUrlSession(request.Source);
+                if (admittedDuplicate is not null)
+                {
+                    if (organization.DuplicateUrlBehavior == DuplicateUrlBehavior.FocusExisting)
+                    {
+                        return admittedDuplicate.Id;
+                    }
+
+                    if (organization.DuplicateUrlBehavior == DuplicateUrlBehavior.Reject)
+                    {
+                        throw new IOException($"The URL is already present as '{Path.GetFileName(admittedDuplicate.DestinationPath)}'.");
+                    }
+
+                    session.DuplicateOfDownloadId = admittedDuplicate.Id;
+                    session.DuplicateReason = "The source URL matches an existing download.";
+                }
+            }
+
+            if (!_sessions.TryAdd(session.Id, session))
+            {
+                throw new InvalidOperationException("Could not register the new download.");
+            }
         }
 
         if (recoveryCheckpoint is not null || recoverLegacySegments)
@@ -526,6 +581,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.ErrorMessage = isMatch ? null : session.RecoveryMessage;
         }
 
+        await RefreshContentIdentityAsync(
+            session,
+            cancellationToken,
+            string.Equals(algorithm, DownloadChecksumService.Sha256, StringComparison.Ordinal)
+                ? actualChecksum
+                : null).ConfigureAwait(false);
         Publish(session, forcePersist: true);
         string message = expectedChecksum is null
             ? $"Recorded {algorithm} checksum {actualChecksum}."
@@ -977,7 +1038,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 ExpectedChecksum: session.ExpectedChecksum,
                 ExpectedLength: session.TotalBytes,
                 BackendPreference: session.BackendPreference,
-                AllowBackendFallback: session.AllowBackendFallback);
+                AllowBackendFallback: session.AllowBackendFallback,
+                Tags: session.Tags,
+                AllowDuplicateUrl: true);
         }
 
         return AddAsync(request, cancellationToken);
@@ -1031,6 +1094,90 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
+        _applicationState.UpsertDownload(CreateSnapshot(session));
+        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SetTagsAsync(
+        string downloadId,
+        IReadOnlyList<string> tags,
+        CancellationToken cancellationToken = default)
+    {
+        DownloadSession session = GetSession(downloadId);
+        string[] normalized = DownloadMetadata.NormalizeTags(tags);
+        lock (session.Sync)
+        {
+            session.Tags = normalized;
+            session.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        _applicationState.UpsertDownload(CreateSnapshot(session));
+        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SetArchivedAsync(
+        string downloadId,
+        bool archived,
+        CancellationToken cancellationToken = default)
+    {
+        DownloadSession session = GetSession(downloadId);
+        lock (session.Sync)
+        {
+            if (archived && session.State is not (DownloadState.Completed or DownloadState.Failed or DownloadState.Cancelled))
+            {
+                throw new InvalidOperationException("Only terminal downloads can be archived.");
+            }
+
+            session.IsArchived = archived;
+            session.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        _applicationState.UpsertDownload(CreateSnapshot(session));
+        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task RelinkAsync(
+        string downloadId,
+        string existingPath,
+        CancellationToken cancellationToken = default)
+    {
+        DownloadSession session = GetSession(downloadId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(existingPath);
+        string fullPath = Path.GetFullPath(existingPath);
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException("The replacement file does not exist.", fullPath);
+        }
+
+        bool collision = _sessions.Values.Any(candidate =>
+            !ReferenceEquals(candidate, session)
+            && PathsEqual(candidate.DestinationPath, fullPath));
+        if (collision)
+        {
+            throw new IOException("Another download already references that file.");
+        }
+
+        lock (session.Sync)
+        {
+            if (session.State is DownloadState.Connecting or DownloadState.Downloading or DownloadState.Finalizing)
+            {
+                throw new InvalidOperationException("Pause or cancel the download before relinking its file.");
+            }
+
+            session.DestinationPath = fullPath;
+            session.DownloadedBytes = new FileInfo(fullPath).Length;
+            session.TotalBytes ??= session.DownloadedBytes;
+            session.State = DownloadState.Completed;
+            session.RecoveryRequired = false;
+            session.RecoveryMessage = "Relinked to an existing file.";
+            session.ErrorMessage = null;
+            session.ContentHashSha256 = null;
+            session.DuplicateOfDownloadId = null;
+            session.DuplicateReason = null;
+            session.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        await RefreshContentIdentityAsync(session, cancellationToken).ConfigureAwait(false);
         _applicationState.UpsertDownload(CreateSnapshot(session));
         await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
     }
@@ -1155,14 +1302,38 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         {
             _aria2Service.Changed -= OnAria2SnapshotChanged;
         }
+
+        List<Task> activeTasks = [];
+        List<CancellationTokenSource> operationCancellations = [];
         foreach (DownloadSession session in _sessions.Values)
         {
             lock (session.Sync)
             {
-                session.OperationCancellation?.Cancel();
-                session.OperationCancellation?.Dispose();
-                session.OperationCancellation = null;
+                if (session.OperationCancellation is not null)
+                {
+                    session.OperationCancellation.Cancel();
+                    operationCancellations.Add(session.OperationCancellation);
+                    session.OperationCancellation = null;
+                }
+
+                if (session.ActiveTask is not null)
+                {
+                    activeTasks.Add(session.ActiveTask);
+                }
             }
+        }
+
+        WaitForTasks(activeTasks);
+        DrainBackgroundTasks();
+
+        foreach (CancellationTokenSource cancellation in operationCancellations)
+        {
+            cancellation.Dispose();
+        }
+
+        foreach (DownloadSession session in _sessions.Values)
+        {
+            session.CheckpointGate.Dispose();
         }
 
         _persistenceGate.Dispose();
@@ -1590,6 +1761,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.RecoveryRequired = false;
             session.RecoveryMessage = null;
         }
+        await RefreshContentIdentityAsync(session, CancellationToken.None).ConfigureAwait(false);
         Publish(session, forcePersist: true);
         DownloadEngineLog.DownloadCompleted(_logger, session.Id, session.DestinationPath);
     }
@@ -1721,7 +1893,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
             if (finalizeAdopted)
             {
-                _ = FinalizeAdoptedAria2TaskAsync(session);
+                TrackBackgroundTask(FinalizeAdoptedAria2TaskAsync(session));
             }
         }
     }
@@ -2609,6 +2781,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.CheckpointGate.Release();
         }
 
+        await RefreshContentIdentityAsync(session, CancellationToken.None).ConfigureAwait(false);
         Publish(session, forcePersist: true);
         DownloadEngineLog.DownloadCompleted(_logger, session.Id, session.DestinationPath);
     }
@@ -2634,8 +2807,84 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         _applicationState.UpsertDownload(CreateSnapshot(session));
-        _ = PersistSafelyAsync(forcePersist);
-        _ = PersistCheckpointSafelyAsync(session, forcePersist);
+        TrackBackgroundTask(PersistSafelyAsync(forcePersist));
+        TrackBackgroundTask(PersistCheckpointSafelyAsync(session, forcePersist));
+    }
+
+    private void TrackBackgroundTask(Task task)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+        long taskId;
+        bool waitInline;
+        lock (_backgroundTaskSync)
+        {
+            waitInline = _backgroundTrackingClosed;
+            taskId = waitInline ? 0 : ++_nextBackgroundTaskId;
+            if (!waitInline)
+            {
+                _backgroundTasks.Add(taskId, task);
+            }
+        }
+
+        if (waitInline)
+        {
+            WaitForTasks([task]);
+            return;
+        }
+
+        _ = task.ContinueWith(
+            static (_, state) =>
+            {
+                (DownloadManager manager, long taskId) = ((DownloadManager, long))state!;
+                lock (manager._backgroundTaskSync)
+                {
+                    manager._backgroundTasks.Remove(taskId);
+                }
+            },
+            (this, taskId),
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private void DrainBackgroundTasks()
+    {
+        while (true)
+        {
+            Task[] pending;
+            lock (_backgroundTaskSync)
+            {
+                if (_backgroundTasks.Count == 0)
+                {
+                    _backgroundTrackingClosed = true;
+                    return;
+                }
+
+                pending = _backgroundTasks.Values.ToArray();
+            }
+
+            WaitForTasks(pending);
+        }
+    }
+
+    private static void WaitForTasks(IReadOnlyCollection<Task> tasks)
+    {
+        if (tasks.Count == 0)
+        {
+            return;
+        }
+
+        Task.WhenAll(tasks)
+            .ContinueWith(
+                static completed =>
+                {
+                    _ = completed.Exception;
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default)
+            .GetAwaiter()
+            .GetResult();
     }
 
     private async Task PersistSafelyAsync(bool force)
@@ -2693,6 +2942,87 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         return _sessions.TryGetValue(downloadId, out DownloadSession? session)
             ? session
             : throw new KeyNotFoundException($"Download '{downloadId}' was not found.");
+    }
+
+    private DownloadSession? FindDuplicateUrlSession(Uri source)
+    {
+        string identity = DownloadMetadata.NormalizeSourceIdentity(source);
+        return _sessions.Values
+            .Where(static session => !session.IsArchived)
+            .FirstOrDefault(session => string.Equals(
+                DownloadMetadata.NormalizeSourceIdentity(session.Source),
+                identity,
+                StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static DownloadRequest ApplyDestinationRule(
+        DownloadRequest request,
+        string fileName,
+        OrganizationSettings organization)
+    {
+        if (!request.ApplyDestinationRules)
+        {
+            return request with { Tags = DownloadMetadata.NormalizeTags(request.Tags) };
+        }
+
+        DestinationRuleDefinition? rule = organization.DestinationRules
+            .FirstOrDefault(candidate => candidate.Matches(request.Source, fileName));
+        if (rule is null)
+        {
+            return request with { Tags = DownloadMetadata.NormalizeTags(request.Tags) };
+        }
+
+        return request with
+        {
+            DestinationDirectory = rule.DestinationDirectory,
+            CategoryId = rule.CategoryId ?? request.CategoryId,
+            Tags = DownloadMetadata.NormalizeTags((request.Tags ?? []).Concat(rule.Tags ?? []))
+        };
+    }
+
+    private async Task RefreshContentIdentityAsync(
+        DownloadSession session,
+        CancellationToken cancellationToken,
+        string? knownSha256 = null)
+    {
+        OrganizationSettings organization = (_settingsService.Current.Organization ?? OrganizationSettings.Default).Normalize();
+        if (!organization.ComputeContentHashes || !File.Exists(session.DestinationPath))
+        {
+            return;
+        }
+
+        try
+        {
+            string hash = knownSha256 ?? await DownloadChecksumService
+                .ComputeAsync(session.DestinationPath, DownloadChecksumService.Sha256, cancellationToken)
+                .ConfigureAwait(false);
+            DownloadSession? duplicate = _sessions.Values
+                .Where(candidate => !ReferenceEquals(candidate, session))
+                .Where(candidate => candidate.State == DownloadState.Completed)
+                .FirstOrDefault(candidate => string.Equals(candidate.ContentHashSha256, hash, StringComparison.OrdinalIgnoreCase));
+            lock (session.Sync)
+            {
+                session.ContentHashSha256 = hash;
+                if (duplicate is not null)
+                {
+                    session.DuplicateOfDownloadId = duplicate.Id;
+                    session.DuplicateReason = $"Content matches {Path.GetFileName(duplicate.DestinationPath)}.";
+                }
+                else if (session.DuplicateReason?.StartsWith("The source URL matches", StringComparison.Ordinal) != true)
+                {
+                    session.DuplicateOfDownloadId = null;
+                    session.DuplicateReason = null;
+                }
+            }
+        }
+        catch (IOException exception)
+        {
+            DownloadEngineLog.HistoryPersistenceFailed(_logger, exception.Message, exception);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            DownloadEngineLog.HistoryPersistenceFailed(_logger, exception.Message, exception);
+        }
     }
 
     private string ResolveDestinationPath(DownloadRequest request, string fileName)
@@ -3219,7 +3549,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.Backend,
                 session.BackendTaskId,
                 session.BackendDecisionReason,
-                session.AllowBackendFallback);
+                session.AllowBackendFallback,
+                session.Tags,
+                session.IsArchived,
+                session.ContentHashSha256,
+                session.DuplicateOfDownloadId,
+                session.DuplicateReason);
         }
     }
 
@@ -3257,7 +3592,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.Backend,
                 session.BackendTaskId,
                 session.BackendDecisionReason,
-                session.AllowBackendFallback);
+                session.AllowBackendFallback,
+                session.Tags,
+                session.IsArchived,
+                session.ContentHashSha256,
+                session.DuplicateOfDownloadId,
+                session.DuplicateReason);
         }
     }
 
@@ -3791,7 +4131,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             DownloadBackendKind backend = DownloadBackendKind.Native,
             string? backendTaskId = null,
             string? backendDecisionReason = null,
-            bool allowBackendFallback = true)
+            bool allowBackendFallback = true,
+            IReadOnlyList<string>? tags = null,
+            bool isArchived = false,
+            string? contentHashSha256 = null,
+            string? duplicateOfDownloadId = null,
+            string? duplicateReason = null)
         {
             Id = id;
             Source = source;
@@ -3843,6 +4188,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     : DownloadBackendKind.Native;
             BackendDecisionReason = backendDecisionReason;
             AllowBackendFallback = allowBackendFallback;
+            Tags = DownloadMetadata.NormalizeTags(tags);
+            IsArchived = isArchived;
+            ContentHashSha256 = string.IsNullOrWhiteSpace(contentHashSha256) ? null : contentHashSha256.Trim().ToLowerInvariant();
+            DuplicateOfDownloadId = string.IsNullOrWhiteSpace(duplicateOfDownloadId) ? null : duplicateOfDownloadId.Trim();
+            DuplicateReason = string.IsNullOrWhiteSpace(duplicateReason) ? null : duplicateReason.Trim();
             int currentMirrorIndex = Array.FindIndex(normalizedMirrors, mirror => mirror == source);
             MirrorIndex = currentMirrorIndex + 1;
         }
@@ -3910,6 +4260,16 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         public string? BackendDecisionReason { get; set; }
 
         public bool AllowBackendFallback { get; set; }
+
+        public string[] Tags { get; set; }
+
+        public bool IsArchived { get; set; }
+
+        public string? ContentHashSha256 { get; set; }
+
+        public string? DuplicateOfDownloadId { get; set; }
+
+        public string? DuplicateReason { get; set; }
 
         public TaskCompletionSource<Aria2TaskStatus>? Aria2TerminalSignal { get; set; }
 
