@@ -48,9 +48,16 @@ public static class DownloadChecksumService
         return new string(characters.ToArray());
     }
 
+    public static Task<string> ComputeAsync(
+        string path,
+        string algorithm,
+        CancellationToken cancellationToken = default)
+        => ComputeAsync(path, algorithm, progress: null, cancellationToken);
+
     public static async Task<string> ComputeAsync(
         string path,
         string algorithm,
+        IProgress<(long Processed, long Total)>? progress,
         CancellationToken cancellationToken = default)
     {
         string normalizedAlgorithm = NormalizeAlgorithm(algorithm);
@@ -63,6 +70,8 @@ public static class DownloadChecksumService
             FileShare.Read,
             128 * 1024,
             FileOptions.Asynchronous | FileOptions.SequentialScan);
+        long total = stream.Length;
+        long processed = 0;
         byte[] buffer = new byte[128 * 1024];
         while (true)
         {
@@ -73,8 +82,56 @@ public static class DownloadChecksumService
             }
 
             hash.AppendData(buffer, 0, read);
+            processed += read;
+            progress?.Report((processed, total));
         }
 
         return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    public static async Task<(string? Sha256, string? Sha512)> ComputeSetAsync(
+        string path,
+        bool includeSha256,
+        bool includeSha512,
+        IProgress<(long Processed, long Total)>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!includeSha256 && !includeSha512)
+        {
+            includeSha256 = true;
+        }
+
+        await using FileStream stream = new(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            128 * 1024,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        using IncrementalHash? sha256 = includeSha256
+            ? IncrementalHash.CreateHash(HashAlgorithmName.SHA256)
+            : null;
+        using IncrementalHash? sha512 = includeSha512
+            ? IncrementalHash.CreateHash(HashAlgorithmName.SHA512)
+            : null;
+        long total = stream.Length;
+        long processed = 0;
+        byte[] buffer = new byte[128 * 1024];
+        while (true)
+        {
+            int read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            if (read == 0)
+            {
+                break;
+            }
+            sha256?.AppendData(buffer, 0, read);
+            sha512?.AppendData(buffer, 0, read);
+            processed += read;
+            progress?.Report((processed, total));
+        }
+
+        return (
+            sha256 is null ? null : Convert.ToHexString(sha256.GetHashAndReset()),
+            sha512 is null ? null : Convert.ToHexString(sha512.GetHashAndReset()));
     }
 }

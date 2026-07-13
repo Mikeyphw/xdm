@@ -66,6 +66,27 @@ public sealed partial class DownloadItemViewModel : ObservableObject
     private string? actualChecksum;
 
     [ObservableProperty]
+    private string? expectedSha256;
+
+    [ObservableProperty]
+    private string? expectedSha512;
+
+    [ObservableProperty]
+    private string? actualSha256;
+
+    [ObservableProperty]
+    private string? actualSha512;
+
+    [ObservableProperty]
+    private string verificationProgressText = string.Empty;
+
+    [ObservableProperty]
+    private double verificationProgressPercent;
+
+    [ObservableProperty]
+    private bool isVerificationActive;
+
+    [ObservableProperty]
     private string? lastVerifiedText;
 
     [ObservableProperty]
@@ -137,7 +158,10 @@ public sealed partial class DownloadItemViewModel : ObservableObject
 
     public bool RecoveryRequired => _snapshot.RecoveryRequired;
 
-    public bool CanVerify => _snapshot.State == DownloadState.Completed;
+    public bool CanVerify => _snapshot.State is DownloadState.Completed
+        or DownloadState.Paused
+        or DownloadState.Failed
+        or DownloadState.Cancelled;
 
     public bool CanRepair => _snapshot.RecoveryRequired
         || _snapshot.IntegrityStatus == DownloadIntegrityStatus.Mismatch
@@ -174,6 +198,18 @@ public sealed partial class DownloadItemViewModel : ObservableObject
             ? null
             : $"{snapshot.ExpectedChecksumAlgorithm}: {snapshot.ExpectedChecksum}";
         ActualChecksum = snapshot.ActualChecksum;
+        ExpectedSha256 = snapshot.ExpectedSha256;
+        ExpectedSha512 = snapshot.ExpectedSha512;
+        ActualSha256 = snapshot.ActualSha256;
+        ActualSha512 = snapshot.ActualSha512;
+        IsVerificationActive = snapshot.IntegrityStatus is DownloadIntegrityStatus.Verifying
+            or DownloadIntegrityStatus.Repairing;
+        VerificationProgressPercent = snapshot.VerificationTotalBytes is > 0
+            ? Math.Clamp((double)snapshot.VerificationBytesProcessed / snapshot.VerificationTotalBytes.Value, 0d, 1d) * 100d
+            : 0d;
+        VerificationProgressText = snapshot.VerificationTotalBytes is > 0
+            ? $"{LocaleFormatter.FormatBytes(snapshot.VerificationBytesProcessed, localization.Culture)} {localization["unit_of"]} {LocaleFormatter.FormatBytes(snapshot.VerificationTotalBytes.Value, localization.Culture)}"
+            : "—";
         LastVerifiedText = snapshot.LastVerifiedAt?.ToLocalTime().ToString("g", localization.Culture);
         MirrorCount = Math.Max(0, (snapshot.Mirrors?.Count ?? 1) - 1);
         TagsText = string.Join(", ", snapshot.Tags ?? []);

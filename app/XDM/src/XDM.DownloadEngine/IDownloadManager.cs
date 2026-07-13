@@ -22,6 +22,24 @@ public interface IDownloadManager
         string downloadId,
         CancellationToken cancellationToken = default);
 
+    Task<DownloadRepairResult> RestartFromZeroAsync(
+        string downloadId,
+        CancellationToken cancellationToken = default)
+        => RepairAsync(downloadId, cancellationToken);
+
+    Task<DownloadChecksumWorkflowState> GetChecksumWorkflowAsync(
+        string downloadId,
+        CancellationToken cancellationToken = default)
+        => Task.FromException<DownloadChecksumWorkflowState>(
+            new NotSupportedException("Checksum workflow details are unavailable."));
+
+    Task SetExpectedChecksumsAsync(
+        string downloadId,
+        string? expectedSha256,
+        string? expectedSha512,
+        CancellationToken cancellationToken = default)
+        => Task.FromException(new NotSupportedException("Checksum editing is unavailable."));
+
     Task<IReadOnlyList<string>> AddMetalinkAsync(
         Stream stream,
         string destinationDirectory,
@@ -42,6 +60,10 @@ public interface IDownloadManager
         CancellationToken cancellationToken = default);
 
     Task RemoveAsync(string downloadId, bool deletePartialFile = false, CancellationToken cancellationToken = default);
+
+    int UndoableRemovalCount { get; }
+
+    Task<string?> UndoLastRemovalAsync(CancellationToken cancellationToken = default);
 
     Task DeleteAsync(
         string downloadId,

@@ -7,6 +7,7 @@ public enum DownloadIntegrityStatus
     RecoveryRequired,
     Verifying,
     Verified,
+    LocalRecord,
     Mismatch,
     Repairing
 }

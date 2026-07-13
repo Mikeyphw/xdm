@@ -34,7 +34,13 @@ public sealed record DownloadSnapshot(
     bool IsArchived = false,
     string? ContentHashSha256 = null,
     string? DuplicateOfDownloadId = null,
-    string? DuplicateReason = null)
+    string? DuplicateReason = null,
+    string? ExpectedSha256 = null,
+    string? ExpectedSha512 = null,
+    string? ActualSha256 = null,
+    string? ActualSha512 = null,
+    long VerificationBytesProcessed = 0,
+    long? VerificationTotalBytes = null)
 {
     public double? ProgressFraction
         => TotalBytes is > 0

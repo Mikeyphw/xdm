@@ -350,6 +350,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string expectedChecksum = string.Empty;
 
     [ObservableProperty]
+    private string expectedSha256 = string.Empty;
+
+    [ObservableProperty]
+    private string expectedSha512 = string.Empty;
+
+    [ObservableProperty]
+    private string selectedExpectedSha256 = string.Empty;
+
+    [ObservableProperty]
+    private string selectedExpectedSha512 = string.Empty;
+
+    [ObservableProperty]
     private bool previousSessionWasUnclean;
 
     [ObservableProperty]
@@ -749,6 +761,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         SelectedDownloadTags = value?.TagsText ?? string.Empty;
         RefreshSelectedDownloadNotificationState();
         RelinkDestinationPath = value?.DestinationPath ?? string.Empty;
+        _ = RefreshSelectedChecksumWorkflowAsync(value?.Id);
         OnPropertyChanged(nameof(HasSelectedDownload));
         OnPropertyChanged(nameof(HasNoSelectedDownload));
         OnPropertyChanged(nameof(CanRunTransferHealthProbe));
@@ -884,7 +897,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     ExpectedChecksum: EmptyToNull(ExpectedChecksum),
                     BackendPreference: NewDownloadBackendPreference,
                     AllowBackendFallback: NewDownloadAllowBackendFallback,
-                    Tags: DownloadMetadata.ParseTags(NewDownloadTags));
+                    Tags: DownloadMetadata.ParseTags(NewDownloadTags),
+                    ExpectedSha256: EmptyToNull(ExpectedSha256),
+                    ExpectedSha512: EmptyToNull(ExpectedSha512));
 
                 string downloadId = await _downloadManager.AddAsync(request);
                 DownloadItemViewModel? existingDownload = Downloads.FirstOrDefault(item =>
@@ -918,6 +933,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             NewDownloadUrls = string.Empty;
             MirrorUrls = string.Empty;
             ExpectedChecksum = string.Empty;
+            ExpectedSha256 = string.Empty;
+            ExpectedSha512 = string.Empty;
             NewDownloadTags = string.Empty;
             CustomFileName = string.Empty;
             if (!RememberLastRequestMetadata)
@@ -975,6 +992,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             DownloadVerificationResult result = await _downloadManager.VerifyAsync(SelectedDownload.Id);
             OperationMessage = result.Message;
+            await RefreshSelectedChecksumWorkflowAsync(SelectedDownload.Id);
         }
         catch (IOException exception)
         {
@@ -1002,6 +1020,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             DownloadRepairResult result = await _downloadManager.RepairAsync(SelectedDownload.Id);
             OperationMessage = result.Message;
+            await RefreshSelectedChecksumWorkflowAsync(SelectedDownload.Id);
         }
         catch (IOException exception)
         {
@@ -1014,6 +1033,111 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         catch (InvalidOperationException exception)
         {
             OperationMessage = exception.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task RestartSelectedDownloadFromZeroAsync()
+    {
+        if (SelectedDownload is null)
+        {
+            return;
+        }
+        try
+        {
+            DownloadRepairResult result = await _downloadManager.RestartFromZeroAsync(SelectedDownload.Id);
+            OperationMessage = result.Message;
+            await RefreshSelectedChecksumWorkflowAsync(SelectedDownload.Id);
+        }
+        catch (IOException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+        catch (InvalidOperationException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ApplySelectedExpectedChecksumsAsync()
+    {
+        if (SelectedDownload is null)
+        {
+            return;
+        }
+        try
+        {
+            await _downloadManager.SetExpectedChecksumsAsync(
+                SelectedDownload.Id,
+                EmptyToNull(SelectedExpectedSha256),
+                EmptyToNull(SelectedExpectedSha512));
+            await RefreshSelectedChecksumWorkflowAsync(SelectedDownload.Id);
+            OperationMessage = "Expected checksums updated. Run Verify to compare without redownloading.";
+        }
+        catch (ArgumentException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+        catch (IOException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+    }
+
+    public async Task ImportSelectedChecksumsAsync(string text)
+    {
+        if (SelectedDownload is null)
+        {
+            return;
+        }
+        try
+        {
+            ParsedChecksums parsed = DownloadChecksumParser.Parse(text);
+            SelectedExpectedSha256 = parsed.Sha256 ?? SelectedExpectedSha256;
+            SelectedExpectedSha512 = parsed.Sha512 ?? SelectedExpectedSha512;
+            await ApplySelectedExpectedChecksumsAsync();
+        }
+        catch (InvalidDataException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+        catch (ArgumentException exception)
+        {
+            OperationMessage = exception.Message;
+        }
+    }
+
+    private async Task RefreshSelectedChecksumWorkflowAsync(string? downloadId)
+    {
+        if (string.IsNullOrWhiteSpace(downloadId))
+        {
+            SelectedExpectedSha256 = string.Empty;
+            SelectedExpectedSha512 = string.Empty;
+            return;
+        }
+        try
+        {
+            DownloadChecksumWorkflowState state = await _downloadManager.GetChecksumWorkflowAsync(downloadId);
+            if (!string.Equals(SelectedDownload?.Id, downloadId, StringComparison.Ordinal))
+            {
+                return;
+            }
+            SelectedExpectedSha256 = state.ExpectedSha256 ?? string.Empty;
+            SelectedExpectedSha512 = state.ExpectedSha512 ?? string.Empty;
+        }
+        catch (NotSupportedException)
+        {
+            SelectedExpectedSha256 = SelectedDownload?.ExpectedSha256 ?? string.Empty;
+            SelectedExpectedSha512 = SelectedDownload?.ExpectedSha512 ?? string.Empty;
+        }
+        catch (IOException exception)
+        {
+            OperationMessage = $"Could not load checksum metadata: {exception.Message}";
         }
     }
 

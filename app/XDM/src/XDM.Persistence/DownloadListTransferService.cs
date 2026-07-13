@@ -46,7 +46,9 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
                 item.TotalBytes,
                 item.BackendPreference,
                 item.AllowBackendFallback,
-                item.Tags))
+                item.Tags,
+                item.ExpectedSha256,
+                item.ExpectedSha512))
             .ToArray();
         DownloadListEnvelope envelope = new(
             DownloadListEnvelope.CurrentSchemaVersion,
@@ -200,6 +202,8 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
                 Mirrors = mirrors,
                 ExpectedChecksumAlgorithm = checksumAlgorithm,
                 ExpectedChecksum = checksum,
+                ExpectedSha256 = NormalizeDedicatedChecksum(entry.ExpectedSha256, "SHA-256"),
+                ExpectedSha512 = NormalizeDedicatedChecksum(entry.ExpectedSha512, "SHA-512"),
                 ExpectedLength = entry.ExpectedLength is > 0 ? entry.ExpectedLength : null,
                 BackendPreference = Enum.IsDefined(entry.BackendPreference)
                     ? entry.BackendPreference
@@ -244,6 +248,23 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
         }
 
         return (normalizedAlgorithm, normalizedChecksum);
+    }
+
+    private static string? NormalizeDedicatedChecksum(string? checksum, string algorithm)
+    {
+        if (string.IsNullOrWhiteSpace(checksum))
+        {
+            return null;
+        }
+        string normalized = new(checksum
+            .Where(static character => !char.IsWhiteSpace(character) && character != ':')
+            .Select(char.ToUpperInvariant)
+            .ToArray());
+        int expectedLength = algorithm == "SHA-512" ? 128 : 64;
+        return normalized.Length == expectedLength
+            && normalized.All(static character => Uri.IsHexDigit(character))
+                ? normalized
+                : null;
     }
 
     private static bool IsSafeDownloadUri(Uri? uri)

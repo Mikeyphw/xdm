@@ -435,5 +435,6 @@
   "ui_media_status": "Status",
   "ui_media_post_processing_preset": "Post-processing preset",
   "nav_recovery": "Recovery",
-  "nav_recovery_summary": "Review interrupted transfers and durable partial artifacts before resuming them."
+  "nav_recovery_summary": "Review interrupted transfers and durable partial artifacts before resuming them.",
+  "integrity_localrecord": "Local checksum record (not independently verified)"
 }

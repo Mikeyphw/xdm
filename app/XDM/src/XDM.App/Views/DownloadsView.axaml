@@ -1,5 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.DownloadsView" mc:Ignorable="d" KeyboardNavigation.TabNavigation="Continue" AutomationProperties.LandmarkType="Main" AutomationProperties.AccessibilityView="Control">
-  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="10">
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="10">
     <Border Background="{DynamicResource XdmPanelBackground}" AutomationProperties.LandmarkType="Form" AutomationProperties.AccessibilityView="Control" CornerRadius="10" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
       <StackPanel Spacing="10">
         <Grid x:Name="NewDownloadGrid" ColumnDefinitions="2*,*,Auto" ColumnSpacing="10" RowSpacing="10">
@@ -72,14 +72,14 @@
             </Expander>
 
             <Expander Header="{Binding Localization[ui_integrity_mirrors]}">
-              <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto" ColumnDefinitions="180,*" ColumnSpacing="9" RowSpacing="9">
+              <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto" ColumnDefinitions="*,*" ColumnSpacing="9" RowSpacing="9">
                 <StackPanel Spacing="6">
-                  <TextBlock Text="{Binding Localization[ui_checksum_algorithm]}" Classes="form-label"/>
-                  <ComboBox ItemsSource="{Binding ChecksumAlgorithms}" SelectedItem="{Binding ExpectedChecksumAlgorithm}" AutomationProperties.Name="{Binding Localization[ui_checksum_algorithm]}" AutomationProperties.AutomationId="NewDownloadChecksumAlgorithm"/>
+                  <TextBlock Text="Expected SHA-256 (optional)" Classes="form-label"/>
+                  <TextBox Text="{Binding ExpectedSha256}" PlaceholderText="64 hexadecimal characters" AutomationProperties.Name="Expected SHA-256" AutomationProperties.AutomationId="NewDownloadExpectedSha256"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Spacing="6">
-                  <TextBlock Text="{Binding Localization[ui_expected_checksum_optional]}" Classes="form-label"/>
-                  <TextBox Text="{Binding ExpectedChecksum}" PlaceholderText="{Binding Localization[ui_expected_checksum_hint]}" AutomationProperties.Name="{Binding Localization[ui_expected_checksum_optional]}" AutomationProperties.AutomationId="NewDownloadExpectedChecksum"/>
+                  <TextBlock Text="Expected SHA-512 (optional)" Classes="form-label"/>
+                  <TextBox Text="{Binding ExpectedSha512}" PlaceholderText="128 hexadecimal characters" AutomationProperties.Name="Expected SHA-512" AutomationProperties.AutomationId="NewDownloadExpectedSha512"/>
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Spacing="6">
                   <TextBlock Text="{Binding Localization[ui_mirror_urls_optional]}" Classes="form-label"/>
@@ -102,9 +102,22 @@
       </Grid>
     </Border>
 
-    <Grid x:Name="DownloadSearchGrid" Grid.Row="2" ColumnDefinitions="*,220,Auto" ColumnSpacing="9" RowSpacing="9" AutomationProperties.LandmarkType="Search" AutomationProperties.AccessibilityView="Control">
+    <Border Grid.Row="2" IsVisible="{Binding IsClipboardReviewVisible}" Background="{DynamicResource XdmInfoSoftBrush}" CornerRadius="8" Padding="12" AutomationProperties.AutomationId="ClipboardReviewBanner" AutomationProperties.LiveSetting="Polite">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel Spacing="3">
+          <TextBlock Text="Clipboard link review" Classes="card-title"/>
+          <TextBlock Text="{Binding ClipboardReviewSummary}" Classes="supporting" TextWrapping="Wrap"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button Classes="primary" Content="Review" Command="{Binding AddClipboardReviewCommand}"/>
+          <Button Classes="quiet" Content="Dismiss" Command="{Binding DismissClipboardReviewCommand}"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid x:Name="DownloadSearchGrid" Grid.Row="3" ColumnDefinitions="*,220,Auto" ColumnSpacing="9" RowSpacing="9" AutomationProperties.LandmarkType="Search" AutomationProperties.AccessibilityView="Control">
       <Grid x:Name="DownloadSearchPrimary" ColumnDefinitions="*,190,Auto,Auto" ColumnSpacing="8">
-        <TextBox x:Name="DownloadSearchInput" AutomationProperties.AutomationId="DownloadSearch" AutomationProperties.AcceleratorKey="Ctrl+F" AutomationProperties.Name="{Binding Localization[ui_search_downloads]}" PlaceholderText="Search or use tag:, site:, queue:, size:, missing:, duplicate:, archived:" Text="{Binding DownloadSearchText}"/>
+        <TextBox x:Name="DownloadSearchInput" AutomationProperties.AutomationId="DownloadSearch" AutomationProperties.AcceleratorKey="Ctrl+F" AutomationProperties.Name="{Binding Localization[ui_search_downloads]}" PlaceholderText="Search or use status:failed, site:github.com, size:&gt;1GB, tag:games" Text="{Binding DownloadSearchText}"/>
         <ComboBox Grid.Column="1" ItemsSource="{Binding SavedSearches}" SelectedItem="{Binding SelectedSavedSearch}" AutomationProperties.Name="Smart collection" AutomationProperties.AutomationId="SavedSearchSelector">
           <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
         </ComboBox>
@@ -112,14 +125,14 @@
         <Button Grid.Column="3" Classes="quiet" Content="Refresh" Command="{Binding RefreshOrganizationStateCommand}" AutomationProperties.Name="Refresh file and duplicate status" AutomationProperties.AutomationId="RefreshOrganizationState"/>
       </Grid>
       <ComboBox x:Name="DownloadStatusFilter" Grid.Column="1" ItemsSource="{Binding DownloadStatusFilters}" SelectedItem="{Binding SelectedDownloadStatus}" AutomationProperties.AutomationId="DownloadStatusFilter" AutomationProperties.Name="Download Status"/>
-      <Button x:Name="SelectVisibleDownloads" Grid.Column="2" Classes="quiet" Content="{Binding Localization[ui_select_visible]}" Command="{Binding SelectAllVisibleCommand}" AutomationProperties.AutomationId="SelectVisibleDownloads"/>
+      <Button x:Name="SelectVisibleDownloads" Grid.Column="2" Classes="quiet" Content="{Binding Localization[ui_select_visible]}" Click="SelectVisibleDownloads_Click" AutomationProperties.AutomationId="SelectVisibleDownloads"/>
     </Grid>
 
-    <Border Grid.Row="3" IsVisible="{Binding HasBulkSelection}" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="10,8" BorderBrush="{DynamicResource XdmAccentBrush}" BorderThickness="1" AutomationProperties.AutomationId="BulkActionBar">
+    <Border Grid.Row="4" IsVisible="{Binding HasBulkSelection}" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="10,8" BorderBrush="{DynamicResource XdmAccentBrush}" BorderThickness="1" AutomationProperties.AutomationId="BulkActionBar">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
           <TextBlock Text="{Binding BulkSelectionSummary}" Classes="card-title" VerticalAlignment="Center"/>
-          <Button Classes="quiet" Content="{Binding Localization[ui_clear_selection]}" Command="{Binding ClearBulkSelectionCommand}"/>
+          <Button Classes="quiet" Content="{Binding Localization[ui_clear_selection]}" Click="ClearBulkSelection_Click"/>
         </StackPanel>
         <WrapPanel Grid.Column="1" Orientation="Horizontal">
           <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_pause_selected]}" Command="{Binding PauseBulkCommand}"/>
@@ -130,21 +143,53 @@
       </Grid>
     </Border>
 
-    <Grid x:Name="DownloadWorkspace" Grid.Row="4" ColumnDefinitions="2*,6,*" MinHeight="260">
+    <Grid x:Name="DownloadWorkspace" Grid.Row="5" ColumnDefinitions="2*,6,*" MinHeight="260">
       <Border x:Name="DownloadListPane" Grid.Column="0" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-        <Grid>
-          <ListBox ItemsSource="{Binding FilteredDownloads}" SelectedItem="{Binding SelectedDownload}" Background="Transparent" BorderThickness="0" Padding="7" IsVisible="{Binding HasFilteredDownloads}" AutomationProperties.AutomationId="DownloadsList" AutomationProperties.Name="Download">
+        <Grid RowDefinitions="Auto,*">
+          <Grid Margin="10,8,10,2" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+            <TextBlock Text="Downloads" Classes="section-title" VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Classes="quiet" Content="Undo" IsEnabled="{Binding CanUndoHistoryRemoval}" Command="{Binding UndoHistoryRemovalCommand}" ToolTip.Tip="Restore the most recently removed history entry"/>
+            <Button Grid.Column="2" Classes="quiet" Content="Density" Command="{Binding ToggleDownloadDensityCommand}" ToolTip.Tip="Toggle compact download rows"/>
+            <Button Grid.Column="3" Classes="quiet" Content="Columns">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                  <StackPanel Width="210" Spacing="8">
+                    <TextBlock Text="Visible download fields" Classes="card-title"/>
+                    <CheckBox Content="Source URL" IsChecked="{Binding ShowDownloadSource}"/>
+                    <CheckBox Content="Queue" IsChecked="{Binding ShowDownloadQueue}"/>
+                    <CheckBox Content="Priority" IsChecked="{Binding ShowDownloadPriority}"/>
+                    <CheckBox Content="Tags" IsChecked="{Binding ShowDownloadTags}"/>
+                    <CheckBox Content="Speed" IsChecked="{Binding ShowDownloadSpeed}"/>
+                    <CheckBox Content="Remaining time" IsChecked="{Binding ShowDownloadRemaining}"/>
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
+          </Grid>
+          <ListBox x:Name="DownloadsList" Grid.Row="1" ItemsSource="{Binding FilteredDownloads}" SelectedItem="{Binding SelectedDownload}" SelectionMode="Multiple" SelectionChanged="DownloadsList_SelectionChanged" Background="Transparent" BorderThickness="0" Padding="7" IsVisible="{Binding HasFilteredDownloads}" AutomationProperties.AutomationId="DownloadsList" AutomationProperties.Name="Download">
           <ListBox.ItemsPanel>
             <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <Border Padding="12" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1" AutomationProperties.Name="{Binding FileName}" AutomationProperties.ItemStatus="{Binding StatusText}" AutomationProperties.AccessibilityView="Content">
+              <Border Padding="{Binding $parent[UserControl].DataContext.DownloadItemPadding}" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1" AutomationProperties.Name="{Binding FileName}" AutomationProperties.ItemStatus="{Binding StatusText}" AutomationProperties.AccessibilityView="Content">
+                <Border.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="Pause" Click="PauseContext_Click"/>
+                    <MenuItem Header="Resume / retry" Click="ResumeContext_Click"/>
+                    <MenuItem Header="Open file" Click="OpenFileContext_Click"/>
+                    <MenuItem Header="Open containing folder" Click="OpenFolderContext_Click"/>
+                    <MenuItem Header="Copy source URL" Click="CopySourceContext_Click"/>
+                    <Separator/>
+                    <MenuItem Header="Toggle desktop notifications" Click="ToggleNotificationsContext_Click"/>
+                    <MenuItem Header="Remove from history" Click="RemoveContext_Click"/>
+                  </ContextMenu>
+                </Border.ContextMenu>
                 <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
-                  <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                  <CheckBox IsChecked="{Binding IsSelected}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Center"/>
                   <StackPanel Grid.Column="1">
                     <TextBlock Text="{Binding FileName}" Classes="card-title" Foreground="{DynamicResource XdmPrimarySoftForeground}" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding Source}" Classes="caption" Foreground="{DynamicResource XdmSubtleForeground}" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Source}" Classes="caption" Foreground="{DynamicResource XdmSubtleForeground}" TextTrimming="CharacterEllipsis" IsVisible="{Binding $parent[UserControl].DataContext.ShowDownloadSource}"/>
                   </StackPanel>
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <Border Width="7" Height="7" CornerRadius="4" Background="{DynamicResource XdmBrandBrush}"/>
@@ -155,15 +200,15 @@
                   <Grid Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                       <TextBlock Text="{Binding ProgressText}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
-                      <TextBlock Text="{Binding QueueId}" Classes="caption" Foreground="{DynamicResource XdmDisabledForeground}"/>
-                      <TextBlock Text="{Binding Priority}" Classes="caption" Foreground="{DynamicResource XdmAccentForeground}"/>
-                      <TextBlock Text="{Binding TagsText}" Classes="caption" Foreground="{DynamicResource XdmSubtleForeground}" IsVisible="{Binding HasTags}"/>
+                      <TextBlock Text="{Binding QueueId}" Classes="caption" Foreground="{DynamicResource XdmDisabledForeground}" IsVisible="{Binding $parent[UserControl].DataContext.ShowDownloadQueue}"/>
+                      <TextBlock Text="{Binding Priority}" Classes="caption" Foreground="{DynamicResource XdmAccentForeground}" IsVisible="{Binding $parent[UserControl].DataContext.ShowDownloadPriority}"/>
+                      <TextBlock Text="{Binding TagsText}" Classes="caption" Foreground="{DynamicResource XdmSubtleForeground}" IsVisible="{Binding $parent[UserControl].DataContext.ShowDownloadTags}"/>
                       <TextBlock Text="Archived" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}" IsVisible="{Binding IsArchived}"/>
                       <TextBlock Text="Missing file" Classes="caption" Foreground="{DynamicResource XdmErrorForeground}" IsVisible="{Binding IsFileMissing}"/>
                       <TextBlock Text="Duplicate content" Classes="caption" Foreground="{DynamicResource XdmWarningForeground}" IsVisible="{Binding IsDuplicate}"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Text="{Binding SpeedText}" Classes="caption" Foreground="{DynamicResource XdmSecondaryDimForeground}"/>
-                    <TextBlock Grid.Column="2" Text="{Binding RemainingText}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding SpeedText}" Classes="caption" Foreground="{DynamicResource XdmSecondaryDimForeground}" IsVisible="{Binding $parent[UserControl].DataContext.ShowDownloadSpeed}"/>
+                    <TextBlock Grid.Column="2" Text="{Binding RemainingText}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}" IsVisible="{Binding $parent[UserControl].DataContext.ShowDownloadRemaining}"/>
                   </Grid>
                   <TextBlock Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding ErrorMessage}" Classes="caption" Foreground="{DynamicResource XdmErrorForeground}" TextWrapping="Wrap"/>
                 </Grid>
@@ -172,7 +217,7 @@
           </ListBox.ItemTemplate>
           </ListBox>
 
-          <Border Classes="empty-state" Margin="10" IsVisible="{Binding IsDownloadsLoading}" AutomationProperties.Name="{Binding Localization[ui_loading_downloads]}" AutomationProperties.AutomationId="DownloadsLoadingState">
+          <Border Grid.Row="1" Classes="empty-state" Margin="10" IsVisible="{Binding IsDownloadsLoading}" AutomationProperties.Name="{Binding Localization[ui_loading_downloads]}" AutomationProperties.AutomationId="DownloadsLoadingState">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="360">
               <ProgressBar IsIndeterminate="True" Width="180" Height="6"/>
               <TextBlock Text="{Binding Localization[ui_loading_downloads]}" Classes="section-title" HorizontalAlignment="Center"/>
@@ -180,7 +225,7 @@
             </StackPanel>
           </Border>
 
-          <Border Classes="empty-state" Margin="10" IsVisible="{Binding ShowDownloadsEmptyState}" AutomationProperties.Name="{Binding Localization[ui_no_downloads_yet]}" AutomationProperties.AutomationId="DownloadsEmptyState">
+          <Border Grid.Row="1" Classes="empty-state" Margin="10" IsVisible="{Binding ShowDownloadsEmptyState}" AutomationProperties.Name="{Binding Localization[ui_no_downloads_yet]}" AutomationProperties.AutomationId="DownloadsEmptyState">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MaxWidth="380">
               <TextBlock Text="↓" FontSize="34" Foreground="{DynamicResource XdmAccentForeground}" HorizontalAlignment="Center"/>
               <TextBlock Text="{Binding Localization[ui_no_downloads_yet]}" Classes="section-title" HorizontalAlignment="Center"/>
@@ -189,7 +234,7 @@
             </StackPanel>
           </Border>
 
-          <Border Classes="empty-state" Margin="10" IsVisible="{Binding ShowDownloadFilterEmptyState}" AutomationProperties.Name="{Binding Localization[ui_no_matching_downloads]}" AutomationProperties.AutomationId="DownloadsFilterEmptyState">
+          <Border Grid.Row="1" Classes="empty-state" Margin="10" IsVisible="{Binding ShowDownloadFilterEmptyState}" AutomationProperties.Name="{Binding Localization[ui_no_matching_downloads]}" AutomationProperties.AutomationId="DownloadsFilterEmptyState">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MaxWidth="380">
               <TextBlock Text="⌕" FontSize="32" Foreground="{DynamicResource XdmMutedForeground}" HorizontalAlignment="Center"/>
               <TextBlock Text="{Binding Localization[ui_no_matching_downloads]}" Classes="section-title" HorizontalAlignment="Center"/>
@@ -200,7 +245,7 @@
         </Grid>
       </Border>
 
-      <GridSplitter x:Name="DownloadWorkspaceSplitter" Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" Background="Transparent" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="DownloadDetailsSplitter"/>
+      <GridSplitter x:Name="DownloadWorkspaceSplitter" Grid.Column="1" ResizeDirection="Columns" PointerReleased="DownloadWorkspaceSplitter_PointerReleased" ResizeBehavior="PreviousAndNext" Background="Transparent" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="DownloadDetailsSplitter"/>
 
       <Border x:Name="DownloadDetailsPane" Grid.Column="2" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
         <Grid>
@@ -237,6 +282,7 @@
               <Button Margin="0,0,8,8" Classes="secondary" Content="{Binding Localization[ui_resume]}" Command="{Binding ResumeSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}"/>
               <Button Margin="0,0,8,8" Classes="secondary" Content="{Binding Localization[ui_retry]}" Command="{Binding RetrySelectedCommand}" IsEnabled="{Binding SelectedDownload.CanResume}"/>
               <Button Margin="0,0,8,8" Classes="danger" Content="{Binding Localization[ui_cancel]}" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanCancel}"/>
+              <Button Margin="0,0,8,8" Classes="quiet" Content="Notifications" Command="{Binding ToggleSelectedDownloadNotificationsCommand}" ToolTip.Tip="{Binding SelectedDownloadNotificationsEnabled, StringFormat=Desktop notifications enabled: {0}}"/>
             </WrapPanel>
 
             <Expander Header="{Binding Localization[ui_backend_ownership]}">
@@ -254,24 +300,44 @@
 
             <Expander Header="{Binding Localization[ui_integrity_recovery]}" IsExpanded="{Binding SelectedDownload.RecoveryRequired}">
               <StackPanel Margin="0,8,0,0" Spacing="8">
-                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*" ColumnSpacing="10" RowSpacing="5">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*" ColumnSpacing="10" RowSpacing="5">
                   <TextBlock Text="{Binding Localization[ui_integrity_status]}" Classes="form-label"/>
                   <TextBlock Grid.Column="1" Text="{Binding SelectedDownload.IntegrityStatusText}" Foreground="{DynamicResource XdmAccentForeground}"/>
-                  <TextBlock Grid.Row="1" Text="{Binding Localization[ui_expected_checksum]}" Classes="form-label"/>
-                  <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedDownload.ExpectedChecksum}" Classes="caption" TextWrapping="Wrap"/>
-                  <TextBlock Grid.Row="2" Text="{Binding Localization[ui_actual_checksum]}" Classes="form-label"/>
-                  <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedDownload.ActualChecksum}" Classes="caption" TextWrapping="Wrap"/>
-                  <TextBlock Grid.Row="3" Text="{Binding Localization[ui_mirrors]}" Classes="form-label"/>
-                  <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedDownload.MirrorCount}"/>
-                  <TextBlock Grid.Row="4" Text="{Binding Localization[ui_last_verified]}" Classes="form-label"/>
-                  <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedDownload.LastVerifiedText}"/>
+                  <TextBlock Grid.Row="1" Text="Expected SHA-256" Classes="form-label"/>
+                  <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedDownload.ExpectedSha256}" Classes="caption" TextWrapping="Wrap"/>
+                  <TextBlock Grid.Row="2" Text="Actual SHA-256" Classes="form-label"/>
+                  <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedDownload.ActualSha256}" Classes="caption" TextWrapping="Wrap"/>
+                  <TextBlock Grid.Row="3" Text="Expected SHA-512" Classes="form-label"/>
+                  <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedDownload.ExpectedSha512}" Classes="caption" TextWrapping="Wrap"/>
+                  <TextBlock Grid.Row="4" Text="Actual SHA-512" Classes="form-label"/>
+                  <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedDownload.ActualSha512}" Classes="caption" TextWrapping="Wrap"/>
+                  <TextBlock Grid.Row="5" Text="Verification progress" Classes="form-label"/>
+                  <StackPanel Grid.Row="5" Grid.Column="1" Spacing="4">
+                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding SelectedDownload.VerificationProgressPercent}" IsVisible="{Binding SelectedDownload.IsVerificationActive}"/>
+                    <TextBlock Text="{Binding SelectedDownload.VerificationProgressText}" Classes="caption"/>
+                  </StackPanel>
+                  <TextBlock Grid.Row="6" Text="{Binding Localization[ui_mirrors]}" Classes="form-label"/>
+                  <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding SelectedDownload.MirrorCount}"/>
+                  <TextBlock Grid.Row="7" Text="{Binding Localization[ui_last_verified]}" Classes="form-label"/>
+                  <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding SelectedDownload.LastVerifiedText}"/>
+                </Grid>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowDefinitions="Auto,Auto" RowSpacing="8">
+                  <TextBox Text="{Binding SelectedExpectedSha256}" PlaceholderText="Expected SHA-256" AutomationProperties.Name="Selected expected SHA-256" AutomationProperties.AutomationId="SelectedExpectedSha256"/>
+                  <TextBox Grid.Column="1" Text="{Binding SelectedExpectedSha512}" PlaceholderText="Expected SHA-512" AutomationProperties.Name="Selected expected SHA-512" AutomationProperties.AutomationId="SelectedExpectedSha512"/>
+                  <WrapPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Classes="secondary" Content="Apply checksums" Command="{Binding ApplySelectedExpectedChecksumsCommand}"/>
+                    <Button Margin="0,0,8,0" Classes="quiet" Content="Paste checksum" Click="PasteChecksum_Click"/>
+                    <Button Margin="0,0,8,0" Classes="quiet" Content="Import checksum file" Click="ImportChecksumFile_Click"/>
+                    <Button Classes="quiet" Content="Copy calculated checksum" Click="CopyCalculatedChecksum_Click"/>
+                  </WrapPanel>
                 </Grid>
                 <Border Classes="error-state" IsVisible="{Binding SelectedDownload.HasRecoveryMessage}">
                   <TextBlock Text="{Binding SelectedDownload.RecoveryMessage}" Classes="supporting" TextWrapping="Wrap"/>
                 </Border>
                 <WrapPanel Orientation="Horizontal">
                   <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_verify]}" Command="{Binding VerifySelectedDownloadCommand}" IsEnabled="{Binding SelectedDownload.CanVerify}"/>
-                  <Button Classes="danger" Content="{Binding Localization[ui_repair]}" Command="{Binding RepairSelectedDownloadCommand}" IsEnabled="{Binding SelectedDownload.CanRepair}"/>
+                  <Button Margin="0,0,8,0" Classes="secondary" Content="Verify and repair" Command="{Binding RepairSelectedDownloadCommand}" IsEnabled="{Binding SelectedDownload.CanRepair}"/>
+                  <Button Classes="danger" Content="Restart from zero" Command="{Binding RestartSelectedDownloadFromZeroCommand}" IsEnabled="{Binding SelectedDownload.CanRepair}"/>
                 </WrapPanel>
               </StackPanel>
             </Expander>

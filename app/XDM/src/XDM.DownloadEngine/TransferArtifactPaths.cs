@@ -17,6 +17,12 @@ public static class TransferArtifactPaths
     public static string GetLegacyFinalizationMarkerPath(string destinationPath)
         => $"{destinationPath}.finalizing";
 
+    public static string GetChecksumStatePath(string destinationPath)
+        => $"{destinationPath}.xdm.checksums.json";
+
+    public static string GetRepairManifestPath(string localPath)
+        => $"{localPath}.xdm.repair.json";
+
     public static string GetCorruptBackupPath(string destinationPath, DateTimeOffset timestamp)
         => $"{destinationPath}.corrupt-{timestamp:yyyyMMddHHmmss}";
 

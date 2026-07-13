@@ -28,7 +28,9 @@ public sealed record DownloadRequest(
     bool AllowBackendFallback = true,
     IReadOnlyList<string>? Tags = null,
     bool ApplyDestinationRules = true,
-    bool AllowDuplicateUrl = false)
+    bool AllowDuplicateUrl = false,
+    string? ExpectedSha256 = null,
+    string? ExpectedSha512 = null)
 {
     public string ResolveFileName()
     {

@@ -8,4 +8,9 @@ public sealed record DownloadVerificationResult(
     string? ExpectedChecksum,
     bool IsMatch,
     long Length,
-    string Message);
+    string Message,
+    string? ActualSha256 = null,
+    string? ActualSha512 = null,
+    string? ExpectedSha256 = null,
+    string? ExpectedSha512 = null,
+    bool LocalIntegrityRecordOnly = false);

@@ -5,7 +5,8 @@ public sealed record FinalizationMarker(
     long ExpectedLength,
     string? ChecksumAlgorithm,
     string? Checksum,
-    DateTimeOffset CreatedAt)
+    DateTimeOffset CreatedAt,
+    bool LocalIntegrityRecordOnly = false)
 {
     public const int CurrentVersion = 1;
 }

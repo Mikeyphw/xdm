@@ -1,24 +1,26 @@
-# XDM startup recovery coordinator and workbench overlay
+# XDM selective repair and checksum workflow overlay
 
 ## Purpose
 
-Implements the first two parts of the crash-recovery plan on top of commit `b80102c`:
+Implements recovery plan items 3 and 4 on top of commit `9ed4807`:
 
-1. A startup recovery coordinator that scans persisted records and durable transfer artifacts.
-2. A dedicated recovery workbench shown after an unclean shutdown.
+1. A range-preserving verify-and-repair service.
+2. A complete SHA-256/SHA-512 verification workflow.
 
 ## Included
 
-- Classifies known transfers as ready to resume, requiring validation, requiring repair, missing partial data, changed remote file, or recovered interrupted finalization.
-- Discovers orphaned `.xdm.part`, `.xdm.resume.json`, and `.xdm.finalizing` artifacts in configured destination roots.
-- Keeps interrupted active transfers paused; the coordinator never starts downloads.
-- Adds a bounded remote identity validation action using length, ETag, Last-Modified, and range behavior.
-- Adds a dedicated Recovery navigation page with the requested metadata and actions.
-- Opens the Recovery page automatically after an unclean shutdown, including when the scan finds no damaged state.
-- Adds coordinator regression tests and extends the app layout test for the new page.
+- Persists independent expected and calculated SHA-256/SHA-512 values in an atomic sidecar.
+- Migrates legacy and Metalink checksums into the dual-checksum workflow.
+- Calculates configured hashes in one pass and exposes verification progress separately from download progress.
+- Records a clearly labeled local SHA-256 integrity value when no independent expected checksum exists.
+- Builds verified 4 MiB block manifests so later repair requests only suspicious or missing ranges.
+- Validates remote length, strong ETag, Last-Modified, range boundaries, and response lengths before writes.
+- Reconstructs partial files from segment artifacts at their planned offsets.
+- Rebuilds checkpoints and atomically finalizes only after checksum verification succeeds.
+- Keeps Verify, selective Verify and repair, and destructive Restart from zero as separate actions.
+- Adds clipboard/checksum-file import, calculated-checksum copy, and download-list schema v4 support.
+- Adds regression coverage for dual automatic verification, persisted state, local-only records, and single-range repair.
 
 ## Validation
 
 Devtool should restore, build, and test `app/XDM/XDM.Modern.sln` with zero warnings and zero errors.
-
-- Updates the shell architecture contract to include the dedicated `RecoveryView`.

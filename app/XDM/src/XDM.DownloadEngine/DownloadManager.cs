@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using XDM.Core.Diagnostics;
 using XDM.Core.Downloads;
 using XDM.Core.Persistence;
 using XDM.Core.Policies;
@@ -28,6 +29,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private static readonly TimeSpan PersistenceInterval = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan CheckpointInterval = TimeSpan.FromSeconds(1);
     private const long CheckpointByteInterval = 4L * 1024 * 1024;
+    private const int RemovedHistoryCapacity = 20;
 
     private readonly HttpClient _httpClient;
     private readonly IApplicationState _applicationState;
@@ -37,10 +39,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private readonly DownloadRetryPolicy _retryPolicy;
     private readonly SegmentedDownloadExecutor _segmentedExecutor;
     private readonly ResumeCheckpointStore _checkpointStore;
+    private readonly DownloadChecksumWorkflowStore _checksumWorkflowStore;
+    private readonly IPartialFileRepairService _partialFileRepairService;
     private readonly IFtpDownloadClient _ftpDownloadClient;
     private readonly ISettingsService _settingsService;
     private readonly ITransferPolicyRuntime _transferPolicyRuntime;
     private readonly IAria2Service? _aria2Service;
+    private readonly ITransferDiagnosticSink _transferDiagnostics;
     private readonly ConcurrentDictionary<string, byte> _activeQueues = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, byte> _requestedQueueRoots = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, byte> _requestedQueues = new(StringComparer.Ordinal);
@@ -51,6 +56,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private readonly ConcurrentDictionary<string, DownloadSession> _sessions = new(StringComparer.Ordinal);
     private readonly object _organizationAdmissionSync = new();
     private readonly object _backgroundTaskSync = new();
+    private readonly object _removedHistorySync = new();
+    private readonly Stack<DownloadSession> _removedHistory = new();
     private readonly Dictionary<long, Task> _backgroundTasks = [];
     private readonly SemaphoreSlim _persistenceGate = new(1, 1);
     private DateTimeOffset _lastPersistence = DateTimeOffset.MinValue;
@@ -61,6 +68,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     public event EventHandler<QueueRuntimeSnapshot>? QueueRuntimeChanged;
 
     public QueueRuntimeSnapshot QueueRuntime => CreateQueueRuntimeSnapshot();
+
+    public int UndoableRemovalCount
+    {
+        get
+        {
+            lock (_removedHistorySync)
+            {
+                return _removedHistory.Count;
+            }
+        }
+    }
 
     public DownloadManager(
         HttpClient httpClient,
@@ -86,7 +104,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         IDownloadHistoryStore historyStore,
         ISettingsService settingsService,
         ILogger<DownloadManager> logger,
-        IAria2Service aria2Service)
+        IAria2Service aria2Service,
+        ITransferDiagnosticSink transferDiagnostics)
         : this(
             httpClient,
             applicationState,
@@ -96,7 +115,34 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             new SystemDiskSpaceProvider(),
             CreateRetryPolicy(settingsService.Current),
             CreateSegmentedOptions(settingsService.Current),
-            aria2Service: aria2Service)
+            aria2Service: aria2Service,
+            transferDiagnostics: transferDiagnostics)
+    {
+    }
+
+    public DownloadManager(
+        HttpClient httpClient,
+        IApplicationState applicationState,
+        IDownloadHistoryStore historyStore,
+        ISettingsService settingsService,
+        ILogger<DownloadManager> logger,
+        IAria2Service aria2Service,
+        ITransferDiagnosticSink transferDiagnostics,
+        DownloadChecksumWorkflowStore checksumWorkflowStore,
+        IPartialFileRepairService partialFileRepairService)
+        : this(
+            httpClient,
+            applicationState,
+            historyStore,
+            settingsService,
+            logger,
+            new SystemDiskSpaceProvider(),
+            CreateRetryPolicy(settingsService.Current),
+            CreateSegmentedOptions(settingsService.Current),
+            aria2Service: aria2Service,
+            transferDiagnostics: transferDiagnostics,
+            checksumWorkflowStore: checksumWorkflowStore,
+            partialFileRepairService: partialFileRepairService)
     {
     }
 
@@ -112,7 +158,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         IFtpDownloadClient? ftpDownloadClient = null,
         ResumeCheckpointStore? checkpointStore = null,
         ITransferPolicyRuntime? transferPolicyRuntime = null,
-        IAria2Service? aria2Service = null)
+        IAria2Service? aria2Service = null,
+        ITransferDiagnosticSink? transferDiagnostics = null,
+        DownloadChecksumWorkflowStore? checksumWorkflowStore = null,
+        IPartialFileRepairService? partialFileRepairService = null)
     {
         _httpClient = httpClient;
         _applicationState = applicationState;
@@ -121,13 +170,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         _logger = logger;
         _diskSpaceProvider = diskSpaceProvider;
         _retryPolicy = retryPolicy;
+        _transferDiagnostics = transferDiagnostics ?? NullTransferDiagnosticSink.Instance;
         _segmentedExecutor = new SegmentedDownloadExecutor(
             httpClient,
             diskSpaceProvider,
             retryPolicy,
-            segmentedOptions ?? new SegmentedDownloadOptions());
+            segmentedOptions ?? new SegmentedDownloadOptions(),
+            _transferDiagnostics);
         _ftpDownloadClient = ftpDownloadClient ?? new FtpDownloadClient();
         _checkpointStore = checkpointStore ?? new ResumeCheckpointStore();
+        _checksumWorkflowStore = checksumWorkflowStore ?? new DownloadChecksumWorkflowStore();
+        _partialFileRepairService = partialFileRepairService ?? new PartialFileRepairService(httpClient);
         _transferPolicyRuntime = transferPolicyRuntime ?? UnrestrictedTransferPolicyRuntime.Instance;
         _aria2Service = aria2Service;
         _transferPolicyRuntime.Changed += OnTransferPolicyChanged;
@@ -225,6 +278,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 item.DuplicateOfDownloadId,
                 item.DuplicateReason);
 
+            await LoadChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
+
             try
             {
                 MigrateLegacyArtifacts(session.DestinationPath);
@@ -320,6 +375,29 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         string? normalizedExpectedChecksum = NormalizeExpectedChecksum(
             request.ExpectedChecksumAlgorithm,
             request.ExpectedChecksum);
+        string? normalizedExpectedSha256 = NormalizeOptionalChecksum(
+            request.ExpectedSha256,
+            DownloadChecksumService.Sha256);
+        string? normalizedExpectedSha512 = NormalizeOptionalChecksum(
+            request.ExpectedSha512,
+            DownloadChecksumService.Sha512);
+        if (normalizedExpectedChecksum is not null)
+        {
+            if (string.Equals(normalizedExpectedAlgorithm, DownloadChecksumService.Sha256, StringComparison.Ordinal))
+            {
+                normalizedExpectedSha256 ??= normalizedExpectedChecksum;
+            }
+            else if (string.Equals(normalizedExpectedAlgorithm, DownloadChecksumService.Sha512, StringComparison.Ordinal))
+            {
+                normalizedExpectedSha512 ??= normalizedExpectedChecksum;
+            }
+        }
+        normalizedExpectedAlgorithm = normalizedExpectedSha256 is not null
+            ? DownloadChecksumService.Sha256
+            : normalizedExpectedSha512 is not null
+                ? DownloadChecksumService.Sha512
+                : normalizedExpectedAlgorithm;
+        normalizedExpectedChecksum = normalizedExpectedSha256 ?? normalizedExpectedSha512 ?? normalizedExpectedChecksum;
         Uri[] normalizedRequestMirrors = NormalizeMirrors(request.Source, request.Mirrors);
         bool allowBackendFallback = request.AllowBackendFallback
             && (_settingsService.Current.Aria2 ?? Aria2IntegrationSettings.Default)
@@ -472,6 +550,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             null,
             duplicateUrl?.Id,
             duplicateUrl is null ? null : "The source URL matches an existing download.");
+        session.ExpectedSha256 = normalizedExpectedSha256;
+        session.ExpectedSha512 = normalizedExpectedSha512;
 
         lock (_organizationAdmissionSync)
         {
@@ -501,6 +581,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
         }
 
+        await SaveChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
+
         if (recoveryCheckpoint is not null || recoverLegacySegments)
         {
             ReconcileRecoveredState(session, recoveryCheckpoint, allowDownloadIdMismatch: true);
@@ -525,83 +607,127 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         return session.Id;
     }
 
+    public async Task<DownloadChecksumWorkflowState> GetChecksumWorkflowAsync(
+        string downloadId,
+        CancellationToken cancellationToken = default)
+    {
+        DownloadSession session = GetSession(downloadId);
+        DownloadChecksumWorkflowState state = await _checksumWorkflowStore
+            .LoadAsync(session.DestinationPath, cancellationToken)
+            .ConfigureAwait(false);
+        lock (session.Sync)
+        {
+            return state with
+            {
+                ExpectedSha256 = session.ExpectedSha256 ?? state.ExpectedSha256,
+                ExpectedSha512 = session.ExpectedSha512 ?? state.ExpectedSha512,
+                ActualSha256 = session.ActualSha256 ?? state.ActualSha256,
+                ActualSha512 = session.ActualSha512 ?? state.ActualSha512,
+                LastVerifiedAt = session.LastVerifiedAt ?? state.LastVerifiedAt,
+                VerificationBytesProcessed = session.VerificationBytesProcessed,
+                VerificationTotalBytes = session.VerificationTotalBytes
+            };
+        }
+    }
+
+    public async Task SetExpectedChecksumsAsync(
+        string downloadId,
+        string? expectedSha256,
+        string? expectedSha512,
+        CancellationToken cancellationToken = default)
+    {
+        DownloadSession session = GetSession(downloadId);
+        string? normalizedSha256 = NormalizeOptionalChecksum(expectedSha256, DownloadChecksumService.Sha256);
+        string? normalizedSha512 = NormalizeOptionalChecksum(expectedSha512, DownloadChecksumService.Sha512);
+        lock (session.Sync)
+        {
+            session.ExpectedSha256 = normalizedSha256;
+            session.ExpectedSha512 = normalizedSha512;
+            session.ExpectedChecksumAlgorithm = normalizedSha256 is not null
+                ? DownloadChecksumService.Sha256
+                : normalizedSha512 is not null
+                    ? DownloadChecksumService.Sha512
+                    : null;
+            session.ExpectedChecksum = normalizedSha256 ?? normalizedSha512;
+            session.ActualChecksum = null;
+            session.ActualSha256 = null;
+            session.ActualSha512 = null;
+            session.LastVerifiedAt = null;
+            session.LocalIntegrityRecordOnly = false;
+            session.IntegrityStatus = DownloadIntegrityStatus.Unknown;
+            session.RecoveryRequired = false;
+            session.RecoveryMessage = null;
+        }
+        await SaveChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
+        Publish(session, forcePersist: true);
+    }
+
     public async Task<DownloadVerificationResult> VerifyAsync(
         string downloadId,
         CancellationToken cancellationToken = default)
     {
         DownloadSession session = GetSession(downloadId);
         string filePath;
-        string algorithm;
-        string? expectedChecksum;
         lock (session.Sync)
         {
-            if (session.State != DownloadState.Completed)
+            if (session.State is DownloadState.Connecting or DownloadState.Downloading or DownloadState.Finalizing)
             {
-                throw new InvalidOperationException("Only completed downloads can be verified.");
+                throw new InvalidOperationException("Pause the download before verifying it.");
             }
 
-            filePath = session.DestinationPath;
-            algorithm = session.ExpectedChecksumAlgorithm ?? DownloadChecksumService.Sha256;
-            expectedChecksum = session.ExpectedChecksum;
+            string partialPath = GetPartialPath(session.DestinationPath);
+            filePath = File.Exists(session.DestinationPath)
+                ? session.DestinationPath
+                : File.Exists(partialPath)
+                    ? partialPath
+                    : throw new FileNotFoundException(
+                        "No completed or partial file is available for verification.",
+                        session.DestinationPath);
             session.IntegrityStatus = DownloadIntegrityStatus.Verifying;
-            session.RecoveryRequired = false;
+            session.VerificationBytesProcessed = 0;
+            session.VerificationTotalBytes = new FileInfo(filePath).Length;
             session.RecoveryMessage = null;
         }
 
-        if (!File.Exists(filePath))
-        {
-            lock (session.Sync)
-            {
-                session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
-                session.RecoveryRequired = true;
-                session.RecoveryMessage = "The completed file is missing and must be downloaded again.";
-            }
-            Publish(session, forcePersist: true);
-            throw new FileNotFoundException("The completed download file no longer exists.", filePath);
-        }
-
+        RecordTransferDiagnostic(
+            session,
+            TransferDiagnosticStage.Verification,
+            TransferDiagnosticSeverity.Information,
+            "XDM-TRANSFER-VERIFY-MANUAL-START",
+            "Starting explicit SHA-256/SHA-512 verification without redownloading data.");
         Publish(session, forcePersist: false);
-        string actualChecksum = await DownloadChecksumService
-            .ComputeAsync(filePath, algorithm, cancellationToken)
-            .ConfigureAwait(false);
-        bool isMatch = expectedChecksum is null
-            || string.Equals(actualChecksum, expectedChecksum, StringComparison.OrdinalIgnoreCase);
-        DateTimeOffset verifiedAt = DateTimeOffset.UtcNow;
-        lock (session.Sync)
-        {
-            session.ActualChecksum = actualChecksum;
-            session.LastVerifiedAt = verifiedAt;
-            session.IntegrityStatus = isMatch
-                ? DownloadIntegrityStatus.Verified
-                : DownloadIntegrityStatus.Mismatch;
-            session.RecoveryRequired = !isMatch;
-            session.RecoveryMessage = isMatch
-                ? null
-                : "The downloaded file does not match its expected checksum. Use Repair to preserve it and download a clean copy.";
-            session.ErrorMessage = isMatch ? null : session.RecoveryMessage;
-        }
-
+        ChecksumVerificationOutcome outcome = await VerifyFileAgainstWorkflowAsync(
+            session,
+            filePath,
+            cancellationToken).ConfigureAwait(false);
         await RefreshContentIdentityAsync(
             session,
             cancellationToken,
-            string.Equals(algorithm, DownloadChecksumService.Sha256, StringComparison.Ordinal)
-                ? actualChecksum
-                : null).ConfigureAwait(false);
+            outcome.ActualSha256).ConfigureAwait(false);
         Publish(session, forcePersist: true);
-        string message = expectedChecksum is null
-            ? $"Recorded {algorithm} checksum {actualChecksum}."
-            : isMatch
-                ? $"{algorithm} verification succeeded."
-                : $"{algorithm} verification failed.";
+        string algorithm = outcome.ExpectedSha512 is not null && outcome.ExpectedSha256 is null
+            ? DownloadChecksumService.Sha512
+            : DownloadChecksumService.Sha256;
+        string actual = algorithm == DownloadChecksumService.Sha512
+            ? outcome.ActualSha512 ?? string.Empty
+            : outcome.ActualSha256 ?? string.Empty;
+        string? expected = algorithm == DownloadChecksumService.Sha512
+            ? outcome.ExpectedSha512
+            : outcome.ExpectedSha256;
         return new DownloadVerificationResult(
             session.Id,
             filePath,
             algorithm,
-            actualChecksum,
-            expectedChecksum,
-            isMatch,
+            actual,
+            expected,
+            outcome.IsMatch,
             new FileInfo(filePath).Length,
-            message);
+            outcome.Message,
+            outcome.ActualSha256,
+            outcome.ActualSha512,
+            outcome.ExpectedSha256,
+            outcome.ExpectedSha512,
+            outcome.LocalIntegrityRecordOnly);
     }
 
     public async Task<DownloadRepairResult> RepairAsync(
@@ -609,12 +735,173 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         CancellationToken cancellationToken = default)
     {
         DownloadSession session = GetSession(downloadId);
-        cancellationToken.ThrowIfCancellationRequested();
+        string destinationPath;
+        string localPath;
+        long expectedLength;
         lock (session.Sync)
         {
             if (session.State is DownloadState.Connecting or DownloadState.Downloading or DownloadState.Finalizing)
             {
                 throw new InvalidOperationException("Pause the download before repairing it.");
+            }
+            if (!string.Equals(session.Method, "GET", StringComparison.OrdinalIgnoreCase)
+                || session.Source.Scheme is not ("http" or "https"))
+            {
+                throw new InvalidOperationException("Selective repair currently requires an HTTP or HTTPS GET source.");
+            }
+            destinationPath = session.DestinationPath;
+            string partialPath = GetPartialPath(destinationPath);
+            localPath = File.Exists(partialPath)
+                ? partialPath
+                : File.Exists(destinationPath)
+                    ? destinationPath
+                    : partialPath;
+            expectedLength = session.TotalBytes
+                ?? (File.Exists(localPath) ? new FileInfo(localPath).Length : 0);
+            if (expectedLength <= 0)
+            {
+                throw new InvalidOperationException("Selective repair requires a known expected length.");
+            }
+            session.IntegrityStatus = DownloadIntegrityStatus.Repairing;
+            session.VerificationBytesProcessed = 0;
+            session.VerificationTotalBytes = expectedLength;
+            session.RecoveryRequired = true;
+            session.RecoveryMessage = "Comparing local ranges with the validated remote object.";
+        }
+        Publish(session, forcePersist: false);
+
+        if (!File.Exists(localPath))
+        {
+            await ReconstructPartialFromSegmentsAsync(session, localPath, expectedLength, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        if (!File.Exists(localPath))
+        {
+            throw new FileNotFoundException("No local partial data is available to repair.", localPath);
+        }
+
+        Progress<(long Processed, long Total)> progress = new(value =>
+        {
+            lock (session.Sync)
+            {
+                session.VerificationBytesProcessed = value.Processed;
+                session.VerificationTotalBytes = value.Total;
+            }
+            Publish(session, forcePersist: false);
+        });
+        PartialFileRepairResult repaired = await _partialFileRepairService.RepairAsync(
+            new PartialFileRepairRequest(
+                session.Source,
+                localPath,
+                expectedLength,
+                session.EntityTag,
+                session.LastModified,
+                session.Headers,
+                session.Username,
+                session.Password,
+                session.Cookie,
+                session.Referer,
+                session.UserAgent,
+                RequireRemoteValidator: session.ExpectedSha256 is null && session.ExpectedSha512 is null),
+            progress,
+            cancellationToken).ConfigureAwait(false);
+
+        lock (session.Sync)
+        {
+            session.DownloadedBytes = expectedLength;
+            session.TotalBytes = expectedLength;
+            session.EntityTag = repaired.EntityTag ?? session.EntityTag;
+            session.LastModified = repaired.LastModified ?? session.LastModified;
+            session.RecoveryMessage = repaired.RepairedRanges.Count == 0
+                ? "All local ranges matched the validated remote object."
+                : $"Repaired {repaired.RepairedRanges.Count} invalid range(s) without overwriting known-good data.";
+        }
+
+        if (!string.Equals(localPath, destinationPath, StringComparison.Ordinal))
+        {
+            await _checkpointStore.SaveAsync(new ResumeCheckpoint(
+                ResumeCheckpoint.CurrentVersion,
+                session.Id,
+                session.Source,
+                destinationPath,
+                expectedLength,
+                expectedLength,
+                session.EntityTag,
+                session.LastModified,
+                session.ConnectionCount,
+                DateTimeOffset.UtcNow,
+                session.ExpectedChecksumAlgorithm,
+                session.ExpectedChecksum,
+                session.Mirrors), cancellationToken).ConfigureAwait(false);
+        }
+
+        ChecksumVerificationOutcome verification = await VerifyFileAgainstWorkflowAsync(
+            session,
+            localPath,
+            cancellationToken).ConfigureAwait(false);
+        if (!verification.IsMatch)
+        {
+            Publish(session, forcePersist: true);
+            return new DownloadRepairResult(
+                session.Id,
+                false,
+                null,
+                "Range repair completed, but the expected checksum still does not match. The local data was not finalized.",
+                repaired.BytesScanned,
+                repaired.BytesDownloaded,
+                repaired.BytesRepaired,
+                repaired.RepairedRanges.Count,
+                false,
+                false);
+        }
+
+        bool finalized = false;
+        if (!string.Equals(localPath, destinationPath, StringComparison.Ordinal))
+        {
+            lock (session.Sync)
+            {
+                session.State = DownloadState.Finalizing;
+            }
+            WriteFinalizationMarker(session, expectedLength);
+            await CompleteFromPartialAsync(session, localPath, expectedLength).ConfigureAwait(false);
+            finalized = true;
+        }
+        else
+        {
+            lock (session.Sync)
+            {
+                session.State = DownloadState.Completed;
+                session.RecoveryRequired = false;
+                session.ErrorMessage = null;
+            }
+            Publish(session, forcePersist: true);
+        }
+
+        return new DownloadRepairResult(
+            session.Id,
+            false,
+            null,
+            repaired.RepairedRanges.Count == 0
+                ? "Verification succeeded; no damaged ranges required replacement."
+                : $"Repaired {repaired.RepairedRanges.Count} invalid range(s), verified the final checksum, and preserved all matching ranges.",
+            repaired.BytesScanned,
+            repaired.BytesDownloaded,
+            repaired.BytesRepaired,
+            repaired.RepairedRanges.Count,
+            finalized,
+            true);
+    }
+
+    public async Task<DownloadRepairResult> RestartFromZeroAsync(
+        string downloadId,
+        CancellationToken cancellationToken = default)
+    {
+        DownloadSession session = GetSession(downloadId);
+        lock (session.Sync)
+        {
+            if (session.State is DownloadState.Connecting or DownloadState.Downloading or DownloadState.Finalizing)
+            {
+                throw new InvalidOperationException("Pause the download before restarting it.");
             }
             session.IntegrityStatus = DownloadIntegrityStatus.Repairing;
         }
@@ -658,7 +945,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.EntityTag = null;
             session.LastModified = null;
             session.ActualChecksum = null;
+            session.ActualSha256 = null;
+            session.ActualSha512 = null;
             session.LastVerifiedAt = null;
+            session.VerificationBytesProcessed = 0;
+            session.VerificationTotalBytes = null;
             session.IntegrityStatus = DownloadIntegrityStatus.Checkpointed;
             session.RecoveryRequired = false;
             session.RecoveryMessage = null;
@@ -668,7 +959,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.Source = session.Mirrors[0];
             session.MirrorIndex = 1;
         }
-
+        await SaveChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
         Publish(session, forcePersist: true);
         bool restarted = IsQueueActive(session.QueueId);
         Start(session);
@@ -678,7 +969,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             preservedPath,
             preservedPath is null
                 ? restarted
-                    ? "The transfer state was reset and the download was restarted."
+                    ? "The transfer state was reset and the download was restarted from zero."
                     : "The transfer state was reset and queued for the next queue start."
                 : restarted
                     ? $"The suspect file was preserved as '{preservedPath}' and a clean download was started."
@@ -924,6 +1215,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         if (scope != DownloadDeletionScope.HistoryOnly)
         {
             DeleteTransferArtifacts(session.DestinationPath);
+            DeleteIfExists(TransferArtifactPaths.GetChecksumStatePath(session.DestinationPath));
+            DeleteIfExists($"{TransferArtifactPaths.GetChecksumStatePath(session.DestinationPath)}.tmp");
         }
 
         if (scope == DownloadDeletionScope.HistoryAndDownloadedFile
@@ -934,7 +1227,81 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         _sessions.TryRemove(downloadId, out _);
         _applicationState.RemoveDownload(downloadId);
+        if (scope == DownloadDeletionScope.HistoryOnly)
+        {
+            PushRemovedHistory(session);
+        }
         await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<string?> UndoLastRemovalAsync(CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
+        DownloadSession? session;
+        lock (_removedHistorySync)
+        {
+            session = _removedHistory.Count > 0 ? _removedHistory.Pop() : null;
+        }
+
+        if (session is null)
+        {
+            return null;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (session.Sync)
+        {
+            session.OperationCancellation?.Dispose();
+            session.OperationCancellation = null;
+            session.ActiveTask = null;
+            session.PauseRequested = false;
+            if (session.State is DownloadState.Connecting or DownloadState.Downloading or DownloadState.Finalizing or DownloadState.Cancelled)
+            {
+                session.State = DownloadState.Paused;
+                session.ErrorMessage = null;
+            }
+            session.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        if (!_sessions.TryAdd(session.Id, session))
+        {
+            lock (_removedHistorySync)
+            {
+                _removedHistory.Push(session);
+            }
+            throw new InvalidOperationException($"Download '{session.Id}' already exists.");
+        }
+
+        _applicationState.UpsertDownload(CreateSnapshot(session));
+        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        return session.Id;
+    }
+
+    private void PushRemovedHistory(DownloadSession session)
+    {
+        lock (_removedHistorySync)
+        {
+            _removedHistory.Push(session);
+            if (_removedHistory.Count <= RemovedHistoryCapacity)
+            {
+                return;
+            }
+
+            DownloadSession[] all = _removedHistory.ToArray();
+            DownloadSession[] retained = all.Take(RemovedHistoryCapacity).Reverse().ToArray();
+            foreach (DownloadSession discarded in all.Skip(RemovedHistoryCapacity))
+            {
+                discarded.OperationCancellation?.Dispose();
+                discarded.CheckpointGate.Dispose();
+            }
+
+            _removedHistory.Clear();
+            foreach (DownloadSession item in retained)
+            {
+                _removedHistory.Push(item);
+            }
+        }
     }
 
     public async Task RelocateAsync(
@@ -990,6 +1357,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         await MoveFileAsync(sourcePath, targetPath, overwrite, cancellationToken).ConfigureAwait(false);
+        string sourceRepairManifest = TransferArtifactPaths.GetRepairManifestPath(sourcePath);
+        string targetRepairManifest = TransferArtifactPaths.GetRepairManifestPath(targetPath);
+        if (File.Exists(sourceRepairManifest))
+        {
+            File.Move(sourceRepairManifest, targetRepairManifest, overwrite: true);
+        }
+        string oldChecksumStatePath = TransferArtifactPaths.GetChecksumStatePath(sourcePath);
         lock (session.Sync)
         {
             session.DestinationPath = targetPath;
@@ -997,6 +1371,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
+        await SaveChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
+        if (File.Exists(oldChecksumStatePath))
+        {
+            File.Delete(oldChecksumStatePath);
+        }
         _applicationState.UpsertDownload(CreateSnapshot(session));
         await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
     }
@@ -1336,6 +1715,16 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.CheckpointGate.Dispose();
         }
 
+        lock (_removedHistorySync)
+        {
+            foreach (DownloadSession session in _removedHistory)
+            {
+                session.OperationCancellation?.Dispose();
+                session.CheckpointGate.Dispose();
+            }
+            _removedHistory.Clear();
+        }
+
         _persistenceGate.Dispose();
     }
 
@@ -1350,6 +1739,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.ErrorMessage = policy.IsPaused ? policy.StatusMessage : null;
             }
 
+            RecordTransferDiagnostic(
+                session,
+                TransferDiagnosticStage.Scheduling,
+                TransferDiagnosticSeverity.Warning,
+                "XDM-TRANSFER-SCHEDULING-BLOCKED",
+                policy.IsPaused ? policy.StatusMessage : "The download queue is not active.",
+                new Dictionary<string, string?>(StringComparer.Ordinal)
+                {
+                    ["queueId"] = session.QueueId,
+                    ["policyPaused"] = policy.IsPaused.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                });
             Publish(session, forcePersist: false);
             return;
         }
@@ -1368,6 +1768,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.State = DownloadState.Connecting;
             session.PauseRequested = false;
             session.ErrorMessage = null;
+            RecordTransferDiagnostic(
+                session,
+                TransferDiagnosticStage.Scheduling,
+                TransferDiagnosticSeverity.Information,
+                "XDM-TRANSFER-SCHEDULED",
+                "The transfer was admitted to its queue and scheduled for backend selection.",
+                new Dictionary<string, string?>(StringComparer.Ordinal)
+                {
+                    ["queueId"] = session.QueueId,
+                    ["priority"] = session.Priority.ToString()
+                });
             Publish(session, forcePersist: false);
             session.ActiveTask = Task.Run(
                 () => RunBackendSafelyAsync(session, operationCancellation.Token),
@@ -1441,6 +1852,18 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.RecoveryMessage = decision.Reason;
             }
         }
+        RecordTransferDiagnostic(
+            session,
+            TransferDiagnosticStage.Backend,
+            decision.CanStart ? TransferDiagnosticSeverity.Information : TransferDiagnosticSeverity.Error,
+            "XDM-TRANSFER-BACKEND-DECISION",
+            decision.Reason,
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["backend"] = decision.Backend.ToString(),
+                ["canStart"] = decision.CanStart.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["ownedTaskId"] = ownedGid
+            });
         Publish(session, forcePersist: true);
 
         if (!decision.CanStart)
@@ -1762,6 +2185,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.RecoveryMessage = null;
         }
         await RefreshContentIdentityAsync(session, CancellationToken.None).ConfigureAwait(false);
+        RecordTransferDiagnostic(
+            session,
+            TransferDiagnosticStage.Finalization,
+            TransferDiagnosticSeverity.Information,
+            "XDM-TRANSFER-ARIA2-FINALIZED",
+            "The aria2-owned destination passed XDM's completion validation.",
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["bytes"] = actualLength.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["backendTaskId"] = session.BackendTaskId
+            });
         Publish(session, forcePersist: true);
         DownloadEngineLog.DownloadCompleted(_logger, session.Id, session.DestinationPath);
     }
@@ -2088,6 +2522,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             policyLease = await _policyConcurrencyLimiter
                 .AcquireAsync("global", ResolveConcurrentDownloadLimit, cancellationToken)
                 .ConfigureAwait(false);
+            RecordTransferDiagnostic(
+                session,
+                TransferDiagnosticStage.Scheduling,
+                TransferDiagnosticSeverity.Information,
+                "XDM-TRANSFER-SCHEDULING-ADMITTED",
+                "Queue, global, and policy admission completed.",
+                new Dictionary<string, string?>(StringComparer.Ordinal)
+                {
+                    ["queueId"] = session.QueueId,
+                    ["host"] = session.Source.IdnHost
+                });
 
             int maximumAttempts = session.Method == "GET" ? _retryPolicy.MaximumAttempts : 1;
             while (true)
@@ -2136,6 +2581,19 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                                 session.ErrorMessage = $"Temporary failure. Retrying in {delay.TotalSeconds:0.0}s.";
                             }
 
+                            RecordTransferDiagnostic(
+                                session,
+                                TransferDiagnosticStage.Retry,
+                                TransferDiagnosticSeverity.Warning,
+                                "XDM-TRANSFER-RETRY",
+                                $"A transient failure will be retried after {delay.TotalSeconds:0.0} seconds.",
+                                new Dictionary<string, string?>(StringComparer.Ordinal)
+                                {
+                                    ["attempt"] = (attempt + 1).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                                    ["maximumAttempts"] = maximumAttempts.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                                    ["exception"] = exception.GetType().Name,
+                                    ["delayMilliseconds"] = delay.TotalMilliseconds.ToString("0", System.Globalization.CultureInfo.InvariantCulture)
+                                });
                             Publish(session, forcePersist: true);
                             DownloadEngineLog.DownloadRetrying(
                                 _logger,
@@ -2150,6 +2608,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
                         if (TrySwitchToNextMirror(session))
                         {
+                            RecordTransferDiagnostic(
+                                session,
+                                TransferDiagnosticStage.Retry,
+                                TransferDiagnosticSeverity.Warning,
+                                "XDM-TRANSFER-MIRROR-FAILOVER",
+                                "Retry attempts were exhausted; switching to the next configured mirror.",
+                                new Dictionary<string, string?>(StringComparer.Ordinal)
+                                {
+                                    ["failedSource"] = GetSafeSource(session.Source),
+                                    ["exception"] = exception.GetType().Name
+                                });
                             ResetTransferForMirror(session);
                             switchedMirror = true;
                             Publish(session, forcePersist: true);
@@ -2234,6 +2703,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
 
             SegmentedDownloadContext context = new(
+                session.Id,
                 session.Source,
                 session.DestinationPath,
                 session.Headers,
@@ -2286,6 +2756,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     session.State = DownloadState.Finalizing;
                 }
 
+                RecordTransferDiagnostic(
+                    session,
+                    TransferDiagnosticStage.Finalization,
+                    TransferDiagnosticSeverity.Information,
+                    "XDM-TRANSFER-FINALIZATION-START",
+                    "The merged segmented payload is entering verification and atomic finalization.");
                 await VerifyPartialIfExpectedAsync(session, partialPath, cancellationToken).ConfigureAwait(false);
                 WriteFinalizationMarker(session, segmentedResult.TotalBytes);
                 Publish(session, forcePersist: true);
@@ -2311,16 +2787,81 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             ApplyIfRangeValidator(request, session);
         }
 
+        ProxySettings proxy = (_settingsService.Current.Network?.Proxy ?? ProxySettings.SystemDefault).Normalize();
+        RecordTransferDiagnostic(
+            session,
+            TransferDiagnosticStage.Proxy,
+            TransferDiagnosticSeverity.Information,
+            "XDM-TRANSFER-PROXY-PIPELINE",
+            $"The HTTP pipeline is using {proxy.Mode} proxy mode.",
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["mode"] = proxy.Mode.ToString(),
+                ["authentication"] = proxy.AuthenticationMode.ToString()
+            });
+        RecordTransferDiagnostic(
+            session,
+            TransferDiagnosticStage.Connection,
+            TransferDiagnosticSeverity.Information,
+            "XDM-TRANSFER-CONNECTION-START",
+            "Opening the HTTP response pipeline.",
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["source"] = GetSafeSource(session.Source),
+                ["method"] = session.Method,
+                ["resumeOffset"] = existingLength.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            });
+        if (existingLength > 0)
+        {
+            RecordTransferDiagnostic(
+                session,
+                TransferDiagnosticStage.Resume,
+                TransferDiagnosticSeverity.Information,
+                "XDM-TRANSFER-RESUME-REQUEST",
+                "Requesting a validated byte-range resume.",
+                new Dictionary<string, string?>(StringComparer.Ordinal)
+                {
+                    ["offset"] = existingLength.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["hasEntityTag"] = (!string.IsNullOrWhiteSpace(session.EntityTag)).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["hasLastModified"] = (session.LastModified is not null).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                });
+        }
+
         DownloadEngineLog.DownloadStarted(_logger, session.Id, session.Source, existingLength);
         using HttpResponseMessage response = await _httpClient
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
+        RecordTransferDiagnostic(
+            session,
+            TransferDiagnosticStage.Http,
+            response.IsSuccessStatusCode ? TransferDiagnosticSeverity.Information : TransferDiagnosticSeverity.Warning,
+            "XDM-TRANSFER-HTTP-RESPONSE",
+            $"Received HTTP {(int)response.StatusCode} {response.ReasonPhrase}.",
+            CreateResponseDiagnosticContext(response));
 
         if (existingLength > 0 && response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
         {
             long? remoteLength = response.Content.Headers.ContentRange?.Length;
             if (remoteLength == existingLength)
             {
+                ValidateResumeValidators(response, session);
+                RecordTransferDiagnostic(
+                    session,
+                    TransferDiagnosticStage.Resume,
+                    TransferDiagnosticSeverity.Information,
+                    "XDM-TRANSFER-RESUME-416-VALIDATED",
+                    "The server confirmed that the validated partial already contains the complete remote object.",
+                    new Dictionary<string, string?>(StringComparer.Ordinal)
+                    {
+                        ["remoteLength"] = remoteLength?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ["localLength"] = existingLength.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    });
+                RecordTransferDiagnostic(
+                    session,
+                    TransferDiagnosticStage.Finalization,
+                    TransferDiagnosticSeverity.Information,
+                    "XDM-TRANSFER-FINALIZATION-START",
+                    "The validated complete partial is entering verification and atomic finalization.");
                 await VerifyPartialIfExpectedAsync(session, partialPath, cancellationToken).ConfigureAwait(false);
                 lock (session.Sync)
                 {
@@ -2332,6 +2873,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 await CompleteFromPartialAsync(session, partialPath, existingLength).ConfigureAwait(false);
                 return;
             }
+
+            throw new DownloadIntegrityException(
+                remoteLength is long reportedLength
+                    ? $"The server rejected resume and reports {reportedLength} bytes, but the local partial contains {existingLength} bytes."
+                    : "The server rejected resume without reporting the remote file length.");
         }
 
         response.EnsureSuccessStatusCode();
@@ -2342,10 +2888,32 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             ValidateContentRange(response, existingLength, session.TotalBytes);
             ValidateResumeValidators(response, session);
             append = true;
+            RecordTransferDiagnostic(
+                session,
+                TransferDiagnosticStage.Resume,
+                TransferDiagnosticSeverity.Information,
+                "XDM-TRANSFER-RESUME-VALIDATED",
+                "The server identity and returned range were validated before append.",
+                new Dictionary<string, string?>(StringComparer.Ordinal)
+                {
+                    ["offset"] = existingLength.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["contentRange"] = response.Content.Headers.ContentRange?.ToString()
+                });
         }
         else if (existingLength > 0)
         {
             DownloadEngineLog.RangeIgnored(_logger, session.Id, existingLength, response.StatusCode);
+            RecordTransferDiagnostic(
+                session,
+                TransferDiagnosticStage.Resume,
+                TransferDiagnosticSeverity.Warning,
+                "XDM-TRANSFER-RESUME-REJECTED",
+                "The server did not return a valid partial response, so existing bytes will not be appended.",
+                new Dictionary<string, string?>(StringComparer.Ordinal)
+                {
+                    ["statusCode"] = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["existingBytes"] = existingLength.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                });
             bool hadValidator;
             lock (session.Sync)
             {
@@ -2383,6 +2951,19 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         {
             ValidateKnownLength(session, knownTotalBytes);
         }
+        long? availableDiskBytes = _diskSpaceProvider.GetAvailableBytes(session.DestinationPath);
+        RecordTransferDiagnostic(
+            session,
+            TransferDiagnosticStage.Disk,
+            TransferDiagnosticSeverity.Information,
+            "XDM-TRANSFER-DISK-CHECK",
+            "Checking destination capacity before opening the partial file.",
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["availableBytes"] = availableDiskBytes?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["existingBytes"] = existingLength.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["totalBytes"] = totalBytes?.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            });
         EnsureDiskCapacity(session.DestinationPath, existingLength, totalBytes);
 
         lock (session.Sync)
@@ -2468,6 +3049,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         // Windows does not permit moving the partial file while its stream is open.
         // Keep finalization outside the FileStream scope so all platforms observe
         // the same handle-lifetime semantics.
+        RecordTransferDiagnostic(
+            session,
+            TransferDiagnosticStage.Finalization,
+            TransferDiagnosticSeverity.Information,
+            "XDM-TRANSFER-FINALIZATION-START",
+            "The payload is complete; verification and atomic finalization are starting.");
         await VerifyPartialIfExpectedAsync(session, partialPath, cancellationToken).ConfigureAwait(false);
         WriteFinalizationMarker(session, downloadedBytes);
         lock (session.Sync)
@@ -2525,18 +3112,32 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         long? expectedTotalBytes)
     {
         ContentRangeHeaderValue? contentRange = response.Content.Headers.ContentRange;
-        if (contentRange?.From != expectedStart)
+        if (contentRange is null || contentRange.From != expectedStart)
         {
             throw new DownloadIntegrityException(
                 $"The server returned an invalid range start. Expected {expectedStart.ToString(System.Globalization.CultureInfo.InvariantCulture)}; received {contentRange?.From?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "none"}.");
         }
 
-        if (expectedTotalBytes is long expectedTotal
-            && contentRange?.Length is long actualTotal
-            && actualTotal != expectedTotal)
+        if (contentRange.To is not long rangeEnd || rangeEnd < expectedStart)
+        {
+            throw new DownloadIntegrityException("The server returned an invalid or incomplete Content-Range header.");
+        }
+
+        if (contentRange.Length is not long actualTotal || actualTotal <= rangeEnd)
+        {
+            throw new DownloadIntegrityException("The server did not provide a valid total length for the resumed file.");
+        }
+
+        if (expectedTotalBytes is long expectedTotal && actualTotal != expectedTotal)
         {
             throw new DownloadIntegrityException(
                 $"The remote file length changed while resuming. Expected {expectedTotal}; received {actualTotal}.");
+        }
+
+        if (response.Content.Headers.ContentLength is long responseLength
+            && responseLength != checked(rangeEnd - expectedStart + 1))
+        {
+            throw new DownloadIntegrityException("The response length does not match its declared Content-Range.");
         }
     }
 
@@ -2551,7 +3152,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         string? responseEntityTag = response.Headers.ETag?.ToString();
-        if (!string.IsNullOrWhiteSpace(expectedEntityTag))
+        bool hasStrongEntityTag = !string.IsNullOrWhiteSpace(expectedEntityTag)
+            && EntityTagHeaderValue.TryParse(expectedEntityTag, out EntityTagHeaderValue? parsedExpectedEntityTag)
+            && !parsedExpectedEntityTag.IsWeak;
+        if (hasStrongEntityTag)
         {
             if (string.IsNullOrWhiteSpace(responseEntityTag))
             {
@@ -2562,6 +3166,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             {
                 throw new DownloadIntegrityException("The remote file entity tag changed while resuming.");
             }
+        }
+        else if (!string.IsNullOrWhiteSpace(expectedEntityTag) && expectedLastModified is null)
+        {
+            throw new DownloadIntegrityException(
+                "The stored entity tag is weak or invalid and cannot safely validate this resume.");
         }
 
         DateTimeOffset? responseLastModified = response.Content.Headers.LastModified;
@@ -2603,11 +3212,18 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         string destinationPath;
         string? checksumAlgorithm;
         string? checksum;
+        bool localIntegrityRecordOnly;
         lock (session.Sync)
         {
             destinationPath = session.DestinationPath;
-            checksumAlgorithm = session.ActualChecksum is null ? null : session.ExpectedChecksumAlgorithm;
+            checksumAlgorithm = session.ActualChecksum is null
+                ? null
+                : session.ExpectedChecksumAlgorithm
+                    ?? (session.ActualSha256 is not null
+                        ? DownloadChecksumService.Sha256
+                        : DownloadChecksumService.Sha512);
             checksum = session.ActualChecksum;
+            localIntegrityRecordOnly = session.LocalIntegrityRecordOnly;
         }
 
         string markerPath = GetFinalizationMarkerPath(destinationPath);
@@ -2617,7 +3233,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             downloadedBytes,
             checksumAlgorithm,
             checksum,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            localIntegrityRecordOnly);
         byte[] payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(marker));
         using (FileStream stream = new(
             temporaryPath,
@@ -2693,8 +3310,19 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 return;
             }
             session.ActualChecksum = actual;
+            if (string.Equals(marker.ChecksumAlgorithm, DownloadChecksumService.Sha512, StringComparison.Ordinal))
+            {
+                session.ActualSha512 = actual;
+            }
+            else
+            {
+                session.ActualSha256 = actual;
+            }
             session.LastVerifiedAt = DateTimeOffset.UtcNow;
-            session.IntegrityStatus = DownloadIntegrityStatus.Verified;
+            session.LocalIntegrityRecordOnly = marker.LocalIntegrityRecordOnly;
+            session.IntegrityStatus = marker.LocalIntegrityRecordOnly
+                ? DownloadIntegrityStatus.LocalRecord
+                : DownloadIntegrityStatus.Verified;
         }
 
         if (!string.Equals(candidatePath, session.DestinationPath, StringComparison.Ordinal))
@@ -2756,6 +3384,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         long downloadedBytes)
     {
         File.Move(partialPath, session.DestinationPath, overwrite: true);
+        PromoteRepairManifest(session, partialPath);
         string markerPath = GetFinalizationMarkerPath(session.DestinationPath);
         if (File.Exists(markerPath))
         {
@@ -2782,12 +3411,130 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         await RefreshContentIdentityAsync(session, CancellationToken.None).ConfigureAwait(false);
+        RecordTransferDiagnostic(
+            session,
+            TransferDiagnosticStage.Finalization,
+            TransferDiagnosticSeverity.Information,
+            "XDM-TRANSFER-FINALIZED",
+            "The partial file was atomically promoted to its final destination.",
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["bytes"] = downloadedBytes.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            });
         Publish(session, forcePersist: true);
         DownloadEngineLog.DownloadCompleted(_logger, session.Id, session.DestinationPath);
     }
 
+    private void PromoteRepairManifest(DownloadSession session, string partialPath)
+    {
+        string sourcePath = TransferArtifactPaths.GetRepairManifestPath(partialPath);
+        string destinationPath = TransferArtifactPaths.GetRepairManifestPath(session.DestinationPath);
+        try
+        {
+            if (File.Exists(sourcePath))
+            {
+                File.Move(sourcePath, destinationPath, overwrite: true);
+            }
+            else
+            {
+                DeleteIfExists(destinationPath);
+            }
+        }
+        catch (IOException exception)
+        {
+            RecordTransferDiagnostic(
+                session,
+                TransferDiagnosticStage.Finalization,
+                TransferDiagnosticSeverity.Warning,
+                "XDM-TRANSFER-REPAIR-MANIFEST-PROMOTION-FAILED",
+                $"The download completed, but its selective-repair manifest could not be promoted: {exception.Message}");
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            RecordTransferDiagnostic(
+                session,
+                TransferDiagnosticStage.Finalization,
+                TransferDiagnosticSeverity.Warning,
+                "XDM-TRANSFER-REPAIR-MANIFEST-PROMOTION-DENIED",
+                $"The download completed, but access to its selective-repair manifest was denied: {exception.Message}");
+        }
+    }
+
+    private void RecordTransferDiagnostic(
+        DownloadSession session,
+        TransferDiagnosticStage stage,
+        TransferDiagnosticSeverity severity,
+        string code,
+        string message,
+        IReadOnlyDictionary<string, string?>? context = null)
+    {
+        try
+        {
+            _transferDiagnostics.Record(session.Id, stage, severity, code, message, context);
+        }
+        catch (Exception exception)
+        {
+            DownloadEngineLog.TransferDiagnosticsSinkFailed(_logger, session.Id, exception);
+        }
+    }
+
+    private static Dictionary<string, string?> CreateResponseDiagnosticContext(HttpResponseMessage response)
+    {
+        Dictionary<string, string?> context = new(StringComparer.Ordinal)
+        {
+            ["statusCode"] = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["httpVersion"] = response.Version.ToString(),
+            ["contentLength"] = response.Content.Headers.ContentLength?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["contentRange"] = response.Content.Headers.ContentRange?.ToString(),
+            ["acceptRanges"] = string.Join(",", response.Headers.AcceptRanges)
+        };
+        AddDiagnosticHeader(context, response, "Content-Type");
+        AddDiagnosticHeader(context, response, "Content-Length");
+        AddDiagnosticHeader(context, response, "Content-Range");
+        AddDiagnosticHeader(context, response, "Accept-Ranges");
+        AddDiagnosticHeader(context, response, "ETag");
+        AddDiagnosticHeader(context, response, "Last-Modified");
+        AddDiagnosticHeader(context, response, "Location");
+        AddDiagnosticHeader(context, response, "Retry-After");
+        AddDiagnosticHeader(context, response, "Content-Disposition");
+        AddDiagnosticHeader(context, response, "Cache-Control");
+        AddDiagnosticHeader(context, response, "Server");
+        return context;
+    }
+
+    private static void AddDiagnosticHeader(
+        Dictionary<string, string?> context,
+        HttpResponseMessage response,
+        string name)
+    {
+        if (response.Headers.TryGetValues(name, out IEnumerable<string>? responseValues))
+        {
+            context[$"header.{name}"] = string.Join(", ", responseValues.Take(16));
+            return;
+        }
+
+        if (response.Content.Headers.TryGetValues(name, out IEnumerable<string>? contentValues))
+        {
+            context[$"header.{name}"] = string.Join(", ", contentValues.Take(16));
+        }
+    }
+
+    private static string GetSafeSource(Uri source)
+        => source.GetLeftPart(UriPartial.Path);
+
     private void Fail(DownloadSession session, Exception exception)
     {
+        RecordTransferDiagnostic(
+            session,
+            TransferDiagnosticStage.Connection,
+            TransferDiagnosticSeverity.Error,
+            "XDM-TRANSFER-FAILED",
+            exception.Message,
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["exception"] = exception.GetType().Name,
+                ["source"] = GetSafeSource(session.Source)
+            });
         lock (session.Sync)
         {
             session.State = DownloadState.Failed;
@@ -3414,6 +4161,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
         DeleteIfExists($"{checkpointPath}.tmp");
         DeleteIfExists($"{partialPath}.merge");
+        DeleteIfExists(TransferArtifactPaths.GetRepairManifestPath(partialPath));
+        DeleteIfExists(TransferArtifactPaths.GetRepairManifestPath(destinationPath));
 
         string markerPath = GetFinalizationMarkerPath(destinationPath);
         if (File.Exists(markerPath))
@@ -3554,7 +4303,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.IsArchived,
                 session.ContentHashSha256,
                 session.DuplicateOfDownloadId,
-                session.DuplicateReason);
+                session.DuplicateReason,
+                session.ExpectedSha256,
+                session.ExpectedSha512,
+                session.ActualSha256,
+                session.ActualSha512,
+                session.VerificationBytesProcessed,
+                session.VerificationTotalBytes);
         }
     }
 
@@ -3951,6 +4706,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.EntityTag = null;
             session.LastModified = null;
             session.ActualChecksum = null;
+            session.ActualSha256 = null;
+            session.ActualSha512 = null;
             session.LastVerifiedAt = null;
             session.IntegrityStatus = DownloadIntegrityStatus.Checkpointed;
             session.RecoveryRequired = false;
@@ -3972,47 +4729,324 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         DeleteTransferArtifacts(destinationPath);
     }
 
-    private static async Task VerifyPartialIfExpectedAsync(
+    private async Task VerifyPartialIfExpectedAsync(
         DownloadSession session,
         string partialPath,
         CancellationToken cancellationToken)
     {
-        string? algorithm;
-        string? expected;
+        RecordTransferDiagnostic(
+            session,
+            TransferDiagnosticStage.Verification,
+            TransferDiagnosticSeverity.Information,
+            "XDM-TRANSFER-VERIFY-START",
+            "Computing expected checksums, or a local SHA-256 integrity record, before finalization.");
+        ChecksumVerificationOutcome outcome = await VerifyFileAgainstWorkflowAsync(
+            session,
+            partialPath,
+            cancellationToken).ConfigureAwait(false);
+        RecordTransferDiagnostic(
+            session,
+            TransferDiagnosticStage.Verification,
+            outcome.IsMatch ? TransferDiagnosticSeverity.Information : TransferDiagnosticSeverity.Error,
+            outcome.IsMatch ? "XDM-TRANSFER-VERIFY-PASSED" : "XDM-TRANSFER-VERIFY-FAILED",
+            outcome.Message);
+        if (!outcome.IsMatch)
+        {
+            throw new DownloadIntegrityException(outcome.Message);
+        }
+    }
+
+    private async Task<ChecksumVerificationOutcome> VerifyFileAgainstWorkflowAsync(
+        DownloadSession session,
+        string filePath,
+        CancellationToken cancellationToken)
+    {
+        string? expectedSha256;
+        string? expectedSha512;
         lock (session.Sync)
         {
-            algorithm = session.ExpectedChecksumAlgorithm;
-            expected = session.ExpectedChecksum;
+            expectedSha256 = session.ExpectedSha256;
+            expectedSha512 = session.ExpectedSha512;
+            session.IntegrityStatus = DownloadIntegrityStatus.Verifying;
+            session.VerificationBytesProcessed = 0;
+            session.VerificationTotalBytes = new FileInfo(filePath).Length;
         }
-
-        if (string.IsNullOrWhiteSpace(algorithm) || string.IsNullOrWhiteSpace(expected))
+        Publish(session, forcePersist: false);
+        bool localRecordOnly = expectedSha256 is null && expectedSha512 is null;
+        Progress<(long Processed, long Total)> progress = new(value =>
         {
-            return;
-        }
-
-        string actual = await DownloadChecksumService
-            .ComputeAsync(partialPath, algorithm, cancellationToken)
-            .ConfigureAwait(false);
-        bool matches = string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase);
+            lock (session.Sync)
+            {
+                session.VerificationBytesProcessed = value.Processed;
+                session.VerificationTotalBytes = value.Total;
+            }
+            Publish(session, forcePersist: false);
+        });
+        (string? actualSha256, string? actualSha512) = await DownloadChecksumService.ComputeSetAsync(
+            filePath,
+            includeSha256: expectedSha256 is not null || localRecordOnly,
+            includeSha512: expectedSha512 is not null,
+            progress,
+            cancellationToken).ConfigureAwait(false);
+        bool sha256Matches = expectedSha256 is null
+            || string.Equals(actualSha256, expectedSha256, StringComparison.OrdinalIgnoreCase);
+        bool sha512Matches = expectedSha512 is null
+            || string.Equals(actualSha512, expectedSha512, StringComparison.OrdinalIgnoreCase);
+        bool matches = sha256Matches && sha512Matches;
+        DateTimeOffset verifiedAt = DateTimeOffset.UtcNow;
         lock (session.Sync)
         {
-            session.ActualChecksum = actual;
-            session.LastVerifiedAt = DateTimeOffset.UtcNow;
+            session.ActualSha256 = actualSha256;
+            session.ActualSha512 = actualSha512;
+            session.ActualChecksum = session.ExpectedChecksumAlgorithm == DownloadChecksumService.Sha512
+                ? actualSha512
+                : actualSha256 ?? actualSha512;
+            session.LastVerifiedAt = verifiedAt;
+            session.LocalIntegrityRecordOnly = localRecordOnly;
+            session.VerificationBytesProcessed = session.VerificationTotalBytes ?? 0;
             session.IntegrityStatus = matches
-                ? DownloadIntegrityStatus.Verified
+                ? localRecordOnly
+                    ? DownloadIntegrityStatus.LocalRecord
+                    : DownloadIntegrityStatus.Verified
                 : DownloadIntegrityStatus.Mismatch;
             session.RecoveryRequired = !matches;
             session.RecoveryMessage = matches
                 ? null
-                : "The completed partial file failed checksum verification and was not finalized.";
+                : "The file does not match all configured expected checksums.";
+            session.ErrorMessage = matches ? null : session.RecoveryMessage;
         }
-
-        if (!matches)
+        await SaveChecksumWorkflowAsync(session, cancellationToken, matches).ConfigureAwait(false);
+        if (matches)
         {
-            throw new DownloadIntegrityException(
-                $"{algorithm} checksum mismatch. Expected {expected}; received {actual}.");
+            try
+            {
+                await _partialFileRepairService.CaptureVerifiedStateAsync(
+                    filePath,
+                    new FileInfo(filePath).Length,
+                    session.EntityTag,
+                    session.LastModified,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (IOException exception)
+            {
+                RecordTransferDiagnostic(
+                    session,
+                    TransferDiagnosticStage.Verification,
+                    TransferDiagnosticSeverity.Warning,
+                    "XDM-TRANSFER-REPAIR-MANIFEST-FAILED",
+                    $"Verification succeeded, but the block repair manifest could not be persisted: {exception.Message}");
+            }
+            catch (UnauthorizedAccessException exception)
+            {
+                RecordTransferDiagnostic(
+                    session,
+                    TransferDiagnosticStage.Verification,
+                    TransferDiagnosticSeverity.Warning,
+                    "XDM-TRANSFER-REPAIR-MANIFEST-DENIED",
+                    $"Verification succeeded, but the block repair manifest could not be written: {exception.Message}");
+            }
+        }
+        string message = localRecordOnly
+            ? $"Recorded local SHA-256 integrity value {actualSha256}; no independent expected checksum was supplied."
+            : matches
+                ? "All configured expected checksums matched."
+                : BuildChecksumMismatchMessage(expectedSha256, actualSha256, expectedSha512, actualSha512);
+        return new ChecksumVerificationOutcome(
+            expectedSha256,
+            expectedSha512,
+            actualSha256,
+            actualSha512,
+            matches,
+            localRecordOnly,
+            message);
+    }
+
+    private async Task LoadChecksumWorkflowAsync(
+        DownloadSession session,
+        CancellationToken cancellationToken)
+    {
+        DownloadChecksumWorkflowState state = await _checksumWorkflowStore
+            .LoadAsync(session.DestinationPath, cancellationToken)
+            .ConfigureAwait(false);
+        lock (session.Sync)
+        {
+            session.ExpectedSha256 = state.ExpectedSha256;
+            session.ExpectedSha512 = state.ExpectedSha512;
+            if (session.ExpectedSha256 is null && session.ExpectedSha512 is null
+                && !string.IsNullOrWhiteSpace(session.ExpectedChecksum))
+            {
+                if (string.Equals(session.ExpectedChecksumAlgorithm, DownloadChecksumService.Sha512, StringComparison.Ordinal))
+                {
+                    session.ExpectedSha512 = session.ExpectedChecksum;
+                }
+                else
+                {
+                    session.ExpectedSha256 = session.ExpectedChecksum;
+                }
+            }
+            session.ActualSha256 = state.ActualSha256;
+            session.ActualSha512 = state.ActualSha512;
+            session.LocalIntegrityRecordOnly = state.LocalIntegrityRecordOnly;
+            session.VerificationBytesProcessed = state.VerificationBytesProcessed;
+            session.VerificationTotalBytes = state.VerificationTotalBytes;
+            session.LastVerifiedAt ??= state.LastVerifiedAt;
+            session.ExpectedChecksumAlgorithm = session.ExpectedSha256 is not null
+                ? DownloadChecksumService.Sha256
+                : session.ExpectedSha512 is not null
+                    ? DownloadChecksumService.Sha512
+                    : session.ExpectedChecksumAlgorithm;
+            session.ExpectedChecksum = session.ExpectedSha256 ?? session.ExpectedSha512 ?? session.ExpectedChecksum;
+            session.ActualChecksum = session.ExpectedChecksumAlgorithm == DownloadChecksumService.Sha512
+                ? session.ActualSha512 ?? session.ActualChecksum
+                : session.ActualSha256 ?? session.ActualChecksum;
+        }
+        if (state.ExpectedSha256 is null && state.ExpectedSha512 is null
+            && (session.ExpectedSha256 is not null || session.ExpectedSha512 is not null))
+        {
+            await SaveChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    private Task SaveChecksumWorkflowAsync(
+        DownloadSession session,
+        CancellationToken cancellationToken,
+        bool? isMatch = null)
+    {
+        DownloadChecksumWorkflowState state;
+        lock (session.Sync)
+        {
+            state = new DownloadChecksumWorkflowState(
+                DownloadChecksumWorkflowState.CurrentVersion,
+                session.DestinationPath,
+                session.ExpectedSha256,
+                session.ExpectedSha512,
+                session.ActualSha256,
+                session.ActualSha512,
+                session.LastVerifiedAt,
+                isMatch ?? (session.IntegrityStatus is DownloadIntegrityStatus.Verified or DownloadIntegrityStatus.LocalRecord
+                    ? true
+                    : session.IntegrityStatus == DownloadIntegrityStatus.Mismatch
+                        ? false
+                        : null),
+                session.LocalIntegrityRecordOnly,
+                session.VerificationBytesProcessed,
+                session.VerificationTotalBytes);
+        }
+        return _checksumWorkflowStore.SaveAsync(state, cancellationToken);
+    }
+
+    private static async Task ReconstructPartialFromSegmentsAsync(
+        DownloadSession session,
+        string partialPath,
+        long expectedLength,
+        CancellationToken cancellationToken)
+    {
+        string segmentDirectory = SegmentedDownloadExecutor.GetSegmentDirectory(session.DestinationPath);
+        if (!Directory.Exists(segmentDirectory))
+        {
+            return;
+        }
+        string[] segments = Directory.EnumerateFiles(segmentDirectory, "*.part", SearchOption.TopDirectoryOnly)
+            .OrderBy(static path => ParseSegmentIndex(path))
+            .ToArray();
+        if (segments.Length == 0)
+        {
+            return;
+        }
+        int connectionCount = segments
+            .Select(static path => ParseSegmentIndex(path))
+            .Where(static index => index != int.MaxValue)
+            .DefaultIfEmpty(-1)
+            .Max() + 1;
+        if (connectionCount <= 0)
+        {
+            return;
+        }
+        SegmentedDownloadPlan plan = SegmentedDownloadPlan.Create(expectedLength, connectionCount);
+        string temporaryPath = $"{partialPath}.reconstruct";
+        await using (FileStream output = new(
+            temporaryPath,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            128 * 1024,
+            FileOptions.Asynchronous | FileOptions.WriteThrough))
+        {
+            output.SetLength(expectedLength);
+            foreach (string segmentPath in segments)
+            {
+                int index = ParseSegmentIndex(segmentPath);
+                if (index < 0 || index >= plan.Segments.Count)
+                {
+                    continue;
+                }
+                DownloadSegment segment = plan.Segments[index];
+                output.Position = segment.Start;
+                await using FileStream input = new(
+                    segmentPath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    128 * 1024,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+                long remaining = Math.Min(segment.Length, input.Length);
+                byte[] buffer = new byte[128 * 1024];
+                while (remaining > 0)
+                {
+                    int read = await input.ReadAsync(
+                        buffer.AsMemory(0, checked((int)Math.Min(buffer.Length, remaining))),
+                        cancellationToken).ConfigureAwait(false);
+                    if (read == 0)
+                    {
+                        break;
+                    }
+                    await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+                    remaining -= read;
+                }
+            }
+            await output.FlushAsync(cancellationToken).ConfigureAwait(false);
+            output.Flush(flushToDisk: true);
+        }
+        File.Move(temporaryPath, partialPath, overwrite: true);
+    }
+
+    private static int ParseSegmentIndex(string path)
+    {
+        string name = Path.GetFileNameWithoutExtension(path);
+        return int.TryParse(name, System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out int index)
+            ? index
+            : int.MaxValue;
+    }
+
+    private static string BuildChecksumMismatchMessage(
+        string? expectedSha256,
+        string? actualSha256,
+        string? expectedSha512,
+        string? actualSha512)
+    {
+        List<string> failures = [];
+        if (expectedSha256 is not null
+            && !string.Equals(expectedSha256, actualSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            failures.Add($"SHA-256 expected {expectedSha256}, received {actualSha256 ?? "none"}");
+        }
+        if (expectedSha512 is not null
+            && !string.Equals(expectedSha512, actualSha512, StringComparison.OrdinalIgnoreCase))
+        {
+            failures.Add($"SHA-512 expected {expectedSha512}, received {actualSha512 ?? "none"}");
+        }
+        return $"Checksum verification failed: {string.Join("; ", failures)}.";
+    }
+
+    private sealed record ChecksumVerificationOutcome(
+        string? ExpectedSha256,
+        string? ExpectedSha512,
+        string? ActualSha256,
+        string? ActualSha512,
+        bool IsMatch,
+        bool LocalIntegrityRecordOnly,
+        string Message);
 
     private static string ResolveUniqueArtifactPath(string basePath)
     {
@@ -4044,6 +5078,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             : DownloadChecksumService.NormalizeChecksum(
                 checksum,
                 DownloadChecksumService.NormalizeAlgorithm(algorithm));
+
+    private static string? NormalizeOptionalChecksum(string? checksum, string algorithm)
+        => string.IsNullOrWhiteSpace(checksum)
+            ? null
+            : DownloadChecksumService.NormalizeChecksum(checksum, algorithm);
 
     private static Uri[] NormalizeMirrors(
         Uri primary,
@@ -4238,6 +5277,20 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         public string? ExpectedChecksum { get; set; }
 
         public string? ActualChecksum { get; set; }
+
+        public string? ExpectedSha256 { get; set; }
+
+        public string? ExpectedSha512 { get; set; }
+
+        public string? ActualSha256 { get; set; }
+
+        public string? ActualSha512 { get; set; }
+
+        public long VerificationBytesProcessed { get; set; }
+
+        public long? VerificationTotalBytes { get; set; }
+
+        public bool LocalIntegrityRecordOnly { get; set; }
 
         public DateTimeOffset? LastVerifiedAt { get; set; }
 

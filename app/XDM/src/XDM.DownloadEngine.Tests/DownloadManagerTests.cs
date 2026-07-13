@@ -519,6 +519,61 @@ public sealed class DownloadManagerTests
     }
 
     [Fact]
+    public async Task UndoRestoresMostRecentlyRemovedHistoryEntry()
+    {
+        byte[] payload = CreatePayload(1024, 67);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        InMemoryHistoryStore history = new();
+        using DownloadManager manager = CreateManager(client, state, history);
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/undo.bin"),
+            directory.Path,
+            "undo.bin"));
+        await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        await manager.DeleteAsync(id, DownloadDeletionScope.HistoryOnly);
+
+        Assert.Empty(state.Current.Downloads);
+        Assert.Equal(1, manager.UndoableRemovalCount);
+        Assert.True(File.Exists(Path.Combine(directory.Path, "undo.bin")));
+
+        string? restoredId = await manager.UndoLastRemovalAsync();
+
+        Assert.Equal(id, restoredId);
+        Assert.Equal(0, manager.UndoableRemovalCount);
+        DownloadSnapshot restored = Assert.Single(state.Current.Downloads);
+        Assert.Equal(id, restored.Id);
+        Assert.Equal(DownloadState.Completed, restored.State);
+        Assert.Equal(id, Assert.Single(history.Downloads).Id);
+    }
+
+    [Fact]
+    public async Task CancelledUndoLeavesRemovalAvailable()
+    {
+        byte[] payload = CreatePayload(256, 71);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/cancelled-undo.bin"),
+            directory.Path,
+            "cancelled-undo.bin"));
+        await WaitForStateAsync(state, id, DownloadState.Completed);
+        await manager.DeleteAsync(id, DownloadDeletionScope.HistoryOnly);
+        using CancellationTokenSource cancellation = new();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => manager.UndoLastRemovalAsync(cancellation.Token));
+
+        Assert.Equal(1, manager.UndoableRemovalCount);
+        Assert.Empty(state.Current.Downloads);
+    }
+
+    [Fact]
     public async Task RedownloadCreatesNewEntryWithSourcePageAndAutoRename()
     {
         byte[] payload = CreatePayload(512, 41);
@@ -724,7 +779,7 @@ public sealed class DownloadManagerTests
     }
 
     [Fact]
-    public async Task VerificationAndRepairPreserveSuspectFileAndDownloadCleanCopy()
+    public async Task VerificationAndRestartFromZeroPreserveSuspectFileAndDownloadCleanCopy()
     {
         byte[] expectedPayload = CreatePayload(2048, 97);
         byte[] corruptPayload = CreatePayload(2048, 89);
@@ -750,7 +805,7 @@ public sealed class DownloadManagerTests
         DownloadVerificationResult verification = await manager.VerifyAsync("repair");
         Assert.False(verification.IsMatch);
 
-        DownloadRepairResult repair = await manager.RepairAsync("repair");
+        DownloadRepairResult repair = await manager.RestartFromZeroAsync("repair");
         await WaitForStateAsync(state, "repair", DownloadState.Completed);
 
         Assert.NotNull(repair.PreservedCorruptPath);
@@ -862,7 +917,7 @@ public sealed class DownloadManagerTests
         Assert.Equal("mirror.example.test", completed.Source.Host);
         Assert.Equal(1, handler.PrimaryRequests);
         Assert.Equal(1, handler.MirrorRequests);
-        Assert.Equal(payload, await File.ReadAllBytesAsync(completed.DestinationPath));
+        Assert.Equal(payload, await File.ReadAllBytesAsync(completed.DestinationPath, CancellationToken.None));
     }
 
     [Fact]
@@ -1142,6 +1197,108 @@ public sealed class DownloadManagerTests
         Assert.Contains(history.Downloads, item => item.Id == id && item.IsArchived);
     }
 
+    [Fact]
+    public async Task AutomaticallyVerifiesBothConfiguredChecksumsBeforeFinalization()
+    {
+        byte[] payload = CreatePayload(128 * 1024, 251);
+        string sha256 = Convert.ToHexString(SHA256.HashData(payload));
+        string sha512 = Convert.ToHexString(SHA512.HashData(payload));
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/dual-checksum.bin"),
+            directory.Path,
+            "dual-checksum.bin",
+            ConnectionCount: 1,
+            ExpectedSha256: sha256,
+            ExpectedSha512: sha512), CancellationToken.None);
+
+        DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        Assert.Equal(DownloadIntegrityStatus.Verified, completed.IntegrityStatus);
+        Assert.Equal(sha256, completed.ActualSha256);
+        Assert.Equal(sha512, completed.ActualSha512);
+        Assert.Equal(payload.Length, completed.VerificationBytesProcessed);
+    }
+
+    [Fact]
+    public async Task RepairReplacesOnlyTheCorruptRangeAndPreservesMatchingData()
+    {
+        byte[] payload = CreatePayload((5 * 1024 * 1024) + 37, 239);
+        string sha256 = Convert.ToHexString(SHA256.HashData(payload));
+        using TemporaryDirectory directory = new();
+        RangeHandler handler = new(payload);
+        using HttpClient client = new(handler);
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/repair.bin"),
+            directory.Path,
+            "repair.bin",
+            ConnectionCount: 1,
+            ExpectedSha256: sha256), CancellationToken.None);
+        DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
+        byte[] corrupt = await File.ReadAllBytesAsync(completed.DestinationPath, CancellationToken.None);
+        corrupt[(4 * 1024 * 1024) + 12] ^= 0x7f;
+        await File.WriteAllBytesAsync(completed.DestinationPath, corrupt, CancellationToken.None);
+
+        DownloadVerificationResult mismatch = await manager.VerifyAsync(id, CancellationToken.None);
+        Assert.False(mismatch.IsMatch);
+
+        DownloadRepairResult repaired = await manager.RepairAsync(id, CancellationToken.None);
+
+        Assert.True(repaired.ChecksumMatched);
+        Assert.Equal(1, repaired.RepairedRangeCount);
+        Assert.Equal(payload.Length - (4L * 1024 * 1024), repaired.BytesDownloaded);
+        Assert.Equal(payload.Length - (4L * 1024 * 1024), repaired.BytesRepaired);
+        Assert.Equal(payload, await File.ReadAllBytesAsync(completed.DestinationPath, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task VerificationWithoutAnExpectedChecksumCreatesALocalRecordWithoutNetworkTraffic()
+    {
+        byte[] payload = CreatePayload(96 * 1024, 241);
+        using TemporaryDirectory directory = new();
+        RangeHandler handler = new(payload);
+        using HttpClient client = new(handler);
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/local-record.bin"),
+            directory.Path,
+            "local-record.bin",
+            ConnectionCount: 1), CancellationToken.None);
+        DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
+        int requestsBeforeVerification = handler.RequestCount;
+
+        DownloadVerificationResult verified = await manager.VerifyAsync(id, CancellationToken.None);
+
+        Assert.True(verified.IsMatch);
+        Assert.True(verified.LocalIntegrityRecordOnly);
+        Assert.Equal(DownloadIntegrityStatus.LocalRecord,
+            Assert.Single(state.Current.Downloads, item => item.Id == id).IntegrityStatus);
+        Assert.Equal(requestsBeforeVerification, handler.RequestCount);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(payload)), completed.ActualSha256);
+    }
+
+    [Fact]
+    public void ChecksumParserAcceptsCommonSha256AndSha512FileFormats()
+    {
+        string sha256 = new('A', 64);
+        string sha512 = new('B', 128);
+
+        ParsedChecksums parsed = DownloadChecksumParser.Parse(
+            $"SHA256(file.bin) = {sha256}{Environment.NewLine}{sha512}  file.bin");
+
+        Assert.Equal(sha256, parsed.Sha256);
+        Assert.Equal(sha512, parsed.Sha512);
+    }
+
     private static DownloadManager CreateManager(
         HttpClient client,
         ApplicationState state,
@@ -1215,23 +1372,25 @@ public sealed class DownloadManagerTests
             LastCookie = request.Headers.TryGetValues("Cookie", out IEnumerable<string>? cookieValues)
                 ? cookieValues.Single()
                 : null;
-            LastRangeStart = request.Headers.Range?.Ranges.FirstOrDefault()?.From;
+            RangeItemHeaderValue? requestedRange = request.Headers.Range?.Ranges.FirstOrDefault();
+            LastRangeStart = requestedRange?.From;
             LastIfRangeEntityTag = request.Headers.IfRange?.EntityTag?.ToString();
-            int offset = checked((int)(LastRangeStart ?? 0));
-            ByteArrayContent content = new(payload[offset..]);
+            int offset = checked((int)(requestedRange?.From ?? 0));
+            int end = checked((int)Math.Min(requestedRange?.To ?? (payload.Length - 1), payload.Length - 1));
+            ByteArrayContent content = new(payload[offset..(end + 1)]);
             HttpResponseMessage response = new(
-                offset > 0 ? HttpStatusCode.PartialContent : HttpStatusCode.OK)
+                requestedRange is null ? HttpStatusCode.OK : HttpStatusCode.PartialContent)
             {
                 Content = content
             };
 
             response.Headers.ETag = EntityTagHeaderValue.Parse(entityTag);
-            response.Content.Headers.ContentLength = payload.Length - offset;
-            if (offset > 0)
+            response.Content.Headers.ContentLength = end - offset + 1;
+            if (requestedRange is not null)
             {
                 response.Content.Headers.ContentRange = new ContentRangeHeaderValue(
                     offset,
-                    payload.Length - 1,
+                    end,
                     payload.Length);
             }
 

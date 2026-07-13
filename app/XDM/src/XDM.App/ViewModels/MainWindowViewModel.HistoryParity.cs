@@ -287,7 +287,9 @@ public partial class MainWindowViewModel
                         ExpectedLength: entry.ExpectedLength,
                         BackendPreference: entry.BackendPreference,
                         AllowBackendFallback: entry.AllowBackendFallback,
-                        Tags: entry.Tags));
+                        Tags: entry.Tags,
+                        ExpectedSha256: entry.ExpectedSha256,
+                        ExpectedSha512: entry.ExpectedSha512));
                     added++;
                 }
                 catch (ArgumentException)

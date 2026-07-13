@@ -20,13 +20,17 @@ public sealed class ResumeIntegrityUiArchitectureTests
 
         Assert.Contains("RecoveryReviewBanner", automationIds);
         Assert.Contains("ImportMetalink", automationIds);
-        Assert.Contains("NewDownloadChecksumAlgorithm", automationIds);
-        Assert.Contains("NewDownloadExpectedChecksum", automationIds);
+        Assert.Contains("NewDownloadExpectedSha256", automationIds);
+        Assert.Contains("NewDownloadExpectedSha512", automationIds);
+        Assert.Contains("SelectedExpectedSha256", automationIds);
+        Assert.Contains("SelectedExpectedSha512", automationIds);
         Assert.Contains("NewDownloadMirrors", automationIds);
         Assert.Contains(elements, static element =>
             string.Equals(element.Attribute("Command")?.Value, "{Binding VerifySelectedDownloadCommand}", StringComparison.Ordinal));
         Assert.Contains(elements, static element =>
             string.Equals(element.Attribute("Command")?.Value, "{Binding RepairSelectedDownloadCommand}", StringComparison.Ordinal));
+        Assert.Contains(elements, static element =>
+            string.Equals(element.Attribute("Command")?.Value, "{Binding ApplySelectedExpectedChecksumsCommand}", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -46,6 +50,7 @@ public sealed class ResumeIntegrityUiArchitectureTests
             "ui_recovery_items_one",
             "ui_recovery_items_many",
             "integrity_verified",
+            "integrity_localrecord",
             "integrity_mismatch",
         ];
 

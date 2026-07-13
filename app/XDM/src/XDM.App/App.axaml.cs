@@ -306,6 +306,9 @@ public partial class App : Application
         services.AddSingleton<IAntivirusScanner, AntivirusScanner>();
         services.AddSingleton<ITransferEnvironmentProbe, SystemTransferEnvironmentProbe>();
         services.AddSingleton<ITransferPolicyRuntime, TransferPolicyRuntime>();
+        services.AddSingleton<DownloadChecksumWorkflowStore>();
+        services.AddSingleton<IPartialFileRepairService>(static provider =>
+            new PartialFileRepairService(provider.GetRequiredService<HttpClient>()));
         services.AddSingleton<IDownloadManager, DownloadManager>();
         services.AddSingleton<IDownloadRecoveryCoordinator, DownloadRecoveryCoordinator>();
         services.AddSingleton<IQueueSchedulerRuntime, QueueSchedulerRuntime>();

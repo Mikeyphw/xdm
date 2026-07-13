@@ -109,7 +109,7 @@ public partial class MainWindowViewModel
         await RunRecoveryActionAsync(
             async () =>
             {
-                DownloadRepairResult result = await _downloadManager.RepairAsync(downloadId);
+                DownloadRepairResult result = await _downloadManager.RestartFromZeroAsync(downloadId);
                 _downloadRecoveryCoordinator.Dismiss(selected.Id);
                 OperationMessage = $"Restarted from zero. {result.Message}";
             },
