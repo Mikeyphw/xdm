@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-07-14T03:26:36.794302Z",
+  "artifact": "/sdcard/Download/xdm_atomic_finalization_shutdown_tracking_overlay.zip",
+  "artifact_name": "xdm_atomic_finalization_shutdown_tracking_overlay.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "069d45f53e0f4203b26b13ac5c500ddc"
+}
