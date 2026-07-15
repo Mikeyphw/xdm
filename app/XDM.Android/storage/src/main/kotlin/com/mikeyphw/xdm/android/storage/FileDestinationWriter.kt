@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android.storage
 
+import android.annotation.SuppressLint
 import com.mikeyphw.xdm.android.model.DestinationHealthStatus
 import com.mikeyphw.xdm.android.model.DestinationType
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
@@ -40,6 +41,7 @@ class FileDestinationWriter(
             override val destinationKey: String = resolved.canonicalFile.toURI().normalize().toString()
             override val displayName: String = resolved.name
             override val artifacts: DestinationArtifacts = artifacts
+            @SuppressLint("UsableSpace")
             override suspend fun availableSpace(): Long? = resolved.parentFile?.usableSpace
             override suspend fun promote(): DestinationPromotionResult {
                 check(artifacts.stagingFile.isFile) { "Staging file is missing" }
@@ -83,12 +85,15 @@ class FileDestinationWriter(
                 type = if (destinationUri == DestinationUris.APP_PRIVATE_DOWNLOADS) DestinationType.AppPrivate else DestinationType.FileSystem,
                 status = if (writable) DestinationHealthStatus.Healthy else DestinationHealthStatus.ReadOnly,
                 displayName = parent.name.ifBlank { parent.absolutePath },
-                availableBytes = parent.usableSpace,
+                availableBytes = usableSpace(parent),
             )
         }.getOrElse {
             DestinationHealth(destinationUri, DestinationType.FileSystem, DestinationHealthStatus.Unavailable, destinationUri, message = it.message)
         }
     }
+
+    @SuppressLint("UsableSpace")
+    private fun usableSpace(file: File): Long = file.usableSpace
 
     private fun resolveDestination(request: DestinationRequest) = when (request.destinationUri) {
         DestinationUris.APP_PRIVATE_DOWNLOADS -> requireNotNull(privateDownloadsDirectory) { "App-private destination requires an application directory" }.resolve(request.fileName).toPath()

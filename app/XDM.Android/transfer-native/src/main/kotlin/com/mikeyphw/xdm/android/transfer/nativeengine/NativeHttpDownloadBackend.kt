@@ -13,8 +13,9 @@ import com.mikeyphw.xdm.android.storage.DestinationWriter
 import com.mikeyphw.xdm.android.storage.FileDestinationWriter
 import java.io.IOException
 import java.io.RandomAccessFile
-import java.nio.file.Files
 import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
@@ -331,7 +332,9 @@ class NativeHttpDownloadBackend(
         }
         if (checkpoint == null) return
         if (checkpoint.downloadId != request.id || checkpoint.sourceUrl != request.sourceUrl) throw RemoteObjectChangedException("Checkpoint does not belong to this download")
-        if (checkpoint.destinationPath != paths.destinationIdentity || checkpoint.partialPath != paths.partial.toString()) throw RemoteObjectChangedException("Checkpoint destination does not match this download")
+        if (!destinationIdentityMatches(checkpoint.destinationPath, paths.destinationIdentity) || checkpoint.partialPath != paths.partial.toString()) {
+            throw RemoteObjectChangedException("Checkpoint destination does not match this download")
+        }
         if (checkpoint.expectedLength != null && metadata.totalLength != null && checkpoint.expectedLength != metadata.totalLength) throw RemoteObjectChangedException("Remote length changed since the checkpoint")
         if (checkpoint.etag != null && metadata.etag != null && checkpoint.etag != metadata.etag) throw RemoteObjectChangedException("Remote ETag changed since the checkpoint")
         if (checkpoint.etag == null && checkpoint.lastModified != null && metadata.lastModified != null && checkpoint.lastModified != metadata.lastModified) throw RemoteObjectChangedException("Remote Last-Modified changed since the checkpoint")
@@ -404,6 +407,15 @@ class NativeHttpDownloadBackend(
         if (expectedTotal != null && total != null && total != expectedTotal) {
             throw InvalidRangeResponseException("Content-Range total does not match the remote length")
         }
+    }
+
+    private fun destinationIdentityMatches(checkpointDestination: String, currentDestination: String): Boolean {
+        if (checkpointDestination == currentDestination) return true
+        val currentUri = runCatching { URI(currentDestination) }.getOrNull()
+        if (currentUri?.scheme.equals("file", ignoreCase = true)) {
+            return runCatching { Paths.get(currentUri).toString() == checkpointDestination }.getOrDefault(false)
+        }
+        return false
     }
 
     private fun parseContentRange(value: String?): Triple<Long, Long, Long?> {

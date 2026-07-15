@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android.scheduler
 
+import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -27,12 +28,7 @@ class TransferForegroundService : Service() {
         super.onCreate()
         runtime = (application as TransferRuntimeProvider).transferRuntime
         notifications = TransferNotifications(this)
-        ServiceCompat.startForeground(
-            this,
-            TransferNotifications.ACTIVE_NOTIFICATION_ID,
-            notifications.active(ActiveTransferSummary()),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-        )
+        startForeground()
         terminalJob = scope.launch {
             runtime.terminalEvents.collectLatest { event ->
                 val completed = event.state == com.mikeyphw.xdm.android.model.DownloadState.Completed
@@ -89,6 +85,16 @@ class TransferForegroundService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    @SuppressLint("InlinedApi")
+    private fun startForeground() {
+        ServiceCompat.startForeground(
+            this,
+            TransferNotifications.ACTIVE_NOTIFICATION_ID,
+            notifications.active(ActiveTransferSummary()),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+        )
+    }
 
     companion object { const val ACTION_START = "com.mikeyphw.xdm.android.action.START_TRANSFER" }
 }

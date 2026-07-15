@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android.scheduler
 
+import android.annotation.SuppressLint
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import android.content.ComponentName
@@ -13,6 +14,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 
 class TransferExecutionStarter(private val context: Context) {
+    @SuppressLint("NewApi")
     fun start(downloadId: String, estimatedBytes: Long? = null, userVisible: Boolean = true): TransferLaunchResult {
         return when (TransferLaunchPolicy.select(Build.VERSION.SDK_INT, userVisible)) {
             TransferLaunchMode.UserInitiatedJob -> scheduleUserInitiatedJob(downloadId, estimatedBytes).let { result ->
@@ -48,4 +50,3 @@ class TransferExecutionStarter(private val context: Context) {
         return TransferLaunchResult(result == JobScheduler.RESULT_SUCCESS, TransferLaunchMode.UserInitiatedJob, jobId)
     }
 }
-

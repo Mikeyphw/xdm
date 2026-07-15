@@ -1,6 +1,7 @@
 .gradle/
 .idea/
 local.properties
+release-signing.env
 **/build/
 *.iml
 .DS_Store

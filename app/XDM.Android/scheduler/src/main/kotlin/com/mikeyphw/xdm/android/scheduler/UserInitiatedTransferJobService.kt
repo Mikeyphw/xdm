@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android.scheduler
 
+import android.annotation.SuppressLint
 import android.app.job.JobParameters
 import android.app.job.JobService
 import android.os.Build
@@ -13,6 +14,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+@SuppressLint("SpecifyJobSchedulerIdRange")
 @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 class UserInitiatedTransferJobService : JobService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

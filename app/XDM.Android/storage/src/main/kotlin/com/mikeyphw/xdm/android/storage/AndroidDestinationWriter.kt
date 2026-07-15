@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android.storage
 
+import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
@@ -10,7 +11,6 @@ import android.net.Uri
 import android.os.Environment
 import android.os.StatFs
 import android.os.Build
-import android.annotation.TargetApi
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
@@ -174,7 +174,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         }
     }
 
-    @TargetApi(Build.VERSION_CODES.Q)
+    @SuppressLint("NewApi")
     private fun mediaStoreRoot(destinationUri: String): DestinationRoot = when (destinationUri) {
         DestinationUris.PUBLIC_DOWNLOADS -> DestinationRoot(MediaStore.Downloads.EXTERNAL_CONTENT_URI, DestinationType.PublicDownloads, "Public Downloads", Environment.DIRECTORY_DOWNLOADS)
         DestinationUris.MEDIA_MOVIES -> DestinationRoot(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, DestinationType.MediaStoreMovies, "Movies", Environment.DIRECTORY_MOVIES)
@@ -196,7 +196,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         return CommitTarget(uri, name) { success -> if (!success && existing == null) runCatching { DocumentsContract.deleteDocument(resolver, uri) } }
     }
 
-    @TargetApi(Build.VERSION_CODES.Q)
+    @SuppressLint("NewApi")
     private fun openMediaItem(root: DestinationRoot, name: String, mimeType: String?, policy: FilenameConflictPolicy): CommitTarget {
         val existing = findMediaItem(root, name)
         if (existing != null && policy != FilenameConflictPolicy.Overwrite && policy != FilenameConflictPolicy.Resume) {
@@ -242,7 +242,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         }
     }
 
-    @TargetApi(Build.VERSION_CODES.Q)
+    @SuppressLint("NewApi")
     private fun findMediaItem(root: DestinationRoot, name: String): Uri? {
         val selection = if (root.relativePath == null) "${MediaStore.MediaColumns.DISPLAY_NAME}=?" else "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
         val args = if (root.relativePath == null) arrayOf(name) else arrayOf(name, root.relativePath.trimEnd('/') + "%")

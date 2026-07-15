@@ -55,7 +55,11 @@ data class NativeArtifactPaths(val destinationIdentity: String, val partial: Pat
                 else -> throw UnsupportedOperationException("Phase 3 native engine supports file destinations; SAF arrives in Phase 5")
             }.toAbsolutePath().normalize()
             val partial = destination.resolveSibling(destination.fileName.toString() + ".xdm.part")
-            return NativeArtifactPaths(destination.toString(), partial, partial.resolveSibling(partial.fileName.toString() + ".checkpoint.json"))
+            return NativeArtifactPaths(
+                destination.toFile().canonicalFile.toURI().normalize().toString(),
+                partial,
+                partial.resolveSibling(partial.fileName.toString() + ".checkpoint.json"),
+            )
         }
     }
 }

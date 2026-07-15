@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import java.util.Locale
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
@@ -15,7 +14,6 @@ class TransferNotifications(private val context: Context) {
     private val manager = requireNotNull(context.getSystemService<NotificationManager>())
 
     fun ensureChannels() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ACTIVE,
