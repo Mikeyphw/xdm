@@ -68,6 +68,7 @@ public partial class MainWindow : Window
             ?? throw new InvalidOperationException("The command-palette button must define a flyout.");
         _notificationCenterFlyout = NotificationCenterButton.Flyout
             ?? throw new InvalidOperationException("The notification-center button must define a flyout.");
+        ApplyHeaderAutomationText("Command palette", "Notification center");
         _clipboardTimer.Tick += ClipboardTimer_Tick;
         Opened += MainWindow_Opened;
         Closing += MainWindow_Closing;
@@ -288,6 +289,15 @@ public partial class MainWindow : Window
         AutomationProperties.SetLiveSetting(
             OperationStatusText,
             _localization.AnnounceStatusChanges ? AutomationLiveSetting.Polite : AutomationLiveSetting.Off);
+        ApplyHeaderAutomationText(
+            _localization.Get("ui_command_palette", "Command palette"),
+            _localization.Get("ui_notification_center", "Notification center"));
+    }
+
+    private void ApplyHeaderAutomationText(string commandPaletteName, string notificationCenterName)
+    {
+        AutomationProperties.SetName(CommandPaletteButton, commandPaletteName);
+        AutomationProperties.SetName(NotificationCenterButton, notificationCenterName);
     }
 
     private void ApplyPalette(bool highContrast)

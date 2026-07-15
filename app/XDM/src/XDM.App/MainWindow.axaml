@@ -41,6 +41,7 @@
     <SolidColorBrush x:Key="XdmSummaryForeground" Color="#94A1B3" />
     <SolidColorBrush x:Key="XdmDisabledForeground" Color="#7B8DA5" />
     <SolidColorBrush x:Key="XdmAccentForeground" Color="#A9C7FF" />
+    <SolidColorBrush x:Key="XdmAccentBrush" Color="#A9C7FF" />
     <SolidColorBrush x:Key="XdmDangerBrush" Color="#C94F58" />
     <SolidColorBrush x:Key="XdmDangerSoftBrush" Color="#3A2025" />
     <SolidColorBrush x:Key="XdmErrorForeground" Color="#FF9B9B" />
@@ -377,13 +378,38 @@
               </StackPanel>
             </Grid>
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <Button x:Name="CommandPaletteButton" Classes="quiet" Content="⌘" Width="38" Height="38" ToolTip.Tip="Command palette (Ctrl+K)" Click="CommandPaletteButton_Click">
+              <Button x:Name="CommandPaletteButton"
+                      Classes="quiet"
+                      Width="38"
+                      Height="38"
+                      Padding="8"
+                      ToolTip.Tip="{Binding Localization[ui_command_palette_ctrl_k]}"
+                      Click="CommandPaletteButton_Click"
+                      AutomationProperties.Name="{Binding Localization[ui_command_palette]}"
+                      AutomationProperties.AutomationId="CommandPaletteButton"
+                      AutomationProperties.AcceleratorKey="Ctrl+K">
+                <PathIcon Data="M4,6 L11,13 L4,20 M13,20 L20,20"
+                          Width="18"
+                          Height="18"
+                          Foreground="{DynamicResource XdmSecondaryForeground}" />
                 <Button.Flyout>
                   <Flyout Placement="BottomEdgeAlignedRight" Opened="CommandPaletteFlyout_Opened" Closed="CommandPaletteFlyout_Closed">
                     <Border Width="430" MaxHeight="520" Padding="8">
                       <Grid RowDefinitions="Auto,*" RowSpacing="8">
-                        <TextBox x:Name="CommandPaletteInput" Text="{Binding CommandPaletteQuery}" PlaceholderText="Type a command…" KeyDown="CommandPaletteInput_KeyDown"/>
-                        <ListBox x:Name="CommandPaletteList" Grid.Row="1" ItemsSource="{Binding FilteredCommandPaletteItems}" Background="Transparent" BorderThickness="0" DoubleTapped="CommandPaletteList_DoubleTapped">
+                        <TextBox x:Name="CommandPaletteInput"
+                                 Text="{Binding CommandPaletteQuery}"
+                                 PlaceholderText="{Binding Localization[ui_type_a_command]}"
+                                 KeyDown="CommandPaletteInput_KeyDown"
+                                 AutomationProperties.Name="{Binding Localization[ui_command_palette]}"
+                                 AutomationProperties.AutomationId="CommandPaletteInput"/>
+                        <ListBox x:Name="CommandPaletteList"
+                                 Grid.Row="1"
+                                 ItemsSource="{Binding FilteredCommandPaletteItems}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 DoubleTapped="CommandPaletteList_DoubleTapped"
+                                 AutomationProperties.Name="{Binding Localization[ui_command_palette_results]}"
+                                 AutomationProperties.AutomationId="CommandPaletteResults">
                           <ListBox.ItemTemplate>
                             <DataTemplate>
                               <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="6">
@@ -400,9 +426,19 @@
                 </Button.Flyout>
               </Button>
 
-              <Button x:Name="NotificationCenterButton" Classes="quiet" Width="46" Height="38" ToolTip.Tip="Notification center">
+              <Button x:Name="NotificationCenterButton"
+                      Classes="quiet"
+                      Width="46"
+                      Height="38"
+                      ToolTip.Tip="{Binding Localization[ui_notification_center]}"
+                      AutomationProperties.Name="{Binding Localization[ui_notification_center]}"
+                      AutomationProperties.AutomationId="NotificationCenterButton">
                 <Grid ColumnDefinitions="Auto,Auto">
-                  <TextBlock Text="●" Foreground="{DynamicResource XdmAccentForeground}" VerticalAlignment="Center"/>
+                  <PathIcon Data="M12,22 A2.5,2.5 0,0 0,14.5 19.5 L9.5,19.5 A2.5,2.5 0,0 0,12 22 M18,16 L18,11 A6,6 0,0 0,6 11 L6,16 L4,18 L20,18 Z"
+                            Width="18"
+                            Height="18"
+                            Foreground="{DynamicResource XdmAccentForeground}"
+                            VerticalAlignment="Center"/>
                   <TextBlock Grid.Column="1" Text="{Binding NotificationCount}" Classes="caption" Margin="4,0,0,0" VerticalAlignment="Center"/>
                 </Grid>
                 <Button.Flyout>
@@ -411,10 +447,10 @@
                       <Grid RowDefinitions="Auto,*" RowSpacing="8">
                         <Grid ColumnDefinitions="*,Auto">
                           <StackPanel>
-                            <TextBlock Text="Notification center" Classes="section-title"/>
-                            <TextBlock Text="Recent transfer and application events" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
+                            <TextBlock Text="{Binding Localization[ui_notification_center]}" Classes="section-title"/>
+                            <TextBlock Text="{Binding Localization[ui_recent_transfer_and_application_events]}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
                           </StackPanel>
-                          <Button Grid.Column="1" Classes="quiet" Content="Clear" Command="{Binding ClearNotificationsCommand}" IsEnabled="{Binding HasNotifications}"/>
+                          <Button Grid.Column="1" Classes="quiet" Content="{Binding Localization[ui_clear]}" Command="{Binding ClearNotificationsCommand}" IsEnabled="{Binding HasNotifications}"/>
                         </Grid>
                         <ScrollViewer Grid.Row="1" MaxHeight="460" VerticalScrollBarVisibility="Auto">
                           <ItemsControl ItemsSource="{Binding Notifications}">
@@ -423,7 +459,20 @@
                                 <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="10" Margin="0,0,0,7">
                                   <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
                                     <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
-                                    <Button Grid.Column="1" Classes="quiet" Content="×" Click="DismissNotification_Click" Width="28" Height="28" Padding="2"/>
+                                    <Button Grid.Column="1"
+                                            Classes="quiet"
+                                            Click="DismissNotification_Click"
+                                            Width="28"
+                                            Height="28"
+                                            Padding="4"
+                                            ToolTip.Tip="{Binding $parent[Window].DataContext.Localization[ui_dismiss_notification]}"
+                                            AutomationProperties.Name="{Binding $parent[Window].DataContext.Localization[ui_dismiss_notification]}"
+                                            AutomationProperties.AutomationId="DismissNotification">
+                                      <PathIcon Data="M6,6 L18,18 M18,6 L6,18"
+                                                Width="14"
+                                                Height="14"
+                                                Foreground="{DynamicResource XdmSecondaryForeground}" />
+                                    </Button>
                                     <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Message}" TextWrapping="Wrap" Classes="supporting"/>
                                     <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="0,5,0,0">
                                       <TextBlock Text="{Binding Severity}" Classes="caption" Foreground="{DynamicResource XdmAccentForeground}"/>
@@ -459,18 +508,22 @@
                           Width="30"
                           Height="30"
                           Padding="4"
-                          Content="×"
                           Command="{Binding DismissOperationMessageCommand}"
                           ToolTip.Tip="{Binding Localization[ui_dismiss_status]}"
                           AutomationProperties.Name="{Binding Localization[ui_dismiss_status]}"
-                          AutomationProperties.AutomationId="DismissOperationStatus" />
+                          AutomationProperties.AutomationId="DismissOperationStatus">
+                    <PathIcon Data="M6,6 L18,18 M18,6 L6,18"
+                              Width="14"
+                              Height="14"
+                              Foreground="{DynamicResource XdmSecondaryForeground}" />
+                  </Button>
                 </Grid>
               </Border>
             </StackPanel>
           </Grid>
 
           <Grid Grid.Row="1" RowDefinitions="Auto,*"
-                AutomationProperties.LandmarkType="Main"
+                AutomationProperties.LandmarkType="Region"
                 AutomationProperties.AccessibilityView="Control">
             <Grid x:Name="DashboardSummary" ColumnDefinitions="*,*,*" ColumnSpacing="12" IsVisible="{Binding IsDashboardSummaryVisible}"
                   AutomationProperties.Name="Download activity summary"
@@ -513,7 +566,11 @@
               <views:DiagnosticsView IsVisible="{Binding IsDiagnosticsVisible}" />
               <Border IsVisible="{Binding IsPlaceholderVisible}" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Margin="30">
-                  <TextBlock Text="{Binding Localization[ui_text]}" FontSize="38" Foreground="{DynamicResource XdmBrandBrush}" HorizontalAlignment="Center" />
+                  <PathIcon Data="M12,2 L22,12 L12,22 L2,12 Z"
+                            Width="38"
+                            Height="38"
+                            Foreground="{DynamicResource XdmBrandBrush}"
+                            HorizontalAlignment="Center" />
                   <TextBlock Text="{Binding Localization[ui_no_page_is_available]}" Classes="section-title" HorizontalAlignment="Center" />
                 </StackPanel>
               </Border>

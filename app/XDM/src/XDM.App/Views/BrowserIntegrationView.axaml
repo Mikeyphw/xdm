@@ -5,26 +5,25 @@
              x:Class="XDM.App.Views.BrowserIntegrationView"
              mc:Ignorable="d"
              KeyboardNavigation.TabNavigation="Continue"
-             AutomationProperties.LandmarkType="Main"
              AutomationProperties.AccessibilityView="Control">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="14">
-      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
-        <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+      <Grid x:Name="BrowserSummaryGrid" ColumnDefinitions="*,*,*" ColumnSpacing="12" RowSpacing="12">
+        <Border x:Name="BrowserCaptureSummaryCard" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
           <StackPanel Spacing="6">
             <TextBlock Text="{Binding Localization[ui_capture_service]}" Classes="label"/>
             <TextBlock Text="{Binding BrowserIntegrationStatus}" Classes="card-title" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding BrowserEndpoint}" Classes="caption" TextWrapping="Wrap"/>
           </StackPanel>
         </Border>
-        <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+        <Border x:Name="BrowserExtensionSummaryCard" Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
           <StackPanel Spacing="6">
             <TextBlock Text="{Binding Localization[ui_extension_health]}" Classes="label"/>
             <TextBlock Text="{Binding BrowserExtensionSummary}" Classes="card-title" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding BrowserLastHealth}" Classes="caption" TextWrapping="Wrap"/>
           </StackPanel>
         </Border>
-        <Border Grid.Column="2" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+        <Border x:Name="BrowserProtocolSummaryCard" Grid.Column="2" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
           <StackPanel Spacing="6">
             <TextBlock Text="{Binding Localization[ui_protocol_compatibility]}" Classes="label"/>
             <TextBlock Text="{Binding BrowserCompatibilityStatus}" Classes="card-title" TextWrapping="Wrap"/>
@@ -51,8 +50,8 @@
         </StackPanel>
       </Border>
 
-      <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
-        <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+      <Grid x:Name="BrowserHostPermissionsGrid" ColumnDefinitions="*,*" ColumnSpacing="14" RowSpacing="12">
+        <Border x:Name="BrowserHostCard" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
           <StackPanel Spacing="10">
             <TextBlock Text="{Binding Localization[ui_native_host_registration]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
             <TextBlock Text="{Binding BrowserHostStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
@@ -64,7 +63,7 @@
             </StackPanel>
           </StackPanel>
         </Border>
-        <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+        <Border x:Name="BrowserPermissionsCard" Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
           <StackPanel Spacing="10">
             <TextBlock Text="{Binding Localization[ui_extension_permissions_capabilities]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
             <TextBlock Text="{Binding BrowserPermissionSummary}" TextWrapping="Wrap"/>
@@ -74,14 +73,14 @@
         </Border>
       </Grid>
 
-      <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
-        <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+      <Grid x:Name="BrowserActivityGrid" ColumnDefinitions="*,*" ColumnSpacing="14" RowSpacing="12">
+        <Border x:Name="BrowserLastCaptureCard" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
           <StackPanel Spacing="8">
             <TextBlock Text="{Binding Localization[ui_last_capture]}" Classes="label"/>
             <TextBlock Text="{Binding LastBrowserCapture}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
           </StackPanel>
         </Border>
-        <Border Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+        <Border x:Name="BrowserMediaProbeCard" Grid.Column="1" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
           <StackPanel Spacing="8">
             <TextBlock Text="{Binding Localization[ui_media_probe]}" Classes="label"/>
             <TextBlock Text="{Binding LastMediaProbe}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>

@@ -5,7 +5,6 @@
              x:Class="XDM.App.Views.MediaView"
              mc:Ignorable="d"
              KeyboardNavigation.TabNavigation="Continue"
-             AutomationProperties.LandmarkType="Main"
              AutomationProperties.AccessibilityView="Control">
   <Grid RowDefinitions="Auto,*" RowSpacing="14">
     <Border Grid.Row="0" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
@@ -19,8 +18,8 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" ColumnDefinitions="280,8,*" MinHeight="420">
-      <Border Grid.Column="0" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
+    <Grid x:Name="MediaWorkspace" Grid.Row="1" ColumnDefinitions="280,8,*" MinHeight="420" RowSpacing="12">
+      <Border x:Name="MediaInboxPane" Grid.Column="0" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
         <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel Spacing="2">
@@ -67,9 +66,9 @@
         </Grid>
       </Border>
 
-      <GridSplitter Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" Background="Transparent"/>
+      <GridSplitter x:Name="MediaWorkspaceSplitter" Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" Background="Transparent"/>
 
-      <Grid Grid.Column="2">
+      <Grid x:Name="MediaDetailsPane" Grid.Column="2">
         <Border IsVisible="{Binding HasNoSelectedMediaInboxItem}" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="30" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
           <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="440">
             <TextBlock Text="{Binding Localization[ui_media_no_selection]}" Classes="section-title" TextAlignment="Center" TextWrapping="Wrap"/>
@@ -91,16 +90,16 @@
 
             <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
               <StackPanel Spacing="12">
-                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
-                  <StackPanel Spacing="5">
+                <Grid x:Name="MediaPreferenceGrid" ColumnDefinitions="*,*,*" ColumnSpacing="10" RowSpacing="10">
+                  <StackPanel x:Name="MediaQualityField" Spacing="5">
                     <TextBlock Text="{Binding Localization[ui_media_quality]}" Classes="label"/>
                     <ComboBox x:Name="MediaQualitySelector" ItemsSource="{Binding MediaQualityOptions}" SelectedItem="{Binding SelectedMediaQuality}" AutomationProperties.Name="{Binding Localization[ui_media_quality]}" AutomationProperties.AutomationId="MediaQualityPreference"/>
                   </StackPanel>
-                  <StackPanel Grid.Column="1" Spacing="5">
+                  <StackPanel x:Name="MediaAudioLanguageField" Grid.Column="1" Spacing="5">
                     <TextBlock Text="{Binding Localization[ui_media_audio_language]}" Classes="label"/>
                     <ComboBox ItemsSource="{Binding MediaAudioLanguageOptions}" SelectedItem="{Binding SelectedMediaAudioLanguage}" AutomationProperties.Name="{Binding Localization[ui_media_audio_language]}" AutomationProperties.AutomationId="MediaAudioLanguage"/>
                   </StackPanel>
-                  <StackPanel Grid.Column="2" Spacing="5">
+                  <StackPanel x:Name="MediaSubtitleLanguageField" Grid.Column="2" Spacing="5">
                     <TextBlock Text="{Binding Localization[ui_media_subtitle_language]}" Classes="label"/>
                     <ComboBox ItemsSource="{Binding MediaSubtitleLanguageOptions}" SelectedItem="{Binding SelectedMediaSubtitleLanguage}" AutomationProperties.Name="{Binding Localization[ui_media_subtitle_language]}" AutomationProperties.AutomationId="MediaSubtitleLanguage"/>
                   </StackPanel>
@@ -109,7 +108,7 @@
                 <TextBlock Text="{Binding Localization[ui_media_variant_inventory]}" Classes="card-title"/>
                 <Border BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1" CornerRadius="8">
                   <Grid RowDefinitions="Auto,*">
-                    <Grid ColumnDefinitions="42,80,100,92,100,88,*" ColumnSpacing="8" Background="{DynamicResource XdmPanelAltBackground}" Margin="0">
+                    <Grid x:Name="MediaVariantHeaderGrid" ColumnDefinitions="42,80,100,92,100,88,*" ColumnSpacing="8" Background="{DynamicResource XdmPanelAltBackground}" Margin="0">
                       <TextBlock Text="{Binding Localization[ui_media_chosen]}" Classes="caption"/>
                       <TextBlock Grid.Column="1" Text="{Binding Localization[ui_media_kind]}" Classes="caption"/>
                       <TextBlock Grid.Column="2" Text="{Binding Localization[ui_media_quality_column]}" Classes="caption"/>
@@ -121,7 +120,7 @@
                     <ItemsControl Grid.Row="1" ItemsSource="{Binding MediaAllFormats}" MaxHeight="260">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                          <Grid ColumnDefinitions="42,80,100,92,100,88,*" ColumnSpacing="8" Margin="10,7">
+                          <Grid ColumnDefinitions="44,*,*,*,*,*,*" ColumnSpacing="8" Margin="10,7">
                             <CheckBox IsChecked="{Binding IsChosen}" IsEnabled="False" HorizontalAlignment="Center"/>
                             <TextBlock Grid.Column="1" Text="{Binding Kind}" TextTrimming="CharacterEllipsis"/>
                             <TextBlock Grid.Column="2" Text="{Binding Quality}" TextTrimming="CharacterEllipsis"/>
@@ -136,14 +135,14 @@
                   </Grid>
                 </Border>
 
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                  <StackPanel Spacing="5">
+                <Grid x:Name="MediaExactFormatGrid" ColumnDefinitions="*,*" ColumnSpacing="10" RowSpacing="10">
+                  <StackPanel x:Name="MediaExactVideoField" Spacing="5">
                     <TextBlock Text="{Binding Localization[ui_media_exact_video]}" Classes="label"/>
                     <ComboBox ItemsSource="{Binding MediaVideoFormats}" SelectedItem="{Binding SelectedMediaVideoFormat}" AutomationProperties.Name="{Binding Localization[ui_media_exact_video]}" AutomationProperties.AutomationId="MediaExactVideo">
                       <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis"/></DataTemplate></ComboBox.ItemTemplate>
                     </ComboBox>
                   </StackPanel>
-                  <StackPanel Grid.Column="1" Spacing="5">
+                  <StackPanel x:Name="MediaExactAudioField" Grid.Column="1" Spacing="5">
                     <TextBlock Text="{Binding Localization[ui_media_exact_audio]}" Classes="label"/>
                     <ComboBox ItemsSource="{Binding MediaAudioFormats}" SelectedItem="{Binding SelectedMediaAudioFormat}" AutomationProperties.Name="{Binding Localization[ui_media_exact_audio]}" AutomationProperties.AutomationId="MediaExactAudio">
                       <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis"/></DataTemplate></ComboBox.ItemTemplate>
@@ -161,14 +160,14 @@
             <Border IsVisible="{Binding IsSelectedMediaLive}" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
               <StackPanel Spacing="10">
                 <TextBlock Text="{Binding Localization[ui_media_live_recording]}" Classes="section-title"/>
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                  <StackPanel Spacing="5">
+                <Grid x:Name="MediaLiveLimitGrid" ColumnDefinitions="*,*" ColumnSpacing="10" RowSpacing="10">
+                  <StackPanel x:Name="MediaLiveDurationField" Spacing="5">
                     <TextBlock Text="{Binding Localization[ui_live_capture_minutes]}" Classes="label"/>
-                    <TextBox Text="{Binding MediaLiveDurationMinutes}" AutomationProperties.Name="{Binding Localization[ui_live_capture_minutes]}" AutomationProperties.AutomationId="MediaLiveDuration"/>
+                    <NumericUpDown Value="{Binding MediaLiveDurationMinutes, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="10080" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_live_capture_minutes]}" AutomationProperties.AutomationId="MediaLiveDuration"/>
                   </StackPanel>
-                  <StackPanel Grid.Column="1" Spacing="5">
+                  <StackPanel x:Name="MediaLiveMaximumSizeField" Grid.Column="1" Spacing="5">
                     <TextBlock Text="{Binding Localization[ui_media_live_maximum_size_mb]}" Classes="label"/>
-                    <TextBox x:Name="MediaLiveMaximumSizeInput" Text="{Binding MediaLiveMaximumSizeMb}" AutomationProperties.Name="{Binding Localization[ui_media_live_maximum_size_mb]}" AutomationProperties.AutomationId="MediaLiveMaximumSize"/>
+                    <NumericUpDown x:Name="MediaLiveMaximumSizeInput" Value="{Binding MediaLiveMaximumSizeMb, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="1048576" Increment="100" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_media_live_maximum_size_mb]}" AutomationProperties.AutomationId="MediaLiveMaximumSize"/>
                   </StackPanel>
                 </Grid>
                 <TextBlock Text="{Binding Localization[ui_media_live_safety_hint]}" Classes="supporting" TextWrapping="Wrap"/>

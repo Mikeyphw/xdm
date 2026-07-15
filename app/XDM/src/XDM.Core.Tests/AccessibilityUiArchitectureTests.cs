@@ -39,7 +39,7 @@ public sealed class AccessibilityUiArchitectureTests
     {
         XElement root = LoadView(fixtureName);
         Assert.Equal("Continue", root.Attribute("KeyboardNavigation.TabNavigation")?.Value);
-        Assert.Equal("Main", root.Attribute("AutomationProperties.LandmarkType")?.Value);
+        Assert.NotEqual("Main", root.Attribute("AutomationProperties.LandmarkType")?.Value);
 
         XElement[] formControls = root.DescendantsAndSelf()
             .Where(static element => element.Name.LocalName is "TextBox" or "ComboBox" or "NumericUpDown" or "ListBox" or "TabControl")

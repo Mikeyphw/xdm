@@ -1416,6 +1416,7 @@ public sealed class DownloadManagerTests
             "shutdown.bin",
             ConnectionCount: 1));
         await WaitForStateAsync(state, id, DownloadState.Downloading);
+        await WaitForDownloadedBytesAsync(state, id);
 
         DownloadShutdownReport report = await manager.PrepareForShutdownAsync(CancellationToken.None);
 
@@ -1451,6 +1452,30 @@ public sealed class DownloadManagerTests
         }
 
         throw new TimeoutException($"Download did not reach {expected}.");
+    }
+
+    private static async Task<DownloadSnapshot> WaitForDownloadedBytesAsync(
+        ApplicationState state,
+        string id)
+    {
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        while (!timeout.IsCancellationRequested)
+        {
+            DownloadSnapshot? snapshot = state.Current.Downloads.FirstOrDefault(item => item.Id == id);
+            if (snapshot is { DownloadedBytes: > 0 })
+            {
+                return snapshot;
+            }
+
+            if (snapshot?.State == DownloadState.Failed)
+            {
+                throw new InvalidOperationException(snapshot.ErrorMessage);
+            }
+
+            await Task.Delay(20, timeout.Token);
+        }
+
+        throw new TimeoutException("Download did not write any checkpointable bytes.");
     }
 
     private static byte[] CreatePayload(int length, int modulus)

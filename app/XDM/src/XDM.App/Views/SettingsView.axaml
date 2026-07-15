@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.SettingsView" mc:Ignorable="d" KeyboardNavigation.TabNavigation="Continue" AutomationProperties.LandmarkType="Main" AutomationProperties.AccessibilityView="Control">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.SettingsView" mc:Ignorable="d" KeyboardNavigation.TabNavigation="Continue" AutomationProperties.AccessibilityView="Control">
   <Grid RowDefinitions="*,Auto,Auto">
     <TabControl AutomationProperties.AutomationId="SettingsCategories" AutomationProperties.Name="Settings categories" AutomationProperties.LandmarkType="Navigation" AutomationProperties.AccessibilityView="Control">
       <TabItem Header="{Binding Localization[ui_settings_general]}">
@@ -47,30 +47,30 @@
             </Border>
             <Border Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="20" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
               <StackPanel Spacing="12">
-                <TextBlock Text="Organization and duplicate prevention" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
+                <TextBlock Text="{Binding Localization[ui_organization_and_duplicate_prevention]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
-                    <TextBlock Text="Duplicate URL behavior" Classes="form-label"/>
-                    <ComboBox ItemsSource="{Binding DuplicateUrlBehaviors}" SelectedItem="{Binding SelectedDuplicateUrlBehavior}" AutomationProperties.Name="Duplicate URL behavior" AutomationProperties.AutomationId="DuplicateUrlBehavior"/>
+                    <TextBlock Text="{Binding Localization[ui_duplicate_url_behavior]}" Classes="form-label"/>
+                    <ComboBox ItemsSource="{Binding DuplicateUrlBehaviors}" SelectedItem="{Binding SelectedDuplicateUrlBehavior}" AutomationProperties.Name="{Binding Localization[ui_duplicate_url_behavior]}" AutomationProperties.AutomationId="DuplicateUrlBehavior"/>
                   </StackPanel>
-                  <CheckBox Grid.Column="1" Content="Compute SHA-256 content identity after completion" IsChecked="{Binding ComputeContentHashes}" VerticalAlignment="Bottom" Margin="0,0,0,8" AutomationProperties.AutomationId="ComputeContentHashes"/>
+                  <CheckBox Grid.Column="1" Content="{Binding Localization[ui_compute_sha256_content_identity_after_completion]}" IsChecked="{Binding ComputeContentHashes}" VerticalAlignment="Bottom" Margin="0,0,0,8" AutomationProperties.AutomationId="ComputeContentHashes"/>
                 </Grid>
-                <TextBlock Text="Destination rules" Classes="card-title"/>
+                <TextBlock Text="{Binding Localization[ui_destination_rules]}" Classes="card-title"/>
                 <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
-                  <TextBox Text="{Binding NewDestinationRuleName}" PlaceholderText="Rule name" AutomationProperties.Name="Destination rule name" AutomationProperties.AutomationId="DestinationRuleName"/>
-                  <TextBox Grid.Column="1" Text="{Binding NewDestinationRuleHost}" PlaceholderText="Host suffix, e.g. github.com" AutomationProperties.Name="Destination rule host" AutomationProperties.AutomationId="DestinationRuleHost"/>
-                  <TextBox Grid.Column="2" Text="{Binding NewDestinationRuleExtensions}" PlaceholderText="Extensions: zip, 7z" AutomationProperties.Name="Destination rule extensions" AutomationProperties.AutomationId="DestinationRuleExtensions"/>
-                  <TextBox Grid.Row="1" Text="{Binding NewDestinationRuleDirectory}" PlaceholderText="Destination directory" AutomationProperties.Name="Destination rule directory" AutomationProperties.AutomationId="DestinationRuleDirectory"/>
-                  <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding NewDestinationRuleTags}" PlaceholderText="Tags" AutomationProperties.Name="Destination rule tags" AutomationProperties.AutomationId="DestinationRuleTags"/>
-                  <Button Grid.Row="1" Grid.Column="2" Classes="secondary" Content="Add rule" Command="{Binding AddDestinationRuleCommand}"/>
+                  <TextBox Text="{Binding NewDestinationRuleName}" PlaceholderText="{Binding Localization[ui_rule_name]}" AutomationProperties.Name="{Binding Localization[ui_destination_rule_name]}" AutomationProperties.AutomationId="DestinationRuleName"/>
+                  <TextBox Grid.Column="1" Text="{Binding NewDestinationRuleHost}" PlaceholderText="{Binding Localization[ui_host_suffix_example_github_com]}" AutomationProperties.Name="{Binding Localization[ui_destination_rule_host]}" AutomationProperties.AutomationId="DestinationRuleHost"/>
+                  <TextBox Grid.Column="2" Text="{Binding NewDestinationRuleExtensions}" PlaceholderText="{Binding Localization[ui_extensions_zip_7z]}" AutomationProperties.Name="{Binding Localization[ui_destination_rule_extensions]}" AutomationProperties.AutomationId="DestinationRuleExtensions"/>
+                  <TextBox Grid.Row="1" Text="{Binding NewDestinationRuleDirectory}" PlaceholderText="{Binding Localization[ui_destination_directory]}" AutomationProperties.Name="{Binding Localization[ui_destination_rule_directory]}" AutomationProperties.AutomationId="DestinationRuleDirectory"/>
+                  <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding NewDestinationRuleTags}" PlaceholderText="{Binding Localization[ui_tags]}" AutomationProperties.Name="{Binding Localization[ui_destination_rule_tags]}" AutomationProperties.AutomationId="DestinationRuleTags"/>
+                  <Button Grid.Row="1" Grid.Column="2" Classes="secondary" Content="{Binding Localization[ui_add_rule]}" Command="{Binding AddDestinationRuleCommand}"/>
                 </Grid>
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                  <ComboBox ItemsSource="{Binding DestinationRules}" SelectedItem="{Binding SelectedDestinationRule}" AutomationProperties.Name="Destination rules" AutomationProperties.AutomationId="DestinationRules">
+                  <ComboBox ItemsSource="{Binding DestinationRules}" SelectedItem="{Binding SelectedDestinationRule}" AutomationProperties.Name="{Binding Localization[ui_destination_rules]}" AutomationProperties.AutomationId="DestinationRules">
                     <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
                   </ComboBox>
-                  <Button Grid.Column="1" Classes="danger" Content="Remove selected rule" Command="{Binding RemoveSelectedDestinationRuleCommand}"/>
+                  <Button Grid.Column="1" Classes="danger" Content="{Binding Localization[ui_remove_selected_rule]}" Command="{Binding RemoveSelectedDestinationRuleCommand}"/>
                 </Grid>
-                <TextBlock Text="Rules are evaluated in order. A rule can match by host and/or file extension, choose a directory, and add tags." Classes="supporting" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding Localization[ui_destination_rules_hint]}" Classes="supporting" TextWrapping="Wrap"/>
               </StackPanel>
             </Border>
 

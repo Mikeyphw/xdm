@@ -5,7 +5,6 @@
              x:Class="XDM.App.Views.DiagnosticsView"
              mc:Ignorable="d"
              KeyboardNavigation.TabNavigation="Continue"
-             AutomationProperties.LandmarkType="Main"
              AutomationProperties.AccessibilityView="Control">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="14">
