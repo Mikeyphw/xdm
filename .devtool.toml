@@ -1,20 +1,69 @@
 [project]
-kind = "dotnet" # auto | dotnet | python | unknown
+kind = "auto"
 build_target = "app/XDM/XDM.Modern.sln"
 run_target = "app/XDM/src/XDM.App/XDM.App.csproj"
 default_target = "xdm_modern"
 
+[execution]
+environment = "auto"
+chroot_name = "androidos"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# XDM desktop — .NET/Avalonia
+# ─────────────────────────────────────────────────────────────────────────────
+
 [targets.xdm_modern]
+type = "dotnet"
 solution = "app/XDM/XDM.Modern.sln"
 run_project = "app/XDM/src/XDM.App/XDM.App.csproj"
 
-python = ""
-run_module = ""
 restore_command = "dotnet restore app/XDM/XDM.Modern.sln"
 build_command = "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore"
 test_command = "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build"
 run_command = "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj"
 package_command = "bash app/XDM/eng/qualify-prerelease.sh"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# XDM Android — Kotlin/Compose/Gradle
+# ─────────────────────────────────────────────────────────────────────────────
+
+[targets.xdm_android]
+type = "android"
+root = "app/XDM.Android"
+execution_environment = "auto"
+chroot_name = "androidos"
+
+[targets.xdm_android.android]
+variant = "debug"
+aapt2_provider = "auto"
+instrumentation = "never"
+prefer_native_termux = false
+
+[targets.xdm_android.gradle]
+version = "9.4.1"
+max_workers = 4
+structured_events = true
+no_daemon = true
+fail_fast = true
+
+[targets.xdm_android.tasks]
+restore = ["help"]
+build = [
+    "assembleDebug",
+    "assembleBeta",
+]
+test = [
+    "test",
+    "testDebugUnitTest",
+]
+lint = [
+    "lintDebug",
+    "lintBeta",
+]
+clean = ["clean"]
+
+[targets.xdm_android.artifacts]
+required = true
 
 [env]
 DOTNET_CLI_TELEMETRY_OPTOUT = "1"
