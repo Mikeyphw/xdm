@@ -1,8 +1,6 @@
 [project]
-kind = "dotnet" # auto | dotnet | android | gradle | python | command | unknown
-build_target = "app/XDM/XDM.Modern.sln"
-run_target = "app/XDM/src/XDM.App/XDM.App.csproj"
-default_target = "xdm_modern"
+kind = "android" # auto | dotnet | android | gradle | python | command | unknown
+default_target = "xdm_android"
 
 [execution]
 environment = "auto" # auto | native-termux | chroot | desktop-linux | android-device | external-device

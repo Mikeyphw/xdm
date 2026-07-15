@@ -11,7 +11,7 @@ import java.nio.file.StandardOpenOption
 internal class NativeCheckpointStore {
     fun load(path: Path): NativeCheckpoint? {
         if (!Files.exists(path)) return null
-        val text = Files.readString(path, StandardCharsets.UTF_8)
+        val text = String(Files.readAllBytes(path), StandardCharsets.UTF_8)
         return NativeCheckpoint(
             downloadId = text.requiredString("downloadId"),
             sourceUrl = text.requiredString("sourceUrl"),

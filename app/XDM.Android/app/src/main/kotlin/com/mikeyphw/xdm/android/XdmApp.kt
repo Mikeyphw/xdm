@@ -3,9 +3,10 @@ package com.mikeyphw.xdm.android
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.MoreVert
@@ -37,8 +38,9 @@ private val primaryRoutes = listOf(AppRoute.Downloads, AppRoute.Queues, AppRoute
 @Composable
 fun XdmApp(viewModel: MainViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val wide = maxWidth >= 840.dp
+    BoxWithConstraints(Modifier.fillMaxSize()) box@{
+        val availableWidth = this@box.maxWidth
+        val wide = availableWidth >= 840.dp
         if (wide) {
             Row(Modifier.fillMaxSize()) {
                 NavigationRail {
@@ -51,7 +53,12 @@ fun XdmApp(viewModel: MainViewModel) {
                         )
                     }
                 }
-                AppScaffold(state, viewModel, Modifier.weight(1f), showBottomBar = false)
+                AppScaffold(
+                    state,
+                    viewModel,
+                    Modifier.fillMaxHeight().width((availableWidth - 80.dp).coerceAtLeast(0.dp)),
+                    showBottomBar = false,
+                )
             }
         } else {
             AppScaffold(state, viewModel, Modifier.fillMaxSize(), showBottomBar = true)

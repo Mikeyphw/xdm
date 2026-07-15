@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -62,8 +61,12 @@ fun DownloadsScreen(downloads: List<Download>, compact: Boolean, active: ActiveT
     Column(Modifier.fillMaxSize()) {
         if (active.activeCount > 0) {
             Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
                         Text("${active.activeCount} active download${if (active.activeCount == 1) "" else "s"}", fontWeight = FontWeight.SemiBold)
                         Text(active.speedBytesPerSecond.formatSpeed(), style = MaterialTheme.typography.bodySmall)
                     }
@@ -72,8 +75,12 @@ fun DownloadsScreen(downloads: List<Download>, compact: Boolean, active: ActiveT
             }
         } else if (downloads.any { it.state == DownloadState.Paused }) {
             Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Paused downloads are ready to continue", modifier = Modifier.weight(1f))
+                Row(
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Paused downloads are ready to continue")
                     Button(onClick = onResumeAll) { Text("Resume all") }
                 }
             }
@@ -104,8 +111,12 @@ fun DownloadsScreen(downloads: List<Download>, compact: Boolean, active: ActiveT
 private fun DownloadCard(download: Download, compact: Boolean, onTogglePause: (Download) -> Unit) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(if (compact) 10.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
                     Text(download.fileName, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("${download.state.name} • ${download.backend.name}", style = MaterialTheme.typography.bodySmall)
                 }
@@ -188,8 +199,12 @@ fun QueuesScreen(queues: List<QueueDefinition>) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(queues, key = QueueDefinition::id) { queue ->
             Card(Modifier.fillMaxWidth()) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
                         Text(queue.name, fontWeight = FontWeight.SemiBold)
                         Text("Up to ${queue.maxConcurrent} concurrent downloads", style = MaterialTheme.typography.bodySmall)
                     }
