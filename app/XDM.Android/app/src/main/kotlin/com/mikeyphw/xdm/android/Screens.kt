@@ -10,13 +10,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
@@ -25,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.verticalScroll
 import com.mikeyphw.xdm.android.model.BackendRecommendation
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
@@ -116,7 +118,7 @@ private fun DownloadCard(download: Download, compact: Boolean, onTogglePause: (D
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column {
+                Column(Modifier.weight(1f)) {
                     Text(download.fileName, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("${download.state.name} • ${download.backend.name}", style = MaterialTheme.typography.bodySmall)
                 }
@@ -157,10 +159,24 @@ fun AddDownloadScreen(
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { onSafDestinationSelected(it.toString()) }
     }
-    Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .imePadding()
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         Text("New download", style = MaterialTheme.typography.headlineSmall)
         OutlinedTextField(url, { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-        OutlinedTextField(name, { name = it }, label = { Text("Filename") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(
+            name,
+            { name = it },
+            label = { Text("Filename") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            supportingText = { Text("Optional. XDM will infer a name from the URL when this is empty.") },
+        )
         Text("Destination", style = MaterialTheme.typography.labelLarge)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             DestinationCatalog.available(Build.VERSION.SDK_INT).forEach { choice ->
@@ -183,13 +199,13 @@ fun AddDownloadScreen(
                 FilterChip(selected = backend == value, onClick = { backend = value }, label = { Text(value.name) })
             }
         }
-        if (url.isNotBlank() && name.isNotBlank()) {
+        if (url.isNotBlank()) {
             val recommendation = recommend(url, name, backend, destinationUri, conflictPolicy)
             Text("${recommendation.backend.name}: ${recommendation.explanation}", style = MaterialTheme.typography.bodySmall)
         }
         Button(
             onClick = { onAdd(url, name, backend, destinationUri, conflictPolicy) },
-            enabled = url.isNotBlank() && name.isNotBlank() && destinationUri.isNotBlank(),
+            enabled = url.isNotBlank() && destinationUri.isNotBlank(),
         ) { Text("Add to Default queue") }
     }
 }
@@ -208,7 +224,7 @@ fun QueuesScreen(queues: List<QueueDefinition>) {
                         Text(queue.name, fontWeight = FontWeight.SemiBold)
                         Text("Up to ${queue.maxConcurrent} concurrent downloads", style = MaterialTheme.typography.bodySmall)
                     }
-                    AssistChip(onClick = {}, label = { Text(if (queue.isEnabled) "Enabled" else "Disabled") })
+                    StatusPill(if (queue.isEnabled) "Enabled" else "Disabled")
                 }
             }
         }
@@ -244,8 +260,8 @@ fun RecoveryScreen(records: List<RecoveryRecord>) {
                     Text(record.artifactPath, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(record.reason, style = MaterialTheme.typography.bodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = {}) { Text("Review") }
-                        AssistChip(onClick = {}, label = { Text("Keep paused") })
+                        StatusPill("Needs review")
+                        StatusPill("Paused")
                     }
                 }
             }
@@ -275,6 +291,17 @@ private fun DiagnosticLine(label: String, value: String) {
             Text(label, fontWeight = FontWeight.Medium)
             Text(value, style = MaterialTheme.typography.bodyMedium)
         }
+    }
+}
+
+@Composable
+private fun StatusPill(text: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Text(text, Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
     }
 }
 

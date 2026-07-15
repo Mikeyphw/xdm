@@ -1,14 +1,15 @@
 package com.mikeyphw.xdm.android
 
 import java.io.File
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ArchitectureContractTest {
     @Test
     fun allPhaseZeroModulesAreRegistered() {
-        val root = generateSequence(File(System.getProperty("user.dir"))) { it.parentFile }
-            .first { File(it, "settings.gradle.kts").isFile }
+        val root = androidRoot()
         val settings = File(root, "settings.gradle.kts").readText()
         val modules = listOf(
             "app", "core-model", "core-utils", "persistence", "storage", "transfer-api",
@@ -21,13 +22,60 @@ class ArchitectureContractTest {
     @Test
     fun allPlannedRoutesArePresent() {
         val labels = AppRoute.entries.map(AppRoute::label)
-        assertTrue(labels.containsAll(listOf("Downloads", "Add", "Queues", "Scheduler", "Media", "Recovery", "Diagnostics", "Settings")))
+        assertEquals(listOf("Downloads", "Add", "Queues", "Scheduler", "Media", "Recovery", "Diagnostics", "Settings"), labels)
+    }
+
+    @Test
+    fun uiUxTopographyContractIsAuthoritative() {
+        val root = androidRoot()
+        val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md")
+        assertTrue("Missing UI/UX topography contract", contract.isFile)
+        val text = contract.readText()
+        listOf(
+            "authoritative",
+            "Route Topography",
+            "Interaction Rules",
+            "Content Rules",
+            "Future Phase Rules",
+            "Downloads",
+            "Add",
+            "Queues",
+            "Scheduler",
+            "Media",
+            "Recovery",
+            "Diagnostics",
+            "Settings",
+        ).forEach { required -> assertTrue("Contract missing '$required'", text.contains(required)) }
+    }
+
+    @Test
+    fun uiSourceHasNoPlaceholderActionsOrRoadmapCopy() {
+        val root = androidRoot()
+        val sourceFiles = listOf(
+            File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt"),
+            File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt"),
+        )
+        sourceFiles.forEach { file ->
+            val text = file.readText()
+            assertFalse("${file.name} contains placeholder click handlers", text.contains("onClick = {}"))
+            assertFalse("${file.name} contains milestone copy", text.contains("later milestone", ignoreCase = true))
+        }
+    }
+
+    @Test
+    fun addDownloadAllowsFilenameInference() {
+        val root = androidRoot()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        assertTrue("Filename field should describe inference", screens.contains("XDM will infer a name from the URL"))
+        assertTrue("Add button should not require a nonblank filename", screens.contains("enabled = url.isNotBlank() && destinationUri.isNotBlank()"))
+        assertTrue("ViewModel should centralize inferred filename resolution", viewModel.contains("private fun resolveFileName"))
+        assertFalse("ViewModel should not reject blank filename", viewModel.contains("fileName.isBlank()"))
     }
 
     @Test
     fun phaseTwoAndThreeContractsArePresent() {
-        val root = generateSequence(File(System.getProperty("user.dir"))) { it.parentFile }
-            .first { File(it, "settings.gradle.kts").isFile }
+        val root = androidRoot()
         assertTrue(File(root, "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt").isFile)
         assertTrue(File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/RoomBackendOwnershipStore.kt").isFile)
         assertTrue(File(root, "docs/architecture/PHASES-2-3.md").isFile)
@@ -35,11 +83,13 @@ class ArchitectureContractTest {
 
     @Test
     fun phaseFourExecutionContractsArePresent() {
-        val root = generateSequence(File(System.getProperty("user.dir"))) { it.parentFile }
-            .first { File(it, "settings.gradle.kts").isFile }
+        val root = androidRoot()
         assertTrue(File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt").isFile)
         assertTrue(File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt").isFile)
         assertTrue(File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferBootReceiver.kt").isFile)
         assertTrue(File(root, "docs/architecture/PHASE-4.md").isFile)
     }
+
+    private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
+        .first { File(it, "settings.gradle.kts").isFile }
 }

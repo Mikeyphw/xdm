@@ -23,16 +23,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            val scheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
+            MaterialTheme(colorScheme = scheme) { XdmApp(viewModel, requestNotifications = ::requestNotificationPermissionIfNeeded) }
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        enableEdgeToEdge()
-        setContent {
-            val scheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
-            MaterialTheme(colorScheme = scheme) { XdmApp(viewModel) }
         }
     }
 }

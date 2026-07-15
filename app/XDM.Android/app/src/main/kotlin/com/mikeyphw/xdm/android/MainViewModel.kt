@@ -103,8 +103,8 @@ class MainViewModel(
     }
 
     fun addDownload(url: String, fileName: String, backend: BackendType, destination: String, conflictPolicy: FilenameConflictPolicy) {
-        if (url.isBlank() || fileName.isBlank() || destination.isBlank()) return
-        val safeName = sanitizeFileName(fileName)
+        if (url.isBlank() || destination.isBlank()) return
+        val safeName = resolveFileName(url, fileName)
         val now = System.currentTimeMillis()
         val request = previewRequest(url, safeName, backend, destination, conflictPolicy)
         val resolvedBackend = backendSelectionPolicy.recommend(request).backend
@@ -132,7 +132,7 @@ class MainViewModel(
     }
 
     fun backendRecommendation(url: String, fileName: String, backend: BackendType, destination: String, conflictPolicy: FilenameConflictPolicy) =
-        backendSelectionPolicy.recommend(previewRequest(url, sanitizeFileName(fileName), backend, destination, conflictPolicy))
+        backendSelectionPolicy.recommend(previewRequest(url, resolveFileName(url, fileName), backend, destination, conflictPolicy))
 
     fun setDestination(uri: String) {
         viewModelScope.launch { preferences.setDestination(uri) }
@@ -202,6 +202,17 @@ class MainViewModel(
         .trim('.', ' ')
         .ifBlank { "download.bin" }
         .take(180)
+
+    private fun resolveFileName(url: String, requestedName: String): String {
+        if (requestedName.isNotBlank()) return sanitizeFileName(requestedName)
+        val inferred = runCatching {
+            Uri.parse(url.trim()).lastPathSegment
+                ?.substringBefore('?')
+                ?.substringBefore('#')
+                ?.takeIf { it.isNotBlank() }
+        }.getOrNull()
+        return sanitizeFileName(inferred.orEmpty())
+    }
 
     class Factory(private val container: AppContainer) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

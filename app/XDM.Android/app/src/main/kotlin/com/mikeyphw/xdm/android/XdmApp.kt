@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.MoreVert
@@ -17,6 +18,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
@@ -33,11 +35,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private val primaryRoutes = listOf(AppRoute.Downloads, AppRoute.Queues, AppRoute.Scheduler, AppRoute.Media)
+private val overflowRoutes = listOf(AppRoute.Add, AppRoute.Recovery, AppRoute.Diagnostics, AppRoute.Settings)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun XdmApp(viewModel: MainViewModel) {
+fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    BackHandler(enabled = state.route != AppRoute.Downloads) {
+        viewModel.navigate(AppRoute.Downloads)
+    }
     BoxWithConstraints(Modifier.fillMaxSize()) box@{
         val availableWidth = this@box.maxWidth
         val wide = availableWidth >= 840.dp
@@ -56,20 +62,28 @@ fun XdmApp(viewModel: MainViewModel) {
                 AppScaffold(
                     state,
                     viewModel,
+                    requestNotifications,
                     Modifier.fillMaxHeight().width((availableWidth - 80.dp).coerceAtLeast(0.dp)),
                     showBottomBar = false,
                 )
             }
         } else {
-            AppScaffold(state, viewModel, Modifier.fillMaxSize(), showBottomBar = true)
+            AppScaffold(state, viewModel, requestNotifications, Modifier.fillMaxSize(), showBottomBar = true)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AppScaffold(state: MainUiState, viewModel: MainViewModel, modifier: Modifier, showBottomBar: Boolean) {
+private fun AppScaffold(
+    state: MainUiState,
+    viewModel: MainViewModel,
+    requestNotifications: () -> Unit,
+    modifier: Modifier,
+    showBottomBar: Boolean,
+) {
     var showMoreMenu by remember { mutableStateOf(false) }
+    val overflowRouteSelected = state.route in overflowRoutes
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -78,12 +92,16 @@ private fun AppScaffold(state: MainUiState, viewModel: MainViewModel, modifier: 
                 actions = {
                     if (showBottomBar) {
                         IconButton(onClick = { showMoreMenu = true }) {
-                            Icon(Icons.Rounded.MoreVert, "More sections")
+                            Icon(
+                                Icons.Rounded.MoreVert,
+                                if (overflowRouteSelected) "More sections, ${state.route.label} selected" else "More sections",
+                                tint = if (overflowRouteSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                         DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
-                            listOf(AppRoute.Add, AppRoute.Recovery, AppRoute.Diagnostics, AppRoute.Settings).forEach { route ->
+                            overflowRoutes.forEach { route ->
                                 DropdownMenuItem(
-                                    text = { Text(route.label) },
+                                    text = { Text(if (state.route == route) "${route.label} selected" else route.label) },
                                     leadingIcon = { Icon(route.icon, null) },
                                     onClick = {
                                         showMoreMenu = false
@@ -128,12 +146,15 @@ private fun AppScaffold(state: MainUiState, viewModel: MainViewModel, modifier: 
                     onDestinationChanged = viewModel::setDestination,
                     onSafDestinationSelected = viewModel::registerSafDestination,
                     onConflictPolicyChanged = viewModel::setConflictPolicy,
-                    onAdd = viewModel::addDownload,
+                    onAdd = { url, name, backend, destination, conflictPolicy ->
+                        requestNotifications()
+                        viewModel.addDownload(url, name, backend, destination, conflictPolicy)
+                    },
                     recommend = viewModel::backendRecommendation,
                 )
                 AppRoute.Queues -> QueuesScreen(state.queues)
                 AppRoute.Scheduler -> SchedulerScreen(state.schedules)
-                AppRoute.Media -> EmptyFeatureScreen("Media inbox", "Detected HLS and DASH streams will appear here in a later milestone.")
+                AppRoute.Media -> EmptyFeatureScreen("Media inbox", "No media streams detected yet.")
                 AppRoute.Recovery -> RecoveryScreen(state.recovery)
                 AppRoute.Diagnostics -> DiagnosticsScreen(state)
                 AppRoute.Settings -> SettingsScreen(state.compactDensity, viewModel::setCompactDensity)
