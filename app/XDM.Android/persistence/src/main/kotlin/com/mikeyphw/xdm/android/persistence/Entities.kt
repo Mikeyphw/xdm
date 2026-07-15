@@ -1,0 +1,111 @@
+package com.mikeyphw.xdm.android.persistence
+
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "downloads", indices = [Index("state"), Index("queueId"), Index("updatedAtEpochMs")])
+data class DownloadEntity(
+    @PrimaryKey val id: String,
+    val fileName: String,
+    val sourceUrl: String,
+    val destinationUri: String,
+    val state: String,
+    val backend: String,
+    val bytesReceived: Long,
+    val totalBytes: Long?,
+    val speedBytesPerSecond: Long,
+    val queueId: String?,
+    val priority: Int,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+    val errorMessage: String?,
+    val userLabel: String?,
+    @ColumnInfo(defaultValue = "'Rename'") val conflictPolicy: String,
+    val mimeType: String?,
+)
+
+@Entity(tableName = "download_sources", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId")])
+data class DownloadSourceEntity(@PrimaryKey val id: String, val downloadId: String, val url: String, val position: Int)
+
+@Entity(tableName = "mirrors", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId")])
+data class MirrorEntity(@PrimaryKey val id: String, val downloadId: String, val url: String, val priority: Int, val lastFailure: String?)
+
+@Entity(tableName = "transfer_segments", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId")])
+data class TransferSegmentEntity(@PrimaryKey val id: String, val downloadId: String, val startByte: Long, val endByteInclusive: Long, val bytesReceived: Long, val state: String)
+
+@Entity(tableName = "checkpoints", indices = [Index("downloadId", unique = true)])
+data class CheckpointEntity(@PrimaryKey val id: String, val downloadId: String, val checkpointJson: String, val persistedAtEpochMs: Long)
+
+@Entity(tableName = "checksum_expectations", indices = [Index("downloadId"), Index(value = ["downloadId", "algorithm"], unique = true)])
+data class ChecksumExpectationEntity(@PrimaryKey val id: String, val downloadId: String, val algorithm: String, val expectedHex: String, val source: String)
+
+@Entity(tableName = "checksum_results", indices = [Index("downloadId"), Index(value = ["downloadId", "algorithm"], unique = true)])
+data class ChecksumResultEntity(@PrimaryKey val id: String, val downloadId: String, val algorithm: String, val calculatedHex: String, val matchesExpectation: Boolean?, val verifiedAtEpochMs: Long)
+
+@Entity(tableName = "queues")
+data class QueueEntity(@PrimaryKey val id: String, val name: String, val isEnabled: Boolean, val maxConcurrent: Int, val createdAtEpochMs: Long)
+
+@Entity(tableName = "schedule_rules", indices = [Index("queueId")])
+data class ScheduleRuleEntity(@PrimaryKey val id: String, val queueId: String?, val name: String, val enabled: Boolean, val constraintsJson: String)
+
+@Entity(tableName = "backend_tasks", indices = [Index("downloadId", unique = true), Index("backendTaskId")])
+data class BackendTaskEntity(
+    @PrimaryKey val id: String,
+    val downloadId: String,
+    val backend: String,
+    val backendTaskId: String,
+    @ColumnInfo(defaultValue = "''") val destinationKey: String,
+    @ColumnInfo(defaultValue = "''") val partialIdentity: String,
+    val ownershipGeneration: Long,
+    @ColumnInfo(defaultValue = "'Active'") val ownershipStatus: String,
+    val lastSynchronizedAtEpochMs: Long,
+)
+
+@Entity(tableName = "recovery_records", indices = [Index("downloadId"), Index("classification")])
+data class RecoveryRecordEntity(@PrimaryKey val id: String, val downloadId: String?, val artifactPath: String, val classification: String, val reason: String, val createdAtEpochMs: Long)
+
+@Entity(tableName = "finalization_journals", indices = [Index("downloadId", unique = true)])
+data class FinalizationJournalEntity(@PrimaryKey val id: String, val downloadId: String, val stage: String, val sourcePath: String, val destinationUri: String, val updatedAtEpochMs: Long)
+
+@Entity(tableName = "notification_records", indices = [Index("downloadId"), Index("createdAtEpochMs")])
+data class NotificationRecordEntity(@PrimaryKey val id: String, val downloadId: String?, val title: String, val message: String, val severity: String, val dismissed: Boolean, val createdAtEpochMs: Long)
+
+@Entity(tableName = "tags")
+data class TagEntity(@PrimaryKey val id: String, val name: String, val colorArgb: Long)
+
+@Entity(tableName = "download_tags", primaryKeys = ["downloadId", "tagId"], indices = [Index("tagId")])
+data class DownloadTagCrossRef(val downloadId: String, val tagId: String)
+
+@Entity(tableName = "destination_permissions", indices = [Index("providerType"), Index("status")])
+data class DestinationPermissionEntity(
+    @PrimaryKey val uri: String,
+    val displayName: String,
+    val providerType: String,
+    val persistedRead: Boolean,
+    val persistedWrite: Boolean,
+    @ColumnInfo(defaultValue = "'Unknown'") val status: String,
+    val lastValidatedAtEpochMs: Long,
+    val lastError: String?,
+)
+
+@Entity(tableName = "aria2_session_mappings", indices = [Index("downloadId", unique = true), Index("gid", unique = true)])
+data class Aria2SessionMappingEntity(@PrimaryKey val id: String, val downloadId: String, val gid: String, val sessionFilePath: String, val updatedAtEpochMs: Long)
+
+
+@Entity(tableName = "destination_claims", indices = [Index("downloadId", unique = true)])
+data class DestinationClaimEntity(
+    @PrimaryKey val destinationKey: String,
+    val downloadId: String,
+    val backend: String,
+    val partialIdentity: String,
+    val generation: Long,
+    val status: String,
+    val claimedAtEpochMs: Long,
+    val synchronizedAtEpochMs: Long,
+)
+
+@Entity(tableName = "ownership_counters")
+data class OwnershipCounterEntity(@PrimaryKey val name: String, val value: Long)

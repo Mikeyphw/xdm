@@ -1,31 +1,26 @@
 [project]
-kind = "auto"
+kind = "dotnet" # auto | dotnet | android | gradle | python | command | unknown
 build_target = "app/XDM/XDM.Modern.sln"
 run_target = "app/XDM/src/XDM.App/XDM.App.csproj"
 default_target = "xdm_modern"
 
 [execution]
-environment = "auto"
+environment = "auto" # auto | native-termux | chroot | desktop-linux | android-device | external-device
 chroot_name = "androidos"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# XDM desktop — .NET/Avalonia
-# ─────────────────────────────────────────────────────────────────────────────
+device_serial = ""
 
 [targets.xdm_modern]
 type = "dotnet"
 solution = "app/XDM/XDM.Modern.sln"
 run_project = "app/XDM/src/XDM.App/XDM.App.csproj"
 
+python = ""
+run_module = ""
 restore_command = "dotnet restore app/XDM/XDM.Modern.sln"
 build_command = "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore"
 test_command = "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build"
 run_command = "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj"
 package_command = "bash app/XDM/eng/qualify-prerelease.sh"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# XDM Android — Kotlin/Compose/Gradle
-# ─────────────────────────────────────────────────────────────────────────────
 
 [targets.xdm_android]
 type = "android"
@@ -42,24 +37,25 @@ prefer_native_termux = false
 [targets.xdm_android.gradle]
 version = "9.4.1"
 max_workers = 4
-structured_events = true
+structured_events = false
 no_daemon = true
 fail_fast = true
+offline = false
 
 [targets.xdm_android.tasks]
 restore = ["help"]
-build = [
-    "assembleDebug",
-    "assembleBeta",
-]
+build = ["assembleDebug", "assembleBeta"]
 test = [
-    "test",
-    "testDebugUnitTest",
+  ":core-model:test",
+  ":transfer-api:test",
+  ":browser-integration:testDebugUnitTest",
+  ":storage:testDebugUnitTest",
+  ":transfer-native:testDebugUnitTest",
+  ":scheduler:testDebugUnitTest",
+  ":persistence:testDebugUnitTest",
+  ":app:testDebugUnitTest",
 ]
-lint = [
-    "lintDebug",
-    "lintBeta",
-]
+lint = ["lintDebug", "lintBeta"]
 clean = ["clean"]
 
 [targets.xdm_android.artifacts]

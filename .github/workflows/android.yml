@@ -1,0 +1,52 @@
+name: XDM Android CI
+
+on:
+  push:
+    paths:
+      - 'app/XDM.Android/**'
+      - '.github/workflows/android.yml'
+  pull_request:
+    paths:
+      - 'app/XDM.Android/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: app/XDM.Android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.4.1'
+      - name: Static phase contracts
+        run: |
+          python3 tools/validate-foundation.py
+          python3 tools/validate-phase-2-3.py
+          python3 tools/validate-phase-4.py
+          python3 tools/validate-phase-5.py
+      - name: Bootstrap wrapper
+        run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.4.1
+      - name: Lint, test, and package
+        run: ./gradlew --stacktrace lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xdm-android-apks
+          path: |
+            app/XDM.Android/app/build/outputs/apk/debug/*.apk
+            app/XDM.Android/app/build/outputs/apk/beta/*.apk
+          if-no-files-found: error

@@ -1,0 +1,28 @@
+{
+  "project": {
+    "name": "XDM Android",
+    "package_id": "com.mikeyphw.xdm.android",
+    "version": "0.5.0-alpha01",
+    "implemented_phases": [0, 1, 2, 3, 4, 5]
+  },
+  "database": {
+    "version": 4,
+    "migrations": ["1_to_2", "2_to_3", "3_to_4"],
+    "destination_permission_health": true
+  },
+  "execution": {
+    "uidt": true,
+    "foreground_service_fallback": true,
+    "reboot_restore": true,
+    "per_download_notification_actions": ["pause", "resume", "retry", "cancel", "mute"]
+  },
+  "storage": {
+    "mediastore": ["downloads", "movies", "music", "pictures", "documents"],
+    "saf_tree": true,
+    "sd_card_via_saf": true,
+    "app_private_staging": true,
+    "persisted_uri_permissions": true,
+    "conflict_policies": ["overwrite", "resume", "rename", "skip", "compare"]
+  },
+  "next_phase": 6
+}
