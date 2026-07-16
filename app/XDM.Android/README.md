@@ -1,6 +1,6 @@
 # XDM Android
 
-Standalone Android download manager implemented through Phase 5: modular Kotlin/Compose architecture, Room persistence, transactional backend ownership, native HTTP/HTTPS transfers, Android long-running execution, and public/SAF storage.
+Standalone Android download manager implemented through Phase 5: modular Kotlin/Compose architecture, Room persistence, reconciled physical-artifact backend ownership, native HTTP/HTTPS transfers, Android long-running execution, and public/SAF storage.
 
 ## Build
 
@@ -22,8 +22,10 @@ Use `./build-release-apk.sh debug` for a debug APK without release signing, or `
 
 ## Implemented through Phase 5
 
-- Fourteen-module Compose project and Room schema v4.
-- Transactional per-file backend ownership and capability-based backend selection.
+- Fourteen-module Compose project and Room schema v5.
+- Transactional per-file backend ownership using physical artifact sets, stable backend instance IDs, rotating process-session IDs, and capability-based backend selection.
+- Startup reconciliation quarantines legacy, missing, malformed, conflicting, and unavailable backend artifacts instead of silently releasing their destinations.
+- Reconciled resumable artifacts can be adopted only through a new ownership generation.
 - Native HTTP/HTTPS segmentation, pause/resume, durable checkpoints, strict range/validator checks, retry, and crash-safe staging.
 - UIDT on supported Android versions with foreground-service fallback, notification actions, WorkManager restoration, and reboot recovery.
 - Debug, beta, and release variants plus repository-root Android CI.
@@ -33,4 +35,4 @@ Use `./build-release-apk.sh debug` for a debug APK without release signing, or `
 - Overwrite, resume, rename, skip, and compare conflict policy persistence.
 - aria2 remains an explicit Phase 6 placeholder and cannot own the same destination as the native backend.
 
-See `docs/architecture/PHASES-0-1.md`, `PHASES-2-3.md`, `PHASE-4.md`, and `PHASE-5.md`.
+See `docs/architecture/PHASE-6A-OWNERSHIP-HARDENING.md`, `docs/architecture/PHASES-0-1.md`, `PHASES-2-3.md`, `PHASE-4.md`, and `PHASE-5.md`.

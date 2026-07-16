@@ -1,6 +1,7 @@
 [project]
+# This is a mixed desktop/.NET and Android repository. Android is the root
+# project kind; desktop commands select the xdm_modern named target explicitly.
 kind = "android" # auto | dotnet | android | gradle | python | command | unknown
-default_target = "xdm_android"
 
 [execution]
 environment = "auto" # auto | native-termux | chroot | desktop-linux | android-device | external-device
@@ -42,7 +43,7 @@ offline = false
 
 [targets.xdm_android.tasks]
 restore = ["help"]
-build = ["assembleDebug"]
+build = ["assembleDebug", "assembleBeta"]
 test = [
   ":core-model:test",
   ":transfer-api:test",

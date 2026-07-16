@@ -1,5 +1,9 @@
 package com.mikeyphw.xdm.android.transfer.nativeengine
 
+import com.mikeyphw.xdm.android.model.BackendOwnership
+import com.mikeyphw.xdm.android.model.BackendOwnershipStatus
+import com.mikeyphw.xdm.android.model.BackendReconciliationClassification
+import com.mikeyphw.xdm.android.model.BackendRuntimeIdentity
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
@@ -7,6 +11,7 @@ import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.Collections
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -146,6 +151,127 @@ class NativeHttpDownloadBackendTest {
         assertArrayEquals(payload, Files.readAllBytes(destination))
         assertTrue(retryAttempts.get() >= 2)
     }
+
+
+    @Test
+    fun reconciliationAcceptsMatchingPhysicalPartialAndCheckpoint() = runBlocking {
+        val directory = Files.createTempDirectory("xdm-native-reconcile")
+        val destination = directory.resolve("payload.bin")
+        val identity = BackendRuntimeIdentity("native-install", "new-session")
+        val backend = NativeHttpDownloadBackend(OkHttpClient(), scope, runtimeIdentity = identity)
+        val request = request("reconcile", "/file", destination, maxConnections = 1)
+        val preparation = backend.prepare(request)
+        val partial = Paths.get(java.net.URI(preparation.artifacts.primary))
+        val checkpoint = Paths.get(java.net.URI(preparation.artifacts.companions.first { it.endsWith(".checkpoint.json") }))
+        Files.write(partial, payload.copyOfRange(0, 64))
+        NativeCheckpointStore().save(
+            checkpoint,
+            NativeCheckpoint(
+                downloadId = request.id,
+                sourceUrl = request.sourceUrl,
+                effectiveUrl = request.sourceUrl,
+                destinationPath = destination.toString(),
+                partialPath = partial.toString(),
+                expectedLength = payload.size.toLong(),
+                etag = "\"stable\"",
+                lastModified = null,
+                rangeSupported = true,
+                segments = listOf(NativeSegmentCheckpoint(0, 0, payload.size.toLong() - 1, 64, false)),
+                persistedAtEpochMs = 1,
+            ),
+        )
+
+        val result = backend.reconcile(ownership(request.id, preparation, identity.copy(sessionId = "old-session")))
+
+        assertEquals(BackendReconciliationClassification.ResumableArtifact, result.classification)
+        assertTrue(result.safeToResume)
+    }
+
+    @Test
+    fun reconciliationRejectsArtifactsFromAnotherBackendInstallation() = runBlocking {
+        val directory = Files.createTempDirectory("xdm-native-instance")
+        val destination = directory.resolve("payload.bin")
+        val identity = BackendRuntimeIdentity("current-install", "new-session")
+        val backend = NativeHttpDownloadBackend(OkHttpClient(), scope, runtimeIdentity = identity)
+        val request = request("instance-mismatch", "/file", destination, maxConnections = 1)
+        val preparation = backend.prepare(request)
+
+        val result = backend.reconcile(
+            ownership(
+                request.id,
+                preparation,
+                BackendRuntimeIdentity("different-install", "old-session"),
+            ),
+        )
+
+        assertEquals(BackendReconciliationClassification.ConflictingArtifact, result.classification)
+        assertTrue(!result.safeToResume)
+    }
+
+    @Test
+    fun reconciliationQuarantinesMissingPhysicalPartial() = runBlocking {
+        val directory = Files.createTempDirectory("xdm-native-missing")
+        val destination = directory.resolve("payload.bin")
+        val identity = BackendRuntimeIdentity("native-install", "new-session")
+        val backend = NativeHttpDownloadBackend(OkHttpClient(), scope, runtimeIdentity = identity)
+        val request = request("missing", "/file", destination, maxConnections = 1)
+        val preparation = backend.prepare(request)
+
+        val result = backend.reconcile(ownership(request.id, preparation, identity.copy(sessionId = "old-session")))
+
+        assertEquals(BackendReconciliationClassification.MissingArtifact, result.classification)
+        assertTrue(!result.safeToResume)
+    }
+
+    @Test
+    fun reconciliationRejectsCheckpointForAnotherDownload() = runBlocking {
+        val directory = Files.createTempDirectory("xdm-native-conflict")
+        val destination = directory.resolve("payload.bin")
+        val identity = BackendRuntimeIdentity("native-install", "new-session")
+        val backend = NativeHttpDownloadBackend(OkHttpClient(), scope, runtimeIdentity = identity)
+        val request = request("expected", "/file", destination, maxConnections = 1)
+        val preparation = backend.prepare(request)
+        val partial = Paths.get(java.net.URI(preparation.artifacts.primary))
+        val checkpoint = Paths.get(java.net.URI(preparation.artifacts.companions.first { it.endsWith(".checkpoint.json") }))
+        Files.write(partial, payload.copyOfRange(0, 64))
+        NativeCheckpointStore().save(
+            checkpoint,
+            NativeCheckpoint(
+                downloadId = "different-download",
+                sourceUrl = request.sourceUrl,
+                effectiveUrl = request.sourceUrl,
+                destinationPath = destination.toString(),
+                partialPath = partial.toString(),
+                expectedLength = payload.size.toLong(),
+                etag = "\"stable\"",
+                lastModified = null,
+                rangeSupported = true,
+                segments = listOf(NativeSegmentCheckpoint(0, 0, payload.size.toLong() - 1, 64, false)),
+                persistedAtEpochMs = 1,
+            ),
+        )
+
+        val result = backend.reconcile(ownership(request.id, preparation, identity.copy(sessionId = "old-session")))
+
+        assertEquals(BackendReconciliationClassification.ConflictingArtifact, result.classification)
+        assertTrue(!result.safeToResume)
+    }
+
+    private fun ownership(
+        downloadId: String,
+        preparation: com.mikeyphw.xdm.android.transfer.BackendPreparation,
+        runtimeIdentity: BackendRuntimeIdentity,
+    ) = BackendOwnership(
+        downloadId = downloadId,
+        destinationKey = preparation.destinationKey,
+        artifacts = preparation.artifacts,
+        backend = BackendType.Native,
+        generation = 7,
+        status = BackendOwnershipStatus.Reconciling,
+        runtimeIdentity = runtimeIdentity,
+        claimedAtEpochMs = 1,
+        synchronizedAtEpochMs = 1,
+    )
 
     private fun request(id: String, path: String, destination: java.nio.file.Path, maxConnections: Int) = DownloadRequest(
         id = id,

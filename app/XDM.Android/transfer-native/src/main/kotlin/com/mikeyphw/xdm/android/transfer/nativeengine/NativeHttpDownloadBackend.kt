@@ -1,9 +1,15 @@
 package com.mikeyphw.xdm.android.transfer.nativeengine
 
+import com.mikeyphw.xdm.android.model.BackendArtifactIdentity
 import com.mikeyphw.xdm.android.model.BackendCapabilities
+import com.mikeyphw.xdm.android.model.BackendOwnership
+import com.mikeyphw.xdm.android.model.BackendReconciliationClassification
+import com.mikeyphw.xdm.android.model.BackendRuntimeIdentity
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.transfer.BackendShutdownResult
+import com.mikeyphw.xdm.android.transfer.BackendPreparation
+import com.mikeyphw.xdm.android.transfer.BackendReconciliationResult
 import com.mikeyphw.xdm.android.transfer.BackendSnapshot
 import com.mikeyphw.xdm.android.transfer.BackendTask
 import com.mikeyphw.xdm.android.transfer.DownloadBackend
@@ -11,6 +17,7 @@ import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.storage.DestinationRequest
 import com.mikeyphw.xdm.android.storage.DestinationWriter
 import com.mikeyphw.xdm.android.storage.FileDestinationWriter
+import com.mikeyphw.xdm.android.storage.PreparedDestination
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.net.URI
@@ -51,9 +58,11 @@ class NativeHttpDownloadBackend(
     private val clock: () -> Long = System::currentTimeMillis,
     private val random: Random = Random.Default,
     private val destinationWriter: DestinationWriter = FileDestinationWriter(),
+    override val runtimeIdentity: BackendRuntimeIdentity = BackendRuntimeIdentity("native-default", UUID.randomUUID().toString()),
 ) : DownloadBackend {
     override val backendId: String = "native"
     private val tasks = ConcurrentHashMap<String, TaskControl>()
+    private val preparations = ConcurrentHashMap<String, NativePreparation>()
     private val checkpointStore = NativeCheckpointStore()
     private val globalConnections = Semaphore(config.maximumGlobalConnections.coerceAtLeast(1))
     private val hostConnections = ConcurrentHashMap<String, Semaphore>()
@@ -69,13 +78,43 @@ class NativeHttpDownloadBackend(
         maxConnectionsPerDownload = config.defaultConnections,
     )
 
-    override suspend fun add(request: DownloadRequest): BackendTask {
+    override suspend fun prepare(request: DownloadRequest): BackendPreparation {
         require(request.sourceUrl.startsWith("http://") || request.sourceUrl.startsWith("https://")) { "Native backend supports HTTP and HTTPS" }
+        val preparedDestination = destinationWriter.prepare(request.toDestinationRequest())
+        val preparationId = UUID.randomUUID().toString()
+        val artifacts = preparedDestination.artifacts.toBackendArtifactIdentity()
+        preparations[preparationId] = NativePreparation(request.id, preparedDestination, artifacts)
+        return BackendPreparation(
+            preparationId = preparationId,
+            downloadId = request.id,
+            backend = BackendType.Native,
+            destinationKey = preparedDestination.destinationKey,
+            artifacts = artifacts,
+            runtimeIdentity = runtimeIdentity,
+        )
+    }
+
+    override suspend fun add(request: DownloadRequest, preparation: BackendPreparation): BackendTask {
+        require(preparation.backend == BackendType.Native) { "Native backend received a foreign preparation" }
+        require(preparation.downloadId == request.id) { "Native preparation belongs to a different download" }
+        require(preparation.runtimeIdentity == runtimeIdentity) { "Native preparation belongs to a stale runtime session" }
+        val nativePreparation = requireNotNull(preparations.remove(preparation.preparationId)) { "Unknown or already consumed native preparation" }
+        require(nativePreparation.downloadId == request.id) { "Native preparation download mismatch" }
+        require(nativePreparation.artifacts == preparation.artifacts) { "Native preparation artifact identity changed" }
         val taskId = UUID.randomUUID().toString()
-        val control = TaskControl(request, MutableStateFlow(BackendSnapshot(taskId, DownloadState.Queued, 0, request.expectedLength, 0)))
+        val control = TaskControl(
+            request = request,
+            preparedDestination = nativePreparation.destination,
+            artifacts = nativePreparation.artifacts,
+            state = MutableStateFlow(BackendSnapshot(taskId, DownloadState.Queued, 0, request.expectedLength, 0)),
+        )
         tasks[taskId] = control
         launch(control)
         return BackendTask(taskId, BackendType.Native)
+    }
+
+    override suspend fun discardPreparation(preparation: BackendPreparation) {
+        preparations.remove(preparation.preparationId)
     }
 
     override suspend fun pause(taskId: String) {
@@ -109,14 +148,97 @@ class NativeHttpDownloadBackend(
         control.cancelRequested = true
         control.activeCalls.forEach(Call::cancel)
         control.job?.cancelAndJoin()
-        val artifacts = destinationWriter.artifactPaths(control.request.toDestinationRequest())
+        val artifacts = control.preparedDestination.artifacts
         Files.deleteIfExists(artifacts.stagingFile.toPath())
         checkpointStore.delete(artifacts.checkpointFile.toPath())
         Files.deleteIfExists(artifacts.journalFile.toPath())
     }
 
+    override suspend fun detach(taskId: String): Boolean {
+        val control = tasks.remove(taskId) ?: return true
+        control.pauseRequested = true
+        control.activeCalls.forEach(Call::cancel)
+        control.job?.cancelAndJoin()
+        control.state.value = control.state.value.copy(
+            state = DownloadState.Paused,
+            speedBytesPerSecond = 0,
+            errorMessage = null,
+        )
+        return control.job?.isActive != true
+    }
+
     override suspend fun query(taskId: String): BackendSnapshot? = tasks[taskId]?.state?.value
     override fun observe(taskId: String): Flow<BackendSnapshot> = tasks[taskId]?.state ?: emptyFlow()
+
+    override suspend fun reconcile(ownership: BackendOwnership): BackendReconciliationResult {
+        if (ownership.backend != BackendType.Native || ownership.artifacts.format != NATIVE_ARTIFACT_FORMAT) {
+            return BackendReconciliationResult(
+                BackendReconciliationClassification.ConflictingArtifact,
+                "Ownership does not describe an XDM native artifact set.",
+            )
+        }
+        if (ownership.runtimeIdentity.instanceId != runtimeIdentity.instanceId) {
+            return BackendReconciliationResult(
+                BackendReconciliationClassification.ConflictingArtifact,
+                "The native artifacts belong to a different backend installation instance.",
+            )
+        }
+        val activeTask = ownership.backendTaskId?.let(tasks::get)
+        if (activeTask != null) {
+            return if (activeTask.artifacts == ownership.artifacts) {
+                BackendReconciliationResult(
+                    BackendReconciliationClassification.ActiveTaskVerified,
+                    "The native task is active and its physical artifacts match the ownership record.",
+                    backendTaskId = ownership.backendTaskId,
+                )
+            } else {
+                BackendReconciliationResult(
+                    BackendReconciliationClassification.ConflictingArtifact,
+                    "The active native task points to a different artifact set.",
+                )
+            }
+        }
+
+        val partial = ownership.artifacts.primary.toFilePathOrNull()
+            ?: return BackendReconciliationResult(
+                BackendReconciliationClassification.ConflictingArtifact,
+                "The native primary artifact is not a local file URI.",
+            )
+        val checkpointIdentity = ownership.artifacts.companions.firstOrNull { it.endsWith(".checkpoint.json") }
+        val checkpoint = checkpointIdentity?.toFilePathOrNull()
+        if (!Files.exists(partial)) {
+            return BackendReconciliationResult(
+                BackendReconciliationClassification.MissingArtifact,
+                "The native partial file is missing; ownership remains quarantined.",
+            )
+        }
+        if (checkpoint == null || !Files.exists(checkpoint)) {
+            return BackendReconciliationResult(
+                BackendReconciliationClassification.OrphanedArtifact,
+                "A native partial file exists without its checkpoint.",
+            )
+        }
+        val parsed = runCatching { checkpointStore.load(checkpoint) }.getOrElse { error ->
+            return BackendReconciliationResult(
+                BackendReconciliationClassification.ConflictingArtifact,
+                "The native checkpoint is malformed: ${error.message ?: error::class.java.simpleName}",
+            )
+        } ?: return BackendReconciliationResult(
+            BackendReconciliationClassification.MissingArtifact,
+            "The native checkpoint disappeared during reconciliation.",
+        )
+        if (parsed.downloadId != ownership.downloadId || parsed.partialPath != partial.toString()) {
+            return BackendReconciliationResult(
+                BackendReconciliationClassification.ConflictingArtifact,
+                "The native checkpoint belongs to another download or partial file.",
+            )
+        }
+        return BackendReconciliationResult(
+            BackendReconciliationClassification.ResumableArtifact,
+            "The previous native session ended, but its partial file and checkpoint are safe to adopt.",
+            safeToResume = true,
+        )
+    }
 
     override suspend fun shutdown(): BackendShutdownResult {
         val active = tasks.filterValues { it.job?.isActive == true }.keys.toList()
@@ -143,7 +265,7 @@ class NativeHttpDownloadBackend(
 
     private suspend fun runTransfer(control: TaskControl) = withContext(Dispatchers.IO) {
         control.state.value = control.state.value.copy(state = DownloadState.Connecting, errorMessage = null)
-        val preparedDestination = destinationWriter.prepare(control.request.toDestinationRequest())
+        val preparedDestination = control.preparedDestination
         val paths = NativeArtifactPaths(
             destinationIdentity = preparedDestination.destinationKey,
             partial = preparedDestination.artifacts.stagingFile.toPath(),
@@ -449,8 +571,16 @@ class NativeHttpDownloadBackend(
 
     private fun requireTask(taskId: String): TaskControl = requireNotNull(tasks[taskId]) { "Unknown task $taskId" }
 
+    private data class NativePreparation(
+        val downloadId: String,
+        val destination: PreparedDestination,
+        val artifacts: BackendArtifactIdentity,
+    )
+
     private class TaskControl(
         val request: DownloadRequest,
+        val preparedDestination: PreparedDestination,
+        val artifacts: BackendArtifactIdentity,
         val state: MutableStateFlow<BackendSnapshot>,
         var job: Job? = null,
         @Volatile var pauseRequested: Boolean = false,
@@ -458,7 +588,22 @@ class NativeHttpDownloadBackend(
         val activeCalls: MutableSet<Call> = ConcurrentHashMap.newKeySet(),
     )
 
+    private fun com.mikeyphw.xdm.android.storage.DestinationArtifacts.toBackendArtifactIdentity() = BackendArtifactIdentity(
+        format = NATIVE_ARTIFACT_FORMAT,
+        primary = stagingFile.canonicalFile.toURI().normalize().toString(),
+        companions = listOf(
+            checkpointFile.canonicalFile.toURI().normalize().toString(),
+            journalFile.canonicalFile.toURI().normalize().toString(),
+        ),
+    )
+
+    private fun String.toFilePathOrNull() = runCatching {
+        val uri = URI(this)
+        if (!uri.scheme.equals("file", ignoreCase = true)) null else Paths.get(uri).toAbsolutePath().normalize()
+    }.getOrNull()
+
     private companion object {
+        const val NATIVE_ARTIFACT_FORMAT = "xdm-native-v1"
         val CONTENT_RANGE = Regex("bytes (\\d+)-(\\d+)/(\\d+|\\*)")
         val TERMINAL_STATES = setOf(DownloadState.Completed, DownloadState.Cancelled)
     }

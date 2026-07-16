@@ -1,5 +1,15 @@
 # Changelog
 
+## XDM Android 0.5.1-alpha01 — 2026-07-15
+
+### Changed
+
+- Replaced synthesized partial ownership keys with backend-prepared physical artifact identities.
+- Added stable backend instance identities, per-process session identities, and Room schema v5 persistence.
+- Added startup reconciliation, quarantine classifications, and generation-safe artifact adoption.
+- Prevented startup from releasing stale claims before the owning backend has validated its task and artifacts.
+- Prepared the ownership boundary required before the embedded aria2 backend can write transfer data.
+
 ## 9.0.0-preview.1 — 2026-07-11
 
 First modern Avalonia preview from the `Mikeyphw/xdm` fork.

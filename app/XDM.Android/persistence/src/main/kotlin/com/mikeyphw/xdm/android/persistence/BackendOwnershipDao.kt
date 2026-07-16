@@ -11,11 +11,17 @@ interface BackendOwnershipDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertClaim(entity: DestinationClaimEntity): Long
 
+    @Upsert
+    suspend fun upsertClaim(entity: DestinationClaimEntity)
+
     @Query("SELECT * FROM destination_claims WHERE destinationKey = :destinationKey")
     suspend fun findClaimByDestination(destinationKey: String): DestinationClaimEntity?
 
     @Query("SELECT * FROM destination_claims WHERE downloadId = :downloadId")
     suspend fun findClaimByDownload(downloadId: String): DestinationClaimEntity?
+
+    @Query("SELECT * FROM destination_claims ORDER BY claimedAtEpochMs, downloadId")
+    suspend fun listClaims(): List<DestinationClaimEntity>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun seedCounter(entity: OwnershipCounterEntity): Long

@@ -41,7 +41,25 @@ enum class BackendSelectionReason {
     DefaultNative,
 }
 
-enum class BackendOwnershipStatus { Claimed, Active, Releasing }
+enum class BackendOwnershipStatus {
+    Claimed,
+    Active,
+    Reconciling,
+    Reconciled,
+    Quarantined,
+    Releasing,
+}
+
+enum class BackendReconciliationClassification {
+    Pending,
+    ActiveTaskVerified,
+    ResumableArtifact,
+    BackendTaskOrphaned,
+    OrphanedArtifact,
+    MissingArtifact,
+    ConflictingArtifact,
+    BackendUnavailable,
+}
 
 enum class DestinationType {
     AppPrivate,
@@ -136,14 +154,41 @@ data class BackendRecommendation(
     val explanation: String,
 )
 
+data class BackendRuntimeIdentity(
+    val instanceId: String,
+    val sessionId: String,
+)
+
+data class BackendArtifactIdentity(
+    val format: String,
+    val primary: String,
+    val companions: List<String> = emptyList(),
+) {
+    init {
+        require(format.isNotBlank()) { "Artifact format must not be blank" }
+        require(primary.isNotBlank()) { "Primary artifact identity must not be blank" }
+        require(companions.none(String::isBlank)) { "Companion artifact identities must not be blank" }
+        require(primary !in companions) { "Primary artifact identity must not be repeated as a companion" }
+        require(companions.distinct().size == companions.size) { "Companion artifact identities must be unique" }
+    }
+
+    fun all(): List<String> = listOf(primary) + companions
+}
+
 data class BackendOwnership(
     val downloadId: String,
     val destinationKey: String,
-    val partialIdentity: String,
+    val artifacts: BackendArtifactIdentity,
     val backend: BackendType,
     val generation: Long,
     val status: BackendOwnershipStatus,
+    val runtimeIdentity: BackendRuntimeIdentity,
     val backendTaskId: String? = null,
+    val reconciliation: BackendReconciliationClassification = BackendReconciliationClassification.Pending,
+    val reconciliationMessage: String? = null,
+    val reconciledAtEpochMs: Long? = null,
     val claimedAtEpochMs: Long,
     val synchronizedAtEpochMs: Long,
-)
+) {
+    val partialIdentity: String get() = artifacts.primary
+}

@@ -13,6 +13,7 @@ import com.mikeyphw.xdm.android.scheduler.TransferNotifications
 import com.mikeyphw.xdm.android.scheduler.TransferRuntimeProvider
 import com.mikeyphw.xdm.android.transfer.BackendOwnershipStore
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
+import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2BackendPlaceholder
 import com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackend
 import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
@@ -31,19 +32,27 @@ class XdmApplication : Application(), TransferRuntimeProvider {
     override fun onCreate() {
         super.onCreate()
         val database = Room.databaseBuilder(this, AppDatabase::class.java, "xdm-android.db")
-            .addMigrations(Migrations.Migration1To2, Migrations.Migration2To3, Migrations.Migration3To4)
+            .addMigrations(Migrations.Migration1To2, Migrations.Migration2To3, Migrations.Migration3To4, Migrations.Migration4To5)
             .build()
         val repository = DownloadRepository(database)
         val ownershipStore = RoomBackendOwnershipStore(database)
         val destinationWriter = AndroidDestinationWriter(this)
+        val runtimeIdentities = BackendRuntimeIdentityStore(this)
         transferRuntime = TransferExecutionRuntime(
             store = RepositoryTransferDownloadStore(repository),
             ownershipStore = ownershipStore,
-            backends = listOf(NativeHttpDownloadBackend(destinationWriter = destinationWriter), Aria2BackendPlaceholder()),
+            backends = listOf(
+                NativeHttpDownloadBackend(
+                    destinationWriter = destinationWriter,
+                    runtimeIdentity = runtimeIdentities.identityFor(BackendType.Native),
+                ),
+                Aria2BackendPlaceholder(runtimeIdentities.identityFor(BackendType.Aria2)),
+            ),
         )
         TransferNotifications(this).ensureChannels()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             transferRuntime.restoreInterruptedTransfers()
+            transferRuntime.reconcilePersistedOwnership()
         }
         container = AppContainer(
             repository = repository,

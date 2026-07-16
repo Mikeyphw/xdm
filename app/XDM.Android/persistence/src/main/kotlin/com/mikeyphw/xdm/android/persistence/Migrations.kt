@@ -45,4 +45,18 @@ object Migrations {
         }
     }
 
+    val Migration4To5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            listOf("backend_tasks", "destination_claims").forEach { table ->
+                db.execSQL("ALTER TABLE $table ADD COLUMN artifactFormat TEXT NOT NULL DEFAULT 'legacy-partial-v1'")
+                db.execSQL("ALTER TABLE $table ADD COLUMN companionArtifactIdentities TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE $table ADD COLUMN backendInstanceId TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE $table ADD COLUMN backendSessionId TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE $table ADD COLUMN reconciliation TEXT NOT NULL DEFAULT 'Pending'")
+                db.execSQL("ALTER TABLE $table ADD COLUMN reconciliationMessage TEXT")
+                db.execSQL("ALTER TABLE $table ADD COLUMN reconciledAtEpochMs INTEGER")
+            }
+        }
+    }
+
 }

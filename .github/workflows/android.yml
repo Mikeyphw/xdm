@@ -39,6 +39,7 @@ jobs:
           python3 tools/validate-phase-2-3.py
           python3 tools/validate-phase-4.py
           python3 tools/validate-phase-5.py
+          python3 tools/validate-ownership-hardening.py
       - name: Bootstrap wrapper
         run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.4.1
       - name: Lint, test, and package

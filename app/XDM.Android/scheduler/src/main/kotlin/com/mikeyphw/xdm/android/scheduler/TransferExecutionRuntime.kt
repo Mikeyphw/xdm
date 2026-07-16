@@ -1,11 +1,15 @@
 package com.mikeyphw.xdm.android.scheduler
 
+import com.mikeyphw.xdm.android.model.BackendOwnershipStatus
+import com.mikeyphw.xdm.android.model.BackendReconciliationClassification
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.transfer.BackendCoordinator
+import com.mikeyphw.xdm.android.transfer.BackendOwnershipReconciler
 import com.mikeyphw.xdm.android.transfer.BackendOwnershipStore
 import com.mikeyphw.xdm.android.transfer.BackendRegistry
+import com.mikeyphw.xdm.android.transfer.BackendReconciliationResult
 import com.mikeyphw.xdm.android.transfer.BackendSnapshot
 import com.mikeyphw.xdm.android.transfer.DownloadBackend
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
@@ -29,6 +33,7 @@ class TransferExecutionRuntime(
 ) {
     private val registry = BackendRegistry(backends)
     private val coordinator = BackendCoordinator(registry, ownershipStore)
+    private val reconciler = BackendOwnershipReconciler(registry, ownershipStore)
     private val ownershipStore = ownershipStore
     private val jobs = ConcurrentHashMap<String, Job>()
     private val backendTaskIds = ConcurrentHashMap<String, Pair<BackendType, String>>()
@@ -107,6 +112,30 @@ class TransferExecutionRuntime(
         return ids.size
     }
 
+    suspend fun reconcilePersistedOwnership(): Int {
+        val results = reconciler.reconcileAll()
+        results.forEach { (ownership, result) ->
+            val download = store.find(ownership.downloadId) ?: return@forEach
+            val updated = when (result.classification) {
+                BackendReconciliationClassification.ActiveTaskVerified -> download
+                BackendReconciliationClassification.ResumableArtifact -> download.copy(
+                    state = DownloadState.Paused,
+                    speedBytesPerSecond = 0,
+                    errorMessage = result.message,
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                )
+                else -> download.copy(
+                    state = DownloadState.RecoveryRequired,
+                    speedBytesPerSecond = 0,
+                    errorMessage = result.message,
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                )
+            }
+            if (updated != download) store.save(updated)
+        }
+        return results.size
+    }
+
     suspend fun restoreInterruptedTransfers(): Int {
         val interrupted = store.findByStates(INTERRUPTED_STATES)
         interrupted.forEach { download ->
@@ -131,8 +160,39 @@ class TransferExecutionRuntime(
     }
 
     private suspend fun runDownload(download: Download) {
-        val stale = ownershipStore.findByDownload(download.id)
-        if (stale != null && backendTaskIds[download.id] == null) ownershipStore.release(download.id, stale.generation)
+        val existingMapping = backendTaskIds[download.id]
+        if (existingMapping != null) {
+            observeExistingTask(download, existingMapping)
+            return
+        }
+
+        val existingOwnership = ownershipStore.findByDownload(download.id)
+        if (existingOwnership != null) {
+            val alreadyReconciled = existingOwnership.status == BackendOwnershipStatus.Reconciled &&
+                existingOwnership.reconciliation == BackendReconciliationClassification.ResumableArtifact
+            val reconciliation = if (alreadyReconciled) {
+                BackendReconciliationResult(
+                    classification = existingOwnership.reconciliation,
+                    message = existingOwnership.reconciliationMessage ?: "Persisted backend artifacts are ready for controlled adoption.",
+                    safeToResume = true,
+                )
+            } else {
+                reconciler.reconcile(download.id)
+            }
+            if (reconciliation?.safeToResume != true) {
+                val message = reconciliation?.message ?: "Persisted backend ownership could not be reconciled."
+                store.save(
+                    download.copy(
+                        state = DownloadState.RecoveryRequired,
+                        speedBytesPerSecond = 0,
+                        errorMessage = message,
+                        updatedAtEpochMs = System.currentTimeMillis(),
+                    ),
+                )
+                _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, DownloadState.RecoveryRequired, message))
+                return
+            }
+        }
         val request = DownloadRequest(
             id = download.id,
             sourceUrl = download.sourceUrl,
@@ -146,25 +206,91 @@ class TransferExecutionRuntime(
         try {
             fileNames[download.id] = download.fileName
             val coordinated = coordinator.add(request)
-            backendTaskIds[download.id] = coordinated.task.backend to coordinated.task.taskId
-            store.saveBackendTask(download.id, coordinated.task.backend, coordinated.task.taskId, coordinated.ownership)
-            val finalSnapshot = registry.require(coordinated.task.backend).observe(coordinated.task.taskId).first { snapshot ->
-                publish(download, snapshot)
-                snapshot.state in RUN_END_STATES
-            }
-            if (finalSnapshot.state in TERMINAL_STATES || finalSnapshot.state == DownloadState.RecoveryRequired) {
-                _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, finalSnapshot.state, finalSnapshot.errorMessage))
-            }
+            val mapping = coordinated.task.backend to coordinated.task.taskId
+            backendTaskIds[download.id] = mapping
+            observeTaskUntilRunEnd(download, mapping)
         } catch (error: Throwable) {
-            val current = store.find(download.id) ?: download
-            store.save(current.copy(state = DownloadState.Failed, speedBytesPerSecond = 0, errorMessage = error.message, updatedAtEpochMs = System.currentTimeMillis()))
-            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, DownloadState.Failed, error.message))
+            handleRuntimeFailure(download, error)
         } finally {
-            backendTaskIds.remove(download.id)
-            store.deleteBackendTask(download.id)
-            coordinator.release(download.id)
-            snapshots.value = snapshots.value - download.id
-            fileNames.remove(download.id)
+            cleanUpFinishedTask(download.id)
+        }
+    }
+
+    private suspend fun observeExistingTask(download: Download, mapping: Pair<BackendType, String>) {
+        try {
+            fileNames[download.id] = download.fileName
+            registry.require(mapping.first).resume(mapping.second)
+            observeTaskUntilRunEnd(download, mapping)
+        } catch (error: Throwable) {
+            handleRuntimeFailure(download, error)
+        } finally {
+            cleanUpFinishedTask(download.id)
+        }
+    }
+
+    private suspend fun handleRuntimeFailure(download: Download, error: Throwable) {
+        val mapping = backendTaskIds.remove(download.id)
+        val reconciliation = if (mapping != null) {
+            val detached = runCatching { registry.require(mapping.first).detach(mapping.second) }.getOrDefault(false)
+            if (detached) {
+                runCatching { reconciler.reconcile(download.id) }.getOrNull()
+            } else {
+                val ownership = ownershipStore.findByDownload(download.id)
+                val result = BackendReconciliationResult(
+                    classification = BackendReconciliationClassification.BackendTaskOrphaned,
+                    message = "The backend task could not be safely detached after an execution failure.",
+                    backendTaskId = mapping.second,
+                )
+                if (ownership != null) {
+                    runCatching { ownershipStore.recordReconciliation(download.id, ownership.generation, result) }
+                }
+                result
+            }
+        } else {
+            null
+        }
+        val state = when {
+            mapping == null -> DownloadState.Failed
+            reconciliation?.safeToResume == true -> DownloadState.Paused
+            else -> DownloadState.RecoveryRequired
+        }
+        val message = reconciliation?.message ?: error.message ?: error::class.java.simpleName
+        val current = store.find(download.id) ?: download
+        store.save(
+            current.copy(
+                state = state,
+                speedBytesPerSecond = 0,
+                errorMessage = message,
+                updatedAtEpochMs = System.currentTimeMillis(),
+            ),
+        )
+        if (state == DownloadState.Failed || state == DownloadState.RecoveryRequired) {
+            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, state, message))
+        }
+    }
+
+    private suspend fun observeTaskUntilRunEnd(download: Download, mapping: Pair<BackendType, String>) {
+        val finalSnapshot = registry.require(mapping.first).observe(mapping.second).first { snapshot ->
+            publish(download, snapshot)
+            snapshot.state in RUN_END_STATES
+        }
+        if (finalSnapshot.state in TERMINAL_STATES || finalSnapshot.state == DownloadState.RecoveryRequired) {
+            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, finalSnapshot.state, finalSnapshot.errorMessage))
+        }
+    }
+
+    private suspend fun cleanUpFinishedTask(downloadId: String) {
+        val state = store.find(downloadId)?.state
+        val mapping = backendTaskIds[downloadId]
+        if (state in RELEASE_OWNERSHIP_STATES) {
+            if (mapping != null) runCatching { registry.require(mapping.first).remove(mapping.second) }
+            backendTaskIds.remove(downloadId)
+            coordinator.release(downloadId)
+            snapshots.value = snapshots.value - downloadId
+            fileNames.remove(downloadId)
+            updateSummary()
+        } else if (state !in ACTIVE_STATES) {
+            snapshots.value = snapshots.value - downloadId
             updateSummary()
         }
     }
@@ -205,6 +331,7 @@ class TransferExecutionRuntime(
         val ACTIVE_STATES = setOf(DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading, DownloadState.Finalizing, DownloadState.Repairing)
         val INTERRUPTED_STATES = setOf(DownloadState.Connecting, DownloadState.Downloading, DownloadState.Finalizing, DownloadState.Repairing, DownloadState.Verifying)
         val TERMINAL_STATES = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)
+        val RELEASE_OWNERSHIP_STATES = setOf(DownloadState.Completed, DownloadState.Cancelled)
         val RUN_END_STATES = TERMINAL_STATES + setOf(DownloadState.Paused, DownloadState.RecoveryRequired)
     }
 }

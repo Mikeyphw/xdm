@@ -127,6 +127,52 @@ class AppDatabaseMigrationTest {
         context.deleteDatabase(name)
     }
 
+
+    @Test
+    fun migrate4To5AddsRuntimeAndReconciliationMetadata() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val name = "migration-v5-${System.nanoTime()}.db"
+        val seed = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(name)
+                .callback(object : SupportSQLiteOpenHelper.Callback(4) {
+                    override fun onCreate(db: SupportSQLiteDatabase) {
+                        db.execSQL("""CREATE TABLE backend_tasks (id TEXT NOT NULL PRIMARY KEY, downloadId TEXT NOT NULL, backend TEXT NOT NULL, backendTaskId TEXT NOT NULL, destinationKey TEXT NOT NULL DEFAULT '', partialIdentity TEXT NOT NULL DEFAULT '', ownershipGeneration INTEGER NOT NULL, ownershipStatus TEXT NOT NULL DEFAULT 'Active', lastSynchronizedAtEpochMs INTEGER NOT NULL)""")
+                        db.execSQL("""CREATE TABLE destination_claims (destinationKey TEXT NOT NULL PRIMARY KEY, downloadId TEXT NOT NULL, backend TEXT NOT NULL, partialIdentity TEXT NOT NULL, generation INTEGER NOT NULL, status TEXT NOT NULL, claimedAtEpochMs INTEGER NOT NULL, synchronizedAtEpochMs INTEGER NOT NULL)""")
+                    }
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                })
+                .build(),
+        )
+        seed.writableDatabase
+        seed.close()
+
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(name)
+                .callback(object : SupportSQLiteOpenHelper.Callback(5) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
+                        Migrations.Migration4To5.migrate(db)
+                    }
+                })
+                .build(),
+        )
+        listOf("backend_tasks", "destination_claims").forEach { table ->
+            helper.writableDatabase.query("PRAGMA table_info($table)").use { cursor ->
+                val nameColumn = cursor.getColumnIndexOrThrow("name")
+                val columns = mutableSetOf<String>()
+                while (cursor.moveToNext()) columns += cursor.getString(nameColumn)
+                assertTrue("Migration must add artifactFormat to $table", "artifactFormat" in columns)
+                assertTrue("Migration must add backendInstanceId to $table", "backendInstanceId" in columns)
+                assertTrue("Migration must add backendSessionId to $table", "backendSessionId" in columns)
+                assertTrue("Migration must add reconciliation to $table", "reconciliation" in columns)
+            }
+        }
+        helper.close()
+        context.deleteDatabase(name)
+    }
+
     private fun createVersionOne(context: Context, name: String): SupportSQLiteOpenHelper {
         val helper = FrameworkSQLiteOpenHelperFactory().create(
             SupportSQLiteOpenHelper.Configuration.builder(context)

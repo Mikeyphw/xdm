@@ -273,7 +273,7 @@ fun RecoveryScreen(records: List<RecoveryRecord>) {
 fun DiagnosticsScreen(state: MainUiState) {
     Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Foundation health", style = MaterialTheme.typography.headlineSmall)
-        DiagnosticLine("Database", "Room schema v4")
+        DiagnosticLine("Database", "Room schema v5")
         DiagnosticLine("Downloads", state.downloads.size.toString())
         DiagnosticLine("Queues", state.queues.size.toString())
         DiagnosticLine("Recovery records", state.recovery.size.toString())
@@ -319,7 +319,7 @@ fun SettingsScreen(compact: Boolean, onCompactChanged: (Boolean) -> Unit) {
             }
         }
         Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall)
-        Text("Version: 0.5.0-alpha01", style = MaterialTheme.typography.bodySmall)
+        Text("Version: 0.5.1-alpha01", style = MaterialTheme.typography.bodySmall)
     }
 }
 

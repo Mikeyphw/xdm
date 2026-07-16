@@ -36,14 +36,21 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun saveBackendTask(downloadId: String, backend: BackendType, backendTaskId: String, ownership: BackendOwnership) {
         database.backendTaskDao().upsert(
             BackendTaskEntity(
-                id = downloadId,
+                id = "$downloadId:${ownership.generation}",
                 downloadId = downloadId,
                 backend = backend.name,
                 backendTaskId = backendTaskId,
                 destinationKey = ownership.destinationKey,
-                partialIdentity = ownership.partialIdentity,
+                partialIdentity = ownership.artifacts.primary,
+                artifactFormat = ownership.artifacts.format,
+                companionArtifactIdentities = ownership.artifacts.companions.joinToString("\n"),
+                backendInstanceId = ownership.runtimeIdentity.instanceId,
+                backendSessionId = ownership.runtimeIdentity.sessionId,
                 ownershipGeneration = ownership.generation,
                 ownershipStatus = ownership.status.name,
+                reconciliation = ownership.reconciliation.name,
+                reconciliationMessage = ownership.reconciliationMessage,
+                reconciledAtEpochMs = ownership.reconciledAtEpochMs,
                 lastSynchronizedAtEpochMs = System.currentTimeMillis(),
             ),
         )
