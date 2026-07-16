@@ -22,7 +22,7 @@ This overlay adds the Android application under `app/XDM.Android`, registers the
 
 ## DevTool validation
 
-Select target `xdm_android` and use the normal `--validate` pipeline. DevTool 0.15+ performs Android restore/configuration, debug and beta builds, local tests, Android Lint, APK discovery, APK integrity/metadata/signing checks, Gradle cleanup, rollback on failure, and the artifact commit after successful validation.
+Select target `xdm_android` and use the normal `--validate` pipeline. DevTool 0.15+ performs Android restore/configuration, the debug build, local tests, Android Lint, APK discovery, APK integrity/metadata/signing checks, Gradle cleanup, rollback on failure, and the artifact commit after successful validation.
 
 No custom artifact validator, embedded validation workspace, or direct `build-apk` call is included. DevTool's Android runner manages Gradle 9.4.1 and the Android toolchain.
 

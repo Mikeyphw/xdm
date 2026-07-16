@@ -699,7 +699,7 @@
   "notes": [
     "Requires DevTool 0.15 or newer with native Android/Gradle runner support.",
     "Apply with --target xdm_android and --validate.",
-    "The selected Android target runs restore, debug/beta builds, JVM tests, Android Lint, and APK verification.",
+    "The selected Android target runs restore, the debug build, JVM tests, Android Lint, and APK verification.",
     "The artifact commit policy is embedded; do not add a CLI --commit flag."
   ]
 }
