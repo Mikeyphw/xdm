@@ -17,6 +17,7 @@ import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
+import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryRecord
 import com.mikeyphw.xdm.android.model.ScheduleRule
@@ -66,6 +67,7 @@ data class MainUiState(
     val backendMigrations: List<BackendMigrationRecord> = emptyList(),
     val checksumResults: List<ChecksumResult> = emptyList(),
     val verificationRecords: List<VerificationRecord> = emptyList(),
+    val finalizationJournals: List<FinalizationJournal> = emptyList(),
 )
 
 class MainViewModel(
@@ -92,6 +94,7 @@ class MainViewModel(
         val backendMigrations: List<BackendMigrationRecord>,
         val checksumResults: List<ChecksumResult>,
         val verificationRecords: List<VerificationRecord>,
+        val finalizationJournals: List<FinalizationJournal>,
     )
 
     private data class RepositoryBaseSnapshot(
@@ -112,7 +115,7 @@ class MainViewModel(
 
     private val verificationSnapshot = combine(repository.checksumResults, repository.verificationRecords) { results, records -> results to records }
 
-    private val repositorySnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations, verificationSnapshot) { base, migrations, verification ->
+    private val repositorySnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations, verificationSnapshot, repository.finalizationJournals) { base, migrations, verification, finalization ->
         RepositorySnapshot(
             base.downloads,
             base.queues,
@@ -122,6 +125,7 @@ class MainViewModel(
             migrations,
             verification.first,
             verification.second,
+            finalization,
         )
     }
 
@@ -181,6 +185,7 @@ class MainViewModel(
             backendMigrations = snapshot.backendMigrations,
             checksumResults = snapshot.checksumResults,
             verificationRecords = snapshot.verificationRecords,
+            finalizationJournals = snapshot.finalizationJournals,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -325,6 +330,19 @@ class MainViewModel(
             } finally {
                 capabilitySnapshot.value = transferRuntime.backendCapabilities()
             }
+        }
+    }
+
+    fun removeRecoveryRecord(record: RecoveryRecord) {
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteRecovery(record.id) }
+    }
+
+    fun validateRecoveryRecord(record: RecoveryRecord) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val downloadId = record.downloadId ?: return@launch
+            val current = repository.findDownload(downloadId) ?: return@launch
+            repository.save(current.copy(state = DownloadState.Queued, errorMessage = null, updatedAtEpochMs = System.currentTimeMillis()))
+            executionStarter.start(downloadId, current.totalBytes, userVisible = true)
         }
     }
 

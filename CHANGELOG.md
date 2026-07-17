@@ -4,6 +4,13 @@ Adds Phase 8 checksum verification, persisted verification results, trusted bloc
 
 # Changelog
 
+## 0.9.0-alpha01
+
+- Added Phase 9 startup recovery scanning and recovery actions.
+- Added schema v9 finalization-journal metadata and deterministic promotion stages.
+- Added recovery UI actions without changing Android topography.
+
+
 ## XDM Android 0.7.0-alpha01 — 2026-07-17
 
 ### Added

@@ -28,6 +28,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +57,7 @@ import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
+import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryRecord
@@ -365,7 +367,7 @@ fun SchedulerScreen(rules: List<ScheduleRule>) {
 }
 
 @Composable
-fun RecoveryScreen(records: List<RecoveryRecord>) {
+fun RecoveryScreen(records: List<RecoveryRecord>, onValidate: (RecoveryRecord) -> Unit, onRemove: (RecoveryRecord) -> Unit) {
     if (records.isEmpty()) {
         EmptyFeatureScreen("Recovery is clear", "No orphaned or interrupted artifacts were detected.")
         return
@@ -377,9 +379,13 @@ fun RecoveryScreen(records: List<RecoveryRecord>) {
                     Text(record.classification.name, fontWeight = FontWeight.SemiBold)
                     Text(record.artifactPath, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(record.reason, style = MaterialTheme.typography.bodySmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        StatusPill(record.recommendedAction.name)
+                        StatusPill(if (record.safeToResume) "Safe resume" else "Paused")
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatusPill("Needs review")
-                        StatusPill("Paused")
+                        TextButton(onClick = { onValidate(record) }) { Text(if (record.safeToResume) "Resume" else "Validate") }
+                        TextButton(onClick = { onRemove(record) }) { Text("Remove") }
                     }
                 }
             }
@@ -395,10 +401,11 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { Text("Runtime health", style = MaterialTheme.typography.headlineSmall) }
-        item { DiagnosticLine("Database", "Room schema v8") }
+        item { DiagnosticLine("Database", "Room schema v9") }
         item { DiagnosticLine("Downloads", state.downloads.size.toString()) }
         item { DiagnosticLine("Queues", state.queues.size.toString()) }
         item { DiagnosticLine("Recovery records", state.recovery.size.toString()) }
+        item { DiagnosticLine("Finalization journals", state.finalizationJournals.count { it.needsRecovery }.toString()) }
         item { DiagnosticLine("Native backend", "HTTP/HTTPS, checkpoints, resume and segmentation") }
         item { DiagnosticLine("Execution", "UIDT on Android 14+, foreground dataSync fallback") }
         item { DiagnosticLine("Active transfers", state.activeTransfers.activeCount.toString()) }

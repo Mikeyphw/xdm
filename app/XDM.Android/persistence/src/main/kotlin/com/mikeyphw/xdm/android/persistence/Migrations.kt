@@ -164,4 +164,21 @@ object Migrations {
         }
     }
 
+    val Migration8To9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE recovery_records ADD COLUMN recommendedAction TEXT NOT NULL DEFAULT 'Validate'")
+            db.execSQL("ALTER TABLE recovery_records ADD COLUMN safeToResume INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_recovery_records_recommendedAction ON recovery_records(recommendedAction)")
+            db.execSQL("ALTER TABLE finalization_journals ADD COLUMN stagingPath TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE finalization_journals ADD COLUMN bytesExpected INTEGER")
+            db.execSQL("ALTER TABLE finalization_journals ADD COLUMN bytesPromoted INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE finalization_journals ADD COLUMN checksumAlgorithm TEXT")
+            db.execSQL("ALTER TABLE finalization_journals ADD COLUMN checksumHex TEXT")
+            db.execSQL("ALTER TABLE finalization_journals ADD COLUMN message TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE finalization_journals ADD COLUMN createdAtEpochMs INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_finalization_journals_stage ON finalization_journals(stage)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_finalization_journals_updatedAtEpochMs ON finalization_journals(updatedAtEpochMs)")
+        }
+    }
+
 }

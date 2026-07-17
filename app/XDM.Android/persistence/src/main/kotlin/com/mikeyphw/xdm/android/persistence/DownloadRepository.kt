@@ -11,11 +11,11 @@ import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
+import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.DestinationHealthStatus
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.DestinationType
 import com.mikeyphw.xdm.android.model.QueueDefinition
-import com.mikeyphw.xdm.android.model.RecoveryClassification
 import com.mikeyphw.xdm.android.model.RecoveryRecord
 import com.mikeyphw.xdm.android.model.ScheduleRule
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +30,7 @@ class DownloadRepository(private val database: AppDatabase) {
     val backendMigrations: Flow<List<BackendMigrationRecord>> = database.backendMigrationDao().observeAll().map { rows -> rows.map(BackendMigrationEntity::toModel) }
     val checksumResults: Flow<List<ChecksumResult>> = database.checksumDao().observeResults().map { rows -> rows.map(ChecksumResultEntity::toModel) }
     val verificationRecords: Flow<List<VerificationRecord>> = database.checksumDao().observeVerifications().map { rows -> rows.map(VerificationRecordEntity::toModel) }
+    val finalizationJournals: Flow<List<FinalizationJournal>> = database.finalizationDao().observeAll().map { rows -> rows.map(FinalizationJournalEntity::toModel) }
 
     suspend fun countDownloads(): Int = database.downloadDao().count()
     suspend fun countQueues(): Int = database.queueDao().count()
@@ -38,6 +39,9 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun saveQueues(queues: List<QueueDefinition>) = database.queueDao().upsertAll(queues.map { it.toEntity() })
     suspend fun saveSchedules(rules: List<ScheduleRule>) = database.scheduleDao().upsertAll(rules.map { it.toEntity() })
     suspend fun saveRecovery(records: List<RecoveryRecord>) = database.recoveryDao().upsertAll(records.map { it.toEntity() })
+    suspend fun saveRecovery(record: RecoveryRecord) = database.recoveryDao().upsert(record.toEntity())
+    suspend fun deleteRecovery(id: String) = database.recoveryDao().delete(id)
+    suspend fun saveFinalizationJournal(journal: FinalizationJournal) = database.finalizationDao().upsert(journal.toEntity())
     suspend fun saveChecksumExpectation(expectation: ChecksumExpectation) = database.checksumDao().upsertExpectation(expectation.toEntity())
     suspend fun saveChecksumResult(result: ChecksumResult) = database.checksumDao().upsertResult(result.toEntity())
     suspend fun saveVerificationRecord(record: VerificationRecord) = database.checksumDao().upsertVerification(record.toEntity())
@@ -124,9 +128,6 @@ private fun QueueEntity.toModel() = QueueDefinition(id, name, isEnabled, maxConc
 private fun QueueDefinition.toEntity() = QueueEntity(id, name, isEnabled, maxConcurrent, createdAtEpochMs)
 private fun ScheduleRuleEntity.toModel() = ScheduleRule(id, queueId, name, enabled, constraintsJson)
 private fun ScheduleRule.toEntity() = ScheduleRuleEntity(id, queueId, name, enabled, constraintsJson)
-private fun RecoveryRecordEntity.toModel() = RecoveryRecord(id, downloadId, artifactPath, RecoveryClassification.valueOf(classification), reason, createdAtEpochMs)
-private fun RecoveryRecord.toEntity() = RecoveryRecordEntity(id, downloadId, artifactPath, classification.name, reason, createdAtEpochMs)
-
 private fun DestinationPermissionEntity.toModel() = DestinationPermission(
     uri = uri,
     displayName = displayName,

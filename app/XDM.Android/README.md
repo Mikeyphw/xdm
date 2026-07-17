@@ -1,4 +1,4 @@
-## XDM Android 0.8.0-alpha01
+## XDM Android 0.9.0-alpha01
 
 Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
 
@@ -53,3 +53,8 @@ python3 tools/verify-aria2-runtime.py --require-payload
 ```
 
 Distribution builds should pass `-Pxdm.requireAria2Runtime=true`. Builds without the optional payload remain valid native-only builds and report aria2 as unavailable in Diagnostics.
+
+
+## Phase 9 startup recovery and atomic finalization
+
+XDM Android now scans interrupted transfers, backend ownership records, aria2 session mappings, backend migration journals, finalization journals, and app-private transfer artifacts at startup. Recovery records remain paused until the user validates, resumes, repairs, adopts, locates, or removes them. Finalization is journaled so process death during promotion can be recovered deterministically.

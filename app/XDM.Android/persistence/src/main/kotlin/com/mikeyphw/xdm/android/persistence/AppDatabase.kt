@@ -28,7 +28,7 @@ import androidx.room.RoomDatabase
         DestinationClaimEntity::class,
         OwnershipCounterEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,4 +42,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun aria2SessionMappingDao(): Aria2SessionMappingDao
     abstract fun backendMigrationDao(): BackendMigrationDao
     abstract fun checksumDao(): ChecksumDao
+    abstract fun finalizationDao(): FinalizationDao
 }

@@ -25,6 +25,19 @@ enum class ChecksumSource { UserInput, Clipboard, ChecksumFile, Metalink, Genera
 enum class VerificationStatus { Pending, Running, Passed, Failed, NoExpectation, MissingFile }
 enum class RepairBlockStatus { Trusted, Missing, Corrupt, Unknown }
 
+enum class FinalizationJournalStage {
+    Prepared,
+    VerificationComplete,
+    PromotionStarted,
+    DestinationStaged,
+    DestinationCommitted,
+    MetadataCommitted,
+    Completed,
+    RecoveryRequired,
+}
+
+enum class RecoveryAction { Resume, Validate, VerifyAndRepair, RestartFromZero, AdoptOrphan, LocateFile, RemoveRecord }
+
 data class ChecksumExpectation(
     val id: String,
     val downloadId: String,
@@ -238,7 +251,28 @@ data class RecoveryRecord(
     val classification: RecoveryClassification,
     val reason: String,
     val createdAtEpochMs: Long,
+    val recommendedAction: RecoveryAction = RecoveryAction.Validate,
+    val safeToResume: Boolean = false,
 )
+
+data class FinalizationJournal(
+    val id: String,
+    val downloadId: String,
+    val stage: FinalizationJournalStage,
+    val sourcePath: String,
+    val stagingPath: String?,
+    val destinationUri: String,
+    val bytesExpected: Long?,
+    val bytesPromoted: Long,
+    val checksumAlgorithm: ChecksumAlgorithm?,
+    val checksumHex: String?,
+    val message: String,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+) {
+    val isTerminal: Boolean get() = stage == FinalizationJournalStage.Completed
+    val needsRecovery: Boolean get() = !isTerminal
+}
 
 data class BackendCapabilities(
     val protocols: Set<String>,

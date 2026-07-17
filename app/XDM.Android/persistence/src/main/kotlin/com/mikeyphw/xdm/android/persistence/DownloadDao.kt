@@ -55,8 +55,20 @@ interface RecoveryDao {
     @Query("SELECT * FROM recovery_records ORDER BY createdAtEpochMs DESC")
     fun observeAll(): Flow<List<RecoveryRecordEntity>>
 
+    @Query("SELECT * FROM recovery_records ORDER BY createdAtEpochMs DESC")
+    suspend fun listAll(): List<RecoveryRecordEntity>
+
+    @Query("SELECT * FROM recovery_records WHERE id = :id")
+    suspend fun find(id: String): RecoveryRecordEntity?
+
+    @Upsert
+    suspend fun upsert(entity: RecoveryRecordEntity)
+
     @Upsert
     suspend fun upsertAll(entities: List<RecoveryRecordEntity>)
+
+    @Query("DELETE FROM recovery_records WHERE id = :id")
+    suspend fun delete(id: String)
 }
 
 @Dao

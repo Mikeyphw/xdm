@@ -324,6 +324,56 @@ class AppDatabaseMigrationTest {
         context.deleteDatabase(name)
     }
 
+
+    @Test
+    fun migrate8To9AddsRecoveryActionsAndAtomicFinalization() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val name = "migration-v9-${System.nanoTime()}.db"
+        val seed = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(name)
+                .callback(object : SupportSQLiteOpenHelper.Callback(8) {
+                    override fun onCreate(db: SupportSQLiteDatabase) {
+                        db.execSQL("""CREATE TABLE recovery_records (id TEXT NOT NULL PRIMARY KEY, downloadId TEXT, artifactPath TEXT NOT NULL, classification TEXT NOT NULL, reason TEXT NOT NULL, createdAtEpochMs INTEGER NOT NULL)""")
+                        db.execSQL("""CREATE TABLE finalization_journals (id TEXT NOT NULL PRIMARY KEY, downloadId TEXT NOT NULL, stage TEXT NOT NULL, sourcePath TEXT NOT NULL, destinationUri TEXT NOT NULL, updatedAtEpochMs INTEGER NOT NULL)""")
+                    }
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                })
+                .build(),
+        )
+        seed.writableDatabase
+        seed.close()
+
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(name)
+                .callback(object : SupportSQLiteOpenHelper.Callback(9) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
+                        Migrations.Migration8To9.migrate(db)
+                    }
+                })
+                .build(),
+        )
+        helper.writableDatabase.query("PRAGMA table_info(recovery_records)").use { cursor ->
+            val nameColumn = cursor.getColumnIndexOrThrow("name")
+            val columns = mutableSetOf<String>()
+            while (cursor.moveToNext()) columns += cursor.getString(nameColumn)
+            assertTrue("Migration must add recovery action", "recommendedAction" in columns)
+            assertTrue("Migration must add safe resume marker", "safeToResume" in columns)
+        }
+        helper.writableDatabase.query("PRAGMA table_info(finalization_journals)").use { cursor ->
+            val nameColumn = cursor.getColumnIndexOrThrow("name")
+            val columns = mutableSetOf<String>()
+            while (cursor.moveToNext()) columns += cursor.getString(nameColumn)
+            assertTrue("Migration must add staging path", "stagingPath" in columns)
+            assertTrue("Migration must add promoted bytes", "bytesPromoted" in columns)
+            assertTrue("Migration must add recovery message", "message" in columns)
+        }
+        helper.close()
+        context.deleteDatabase(name)
+    }
+
     private fun createVersionOne(context: Context, name: String): SupportSQLiteOpenHelper {
         val helper = FrameworkSQLiteOpenHelperFactory().create(
             SupportSQLiteOpenHelper.Configuration.builder(context)

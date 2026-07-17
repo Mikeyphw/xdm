@@ -2,7 +2,7 @@
   "project": {
     "name": "XDM Android",
     "package_id": "com.mikeyphw.xdm.android",
-    "version": "0.8.0-alpha01",
+    "version": "0.9.0-alpha01",
     "implemented_phases": [
       0,
       1,
@@ -12,11 +12,12 @@
       5,
       6,
       7,
-      8
+      8,
+      9
     ]
   },
   "database": {
-    "version": 8,
+    "version": 9,
     "migrations": [
       "1_to_2",
       "2_to_3",
@@ -24,7 +25,8 @@
       "4_to_5",
       "5_to_6",
       "6_to_7",
-      "7_to_8"
+      "7_to_8",
+      "8_to_9"
     ],
     "destination_permission_health": true
   },
@@ -60,7 +62,7 @@
       "compare"
     ]
   },
-  "next_phase": "9",
+  "next_phase": "10",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -110,5 +112,27 @@
     "repeat_verification_without_network": true,
     "trusted_block_manifest": true,
     "native_selective_repair_planner": true
+  },
+  "startup_recovery": {
+    "startup_scan": true,
+    "database_records": true,
+    "backend_ownership": true,
+    "backend_migrations": true,
+    "finalization_journals": true,
+    "orphan_artifacts": true,
+    "user_action_required": true
+  },
+  "atomic_finalization": {
+    "journaled_stages": [
+      "Prepared",
+      "VerificationComplete",
+      "PromotionStarted",
+      "DestinationStaged",
+      "DestinationCommitted",
+      "MetadataCommitted",
+      "Completed"
+    ],
+    "recovery_after_destination_commit": true,
+    "malformed_artifacts_do_not_crash_startup": true
   }
 }

@@ -21,7 +21,7 @@ class TransferExecutionRuntimeTest {
                 download("complete", DownloadState.Completed),
             ),
         )
-        val runtime = TransferExecutionRuntime(store, InMemoryBackendOwnershipStore(), emptyList(), InMemoryBackendMigrationStore(), InMemoryChecksumWorkflowStore(), this)
+        val runtime = TransferExecutionRuntime(store, InMemoryBackendOwnershipStore(), InMemoryBackendMigrationStore(), InMemoryChecksumWorkflowStore(), backends = emptyList(), scope = this)
 
         assertEquals(2, runtime.restoreInterruptedTransfers())
         assertEquals(DownloadState.Paused, store.items.getValue("active").state)

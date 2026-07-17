@@ -99,11 +99,34 @@ data class BackendTaskEntity(
     val lastSynchronizedAtEpochMs: Long,
 )
 
-@Entity(tableName = "recovery_records", indices = [Index("downloadId"), Index("classification")])
-data class RecoveryRecordEntity(@PrimaryKey val id: String, val downloadId: String?, val artifactPath: String, val classification: String, val reason: String, val createdAtEpochMs: Long)
+@Entity(tableName = "recovery_records", indices = [Index("downloadId"), Index("classification"), Index("recommendedAction")])
+data class RecoveryRecordEntity(
+    @PrimaryKey val id: String,
+    val downloadId: String?,
+    val artifactPath: String,
+    val classification: String,
+    val reason: String,
+    val createdAtEpochMs: Long,
+    @ColumnInfo(defaultValue = "'Validate'") val recommendedAction: String,
+    @ColumnInfo(defaultValue = "0") val safeToResume: Boolean,
+)
 
-@Entity(tableName = "finalization_journals", indices = [Index("downloadId", unique = true)])
-data class FinalizationJournalEntity(@PrimaryKey val id: String, val downloadId: String, val stage: String, val sourcePath: String, val destinationUri: String, val updatedAtEpochMs: Long)
+@Entity(tableName = "finalization_journals", indices = [Index("downloadId", unique = true), Index("stage"), Index("updatedAtEpochMs")])
+data class FinalizationJournalEntity(
+    @PrimaryKey val id: String,
+    val downloadId: String,
+    val stage: String,
+    val sourcePath: String,
+    val destinationUri: String,
+    val updatedAtEpochMs: Long,
+    @ColumnInfo(defaultValue = "''") val stagingPath: String,
+    val bytesExpected: Long?,
+    @ColumnInfo(defaultValue = "0") val bytesPromoted: Long,
+    val checksumAlgorithm: String?,
+    val checksumHex: String?,
+    @ColumnInfo(defaultValue = "''") val message: String,
+    @ColumnInfo(defaultValue = "0") val createdAtEpochMs: Long,
+)
 
 @Entity(tableName = "notification_records", indices = [Index("downloadId"), Index("createdAtEpochMs")])
 data class NotificationRecordEntity(@PrimaryKey val id: String, val downloadId: String?, val title: String, val message: String, val severity: String, val dismissed: Boolean, val createdAtEpochMs: Long)

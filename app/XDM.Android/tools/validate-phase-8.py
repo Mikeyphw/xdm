@@ -32,12 +32,12 @@ for label, (path, needle) in checks.items():
 manifest = json.loads((ROOT / "PROJECT_MANIFEST.json").read_text())
 if 8 not in manifest["project"]["implemented_phases"]:
     errors.append("project manifest does not declare Phase 8")
-if manifest["database"]["version"] != 8:
-    errors.append("project manifest does not declare database v8")
+if manifest["database"]["version"] < 8:
+    errors.append("project manifest regressed below database v8")
 app_database = (ROOT / "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt").read_text()
 match = re.search(r"version\s*=\s*(\d+)", app_database)
-if match is None or int(match.group(1)) != 8:
-    errors.append("Room database is not v8")
+if match is None or int(match.group(1)) < 8:
+    errors.append("Room database regressed below v8")
 screens = (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").read_text()
 if "onClick = {}" in screens:
     errors.append("Phase 8 introduced an inert UI action")

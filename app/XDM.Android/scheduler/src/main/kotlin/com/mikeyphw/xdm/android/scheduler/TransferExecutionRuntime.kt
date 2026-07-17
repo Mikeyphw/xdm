@@ -18,8 +18,13 @@ import com.mikeyphw.xdm.android.transfer.BackendReconciliationResult
 import com.mikeyphw.xdm.android.transfer.BackendSnapshot
 import com.mikeyphw.xdm.android.transfer.ChecksumWorkflowStore
 import com.mikeyphw.xdm.android.transfer.InMemoryChecksumWorkflowStore
+import com.mikeyphw.xdm.android.transfer.InMemoryRecoveryWorkflowStore
+import com.mikeyphw.xdm.android.transfer.RecoveryWorkflowStore
+import com.mikeyphw.xdm.android.transfer.InMemoryFinalizationJournalStore
+import com.mikeyphw.xdm.android.transfer.FinalizationJournalStore
 import com.mikeyphw.xdm.android.transfer.DownloadBackend
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,9 +40,12 @@ import kotlinx.coroutines.launch
 class TransferExecutionRuntime(
     private val store: TransferDownloadStore,
     ownershipStore: BackendOwnershipStore,
-    backends: Collection<DownloadBackend>,
     migrationStore: BackendMigrationStore = InMemoryBackendMigrationStore(),
     checksumStore: ChecksumWorkflowStore = InMemoryChecksumWorkflowStore(),
+    finalizationStore: FinalizationJournalStore = InMemoryFinalizationJournalStore(),
+    recoveryStore: RecoveryWorkflowStore = InMemoryRecoveryWorkflowStore(),
+    backends: Collection<DownloadBackend>,
+    artifactRoots: List<File> = emptyList(),
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) {
     private val registry = BackendRegistry(backends)
@@ -47,6 +55,7 @@ class TransferExecutionRuntime(
     private val ownershipStore = ownershipStore
     private val migrationCoordinator = BackendMigrationCoordinator(store, ownershipStore, migrationStore, registry, selectionPolicy)
     private val completionVerifier = CompletionVerificationCoordinator(checksumStore, ownershipStore)
+    private val startupRecoveryCoordinator = StartupRecoveryCoordinator(store, ownershipStore, migrationStore, finalizationStore, recoveryStore, artifactRoots)
     private val jobs = ConcurrentHashMap<String, Job>()
     private val backendTaskIds = ConcurrentHashMap<String, Pair<BackendType, String>>()
     private val snapshots = MutableStateFlow<Map<String, BackendSnapshot>>(emptyMap())
@@ -56,6 +65,8 @@ class TransferExecutionRuntime(
     private val _terminalEvents = MutableSharedFlow<TransferTerminalEvent>(extraBufferCapacity = 32)
     val terminalEvents: SharedFlow<TransferTerminalEvent> = _terminalEvents
 
+
+    suspend fun scanStartupRecovery(): StartupRecoveryReport = startupRecoveryCoordinator.scan()
 
     suspend fun backendCapabilities(): Map<BackendType, BackendCapabilities> = registry.capabilitySnapshot()
 

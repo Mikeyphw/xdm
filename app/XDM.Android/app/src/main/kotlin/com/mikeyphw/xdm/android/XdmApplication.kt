@@ -9,6 +9,8 @@ import com.mikeyphw.xdm.android.persistence.RoomBackendOwnershipStore
 import com.mikeyphw.xdm.android.persistence.RoomBackendMigrationStore
 import com.mikeyphw.xdm.android.persistence.RoomAria2TaskMappingStore
 import com.mikeyphw.xdm.android.persistence.RoomChecksumWorkflowStore
+import com.mikeyphw.xdm.android.persistence.RoomRecoveryWorkflowStore
+import com.mikeyphw.xdm.android.persistence.RoomFinalizationJournalStore
 import com.mikeyphw.xdm.android.scheduler.RepositoryTransferDownloadStore
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionStarter
@@ -47,6 +49,7 @@ class XdmApplication : Application(), TransferRuntimeProvider {
                 Migrations.Migration5To6,
                 Migrations.Migration6To7,
                 Migrations.Migration7To8,
+                Migrations.Migration8To9,
             )
             .build()
         val repository = DownloadRepository(database)
@@ -54,6 +57,8 @@ class XdmApplication : Application(), TransferRuntimeProvider {
         val migrationStore = RoomBackendMigrationStore(database)
         val aria2MappingStore = RoomAria2TaskMappingStore(database)
         val checksumStore = RoomChecksumWorkflowStore(database)
+        val finalizationStore = RoomFinalizationJournalStore(database)
+        val recoveryStore = RoomRecoveryWorkflowStore(database)
         val destinationWriter = AndroidDestinationWriter(this)
         val runtimeIdentities = BackendRuntimeIdentityStore(this)
         val aria2SessionStore = Aria2SessionStore(this)
@@ -67,6 +72,9 @@ class XdmApplication : Application(), TransferRuntimeProvider {
             ownershipStore = ownershipStore,
             migrationStore = migrationStore,
             checksumStore = checksumStore,
+            finalizationStore = finalizationStore,
+            recoveryStore = recoveryStore,
+            artifactRoots = listOf(filesDir, cacheDir).filterNotNull(),
             backends = listOf(
                 NativeHttpDownloadBackend(
                     destinationWriter = destinationWriter,
@@ -83,6 +91,7 @@ class XdmApplication : Application(), TransferRuntimeProvider {
         )
         TransferNotifications(this).ensureChannels()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            transferRuntime.scanStartupRecovery()
             transferRuntime.restoreInterruptedTransfers()
             transferRuntime.reconcilePersistedOwnership()
         }
