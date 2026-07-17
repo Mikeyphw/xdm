@@ -18,6 +18,8 @@ import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
+import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.media.MediaCaptureService
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryRecord
 import com.mikeyphw.xdm.android.model.ScheduleRule
@@ -68,6 +70,7 @@ data class MainUiState(
     val checksumResults: List<ChecksumResult> = emptyList(),
     val verificationRecords: List<VerificationRecord> = emptyList(),
     val finalizationJournals: List<FinalizationJournal> = emptyList(),
+    val mediaCaptures: List<MediaCaptureRecord> = emptyList(),
 )
 
 class MainViewModel(
@@ -84,6 +87,7 @@ class MainViewModel(
     private val aria2SmokeMessage = MutableStateFlow<String?>(null)
     private val aria2SmokeRunning = MutableStateFlow(false)
     private val capabilitySnapshot = MutableStateFlow<Map<BackendType, BackendCapabilities>>(emptyMap())
+    private val mediaCaptureService = MediaCaptureService()
 
     private data class RepositorySnapshot(
         val downloads: List<Download>,
@@ -95,6 +99,7 @@ class MainViewModel(
         val checksumResults: List<ChecksumResult>,
         val verificationRecords: List<VerificationRecord>,
         val finalizationJournals: List<FinalizationJournal>,
+        val mediaCaptures: List<MediaCaptureRecord>,
     )
 
     private data class RepositoryBaseSnapshot(
@@ -115,7 +120,7 @@ class MainViewModel(
 
     private val verificationSnapshot = combine(repository.checksumResults, repository.verificationRecords) { results, records -> results to records }
 
-    private val repositorySnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations, verificationSnapshot, repository.finalizationJournals) { base, migrations, verification, finalization ->
+    private val repositorySnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations, verificationSnapshot, repository.finalizationJournals, repository.mediaCaptures) { base, migrations, verification, finalization, mediaCaptures ->
         RepositorySnapshot(
             base.downloads,
             base.queues,
@@ -126,6 +131,7 @@ class MainViewModel(
             verification.first,
             verification.second,
             finalization,
+            mediaCaptures,
         )
     }
 
@@ -186,6 +192,7 @@ class MainViewModel(
             checksumResults = snapshot.checksumResults,
             verificationRecords = snapshot.verificationRecords,
             finalizationJournals = snapshot.finalizationJournals,
+            mediaCaptures = snapshot.mediaCaptures,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -256,7 +263,8 @@ class MainViewModel(
         if (url.isBlank() || destination.isBlank()) return
         val safeName = resolveFileName(url, fileName)
         val now = System.currentTimeMillis()
-        val request = previewRequest(url, safeName, backend, destination, conflictPolicy, allowFallback)
+        val mediaCandidate = mediaCaptureService.candidateFor(url)
+        val request = previewRequest(url, safeName, backend, destination, conflictPolicy, allowFallback, isMediaRequest = mediaCandidate != null)
         val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
         if (!recommendation.compatible) return
         val resolvedBackend = recommendation.backend
@@ -275,6 +283,7 @@ class MainViewModel(
             createdAtEpochMs = now,
             updatedAtEpochMs = now,
             conflictPolicy = conflictPolicy,
+            mimeType = mediaCandidate?.mimeType,
             requestedBackend = backend,
             backendSelectionReason = recommendation.reason,
             backendSelectionExplanation = recommendation.explanation,
@@ -308,7 +317,7 @@ class MainViewModel(
         conflictPolicy: FilenameConflictPolicy,
         allowFallback: Boolean,
     ) = backendSelectionPolicy.recommend(
-        previewRequest(url, resolveFileName(url, fileName), backend, destination, conflictPolicy, allowFallback),
+        previewRequest(url, resolveFileName(url, fileName), backend, destination, conflictPolicy, allowFallback, isMediaRequest = mediaCaptureService.candidateFor(url) != null),
         capabilitySnapshot.value.ifEmpty(::previewCapabilities),
     )
 
@@ -344,6 +353,75 @@ class MainViewModel(
             repository.save(current.copy(state = DownloadState.Queued, errorMessage = null, updatedAtEpochMs = System.currentTimeMillis()))
             executionStarter.start(downloadId, current.totalBytes, userVisible = true)
         }
+    }
+
+
+    fun captureSharedText(text: String, pageTitle: String? = null, pageUrl: String? = null) {
+        val records = mediaCaptureService.detect(text, pageTitle, pageUrl)
+        if (records.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val merged = records.map { record ->
+                val existing = repository.findMediaCapture(record.id)
+                if (existing?.downloadId != null) {
+                    record.copy(
+                        status = existing.status,
+                        downloadId = existing.downloadId,
+                        createdAtEpochMs = existing.createdAtEpochMs,
+                        updatedAtEpochMs = System.currentTimeMillis(),
+                    )
+                } else {
+                    record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs)
+                }
+            }
+            repository.saveMediaCaptures(merged)
+            navigate(AppRoute.Media)
+        }
+    }
+
+    fun downloadMediaCapture(record: MediaCaptureRecord) {
+        val now = System.currentTimeMillis()
+        val request = previewRequest(
+            url = record.sourceUrl,
+            fileName = record.fileName,
+            backend = BackendType.Automatic,
+            destination = DestinationUris.PUBLIC_DOWNLOADS,
+            conflictPolicy = FilenameConflictPolicy.Rename,
+            allowFallback = true,
+            isMediaRequest = true,
+        )
+        val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
+        if (!recommendation.compatible) return
+        val download = Download(
+            id = UUID.randomUUID().toString(),
+            fileName = sanitizeFileName(record.fileName),
+            sourceUrl = record.sourceUrl,
+            destinationUri = DestinationUris.PUBLIC_DOWNLOADS,
+            state = DownloadState.Queued,
+            backend = recommendation.backend,
+            bytesReceived = 0,
+            totalBytes = null,
+            speedBytesPerSecond = 0,
+            queueId = "default",
+            priority = 0,
+            createdAtEpochMs = now,
+            updatedAtEpochMs = now,
+            conflictPolicy = FilenameConflictPolicy.Rename,
+            mimeType = record.mimeType,
+            requestedBackend = BackendType.Automatic,
+            backendSelectionReason = recommendation.reason,
+            backendSelectionExplanation = recommendation.explanation,
+            allowBackendFallback = true,
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.save(download)
+            repository.markMediaDownloadCreated(record.id, download.id, now)
+            executionStarter.start(download.id, userVisible = true)
+            navigate(AppRoute.Downloads)
+        }
+    }
+
+    fun removeMediaCapture(record: MediaCaptureRecord) {
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteMediaCapture(record.id) }
     }
 
     fun setDestination(uri: String) {
@@ -411,6 +489,7 @@ class MainViewModel(
         destination: String,
         conflictPolicy: FilenameConflictPolicy,
         allowFallback: Boolean,
+        isMediaRequest: Boolean = false,
     ) = DownloadRequest(
         id = "preview",
         sourceUrl = url.trim(),
@@ -419,6 +498,7 @@ class MainViewModel(
         preferredBackend = backend,
         conflictPolicy = conflictPolicy,
         allowBackendFallback = allowFallback,
+        isMediaRequest = isMediaRequest,
     )
 
     private fun sanitizeFileName(value: String): String = value.trim()

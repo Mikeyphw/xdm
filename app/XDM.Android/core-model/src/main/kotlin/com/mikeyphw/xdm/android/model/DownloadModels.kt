@@ -25,6 +25,48 @@ enum class ChecksumSource { UserInput, Clipboard, ChecksumFile, Metalink, Genera
 enum class VerificationStatus { Pending, Running, Passed, Failed, NoExpectation, MissingFile }
 enum class RepairBlockStatus { Trusted, Missing, Corrupt, Unknown }
 
+
+
+enum class MediaCaptureStatus { Captured, MetadataReady, MetadataMissing, DownloadCreated, Expired }
+enum class MediaSourceKind { DirectFile, ProgressiveMedia, HlsPlaylist, DashManifest, AudioStream, VideoStream, Unknown }
+enum class MediaVariantKind { Primary, Video, Audio, Subtitle, Thumbnail }
+
+data class MediaVariant(
+    val id: String,
+    val captureId: String,
+    val url: String,
+    val kind: MediaVariantKind,
+    val mimeType: String?,
+    val width: Int? = null,
+    val height: Int? = null,
+    val bitrateBitsPerSecond: Long? = null,
+    val codecs: String? = null,
+    val language: String? = null,
+    val position: Int = 0,
+)
+
+data class MediaCaptureRecord(
+    val id: String,
+    val sourceUrl: String,
+    val pageUrl: String?,
+    val title: String,
+    val status: MediaCaptureStatus,
+    val kind: MediaSourceKind,
+    val mimeType: String?,
+    val container: String?,
+    val codecs: String?,
+    val durationMs: Long?,
+    val thumbnailUrl: String?,
+    val fileName: String,
+    val variantCount: Int,
+    val downloadId: String?,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+) {
+    val isPlaylist: Boolean get() = kind == MediaSourceKind.HlsPlaylist || kind == MediaSourceKind.DashManifest
+    val hasMetadata: Boolean get() = mimeType != null || container != null || durationMs != null || thumbnailUrl != null
+}
+
 enum class FinalizationJournalStage {
     Prepared,
     VerificationComplete,

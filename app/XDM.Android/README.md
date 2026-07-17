@@ -1,4 +1,4 @@
-## XDM Android 0.9.0-alpha01
+## XDM Android 0.10.0-alpha01
 
 Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
 
@@ -11,7 +11,7 @@ Standalone Android download manager implemented through Phase 7: modular Kotlin/
 The project targets JDK 17, Android SDK 36, target SDK 36, Gradle 9.4.1, and the pinned version catalog.
 
 ```bash
-tools/devtool-gradle.sh lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test testDebugUnitTest assembleDebug assembleBeta
+tools/devtool-gradle.sh lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test testDebugUnitTest assembleDebug assembleBeta
 ```
 
 `tools/devtool-gradle.sh` delegates to `~/.local/bin/build-apk`, which selects or installs the pinned Gradle 9.4.1 distribution and handles Termux/chroot execution. The repository intentionally does not ship a partial wrapper. Run `tools/bootstrap-gradle-wrapper.sh` only when you want to generate and commit a complete standard wrapper, including `gradle-wrapper.jar`.
@@ -55,6 +55,11 @@ python3 tools/verify-aria2-runtime.py --require-payload
 Distribution builds should pass `-Pxdm.requireAria2Runtime=true`. Builds without the optional payload remain valid native-only builds and report aria2 as unavailable in Diagnostics.
 
 
-## Phase 9 startup recovery and atomic finalization
+## Phase 9 startup recovery, atomic finalization, and Phase 10 media capture intelligence
 
 XDM Android now scans interrupted transfers, backend ownership records, aria2 session mappings, backend migration journals, finalization journals, and app-private transfer artifacts at startup. Recovery records remain paused until the user validates, resumes, repairs, adopts, locates, or removes them. Finalization is journaled so process death during promotion can be recovered deterministically.
+
+
+## Phase 10 media capture
+
+The existing Media route now captures shared browser links and direct VIEW intents for video, audio, HLS, and DASH sources. Captures persist metadata such as title, MIME type, container, codec summary, duration, thumbnail URL, variant count, and the created download relationship. Media downloads use the native media-safe backend strategy and remain recovery-safe across restarts.

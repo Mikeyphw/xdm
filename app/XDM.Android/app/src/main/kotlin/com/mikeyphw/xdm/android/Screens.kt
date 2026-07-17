@@ -58,6 +58,8 @@ import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
+import com.mikeyphw.xdm.android.model.MediaCaptureStatus
+import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryRecord
@@ -151,6 +153,9 @@ private fun DownloadCard(
                     Text("${download.state.name} • ${download.backend.name}", style = MaterialTheme.typography.bodySmall)
                     if (download.backendSelectionExplanation.isNotBlank()) {
                         Text(download.backendSelectionExplanation, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                    download.mimeType?.takeIf { it.startsWith("video/") || it.startsWith("audio/") || it.contains("mpegurl") || it.contains("dash") }?.let {
+                        Text("Media type: $it", style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 if (download.state in setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Paused, DownloadState.Failed)) {
@@ -366,6 +371,54 @@ fun SchedulerScreen(rules: List<ScheduleRule>) {
     }
 }
 
+
+@Composable
+fun MediaInboxScreen(
+    captures: List<MediaCaptureRecord>,
+    onDownload: (MediaCaptureRecord) -> Unit,
+    onRemove: (MediaCaptureRecord) -> Unit,
+) {
+    if (captures.isEmpty()) {
+        EmptyFeatureScreen("Media inbox", "Share a video, audio, HLS, or DASH URL to capture metadata and queue it safely.")
+        return
+    }
+    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(captures, key = MediaCaptureRecord::id) { capture ->
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                        Column(Modifier.weight(1f)) {
+                            Text(capture.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(capture.sourceUrl, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                        StatusPill(capture.kind.name)
+                    }
+                    Text(
+                        listOfNotNull(
+                            capture.mimeType,
+                            capture.container,
+                            "${capture.variantCount} variant${if (capture.variantCount == 1) "" else "s"}",
+                            capture.durationMs?.let { "${it / 1000}s" },
+                        ).joinToString(" • "),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        StatusPill(capture.status.name)
+                        capture.downloadId?.let { StatusPill("Queued") }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(
+                            onClick = { onDownload(capture) },
+                            enabled = capture.status != MediaCaptureStatus.DownloadCreated,
+                        ) { Text(if (capture.status == MediaCaptureStatus.DownloadCreated) "Added" else "Download") }
+                        TextButton(onClick = { onRemove(capture) }) { Text("Remove") }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun RecoveryScreen(records: List<RecoveryRecord>, onValidate: (RecoveryRecord) -> Unit, onRemove: (RecoveryRecord) -> Unit) {
     if (records.isEmpty()) {
@@ -401,11 +454,12 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { Text("Runtime health", style = MaterialTheme.typography.headlineSmall) }
-        item { DiagnosticLine("Database", "Room schema v9") }
+        item { DiagnosticLine("Database", "Room schema v10") }
         item { DiagnosticLine("Downloads", state.downloads.size.toString()) }
         item { DiagnosticLine("Queues", state.queues.size.toString()) }
         item { DiagnosticLine("Recovery records", state.recovery.size.toString()) }
         item { DiagnosticLine("Finalization journals", state.finalizationJournals.count { it.needsRecovery }.toString()) }
+        item { DiagnosticLine("Media captures", state.mediaCaptures.size.toString()) }
         item { DiagnosticLine("Native backend", "HTTP/HTTPS, checkpoints, resume and segmentation") }
         item { DiagnosticLine("Execution", "UIDT on Android 14+, foreground dataSync fallback") }
         item { DiagnosticLine("Active transfers", state.activeTransfers.activeCount.toString()) }
@@ -527,7 +581,7 @@ fun SettingsScreen(
             }
         }
         item { Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall) }
-        item { Text("Version: 0.8.0-alpha01", style = MaterialTheme.typography.bodySmall) }
+        item { Text("Version: 0.10.0-alpha01", style = MaterialTheme.typography.bodySmall) }
     }
 }
 

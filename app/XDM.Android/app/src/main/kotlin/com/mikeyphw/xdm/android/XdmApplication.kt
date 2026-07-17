@@ -50,6 +50,7 @@ class XdmApplication : Application(), TransferRuntimeProvider {
                 Migrations.Migration6To7,
                 Migrations.Migration7To8,
                 Migrations.Migration8To9,
+                Migrations.Migration9To10,
             )
             .build()
         val repository = DownloadRepository(database)

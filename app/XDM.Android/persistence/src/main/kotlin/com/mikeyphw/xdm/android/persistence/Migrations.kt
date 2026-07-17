@@ -181,4 +181,34 @@ object Migrations {
         }
     }
 
+
+    val Migration9To10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS media_captures (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    sourceUrl TEXT NOT NULL,
+                    pageUrl TEXT,
+                    title TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    mimeType TEXT,
+                    container TEXT,
+                    codecs TEXT,
+                    durationMs INTEGER,
+                    thumbnailUrl TEXT,
+                    fileName TEXT NOT NULL,
+                    variantCount INTEGER NOT NULL,
+                    downloadId TEXT,
+                    createdAtEpochMs INTEGER NOT NULL,
+                    updatedAtEpochMs INTEGER NOT NULL
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX index_media_captures_downloadId ON media_captures(downloadId)")
+            db.execSQL("CREATE INDEX index_media_captures_status ON media_captures(status)")
+            db.execSQL("CREATE INDEX index_media_captures_kind ON media_captures(kind)")
+            db.execSQL("CREATE INDEX index_media_captures_updatedAtEpochMs ON media_captures(updatedAtEpochMs)")
+        }
+    }
+
 }

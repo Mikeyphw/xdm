@@ -128,6 +128,26 @@ data class FinalizationJournalEntity(
     @ColumnInfo(defaultValue = "0") val createdAtEpochMs: Long,
 )
 
+@Entity(tableName = "media_captures", indices = [Index("downloadId"), Index("status"), Index("kind"), Index("updatedAtEpochMs")])
+data class MediaCaptureEntity(
+    @PrimaryKey val id: String,
+    val sourceUrl: String,
+    val pageUrl: String?,
+    val title: String,
+    val status: String,
+    val kind: String,
+    val mimeType: String?,
+    val container: String?,
+    val codecs: String?,
+    val durationMs: Long?,
+    val thumbnailUrl: String?,
+    val fileName: String,
+    val variantCount: Int,
+    val downloadId: String?,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+)
+
 @Entity(tableName = "notification_records", indices = [Index("downloadId"), Index("createdAtEpochMs")])
 data class NotificationRecordEntity(@PrimaryKey val id: String, val downloadId: String?, val title: String, val message: String, val severity: String, val dismissed: Boolean, val createdAtEpochMs: Long)
 

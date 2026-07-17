@@ -12,6 +12,9 @@ import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
+import com.mikeyphw.xdm.android.model.MediaSourceKind
+import com.mikeyphw.xdm.android.model.MediaCaptureStatus
+import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.DestinationHealthStatus
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.DestinationType
@@ -31,6 +34,7 @@ class DownloadRepository(private val database: AppDatabase) {
     val checksumResults: Flow<List<ChecksumResult>> = database.checksumDao().observeResults().map { rows -> rows.map(ChecksumResultEntity::toModel) }
     val verificationRecords: Flow<List<VerificationRecord>> = database.checksumDao().observeVerifications().map { rows -> rows.map(VerificationRecordEntity::toModel) }
     val finalizationJournals: Flow<List<FinalizationJournal>> = database.finalizationDao().observeAll().map { rows -> rows.map(FinalizationJournalEntity::toModel) }
+    val mediaCaptures: Flow<List<MediaCaptureRecord>> = database.mediaCaptureDao().observeAll().map { rows -> rows.map(MediaCaptureEntity::toModel) }
 
     suspend fun countDownloads(): Int = database.downloadDao().count()
     suspend fun countQueues(): Int = database.queueDao().count()
@@ -46,6 +50,11 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun saveChecksumResult(result: ChecksumResult) = database.checksumDao().upsertResult(result.toEntity())
     suspend fun saveVerificationRecord(record: VerificationRecord) = database.checksumDao().upsertVerification(record.toEntity())
     suspend fun saveTrustedManifest(manifest: TrustedBlockManifest) = database.checksumDao().upsertTrustedManifest(manifest.toEntity())
+    suspend fun saveMediaCapture(record: MediaCaptureRecord) = database.mediaCaptureDao().upsert(record.toEntity())
+    suspend fun saveMediaCaptures(records: List<MediaCaptureRecord>) = database.mediaCaptureDao().upsertAll(records.map { it.toEntity() })
+    suspend fun findMediaCapture(id: String): MediaCaptureRecord? = database.mediaCaptureDao().findById(id)?.toModel()
+    suspend fun markMediaDownloadCreated(captureId: String, downloadId: String, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().markDownloadCreated(captureId, MediaCaptureStatus.DownloadCreated.name, downloadId, updatedAtEpochMs)
+    suspend fun deleteMediaCapture(id: String) = database.mediaCaptureDao().delete(id)
     suspend fun findDownload(id: String): Download? = database.downloadDao().findById(id)?.toModel()
     suspend fun findDownloadsByStates(states: Set<DownloadState>): List<Download> =
         if (states.isEmpty()) emptyList() else database.downloadDao().findByStates(states.map { it.name }).map { it.toModel() }
@@ -147,4 +156,42 @@ private fun DestinationPermission.toEntity() = DestinationPermissionEntity(
     status = status.name,
     lastValidatedAtEpochMs = lastValidatedAtEpochMs,
     lastError = lastError,
+)
+
+private fun MediaCaptureEntity.toModel() = MediaCaptureRecord(
+    id = id,
+    sourceUrl = sourceUrl,
+    pageUrl = pageUrl,
+    title = title,
+    status = runCatching { MediaCaptureStatus.valueOf(status) }.getOrDefault(MediaCaptureStatus.Captured),
+    kind = runCatching { MediaSourceKind.valueOf(kind) }.getOrDefault(MediaSourceKind.Unknown),
+    mimeType = mimeType,
+    container = container,
+    codecs = codecs,
+    durationMs = durationMs,
+    thumbnailUrl = thumbnailUrl,
+    fileName = fileName,
+    variantCount = variantCount,
+    downloadId = downloadId,
+    createdAtEpochMs = createdAtEpochMs,
+    updatedAtEpochMs = updatedAtEpochMs,
+)
+
+private fun MediaCaptureRecord.toEntity() = MediaCaptureEntity(
+    id = id,
+    sourceUrl = sourceUrl,
+    pageUrl = pageUrl,
+    title = title,
+    status = status.name,
+    kind = kind.name,
+    mimeType = mimeType,
+    container = container,
+    codecs = codecs,
+    durationMs = durationMs,
+    thumbnailUrl = thumbnailUrl,
+    fileName = fileName,
+    variantCount = variantCount,
+    downloadId = downloadId,
+    createdAtEpochMs = createdAtEpochMs,
+    updatedAtEpochMs = updatedAtEpochMs,
 )

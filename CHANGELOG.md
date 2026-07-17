@@ -1,5 +1,13 @@
 ## XDM Android 0.8.0-alpha01
 
+## 0.10.0-alpha01
+
+- Added Phase 10 media capture detection for shared browser URLs, direct media links, HLS playlists, and DASH manifests.
+- Added persisted media capture metadata and schema v10 media_captures storage.
+- Added real Media-route actions to download or remove captures without adding a new top-level route.
+- Added recovery-safe media capture wiring and JUnit regression coverage.
+
+
 Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
 
 # Changelog

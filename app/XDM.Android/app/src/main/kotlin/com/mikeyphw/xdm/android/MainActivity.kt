@@ -1,6 +1,7 @@
 package com.mikeyphw.xdm.android
 
 import android.Manifest
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -27,6 +28,25 @@ class MainActivity : ComponentActivity() {
         setContent {
             val scheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
             MaterialTheme(colorScheme = scheme) { XdmApp(viewModel, requestNotifications = ::requestNotificationPermissionIfNeeded) }
+        }
+        handleMediaIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleMediaIntent(intent)
+    }
+
+    private fun handleMediaIntent(intent: Intent?) {
+        val incoming = intent ?: return
+        val text = when (incoming.action) {
+            Intent.ACTION_SEND -> incoming.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+            Intent.ACTION_VIEW -> incoming.dataString.orEmpty()
+            else -> ""
+        }
+        if (text.isNotBlank()) {
+            viewModel.captureSharedText(text, pageTitle = incoming.getStringExtra(Intent.EXTRA_SUBJECT), pageUrl = incoming.dataString)
         }
     }
 

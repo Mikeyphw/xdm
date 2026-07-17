@@ -19,6 +19,7 @@ import androidx.room.RoomDatabase
         BackendTaskEntity::class,
         RecoveryRecordEntity::class,
         FinalizationJournalEntity::class,
+        MediaCaptureEntity::class,
         NotificationRecordEntity::class,
         TagEntity::class,
         DownloadTagCrossRef::class,
@@ -28,7 +29,7 @@ import androidx.room.RoomDatabase
         DestinationClaimEntity::class,
         OwnershipCounterEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -43,4 +44,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun backendMigrationDao(): BackendMigrationDao
     abstract fun checksumDao(): ChecksumDao
     abstract fun finalizationDao(): FinalizationDao
+    abstract fun mediaCaptureDao(): MediaCaptureDao
 }
