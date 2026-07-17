@@ -211,4 +211,34 @@ object Migrations {
         }
     }
 
+
+    val Migration10To11 = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN selectedVariantId TEXT")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN selectedVariantUrl TEXT")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN manifestExpiresAtEpochMs INTEGER")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN lastResolvedAtEpochMs INTEGER")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN resolutionStatus TEXT NOT NULL DEFAULT 'Unresolved'")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS media_variants (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    captureId TEXT NOT NULL,
+                    url TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    mimeType TEXT,
+                    width INTEGER,
+                    height INTEGER,
+                    bitrateBitsPerSecond INTEGER,
+                    codecs TEXT,
+                    language TEXT,
+                    position INTEGER NOT NULL,
+                    displayLabel TEXT NOT NULL DEFAULT '',
+                    expiresAtEpochMs INTEGER
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_media_variants_captureId ON media_variants(captureId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_media_variants_kind ON media_variants(kind)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_media_variants_position ON media_variants(position)")
+        }
+    }
 }

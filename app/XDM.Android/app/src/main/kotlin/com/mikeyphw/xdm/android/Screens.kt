@@ -60,6 +60,8 @@ import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaResolutionStatus
+import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryRecord
@@ -375,7 +377,10 @@ fun SchedulerScreen(rules: List<ScheduleRule>) {
 @Composable
 fun MediaInboxScreen(
     captures: List<MediaCaptureRecord>,
+    variants: List<MediaVariant>,
     onDownload: (MediaCaptureRecord) -> Unit,
+    onResolve: (MediaCaptureRecord) -> Unit,
+    onSelectVariant: (MediaCaptureRecord, String) -> Unit,
     onRemove: (MediaCaptureRecord) -> Unit,
 ) {
     if (captures.isEmpty()) {
@@ -384,6 +389,7 @@ fun MediaInboxScreen(
     }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(captures, key = MediaCaptureRecord::id) { capture ->
+            val captureVariants = variants.filter { it.captureId == capture.id }
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -404,13 +410,28 @@ fun MediaInboxScreen(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         StatusPill(capture.status.name)
+                        StatusPill(capture.resolutionStatus.name)
                         capture.downloadId?.let { StatusPill("Queued") }
+                    }
+                    if (captureVariants.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Variants", style = MaterialTheme.typography.labelLarge)
+                            captureVariants.take(4).forEach { variant ->
+                                val selected = capture.selectedVariantId == variant.id
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = { onSelectVariant(capture, variant.id) },
+                                    label = { Text(if (selected) "${variant.qualityLabel} selected" else variant.qualityLabel) },
+                                )
+                            }
+                        }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(
                             onClick = { onDownload(capture) },
-                            enabled = capture.status != MediaCaptureStatus.DownloadCreated,
+                            enabled = capture.status != MediaCaptureStatus.DownloadCreated && capture.resolutionStatus != MediaResolutionStatus.RequiresRefresh,
                         ) { Text(if (capture.status == MediaCaptureStatus.DownloadCreated) "Added" else "Download") }
+                        TextButton(onClick = { onResolve(capture) }) { Text(if (capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh) "Refresh" else "Resolve") }
                         TextButton(onClick = { onRemove(capture) }) { Text("Remove") }
                     }
                 }
@@ -454,12 +475,13 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { Text("Runtime health", style = MaterialTheme.typography.headlineSmall) }
-        item { DiagnosticLine("Database", "Room schema v10") }
+        item { DiagnosticLine("Database", "Room schema v11") }
         item { DiagnosticLine("Downloads", state.downloads.size.toString()) }
         item { DiagnosticLine("Queues", state.queues.size.toString()) }
         item { DiagnosticLine("Recovery records", state.recovery.size.toString()) }
         item { DiagnosticLine("Finalization journals", state.finalizationJournals.count { it.needsRecovery }.toString()) }
         item { DiagnosticLine("Media captures", state.mediaCaptures.size.toString()) }
+        item { DiagnosticLine("Media variants", state.mediaVariants.size.toString()) }
         item { DiagnosticLine("Native backend", "HTTP/HTTPS, checkpoints, resume and segmentation") }
         item { DiagnosticLine("Execution", "UIDT on Android 14+, foreground dataSync fallback") }
         item { DiagnosticLine("Active transfers", state.activeTransfers.activeCount.toString()) }
@@ -581,7 +603,7 @@ fun SettingsScreen(
             }
         }
         item { Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall) }
-        item { Text("Version: 0.10.0-alpha01", style = MaterialTheme.typography.bodySmall) }
+        item { Text("Version: 0.11.0-alpha01", style = MaterialTheme.typography.bodySmall) }
     }
 }
 

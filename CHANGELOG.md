@@ -1,3 +1,11 @@
+## 0.11.0-alpha01
+
+- Added Phase 11 media manifest resolution for HLS and DASH captures.
+- Added persisted media variant rows and selected-variant state in Room schema v11.
+- Added variant quality labels and Media-route variant selection without adding a new top-level route.
+- Added manifest expiry/refresh metadata so stale playlist captures are resolved before download.
+- Added JUnit media regression coverage for HLS/DASH variant selection.
+
 ## XDM Android 0.8.0-alpha01
 
 ## 0.10.0-alpha01

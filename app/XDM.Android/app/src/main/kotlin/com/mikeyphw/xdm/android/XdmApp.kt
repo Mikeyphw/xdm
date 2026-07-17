@@ -165,7 +165,14 @@ private fun AppScaffold(
                 )
                 AppRoute.Queues -> QueuesScreen(state.queues)
                 AppRoute.Scheduler -> SchedulerScreen(state.schedules)
-                AppRoute.Media -> MediaInboxScreen(state.mediaCaptures, viewModel::downloadMediaCapture, viewModel::removeMediaCapture)
+                AppRoute.Media -> MediaInboxScreen(
+                    state.mediaCaptures,
+                    state.mediaVariants,
+                    viewModel::downloadMediaCapture,
+                    viewModel::resolveMediaCapture,
+                    viewModel::selectMediaVariant,
+                    viewModel::removeMediaCapture,
+                )
                 AppRoute.Recovery -> RecoveryScreen(state.recovery, viewModel::validateRecoveryRecord, viewModel::removeRecoveryRecord)
                 AppRoute.Diagnostics -> DiagnosticsScreen(state, viewModel::runAria2SmokeTest)
                 AppRoute.Settings -> SettingsScreen(

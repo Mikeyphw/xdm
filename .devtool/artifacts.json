@@ -15183,6 +15183,621 @@
         ]
       },
       "history_id": "9a77c09fc1094eefad6e1b460a457378"
+    },
+    {
+      "applied_at": "2026-07-17T18:15:30.515973Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_android_phase11_media_resolution_variants_overlay.zip",
+      "artifact_name": "xdm_android_phase11_media_resolution_variants_overlay.zip",
+      "type": "overlay",
+      "sha256": "f370d23883e80622aa37d3465e923d49894c7cfd71713e870328acbd499bf4ad",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add XDM Android media resolution variants",
+      "commit_hash": "",
+      "file_count": 20,
+      "change_counts": {
+        "add": 3,
+        "modify": 17
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 11 media resolution and variants",
+        "description": "Adds persisted media variants, HLS/DASH resolution contracts, selected variant state, manifest refresh metadata, Media-route variant selection, schema v11, and regression coverage.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "d5b7d6fcaaad5519ed2fde9907640bab26cb402d7b146e31c89afc4bd1a3c1e3",
+              "size": 6442,
+              "source_sha256": "3258dd4b3feef16d09bad0bd60cde05e22b1c3fcb927845ab8e9b3a60856b891"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "3446313de1507d6392b8901f55b0c2804fec04c53f389d02eba0a01256910748",
+              "size": 4121,
+              "source_sha256": "aad5135ed6ae0a26d8ded070695adaa05c96cce54d15b0020b05f60d07ffcc61"
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "sha256": "8d35079d0c4ea98a7cad31d60f216a83cbde9ad98b4bd02aea5dc16e574c1e93",
+              "size": 5192,
+              "source_sha256": "703bee2c67c4bc3e682f6b993b81e989ed84dc68acf49c88211d1bca56e4a911"
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "sha256": "1ff9a7b5d2b527d6f516b311d82a04e3da2b92b405a2b4ebdd7dd08018b7071e",
+              "size": 4473,
+              "source_sha256": "c6331eb11b178979c82cab9e79c43ccc0e6df4efa6894b6c157f8c206fdc2bea"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "97636898607d89987ec05297bbd74fcd19da0743cb740191ca5ce089bd58b632",
+              "size": 25197,
+              "source_sha256": "be7249e15f7f318aefdc4ee29211ee62b3fb29382c8247b762d8c668173767d9"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "3d5d773dfce419ef224ece4fb9181186a4993e845b882b527338690c432798a9",
+              "size": 33092,
+              "source_sha256": "03cedcb9d3acffeaf1a948df9f3d9b5ef3fc4101c0b68c1c49579ea3f3450c59"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "5e02b030b65e727aa3b300cb92eddc64a99dcdc16289c46f21387e60e2dfe1ac",
+              "size": 8452,
+              "source_sha256": "59c9fda449bf68c5051b282c902fbad26dfd80b16549cd55e21105d98ff82efb"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "sha256": "e961c9048bba5b4eac8de6435e067c260ca3598699ce17b7a4e59788d81a4d46",
+              "size": 5833,
+              "source_sha256": "6c4960de07bb29218a403e61558b9ce50c47062885a7dfab306784bbcf2c58b8"
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadModels.kt",
+              "action": "modify",
+              "sha256": "145946a15130d3eff7028264b1a9072c80e975553ed0fa8c4d8ac87d94fb102b",
+              "size": 13238,
+              "source_sha256": "aa0974ac3bb3fdc228ca8d1b2a833bb54ad8a6f364687f04b7f90d100d8ede8c"
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaInboxContract.kt",
+              "action": "modify",
+              "sha256": "5d80e95b8c49d5996a97fa184b552ae9fcfbfab21d7dc36a18346746d427b96d",
+              "size": 14593,
+              "source_sha256": "e49e625644f82cc8e8970355d0b8aeb2239866e5c3a336681f170cb3ae3f7f0c"
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+              "action": "modify",
+              "sha256": "2884b710fb81b3b4f92730bb2a92ebbc0b386f1e531ec419725001436e19822f",
+              "size": 3629,
+              "source_sha256": "b21db4b640cc1e58e958a1bd6345749d251e7fbd9d4839ed76187b68d0649334"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt",
+              "action": "modify",
+              "sha256": "d28de5aa0858fb158525796e7d8b371a69ab5baee881484db89251349800eb0c",
+              "size": 1746,
+              "source_sha256": "2a73ef1b5c8345f1347533a56421ffb19150c9eef2b3feba17bf20848f0400c3"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+              "action": "modify",
+              "sha256": "bbddf28364a03838810d3e7b9881a3d4f2028d175dd714916ec50887754ba2b2",
+              "size": 13584,
+              "source_sha256": "039601f467065408bd9d6eecc0d50e55f2106c8f48c90adbded5dfe5d9f8c2d9"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt",
+              "action": "modify",
+              "sha256": "1438f5663c15ce0263d37a252ec6e78fd8f602a09b7e41074d7a800eb4278ed7",
+              "size": 11585,
+              "source_sha256": "0b98c437ea1b906cac72f655796a42c61f546fb1ff5a3f4b60f23dcfa206b1ff"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/MediaCaptureDao.kt",
+              "action": "modify",
+              "sha256": "c28f4e9c28c13f109b3f558f90f9f431fb43949d44dd70b14466da55bfa3c2d1",
+              "size": 1220,
+              "source_sha256": "6939cda59ea4ac12327ef7c98e6b3813996a2b4d399feb0a429937c6266c866d"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+              "action": "modify",
+              "sha256": "582f9bd86df2328bd3d4f2cd113435fc9ab179709538dd6a9c410a638d9030d5",
+              "size": 13628,
+              "source_sha256": "bf2ed9adf6891eabb364a94928464cdb46cc1474ea1b338081c7373dca562dbd"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-10.py",
+              "action": "modify",
+              "sha256": "50bd9f20220787e72d1c3ca46305ff5637037786606e2bf71661ff4919fb9705",
+              "size": 3378,
+              "source_sha256": "379fa86ac8bb726e6595a0d5fc82a27331d99888186fa5dde8bdec960373c093"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-11-MEDIA-RESOLUTION-VARIANTS.md",
+              "action": "add",
+              "sha256": "f40e6f695c6c43648e23c2b4c927fb032089e15d8b19590d4961fdb14e681a6d",
+              "size": 978
+            },
+            {
+              "path": "app/XDM.Android/persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/11.json",
+              "action": "add",
+              "sha256": "6040be4bce1e79eb222a3613f201f508dae195b0c2d62f3c1d3229ebe9112a2b",
+              "size": 56521
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-11.py",
+              "action": "add",
+              "sha256": "8ac275a34a47118ba866d27e6b182ec6aeefd3601191ec703bfcf3b9efd1f575",
+              "size": 3270
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add XDM Android media resolution variants"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "expected": {
+            "restore": "pass",
+            "build": "pass",
+            "tests": "pass",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Requires the applied Phase 10 media capture baseline (user baseline commit 0b96953).",
+          "Bumps XDM Android to 0.11.0-alpha01 and Room schema 11.",
+          "Uses the existing Media route; no new top-level route is introduced.",
+          "Uses add inventory actions for new files and verifies every payload entry.",
+          "Patches Phase 10 validator to accept newer schema versions so cumulative validation remains green.",
+          "Media tests use JUnit imports and preserve zero-warning source conventions."
+        ]
+      },
+      "history_id": "6f5dbd7719fa41f9a293802fad0dcf24"
+    },
+    {
+      "applied_at": "2026-07-17T18:22:06.656873Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_android_phase11_media_resolution_variants_overlay.zip",
+      "artifact_name": "xdm_android_phase11_media_resolution_variants_overlay.zip",
+      "type": "overlay",
+      "sha256": "8c908630770ba721e004a8c830521943eee73d419ac088d139d30316702cc61b",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Add XDM Android media resolution variants",
+      "commit_hash": "",
+      "file_count": 20,
+      "change_counts": {
+        "add": 3,
+        "modify": 17
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 11 media resolution and variants",
+        "description": "Adds persisted media variants, HLS/DASH resolution contracts, selected variant state, manifest refresh metadata, Media-route variant selection, schema v11, and regression coverage.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "d5b7d6fcaaad5519ed2fde9907640bab26cb402d7b146e31c89afc4bd1a3c1e3",
+              "size": 6442,
+              "source_sha256": "3258dd4b3feef16d09bad0bd60cde05e22b1c3fcb927845ab8e9b3a60856b891"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "3446313de1507d6392b8901f55b0c2804fec04c53f389d02eba0a01256910748",
+              "size": 4121,
+              "source_sha256": "aad5135ed6ae0a26d8ded070695adaa05c96cce54d15b0020b05f60d07ffcc61"
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "sha256": "8d35079d0c4ea98a7cad31d60f216a83cbde9ad98b4bd02aea5dc16e574c1e93",
+              "size": 5192,
+              "source_sha256": "703bee2c67c4bc3e682f6b993b81e989ed84dc68acf49c88211d1bca56e4a911"
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "sha256": "1ff9a7b5d2b527d6f516b311d82a04e3da2b92b405a2b4ebdd7dd08018b7071e",
+              "size": 4473,
+              "source_sha256": "c6331eb11b178979c82cab9e79c43ccc0e6df4efa6894b6c157f8c206fdc2bea"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "97636898607d89987ec05297bbd74fcd19da0743cb740191ca5ce089bd58b632",
+              "size": 25197,
+              "source_sha256": "be7249e15f7f318aefdc4ee29211ee62b3fb29382c8247b762d8c668173767d9"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "3d5d773dfce419ef224ece4fb9181186a4993e845b882b527338690c432798a9",
+              "size": 33092,
+              "source_sha256": "03cedcb9d3acffeaf1a948df9f3d9b5ef3fc4101c0b68c1c49579ea3f3450c59"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "5e02b030b65e727aa3b300cb92eddc64a99dcdc16289c46f21387e60e2dfe1ac",
+              "size": 8452,
+              "source_sha256": "59c9fda449bf68c5051b282c902fbad26dfd80b16549cd55e21105d98ff82efb"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "sha256": "e961c9048bba5b4eac8de6435e067c260ca3598699ce17b7a4e59788d81a4d46",
+              "size": 5833,
+              "source_sha256": "6c4960de07bb29218a403e61558b9ce50c47062885a7dfab306784bbcf2c58b8"
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadModels.kt",
+              "action": "modify",
+              "sha256": "145946a15130d3eff7028264b1a9072c80e975553ed0fa8c4d8ac87d94fb102b",
+              "size": 13238,
+              "source_sha256": "aa0974ac3bb3fdc228ca8d1b2a833bb54ad8a6f364687f04b7f90d100d8ede8c"
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaInboxContract.kt",
+              "action": "modify",
+              "sha256": "5123f514a947d614729e7f89b8b120724b15d5981eb6b55b57329bab30f84172",
+              "size": 14595,
+              "source_sha256": "e49e625644f82cc8e8970355d0b8aeb2239866e5c3a336681f170cb3ae3f7f0c"
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+              "action": "modify",
+              "sha256": "2884b710fb81b3b4f92730bb2a92ebbc0b386f1e531ec419725001436e19822f",
+              "size": 3629,
+              "source_sha256": "b21db4b640cc1e58e958a1bd6345749d251e7fbd9d4839ed76187b68d0649334"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt",
+              "action": "modify",
+              "sha256": "d28de5aa0858fb158525796e7d8b371a69ab5baee881484db89251349800eb0c",
+              "size": 1746,
+              "source_sha256": "2a73ef1b5c8345f1347533a56421ffb19150c9eef2b3feba17bf20848f0400c3"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+              "action": "modify",
+              "sha256": "bbddf28364a03838810d3e7b9881a3d4f2028d175dd714916ec50887754ba2b2",
+              "size": 13584,
+              "source_sha256": "039601f467065408bd9d6eecc0d50e55f2106c8f48c90adbded5dfe5d9f8c2d9"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt",
+              "action": "modify",
+              "sha256": "1438f5663c15ce0263d37a252ec6e78fd8f602a09b7e41074d7a800eb4278ed7",
+              "size": 11585,
+              "source_sha256": "0b98c437ea1b906cac72f655796a42c61f546fb1ff5a3f4b60f23dcfa206b1ff"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/MediaCaptureDao.kt",
+              "action": "modify",
+              "sha256": "c28f4e9c28c13f109b3f558f90f9f431fb43949d44dd70b14466da55bfa3c2d1",
+              "size": 1220,
+              "source_sha256": "6939cda59ea4ac12327ef7c98e6b3813996a2b4d399feb0a429937c6266c866d"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+              "action": "modify",
+              "sha256": "582f9bd86df2328bd3d4f2cd113435fc9ab179709538dd6a9c410a638d9030d5",
+              "size": 13628,
+              "source_sha256": "bf2ed9adf6891eabb364a94928464cdb46cc1474ea1b338081c7373dca562dbd"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-10.py",
+              "action": "modify",
+              "sha256": "50bd9f20220787e72d1c3ca46305ff5637037786606e2bf71661ff4919fb9705",
+              "size": 3378,
+              "source_sha256": "379fa86ac8bb726e6595a0d5fc82a27331d99888186fa5dde8bdec960373c093"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-11-MEDIA-RESOLUTION-VARIANTS.md",
+              "action": "add",
+              "sha256": "f40e6f695c6c43648e23c2b4c927fb032089e15d8b19590d4961fdb14e681a6d",
+              "size": 978
+            },
+            {
+              "path": "app/XDM.Android/persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/11.json",
+              "action": "add",
+              "sha256": "4ff863a422886c2705a7bfd0512fa0271aac252a65bbc61db24fcd3d9059792c",
+              "size": 56504
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-11.py",
+              "action": "add",
+              "sha256": "8ac275a34a47118ba866d27e6b182ec6aeefd3601191ec703bfcf3b9efd1f575",
+              "size": 3270
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add XDM Android media resolution variants"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "expected": {
+            "restore": "pass",
+            "build": "pass",
+            "tests": "pass",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Requires the applied Phase 10 media capture baseline (user baseline commit 0b96953).",
+          "Bumps XDM Android to 0.11.0-alpha01 and Room schema 11.",
+          "Uses the existing Media route; no new top-level route is introduced.",
+          "Uses add inventory actions for new files and verifies every payload entry.",
+          "Patches Phase 10 validator to accept newer schema versions so cumulative validation remains green.",
+          "Media tests use JUnit imports and preserve zero-warning source conventions."
+        ]
+      },
+      "history_id": "5747ba1b72ec4dd0b233db280cf13c96"
+    },
+    {
+      "applied_at": "2026-07-17T18:44:10.936463Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_android_phase11_media_resolution_variants_overlay.zip",
+      "artifact_name": "xdm_android_phase11_media_resolution_variants_overlay.zip",
+      "type": "overlay",
+      "sha256": "39a7f64600e482ae2bc285e85ea5f9543e3eefa558c9c5d2df2bf5ca474c431f",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add XDM Android media resolution variants",
+      "commit_hash": "",
+      "file_count": 20,
+      "change_counts": {
+        "add": 3,
+        "modify": 17
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 11 media resolution and variants",
+        "description": "Adds persisted media variants, HLS/DASH resolution contracts, selected variant state, manifest refresh metadata, Media-route variant selection, schema v11, and regression coverage.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "d5b7d6fcaaad5519ed2fde9907640bab26cb402d7b146e31c89afc4bd1a3c1e3",
+              "size": 6442,
+              "source_sha256": "3258dd4b3feef16d09bad0bd60cde05e22b1c3fcb927845ab8e9b3a60856b891"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "3446313de1507d6392b8901f55b0c2804fec04c53f389d02eba0a01256910748",
+              "size": 4121,
+              "source_sha256": "aad5135ed6ae0a26d8ded070695adaa05c96cce54d15b0020b05f60d07ffcc61"
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "sha256": "8d35079d0c4ea98a7cad31d60f216a83cbde9ad98b4bd02aea5dc16e574c1e93",
+              "size": 5192,
+              "source_sha256": "703bee2c67c4bc3e682f6b993b81e989ed84dc68acf49c88211d1bca56e4a911"
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "sha256": "1ff9a7b5d2b527d6f516b311d82a04e3da2b92b405a2b4ebdd7dd08018b7071e",
+              "size": 4473,
+              "source_sha256": "c6331eb11b178979c82cab9e79c43ccc0e6df4efa6894b6c157f8c206fdc2bea"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "97636898607d89987ec05297bbd74fcd19da0743cb740191ca5ce089bd58b632",
+              "size": 25197,
+              "source_sha256": "be7249e15f7f318aefdc4ee29211ee62b3fb29382c8247b762d8c668173767d9"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "3d5d773dfce419ef224ece4fb9181186a4993e845b882b527338690c432798a9",
+              "size": 33092,
+              "source_sha256": "03cedcb9d3acffeaf1a948df9f3d9b5ef3fc4101c0b68c1c49579ea3f3450c59"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "5e02b030b65e727aa3b300cb92eddc64a99dcdc16289c46f21387e60e2dfe1ac",
+              "size": 8452,
+              "source_sha256": "59c9fda449bf68c5051b282c902fbad26dfd80b16549cd55e21105d98ff82efb"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "sha256": "e961c9048bba5b4eac8de6435e067c260ca3598699ce17b7a4e59788d81a4d46",
+              "size": 5833,
+              "source_sha256": "6c4960de07bb29218a403e61558b9ce50c47062885a7dfab306784bbcf2c58b8"
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadModels.kt",
+              "action": "modify",
+              "sha256": "145946a15130d3eff7028264b1a9072c80e975553ed0fa8c4d8ac87d94fb102b",
+              "size": 13238,
+              "source_sha256": "aa0974ac3bb3fdc228ca8d1b2a833bb54ad8a6f364687f04b7f90d100d8ede8c"
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaInboxContract.kt",
+              "action": "modify",
+              "sha256": "5123f514a947d614729e7f89b8b120724b15d5981eb6b55b57329bab30f84172",
+              "size": 14595,
+              "source_sha256": "e49e625644f82cc8e8970355d0b8aeb2239866e5c3a336681f170cb3ae3f7f0c"
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+              "action": "modify",
+              "sha256": "2884b710fb81b3b4f92730bb2a92ebbc0b386f1e531ec419725001436e19822f",
+              "size": 3629,
+              "source_sha256": "b21db4b640cc1e58e958a1bd6345749d251e7fbd9d4839ed76187b68d0649334"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt",
+              "action": "modify",
+              "sha256": "d28de5aa0858fb158525796e7d8b371a69ab5baee881484db89251349800eb0c",
+              "size": 1746,
+              "source_sha256": "2a73ef1b5c8345f1347533a56421ffb19150c9eef2b3feba17bf20848f0400c3"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+              "action": "modify",
+              "sha256": "bbddf28364a03838810d3e7b9881a3d4f2028d175dd714916ec50887754ba2b2",
+              "size": 13584,
+              "source_sha256": "039601f467065408bd9d6eecc0d50e55f2106c8f48c90adbded5dfe5d9f8c2d9"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt",
+              "action": "modify",
+              "sha256": "1438f5663c15ce0263d37a252ec6e78fd8f602a09b7e41074d7a800eb4278ed7",
+              "size": 11585,
+              "source_sha256": "0b98c437ea1b906cac72f655796a42c61f546fb1ff5a3f4b60f23dcfa206b1ff"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/MediaCaptureDao.kt",
+              "action": "modify",
+              "sha256": "0b4b87d94599386104ebf73474baee82e5c8bf0f9ef44cc409523a1d7d3e75a9",
+              "size": 1685,
+              "source_sha256": "6939cda59ea4ac12327ef7c98e6b3813996a2b4d399feb0a429937c6266c866d"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+              "action": "modify",
+              "sha256": "582f9bd86df2328bd3d4f2cd113435fc9ab179709538dd6a9c410a638d9030d5",
+              "size": 13628,
+              "source_sha256": "bf2ed9adf6891eabb364a94928464cdb46cc1474ea1b338081c7373dca562dbd"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-10.py",
+              "action": "modify",
+              "sha256": "50bd9f20220787e72d1c3ca46305ff5637037786606e2bf71661ff4919fb9705",
+              "size": 3378,
+              "source_sha256": "379fa86ac8bb726e6595a0d5fc82a27331d99888186fa5dde8bdec960373c093"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-11-MEDIA-RESOLUTION-VARIANTS.md",
+              "action": "add",
+              "sha256": "f40e6f695c6c43648e23c2b4c927fb032089e15d8b19590d4961fdb14e681a6d",
+              "size": 978
+            },
+            {
+              "path": "app/XDM.Android/persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/11.json",
+              "action": "add",
+              "sha256": "402b30e10c170edc1788135ba6f8c8c77967b0f6599c46198817aee8bf9d36dc",
+              "size": 56504
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-11.py",
+              "action": "add",
+              "sha256": "8ac275a34a47118ba866d27e6b182ec6aeefd3601191ec703bfcf3b9efd1f575",
+              "size": 3270
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add XDM Android media resolution variants"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "expected": {
+            "restore": "pass",
+            "build": "pass",
+            "tests": "pass",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Requires the applied Phase 10 media capture baseline (user baseline commit 0b96953).",
+          "Bumps XDM Android to 0.11.0-alpha01 and Room schema 11.",
+          "Uses the existing Media route; no new top-level route is introduced.",
+          "Uses add inventory actions for new files and verifies every payload entry.",
+          "Patches Phase 10 validator to accept newer schema versions so cumulative validation remains green.",
+          "Media tests use JUnit imports and preserve zero-warning source conventions."
+        ]
+      },
+      "history_id": "81c1a24f8d8f462bbfdf7817a838ae3d"
     }
   ]
 }

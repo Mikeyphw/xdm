@@ -15,6 +15,9 @@ import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaResolutionStatus
+import com.mikeyphw.xdm.android.model.MediaVariant
+import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.DestinationHealthStatus
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.DestinationType
@@ -35,6 +38,7 @@ class DownloadRepository(private val database: AppDatabase) {
     val verificationRecords: Flow<List<VerificationRecord>> = database.checksumDao().observeVerifications().map { rows -> rows.map(VerificationRecordEntity::toModel) }
     val finalizationJournals: Flow<List<FinalizationJournal>> = database.finalizationDao().observeAll().map { rows -> rows.map(FinalizationJournalEntity::toModel) }
     val mediaCaptures: Flow<List<MediaCaptureRecord>> = database.mediaCaptureDao().observeAll().map { rows -> rows.map(MediaCaptureEntity::toModel) }
+    val mediaVariants: Flow<List<MediaVariant>> = database.mediaCaptureDao().observeVariants().map { rows -> rows.map(MediaVariantEntity::toModel) }
 
     suspend fun countDownloads(): Int = database.downloadDao().count()
     suspend fun countQueues(): Int = database.queueDao().count()
@@ -52,6 +56,9 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun saveTrustedManifest(manifest: TrustedBlockManifest) = database.checksumDao().upsertTrustedManifest(manifest.toEntity())
     suspend fun saveMediaCapture(record: MediaCaptureRecord) = database.mediaCaptureDao().upsert(record.toEntity())
     suspend fun saveMediaCaptures(records: List<MediaCaptureRecord>) = database.mediaCaptureDao().upsertAll(records.map { it.toEntity() })
+    suspend fun saveMediaVariants(records: List<MediaVariant>) = database.mediaCaptureDao().upsertVariants(records.map { it.toEntity() })
+    suspend fun variantsForMediaCapture(captureId: String): List<MediaVariant> = database.mediaCaptureDao().variantsForCapture(captureId).map { it.toModel() }
+    suspend fun selectMediaVariant(captureId: String, variant: MediaVariant, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().selectVariant(captureId, variant.id, variant.url, MediaResolutionStatus.Resolved.name, updatedAtEpochMs)
     suspend fun findMediaCapture(id: String): MediaCaptureRecord? = database.mediaCaptureDao().findById(id)?.toModel()
     suspend fun markMediaDownloadCreated(captureId: String, downloadId: String, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().markDownloadCreated(captureId, MediaCaptureStatus.DownloadCreated.name, downloadId, updatedAtEpochMs)
     suspend fun deleteMediaCapture(id: String) = database.mediaCaptureDao().delete(id)
@@ -175,6 +182,11 @@ private fun MediaCaptureEntity.toModel() = MediaCaptureRecord(
     downloadId = downloadId,
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
+    selectedVariantId = selectedVariantId,
+    selectedVariantUrl = selectedVariantUrl,
+    manifestExpiresAtEpochMs = manifestExpiresAtEpochMs,
+    lastResolvedAtEpochMs = lastResolvedAtEpochMs,
+    resolutionStatus = runCatching { MediaResolutionStatus.valueOf(resolutionStatus) }.getOrDefault(MediaResolutionStatus.Unresolved),
 )
 
 private fun MediaCaptureRecord.toEntity() = MediaCaptureEntity(
@@ -194,4 +206,41 @@ private fun MediaCaptureRecord.toEntity() = MediaCaptureEntity(
     downloadId = downloadId,
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
+    selectedVariantId = selectedVariantId,
+    selectedVariantUrl = selectedVariantUrl,
+    manifestExpiresAtEpochMs = manifestExpiresAtEpochMs,
+    lastResolvedAtEpochMs = lastResolvedAtEpochMs,
+    resolutionStatus = resolutionStatus.name,
+)
+
+private fun MediaVariantEntity.toModel() = MediaVariant(
+    id = id,
+    captureId = captureId,
+    url = url,
+    kind = runCatching { MediaVariantKind.valueOf(kind) }.getOrDefault(MediaVariantKind.Primary),
+    mimeType = mimeType,
+    width = width,
+    height = height,
+    bitrateBitsPerSecond = bitrateBitsPerSecond,
+    codecs = codecs,
+    language = language,
+    position = position,
+    displayLabel = displayLabel,
+    expiresAtEpochMs = expiresAtEpochMs,
+)
+
+private fun MediaVariant.toEntity() = MediaVariantEntity(
+    id = id,
+    captureId = captureId,
+    url = url,
+    kind = kind.name,
+    mimeType = mimeType,
+    width = width,
+    height = height,
+    bitrateBitsPerSecond = bitrateBitsPerSecond,
+    codecs = codecs,
+    language = language,
+    position = position,
+    displayLabel = displayLabel,
+    expiresAtEpochMs = expiresAtEpochMs,
 )

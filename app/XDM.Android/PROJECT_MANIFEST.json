@@ -2,7 +2,7 @@
   "project": {
     "name": "XDM Android",
     "package_id": "com.mikeyphw.xdm.android",
-    "version": "0.10.0-alpha01",
+    "version": "0.11.0-alpha01",
     "implemented_phases": [
       0,
       1,
@@ -14,11 +14,12 @@
       7,
       8,
       9,
-      10
+      10,
+      11
     ]
   },
   "database": {
-    "version": 10,
+    "version": 11,
     "migrations": [
       "1_to_2",
       "2_to_3",
@@ -28,7 +29,8 @@
       "6_to_7",
       "7_to_8",
       "8_to_9",
-      "9_to_10"
+      "9_to_10",
+      "10_to_11"
     ],
     "destination_permission_health": true
   },
@@ -64,7 +66,7 @@
       "compare"
     ]
   },
-  "next_phase": "11",
+  "next_phase": "12",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -151,6 +153,14 @@
       "variant_count"
     ],
     "recovery_safe_refresh": true,
+    "top_level_route_added": false
+  },
+  "media_resolution": {
+    "hls_variant_resolution": true,
+    "dash_variant_resolution": true,
+    "persisted_variants": true,
+    "selected_variant_persistence": true,
+    "manifest_refresh_before_download": true,
     "top_level_route_added": false
   }
 }

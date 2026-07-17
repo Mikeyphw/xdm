@@ -146,6 +146,28 @@ data class MediaCaptureEntity(
     val downloadId: String?,
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
+    @ColumnInfo(defaultValue = "NULL") val selectedVariantId: String?,
+    @ColumnInfo(defaultValue = "NULL") val selectedVariantUrl: String?,
+    @ColumnInfo(defaultValue = "NULL") val manifestExpiresAtEpochMs: Long?,
+    @ColumnInfo(defaultValue = "NULL") val lastResolvedAtEpochMs: Long?,
+    @ColumnInfo(defaultValue = "'Unresolved'") val resolutionStatus: String,
+)
+
+@Entity(tableName = "media_variants", indices = [Index("captureId"), Index("kind"), Index("position")])
+data class MediaVariantEntity(
+    @PrimaryKey val id: String,
+    val captureId: String,
+    val url: String,
+    val kind: String,
+    val mimeType: String?,
+    val width: Int?,
+    val height: Int?,
+    val bitrateBitsPerSecond: Long?,
+    val codecs: String?,
+    val language: String?,
+    val position: Int,
+    @ColumnInfo(defaultValue = "''") val displayLabel: String,
+    val expiresAtEpochMs: Long?,
 )
 
 @Entity(tableName = "notification_records", indices = [Index("downloadId"), Index("createdAtEpochMs")])

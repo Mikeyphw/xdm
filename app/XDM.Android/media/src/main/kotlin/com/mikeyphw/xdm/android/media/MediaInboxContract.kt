@@ -2,6 +2,7 @@ package com.mikeyphw.xdm.android.media
 
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
+import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
@@ -25,7 +26,7 @@ data class MediaCaptureCandidate(
 )
 
 class MediaCaptureService(private val clock: () -> Long = System::currentTimeMillis) {
-    private val urlPattern = Regex("""https?://[^\s<>\"']+""", RegexOption.IGNORE_CASE)
+    private val urlPattern = Regex("""https?://[^\s<>"']+""", RegexOption.IGNORE_CASE)
 
     fun detect(text: String, pageTitle: String? = null, pageUrl: String? = null): List<MediaCaptureRecord> =
         candidates(text, pageTitle, pageUrl).map { it.toRecord(clock()) }.distinctBy(MediaCaptureRecord::id)
@@ -56,7 +57,17 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             MediaSourceKind.ProgressiveMedia, MediaSourceKind.VideoStream, MediaSourceKind.DirectFile -> videoMime(lowerPath)
             MediaSourceKind.Unknown -> null
         }
-        val variants = listOf(MediaVariant(captureIdFor(normalized) + ":primary", captureIdFor(normalized), normalized, MediaVariantKind.Primary, mimeType))
+        val captureId = captureIdFor(normalized)
+        val variants = listOf(
+            MediaVariant(
+                id = "$captureId:primary",
+                captureId = captureId,
+                url = normalized,
+                kind = MediaVariantKind.Primary,
+                mimeType = mimeType,
+                displayLabel = "Primary",
+            ),
+        )
         return MediaCaptureCandidate(
             sourceUrl = normalized,
             pageUrl = pageUrl,
@@ -68,7 +79,7 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         )
     }
 
-    fun parseHlsPlaylist(captureId: String, playlistUrl: String, playlistText: String): List<MediaVariant> {
+    fun parseHlsPlaylist(captureId: String, playlistUrl: String, playlistText: String, expiresAtEpochMs: Long? = null): List<MediaVariant> {
         val lines = playlistText.lineSequence().map(String::trim).filter(String::isNotBlank).toList()
         val variants = mutableListOf<MediaVariant>()
         var pendingBandwidth: Long? = null
@@ -77,9 +88,9 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         for (line in lines) {
             if (line.startsWith("#EXT-X-STREAM-INF", ignoreCase = true)) {
                 pendingBandwidth = Regex("BANDWIDTH=(\\d+)").find(line)?.groupValues?.getOrNull(1)?.toLongOrNull()
-                pendingResolution = Regex("RESOLUTION=(\\d+)x(\\d+)").find(line)?.let { it.groupValues[1].toIntOrNull() to it.groupValues[2].toIntOrNull() }?.let { pair ->
-                    val width = pair.first
-                    val height = pair.second
+                pendingResolution = Regex("RESOLUTION=(\\d+)x(\\d+)").find(line)?.let { match ->
+                    val width = match.groupValues[1].toIntOrNull()
+                    val height = match.groupValues[2].toIntOrNull()
                     if (width != null && height != null) width to height else null
                 }
                 continue
@@ -95,8 +106,11 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
                     width = pendingResolution?.first,
                     height = pendingResolution?.second,
                     bitrateBitsPerSecond = pendingBandwidth,
-                    position = index++,
+                    position = index,
+                    displayLabel = labelFor(pendingResolution?.second, pendingBandwidth),
+                    expiresAtEpochMs = expiresAtEpochMs,
                 )
+                index++
                 pendingBandwidth = null
                 pendingResolution = null
             }
@@ -104,15 +118,75 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         return variants
     }
 
-    companion object {
-        fun captureIdFor(url: String): String = "media-" + MessageDigest.getInstance("SHA-256")
-            .digest(url.trim().lowercase(Locale.ROOT).toByteArray())
-            .joinToString("") { "%02x".format(it) }
-            .take(24)
+    fun parseDashManifest(captureId: String, manifestUrl: String, manifestText: String, expiresAtEpochMs: Long? = null): List<MediaVariant> {
+        val fullTags = Regex("""<Representation\b([^>]*)>(.*?)</Representation>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+            .findAll(manifestText)
+            .map { it.groupValues[1] to it.groupValues[2] }
+            .toList()
+        val singleTags = Regex("""<Representation\b([^>]*)/>""", RegexOption.IGNORE_CASE)
+            .findAll(manifestText)
+            .map { it.groupValues[1] to "" }
+            .toList()
+        return (fullTags + singleTags).mapIndexed { index, (attrs, body) ->
+            val width = attr(attrs, "width")?.toIntOrNull()
+            val height = attr(attrs, "height")?.toIntOrNull()
+            val bandwidth = attr(attrs, "bandwidth")?.toLongOrNull()
+            val codecs = attr(attrs, "codecs")
+            val mimeType = attr(attrs, "mimeType") ?: if (codecs?.startsWith("mp4a", ignoreCase = true) == true) "audio/mp4" else "video/mp4"
+            val baseUrl = Regex("""<BaseURL>(.*?)</BaseURL>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+                .find(body)?.groupValues?.getOrNull(1)?.trim()
+            MediaVariant(
+                id = "$captureId:dash:$index",
+                captureId = captureId,
+                url = baseUrl?.takeIf(String::isNotBlank)?.let { resolveVariantUrl(manifestUrl, it) } ?: manifestUrl,
+                kind = if (mimeType.startsWith("audio/")) MediaVariantKind.Audio else MediaVariantKind.Video,
+                mimeType = mimeType,
+                width = width,
+                height = height,
+                bitrateBitsPerSecond = bandwidth,
+                codecs = codecs,
+                position = index,
+                displayLabel = labelFor(height, bandwidth, codecs),
+                expiresAtEpochMs = expiresAtEpochMs,
+            )
+        }
+    }
+
+    fun selectVariant(record: MediaCaptureRecord, variants: List<MediaVariant>, variantId: String, nowEpochMs: Long = clock()): MediaCaptureRecord {
+        val selected = variants.firstOrNull { it.id == variantId } ?: return record
+        return record.copy(
+            selectedVariantId = selected.id,
+            selectedVariantUrl = selected.url,
+            resolutionStatus = if (selected.isExpired(nowEpochMs)) MediaResolutionStatus.RequiresRefresh else MediaResolutionStatus.Resolved,
+            updatedAtEpochMs = nowEpochMs,
+        )
+    }
+
+    fun selectedOrBestVariant(record: MediaCaptureRecord, variants: List<MediaVariant>, nowEpochMs: Long = clock()): MediaVariant? {
+        val usable = variants.filterNot { it.isExpired(nowEpochMs) }
+        return usable.firstOrNull { it.id == record.selectedVariantId }
+            ?: usable.maxWithOrNull(compareBy<MediaVariant> { it.height ?: 0 }.thenBy { it.bitrateBitsPerSecond ?: 0L })
+            ?: variants.firstOrNull { it.id == record.selectedVariantId }
+            ?: variants.maxWithOrNull(compareBy<MediaVariant> { it.height ?: 0 }.thenBy { it.bitrateBitsPerSecond ?: 0L })
+    }
+
+    fun refreshRecordAfterResolution(record: MediaCaptureRecord, variants: List<MediaVariant>, nowEpochMs: Long = clock(), maxAgeMs: Long = DEFAULT_MANIFEST_MAX_AGE_MS): MediaCaptureRecord {
+        val selected = selectedOrBestVariant(record, variants, nowEpochMs)
+        val expiry = if (record.isPlaylist) nowEpochMs + maxAgeMs else null
+        return record.copy(
+            variantCount = variants.size.coerceAtLeast(1),
+            selectedVariantId = selected?.id ?: record.selectedVariantId,
+            selectedVariantUrl = selected?.url ?: record.selectedVariantUrl ?: record.sourceUrl,
+            manifestExpiresAtEpochMs = expiry,
+            lastResolvedAtEpochMs = nowEpochMs,
+            resolutionStatus = if (variants.isEmpty()) MediaResolutionStatus.Failed else MediaResolutionStatus.Resolved,
+            updatedAtEpochMs = nowEpochMs,
+        )
     }
 
     private fun MediaCaptureCandidate.toRecord(now: Long): MediaCaptureRecord {
         val safeTitle = title?.takeIf(String::isNotBlank) ?: inferredTitle(sourceUrl)
+        val firstVariant = variants.firstOrNull()
         return MediaCaptureRecord(
             id = captureIdFor(sourceUrl),
             sourceUrl = sourceUrl,
@@ -130,7 +204,19 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             downloadId = null,
             createdAtEpochMs = now,
             updatedAtEpochMs = now,
+            selectedVariantId = firstVariant?.id,
+            selectedVariantUrl = firstVariant?.url ?: sourceUrl,
+            resolutionStatus = if (kind == MediaSourceKind.HlsPlaylist || kind == MediaSourceKind.DashManifest) MediaResolutionStatus.Unresolved else MediaResolutionStatus.Resolved,
         )
+    }
+
+    companion object {
+        const val DEFAULT_MANIFEST_MAX_AGE_MS = 15 * 60 * 1000L
+
+        fun captureIdFor(url: String): String = "media-" + MessageDigest.getInstance("SHA-256")
+            .digest(url.trim().lowercase(Locale.ROOT).toByteArray())
+            .joinToString("") { "%02x".format(it) }
+            .take(24)
     }
 
     private fun inferredTitle(url: String): String = runCatching {
@@ -146,7 +232,7 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             else -> pathName?.substringAfterLast('.', "")?.takeIf(String::isNotBlank)?.let { ".$it" } ?: ".mp4"
         }
         val base = (pathName?.substringBeforeLast('.', missingDelimiterValue = "")?.takeIf(String::isNotBlank) ?: title)
-            .replace(Regex("[\\/:*?\"<>|\\p{Cntrl}]"), "_")
+            .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_")
             .trim('.', ' ')
             .ifBlank { "captured-media" }
             .take(160)
@@ -179,6 +265,17 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         path.endsWith(".opus") -> "audio/opus"
         else -> "audio/mp4"
     }
+
+    private fun attr(attributes: String, name: String): String? = Regex("""$name=["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+        .find(attributes)
+        ?.groupValues
+        ?.getOrNull(1)
+
+    private fun labelFor(height: Int?, bandwidth: Long?, codecs: String? = null): String = listOfNotNull(
+        height?.let { "${it}p" },
+        bandwidth?.takeIf { it > 0 }?.let { "${it / 1000} kbps" },
+        codecs,
+    ).joinToString(" • ").ifBlank { "Auto" }
 
     private fun resolveVariantUrl(baseUrl: String, value: String): String = runCatching { URI(baseUrl).resolve(value).toString() }.getOrDefault(value)
 }

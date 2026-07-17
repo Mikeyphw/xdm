@@ -1,4 +1,4 @@
-## XDM Android 0.10.0-alpha01
+## XDM Android 0.11.0-alpha01
 
 Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
 
@@ -60,6 +60,8 @@ Distribution builds should pass `-Pxdm.requireAria2Runtime=true`. Builds without
 XDM Android now scans interrupted transfers, backend ownership records, aria2 session mappings, backend migration journals, finalization journals, and app-private transfer artifacts at startup. Recovery records remain paused until the user validates, resumes, repairs, adopts, locates, or removes them. Finalization is journaled so process death during promotion can be recovered deterministically.
 
 
-## Phase 10 media capture
+## Phase 10 media capture and Phase 11 media resolution
 
-The existing Media route now captures shared browser links and direct VIEW intents for video, audio, HLS, and DASH sources. Captures persist metadata such as title, MIME type, container, codec summary, duration, thumbnail URL, variant count, and the created download relationship. Media downloads use the native media-safe backend strategy and remain recovery-safe across restarts.
+The existing Media route captures shared browser links and direct VIEW intents for video, audio, HLS, and DASH sources. Captures persist metadata such as title, MIME type, container, codec summary, duration, thumbnail URL, variant count, and the created download relationship.
+
+Phase 11 resolves HLS/DASH manifests into persisted variants, keeps a selected variant on the capture record, labels variants by quality, and blocks stale playlist downloads until the capture is refreshed. Media downloads use the selected variant URL when present and stay inside the existing Media route.

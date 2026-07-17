@@ -20,6 +20,7 @@ import androidx.room.RoomDatabase
         RecoveryRecordEntity::class,
         FinalizationJournalEntity::class,
         MediaCaptureEntity::class,
+        MediaVariantEntity::class,
         NotificationRecordEntity::class,
         TagEntity::class,
         DownloadTagCrossRef::class,
@@ -29,7 +30,7 @@ import androidx.room.RoomDatabase
         DestinationClaimEntity::class,
         OwnershipCounterEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {

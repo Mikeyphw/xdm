@@ -28,6 +28,7 @@ enum class RepairBlockStatus { Trusted, Missing, Corrupt, Unknown }
 
 
 enum class MediaCaptureStatus { Captured, MetadataReady, MetadataMissing, DownloadCreated, Expired }
+enum class MediaResolutionStatus { Unresolved, Resolved, RequiresRefresh, Failed }
 enum class MediaSourceKind { DirectFile, ProgressiveMedia, HlsPlaylist, DashManifest, AudioStream, VideoStream, Unknown }
 enum class MediaVariantKind { Primary, Video, Audio, Subtitle, Thumbnail }
 
@@ -43,7 +44,20 @@ data class MediaVariant(
     val codecs: String? = null,
     val language: String? = null,
     val position: Int = 0,
-)
+    val displayLabel: String = "",
+    val expiresAtEpochMs: Long? = null,
+) {
+    val qualityLabel: String
+        get() = displayLabel.ifBlank {
+            listOfNotNull(
+                height?.let { "${it}p" },
+                bitrateBitsPerSecond?.takeIf { it > 0 }?.let { "${it / 1000} kbps" },
+                codecs,
+            ).joinToString(" • ").ifBlank { kind.name }
+        }
+
+    fun isExpired(nowEpochMs: Long): Boolean = expiresAtEpochMs?.let { nowEpochMs >= it } ?: false
+}
 
 data class MediaCaptureRecord(
     val id: String,
@@ -62,9 +76,15 @@ data class MediaCaptureRecord(
     val downloadId: String?,
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
+    val selectedVariantId: String? = null,
+    val selectedVariantUrl: String? = null,
+    val manifestExpiresAtEpochMs: Long? = null,
+    val lastResolvedAtEpochMs: Long? = null,
+    val resolutionStatus: MediaResolutionStatus = MediaResolutionStatus.Unresolved,
 ) {
     val isPlaylist: Boolean get() = kind == MediaSourceKind.HlsPlaylist || kind == MediaSourceKind.DashManifest
     val hasMetadata: Boolean get() = mimeType != null || container != null || durationMs != null || thumbnailUrl != null
+    fun needsManifestRefresh(nowEpochMs: Long): Boolean = isPlaylist && manifestExpiresAtEpochMs?.let { nowEpochMs >= it } == true
 }
 
 enum class FinalizationJournalStage {

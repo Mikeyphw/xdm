@@ -20,6 +20,8 @@ import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.media.MediaCaptureService
+import com.mikeyphw.xdm.android.model.MediaVariant
+import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryRecord
 import com.mikeyphw.xdm.android.model.ScheduleRule
@@ -71,6 +73,7 @@ data class MainUiState(
     val verificationRecords: List<VerificationRecord> = emptyList(),
     val finalizationJournals: List<FinalizationJournal> = emptyList(),
     val mediaCaptures: List<MediaCaptureRecord> = emptyList(),
+    val mediaVariants: List<MediaVariant> = emptyList(),
 )
 
 class MainViewModel(
@@ -100,6 +103,7 @@ class MainViewModel(
         val verificationRecords: List<VerificationRecord>,
         val finalizationJournals: List<FinalizationJournal>,
         val mediaCaptures: List<MediaCaptureRecord>,
+        val mediaVariants: List<MediaVariant>,
     )
 
     private data class RepositoryBaseSnapshot(
@@ -120,7 +124,9 @@ class MainViewModel(
 
     private val verificationSnapshot = combine(repository.checksumResults, repository.verificationRecords) { results, records -> results to records }
 
-    private val repositorySnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations, verificationSnapshot, repository.finalizationJournals, repository.mediaCaptures) { base, migrations, verification, finalization, mediaCaptures ->
+    private val mediaSnapshot = combine(repository.mediaCaptures, repository.mediaVariants) { captures, variants -> captures to variants }
+
+    private val repositorySnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations, verificationSnapshot, repository.finalizationJournals, mediaSnapshot) { base, migrations, verification, finalization, media ->
         RepositorySnapshot(
             base.downloads,
             base.queues,
@@ -131,7 +137,8 @@ class MainViewModel(
             verification.first,
             verification.second,
             finalization,
-            mediaCaptures,
+            media.first,
+            media.second,
         )
     }
 
@@ -193,6 +200,7 @@ class MainViewModel(
             verificationRecords = snapshot.verificationRecords,
             finalizationJournals = snapshot.finalizationJournals,
             mediaCaptures = snapshot.mediaCaptures,
+            mediaVariants = snapshot.mediaVariants,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -374,14 +382,16 @@ class MainViewModel(
                 }
             }
             repository.saveMediaCaptures(merged)
+            repository.saveMediaVariants(merged.mapNotNull { mediaCaptureService.candidateFor(it.sourceUrl)?.variants }.flatten())
             navigate(AppRoute.Media)
         }
     }
 
     fun downloadMediaCapture(record: MediaCaptureRecord) {
         val now = System.currentTimeMillis()
+        val selectedUrl = record.selectedVariantUrl ?: record.sourceUrl
         val request = previewRequest(
-            url = record.sourceUrl,
+            url = selectedUrl,
             fileName = record.fileName,
             backend = BackendType.Automatic,
             destination = DestinationUris.PUBLIC_DOWNLOADS,
@@ -394,7 +404,7 @@ class MainViewModel(
         val download = Download(
             id = UUID.randomUUID().toString(),
             fileName = sanitizeFileName(record.fileName),
-            sourceUrl = record.sourceUrl,
+            sourceUrl = selectedUrl,
             destinationUri = DestinationUris.PUBLIC_DOWNLOADS,
             state = DownloadState.Queued,
             backend = recommendation.backend,
@@ -417,6 +427,37 @@ class MainViewModel(
             repository.markMediaDownloadCreated(record.id, download.id, now)
             executionStarter.start(download.id, userVisible = true)
             navigate(AppRoute.Downloads)
+        }
+    }
+
+    fun resolveMediaCapture(record: MediaCaptureRecord) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val candidate = mediaCaptureService.candidateFor(record.sourceUrl) ?: return@launch
+            val variants = candidate.variants.ifEmpty {
+                listOfNotNull(
+                    record.selectedVariantUrl?.let { url ->
+                        MediaVariant(
+                            id = record.id + ":selected",
+                            captureId = record.id,
+                            url = url,
+                            kind = MediaVariantKind.Primary,
+                            mimeType = record.mimeType,
+                            displayLabel = "Selected",
+                        )
+                    },
+                )
+            }
+            val refreshed = mediaCaptureService.refreshRecordAfterResolution(record, variants)
+            repository.saveMediaCapture(refreshed)
+            repository.saveMediaVariants(variants)
+        }
+    }
+
+    fun selectMediaVariant(record: MediaCaptureRecord, variantId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val variants = repository.variantsForMediaCapture(record.id)
+            val selected = variants.firstOrNull { it.id == variantId } ?: return@launch
+            repository.selectMediaVariant(record.id, selected)
         }
     }
 
