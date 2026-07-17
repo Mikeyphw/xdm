@@ -11268,6 +11268,229 @@
         ]
       },
       "history_id": "51746f45da874a84a0c236b1174255c7"
+    },
+    {
+      "applied_at": "2026-07-17T02:53:04.958280Z",
+      "artifact": "/mnt/extra/home/Downloads/xdm_android_phase6b_aria2_runtime_foundation_overlay.zip",
+      "artifact_name": "xdm_android_phase6b_aria2_runtime_foundation_overlay.zip",
+      "type": "overlay",
+      "sha256": "211ac83d191d2690bd08a43ae72e05f94f3fd13cd55be1b3d1b021cb1122b22e",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add XDM Android aria2 runtime foundation",
+      "commit_hash": "",
+      "file_count": 23,
+      "change_counts": {
+        "add": 12,
+        "delete": 1,
+        "modify": 11
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 6B aria2 runtime foundation",
+        "description": "Adds the Android-safe embedded aria2 process boundary after Phase 6A: ARM64 native packaging, authenticated loopback JSON-RPC, private session storage, supervised lifecycle, diagnostics, and a deliberate production-task gate.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": ".github/workflows/android.yml",
+              "action": "modify",
+              "source_sha256": "035eec194e0f6c8dd7b8f33e73c0887c4d3fe43ee19bd747de52473885ee6be9",
+              "sha256": "e25a0535d1ad08a9d302925a2b78830d2a95d249c06bcf9a8b69be3c8c045e53",
+              "size": 1785
+            },
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "source_sha256": "47dee2db50d9a22a194b2779ec033ae95982aeadd82ce87122b38b50bd30a57a",
+              "sha256": "da639516be14d291f7834449bedb89810393b33fec68adb328eb9560505b9988",
+              "size": 3689
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "source_sha256": "06c514789ede4efde4d84b61b1b9fa71b19bbb0de1480594e32cce331c4d9e80",
+              "sha256": "003ad50a7e308c5387ee1f2808ef7a7ca06603102cb606d1e3cda768967aa7a1",
+              "size": 1754
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "source_sha256": "6bde2a80a605e386e98cf0d328308537bc90c2357f5de699219971ad59d0324f",
+              "sha256": "a93037c1dd56cb48af887449c25d212ecffbfadd79299e52383fe6d7876fe9ff",
+              "size": 3821
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "source_sha256": "03ff400dbe4933002a850901d5b770acb3f913afb6b524b4871c790eeb203b93",
+              "sha256": "afe72fef114e59243b1b97e6cf928ffbb11d0bb1e811bf07b685fb5111a1abbc",
+              "size": 4471
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "source_sha256": "b88e0be1746406821fa5b38f092651f9ddd749c9d809e260ad14d241cef3bab2",
+              "sha256": "dd2e2539bc6c01d5f5d8b107f6583f5ee4bce44d763e3e7e14335a935551009d",
+              "size": 831
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "source_sha256": "1a6fc207c1baeb8512cccbe0d21908bcec4df798d2ced21cfada9c78f3caac8e",
+              "sha256": "72f134575b11f1189be0c0abcc9b4b5437cb22bbd965458c0ccf2f28423be4e8",
+              "size": 13127
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "source_sha256": "ba4a56b049c80bdf6f1e18d8a646af56dd4442b1cc5ec9a9d520864a88ab7568",
+              "sha256": "f1d90a59b294db801e84d6e1af535834c0fce55ec82ff39fc4e22780677bb32a",
+              "size": 18414
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "source_sha256": "97bb70a0705ff4f44243049f4729857325ee26c86c44df76a0d27945388c7ee3",
+              "sha256": "b8f3c375b62cbd50be882cfcc3d03a878059906656bd47bd03f60f8737db254f",
+              "size": 7549
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "source_sha256": "fb9eff432e4bb4866061e9838fa125d31c22abb190a60a59009b1dbc0344327f",
+              "sha256": "0af4bffc151f4d15130cbb3cee38e4c8637829e5fa52dd6884cf722af0f8eb42",
+              "size": 4397
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-6B-ARIA2-RUNTIME-FOUNDATION.md",
+              "action": "add",
+              "sha256": "428bf666ac59f4033c2c38295987f21e2caf71c2282d800268f18dd44581509e",
+              "size": 3145
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-6b.py",
+              "action": "add",
+              "sha256": "2054387b01d9231f55daabaad0991f7c69e28b255bb8e8afb325da4e45a73a9a",
+              "size": 4501
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/ARIA2_BINARY_PACKAGING.md",
+              "action": "add",
+              "sha256": "f3bbaa3ac7e8bde9d582f991a169603e9c0227a5e84e9aba87a6efb767cbeb79",
+              "size": 551
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/build.gradle.kts",
+              "action": "modify",
+              "source_sha256": "b6c1e785ba8fe45c785d3315f056bb53a8456a7729625f8f729e60255aa4e3e5",
+              "sha256": "372f64949c94d3c2d0b89c409dda122308ac5b0d1deab5ba4ed7a5b16ebab741",
+              "size": 1051
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/consumer-rules.pro",
+              "action": "add",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "size": 0
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2AndroidEnvironment.kt",
+              "action": "add",
+              "sha256": "aec95fc600be9aa4350bb150f5aec545de9a7d0fed271dfc706db259bb73bc88",
+              "size": 4642
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2BackendPlaceholder.kt",
+              "action": "delete",
+              "source_sha256": "0cd67785967525bed3fa63042fa36f1b6cba8df5e2bc010935f6a4e16f0a7e42"
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2ProcessLauncher.kt",
+              "action": "add",
+              "sha256": "83370942885901257d57f698ab41fe9d64ffb3a61b1a19357cb057837d2ea53b",
+              "size": 1373
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2ProcessManager.kt",
+              "action": "add",
+              "sha256": "3eef61b2a3ea424f2fc99e1bed6c1cf6e5f481d4cbaaf00c3497fdfb55743643",
+              "size": 10420
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2RpcClient.kt",
+              "action": "add",
+              "sha256": "b5796015261c22076b19506ead842b0743e81c99589195f519beb9eebce404ca",
+              "size": 4042
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2RuntimeModels.kt",
+              "action": "add",
+              "sha256": "4c5db0bc8b3d0f42d7d7f93dfc8c93f74959e493659135ac8f6cc65583ee209e",
+              "size": 4080
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2SessionStore.kt",
+              "action": "add",
+              "sha256": "489cf1aea6fe7a0fd6f17ce6601ae2fddc41d8f7aafc0be9da6a06a6a847d73d",
+              "size": 4643
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt",
+              "action": "add",
+              "sha256": "9052ff407c3297a7d8c45bd6939ba2f8953e38cabe31ff75366c345c2da71c8d",
+              "size": 5797
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/src/test/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2ProcessManagerTest.kt",
+              "action": "add",
+              "sha256": "a3a4eabe95d25696d25cb36d0bc5b534c005f87ae29cbdb6138960b61791f4a4",
+              "size": 8381
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add XDM Android aria2 runtime foundation"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "expected": {
+            "restore": "pass",
+            "build": "pass",
+            "tests": "pass",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Requires the Phase 6A ownership-hardening overlay as its exact source baseline.",
+          "Bumps XDM Android to 0.6.0-alpha01.",
+          "Packages an optional ARM64 aria2 executable only as transfer-aria2/src/main/jniLibs/arm64-v8a/libaria2c.so; no binary is included in this source overlay.",
+          "RPC binds to 127.0.0.1 with a random local port and per-installation secret; temporary secret configuration is removed after authenticated readiness or startup is aborted.",
+          "Production aria2 task creation remains gated until durable GID mapping, polling, and crash reconciliation are implemented.",
+          "The existing Android UI topography remains unchanged; runtime health is integrated into Diagnostics."
+        ]
+      },
+      "history_id": "ea9844b67f224dff9a22f0ecca6024cb"
     }
   ]
 }

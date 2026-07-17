@@ -2,7 +2,7 @@
   "project": {
     "name": "XDM Android",
     "package_id": "com.mikeyphw.xdm.android",
-    "version": "0.5.1-alpha01",
+    "version": "0.6.0-alpha01",
     "implemented_phases": [
       0,
       1,
@@ -54,7 +54,7 @@
       "compare"
     ]
   },
-  "next_phase": 6,
+  "next_phase": "6C",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -62,5 +62,18 @@
     "startup_reconciliation": true,
     "legacy_claim_policy": "quarantine",
     "generation_safe_adoption": true
+  },
+  "aria2_runtime": {
+    "foundation": true,
+    "primary_abi": "arm64-v8a",
+    "packaged_binary_name": "libaria2c.so",
+    "executable_location": "ApplicationInfo.nativeLibraryDir",
+    "loopback_rpc_only": true,
+    "random_installation_secret": true,
+    "session_persistence": true,
+    "managed_process_lifecycle": true,
+    "diagnostic_smoke_probe": true,
+    "production_task_creation": false,
+    "next_slice": "6C_gid_mapping_and_event_reconciliation"
   }
 }

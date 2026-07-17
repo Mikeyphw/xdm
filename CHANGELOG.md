@@ -1,5 +1,26 @@
 # Changelog
 
+## XDM Android 0.6.0-alpha01 — 2026-07-16
+
+### Added
+
+- Added the Phase 6B embedded aria2 runtime foundation for ARM64 Android packages.
+- Added APK-native executable discovery and ARM64 ELF validation through `ApplicationInfo.nativeLibraryDir`.
+- Added a supervised shell-free aria2 process with ephemeral loopback RPC, a random per-installation secret, authenticated JSON-RPC, session persistence, bounded shutdown, and unexpected-exit handling.
+- Added distinct `.xdm.aria2.part` artifact identities and preserved the Phase 6A ownership quarantine boundary.
+- Added a Diagnostics smoke probe that starts aria2, authenticates RPC, saves the session, and shuts it down.
+- Added runtime, RPC authentication, and lifecycle regression tests plus a Phase 6B static contract validator.
+
+### Security
+
+- aria2 is never copied into writable app storage and RPC is never bound beyond loopback.
+- Short-lived launch configuration files are owner-only and deleted after RPC readiness.
+- RPC secrets are redacted from object rendering and failure messages.
+
+### Deferred
+
+- Production aria2 task creation remains disabled until durable GID mapping, polling, and process-death reconciliation are implemented.
+
 ## XDM Android 0.5.1-alpha01 — 2026-07-15
 
 ### Changed

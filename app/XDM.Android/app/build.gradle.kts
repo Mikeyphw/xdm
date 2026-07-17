@@ -28,8 +28,8 @@ android {
         applicationId = "com.mikeyphw.xdm.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.5.1-alpha01"
+        versionCode = 7
+        versionName = "0.6.0-alpha01"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -62,7 +62,11 @@ android {
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
-    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    packaging {
+        jniLibs.useLegacyPackaging = true
+        jniLibs.keepDebugSymbols += "**/libaria2c.so"
+        resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
     lint {
         abortOnError = true
         warningsAsErrors = true

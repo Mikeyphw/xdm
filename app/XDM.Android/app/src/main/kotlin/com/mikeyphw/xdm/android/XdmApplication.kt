@@ -14,7 +14,11 @@ import com.mikeyphw.xdm.android.scheduler.TransferRuntimeProvider
 import com.mikeyphw.xdm.android.transfer.BackendOwnershipStore
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
 import com.mikeyphw.xdm.android.model.BackendType
-import com.mikeyphw.xdm.android.transfer.aria2.Aria2BackendPlaceholder
+import com.mikeyphw.xdm.android.transfer.aria2.AndroidAria2CapabilityProbe
+import com.mikeyphw.xdm.android.transfer.aria2.AppPrivateAria2SecretProvider
+import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessManager
+import com.mikeyphw.xdm.android.transfer.aria2.Aria2SessionStore
+import com.mikeyphw.xdm.android.transfer.aria2.EmbeddedAria2Backend
 import com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackend
 import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +42,12 @@ class XdmApplication : Application(), TransferRuntimeProvider {
         val ownershipStore = RoomBackendOwnershipStore(database)
         val destinationWriter = AndroidDestinationWriter(this)
         val runtimeIdentities = BackendRuntimeIdentityStore(this)
+        val aria2SessionStore = Aria2SessionStore(this)
+        val aria2ProcessManager = Aria2ProcessManager(
+            capabilityProbe = AndroidAria2CapabilityProbe(this, aria2SessionStore),
+            sessionStore = aria2SessionStore,
+            secretProvider = AppPrivateAria2SecretProvider(this),
+        )
         transferRuntime = TransferExecutionRuntime(
             store = RepositoryTransferDownloadStore(repository),
             ownershipStore = ownershipStore,
@@ -46,7 +56,11 @@ class XdmApplication : Application(), TransferRuntimeProvider {
                     destinationWriter = destinationWriter,
                     runtimeIdentity = runtimeIdentities.identityFor(BackendType.Native),
                 ),
-                Aria2BackendPlaceholder(runtimeIdentities.identityFor(BackendType.Aria2)),
+                EmbeddedAria2Backend(
+                    processManager = aria2ProcessManager,
+                    sessionStore = aria2SessionStore,
+                    runtimeIdentity = runtimeIdentities.identityFor(BackendType.Aria2),
+                ),
             ),
         )
         TransferNotifications(this).ensureChannels()
@@ -62,6 +76,7 @@ class XdmApplication : Application(), TransferRuntimeProvider {
             transferRuntime = transferRuntime,
             executionStarter = TransferExecutionStarter(this),
             destinationWriter = destinationWriter,
+            aria2ProcessManager = aria2ProcessManager,
         )
     }
 }
@@ -74,4 +89,5 @@ data class AppContainer(
     val transferRuntime: TransferExecutionRuntime,
     val executionStarter: TransferExecutionStarter,
     val destinationWriter: AndroidDestinationWriter,
+    val aria2ProcessManager: Aria2ProcessManager,
 )

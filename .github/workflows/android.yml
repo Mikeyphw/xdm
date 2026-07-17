@@ -40,10 +40,11 @@ jobs:
           python3 tools/validate-phase-4.py
           python3 tools/validate-phase-5.py
           python3 tools/validate-ownership-hardening.py
+          python3 tools/validate-phase-6b.py
       - name: Bootstrap wrapper
         run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.4.1
       - name: Lint, test, and package
-        run: ./gradlew --stacktrace lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta
+        run: ./gradlew --stacktrace lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta
       - uses: actions/upload-artifact@v4
         with:
           name: xdm-android-apks

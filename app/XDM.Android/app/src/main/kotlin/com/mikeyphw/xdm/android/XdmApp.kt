@@ -156,7 +156,7 @@ private fun AppScaffold(
                 AppRoute.Scheduler -> SchedulerScreen(state.schedules)
                 AppRoute.Media -> EmptyFeatureScreen("Media inbox", "No media streams detected yet.")
                 AppRoute.Recovery -> RecoveryScreen(state.recovery)
-                AppRoute.Diagnostics -> DiagnosticsScreen(state)
+                AppRoute.Diagnostics -> DiagnosticsScreen(state, viewModel::runAria2SmokeTest)
                 AppRoute.Settings -> SettingsScreen(state.compactDensity, viewModel::setCompactDensity)
             }
         }

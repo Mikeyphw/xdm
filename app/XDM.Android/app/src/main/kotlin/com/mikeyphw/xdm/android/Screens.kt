@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -270,26 +271,61 @@ fun RecoveryScreen(records: List<RecoveryRecord>) {
 }
 
 @Composable
-fun DiagnosticsScreen(state: MainUiState) {
-    Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Foundation health", style = MaterialTheme.typography.headlineSmall)
-        DiagnosticLine("Database", "Room schema v5")
-        DiagnosticLine("Downloads", state.downloads.size.toString())
-        DiagnosticLine("Queues", state.queues.size.toString())
-        DiagnosticLine("Recovery records", state.recovery.size.toString())
-        DiagnosticLine("Native backend", "HTTP/HTTPS engine, checkpoints, resume and segmentation ready")
-        DiagnosticLine("Execution", "UIDT on Android 14+, foreground dataSync fallback")
-        DiagnosticLine("Active transfers", state.activeTransfers.activeCount.toString())
-        DiagnosticLine("aria2 backend", "Module ready; process not bundled yet")
+fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item { Text("Runtime health", style = MaterialTheme.typography.headlineSmall) }
+        item { DiagnosticLine("Database", "Room schema v5") }
+        item { DiagnosticLine("Downloads", state.downloads.size.toString()) }
+        item { DiagnosticLine("Queues", state.queues.size.toString()) }
+        item { DiagnosticLine("Recovery records", state.recovery.size.toString()) }
+        item { DiagnosticLine("Native backend", "HTTP/HTTPS, checkpoints, resume and segmentation") }
+        item { DiagnosticLine("Execution", "UIDT on Android 14+, foreground dataSync fallback") }
+        item { DiagnosticLine("Active transfers", state.activeTransfers.activeCount.toString()) }
+        item {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("aria2 runtime", fontWeight = FontWeight.Medium)
+                            Text(state.aria2Diagnostics.status, style = MaterialTheme.typography.labelLarge)
+                        }
+                        Button(
+                            onClick = onRunAria2SmokeTest,
+                            enabled = state.aria2Diagnostics.canRunSmokeTest,
+                        ) {
+                            Text(if (state.aria2Diagnostics.smokeTestRunning) "Testing…" else "Run probe")
+                        }
+                    }
+                    Text(state.aria2Diagnostics.detail, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
     }
 }
 
 @Composable
 private fun DiagnosticLine(label: String, value: String) {
     Card(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, fontWeight = FontWeight.Medium)
-            Text(value, style = MaterialTheme.typography.bodyMedium)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Text(label, modifier = Modifier.weight(0.35f), fontWeight = FontWeight.Medium)
+            Text(
+                value,
+                modifier = Modifier.weight(0.65f),
+                textAlign = TextAlign.End,
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
 }
@@ -319,7 +355,7 @@ fun SettingsScreen(compact: Boolean, onCompactChanged: (Boolean) -> Unit) {
             }
         }
         Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall)
-        Text("Version: 0.5.1-alpha01", style = MaterialTheme.typography.bodySmall)
+        Text("Version: 0.6.0-alpha01", style = MaterialTheme.typography.bodySmall)
     }
 }
 
