@@ -373,6 +373,7 @@ class NativeHttpDownloadBackend(
             bytesReceived = promotion.bytesCommitted,
             totalBytes = metadata.totalLength ?: promotion.bytesCommitted,
             speedBytesPerSecond = 0,
+            completedUri = promotion.committedUri,
         )
     }
 

@@ -3,6 +3,10 @@ package com.mikeyphw.xdm.android.persistence
 import com.mikeyphw.xdm.android.model.BackendOwnership
 import com.mikeyphw.xdm.android.model.BackendMigrationRecord
 import com.mikeyphw.xdm.android.model.BackendSelectionReason
+import com.mikeyphw.xdm.android.model.ChecksumExpectation
+import com.mikeyphw.xdm.android.model.ChecksumResult
+import com.mikeyphw.xdm.android.model.TrustedBlockManifest
+import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
@@ -24,6 +28,8 @@ class DownloadRepository(private val database: AppDatabase) {
     val recoveryRecords: Flow<List<RecoveryRecord>> = database.recoveryDao().observeAll().map { rows -> rows.map { it.toModel() } }
     val destinationPermissions: Flow<List<DestinationPermission>> = database.destinationPermissionDao().observeAll().map { rows -> rows.map { it.toModel() } }
     val backendMigrations: Flow<List<BackendMigrationRecord>> = database.backendMigrationDao().observeAll().map { rows -> rows.map(BackendMigrationEntity::toModel) }
+    val checksumResults: Flow<List<ChecksumResult>> = database.checksumDao().observeResults().map { rows -> rows.map(ChecksumResultEntity::toModel) }
+    val verificationRecords: Flow<List<VerificationRecord>> = database.checksumDao().observeVerifications().map { rows -> rows.map(VerificationRecordEntity::toModel) }
 
     suspend fun countDownloads(): Int = database.downloadDao().count()
     suspend fun countQueues(): Int = database.queueDao().count()
@@ -32,6 +38,10 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun saveQueues(queues: List<QueueDefinition>) = database.queueDao().upsertAll(queues.map { it.toEntity() })
     suspend fun saveSchedules(rules: List<ScheduleRule>) = database.scheduleDao().upsertAll(rules.map { it.toEntity() })
     suspend fun saveRecovery(records: List<RecoveryRecord>) = database.recoveryDao().upsertAll(records.map { it.toEntity() })
+    suspend fun saveChecksumExpectation(expectation: ChecksumExpectation) = database.checksumDao().upsertExpectation(expectation.toEntity())
+    suspend fun saveChecksumResult(result: ChecksumResult) = database.checksumDao().upsertResult(result.toEntity())
+    suspend fun saveVerificationRecord(record: VerificationRecord) = database.checksumDao().upsertVerification(record.toEntity())
+    suspend fun saveTrustedManifest(manifest: TrustedBlockManifest) = database.checksumDao().upsertTrustedManifest(manifest.toEntity())
     suspend fun findDownload(id: String): Download? = database.downloadDao().findById(id)?.toModel()
     suspend fun findDownloadsByStates(states: Set<DownloadState>): List<Download> =
         if (states.isEmpty()) emptyList() else database.downloadDao().findByStates(states.map { it.name }).map { it.toModel() }

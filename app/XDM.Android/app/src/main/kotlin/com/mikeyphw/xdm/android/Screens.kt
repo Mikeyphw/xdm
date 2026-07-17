@@ -47,6 +47,10 @@ import androidx.compose.foundation.verticalScroll
 import com.mikeyphw.xdm.android.model.BackendRecommendation
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.BackendMigrationRecord
+import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
+import com.mikeyphw.xdm.android.model.ChecksumResult
+import com.mikeyphw.xdm.android.model.VerificationRecord
+import com.mikeyphw.xdm.android.model.VerificationStatus
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
@@ -66,6 +70,8 @@ fun DownloadsScreen(
     compact: Boolean,
     active: ActiveTransferSummary,
     capabilities: List<BackendCapabilityRow>,
+    checksumResults: List<ChecksumResult>,
+    verificationRecords: List<VerificationRecord>,
     onTogglePause: (Download) -> Unit,
     onMigrateBackend: (Download) -> Unit,
     onPauseAll: () -> Unit,
@@ -114,7 +120,7 @@ fun DownloadsScreen(
         } else {
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 12.dp)) {
                 items(visible, key = Download::id) { download ->
-                    DownloadCard(download, compact, capabilities, onTogglePause, onMigrateBackend)
+                    DownloadCard(download, compact, capabilities, checksumResults, verificationRecords, onTogglePause, onMigrateBackend)
                 }
             }
         }
@@ -126,6 +132,8 @@ private fun DownloadCard(
     download: Download,
     compact: Boolean,
     capabilities: List<BackendCapabilityRow>,
+    checksumResults: List<ChecksumResult>,
+    verificationRecords: List<VerificationRecord>,
     onTogglePause: (Download) -> Unit,
     onMigrateBackend: (Download) -> Unit,
 ) {
@@ -158,6 +166,26 @@ private fun DownloadCard(
                     if (download.speedBytesPerSecond > 0) Text(download.speedBytesPerSecond.formatSpeed(), style = MaterialTheme.typography.bodySmall)
                 }
             }
+            val latestVerification = verificationRecords.firstOrNull { it.downloadId == download.id }
+            val latestChecksum = checksumResults.firstOrNull { it.downloadId == download.id }
+            if (download.state == DownloadState.Verifying || download.state == DownloadState.Repairing || latestVerification != null || latestChecksum != null) {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        val status = latestVerification?.status ?: if (download.state == DownloadState.Verifying) VerificationStatus.Running else VerificationStatus.Pending
+                        Text("Verification: ${status.name}", fontWeight = FontWeight.Medium)
+                        latestChecksum?.let { checksum ->
+                            val result = when (checksum.matchesExpectation) {
+                                true -> "match"
+                                false -> "mismatch"
+                                null -> "recorded"
+                            }
+                            Text("${checksum.algorithm.name}: $result", style = MaterialTheme.typography.bodySmall)
+                        }
+                        latestVerification?.message?.let { Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                    }
+                }
+            }
+
             val targetBackend = when (download.backend) {
                 BackendType.Native -> BackendType.Aria2
                 BackendType.Aria2 -> BackendType.Native
@@ -194,13 +222,15 @@ fun AddDownloadScreen(
     onDestinationChanged: (String) -> Unit,
     onSafDestinationSelected: (String) -> Unit,
     onConflictPolicyChanged: (FilenameConflictPolicy) -> Unit,
-    onAdd: (String, String, BackendType, String, FilenameConflictPolicy, Boolean) -> Unit,
+    onAdd: (String, String, BackendType, String, FilenameConflictPolicy, Boolean, String, ChecksumAlgorithm) -> Unit,
     recommend: (String, String, BackendType, String, FilenameConflictPolicy, Boolean) -> BackendRecommendation,
 ) {
     var url by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var backend by remember { mutableStateOf(BackendType.Automatic) }
     var allowFallback by remember { mutableStateOf(true) }
+    var expectedChecksum by remember { mutableStateOf("") }
+    var checksumAlgorithm by remember { mutableStateOf(ChecksumAlgorithm.Sha256) }
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { onSafDestinationSelected(it.toString()) }
     }
@@ -256,6 +286,21 @@ fun AddDownloadScreen(
                 Switch(allowFallback, { allowFallback = it })
             }
         }
+        Text("Verification", style = MaterialTheme.typography.labelLarge)
+        OutlinedTextField(
+            expectedChecksum,
+            { expectedChecksum = it },
+            label = { Text("Expected checksum") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            supportingText = { Text("Optional SHA-256 or SHA-512. A matching checksum is required before final completion.") },
+        )
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ChecksumAlgorithm.entries.forEach { value ->
+                FilterChip(selected = checksumAlgorithm == value, onClick = { checksumAlgorithm = value }, label = { Text(value.name) })
+            }
+        }
+
         recommendation?.let { recommendation ->
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -277,7 +322,7 @@ fun AddDownloadScreen(
             }
         }
         Button(
-            onClick = { onAdd(url, name, backend, destinationUri, conflictPolicy, allowFallback) },
+            onClick = { onAdd(url, name, backend, destinationUri, conflictPolicy, allowFallback, expectedChecksum, checksumAlgorithm) },
             enabled = url.isNotBlank() && destinationUri.isNotBlank() && recommendation?.compatible != false,
         ) { Text("Add to Default queue") }
     }
@@ -350,7 +395,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { Text("Runtime health", style = MaterialTheme.typography.headlineSmall) }
-        item { DiagnosticLine("Database", "Room schema v7") }
+        item { DiagnosticLine("Database", "Room schema v8") }
         item { DiagnosticLine("Downloads", state.downloads.size.toString()) }
         item { DiagnosticLine("Queues", state.queues.size.toString()) }
         item { DiagnosticLine("Recovery records", state.recovery.size.toString()) }
@@ -475,7 +520,7 @@ fun SettingsScreen(
             }
         }
         item { Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall) }
-        item { Text("Version: 0.7.0-alpha01", style = MaterialTheme.typography.bodySmall) }
+        item { Text("Version: 0.8.0-alpha01", style = MaterialTheme.typography.bodySmall) }
     }
 }
 

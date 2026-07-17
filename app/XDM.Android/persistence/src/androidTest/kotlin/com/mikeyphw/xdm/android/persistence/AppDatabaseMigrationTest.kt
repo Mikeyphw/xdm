@@ -278,6 +278,52 @@ class AppDatabaseMigrationTest {
         context.deleteDatabase(name)
     }
 
+
+    @Test
+    fun migrate7To8AddsVerificationAndRepairTables() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val name = "migration-v8-${System.nanoTime()}.db"
+        val seed = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(name)
+                .callback(object : SupportSQLiteOpenHelper.Callback(7) {
+                    override fun onCreate(db: SupportSQLiteDatabase) {
+                        db.execSQL("""CREATE TABLE checksum_results (id TEXT NOT NULL PRIMARY KEY, downloadId TEXT NOT NULL, algorithm TEXT NOT NULL, calculatedHex TEXT NOT NULL, matchesExpectation INTEGER, verifiedAtEpochMs INTEGER NOT NULL)""")
+                    }
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                })
+                .build(),
+        )
+        seed.writableDatabase
+        seed.close()
+
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(name)
+                .callback(object : SupportSQLiteOpenHelper.Callback(8) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
+                        Migrations.Migration7To8.migrate(db)
+                    }
+                })
+                .build(),
+        )
+        helper.writableDatabase.query("PRAGMA table_info(checksum_results)").use { cursor ->
+            val nameColumn = cursor.getColumnIndexOrThrow("name")
+            val columns = mutableSetOf<String>()
+            while (cursor.moveToNext()) columns += cursor.getString(nameColumn)
+            assertTrue("Migration must add verified byte count", "bytesVerified" in columns)
+            assertTrue("Migration must persist expected checksum used", "expectedHex" in columns)
+        }
+        listOf("verification_records", "trusted_block_manifests").forEach { table ->
+            helper.writableDatabase.query("SELECT name FROM sqlite_master WHERE type='table' AND name='$table'").use { cursor ->
+                assertTrue("Migration must create $table", cursor.moveToFirst())
+            }
+        }
+        helper.close()
+        context.deleteDatabase(name)
+    }
+
     private fun createVersionOne(context: Context, name: String): SupportSQLiteOpenHelper {
         val helper = FrameworkSQLiteOpenHelperFactory().create(
             SupportSQLiteOpenHelper.Configuration.builder(context)

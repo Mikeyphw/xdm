@@ -32,6 +32,7 @@ jobs:
           python3 tools/validate-phase-6b.py
           python3 tools/validate-phase-6.py
           python3 tools/validate-phase-7.py
+          python3 tools/validate-phase-8.py
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
       - run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta

@@ -1,3 +1,7 @@
+## XDM Android 0.8.0-alpha01
+
+Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
+
 # Changelog
 
 ## XDM Android 0.7.0-alpha01 — 2026-07-17

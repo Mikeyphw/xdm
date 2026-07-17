@@ -416,6 +416,7 @@ class EmbeddedAria2Backend(
                 totalBytes = reportedLength ?: mapping.expectedLength ?: promotion.bytesCommitted,
                 speedBytesPerSecond = 0,
                 effectiveUrl = status.primaryUri(),
+                completedUri = promotion.committedUri,
             )
             updateMapping(mapping, MAPPING_COMPLETED)
             completed

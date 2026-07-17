@@ -6,6 +6,7 @@ import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.transfer.InMemoryBackendOwnershipStore
 import com.mikeyphw.xdm.android.transfer.InMemoryBackendMigrationStore
+import com.mikeyphw.xdm.android.transfer.InMemoryChecksumWorkflowStore
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -20,7 +21,7 @@ class TransferExecutionRuntimeTest {
                 download("complete", DownloadState.Completed),
             ),
         )
-        val runtime = TransferExecutionRuntime(store, InMemoryBackendOwnershipStore(), emptyList(), InMemoryBackendMigrationStore(), this)
+        val runtime = TransferExecutionRuntime(store, InMemoryBackendOwnershipStore(), emptyList(), InMemoryBackendMigrationStore(), InMemoryChecksumWorkflowStore(), this)
 
         assertEquals(2, runtime.restoreInterruptedTransfers())
         assertEquals(DownloadState.Paused, store.items.getValue("active").state)

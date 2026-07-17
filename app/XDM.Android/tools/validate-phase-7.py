@@ -36,12 +36,12 @@ for label, (path, needle) in checks.items():
 manifest = json.loads((ROOT / "PROJECT_MANIFEST.json").read_text())
 if 7 not in manifest["project"]["implemented_phases"]:
     errors.append("project manifest does not declare Phase 7")
-if manifest["database"]["version"] != 7:
-    errors.append("project manifest does not declare database v7")
+if manifest["database"]["version"] < 7:
+    errors.append("project manifest does not declare at least database v7")
 app_database = (ROOT / "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt").read_text()
 match = re.search(r"version\s*=\s*(\d+)", app_database)
-if match is None or int(match.group(1)) != 7:
-    errors.append("Room database is not v7")
+if match is None or int(match.group(1)) < 7:
+    errors.append("Room database is older than v7")
 
 screens = (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").read_text()
 if "onClick = {}" in screens:

@@ -70,6 +70,7 @@ data class BackendSnapshot(
     val lastModified: String? = null,
     val rangeSupported: Boolean? = null,
     val errorMessage: String? = null,
+    val completedUri: String? = null,
 )
 
 data class BackendShutdownResult(val clean: Boolean, val activeTaskIds: List<String>)

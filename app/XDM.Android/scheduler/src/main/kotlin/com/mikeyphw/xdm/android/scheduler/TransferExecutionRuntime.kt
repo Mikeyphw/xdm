@@ -16,6 +16,8 @@ import com.mikeyphw.xdm.android.transfer.BackendOwnershipStore
 import com.mikeyphw.xdm.android.transfer.BackendRegistry
 import com.mikeyphw.xdm.android.transfer.BackendReconciliationResult
 import com.mikeyphw.xdm.android.transfer.BackendSnapshot
+import com.mikeyphw.xdm.android.transfer.ChecksumWorkflowStore
+import com.mikeyphw.xdm.android.transfer.InMemoryChecksumWorkflowStore
 import com.mikeyphw.xdm.android.transfer.DownloadBackend
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import java.util.concurrent.ConcurrentHashMap
@@ -35,6 +37,7 @@ class TransferExecutionRuntime(
     ownershipStore: BackendOwnershipStore,
     backends: Collection<DownloadBackend>,
     migrationStore: BackendMigrationStore = InMemoryBackendMigrationStore(),
+    checksumStore: ChecksumWorkflowStore = InMemoryChecksumWorkflowStore(),
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) {
     private val registry = BackendRegistry(backends)
@@ -43,6 +46,7 @@ class TransferExecutionRuntime(
     private val reconciler = BackendOwnershipReconciler(registry, ownershipStore)
     private val ownershipStore = ownershipStore
     private val migrationCoordinator = BackendMigrationCoordinator(store, ownershipStore, migrationStore, registry, selectionPolicy)
+    private val completionVerifier = CompletionVerificationCoordinator(checksumStore, ownershipStore)
     private val jobs = ConcurrentHashMap<String, Job>()
     private val backendTaskIds = ConcurrentHashMap<String, Pair<BackendType, String>>()
     private val snapshots = MutableStateFlow<Map<String, BackendSnapshot>>(emptyMap())
@@ -317,8 +321,11 @@ class TransferExecutionRuntime(
             publish(download, snapshot)
             snapshot.state in RUN_END_STATES
         }
-        if (finalSnapshot.state in TERMINAL_STATES || finalSnapshot.state == DownloadState.RecoveryRequired) {
-            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, finalSnapshot.state, finalSnapshot.errorMessage))
+        val storedAfterCompletion = store.find(download.id)
+        val finalState = storedAfterCompletion?.state ?: finalSnapshot.state
+        val finalMessage = storedAfterCompletion?.errorMessage ?: finalSnapshot.errorMessage
+        if (finalState in TERMINAL_STATES || finalState == DownloadState.RecoveryRequired) {
+            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage))
         }
     }
 
@@ -339,16 +346,17 @@ class TransferExecutionRuntime(
     }
 
     private suspend fun publish(original: Download, snapshot: BackendSnapshot) {
-        snapshots.value = snapshots.value + (original.id to snapshot)
+        val verifiedSnapshot = completionVerifier.complete(original, snapshot)
+        snapshots.value = snapshots.value + (original.id to verifiedSnapshot)
         val current = store.find(original.id) ?: original
         store.save(
             current.copy(
-                state = snapshot.state,
+                state = verifiedSnapshot.state,
                 backend = backendTaskIds[original.id]?.first ?: current.backend,
-                bytesReceived = snapshot.bytesReceived,
-                totalBytes = snapshot.totalBytes ?: current.totalBytes,
-                speedBytesPerSecond = snapshot.speedBytesPerSecond,
-                errorMessage = snapshot.errorMessage,
+                bytesReceived = verifiedSnapshot.bytesReceived,
+                totalBytes = verifiedSnapshot.totalBytes ?: current.totalBytes,
+                speedBytesPerSecond = verifiedSnapshot.speedBytesPerSecond,
+                errorMessage = verifiedSnapshot.errorMessage,
                 updatedAtEpochMs = System.currentTimeMillis(),
             ),
         )

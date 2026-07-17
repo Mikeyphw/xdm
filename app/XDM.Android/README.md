@@ -1,3 +1,7 @@
+## XDM Android 0.8.0-alpha01
+
+Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
+
 # XDM Android
 
 Standalone Android download manager implemented through Phase 7: modular Kotlin/Compose architecture, Room persistence, reconciled physical-artifact ownership, native HTTP/HTTPS transfers, Android long-running execution, public/SAF storage, and a supervised authenticated loopback aria2 process boundary.

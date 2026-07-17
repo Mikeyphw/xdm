@@ -19,6 +19,77 @@ enum class DownloadState {
 
 enum class BackendType { Automatic, Native, Aria2 }
 enum class ChecksumAlgorithm { Sha256, Sha512 }
+
+
+enum class ChecksumSource { UserInput, Clipboard, ChecksumFile, Metalink, Generated }
+enum class VerificationStatus { Pending, Running, Passed, Failed, NoExpectation, MissingFile }
+enum class RepairBlockStatus { Trusted, Missing, Corrupt, Unknown }
+
+data class ChecksumExpectation(
+    val id: String,
+    val downloadId: String,
+    val algorithm: ChecksumAlgorithm,
+    val expectedHex: String,
+    val source: ChecksumSource,
+    val createdAtEpochMs: Long,
+)
+
+data class ChecksumResult(
+    val id: String,
+    val downloadId: String,
+    val algorithm: ChecksumAlgorithm,
+    val calculatedHex: String,
+    val matchesExpectation: Boolean?,
+    val verifiedAtEpochMs: Long,
+    val bytesVerified: Long,
+    val expectedHex: String? = null,
+)
+
+data class VerificationRecord(
+    val id: String,
+    val downloadId: String,
+    val status: VerificationStatus,
+    val algorithm: ChecksumAlgorithm?,
+    val bytesVerified: Long,
+    val totalBytes: Long?,
+    val message: String,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+)
+
+data class TrustedBlock(
+    val index: Int,
+    val startByte: Long,
+    val endByteInclusive: Long,
+    val checksumHex: String,
+    val status: RepairBlockStatus = RepairBlockStatus.Trusted,
+)
+
+data class TrustedBlockManifest(
+    val id: String,
+    val downloadId: String,
+    val fileLength: Long,
+    val blockSize: Long,
+    val algorithm: ChecksumAlgorithm,
+    val blocks: List<TrustedBlock>,
+    val createdAtEpochMs: Long,
+)
+
+data class SelectiveRepairRange(
+    val blockIndex: Int,
+    val startByte: Long,
+    val endByteInclusive: Long,
+    val reason: RepairBlockStatus,
+)
+
+data class SelectiveRepairPlan(
+    val downloadId: String,
+    val fileLength: Long,
+    val blockSize: Long,
+    val ranges: List<SelectiveRepairRange>,
+) {
+    val requiresNetwork: Boolean get() = ranges.isNotEmpty()
+}
 enum class RecoveryClassification {
     ReadyToResume,
     NeedsRemoteValidation,

@@ -4,6 +4,11 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
+import com.mikeyphw.xdm.android.model.ChecksumExpectation
+import com.mikeyphw.xdm.android.model.ChecksumResult
+import com.mikeyphw.xdm.android.model.ChecksumSource
+import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.BackendCapabilities
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
@@ -23,6 +28,8 @@ import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
 import com.mikeyphw.xdm.android.storage.DestinationUris
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
+import com.mikeyphw.xdm.android.transfer.newChecksumExpectationId
+import com.mikeyphw.xdm.android.transfer.normalizeHex
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2CapabilityReport
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessManager
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessState
@@ -57,6 +64,8 @@ data class MainUiState(
     val aria2Diagnostics: Aria2DiagnosticsUi = Aria2DiagnosticsUi(),
     val backendCapabilities: List<BackendCapabilityRow> = emptyList(),
     val backendMigrations: List<BackendMigrationRecord> = emptyList(),
+    val checksumResults: List<ChecksumResult> = emptyList(),
+    val verificationRecords: List<VerificationRecord> = emptyList(),
 )
 
 class MainViewModel(
@@ -81,6 +90,8 @@ class MainViewModel(
         val recovery: List<RecoveryRecord>,
         val destinationPermissions: List<DestinationPermission>,
         val backendMigrations: List<BackendMigrationRecord>,
+        val checksumResults: List<ChecksumResult>,
+        val verificationRecords: List<VerificationRecord>,
     )
 
     private data class RepositoryBaseSnapshot(
@@ -99,8 +110,19 @@ class MainViewModel(
         repository.destinationPermissions,
     ) { downloads, queues, schedules, recovery, permissions -> RepositoryBaseSnapshot(downloads, queues, schedules, recovery, permissions) }
 
-    private val repositorySnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations) { base, migrations ->
-        RepositorySnapshot(base.downloads, base.queues, base.schedules, base.recovery, base.destinationPermissions, migrations)
+    private val verificationSnapshot = combine(repository.checksumResults, repository.verificationRecords) { results, records -> results to records }
+
+    private val repositorySnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations, verificationSnapshot) { base, migrations, verification ->
+        RepositorySnapshot(
+            base.downloads,
+            base.queues,
+            base.schedules,
+            base.recovery,
+            base.destinationPermissions,
+            migrations,
+            verification.first,
+            verification.second,
+        )
     }
 
     private val aria2Diagnostics = combine(
@@ -157,6 +179,8 @@ class MainViewModel(
             aria2Diagnostics = runtime.second,
             backendCapabilities = runtime.third,
             backendMigrations = snapshot.backendMigrations,
+            checksumResults = snapshot.checksumResults,
+            verificationRecords = snapshot.verificationRecords,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -221,6 +245,8 @@ class MainViewModel(
         destination: String,
         conflictPolicy: FilenameConflictPolicy,
         allowFallback: Boolean,
+        expectedChecksum: String,
+        checksumAlgorithm: ChecksumAlgorithm,
     ) {
         if (url.isBlank() || destination.isBlank()) return
         val safeName = resolveFileName(url, fileName)
@@ -251,6 +277,19 @@ class MainViewModel(
         )
         viewModelScope.launch {
             repository.save(download)
+            val normalizedChecksum = normalizeHex(expectedChecksum)
+            if (normalizedChecksum.isNotBlank()) {
+                repository.saveChecksumExpectation(
+                    ChecksumExpectation(
+                        id = newChecksumExpectationId(download.id, checksumAlgorithm),
+                        downloadId = download.id,
+                        algorithm = checksumAlgorithm,
+                        expectedHex = normalizedChecksum,
+                        source = ChecksumSource.UserInput,
+                        createdAtEpochMs = now,
+                    ),
+                )
+            }
             executionStarter.start(download.id, userVisible = true)
             navigate(AppRoute.Downloads)
         }

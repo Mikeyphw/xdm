@@ -47,7 +47,31 @@ data class CheckpointEntity(@PrimaryKey val id: String, val downloadId: String, 
 data class ChecksumExpectationEntity(@PrimaryKey val id: String, val downloadId: String, val algorithm: String, val expectedHex: String, val source: String)
 
 @Entity(tableName = "checksum_results", indices = [Index("downloadId"), Index(value = ["downloadId", "algorithm"], unique = true)])
-data class ChecksumResultEntity(@PrimaryKey val id: String, val downloadId: String, val algorithm: String, val calculatedHex: String, val matchesExpectation: Boolean?, val verifiedAtEpochMs: Long)
+data class ChecksumResultEntity(@PrimaryKey val id: String, val downloadId: String, val algorithm: String, val calculatedHex: String, val matchesExpectation: Boolean?, val verifiedAtEpochMs: Long, @ColumnInfo(defaultValue = "0") val bytesVerified: Long, val expectedHex: String?)
+
+@Entity(tableName = "verification_records", indices = [Index("downloadId"), Index("status"), Index("updatedAtEpochMs")])
+data class VerificationRecordEntity(
+    @PrimaryKey val id: String,
+    val downloadId: String,
+    val status: String,
+    val algorithm: String?,
+    val bytesVerified: Long,
+    val totalBytes: Long?,
+    val message: String,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+)
+
+@Entity(tableName = "trusted_block_manifests", indices = [Index("downloadId", unique = true), Index("createdAtEpochMs")])
+data class TrustedBlockManifestEntity(
+    @PrimaryKey val id: String,
+    val downloadId: String,
+    val fileLength: Long,
+    val blockSize: Long,
+    val algorithm: String,
+    val blocksJson: String,
+    val createdAtEpochMs: Long,
+)
 
 @Entity(tableName = "queues")
 data class QueueEntity(@PrimaryKey val id: String, val name: String, val isEnabled: Boolean, val maxConcurrent: Int, val createdAtEpochMs: Long)

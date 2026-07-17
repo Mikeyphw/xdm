@@ -143,6 +143,8 @@ private fun AppScaffold(
                     state.compactDensity,
                     state.activeTransfers,
                     state.backendCapabilities,
+                    state.checksumResults,
+                    state.verificationRecords,
                     viewModel::togglePause,
                     viewModel::migrateBackend,
                     viewModel::pauseAll,
@@ -155,9 +157,9 @@ private fun AppScaffold(
                     onDestinationChanged = viewModel::setDestination,
                     onSafDestinationSelected = viewModel::registerSafDestination,
                     onConflictPolicyChanged = viewModel::setConflictPolicy,
-                    onAdd = { url, name, backend, destination, conflictPolicy, allowFallback ->
+                    onAdd = { url, name, backend, destination, conflictPolicy, allowFallback, expectedChecksum, checksumAlgorithm ->
                         requestNotifications()
-                        viewModel.addDownload(url, name, backend, destination, conflictPolicy, allowFallback)
+                        viewModel.addDownload(url, name, backend, destination, conflictPolicy, allowFallback, expectedChecksum, checksumAlgorithm)
                     },
                     recommend = viewModel::backendRecommendation,
                 )

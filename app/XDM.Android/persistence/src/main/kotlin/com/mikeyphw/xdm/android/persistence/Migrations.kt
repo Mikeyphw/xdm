@@ -128,4 +128,40 @@ object Migrations {
         }
     }
 
+    val Migration7To8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE checksum_results ADD COLUMN bytesVerified INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE checksum_results ADD COLUMN expectedHex TEXT")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS verification_records (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    downloadId TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    algorithm TEXT,
+                    bytesVerified INTEGER NOT NULL,
+                    totalBytes INTEGER,
+                    message TEXT NOT NULL,
+                    createdAtEpochMs INTEGER NOT NULL,
+                    updatedAtEpochMs INTEGER NOT NULL
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX index_verification_records_downloadId ON verification_records(downloadId)")
+            db.execSQL("CREATE INDEX index_verification_records_status ON verification_records(status)")
+            db.execSQL("CREATE INDEX index_verification_records_updatedAtEpochMs ON verification_records(updatedAtEpochMs)")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS trusted_block_manifests (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    downloadId TEXT NOT NULL,
+                    fileLength INTEGER NOT NULL,
+                    blockSize INTEGER NOT NULL,
+                    algorithm TEXT NOT NULL,
+                    blocksJson TEXT NOT NULL,
+                    createdAtEpochMs INTEGER NOT NULL
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE UNIQUE INDEX index_trusted_block_manifests_downloadId ON trusted_block_manifests(downloadId)")
+            db.execSQL("CREATE INDEX index_trusted_block_manifests_createdAtEpochMs ON trusted_block_manifests(createdAtEpochMs)")
+        }
+    }
+
 }

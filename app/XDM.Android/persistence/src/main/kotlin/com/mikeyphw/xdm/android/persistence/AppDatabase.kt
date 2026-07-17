@@ -12,6 +12,8 @@ import androidx.room.RoomDatabase
         CheckpointEntity::class,
         ChecksumExpectationEntity::class,
         ChecksumResultEntity::class,
+        VerificationRecordEntity::class,
+        TrustedBlockManifestEntity::class,
         QueueEntity::class,
         ScheduleRuleEntity::class,
         BackendTaskEntity::class,
@@ -26,7 +28,7 @@ import androidx.room.RoomDatabase
         DestinationClaimEntity::class,
         OwnershipCounterEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -39,4 +41,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun destinationPermissionDao(): DestinationPermissionDao
     abstract fun aria2SessionMappingDao(): Aria2SessionMappingDao
     abstract fun backendMigrationDao(): BackendMigrationDao
+    abstract fun checksumDao(): ChecksumDao
 }
