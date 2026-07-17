@@ -37,24 +37,25 @@ prefer_native_termux = false
 version = "9.4.1"
 max_workers = 4
 structured_events = false
-no_daemon = true
+no_daemon = false
 fail_fast = true
 offline = false
 
 [targets.xdm_android.tasks]
 restore = ["help"]
-build = ["assembleDebug", "assembleBeta"]
+build = ["assembleDebug"]
 test = [
   ":core-model:test",
   ":transfer-api:test",
   ":browser-integration:testDebugUnitTest",
   ":storage:testDebugUnitTest",
   ":transfer-native:testDebugUnitTest",
+  ":transfer-aria2:testDebugUnitTest",
   ":scheduler:testDebugUnitTest",
   ":persistence:testDebugUnitTest",
   ":app:testDebugUnitTest",
 ]
-lint = ["lintDebug", "lintBeta"]
+lint = ["lintDebug"]
 clean = ["clean"]
 
 [targets.xdm_android.artifacts]
