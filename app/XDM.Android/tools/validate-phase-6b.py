@@ -47,7 +47,7 @@ assert 'saveSession()' in manager and 'shutdown(force = false)' in manager
 assert 'EmbeddedAria2Backend' in application
 assert 'Aria2BackendPlaceholder(' not in application
 assert not (ROOT / 'transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2BackendPlaceholder.kt').exists()
-assert 'android:extractNativeLibs="true"' in manifest
+assert 'android:extractNativeLibs=' not in manifest
 assert 'jniLibs.useLegacyPackaging = true' in app_gradle
 assert 'jniLibs.useLegacyPackaging = true' in aria2_gradle
 assert 'jniLibs.keepDebugSymbols += "**/libaria2c.so"' in app_gradle
@@ -59,7 +59,7 @@ assert 'file.writeText("", Charsets.UTF_8)' in session
 assert 'process not bundled yet' not in screens.lower()
 assert 'phase 6' not in screens.lower()
 assert ':transfer-aria2:test' in workflow
-assert 'validate-phase-6b.py' in workflow
+assert 'validate-phase-6.py' in workflow
 
 native_payload_root = ROOT / "transfer-aria2/src/main/jniLibs"
 if native_payload_root.exists():

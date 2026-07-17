@@ -20,6 +20,7 @@ data class DestinationRequest(
     val fileName: String,
     val mimeType: String? = null,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
+    val stagingSuffix: String = ".xdm.part",
 )
 
 data class DestinationArtifacts(

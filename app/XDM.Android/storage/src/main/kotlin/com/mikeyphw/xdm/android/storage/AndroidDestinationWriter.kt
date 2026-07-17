@@ -32,7 +32,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
             return appPrivateWriter.artifactPaths(request)
         }
         val directory = File(context.filesDir, "transfer-staging/${safeComponent(request.downloadId)}").apply(File::mkdirs)
-        val partial = File(directory, safeFileName(request.fileName) + ".xdm.part")
+        val partial = File(directory, safeFileName(request.fileName) + request.stagingSuffix)
         return DestinationArtifacts(
             stagingFile = partial,
             checkpointFile = File(directory, partial.name + ".checkpoint.json"),

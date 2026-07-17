@@ -1,6 +1,7 @@
 package com.mikeyphw.xdm.android.transfer.aria2
 
 import com.mikeyphw.xdm.android.model.BackendArtifactIdentity
+import com.mikeyphw.xdm.android.transfer.Aria2TaskMapping
 import java.io.File
 import java.nio.file.Files
 import kotlinx.coroutines.CompletableDeferred
@@ -177,7 +178,28 @@ private class FakeRuntimeFiles(
         return !file.exists() || file.delete()
     }
 
+    override val sessionFile: File = rootDirectory.resolve("xdm.session")
+
     override fun logFile(): File = rootDirectory.resolve("aria2.log").also { it.createNewFile() }
+
+    override fun taskFiles(downloadId: String, output: File): Aria2TaskFiles {
+        val directory = rootDirectory.resolve("tasks/$downloadId").also { it.mkdirs() }
+        return Aria2TaskFiles(
+            directory = directory,
+            output = output,
+            control = File(output.absolutePath + ".aria2"),
+            ownershipMetadata = directory.resolve("ownership.json"),
+            session = sessionFile,
+        )
+    }
+
+    override fun writeOwnershipMetadata(files: Aria2TaskFiles, mapping: Aria2TaskMapping) {
+        files.ownershipMetadata.writeText(mapping.gid)
+    }
+
+    override fun deleteTaskMetadata(files: Aria2TaskFiles) {
+        files.ownershipMetadata.delete()
+    }
 
     override fun artifactsFor(downloadId: String, fileName: String) = BackendArtifactIdentity(
         "test",
@@ -197,6 +219,25 @@ private class FakeManagedProcess : Aria2ManagedProcess {
 
 private class FakeRpcControl(private val process: FakeManagedProcess) : Aria2RpcControl {
     override suspend fun getVersion() = Aria2Version("1.37.0", setOf("Async DNS", "BitTorrent"))
+    override suspend fun addUri(uris: List<String>, options: Aria2TaskOptions): String = "gid"
+    override suspend fun pause(gid: String, force: Boolean) = Unit
+    override suspend fun unpause(gid: String) = Unit
+    override suspend fun remove(gid: String, force: Boolean) = Unit
+    override suspend fun tellStatus(gid: String) = taskStatus(gid, Aria2TaskStatusValue.Paused)
+    override suspend fun tellActive(): List<Aria2TaskStatus> = emptyList()
+    override suspend fun tellWaiting(offset: Int, count: Int): List<Aria2TaskStatus> = emptyList()
+    override suspend fun tellStopped(offset: Int, count: Int): List<Aria2TaskStatus> = emptyList()
+    override suspend fun removeDownloadResult(gid: String) = Unit
     override suspend fun saveSession(): Boolean = true
     override suspend fun shutdown(force: Boolean) { process.complete(if (force) 137 else 0) }
 }
+
+private fun taskStatus(gid: String, status: Aria2TaskStatusValue) = Aria2TaskStatus(
+    gid = gid,
+    status = status,
+    totalLength = 0,
+    completedLength = 0,
+    downloadSpeed = 0,
+    dir = null,
+    files = emptyList(),
+)

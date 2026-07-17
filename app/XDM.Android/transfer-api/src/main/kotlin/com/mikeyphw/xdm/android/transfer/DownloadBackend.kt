@@ -32,7 +32,12 @@ data class DownloadRequest(
     val mimeType: String? = null,
 )
 
-data class BackendTask(val taskId: String, val backend: BackendType)
+data class BackendTask(
+    val taskId: String,
+    val backend: BackendType,
+    /** True when the backend created a durable task in a non-writing state that must be activated after ownership attachment. */
+    val requiresActivation: Boolean = false,
+)
 
 data class BackendPreparation(
     val preparationId: String,
@@ -81,6 +86,10 @@ interface DownloadBackend {
         }
     }
     suspend fun discardPreparation(preparation: BackendPreparation)
+    /** Supplies the durable ownership generation before a suspended backend task may write. */
+    suspend fun onOwnershipAttached(taskId: String, ownership: BackendOwnership) = Unit
+    /** Called only after the backend task and ownership generation are durably attached. */
+    suspend fun activate(taskId: String) { if (query(taskId)?.state == DownloadState.Paused) resume(taskId) }
     suspend fun pause(taskId: String)
     suspend fun resume(taskId: String)
     suspend fun cancel(taskId: String)
@@ -386,6 +395,8 @@ class BackendCoordinator(
             val startedTask = backend.add(request.copy(preferredBackend = recommendation.backend), preparation)
             task = startedTask
             val active = ownershipStore.attachTask(request.id, claimedOwnership.generation, startedTask.taskId)
+            backend.onOwnershipAttached(startedTask.taskId, active)
+            if (startedTask.requiresActivation) backend.activate(startedTask.taskId)
             return CoordinatedBackendTask(startedTask, active, recommendation)
         } catch (error: Throwable) {
             val startedTask = task

@@ -2,6 +2,7 @@ package com.mikeyphw.xdm.android.transfer.aria2
 
 import com.mikeyphw.xdm.android.model.BackendArtifactIdentity
 import java.io.File
+import kotlinx.coroutines.flow.Flow
 
 const val ARIA2_PACKAGED_BINARY_NAME = "libaria2c.so"
 const val ARIA2_PRIMARY_ABI = "arm64-v8a"
@@ -103,12 +104,34 @@ data class Aria2SmokeTestResult(
     val version: Aria2Version? = null,
 )
 
+data class Aria2TaskFiles(
+    val directory: File,
+    val output: File,
+    val control: File,
+    val ownershipMetadata: File,
+    val session: File,
+) {
+    fun artifacts(): BackendArtifactIdentity = BackendArtifactIdentity(
+        format = "aria2-controlled-v2",
+        primary = output.canonicalFile.toURI().toString(),
+        companions = listOf(
+            control.canonicalFile.toURI().toString(),
+            ownershipMetadata.canonicalFile.toURI().toString(),
+            session.canonicalFile.toURI().toString(),
+        ),
+    )
+}
+
 interface Aria2RuntimeFiles {
     val rootDirectory: File
+    val sessionFile: File
     fun prepare()
     fun writeLaunchConfiguration(endpoint: Aria2Endpoint, secret: Aria2RpcSecret): File
     fun deleteLaunchConfiguration(file: File): Boolean
     fun logFile(): File
+    fun taskFiles(downloadId: String, output: File): Aria2TaskFiles
+    fun writeOwnershipMetadata(files: Aria2TaskFiles, mapping: com.mikeyphw.xdm.android.transfer.Aria2TaskMapping)
+    fun deleteTaskMetadata(files: Aria2TaskFiles)
     fun artifactsFor(downloadId: String, fileName: String): BackendArtifactIdentity
 }
 
@@ -136,12 +159,61 @@ interface Aria2ManagedProcess {
     fun destroyForcibly()
 }
 
+enum class Aria2TaskStatusValue { Active, Waiting, Paused, Error, Complete, Removed, Unknown }
+
+data class Aria2RpcUri(val uri: String, val status: String? = null)
+data class Aria2RpcFile(
+    val index: Int,
+    val path: String,
+    val length: Long,
+    val completedLength: Long,
+    val selected: Boolean,
+    val uris: List<Aria2RpcUri>,
+)
+data class Aria2TaskStatus(
+    val gid: String,
+    val status: Aria2TaskStatusValue,
+    val totalLength: Long,
+    val completedLength: Long,
+    val downloadSpeed: Long,
+    val dir: String?,
+    val files: List<Aria2RpcFile>,
+    val errorCode: String? = null,
+    val errorMessage: String? = null,
+    val followedBy: List<String> = emptyList(),
+    val following: String? = null,
+    val belongsTo: String? = null,
+)
+
+data class Aria2TaskOptions(
+    val directory: String,
+    val outputName: String,
+    val pause: Boolean = true,
+    val continueDownload: Boolean = true,
+    val split: Int = 4,
+    val maxConnectionsPerServer: Int = 4,
+    val headers: Map<String, String> = emptyMap(),
+)
+
 interface Aria2RpcControl {
     suspend fun getVersion(): Aria2Version
+    suspend fun addUri(uris: List<String>, options: Aria2TaskOptions): String
+    suspend fun pause(gid: String, force: Boolean = false)
+    suspend fun unpause(gid: String)
+    suspend fun remove(gid: String, force: Boolean = false)
+    suspend fun tellStatus(gid: String): Aria2TaskStatus
+    suspend fun tellActive(): List<Aria2TaskStatus>
+    suspend fun tellWaiting(offset: Int = 0, count: Int = 1000): List<Aria2TaskStatus>
+    suspend fun tellStopped(offset: Int = 0, count: Int = 1000): List<Aria2TaskStatus>
+    suspend fun removeDownloadResult(gid: String)
     suspend fun saveSession(): Boolean
     suspend fun shutdown(force: Boolean = false)
 }
 
 fun interface Aria2RpcControlFactory {
     fun create(endpoint: Aria2Endpoint, secret: Aria2RpcSecret): Aria2RpcControl
+}
+
+interface Aria2TaskEventSource {
+    fun observe(gid: String): Flow<Aria2TaskStatus>
 }

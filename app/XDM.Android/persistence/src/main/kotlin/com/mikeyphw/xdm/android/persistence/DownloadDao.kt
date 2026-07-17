@@ -70,3 +70,24 @@ interface BackendTaskDao {
     @Query("DELETE FROM backend_tasks WHERE downloadId = :downloadId")
     suspend fun deleteByDownload(downloadId: String)
 }
+
+@Dao
+interface Aria2SessionMappingDao {
+    @Upsert
+    suspend fun upsert(entity: Aria2SessionMappingEntity)
+
+    @Query("SELECT * FROM aria2_session_mappings WHERE downloadId = :downloadId")
+    suspend fun findByDownload(downloadId: String): Aria2SessionMappingEntity?
+
+    @Query("SELECT * FROM aria2_session_mappings WHERE gid = :gid")
+    suspend fun findByGid(gid: String): Aria2SessionMappingEntity?
+
+    @Query("SELECT * FROM aria2_session_mappings ORDER BY updatedAtEpochMs DESC")
+    suspend fun listAll(): List<Aria2SessionMappingEntity>
+
+    @Query("DELETE FROM aria2_session_mappings WHERE downloadId = :downloadId")
+    suspend fun deleteByDownload(downloadId: String)
+
+    @Query("DELETE FROM aria2_session_mappings WHERE gid = :gid")
+    suspend fun deleteByGid(gid: String)
+}

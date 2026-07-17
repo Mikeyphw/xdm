@@ -22,4 +22,20 @@ jobs:
           gradle-version: '9.4.1'
       - name: Bootstrap wrapper when source archive omits the binary jar
         run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.4.1
-      - run: ./gradlew --stacktrace lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :scheduler:test testDebugUnitTest assembleDebug assembleBeta
+      - name: Static phase contracts
+        run: |
+          python3 tools/validate-foundation.py
+          python3 tools/validate-phase-2-3.py
+          python3 tools/validate-phase-4.py
+          python3 tools/validate-phase-5.py
+          python3 tools/validate-ownership-hardening.py
+          python3 tools/validate-phase-6b.py
+          python3 tools/validate-phase-6.py
+      - name: Install official ARM64 aria2 runtime
+        run: python3 tools/install-aria2-runtime.py --download-official
+      - run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta
+      - name: Verify packaged aria2 payload
+        run: |
+          apk="$(find app/build/outputs/apk/beta -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$apk"
+          python3 tools/verify-aria2-runtime.py --require-payload --apk "$apk"

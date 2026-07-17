@@ -43,3 +43,14 @@ See `docs/architecture/PHASE-6B-ARIA2-RUNTIME-FOUNDATION.md`, `docs/architecture
 ## Supplying the ARM64 aria2 runtime
 
 Place a PIE ARM64 Android build of aria2 at `transfer-aria2/src/main/jniLibs/arm64-v8a/libaria2c.so`. XDM executes it only from Android's installed `nativeLibraryDir`; it never copies executable code into writable app storage. Builds without the file remain usable and report the optional backend as unavailable.
+
+## Embedded aria2 runtime
+
+Phase 6 provides an operational on-device aria2 backend with durable Room-to-GID mappings, paused-before-ownership activation, authenticated loopback RPC, session reconciliation, and XDM-controlled completion promotion. The optional official ARM64 payload is installed and attested with:
+
+```bash
+python3 tools/install-aria2-runtime.py --download-official
+python3 tools/verify-aria2-runtime.py --require-payload
+```
+
+Distribution builds should pass `-Pxdm.requireAria2Runtime=true`. Builds without the optional payload remain valid native-only builds and report aria2 as unavailable in Diagnostics.

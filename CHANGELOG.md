@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0-beta01
+
+- Completed the on-device aria2 backend with durable Room-to-GID mappings and every task operation.
+- Added paused-before-ownership activation, authenticated event polling, session reconciliation, orphan/conflict handling, and provisional completion promotion.
+- Added database schema v6 and migration coverage.
+- Added official ARM64 runtime installation, ELF validation, SHA-256 attestation, CI packaging, and exact APK payload verification.
+
+
 ## XDM Android 0.6.0-alpha01 — 2026-07-16
 
 ### Added

@@ -10,7 +10,7 @@ checks = {
     "checkpoint persistence": (root / "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeCheckpointStore.kt", "class NativeCheckpointStore"),
     "range validation": (root / "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt", "Content-Range"),
     "atomic promotion": (root / "storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/FileDestinationWriter.kt", "StandardCopyOption.ATOMIC_MOVE"),
-    "database schema v5": (root / "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt", "version = 5"),
+    "database schema v6": (root / "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt", "version = 6"),
 }
 errors = []
 for name, (path, needle) in checks.items():

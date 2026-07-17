@@ -98,8 +98,33 @@ data class DestinationPermissionEntity(
     val lastError: String?,
 )
 
-@Entity(tableName = "aria2_session_mappings", indices = [Index("downloadId", unique = true), Index("gid", unique = true)])
-data class Aria2SessionMappingEntity(@PrimaryKey val id: String, val downloadId: String, val gid: String, val sessionFilePath: String, val updatedAtEpochMs: Long)
+@Entity(tableName = "aria2_session_mappings", indices = [Index("downloadId", unique = true), Index("gid", unique = true), Index("status")])
+data class Aria2SessionMappingEntity(
+    @PrimaryKey val id: String,
+    val downloadId: String,
+    val gid: String,
+    val sourceUrl: String,
+    @ColumnInfo(defaultValue = "''") val mirrorUrls: String,
+    val destinationUri: String,
+    val destinationKey: String,
+    val fileName: String,
+    val conflictPolicy: String,
+    val mimeType: String?,
+    val outputPath: String,
+    val controlPath: String,
+    val ownershipMetadataPath: String,
+    val sessionFilePath: String,
+    val expectedLength: Long?,
+    val ownershipGeneration: Long,
+    val backendInstanceId: String,
+    val backendSessionId: String,
+    val status: String,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+    val lastSynchronizedAtEpochMs: Long,
+    val lastErrorCode: String?,
+    val lastErrorMessage: String?,
+)
 
 
 @Entity(tableName = "destination_claims", indices = [Index("downloadId", unique = true)])

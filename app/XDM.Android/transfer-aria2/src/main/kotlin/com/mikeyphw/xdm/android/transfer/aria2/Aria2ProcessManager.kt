@@ -121,6 +121,21 @@ class Aria2ProcessManager(
         Aria2StopResult(clean, forced, sessionSaved, exitCode)
     }
 
+    suspend fun rpc(): Aria2RpcControl {
+        val started = start()
+        check(started.started && started.state is Aria2ProcessState.Running) { describe(started.state) }
+        return gate.withLock {
+            val process = processReference.get()
+            check(process?.isAlive == true) { "aria2 process exited before RPC acquisition" }
+            requireNotNull(rpcControl) { "aria2 RPC channel is unavailable" }
+        }
+    }
+
+    suspend fun activeTaskIds(): List<String> = runCatching {
+        val rpc = rpc()
+        (rpc.tellActive() + rpc.tellWaiting() + rpc.tellStopped()).map(Aria2TaskStatus::gid).distinct()
+    }.getOrDefault(emptyList())
+
     suspend fun smokeTest(): Aria2SmokeTestResult {
         val start = start()
         val running = start.state as? Aria2ProcessState.Running

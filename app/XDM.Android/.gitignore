@@ -9,3 +9,6 @@ captures/
 .externalNativeBuild/
 .cxx/
 app/release/
+# Generated optional aria2 runtime payload and attestation.
+transfer-aria2/src/main/jniLibs/arm64-v8a/libaria2c.so
+transfer-aria2/runtime/aria2-runtime.lock.json

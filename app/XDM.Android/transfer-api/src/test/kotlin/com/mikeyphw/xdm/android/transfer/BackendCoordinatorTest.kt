@@ -134,6 +134,27 @@ class BackendCoordinatorTest {
         assertEquals(BackendReconciliationClassification.ResumableArtifact, ownership.reconciliation)
     }
 
+
+    @Test
+    fun suspendedBackendTaskActivatesOnlyAfterDurableOwnershipAttachment() = runBlocking {
+        val backend = FakeBackend("aria2", BackendType.Aria2, requiresActivation = true)
+        val store = InMemoryBackendOwnershipStore { 10L }
+        val destination = Files.createTempFile("xdm-aria2-activation", ".bin").toUri().toString()
+
+        BackendCoordinator(BackendRegistry(listOf(backend)), store).add(
+            DownloadRequest(
+                id = "aria2-activation",
+                sourceUrl = "https://example.test/a",
+                destinationUri = destination,
+                fileName = "a",
+                preferredBackend = BackendType.Aria2,
+            ),
+        )
+
+        assertEquals(listOf("add", "ownership-attached", "activate"), backend.lifecycleEvents)
+        assertEquals(BackendOwnershipStatus.Active, store.findByDownload("aria2-activation")?.status)
+    }
+
     @Test
     fun failedBackendAddReleasesNewOwnership() = runBlocking {
         val backend = FakeBackend("native", BackendType.Native, failAdd = true)
@@ -151,8 +172,10 @@ private class FakeBackend(
     private val failAdd: Boolean = false,
     sessionId: String = "session",
     private val reconcileAsResumable: Boolean = false,
+    private val requiresActivation: Boolean = false,
 ) : DownloadBackend {
     val detachedTaskIds = mutableListOf<String>()
+    val lifecycleEvents = mutableListOf<String>()
     override val runtimeIdentity = BackendRuntimeIdentity("instance-$backendId", sessionId)
     private val state = MutableStateFlow(BackendSnapshot("task", DownloadState.Queued, 0, null, 0))
 
@@ -172,7 +195,16 @@ private class FakeBackend(
 
     override suspend fun add(request: DownloadRequest, preparation: BackendPreparation): BackendTask {
         if (failAdd) error("boom")
-        return BackendTask("task-${request.id}", type)
+        lifecycleEvents += "add"
+        return BackendTask("task-${request.id}", type, requiresActivation)
+    }
+
+    override suspend fun onOwnershipAttached(taskId: String, ownership: BackendOwnership) {
+        lifecycleEvents += "ownership-attached"
+    }
+
+    override suspend fun activate(taskId: String) {
+        lifecycleEvents += "activate"
     }
 
     override suspend fun discardPreparation(preparation: BackendPreparation) = Unit

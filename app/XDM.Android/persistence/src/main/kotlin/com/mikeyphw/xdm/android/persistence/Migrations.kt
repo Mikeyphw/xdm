@@ -59,4 +59,42 @@ object Migrations {
         }
     }
 
+    val Migration5To6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS aria2_session_mappings_v6 (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    downloadId TEXT NOT NULL,
+                    gid TEXT NOT NULL,
+                    sourceUrl TEXT NOT NULL,
+                    mirrorUrls TEXT NOT NULL DEFAULT '',
+                    destinationUri TEXT NOT NULL,
+                    destinationKey TEXT NOT NULL,
+                    fileName TEXT NOT NULL,
+                    conflictPolicy TEXT NOT NULL,
+                    mimeType TEXT,
+                    outputPath TEXT NOT NULL,
+                    controlPath TEXT NOT NULL,
+                    ownershipMetadataPath TEXT NOT NULL,
+                    sessionFilePath TEXT NOT NULL,
+                    expectedLength INTEGER,
+                    ownershipGeneration INTEGER NOT NULL,
+                    backendInstanceId TEXT NOT NULL,
+                    backendSessionId TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    createdAtEpochMs INTEGER NOT NULL,
+                    updatedAtEpochMs INTEGER NOT NULL,
+                    lastSynchronizedAtEpochMs INTEGER NOT NULL,
+                    lastErrorCode TEXT,
+                    lastErrorMessage TEXT
+                )""".trimIndent(),
+            )
+            db.execSQL("DROP TABLE aria2_session_mappings")
+            db.execSQL("ALTER TABLE aria2_session_mappings_v6 RENAME TO aria2_session_mappings")
+            db.execSQL("CREATE UNIQUE INDEX index_aria2_session_mappings_downloadId ON aria2_session_mappings(downloadId)")
+            db.execSQL("CREATE UNIQUE INDEX index_aria2_session_mappings_gid ON aria2_session_mappings(gid)")
+            db.execSQL("CREATE INDEX index_aria2_session_mappings_status ON aria2_session_mappings(status)")
+        }
+    }
+
 }

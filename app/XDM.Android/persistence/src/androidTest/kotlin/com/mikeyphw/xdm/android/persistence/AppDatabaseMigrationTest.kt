@@ -173,6 +173,56 @@ class AppDatabaseMigrationTest {
         context.deleteDatabase(name)
     }
 
+
+    @Test
+    fun migrate5To6ReplacesUnsafeLegacyAria2Mappings() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val name = "migration-v6-${System.nanoTime()}.db"
+        val seed = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(name)
+                .callback(object : SupportSQLiteOpenHelper.Callback(5) {
+                    override fun onCreate(db: SupportSQLiteDatabase) {
+                        db.execSQL("""CREATE TABLE aria2_session_mappings (id TEXT NOT NULL PRIMARY KEY, downloadId TEXT NOT NULL, gid TEXT NOT NULL, sessionFilePath TEXT NOT NULL, updatedAtEpochMs INTEGER NOT NULL)""")
+                        db.execSQL("CREATE UNIQUE INDEX index_aria2_session_mappings_downloadId ON aria2_session_mappings(downloadId)")
+                        db.execSQL("CREATE UNIQUE INDEX index_aria2_session_mappings_gid ON aria2_session_mappings(gid)")
+                        db.execSQL("INSERT INTO aria2_session_mappings VALUES ('legacy', 'download', 'gid', '/legacy/session', 1)")
+                    }
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                })
+                .build(),
+        )
+        seed.writableDatabase
+        seed.close()
+
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(name)
+                .callback(object : SupportSQLiteOpenHelper.Callback(6) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
+                        Migrations.Migration5To6.migrate(db)
+                    }
+                })
+                .build(),
+        )
+        helper.writableDatabase.query("PRAGMA table_info(aria2_session_mappings)").use { cursor ->
+            val nameColumn = cursor.getColumnIndexOrThrow("name")
+            val columns = mutableSetOf<String>()
+            while (cursor.moveToNext()) columns += cursor.getString(nameColumn)
+            assertTrue("Migration must add source identity", "sourceUrl" in columns)
+            assertTrue("Migration must add destination identity", "destinationKey" in columns)
+            assertTrue("Migration must add ownership generation", "ownershipGeneration" in columns)
+            assertTrue("Migration must add physical output path", "outputPath" in columns)
+        }
+        helper.writableDatabase.query("SELECT COUNT(*) FROM aria2_session_mappings").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertTrue("Unsafe legacy mappings must not be adopted", cursor.getLong(0) == 0L)
+        }
+        helper.close()
+        context.deleteDatabase(name)
+    }
+
     private fun createVersionOne(context: Context, name: String): SupportSQLiteOpenHelper {
         val helper = FrameworkSQLiteOpenHelperFactory().create(
             SupportSQLiteOpenHelper.Configuration.builder(context)

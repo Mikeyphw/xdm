@@ -6,6 +6,7 @@ import com.mikeyphw.xdm.android.persistence.AppDatabase
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.persistence.Migrations
 import com.mikeyphw.xdm.android.persistence.RoomBackendOwnershipStore
+import com.mikeyphw.xdm.android.persistence.RoomAria2TaskMappingStore
 import com.mikeyphw.xdm.android.scheduler.RepositoryTransferDownloadStore
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionStarter
@@ -36,10 +37,17 @@ class XdmApplication : Application(), TransferRuntimeProvider {
     override fun onCreate() {
         super.onCreate()
         val database = Room.databaseBuilder(this, AppDatabase::class.java, "xdm-android.db")
-            .addMigrations(Migrations.Migration1To2, Migrations.Migration2To3, Migrations.Migration3To4, Migrations.Migration4To5)
+            .addMigrations(
+                Migrations.Migration1To2,
+                Migrations.Migration2To3,
+                Migrations.Migration3To4,
+                Migrations.Migration4To5,
+                Migrations.Migration5To6,
+            )
             .build()
         val repository = DownloadRepository(database)
         val ownershipStore = RoomBackendOwnershipStore(database)
+        val aria2MappingStore = RoomAria2TaskMappingStore(database)
         val destinationWriter = AndroidDestinationWriter(this)
         val runtimeIdentities = BackendRuntimeIdentityStore(this)
         val aria2SessionStore = Aria2SessionStore(this)
@@ -59,6 +67,8 @@ class XdmApplication : Application(), TransferRuntimeProvider {
                 EmbeddedAria2Backend(
                     processManager = aria2ProcessManager,
                     sessionStore = aria2SessionStore,
+                    mappingStore = aria2MappingStore,
+                    destinationWriter = destinationWriter,
                     runtimeIdentity = runtimeIdentities.identityFor(BackendType.Aria2),
                 ),
             ),

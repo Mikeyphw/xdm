@@ -179,6 +179,15 @@ class TransferExecutionRuntime(
             } else {
                 reconciler.reconcile(download.id)
             }
+            val reconciledTaskId = reconciliation?.backendTaskId
+            if (reconciliation?.classification == BackendReconciliationClassification.ActiveTaskVerified &&
+                reconciledTaskId != null
+            ) {
+                val mapping = existingOwnership.backend to reconciledTaskId
+                backendTaskIds[download.id] = mapping
+                observeExistingTask(download, mapping)
+                return
+            }
             if (reconciliation?.safeToResume != true) {
                 val message = reconciliation?.message ?: "Persisted backend ownership could not be reconciled."
                 store.save(
@@ -219,7 +228,9 @@ class TransferExecutionRuntime(
     private suspend fun observeExistingTask(download: Download, mapping: Pair<BackendType, String>) {
         try {
             fileNames[download.id] = download.fileName
-            registry.require(mapping.first).resume(mapping.second)
+            val backend = registry.require(mapping.first)
+            val current = backend.query(mapping.second)
+            if (current?.state == DownloadState.Paused) backend.resume(mapping.second)
             observeTaskUntilRunEnd(download, mapping)
         } catch (error: Throwable) {
             handleRuntimeFailure(download, error)

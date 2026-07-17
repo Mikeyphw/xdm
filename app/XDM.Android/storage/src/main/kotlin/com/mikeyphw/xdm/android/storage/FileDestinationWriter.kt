@@ -16,7 +16,7 @@ class FileDestinationWriter(
 
     override fun artifactPaths(request: DestinationRequest): DestinationArtifacts {
         val destination = resolveDestination(request)
-        val partial = destination.resolveSibling(destination.fileName.toString() + ".xdm.part").toFile()
+        val partial = destination.resolveSibling(destination.fileName.toString() + request.stagingSuffix).toFile()
         return DestinationArtifacts(
             stagingFile = partial,
             checkpointFile = File(partial.parentFile, partial.name + ".checkpoint.json"),

@@ -278,7 +278,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { Text("Runtime health", style = MaterialTheme.typography.headlineSmall) }
-        item { DiagnosticLine("Database", "Room schema v5") }
+        item { DiagnosticLine("Database", "Room schema v6") }
         item { DiagnosticLine("Downloads", state.downloads.size.toString()) }
         item { DiagnosticLine("Queues", state.queues.size.toString()) }
         item { DiagnosticLine("Recovery records", state.recovery.size.toString()) }
@@ -355,7 +355,7 @@ fun SettingsScreen(compact: Boolean, onCompactChanged: (Boolean) -> Unit) {
             }
         }
         Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall)
-        Text("Version: 0.6.0-alpha01", style = MaterialTheme.typography.bodySmall)
+        Text("Version: 0.6.0-beta01", style = MaterialTheme.typography.bodySmall)
     }
 }
 
