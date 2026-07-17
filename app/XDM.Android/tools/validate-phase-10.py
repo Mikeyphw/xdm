@@ -10,7 +10,7 @@ checks = {
     "media entity": (ROOT / "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt", "data class MediaCaptureEntity"),
     "migration 9 to 10": (ROOT / "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt", "Migration9To10"),
     "schema": (ROOT / "persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/10.json", '"version": 10'),
-    "share intent": (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt", "handleMediaIntent"),
+    "share intent": (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt", "handleExternalIntent"),
     "media route ui": (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "fun MediaInboxScreen"),
     "route wiring": (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt", "MediaInboxScreen"),
     "architecture": (ROOT / "docs/architecture/PHASE-10-MEDIA-CAPTURE-INTELLIGENCE.md", "No new top-level route was added"),
@@ -36,4 +36,4 @@ if errors:
     print('Phase 10 validation failed:')
     for error in errors: print(f'- {error}')
     sys.exit(1)
-print('Phase 10 validation passed: media capture service, persisted metadata, share intents, Media route actions, schema v10, and topography constraints are present')
+print('Phase 10 validation passed: media capture service, persisted metadata, share/view intents, Media route actions, schema v10, and topography constraints are present')

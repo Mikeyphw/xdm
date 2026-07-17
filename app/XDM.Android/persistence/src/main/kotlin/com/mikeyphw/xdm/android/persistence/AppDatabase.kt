@@ -21,6 +21,7 @@ import androidx.room.RoomDatabase
         FinalizationJournalEntity::class,
         MediaCaptureEntity::class,
         MediaVariantEntity::class,
+        AutomationCommandEntity::class,
         NotificationRecordEntity::class,
         TagEntity::class,
         DownloadTagCrossRef::class,
@@ -30,7 +31,7 @@ import androidx.room.RoomDatabase
         DestinationClaimEntity::class,
         OwnershipCounterEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -46,4 +47,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun checksumDao(): ChecksumDao
     abstract fun finalizationDao(): FinalizationDao
     abstract fun mediaCaptureDao(): MediaCaptureDao
+    abstract fun automationCommandDao(): AutomationCommandDao
 }

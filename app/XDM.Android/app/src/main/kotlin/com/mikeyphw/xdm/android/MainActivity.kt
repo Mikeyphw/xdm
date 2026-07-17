@@ -11,6 +11,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
+import com.mikeyphw.xdm.android.model.AutomationCommandAction
+import com.mikeyphw.xdm.android.model.AutomationCommandDraft
+import com.mikeyphw.xdm.android.model.AutomationCommandSource
+import com.mikeyphw.xdm.android.tasker.TaskerContract
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -29,25 +33,47 @@ class MainActivity : ComponentActivity() {
             val scheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
             MaterialTheme(colorScheme = scheme) { XdmApp(viewModel, requestNotifications = ::requestNotificationPermissionIfNeeded) }
         }
-        handleMediaIntent(intent)
+        handleExternalIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleMediaIntent(intent)
+        handleExternalIntent(intent)
     }
 
-    private fun handleMediaIntent(intent: Intent?) {
+    private fun handleExternalIntent(intent: Intent?) {
         val incoming = intent ?: return
-        val text = when (incoming.action) {
-            Intent.ACTION_SEND -> incoming.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
-            Intent.ACTION_VIEW -> incoming.dataString.orEmpty()
-            else -> ""
+        val taskerDraft = TaskerContract.draftFor(
+            actionName = incoming.action,
+            url = incoming.getStringExtra(TaskerContract.ExtraUrl) ?: incoming.dataString,
+            fileName = incoming.getStringExtra(TaskerContract.ExtraFileName),
+            pageTitle = incoming.getStringExtra(TaskerContract.ExtraPageTitle),
+            pageUrl = incoming.getStringExtra(TaskerContract.ExtraPageUrl),
+            idempotencyKey = incoming.getStringExtra(TaskerContract.ExtraIdempotencyKey),
+        )
+        if (taskerDraft != null) {
+            viewModel.ingestAutomationCommand(taskerDraft)
+            return
         }
-        if (text.isNotBlank()) {
-            viewModel.captureSharedText(text, pageTitle = incoming.getStringExtra(Intent.EXTRA_SUBJECT), pageUrl = incoming.dataString)
+        val draft = when (incoming.action) {
+            Intent.ACTION_SEND -> AutomationCommandDraft(
+                source = AutomationCommandSource.ShareSheet,
+                action = AutomationCommandAction.CaptureMedia,
+                url = incoming.getStringExtra(Intent.EXTRA_TEXT),
+                pageTitle = incoming.getStringExtra(Intent.EXTRA_SUBJECT),
+                explicitIdempotencyKey = incoming.getStringExtra(TaskerContract.ExtraIdempotencyKey),
+            )
+            Intent.ACTION_VIEW -> AutomationCommandDraft(
+                source = AutomationCommandSource.ViewIntent,
+                action = AutomationCommandAction.CaptureMedia,
+                url = incoming.dataString,
+                pageUrl = incoming.dataString,
+                explicitIdempotencyKey = incoming.getStringExtra(TaskerContract.ExtraIdempotencyKey),
+            )
+            else -> null
         }
+        if (draft?.normalizedUrl != null) viewModel.ingestAutomationCommand(draft)
     }
 
     private fun requestNotificationPermissionIfNeeded() {

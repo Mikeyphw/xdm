@@ -28,8 +28,8 @@ android {
         applicationId = "com.mikeyphw.xdm.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "0.11.0-alpha01"
+        versionCode = 13
+        versionName = "0.12.0-alpha01"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

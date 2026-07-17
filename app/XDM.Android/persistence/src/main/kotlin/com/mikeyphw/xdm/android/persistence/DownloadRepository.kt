@@ -1,5 +1,9 @@
 package com.mikeyphw.xdm.android.persistence
 
+import com.mikeyphw.xdm.android.model.AutomationCommandAction
+import com.mikeyphw.xdm.android.model.AutomationCommandRecord
+import com.mikeyphw.xdm.android.model.AutomationCommandSource
+import com.mikeyphw.xdm.android.model.AutomationCommandStatus
 import com.mikeyphw.xdm.android.model.BackendOwnership
 import com.mikeyphw.xdm.android.model.BackendMigrationRecord
 import com.mikeyphw.xdm.android.model.BackendSelectionReason
@@ -39,6 +43,7 @@ class DownloadRepository(private val database: AppDatabase) {
     val finalizationJournals: Flow<List<FinalizationJournal>> = database.finalizationDao().observeAll().map { rows -> rows.map(FinalizationJournalEntity::toModel) }
     val mediaCaptures: Flow<List<MediaCaptureRecord>> = database.mediaCaptureDao().observeAll().map { rows -> rows.map(MediaCaptureEntity::toModel) }
     val mediaVariants: Flow<List<MediaVariant>> = database.mediaCaptureDao().observeVariants().map { rows -> rows.map(MediaVariantEntity::toModel) }
+    val automationCommands: Flow<List<AutomationCommandRecord>> = database.automationCommandDao().observeAll().map { rows -> rows.map(AutomationCommandEntity::toModel) }
 
     suspend fun countDownloads(): Int = database.downloadDao().count()
     suspend fun countQueues(): Int = database.queueDao().count()
@@ -62,6 +67,8 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun findMediaCapture(id: String): MediaCaptureRecord? = database.mediaCaptureDao().findById(id)?.toModel()
     suspend fun markMediaDownloadCreated(captureId: String, downloadId: String, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().markDownloadCreated(captureId, MediaCaptureStatus.DownloadCreated.name, downloadId, updatedAtEpochMs)
     suspend fun deleteMediaCapture(id: String) = database.mediaCaptureDao().delete(id)
+    suspend fun findAutomationCommandByKey(idempotencyKey: String): AutomationCommandRecord? = database.automationCommandDao().findByIdempotencyKey(idempotencyKey)?.toModel()
+    suspend fun saveAutomationCommand(record: AutomationCommandRecord) = database.automationCommandDao().upsert(record.toEntity())
     suspend fun findDownload(id: String): Download? = database.downloadDao().findById(id)?.toModel()
     suspend fun findDownloadsByStates(states: Set<DownloadState>): List<Download> =
         if (states.isEmpty()) emptyList() else database.downloadDao().findByStates(states.map { it.name }).map { it.toModel() }
@@ -93,6 +100,41 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun saveDestinationPermission(permission: DestinationPermission) = database.destinationPermissionDao().upsert(permission.toEntity())
     suspend fun deleteDestinationPermission(uri: String) = database.destinationPermissionDao().delete(uri)
 }
+
+
+private fun AutomationCommandEntity.toModel() = AutomationCommandRecord(
+    id = id,
+    idempotencyKey = idempotencyKey,
+    source = runCatching { AutomationCommandSource.valueOf(source) }.getOrDefault(AutomationCommandSource.Internal),
+    action = runCatching { AutomationCommandAction.valueOf(action) }.getOrDefault(AutomationCommandAction.Unknown),
+    url = url,
+    fileName = fileName,
+    pageTitle = pageTitle,
+    pageUrl = pageUrl,
+    mediaCaptureId = mediaCaptureId,
+    downloadId = downloadId,
+    status = runCatching { AutomationCommandStatus.valueOf(status) }.getOrDefault(AutomationCommandStatus.Failed),
+    resultMessage = resultMessage,
+    createdAtEpochMs = createdAtEpochMs,
+    updatedAtEpochMs = updatedAtEpochMs,
+)
+
+private fun AutomationCommandRecord.toEntity() = AutomationCommandEntity(
+    id = id,
+    idempotencyKey = idempotencyKey,
+    source = source.name,
+    action = action.name,
+    url = url,
+    fileName = fileName,
+    pageTitle = pageTitle,
+    pageUrl = pageUrl,
+    mediaCaptureId = mediaCaptureId,
+    downloadId = downloadId,
+    status = status.name,
+    resultMessage = resultMessage,
+    createdAtEpochMs = createdAtEpochMs,
+    updatedAtEpochMs = updatedAtEpochMs,
+)
 
 private fun DownloadEntity.toModel() = Download(
     id = id,

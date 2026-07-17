@@ -4,6 +4,11 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.mikeyphw.xdm.android.model.AutomationCommandAction
+import com.mikeyphw.xdm.android.model.AutomationCommandDraft
+import com.mikeyphw.xdm.android.model.AutomationCommandIds
+import com.mikeyphw.xdm.android.model.AutomationCommandRecord
+import com.mikeyphw.xdm.android.model.AutomationCommandStatus
 import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
 import com.mikeyphw.xdm.android.model.ChecksumExpectation
 import com.mikeyphw.xdm.android.model.ChecksumResult
@@ -74,6 +79,7 @@ data class MainUiState(
     val finalizationJournals: List<FinalizationJournal> = emptyList(),
     val mediaCaptures: List<MediaCaptureRecord> = emptyList(),
     val mediaVariants: List<MediaVariant> = emptyList(),
+    val automationCommands: List<AutomationCommandRecord> = emptyList(),
 )
 
 class MainViewModel(
@@ -104,6 +110,7 @@ class MainViewModel(
         val finalizationJournals: List<FinalizationJournal>,
         val mediaCaptures: List<MediaCaptureRecord>,
         val mediaVariants: List<MediaVariant>,
+        val automationCommands: List<AutomationCommandRecord>,
     )
 
     private data class RepositoryBaseSnapshot(
@@ -126,7 +133,11 @@ class MainViewModel(
 
     private val mediaSnapshot = combine(repository.mediaCaptures, repository.mediaVariants) { captures, variants -> captures to variants }
 
-    private val repositorySnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations, verificationSnapshot, repository.finalizationJournals, mediaSnapshot) { base, migrations, verification, finalization, media ->
+    private val mediaAutomationSnapshot = combine(mediaSnapshot, repository.automationCommands) { media, automation -> media to automation }
+
+    private val repositorySnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations, verificationSnapshot, repository.finalizationJournals, mediaAutomationSnapshot) { base, migrations, verification, finalization, mediaAutomation ->
+        val media = mediaAutomation.first
+        val automation = mediaAutomation.second
         RepositorySnapshot(
             base.downloads,
             base.queues,
@@ -139,6 +150,7 @@ class MainViewModel(
             finalization,
             media.first,
             media.second,
+            automation,
         )
     }
 
@@ -201,6 +213,7 @@ class MainViewModel(
             finalizationJournals = snapshot.finalizationJournals,
             mediaCaptures = snapshot.mediaCaptures,
             mediaVariants = snapshot.mediaVariants,
+            automationCommands = snapshot.automationCommands,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -363,6 +376,127 @@ class MainViewModel(
         }
     }
 
+
+
+    fun ingestAutomationCommand(draft: AutomationCommandDraft) {
+        viewModelScope.launch(Dispatchers.IO) {
+            processAutomationCommand(draft)
+        }
+    }
+
+    private suspend fun processAutomationCommand(draft: AutomationCommandDraft) {
+        val key = draft.stableIdempotencyKey
+        val now = System.currentTimeMillis()
+        val existing = repository.findAutomationCommandByKey(key)
+        if (existing != null) {
+            repository.saveAutomationCommand(existing.copy(status = AutomationCommandStatus.Duplicate, resultMessage = "Duplicate command ignored", updatedAtEpochMs = now))
+            if (existing.mediaCaptureId != null) navigate(AppRoute.Media)
+            if (existing.downloadId != null) navigate(AppRoute.Downloads)
+            return
+        }
+        val accepted = AutomationCommandRecord(
+            id = AutomationCommandIds.commandId(key),
+            idempotencyKey = key,
+            source = draft.source,
+            action = draft.action,
+            url = draft.normalizedUrl,
+            fileName = draft.fileName?.trim()?.takeIf { it.isNotBlank() },
+            pageTitle = draft.pageTitle?.trim()?.takeIf { it.isNotBlank() },
+            pageUrl = draft.pageUrl?.trim()?.takeIf { it.isNotBlank() },
+            mediaCaptureId = null,
+            downloadId = null,
+            status = AutomationCommandStatus.Accepted,
+            resultMessage = "Accepted",
+            createdAtEpochMs = now,
+            updatedAtEpochMs = now,
+        )
+        repository.saveAutomationCommand(accepted)
+        when (draft.action) {
+            AutomationCommandAction.CaptureMedia -> executeCaptureMediaCommand(accepted, draft, now)
+            AutomationCommandAction.EnqueueDownload -> executeEnqueueCommand(accepted, draft, now)
+            AutomationCommandAction.PauseAll -> {
+                transferRuntime.pauseAll()
+                repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Executed, resultMessage = "Pause all requested", updatedAtEpochMs = System.currentTimeMillis()))
+            }
+            AutomationCommandAction.ResumeAll -> {
+                val paused = repository.findDownloadsByStates(setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower))
+                paused.forEach { executionStarter.start(it.id, it.totalBytes, userVisible = true) }
+                repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Executed, resultMessage = "Resume requested for ${paused.size} download(s)", updatedAtEpochMs = System.currentTimeMillis()))
+            }
+            AutomationCommandAction.Unknown -> repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Unsupported automation action", updatedAtEpochMs = System.currentTimeMillis()))
+        }
+    }
+
+    private suspend fun executeCaptureMediaCommand(command: AutomationCommandRecord, draft: AutomationCommandDraft, now: Long) {
+        val text = draft.normalizedUrl ?: return repository.saveAutomationCommand(
+            command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing media URL", updatedAtEpochMs = now),
+        )
+        val records = mediaCaptureService.detect(text, draft.pageTitle, draft.pageUrl)
+        if (records.isEmpty()) {
+            repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "No supported media URL detected", updatedAtEpochMs = System.currentTimeMillis()))
+            return
+        }
+        val merged = records.map { record ->
+            val existing = repository.findMediaCapture(record.id)
+            if (existing?.downloadId != null) {
+                record.copy(status = existing.status, downloadId = existing.downloadId, createdAtEpochMs = existing.createdAtEpochMs, updatedAtEpochMs = System.currentTimeMillis())
+            } else {
+                record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs)
+            }
+        }
+        repository.saveMediaCaptures(merged)
+        repository.saveMediaVariants(merged.mapNotNull { mediaCaptureService.candidateFor(it.sourceUrl)?.variants }.flatten())
+        repository.saveAutomationCommand(
+            command.copy(
+                status = AutomationCommandStatus.Executed,
+                resultMessage = "Captured ${merged.size} media item(s)",
+                mediaCaptureId = merged.firstOrNull()?.id,
+                updatedAtEpochMs = System.currentTimeMillis(),
+            ),
+        )
+        navigate(AppRoute.Media)
+    }
+
+    private suspend fun executeEnqueueCommand(command: AutomationCommandRecord, draft: AutomationCommandDraft, now: Long) {
+        val url = draft.normalizedUrl ?: return repository.saveAutomationCommand(
+            command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing download URL", updatedAtEpochMs = now),
+        )
+        val safeName = resolveFileName(url, draft.fileName.orEmpty())
+        val mediaCandidate = mediaCaptureService.candidateFor(url)
+        val destination = uiState.value.destinationUri.ifBlank { DestinationUris.PUBLIC_DOWNLOADS }
+        val conflictPolicy = uiState.value.conflictPolicy
+        val request = previewRequest(url, safeName, BackendType.Automatic, destination, conflictPolicy, allowFallback = true, isMediaRequest = mediaCandidate != null)
+        val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
+        if (!recommendation.compatible) {
+            repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Rejected, resultMessage = recommendation.explanation, updatedAtEpochMs = System.currentTimeMillis()))
+            return
+        }
+        val download = Download(
+            id = UUID.randomUUID().toString(),
+            fileName = safeName,
+            sourceUrl = url,
+            destinationUri = destination,
+            state = DownloadState.Queued,
+            backend = recommendation.backend,
+            bytesReceived = 0,
+            totalBytes = null,
+            speedBytesPerSecond = 0,
+            queueId = "default",
+            priority = 0,
+            createdAtEpochMs = now,
+            updatedAtEpochMs = now,
+            conflictPolicy = conflictPolicy,
+            mimeType = mediaCandidate?.mimeType,
+            requestedBackend = BackendType.Automatic,
+            backendSelectionReason = recommendation.reason,
+            backendSelectionExplanation = recommendation.explanation,
+            allowBackendFallback = true,
+        )
+        repository.save(download)
+        repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Executed, resultMessage = "Queued download", downloadId = download.id, updatedAtEpochMs = System.currentTimeMillis()))
+        executionStarter.start(download.id, userVisible = true)
+        navigate(AppRoute.Downloads)
+    }
 
     fun captureSharedText(text: String, pageTitle: String? = null, pageUrl: String? = null) {
         val records = mediaCaptureService.detect(text, pageTitle, pageUrl)

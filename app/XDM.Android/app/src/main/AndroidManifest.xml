@@ -28,6 +28,13 @@
                 <data android:scheme="http" />
                 <data android:scheme="https" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="com.mikeyphw.xdm.android.ADD_URL" />
+                <action android:name="com.mikeyphw.xdm.android.CAPTURE_MEDIA" />
+                <action android:name="com.mikeyphw.xdm.android.PAUSE_ALL" />
+                <action android:name="com.mikeyphw.xdm.android.RESUME_ALL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
     </application>
 </manifest>

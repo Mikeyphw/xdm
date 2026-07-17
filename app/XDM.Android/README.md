@@ -65,3 +65,8 @@ XDM Android now scans interrupted transfers, backend ownership records, aria2 se
 The existing Media route captures shared browser links and direct VIEW intents for video, audio, HLS, and DASH sources. Captures persist metadata such as title, MIME type, container, codec summary, duration, thumbnail URL, variant count, and the created download relationship.
 
 Phase 11 resolves HLS/DASH manifests into persisted variants, keeps a selected variant on the capture record, labels variants by quality, and blocks stale playlist downloads until the capture is refreshed. Media downloads use the selected variant URL when present and stay inside the existing Media route.
+
+
+### Phase 12: external automation intake
+
+XDM Android now records external Tasker, browser, share-sheet, and deep-link style commands in a durable automation journal. Commands use stable idempotency keys so repeated intents do not duplicate downloads or media captures. Diagnostics reports the automation command count.

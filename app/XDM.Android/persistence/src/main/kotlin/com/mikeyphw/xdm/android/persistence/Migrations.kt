@@ -241,4 +241,34 @@ object Migrations {
             db.execSQL("CREATE INDEX IF NOT EXISTS index_media_variants_position ON media_variants(position)")
         }
     }
+
+
+    val Migration11To12 = object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS automation_commands (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    idempotencyKey TEXT NOT NULL,
+                    source TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    url TEXT,
+                    fileName TEXT,
+                    pageTitle TEXT,
+                    pageUrl TEXT,
+                    mediaCaptureId TEXT,
+                    downloadId TEXT,
+                    status TEXT NOT NULL,
+                    resultMessage TEXT NOT NULL,
+                    createdAtEpochMs INTEGER NOT NULL,
+                    updatedAtEpochMs INTEGER NOT NULL
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE UNIQUE INDEX index_automation_commands_idempotencyKey ON automation_commands(idempotencyKey)")
+            db.execSQL("CREATE INDEX index_automation_commands_source ON automation_commands(source)")
+            db.execSQL("CREATE INDEX index_automation_commands_action ON automation_commands(action)")
+            db.execSQL("CREATE INDEX index_automation_commands_status ON automation_commands(status)")
+            db.execSQL("CREATE INDEX index_automation_commands_updatedAtEpochMs ON automation_commands(updatedAtEpochMs)")
+        }
+    }
+
 }

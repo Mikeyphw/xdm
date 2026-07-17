@@ -170,6 +170,25 @@ data class MediaVariantEntity(
     val expiresAtEpochMs: Long?,
 )
 
+
+@Entity(tableName = "automation_commands", indices = [Index(value = ["idempotencyKey"], unique = true), Index("source"), Index("action"), Index("status"), Index("updatedAtEpochMs")])
+data class AutomationCommandEntity(
+    @PrimaryKey val id: String,
+    val idempotencyKey: String,
+    val source: String,
+    val action: String,
+    val url: String?,
+    val fileName: String?,
+    val pageTitle: String?,
+    val pageUrl: String?,
+    val mediaCaptureId: String?,
+    val downloadId: String?,
+    val status: String,
+    val resultMessage: String,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+)
+
 @Entity(tableName = "notification_records", indices = [Index("downloadId"), Index("createdAtEpochMs")])
 data class NotificationRecordEntity(@PrimaryKey val id: String, val downloadId: String?, val title: String, val message: String, val severity: String, val dismissed: Boolean, val createdAtEpochMs: Long)
 

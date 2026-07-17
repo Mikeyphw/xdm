@@ -20,6 +20,14 @@ Adds Phase 8 checksum verification, persisted verification results, trusted bloc
 
 # Changelog
 
+## 0.12.0-alpha01
+
+- Added durable automation command records for Tasker, browser, share, and view intents.
+- Added idempotency keys to prevent duplicated downloads and duplicated media captures.
+- Added Tasker pause/resume-all action contracts.
+- Bumped Android Room schema to 12.
+
+
 ## 0.9.0-alpha01
 
 - Added Phase 9 startup recovery scanning and recovery actions.
