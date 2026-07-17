@@ -94,6 +94,50 @@ class RoomBackendOwnershipStore(
         active.toModel(backendTaskId)
     }
 
+    override suspend fun transfer(
+        downloadId: String,
+        expectedGeneration: Long,
+        sourceBackend: BackendType,
+        destinationKey: String,
+        artifacts: BackendArtifactIdentity,
+        targetBackend: BackendType,
+        runtimeIdentity: BackendRuntimeIdentity,
+    ): OwnershipClaimResult = database.withTransaction {
+        val existingEntity = dao.findClaimByDownload(downloadId)
+            ?: error("No ownership exists for $downloadId")
+        val existing = existingEntity.toModel(dao.findTaskByDownload(downloadId)?.backendTaskId)
+        val transferable = existing.generation == expectedGeneration &&
+            existing.backend == sourceBackend &&
+            existing.destinationKey == destinationKey &&
+            existing.status in setOf(BackendOwnershipStatus.Reconciled, BackendOwnershipStatus.Quarantined)
+        if (!transferable) return@withTransaction OwnershipClaimResult.Conflict(existing)
+        dao.findClaimByDestination(destinationKey)?.let { owner ->
+            if (owner.downloadId != downloadId) {
+                return@withTransaction OwnershipClaimResult.Conflict(owner.toModel(dao.findTaskByDownload(owner.downloadId)?.backendTaskId))
+            }
+        }
+        val now = clock()
+        val generation = nextGeneration(now)
+        dao.deleteTask(downloadId, expectedGeneration)
+        val transferred = existingEntity.copy(
+            backend = targetBackend.name,
+            partialIdentity = artifacts.primary,
+            artifactFormat = artifacts.format,
+            companionArtifactIdentities = artifacts.companions.encodeCompanions(),
+            backendInstanceId = runtimeIdentity.instanceId,
+            backendSessionId = runtimeIdentity.sessionId,
+            generation = generation,
+            status = BackendOwnershipStatus.Claimed.name,
+            reconciliation = BackendReconciliationClassification.Pending.name,
+            reconciliationMessage = "Ownership transferred from $sourceBackend to $targetBackend; target task is not attached yet.",
+            reconciledAtEpochMs = null,
+            claimedAtEpochMs = now,
+            synchronizedAtEpochMs = now,
+        )
+        dao.upsertClaim(transferred)
+        OwnershipClaimResult.Claimed(transferred.toModel())
+    }
+
     override suspend fun markReconciling(downloadId: String, generation: Long): BackendOwnership = database.withTransaction {
         val claim = requireClaim(downloadId, generation)
         val updated = claim.copy(

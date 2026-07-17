@@ -22,10 +22,11 @@ import androidx.room.RoomDatabase
         DownloadTagCrossRef::class,
         DestinationPermissionEntity::class,
         Aria2SessionMappingEntity::class,
+        BackendMigrationEntity::class,
         DestinationClaimEntity::class,
         OwnershipCounterEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -37,4 +38,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun backendTaskDao(): BackendTaskDao
     abstract fun destinationPermissionDao(): DestinationPermissionDao
     abstract fun aria2SessionMappingDao(): Aria2SessionMappingDao
+    abstract fun backendMigrationDao(): BackendMigrationDao
 }

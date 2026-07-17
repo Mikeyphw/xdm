@@ -1,11 +1,16 @@
 package com.mikeyphw.xdm.android.scheduler
 
 import com.mikeyphw.xdm.android.model.BackendOwnershipStatus
+import com.mikeyphw.xdm.android.model.BackendCapabilityRow
+import com.mikeyphw.xdm.android.model.BackendCapabilities
 import com.mikeyphw.xdm.android.model.BackendReconciliationClassification
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.transfer.BackendCoordinator
+import com.mikeyphw.xdm.android.transfer.BackendMigrationStore
+import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
+import com.mikeyphw.xdm.android.transfer.InMemoryBackendMigrationStore
 import com.mikeyphw.xdm.android.transfer.BackendOwnershipReconciler
 import com.mikeyphw.xdm.android.transfer.BackendOwnershipStore
 import com.mikeyphw.xdm.android.transfer.BackendRegistry
@@ -29,12 +34,15 @@ class TransferExecutionRuntime(
     private val store: TransferDownloadStore,
     ownershipStore: BackendOwnershipStore,
     backends: Collection<DownloadBackend>,
+    migrationStore: BackendMigrationStore = InMemoryBackendMigrationStore(),
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) {
     private val registry = BackendRegistry(backends)
-    private val coordinator = BackendCoordinator(registry, ownershipStore)
+    private val selectionPolicy = BackendSelectionPolicy()
+    private val coordinator = BackendCoordinator(registry, ownershipStore, selectionPolicy)
     private val reconciler = BackendOwnershipReconciler(registry, ownershipStore)
     private val ownershipStore = ownershipStore
+    private val migrationCoordinator = BackendMigrationCoordinator(store, ownershipStore, migrationStore, registry, selectionPolicy)
     private val jobs = ConcurrentHashMap<String, Job>()
     private val backendTaskIds = ConcurrentHashMap<String, Pair<BackendType, String>>()
     private val snapshots = MutableStateFlow<Map<String, BackendSnapshot>>(emptyMap())
@@ -43,6 +51,21 @@ class TransferExecutionRuntime(
     val summary: StateFlow<ActiveTransferSummary> = _summary
     private val _terminalEvents = MutableSharedFlow<TransferTerminalEvent>(extraBufferCapacity = 32)
     val terminalEvents: SharedFlow<TransferTerminalEvent> = _terminalEvents
+
+
+    suspend fun backendCapabilities(): Map<BackendType, BackendCapabilities> = registry.capabilitySnapshot()
+
+    suspend fun capabilityMatrix(): List<BackendCapabilityRow> =
+        selectionPolicy.capabilityRows(backendCapabilities())
+
+    suspend fun migrateBackend(downloadId: String, targetBackend: BackendType, restartFromZero: Boolean): BackendMigrationOutcome {
+        val outcome = migrationCoordinator.migrate(downloadId, targetBackend, restartFromZero)
+        if (outcome is BackendMigrationOutcome.Started) {
+            backendTaskIds[downloadId] = outcome.task.backend to outcome.task.taskId
+            launch(downloadId)
+        }
+        return outcome
+    }
 
     suspend fun execute(downloadId: String): DownloadState {
         val download = store.find(downloadId) ?: return DownloadState.Failed
@@ -207,17 +230,26 @@ class TransferExecutionRuntime(
             sourceUrl = download.sourceUrl,
             destinationUri = download.destinationUri,
             fileName = download.fileName,
-            preferredBackend = download.backend,
+            preferredBackend = download.requestedBackend,
             expectedLength = download.totalBytes,
             conflictPolicy = download.conflictPolicy,
             mimeType = download.mimeType,
+            allowBackendFallback = download.allowBackendFallback,
         )
         try {
             fileNames[download.id] = download.fileName
             val coordinated = coordinator.add(request)
+            val selected = (store.find(download.id) ?: download).copy(
+                backend = coordinated.task.backend,
+                backendSelectionReason = coordinated.recommendation.reason,
+                backendSelectionExplanation = coordinated.recommendation.explanation,
+                allowBackendFallback = download.allowBackendFallback,
+                updatedAtEpochMs = System.currentTimeMillis(),
+            )
+            store.save(selected)
             val mapping = coordinated.task.backend to coordinated.task.taskId
             backendTaskIds[download.id] = mapping
-            observeTaskUntilRunEnd(download, mapping)
+            observeTaskUntilRunEnd(selected, mapping)
         } catch (error: Throwable) {
             handleRuntimeFailure(download, error)
         } finally {

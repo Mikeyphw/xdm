@@ -2,7 +2,7 @@
   "project": {
     "name": "XDM Android",
     "package_id": "com.mikeyphw.xdm.android",
-    "version": "0.6.0-beta01",
+    "version": "0.7.0-alpha01",
     "implemented_phases": [
       0,
       1,
@@ -10,17 +10,19 @@
       3,
       4,
       5,
-      6
+      6,
+      7
     ]
   },
   "database": {
-    "version": 6,
+    "version": 7,
     "migrations": [
       "1_to_2",
       "2_to_3",
       "3_to_4",
       "4_to_5",
-      "5_to_6"
+      "5_to_6",
+      "6_to_7"
     ],
     "destination_permission_health": true
   },
@@ -56,7 +58,7 @@
       "compare"
     ]
   },
-  "next_phase": "7",
+  "next_phase": "8",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -76,7 +78,7 @@
     "managed_process_lifecycle": true,
     "diagnostic_smoke_probe": true,
     "production_task_creation": true,
-    "next_slice": "phase_7_backend_strategy_and_migration",
+    "next_slice": "phase_8_checksums_verification_and_selective_repair",
     "operational_backend": true,
     "durable_gid_mapping": true,
     "paused_creation_before_ownership_attachment": true,
@@ -86,5 +88,14 @@
     "provisional_completion_verification": true,
     "official_runtime_version": "1.37.0",
     "release_payload_gate": true
+  },
+  "backend_strategy": {
+    "capability_matrix": true,
+    "explainable_automatic_selection": true,
+    "pre_start_fallback_only": true,
+    "journaled_backend_migration": true,
+    "transactional_ownership_transfer": true,
+    "cross_backend_partial_reuse": false,
+    "source_artifact_preservation": true
   }
 }

@@ -1,6 +1,10 @@
 package com.mikeyphw.xdm.android.transfer.aria2
 
 import com.mikeyphw.xdm.android.model.BackendCapabilities
+import com.mikeyphw.xdm.android.model.BackendBatteryImpact
+import com.mikeyphw.xdm.android.model.BackendDiagnosticDetail
+import com.mikeyphw.xdm.android.model.BackendMigrationInspection
+import com.mikeyphw.xdm.android.model.BackendMigrationReuse
 import com.mikeyphw.xdm.android.model.BackendOwnership
 import com.mikeyphw.xdm.android.model.BackendReconciliationClassification
 import com.mikeyphw.xdm.android.model.BackendRuntimeIdentity
@@ -14,6 +18,7 @@ import com.mikeyphw.xdm.android.storage.PreparedDestination
 import com.mikeyphw.xdm.android.transfer.Aria2TaskMapping
 import com.mikeyphw.xdm.android.transfer.Aria2TaskMappingStore
 import com.mikeyphw.xdm.android.transfer.BackendPreparation
+import com.mikeyphw.xdm.android.transfer.BackendUnavailableException
 import com.mikeyphw.xdm.android.transfer.BackendReconciliationResult
 import com.mikeyphw.xdm.android.transfer.BackendShutdownResult
 import com.mikeyphw.xdm.android.transfer.BackendSnapshot
@@ -58,10 +63,18 @@ class EmbeddedAria2Backend(
             supportsAuthentication = available,
             supportsProxy = available,
             maxConnectionsPerDownload = if (available) 16 else 0,
+            supportsMetalink = available,
+            supportsExpiringUrls = false,
+            supportsMediaPlaylists = false,
+            supportsMigrationImport = false,
+            batteryImpact = BackendBatteryImpact.High,
+            diagnosticDetail = BackendDiagnosticDetail.Detailed,
         )
     }
 
     override suspend fun prepare(request: DownloadRequest): BackendPreparation {
+        val capability = processManager.probe()
+        if (!capability.isAvailable) throw BackendUnavailableException(capability.summary)
         require(request.destinationUri.substringBefore(':').lowercase() !in setOf("content", "xdm")) {
             "aria2 currently requires an app-private or filesystem staging destination; Android document providers use the native backend"
         }
@@ -221,6 +234,16 @@ class EmbeddedAria2Backend(
         true
     }.getOrDefault(false)
 
+    override suspend fun retireForMigration(taskId: String): Boolean = runCatching {
+        cancel(taskId)
+        controls.remove(taskId)
+        snapshots.remove(taskId)
+        finalizationGates.remove(taskId)
+        mappingStore.deleteByGid(taskId)
+        processManager.rpc().saveSession()
+        true
+    }.getOrDefault(false)
+
     override suspend fun query(taskId: String): BackendSnapshot? {
         val mapping = mappingStore.findByGid(taskId) ?: return snapshots[taskId]
         return try {
@@ -314,6 +337,34 @@ class EmbeddedAria2Backend(
                 backendTaskId = mapping.gid,
             )
         }
+    }
+
+    override suspend fun inspectForMigration(ownership: BackendOwnership): BackendMigrationInspection {
+        val mapping = mappingStore.findByDownload(ownership.downloadId)
+        val status = mapping?.gid?.let { gid -> runCatching { processManager.rpc().tellStatus(gid) }.getOrNull() }
+        val output = mapping?.outputPath?.let(::File) ?: artifactFile(ownership.artifacts.primary)
+        val physicalLength = output?.takeIf(File::isFile)?.length() ?: 0L
+        val completed = status?.completedLength ?: 0L
+        val expected = status?.totalLength?.takeIf { it > 0 } ?: mapping?.expectedLength
+        val reuse = when {
+            completed == 0L && physicalLength == 0L -> BackendMigrationReuse.Empty
+            status?.status == Aria2TaskStatusValue.Complete && expected != null && completed == expected -> BackendMigrationReuse.Complete
+            completed > 0L || physicalLength > 0L -> BackendMigrationReuse.RestartRequired
+            else -> BackendMigrationReuse.Unsafe
+        }
+        return BackendMigrationInspection(
+            backend = BackendType.Aria2,
+            bytesPresent = completed.coerceAtLeast(physicalLength),
+            expectedLength = expected,
+            reuse = reuse,
+            remoteValidationRequired = completed > 0 || physicalLength > 0,
+            message = when (reuse) {
+                BackendMigrationReuse.Empty -> "No aria2 payload bytes need migration."
+                BackendMigrationReuse.Complete -> "aria2 reports a complete output; finish XDM verification instead of switching engines."
+                BackendMigrationReuse.RestartRequired -> "aria2 partial allocation may be sparse, so XDM preserves it and restarts the target backend from zero."
+                else -> "The aria2 task cannot be inspected safely for migration."
+            },
+        )
     }
 
     override suspend fun shutdown(): BackendShutdownResult {

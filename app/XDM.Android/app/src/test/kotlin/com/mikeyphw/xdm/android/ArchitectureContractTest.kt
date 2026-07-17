@@ -82,6 +82,19 @@ class ArchitectureContractTest {
     }
 
     @Test
+    fun phaseSevenStrategyAndMigrationRemainInsideExistingTopography() {
+        val root = androidRoot()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val migration = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/BackendMigrationCoordinator.kt")
+        val contract = File(root, "docs/architecture/PHASE-7-BACKEND-STRATEGY-MIGRATION.md")
+        assertTrue("Phase 7 migration coordinator is missing", migration.isFile)
+        assertTrue("Phase 7 architecture contract is missing", contract.isFile)
+        assertTrue("Settings must expose the backend capability matrix", screens.contains("Backend strategy"))
+        assertTrue("Downloads must expose real migration actions", screens.contains("onMigrateBackend"))
+        assertFalse("Phase 7 must not add a top-level route", AppRoute.entries.any { it.label == "Backends" || it.label == "Migration" })
+    }
+
+    @Test
     fun phaseFourExecutionContractsArePresent() {
         val root = androidRoot()
         assertTrue(File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt").isFile)

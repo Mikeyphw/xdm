@@ -97,4 +97,35 @@ object Migrations {
         }
     }
 
+    val Migration6To7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE downloads ADD COLUMN requestedBackend TEXT NOT NULL DEFAULT 'Automatic'")
+            db.execSQL("ALTER TABLE downloads ADD COLUMN backendSelectionReason TEXT NOT NULL DEFAULT 'DefaultNative'")
+            db.execSQL("ALTER TABLE downloads ADD COLUMN backendSelectionExplanation TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE downloads ADD COLUMN allowBackendFallback INTEGER NOT NULL DEFAULT 1")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS backend_migrations (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    downloadId TEXT NOT NULL,
+                    sourceBackend TEXT NOT NULL,
+                    targetBackend TEXT NOT NULL,
+                    sourceGeneration INTEGER NOT NULL,
+                    targetGeneration INTEGER,
+                    sourceTaskId TEXT,
+                    targetTaskId TEXT,
+                    stage TEXT NOT NULL,
+                    sourceArtifactIdentity TEXT NOT NULL,
+                    targetArtifactIdentity TEXT,
+                    restartFromZero INTEGER NOT NULL,
+                    message TEXT NOT NULL,
+                    createdAtEpochMs INTEGER NOT NULL,
+                    updatedAtEpochMs INTEGER NOT NULL
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX index_backend_migrations_downloadId ON backend_migrations(downloadId)")
+            db.execSQL("CREATE INDEX index_backend_migrations_stage ON backend_migrations(stage)")
+            db.execSQL("CREATE INDEX index_backend_migrations_updatedAtEpochMs ON backend_migrations(updatedAtEpochMs)")
+        }
+    }
+
 }

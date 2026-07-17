@@ -1,6 +1,8 @@
 package com.mikeyphw.xdm.android.persistence
 
 import com.mikeyphw.xdm.android.model.BackendOwnership
+import com.mikeyphw.xdm.android.model.BackendMigrationRecord
+import com.mikeyphw.xdm.android.model.BackendSelectionReason
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
@@ -21,6 +23,7 @@ class DownloadRepository(private val database: AppDatabase) {
     val schedules: Flow<List<ScheduleRule>> = database.scheduleDao().observeAll().map { rows -> rows.map { it.toModel() } }
     val recoveryRecords: Flow<List<RecoveryRecord>> = database.recoveryDao().observeAll().map { rows -> rows.map { it.toModel() } }
     val destinationPermissions: Flow<List<DestinationPermission>> = database.destinationPermissionDao().observeAll().map { rows -> rows.map { it.toModel() } }
+    val backendMigrations: Flow<List<BackendMigrationRecord>> = database.backendMigrationDao().observeAll().map { rows -> rows.map(BackendMigrationEntity::toModel) }
 
     suspend fun countDownloads(): Int = database.downloadDao().count()
     suspend fun countQueues(): Int = database.queueDao().count()
@@ -61,8 +64,52 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun deleteDestinationPermission(uri: String) = database.destinationPermissionDao().delete(uri)
 }
 
-private fun DownloadEntity.toModel() = Download(id, fileName, sourceUrl, destinationUri, DownloadState.valueOf(state), BackendType.valueOf(backend), bytesReceived, totalBytes, speedBytesPerSecond, queueId, priority, createdAtEpochMs, updatedAtEpochMs, errorMessage, userLabel, runCatching { FilenameConflictPolicy.valueOf(conflictPolicy) }.getOrDefault(FilenameConflictPolicy.Rename), mimeType)
-private fun Download.toEntity() = DownloadEntity(id, fileName, sourceUrl, destinationUri, state.name, backend.name, bytesReceived, totalBytes, speedBytesPerSecond, queueId, priority, createdAtEpochMs, updatedAtEpochMs, errorMessage, userLabel, conflictPolicy.name, mimeType)
+private fun DownloadEntity.toModel() = Download(
+    id = id,
+    fileName = fileName,
+    sourceUrl = sourceUrl,
+    destinationUri = destinationUri,
+    state = DownloadState.valueOf(state),
+    backend = BackendType.valueOf(backend),
+    bytesReceived = bytesReceived,
+    totalBytes = totalBytes,
+    speedBytesPerSecond = speedBytesPerSecond,
+    queueId = queueId,
+    priority = priority,
+    createdAtEpochMs = createdAtEpochMs,
+    updatedAtEpochMs = updatedAtEpochMs,
+    errorMessage = errorMessage,
+    userLabel = userLabel,
+    conflictPolicy = runCatching { FilenameConflictPolicy.valueOf(conflictPolicy) }.getOrDefault(FilenameConflictPolicy.Rename),
+    mimeType = mimeType,
+    requestedBackend = runCatching { BackendType.valueOf(requestedBackend) }.getOrDefault(BackendType.Automatic),
+    backendSelectionReason = runCatching { BackendSelectionReason.valueOf(backendSelectionReason) }.getOrDefault(BackendSelectionReason.DefaultNative),
+    backendSelectionExplanation = backendSelectionExplanation,
+    allowBackendFallback = allowBackendFallback,
+)
+private fun Download.toEntity() = DownloadEntity(
+    id = id,
+    fileName = fileName,
+    sourceUrl = sourceUrl,
+    destinationUri = destinationUri,
+    state = state.name,
+    backend = backend.name,
+    requestedBackend = requestedBackend.name,
+    backendSelectionReason = backendSelectionReason.name,
+    backendSelectionExplanation = backendSelectionExplanation,
+    allowBackendFallback = allowBackendFallback,
+    bytesReceived = bytesReceived,
+    totalBytes = totalBytes,
+    speedBytesPerSecond = speedBytesPerSecond,
+    queueId = queueId,
+    priority = priority,
+    createdAtEpochMs = createdAtEpochMs,
+    updatedAtEpochMs = updatedAtEpochMs,
+    errorMessage = errorMessage,
+    userLabel = userLabel,
+    conflictPolicy = conflictPolicy.name,
+    mimeType = mimeType,
+)
 private fun QueueEntity.toModel() = QueueDefinition(id, name, isEnabled, maxConcurrent, createdAtEpochMs)
 private fun QueueDefinition.toEntity() = QueueEntity(id, name, isEnabled, maxConcurrent, createdAtEpochMs)
 private fun ScheduleRuleEntity.toModel() = ScheduleRule(id, queueId, name, enabled, constraintsJson)

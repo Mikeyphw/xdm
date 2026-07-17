@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.mikeyphw.xdm.android.model.BackendType
+import com.mikeyphw.xdm.android.model.BackendCapabilities
+import com.mikeyphw.xdm.android.model.BackendCapabilityRow
+import com.mikeyphw.xdm.android.model.BackendMigrationRecord
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
@@ -52,6 +55,8 @@ data class MainUiState(
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val destinationPermissions: List<DestinationPermission> = emptyList(),
     val aria2Diagnostics: Aria2DiagnosticsUi = Aria2DiagnosticsUi(),
+    val backendCapabilities: List<BackendCapabilityRow> = emptyList(),
+    val backendMigrations: List<BackendMigrationRecord> = emptyList(),
 )
 
 class MainViewModel(
@@ -67,6 +72,7 @@ class MainViewModel(
     private val aria2Capability = MutableStateFlow<Aria2CapabilityReport?>(null)
     private val aria2SmokeMessage = MutableStateFlow<String?>(null)
     private val aria2SmokeRunning = MutableStateFlow(false)
+    private val capabilitySnapshot = MutableStateFlow<Map<BackendType, BackendCapabilities>>(emptyMap())
 
     private data class RepositorySnapshot(
         val downloads: List<Download>,
@@ -74,15 +80,28 @@ class MainViewModel(
         val schedules: List<ScheduleRule>,
         val recovery: List<RecoveryRecord>,
         val destinationPermissions: List<DestinationPermission>,
+        val backendMigrations: List<BackendMigrationRecord>,
     )
 
-    private val repositorySnapshot = combine(
+    private data class RepositoryBaseSnapshot(
+        val downloads: List<Download>,
+        val queues: List<QueueDefinition>,
+        val schedules: List<ScheduleRule>,
+        val recovery: List<RecoveryRecord>,
+        val destinationPermissions: List<DestinationPermission>,
+    )
+
+    private val repositoryBaseSnapshot = combine(
         repository.downloads,
         repository.queues,
         repository.schedules,
         repository.recoveryRecords,
         repository.destinationPermissions,
-    ) { downloads, queues, schedules, recovery, permissions -> RepositorySnapshot(downloads, queues, schedules, recovery, permissions) }
+    ) { downloads, queues, schedules, recovery, permissions -> RepositoryBaseSnapshot(downloads, queues, schedules, recovery, permissions) }
+
+    private val repositorySnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations) { base, migrations ->
+        RepositorySnapshot(base.downloads, base.queues, base.schedules, base.recovery, base.destinationPermissions, migrations)
+    }
 
     private val aria2Diagnostics = combine(
         aria2ProcessManager.state,
@@ -114,13 +133,16 @@ class MainViewModel(
         )
     }
 
+    private val runtimeUi = combine(transferRuntime.summary, aria2Diagnostics, capabilitySnapshot) { active, aria2, capabilities ->
+        Triple(active, aria2, backendSelectionPolicy.capabilityRows(capabilities))
+    }
+
     val uiState: StateFlow<MainUiState> = combine(
         repositorySnapshot,
         preferences.values,
         routeOverride,
-        transferRuntime.summary,
-        aria2Diagnostics,
-    ) { snapshot, prefs, override, active, aria2 ->
+        runtimeUi,
+    ) { snapshot, prefs, override, runtime ->
         MainUiState(
             route = override ?: prefs.lastRoute,
             compactDensity = prefs.compactDensity,
@@ -128,11 +150,13 @@ class MainViewModel(
             queues = snapshot.queues,
             schedules = snapshot.schedules,
             recovery = snapshot.recovery,
-            activeTransfers = active,
+            activeTransfers = runtime.first,
             destinationUri = prefs.destinationUri,
             conflictPolicy = prefs.conflictPolicy,
             destinationPermissions = snapshot.destinationPermissions,
-            aria2Diagnostics = aria2,
+            aria2Diagnostics = runtime.second,
+            backendCapabilities = runtime.third,
+            backendMigrations = snapshot.backendMigrations,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -141,6 +165,7 @@ class MainViewModel(
             if (repository.countQueues() == 0) FakeDataSeeder(repository).seedQueuesOnly()
         }
         refreshAria2Probe()
+        refreshBackendCapabilities()
     }
 
     fun navigate(route: AppRoute) {
@@ -158,11 +183,13 @@ class MainViewModel(
                 val result = aria2ProcessManager.smokeTest()
                 aria2SmokeMessage.value = result.summary
                 aria2Capability.value = aria2ProcessManager.probe()
+                refreshBackendCapabilities()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Throwable) {
                 aria2SmokeMessage.value = "The aria2 probe failed safely before the runtime became ready."
                 aria2Capability.value = aria2ProcessManager.probe()
+                capabilitySnapshot.value = transferRuntime.backendCapabilities()
             } finally {
                 aria2SmokeRunning.value = false
             }
@@ -173,6 +200,13 @@ class MainViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             aria2Capability.value = aria2ProcessManager.probe()
             aria2SmokeMessage.value = null
+            capabilitySnapshot.value = transferRuntime.backendCapabilities()
+        }
+    }
+
+    fun refreshBackendCapabilities() {
+        viewModelScope.launch(Dispatchers.IO) {
+            capabilitySnapshot.value = transferRuntime.backendCapabilities()
         }
     }
 
@@ -180,12 +214,21 @@ class MainViewModel(
         viewModelScope.launch { preferences.setCompactDensity(compact) }
     }
 
-    fun addDownload(url: String, fileName: String, backend: BackendType, destination: String, conflictPolicy: FilenameConflictPolicy) {
+    fun addDownload(
+        url: String,
+        fileName: String,
+        backend: BackendType,
+        destination: String,
+        conflictPolicy: FilenameConflictPolicy,
+        allowFallback: Boolean,
+    ) {
         if (url.isBlank() || destination.isBlank()) return
         val safeName = resolveFileName(url, fileName)
         val now = System.currentTimeMillis()
-        val request = previewRequest(url, safeName, backend, destination, conflictPolicy)
-        val resolvedBackend = backendSelectionPolicy.recommend(request).backend
+        val request = previewRequest(url, safeName, backend, destination, conflictPolicy, allowFallback)
+        val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
+        if (!recommendation.compatible) return
+        val resolvedBackend = recommendation.backend
         val download = Download(
             id = UUID.randomUUID().toString(),
             fileName = safeName,
@@ -201,6 +244,10 @@ class MainViewModel(
             createdAtEpochMs = now,
             updatedAtEpochMs = now,
             conflictPolicy = conflictPolicy,
+            requestedBackend = backend,
+            backendSelectionReason = recommendation.reason,
+            backendSelectionExplanation = recommendation.explanation,
+            allowBackendFallback = allowFallback,
         )
         viewModelScope.launch {
             repository.save(download)
@@ -209,8 +256,38 @@ class MainViewModel(
         }
     }
 
-    fun backendRecommendation(url: String, fileName: String, backend: BackendType, destination: String, conflictPolicy: FilenameConflictPolicy) =
-        backendSelectionPolicy.recommend(previewRequest(url, resolveFileName(url, fileName), backend, destination, conflictPolicy))
+    fun backendRecommendation(
+        url: String,
+        fileName: String,
+        backend: BackendType,
+        destination: String,
+        conflictPolicy: FilenameConflictPolicy,
+        allowFallback: Boolean,
+    ) = backendSelectionPolicy.recommend(
+        previewRequest(url, resolveFileName(url, fileName), backend, destination, conflictPolicy, allowFallback),
+        capabilitySnapshot.value.ifEmpty(::previewCapabilities),
+    )
+
+    fun migrateBackend(download: Download) {
+        val target = if (download.backend == BackendType.Native) BackendType.Aria2 else BackendType.Native
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                transferRuntime.migrateBackend(download.id, target, restartFromZero = download.bytesReceived > 0)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                val current = repository.findDownload(download.id) ?: download
+                repository.save(
+                    current.copy(
+                        errorMessage = "Backend migration could not start: ${error.message ?: error::class.java.simpleName}",
+                        updatedAtEpochMs = System.currentTimeMillis(),
+                    ),
+                )
+            } finally {
+                capabilitySnapshot.value = transferRuntime.backendCapabilities()
+            }
+        }
+    }
 
     fun setDestination(uri: String) {
         viewModelScope.launch { preferences.setDestination(uri) }
@@ -266,13 +343,25 @@ class MainViewModel(
         }
     }
 
-    private fun previewRequest(url: String, fileName: String, backend: BackendType, destination: String, conflictPolicy: FilenameConflictPolicy) = DownloadRequest(
+    private fun previewCapabilities() = mapOf(
+        BackendType.Native to BackendCapabilities(setOf("http", "https"), true, false, true, true),
+    )
+
+    private fun previewRequest(
+        url: String,
+        fileName: String,
+        backend: BackendType,
+        destination: String,
+        conflictPolicy: FilenameConflictPolicy,
+        allowFallback: Boolean,
+    ) = DownloadRequest(
         id = "preview",
         sourceUrl = url.trim(),
         destinationUri = destination,
         fileName = fileName,
         preferredBackend = backend,
         conflictPolicy = conflictPolicy,
+        allowBackendFallback = allowFallback,
     )
 
     private fun sanitizeFileName(value: String): String = value.trim()

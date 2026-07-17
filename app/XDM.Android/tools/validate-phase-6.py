@@ -6,7 +6,6 @@ checks={
  'operational backend':(ROOT/'transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt','rpc.addUri('),
  'paused activation gate':(ROOT/'transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt','pause = true'),
  'durable mapping':(ROOT/'persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/RoomAria2TaskMappingStore.kt','class RoomAria2TaskMappingStore'),
- 'schema v6':(ROOT/'persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt','version = 6'),
  'migration 5 to 6':(ROOT/'persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt','Migration5To6'),
  'event poller':(ROOT/'transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2EventPoller.kt','class Aria2EventPoller'),
  'session recovery':(ROOT/'transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt','refreshRecoveredMapping'),
@@ -23,8 +22,12 @@ for label,(path,needle) in checks.items():
     if needle not in text: errors.append(f'{label} marker missing: {needle}')
     if 'TODO(' in text or 'TODO:' in text: errors.append(f'unfinished TODO in {path.relative_to(ROOT)}')
 manifest=json.loads((ROOT/'PROJECT_MANIFEST.json').read_text())
-if manifest['project']['implemented_phases'][-1]!=6: errors.append('project manifest does not declare Phase 6')
-if manifest['database']['version']!=6: errors.append('project manifest does not declare database v6')
+if 6 not in manifest['project']['implemented_phases']: errors.append('project manifest does not retain Phase 6')
+if manifest['database']['version']<6: errors.append('project manifest database regressed below v6')
+import re
+app_database=(ROOT/'persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt').read_text()
+match=re.search(r'version\s*=\s*(\d+)', app_database)
+if match is None or int(match.group(1))<6: errors.append('application database regressed below v6')
 backend=(ROOT/'transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt').read_text()
 for method in ('pause(taskId:', 'resume(taskId:', 'cancel(taskId:', 'remove(taskId:', 'query(taskId:', 'reconcile(ownership:'):
     if method not in backend: errors.append(f'backend operation missing: {method}')

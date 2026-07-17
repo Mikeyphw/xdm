@@ -1,5 +1,22 @@
 # Changelog
 
+## XDM Android 0.7.0-alpha01 — 2026-07-17
+
+### Added
+
+- Added a live backend capability matrix and explainable automatic selection using protocol, destination, authentication, expiry, mirrors, expected size, metering, and previous host performance.
+- Persisted requested and selected backends, recommendation reasons, explanations, and fallback policy in Room schema v7.
+- Added pre-start-only fallback. Backend failures after task creation never jump engines.
+- Added journaled native-to-aria2 and aria2-to-native migration with transactional ownership generation transfer.
+- Added source task retirement, physical artifact inspection, distinct target preparations, and recovery-required failure states.
+- Added Settings history and compatible migration actions while preserving the Android topography contract.
+
+### Safety
+
+- Cross-backend partial files are never interpreted by another engine.
+- Existing source artifacts are preserved when migration restarts from zero.
+- Unavailable or destination-incompatible migration controls are not presented.
+
 ## 0.6.0-beta01
 
 - Completed the on-device aria2 backend with durable Room-to-GID mappings and every task operation.

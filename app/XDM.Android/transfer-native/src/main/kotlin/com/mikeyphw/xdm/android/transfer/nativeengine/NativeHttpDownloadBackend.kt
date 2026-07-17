@@ -2,6 +2,10 @@ package com.mikeyphw.xdm.android.transfer.nativeengine
 
 import com.mikeyphw.xdm.android.model.BackendArtifactIdentity
 import com.mikeyphw.xdm.android.model.BackendCapabilities
+import com.mikeyphw.xdm.android.model.BackendBatteryImpact
+import com.mikeyphw.xdm.android.model.BackendDiagnosticDetail
+import com.mikeyphw.xdm.android.model.BackendMigrationInspection
+import com.mikeyphw.xdm.android.model.BackendMigrationReuse
 import com.mikeyphw.xdm.android.model.BackendOwnership
 import com.mikeyphw.xdm.android.model.BackendReconciliationClassification
 import com.mikeyphw.xdm.android.model.BackendRuntimeIdentity
@@ -76,6 +80,11 @@ class NativeHttpDownloadBackend(
         supportsAuthentication = true,
         supportsProxy = true,
         maxConnectionsPerDownload = config.defaultConnections,
+        supportsExpiringUrls = true,
+        supportsMediaPlaylists = true,
+        supportsMigrationImport = false,
+        batteryImpact = BackendBatteryImpact.Low,
+        diagnosticDetail = BackendDiagnosticDetail.Forensic,
     )
 
     override suspend fun prepare(request: DownloadRequest): BackendPreparation {
@@ -237,6 +246,53 @@ class NativeHttpDownloadBackend(
             BackendReconciliationClassification.ResumableArtifact,
             "The previous native session ended, but its partial file and checkpoint are safe to adopt.",
             safeToResume = true,
+        )
+    }
+
+    override suspend fun inspectForMigration(ownership: BackendOwnership): BackendMigrationInspection {
+        val partial = ownership.artifacts.primary.toFilePathOrNull()
+            ?: return BackendMigrationInspection(BackendType.Native, 0, null, BackendMigrationReuse.Unsafe, true, "The native partial identity is not a local file.")
+        if (!Files.exists(partial)) {
+            return BackendMigrationInspection(BackendType.Native, 0, null, BackendMigrationReuse.Unsafe, true, "The native partial file is missing.")
+        }
+        val checkpointPath = ownership.artifacts.companions.firstOrNull { it.endsWith(".checkpoint.json") }?.toFilePathOrNull()
+        val checkpoint = checkpointPath?.takeIf(Files::exists)?.let { runCatching { checkpointStore.load(it) }.getOrNull() }
+        if (checkpoint == null) {
+            val length = Files.size(partial)
+            return BackendMigrationInspection(
+                BackendType.Native,
+                length,
+                null,
+                if (length == 0L) BackendMigrationReuse.Empty else BackendMigrationReuse.RestartRequired,
+                length > 0,
+                if (length == 0L) "The native staging file is empty and can switch backends safely." else "The native partial has no trustworthy checkpoint and must be preserved while the target restarts from zero.",
+            )
+        }
+        val completed = checkpoint.segments.sumOf(NativeSegmentCheckpoint::completedBytes)
+        val expected = checkpoint.expectedLength
+        val reuse = when {
+            completed == 0L -> BackendMigrationReuse.Empty
+            expected != null && completed == expected -> BackendMigrationReuse.Complete
+            checkpoint.segments.sortedBy(NativeSegmentCheckpoint::startByte).fold(0L) { cursor, segment ->
+                if (segment.completedBytes == 0L) cursor
+                else if (segment.startByte == cursor) cursor + segment.completedBytes
+                else Long.MIN_VALUE
+            } >= 0L -> BackendMigrationReuse.ContiguousPrefix
+            else -> BackendMigrationReuse.RestartRequired
+        }
+        return BackendMigrationInspection(
+            backend = BackendType.Native,
+            bytesPresent = completed,
+            expectedLength = expected,
+            reuse = reuse,
+            remoteValidationRequired = completed > 0,
+            message = when (reuse) {
+                BackendMigrationReuse.Empty -> "No native payload bytes need migration."
+                BackendMigrationReuse.Complete -> "The native staging file is complete; finish verification instead of switching engines."
+                BackendMigrationReuse.ContiguousPrefix -> "The native checkpoint contains a contiguous prefix. XDM preserves it and restarts the target backend unless a verified importer is available."
+                BackendMigrationReuse.RestartRequired -> "The native checkpoint contains non-contiguous ranges; the target must restart while the original artifacts remain preserved."
+                BackendMigrationReuse.Unsafe -> "The native artifacts cannot be inspected safely."
+            },
         )
     }
 

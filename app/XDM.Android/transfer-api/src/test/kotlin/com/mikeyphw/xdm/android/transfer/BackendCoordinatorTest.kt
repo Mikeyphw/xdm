@@ -6,6 +6,7 @@ import com.mikeyphw.xdm.android.model.BackendOwnership
 import com.mikeyphw.xdm.android.model.BackendOwnershipStatus
 import com.mikeyphw.xdm.android.model.BackendReconciliationClassification
 import com.mikeyphw.xdm.android.model.BackendRuntimeIdentity
+import com.mikeyphw.xdm.android.model.BackendSelectionReason
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.DownloadState
 import java.nio.file.Files
@@ -33,6 +34,89 @@ class BackendCoordinatorTest {
             DownloadRequest("1", "https://a.test/file", "file:///tmp/file", "file", mirrors = listOf("https://b.test/file", "https://c.test/file")),
         )
         assertEquals(BackendType.Aria2, recommendation.backend)
+    }
+
+    @Test
+    fun automaticPolicyFallsBackBeforeTaskCreationWhenAria2IsUnavailable() = runBlocking {
+        val native = FakeBackend("native", BackendType.Native)
+        val aria2 = FakeBackend("aria2", BackendType.Aria2, protocols = emptySet())
+        val coordinator = BackendCoordinator(BackendRegistry(listOf(native, aria2)), InMemoryBackendOwnershipStore())
+        val result = coordinator.add(
+            DownloadRequest(
+                id = "fallback",
+                sourceUrl = "https://example.test/large",
+                destinationUri = Files.createTempFile("xdm-fallback", ".bin").toUri().toString(),
+                fileName = "large",
+                expectedLength = 1024L * 1024L * 1024L,
+            ),
+        )
+        assertEquals(BackendType.Native, result.task.backend)
+        assertEquals(BackendType.Automatic, result.recommendation.requestedBackend)
+        assertEquals(BackendSelectionReason.BackendUnavailableFallback, result.recommendation.reason)
+    }
+
+    @Test
+    fun forcedUnavailableBackendRecommendationIsExplicitlyIncompatible() {
+        val recommendation = BackendSelectionPolicy().recommend(
+            DownloadRequest(
+                id = "forced-preview",
+                sourceUrl = "https://example.test/file",
+                destinationUri = "file:///tmp/file",
+                fileName = "file",
+                preferredBackend = BackendType.Aria2,
+                allowBackendFallback = false,
+            ),
+            mapOf(
+                BackendType.Native to BackendCapabilities(setOf("https"), true, false, true, true),
+                BackendType.Aria2 to BackendCapabilities(emptySet(), false, false, false, false),
+            ),
+        )
+
+        assertEquals(BackendType.Aria2, recommendation.backend)
+        assertEquals(BackendSelectionReason.BackendUnavailable, recommendation.reason)
+        assertTrue(!recommendation.compatible)
+        assertTrue(recommendation.compatibilityIssue?.contains("unavailable", ignoreCase = true) == true)
+    }
+
+    @Test
+    fun forcedUnavailableBackendDoesNotFallbackWhenPolicyDisallowsIt() = runBlocking {
+        val native = FakeBackend("native", BackendType.Native)
+        val aria2 = FakeBackend("aria2", BackendType.Aria2, protocols = emptySet())
+        val coordinator = BackendCoordinator(BackendRegistry(listOf(native, aria2)), InMemoryBackendOwnershipStore())
+        val result = runCatching {
+            coordinator.add(
+                DownloadRequest(
+                    id = "forced",
+                    sourceUrl = "https://example.test/file",
+                    destinationUri = Files.createTempFile("xdm-forced", ".bin").toUri().toString(),
+                    fileName = "file",
+                    preferredBackend = BackendType.Aria2,
+                    allowBackendFallback = false,
+                ),
+            )
+        }
+        assertTrue(result.exceptionOrNull() is BackendUnavailableException || result.exceptionOrNull() is BackendCapabilityException)
+        assertTrue(native.lifecycleEvents.isEmpty())
+    }
+
+    @Test
+    fun backendFailureAfterTaskCreationNeverFallsBack() = runBlocking {
+        val aria2 = FakeBackend("aria2", BackendType.Aria2, failAddUnavailable = true)
+        val native = FakeBackend("native", BackendType.Native)
+        val coordinator = BackendCoordinator(BackendRegistry(listOf(native, aria2)), InMemoryBackendOwnershipStore())
+        val result = runCatching {
+            coordinator.add(
+                DownloadRequest(
+                    id = "post-start-failure",
+                    sourceUrl = "https://example.test/large",
+                    destinationUri = Files.createTempFile("xdm-post-start", ".bin").toUri().toString(),
+                    fileName = "large",
+                    expectedLength = 1024L * 1024L * 1024L,
+                ),
+            )
+        }
+        assertTrue(result.isFailure)
+        assertTrue(native.lifecycleEvents.isEmpty())
     }
 
     @Test
@@ -170,16 +254,18 @@ private class FakeBackend(
     override val backendId: String,
     private val type: BackendType,
     private val failAdd: Boolean = false,
+    private val failAddUnavailable: Boolean = false,
     sessionId: String = "session",
     private val reconcileAsResumable: Boolean = false,
     private val requiresActivation: Boolean = false,
+    private val protocols: Set<String> = setOf("https"),
 ) : DownloadBackend {
     val detachedTaskIds = mutableListOf<String>()
     val lifecycleEvents = mutableListOf<String>()
     override val runtimeIdentity = BackendRuntimeIdentity("instance-$backendId", sessionId)
     private val state = MutableStateFlow(BackendSnapshot("task", DownloadState.Queued, 0, null, 0))
 
-    override suspend fun capabilities() = BackendCapabilities(setOf("https"), true, false, true, false)
+    override suspend fun capabilities() = BackendCapabilities(protocols, true, false, true, false)
 
     override suspend fun prepare(request: DownloadRequest): BackendPreparation {
         val destinationKey = DestinationIdentity.key(request.destinationUri, request.fileName)
@@ -195,6 +281,7 @@ private class FakeBackend(
 
     override suspend fun add(request: DownloadRequest, preparation: BackendPreparation): BackendTask {
         if (failAdd) error("boom")
+        if (failAddUnavailable) throw BackendUnavailableException("runtime disappeared after preparation")
         lifecycleEvents += "add"
         return BackendTask("task-${request.id}", type, requiresActivation)
     }

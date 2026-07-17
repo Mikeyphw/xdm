@@ -38,8 +38,36 @@ enum class BackendSelectionReason {
     SafRequiresNative,
     SelectiveRepairRequiresNative,
     MirrorWorkloadPrefersAria2,
+    ExpiringRequestPrefersNative,
+    AuthenticatedRequestPrefersNative,
+    MediaWorkflowRequiresNative,
+    LargeFilePrefersAria2,
+    HostHistoryPrefersNative,
+    HostHistoryPrefersAria2,
+    BackendUnavailable,
+    BackendIncompatible,
+    BackendUnavailableFallback,
+    BackendIncompatibleFallback,
+    MigrationRequested,
     DefaultNative,
 }
+
+enum class BackendBatteryImpact { Low, Moderate, High }
+enum class BackendDiagnosticDetail { Basic, Detailed, Forensic }
+
+enum class BackendMigrationStage {
+    Requested,
+    SourcePaused,
+    SourceInspected,
+    TargetPrepared,
+    OwnershipTransferred,
+    TargetAttached,
+    Completed,
+    Failed,
+    RecoveryRequired,
+}
+
+enum class BackendMigrationReuse { Empty, Complete, ContiguousPrefix, RestartRequired, Unsafe }
 
 enum class BackendOwnershipStatus {
     Claimed,
@@ -107,6 +135,10 @@ data class Download(
     val userLabel: String? = null,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val mimeType: String? = null,
+    val requestedBackend: BackendType = BackendType.Automatic,
+    val backendSelectionReason: BackendSelectionReason = BackendSelectionReason.DefaultNative,
+    val backendSelectionExplanation: String = "",
+    val allowBackendFallback: Boolean = true,
 ) {
     val progressFraction: Float
         get() = totalBytes?.takeIf { it > 0 }?.let { (bytesReceived.toDouble() / it).coerceIn(0.0, 1.0).toFloat() } ?: 0f
@@ -146,12 +178,68 @@ data class BackendCapabilities(
     val supportsAuthentication: Boolean = true,
     val supportsProxy: Boolean = true,
     val maxConnectionsPerDownload: Int = 1,
+    val supportsMetalink: Boolean = false,
+    val supportsExpiringUrls: Boolean = true,
+    val supportsMediaPlaylists: Boolean = false,
+    val supportsMigrationImport: Boolean = false,
+    val batteryImpact: BackendBatteryImpact = BackendBatteryImpact.Moderate,
+    val diagnosticDetail: BackendDiagnosticDetail = BackendDiagnosticDetail.Detailed,
 )
 
 data class BackendRecommendation(
     val backend: BackendType,
     val reason: BackendSelectionReason,
     val explanation: String,
+    val requestedBackend: BackendType = BackendType.Automatic,
+    val fallbackBackend: BackendType? = null,
+    val fallbackAllowed: Boolean = true,
+    val factors: List<String> = emptyList(),
+    val compatible: Boolean = true,
+    val compatibilityIssue: String? = null,
+)
+
+data class BackendCapabilityRow(
+    val backend: BackendType,
+    val available: Boolean,
+    val protocols: Set<String>,
+    val segmentation: Boolean,
+    val mirrors: Boolean,
+    val metalink: Boolean,
+    val proxy: Boolean,
+    val authentication: Boolean,
+    val saf: Boolean,
+    val selectiveRepair: Boolean,
+    val media: Boolean,
+    val diagnosticDetail: BackendDiagnosticDetail,
+    val batteryImpact: BackendBatteryImpact,
+    val summary: String,
+)
+
+data class BackendMigrationInspection(
+    val backend: BackendType,
+    val bytesPresent: Long,
+    val expectedLength: Long?,
+    val reuse: BackendMigrationReuse,
+    val remoteValidationRequired: Boolean,
+    val message: String,
+)
+
+data class BackendMigrationRecord(
+    val id: String,
+    val downloadId: String,
+    val sourceBackend: BackendType,
+    val targetBackend: BackendType,
+    val sourceGeneration: Long,
+    val targetGeneration: Long? = null,
+    val sourceTaskId: String? = null,
+    val targetTaskId: String? = null,
+    val stage: BackendMigrationStage,
+    val sourceArtifactIdentity: String,
+    val targetArtifactIdentity: String? = null,
+    val restartFromZero: Boolean,
+    val message: String,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
 )
 
 data class BackendRuntimeIdentity(

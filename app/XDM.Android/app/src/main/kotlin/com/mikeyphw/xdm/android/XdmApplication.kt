@@ -6,6 +6,7 @@ import com.mikeyphw.xdm.android.persistence.AppDatabase
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.persistence.Migrations
 import com.mikeyphw.xdm.android.persistence.RoomBackendOwnershipStore
+import com.mikeyphw.xdm.android.persistence.RoomBackendMigrationStore
 import com.mikeyphw.xdm.android.persistence.RoomAria2TaskMappingStore
 import com.mikeyphw.xdm.android.scheduler.RepositoryTransferDownloadStore
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
@@ -43,10 +44,12 @@ class XdmApplication : Application(), TransferRuntimeProvider {
                 Migrations.Migration3To4,
                 Migrations.Migration4To5,
                 Migrations.Migration5To6,
+                Migrations.Migration6To7,
             )
             .build()
         val repository = DownloadRepository(database)
         val ownershipStore = RoomBackendOwnershipStore(database)
+        val migrationStore = RoomBackendMigrationStore(database)
         val aria2MappingStore = RoomAria2TaskMappingStore(database)
         val destinationWriter = AndroidDestinationWriter(this)
         val runtimeIdentities = BackendRuntimeIdentityStore(this)
@@ -59,6 +62,7 @@ class XdmApplication : Application(), TransferRuntimeProvider {
         transferRuntime = TransferExecutionRuntime(
             store = RepositoryTransferDownloadStore(repository),
             ownershipStore = ownershipStore,
+            migrationStore = migrationStore,
             backends = listOf(
                 NativeHttpDownloadBackend(
                     destinationWriter = destinationWriter,

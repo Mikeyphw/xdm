@@ -138,7 +138,16 @@ private fun AppScaffold(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when (state.route) {
-                AppRoute.Downloads -> DownloadsScreen(state.downloads, state.compactDensity, state.activeTransfers, viewModel::togglePause, viewModel::pauseAll, viewModel::resumeAll)
+                AppRoute.Downloads -> DownloadsScreen(
+                    state.downloads,
+                    state.compactDensity,
+                    state.activeTransfers,
+                    state.backendCapabilities,
+                    viewModel::togglePause,
+                    viewModel::migrateBackend,
+                    viewModel::pauseAll,
+                    viewModel::resumeAll,
+                )
                 AppRoute.Add -> AddDownloadScreen(
                     destinationUri = state.destinationUri,
                     conflictPolicy = state.conflictPolicy,
@@ -146,9 +155,9 @@ private fun AppScaffold(
                     onDestinationChanged = viewModel::setDestination,
                     onSafDestinationSelected = viewModel::registerSafDestination,
                     onConflictPolicyChanged = viewModel::setConflictPolicy,
-                    onAdd = { url, name, backend, destination, conflictPolicy ->
+                    onAdd = { url, name, backend, destination, conflictPolicy, allowFallback ->
                         requestNotifications()
-                        viewModel.addDownload(url, name, backend, destination, conflictPolicy)
+                        viewModel.addDownload(url, name, backend, destination, conflictPolicy, allowFallback)
                     },
                     recommend = viewModel::backendRecommendation,
                 )
@@ -157,7 +166,12 @@ private fun AppScaffold(
                 AppRoute.Media -> EmptyFeatureScreen("Media inbox", "No media streams detected yet.")
                 AppRoute.Recovery -> RecoveryScreen(state.recovery)
                 AppRoute.Diagnostics -> DiagnosticsScreen(state, viewModel::runAria2SmokeTest)
-                AppRoute.Settings -> SettingsScreen(state.compactDensity, viewModel::setCompactDensity)
+                AppRoute.Settings -> SettingsScreen(
+                    state.compactDensity,
+                    state.backendCapabilities,
+                    state.backendMigrations,
+                    viewModel::setCompactDensity,
+                )
             }
         }
     }

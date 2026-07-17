@@ -223,6 +223,61 @@ class AppDatabaseMigrationTest {
         context.deleteDatabase(name)
     }
 
+    @Test
+    fun migrate6To7AddsBackendStrategyAndMigrationJournal() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val name = "migration-v7-${System.nanoTime()}.db"
+        val seed = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(name)
+                .callback(object : SupportSQLiteOpenHelper.Callback(6) {
+                    override fun onCreate(db: SupportSQLiteDatabase) {
+                        db.execSQL(
+                            """CREATE TABLE downloads (
+                                id TEXT NOT NULL PRIMARY KEY, fileName TEXT NOT NULL, sourceUrl TEXT NOT NULL,
+                                destinationUri TEXT NOT NULL, state TEXT NOT NULL, backend TEXT NOT NULL,
+                                bytesReceived INTEGER NOT NULL, totalBytes INTEGER, speedBytesPerSecond INTEGER NOT NULL,
+                                queueId TEXT, priority INTEGER NOT NULL, createdAtEpochMs INTEGER NOT NULL,
+                                updatedAtEpochMs INTEGER NOT NULL, errorMessage TEXT, userLabel TEXT,
+                                conflictPolicy TEXT NOT NULL DEFAULT 'Rename', mimeType TEXT
+                            )""".trimIndent(),
+                        )
+                    }
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                })
+                .build(),
+        )
+        seed.writableDatabase
+        seed.close()
+
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(name)
+                .callback(object : SupportSQLiteOpenHelper.Callback(7) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
+                        Migrations.Migration6To7.migrate(db)
+                    }
+                })
+                .build(),
+        )
+        helper.writableDatabase.query("PRAGMA table_info(downloads)").use { cursor ->
+            val nameColumn = cursor.getColumnIndexOrThrow("name")
+            val columns = mutableSetOf<String>()
+            while (cursor.moveToNext()) columns += cursor.getString(nameColumn)
+            assertTrue("Migration must preserve requested backend", "requestedBackend" in columns)
+            assertTrue("Migration must persist backend explanations", "backendSelectionExplanation" in columns)
+            assertTrue("Migration must persist fallback policy", "allowBackendFallback" in columns)
+        }
+        helper.writableDatabase.query(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='backend_migrations'",
+        ).use { cursor ->
+            assertTrue("Migration must create the backend migration journal", cursor.moveToFirst())
+        }
+        helper.close()
+        context.deleteDatabase(name)
+    }
+
     private fun createVersionOne(context: Context, name: String): SupportSQLiteOpenHelper {
         val helper = FrameworkSQLiteOpenHelperFactory().create(
             SupportSQLiteOpenHelper.Configuration.builder(context)

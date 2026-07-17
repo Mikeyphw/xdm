@@ -2,6 +2,11 @@ package com.mikeyphw.xdm.android.transfer
 
 import com.mikeyphw.xdm.android.model.BackendArtifactIdentity
 import com.mikeyphw.xdm.android.model.BackendCapabilities
+import com.mikeyphw.xdm.android.model.BackendCapabilityRow
+import com.mikeyphw.xdm.android.model.BackendMigrationInspection
+import com.mikeyphw.xdm.android.model.BackendMigrationReuse
+import com.mikeyphw.xdm.android.model.BackendBatteryImpact
+import com.mikeyphw.xdm.android.model.BackendDiagnosticDetail
 import com.mikeyphw.xdm.android.model.BackendOwnership
 import com.mikeyphw.xdm.android.model.BackendOwnershipStatus
 import com.mikeyphw.xdm.android.model.BackendRecommendation
@@ -30,6 +35,12 @@ data class DownloadRequest(
     val requireSelectiveRepair: Boolean = false,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val mimeType: String? = null,
+    val allowBackendFallback: Boolean = true,
+    val isExpiringUrl: Boolean = false,
+    val isMediaRequest: Boolean = false,
+    val networkMetered: Boolean = false,
+    val previousNativeThroughputBytesPerSecond: Long? = null,
+    val previousAria2ThroughputBytesPerSecond: Long? = null,
 )
 
 data class BackendTask(
@@ -96,9 +107,22 @@ interface DownloadBackend {
     suspend fun remove(taskId: String)
     /** Stops and forgets an in-process task while preserving its backend artifacts for recovery. */
     suspend fun detach(taskId: String): Boolean
+    /** Permanently retires backend control of a task while preserving its physical artifacts for migration recovery. */
+    suspend fun retireForMigration(taskId: String): Boolean = runCatching {
+        cancel(taskId)
+        detach(taskId)
+    }.getOrDefault(false)
     suspend fun query(taskId: String): BackendSnapshot?
     fun observe(taskId: String): Flow<BackendSnapshot>
     suspend fun reconcile(ownership: BackendOwnership): BackendReconciliationResult
+    suspend fun inspectForMigration(ownership: BackendOwnership): BackendMigrationInspection = BackendMigrationInspection(
+        backend = ownership.backend,
+        bytesPresent = 0,
+        expectedLength = null,
+        reuse = BackendMigrationReuse.Unsafe,
+        remoteValidationRequired = true,
+        message = "This backend does not expose a safe migration inspection.",
+    )
     suspend fun shutdown(): BackendShutdownResult
 }
 
@@ -126,6 +150,15 @@ interface BackendOwnershipStore {
     ): OwnershipClaimResult
 
     suspend fun attachTask(downloadId: String, generation: Long, backendTaskId: String): BackendOwnership
+    suspend fun transfer(
+        downloadId: String,
+        expectedGeneration: Long,
+        sourceBackend: BackendType,
+        destinationKey: String,
+        artifacts: BackendArtifactIdentity,
+        targetBackend: BackendType,
+        runtimeIdentity: BackendRuntimeIdentity,
+    ): OwnershipClaimResult
     suspend fun markReconciling(downloadId: String, generation: Long): BackendOwnership
     suspend fun recordReconciliation(
         downloadId: String,
@@ -229,6 +262,42 @@ class InMemoryBackendOwnershipStore(
         updated
     }
 
+    override suspend fun transfer(
+        downloadId: String,
+        expectedGeneration: Long,
+        sourceBackend: BackendType,
+        destinationKey: String,
+        artifacts: BackendArtifactIdentity,
+        targetBackend: BackendType,
+        runtimeIdentity: BackendRuntimeIdentity,
+    ): OwnershipClaimResult = synchronized(this) {
+        val existing = byDownload[downloadId] ?: error("No ownership exists for $downloadId")
+        val transferable = existing.generation == expectedGeneration &&
+            existing.backend == sourceBackend &&
+            existing.destinationKey == destinationKey &&
+            existing.status in setOf(BackendOwnershipStatus.Reconciled, BackendOwnershipStatus.Quarantined)
+        if (!transferable) return@synchronized OwnershipClaimResult.Conflict(existing)
+        byDestination[destinationKey]?.let { destinationOwner ->
+            if (destinationOwner.downloadId != downloadId) return@synchronized OwnershipClaimResult.Conflict(destinationOwner)
+        }
+        val now = clock()
+        val transferred = existing.copy(
+            artifacts = artifacts,
+            backend = targetBackend,
+            generation = nextGeneration++,
+            status = BackendOwnershipStatus.Claimed,
+            runtimeIdentity = runtimeIdentity,
+            backendTaskId = null,
+            reconciliation = BackendReconciliationClassification.Pending,
+            reconciliationMessage = "Ownership transferred from $sourceBackend to $targetBackend; target task is not attached yet.",
+            reconciledAtEpochMs = null,
+            claimedAtEpochMs = now,
+            synchronizedAtEpochMs = now,
+        )
+        put(transferred)
+        OwnershipClaimResult.Claimed(transferred)
+    }
+
     override suspend fun markReconciling(downloadId: String, generation: Long): BackendOwnership = synchronized(this) {
         val existing = requireOwnership(downloadId, generation)
         val updated = existing.copy(status = BackendOwnershipStatus.Reconciling, synchronizedAtEpochMs = clock())
@@ -309,6 +378,22 @@ class BackendRegistry(backends: Collection<DownloadBackend>) {
     fun require(type: BackendType): DownloadBackend = requireNotNull(byType[type]) { "Backend $type is unavailable" }
     fun find(type: BackendType): DownloadBackend? = byType[type]
     fun availableTypes(): Set<BackendType> = byType.keys
+
+    suspend fun capabilitySnapshot(): Map<BackendType, BackendCapabilities> = byType.mapValues { (_, backend) ->
+        runCatching { backend.capabilities() }.getOrElse {
+            BackendCapabilities(
+                protocols = emptySet(),
+                supportsSegmentation = false,
+                supportsMirrors = false,
+                supportsSelectiveRepair = false,
+                supportsSafDestination = false,
+                supportsAuthentication = false,
+                supportsProxy = false,
+                maxConnectionsPerDownload = 0,
+                diagnosticDetail = BackendDiagnosticDetail.Basic,
+            )
+        }
+    }
 }
 
 private fun DownloadBackend.backendType(): BackendType = when (backendId.lowercase(Locale.ROOT)) {
@@ -317,26 +402,272 @@ private fun DownloadBackend.backendType(): BackendType = when (backendId.lowerca
     else -> error("Unknown backend id $backendId")
 }
 
+class BackendUnavailableException(message: String, cause: Throwable? = null) : IllegalStateException(message, cause)
+private class BackendPreparationUnavailableException(message: String, cause: Throwable) : IllegalStateException(message, cause)
+
 class BackendSelectionPolicy {
-    fun recommend(request: DownloadRequest): BackendRecommendation {
-        if (request.preferredBackend != BackendType.Automatic) {
-            return BackendRecommendation(request.preferredBackend, BackendSelectionReason.UserForced, "Selected explicitly for this download.")
-        }
+    fun recommend(request: DownloadRequest): BackendRecommendation = recommend(
+        request,
+        mapOf(
+            BackendType.Native to defaultNativeCapabilities(),
+            BackendType.Aria2 to defaultAria2Capabilities(),
+        ),
+    )
+
+    fun recommend(
+        request: DownloadRequest,
+        capabilities: Map<BackendType, BackendCapabilities>,
+    ): BackendRecommendation = rankedRecommendations(request, capabilities).first()
+
+    fun rankedRecommendations(
+        request: DownloadRequest,
+        capabilities: Map<BackendType, BackendCapabilities>,
+    ): List<BackendRecommendation> {
+        val requested = request.preferredBackend
+        val factors = mutableListOf<String>()
         val scheme = runCatching { URI(request.sourceUrl).scheme?.lowercase(Locale.ROOT) }.getOrNull().orEmpty()
         val destinationScheme = runCatching { URI(request.destinationUri).scheme?.lowercase(Locale.ROOT) }.getOrNull().orEmpty()
-        if (destinationScheme in setOf("content", "xdm")) {
-            return BackendRecommendation(BackendType.Native, BackendSelectionReason.SafRequiresNative, "Android document destinations require the native storage bridge.")
+        val preferred = when {
+            requested != BackendType.Automatic -> requested
+            destinationScheme in setOf("content", "xdm") -> {
+                factors += "Android document destination"
+                BackendType.Native
+            }
+            request.requireSelectiveRepair -> {
+                factors += "Selective repair required"
+                BackendType.Native
+            }
+            request.isMediaRequest || scheme in setOf("m3u8", "mpd") || request.sourceUrl.endsWith(".m3u8", true) || request.sourceUrl.endsWith(".mpd", true) -> {
+                factors += "Media playlist workflow"
+                BackendType.Native
+            }
+            request.isExpiringUrl -> {
+                factors += "Expiring source URL"
+                BackendType.Native
+            }
+            request.headers.isNotEmpty() -> {
+                factors += "Authenticated or browser-captured request"
+                BackendType.Native
+            }
+            scheme in setOf("ftp", "sftp", "magnet") || request.sourceUrl.endsWith(".torrent", true) || request.sourceUrl.endsWith(".meta4", true) || request.sourceUrl.endsWith(".metalink", true) -> {
+                factors += "aria2-optimized protocol"
+                BackendType.Aria2
+            }
+            request.mirrors.size > 1 -> {
+                factors += "Multiple mirrors"
+                BackendType.Aria2
+            }
+            (request.expectedLength ?: 0L) >= LARGE_FILE_THRESHOLD && !request.networkMetered -> {
+                factors += "Large unmetered transfer"
+                BackendType.Aria2
+            }
+            hostHistoryPrefersAria2(request) -> {
+                factors += "Previous aria2 performance for this host"
+                BackendType.Aria2
+            }
+            hostHistoryPrefersNative(request) -> {
+                factors += "Previous native performance for this host"
+                BackendType.Native
+            }
+            else -> BackendType.Native
         }
-        if (request.requireSelectiveRepair) {
-            return BackendRecommendation(BackendType.Native, BackendSelectionReason.SelectiveRepairRequiresNative, "Selective range repair requires native checkpoints.")
+
+        val alternate = if (preferred == BackendType.Native) BackendType.Aria2 else BackendType.Native
+        val preferredCapability = capabilities[preferred]
+        val alternateCapability = capabilities[alternate]
+        val preferredIssue = compatibilityIssue(request, preferredCapability)
+        val alternateIssue = compatibilityIssue(request, alternateCapability)
+        val preferredCompatible = preferredIssue == null
+        val alternateCompatible = alternateIssue == null
+        val fallbackAllowed = request.allowBackendFallback && alternateCompatible
+
+        val primary = if (preferredCompatible) {
+            recommendationFor(request, preferred, factors, fallbackAllowed.then(alternate))
+        } else if (fallbackAllowed) {
+            BackendRecommendation(
+                backend = alternate,
+                reason = if (preferredCapability == null || preferredCapability.protocols.isEmpty()) {
+                    BackendSelectionReason.BackendUnavailableFallback
+                } else {
+                    BackendSelectionReason.BackendIncompatibleFallback
+                },
+                explanation = "${preferred.displayName()} cannot safely start this transfer, so XDM will use ${alternate.displayName()} before any backend task owns the destination.",
+                requestedBackend = requested,
+                fallbackBackend = null,
+                fallbackAllowed = true,
+                factors = factors + "Fallback before task creation",
+            )
+        } else {
+            BackendRecommendation(
+                backend = preferred,
+                reason = if (preferredCapability == null || preferredCapability.protocols.isEmpty()) {
+                    BackendSelectionReason.BackendUnavailable
+                } else {
+                    BackendSelectionReason.BackendIncompatible
+                },
+                explanation = "${preferred.displayName()} cannot safely start this transfer: ${preferredIssue}.",
+                requestedBackend = requested,
+                fallbackBackend = null,
+                fallbackAllowed = false,
+                factors = factors,
+                compatible = false,
+                compatibilityIssue = preferredIssue,
+            )
         }
-        if (scheme in setOf("ftp", "sftp", "magnet") || request.sourceUrl.endsWith(".torrent", ignoreCase = true) || request.sourceUrl.endsWith(".meta4", ignoreCase = true)) {
-            return BackendRecommendation(BackendType.Aria2, BackendSelectionReason.Aria2OptimizedProtocol, "aria2 has the stronger protocol implementation for this source.")
+
+        val recommendations = mutableListOf(primary)
+        if (primary.backend == preferred && fallbackAllowed) {
+            recommendations += BackendRecommendation(
+                backend = alternate,
+                reason = BackendSelectionReason.BackendUnavailableFallback,
+                explanation = "Use ${alternate.displayName()} only if ${preferred.displayName()} is unavailable before a task is created.",
+                requestedBackend = requested,
+                fallbackAllowed = false,
+                factors = factors + "Pre-start fallback only",
+            )
         }
-        if (request.mirrors.size > 1) {
-            return BackendRecommendation(BackendType.Aria2, BackendSelectionReason.MirrorWorkloadPrefersAria2, "Multiple mirrors can be scheduled efficiently by aria2.")
+        return recommendations.distinctBy(BackendRecommendation::backend)
+    }
+
+    fun compatibilityIssue(request: DownloadRequest, capability: BackendCapabilities?): String? {
+        capability ?: return "Backend is not registered"
+        val scheme = runCatching { URI(request.sourceUrl).scheme?.lowercase(Locale.ROOT) }.getOrNull()
+            ?: return "Source URL has no supported scheme"
+        if (scheme !in capability.protocols.map { it.lowercase(Locale.ROOT) }) {
+            return if (capability.protocols.isEmpty()) "Backend runtime is unavailable" else "Backend does not support $scheme"
         }
-        return BackendRecommendation(BackendType.Native, BackendSelectionReason.DefaultNative, "Native HTTP is the safest default for Android-integrated downloads.")
+        val destinationScheme = runCatching { URI(request.destinationUri).scheme?.lowercase(Locale.ROOT) }.getOrNull()
+        if (destinationScheme in setOf("content", "xdm") && !capability.supportsSafDestination) return "Backend cannot write Android document destinations"
+        if (request.requireSelectiveRepair && !capability.supportsSelectiveRepair) return "Backend does not support selective repair"
+        if (request.isMediaRequest && !capability.supportsMediaPlaylists) return "Backend does not support this media workflow"
+        if (request.headers.isNotEmpty() && !capability.supportsAuthentication) return "Backend cannot preserve authenticated request headers"
+        if (request.isExpiringUrl && !capability.supportsExpiringUrls) return "Backend is unsafe for expiring URLs"
+        return null
+    }
+
+    fun capabilityRows(capabilities: Map<BackendType, BackendCapabilities>): List<BackendCapabilityRow> =
+        listOf(BackendType.Native, BackendType.Aria2).map { type ->
+            val capability = capabilities[type]
+            BackendCapabilityRow(
+                backend = type,
+                available = capability != null && capability.protocols.isNotEmpty(),
+                protocols = capability?.protocols.orEmpty(),
+                segmentation = capability?.supportsSegmentation == true,
+                mirrors = capability?.supportsMirrors == true,
+                metalink = capability?.supportsMetalink == true,
+                proxy = capability?.supportsProxy == true,
+                authentication = capability?.supportsAuthentication == true,
+                saf = capability?.supportsSafDestination == true,
+                selectiveRepair = capability?.supportsSelectiveRepair == true,
+                media = capability?.supportsMediaPlaylists == true,
+                diagnosticDetail = capability?.diagnosticDetail ?: BackendDiagnosticDetail.Basic,
+                batteryImpact = capability?.batteryImpact ?: BackendBatteryImpact.Moderate,
+                summary = when {
+                    capability == null || capability.protocols.isEmpty() -> "Unavailable in this build or runtime."
+                    type == BackendType.Native -> "Android-integrated HTTP engine with SAF, strict resume validation and selective repair."
+                    else -> "Embedded multi-protocol engine for mirrors, Metalink and aggressive source splitting."
+                },
+            )
+        }
+
+    private fun recommendationFor(
+        request: DownloadRequest,
+        backend: BackendType,
+        factors: List<String>,
+        fallback: BackendType?,
+    ): BackendRecommendation {
+        val reason = when {
+            request.preferredBackend != BackendType.Automatic -> BackendSelectionReason.UserForced
+            backend == BackendType.Native && request.destinationUri.substringBefore(':').lowercase() in setOf("content", "xdm") -> BackendSelectionReason.SafRequiresNative
+            backend == BackendType.Native && request.requireSelectiveRepair -> BackendSelectionReason.SelectiveRepairRequiresNative
+            backend == BackendType.Native && request.isMediaRequest -> BackendSelectionReason.MediaWorkflowRequiresNative
+            backend == BackendType.Native && request.isExpiringUrl -> BackendSelectionReason.ExpiringRequestPrefersNative
+            backend == BackendType.Native && request.headers.isNotEmpty() -> BackendSelectionReason.AuthenticatedRequestPrefersNative
+            backend == BackendType.Aria2 && request.mirrors.size > 1 -> BackendSelectionReason.MirrorWorkloadPrefersAria2
+            backend == BackendType.Aria2 && (request.expectedLength ?: 0L) >= LARGE_FILE_THRESHOLD -> BackendSelectionReason.LargeFilePrefersAria2
+            backend == BackendType.Aria2 && hostHistoryPrefersAria2(request) -> BackendSelectionReason.HostHistoryPrefersAria2
+            backend == BackendType.Native && hostHistoryPrefersNative(request) -> BackendSelectionReason.HostHistoryPrefersNative
+            backend == BackendType.Aria2 -> BackendSelectionReason.Aria2OptimizedProtocol
+            else -> BackendSelectionReason.DefaultNative
+        }
+        val explanation = when (reason) {
+            BackendSelectionReason.UserForced -> "${backend.displayName()} was selected explicitly for this download."
+            BackendSelectionReason.SafRequiresNative -> "Android document destinations require XDM Native's storage bridge."
+            BackendSelectionReason.SelectiveRepairRequiresNative -> "Selective range repair requires XDM Native checkpoints."
+            BackendSelectionReason.MediaWorkflowRequiresNative -> "HLS, DASH and browser media requests stay in the native diagnostic pipeline."
+            BackendSelectionReason.ExpiringRequestPrefersNative -> "The native engine is preferred for expiring URLs and strict request replay."
+            BackendSelectionReason.AuthenticatedRequestPrefersNative -> "The native engine preserves captured headers and authenticated request details."
+            BackendSelectionReason.MirrorWorkloadPrefersAria2 -> "aria2 can schedule multiple mirrors efficiently."
+            BackendSelectionReason.LargeFilePrefersAria2 -> "aria2 is preferred for this large unmetered transfer."
+            BackendSelectionReason.HostHistoryPrefersAria2 -> "Recent host performance favors aria2."
+            BackendSelectionReason.HostHistoryPrefersNative -> "Recent host performance favors XDM Native."
+            BackendSelectionReason.Aria2OptimizedProtocol -> "aria2 has the stronger implementation for this protocol."
+            else -> "XDM Native is the safest Android-integrated default."
+        }
+        return BackendRecommendation(
+            backend = backend,
+            reason = reason,
+            explanation = explanation,
+            requestedBackend = request.preferredBackend,
+            fallbackBackend = fallback,
+            fallbackAllowed = request.allowBackendFallback && fallback != null,
+            factors = factors,
+        )
+    }
+
+    private fun hostHistoryPrefersAria2(request: DownloadRequest): Boolean {
+        val native = request.previousNativeThroughputBytesPerSecond ?: return false
+        val aria2 = request.previousAria2ThroughputBytesPerSecond ?: return false
+        return aria2 > native * 12 / 10
+    }
+
+    private fun hostHistoryPrefersNative(request: DownloadRequest): Boolean {
+        val native = request.previousNativeThroughputBytesPerSecond ?: return false
+        val aria2 = request.previousAria2ThroughputBytesPerSecond ?: return false
+        return native > aria2 * 12 / 10
+    }
+
+    private fun Boolean.then(type: BackendType): BackendType? = if (this) type else null
+
+    private fun BackendType.displayName(): String = when (this) {
+        BackendType.Native -> "XDM Native"
+        BackendType.Aria2 -> "aria2"
+        BackendType.Automatic -> "Automatic"
+    }
+
+    private companion object {
+        const val LARGE_FILE_THRESHOLD = 512L * 1024L * 1024L
+        fun defaultNativeCapabilities() = BackendCapabilities(
+            protocols = setOf("http", "https"),
+            supportsSegmentation = true,
+            supportsMirrors = false,
+            supportsSelectiveRepair = true,
+            supportsSafDestination = true,
+            supportsAuthentication = true,
+            supportsProxy = true,
+            maxConnectionsPerDownload = 8,
+            supportsExpiringUrls = true,
+            supportsMediaPlaylists = true,
+            supportsMigrationImport = false,
+            batteryImpact = BackendBatteryImpact.Low,
+            diagnosticDetail = BackendDiagnosticDetail.Forensic,
+        )
+        fun defaultAria2Capabilities() = BackendCapabilities(
+            protocols = setOf("http", "https", "ftp", "sftp", "magnet"),
+            supportsSegmentation = true,
+            supportsMirrors = true,
+            supportsSelectiveRepair = false,
+            supportsSafDestination = false,
+            supportsAuthentication = true,
+            supportsProxy = true,
+            maxConnectionsPerDownload = 16,
+            supportsMetalink = true,
+            supportsExpiringUrls = false,
+            supportsMediaPlaylists = false,
+            supportsMigrationImport = false,
+            batteryImpact = BackendBatteryImpact.High,
+            diagnosticDetail = BackendDiagnosticDetail.Detailed,
+        )
     }
 }
 
@@ -358,10 +689,47 @@ class BackendCoordinator(
     private val selectionPolicy: BackendSelectionPolicy = BackendSelectionPolicy(),
 ) {
     suspend fun add(request: DownloadRequest): CoordinatedBackendTask {
-        val recommendation = selectionPolicy.recommend(request)
-        val backend = registry.require(recommendation.backend)
-        validateCapabilities(request, backend.capabilities())
-        val preparation = backend.prepare(request.copy(preferredBackend = recommendation.backend))
+        val capabilities = registry.capabilitySnapshot()
+        val recommendations = selectionPolicy.rankedRecommendations(request, capabilities)
+        var lastPreStartFailure: Throwable? = null
+        recommendations.forEachIndexed { index, recommendation ->
+            val backend = registry.find(recommendation.backend)
+            if (backend == null) {
+                lastPreStartFailure = BackendUnavailableException("${recommendation.backend} backend is not registered")
+                return@forEachIndexed
+            }
+            try {
+                validateCapabilities(request, capabilities[recommendation.backend] ?: backend.capabilities())
+            } catch (error: BackendUnavailableException) {
+                lastPreStartFailure = error
+                if (index == recommendations.lastIndex || !request.allowBackendFallback) throw error
+                return@forEachIndexed
+            } catch (error: BackendCapabilityException) {
+                lastPreStartFailure = error
+                if (index == recommendations.lastIndex || !request.allowBackendFallback) throw error
+                return@forEachIndexed
+            }
+            try {
+                return addWithBackend(request, backend, recommendation)
+            } catch (error: BackendPreparationUnavailableException) {
+                lastPreStartFailure = error
+                if (index == recommendations.lastIndex || !request.allowBackendFallback) throw error
+            }
+        }
+        throw lastPreStartFailure ?: BackendUnavailableException("No compatible backend is available")
+    }
+
+    private suspend fun addWithBackend(
+        request: DownloadRequest,
+        backend: DownloadBackend,
+        recommendation: BackendRecommendation,
+    ): CoordinatedBackendTask {
+        val selectedRequest = request.copy(preferredBackend = recommendation.backend)
+        val preparation = try {
+            backend.prepare(selectedRequest)
+        } catch (error: BackendUnavailableException) {
+            throw BackendPreparationUnavailableException(error.message ?: "Backend preparation is unavailable", error)
+        }
         var task: BackendTask? = null
         var ownership: BackendOwnership? = null
         var adopted = false
@@ -370,29 +738,16 @@ class BackendCoordinator(
             val existing = ownershipStore.findByDownload(request.id)
             adopted = existing != null
             val claim = if (existing == null) {
-                ownershipStore.claim(
-                    request.id,
-                    preparation.destinationKey,
-                    preparation.artifacts,
-                    recommendation.backend,
-                    preparation.runtimeIdentity,
-                )
+                ownershipStore.claim(request.id, preparation.destinationKey, preparation.artifacts, recommendation.backend, preparation.runtimeIdentity)
             } else {
-                ownershipStore.adopt(
-                    request.id,
-                    existing.generation,
-                    preparation.destinationKey,
-                    preparation.artifacts,
-                    recommendation.backend,
-                    preparation.runtimeIdentity,
-                )
+                ownershipStore.adopt(request.id, existing.generation, preparation.destinationKey, preparation.artifacts, recommendation.backend, preparation.runtimeIdentity)
             }
             val claimedOwnership = when (claim) {
                 is OwnershipClaimResult.Claimed -> claim.ownership
                 is OwnershipClaimResult.Conflict -> throw DestinationOwnershipConflictException(claim.existing)
             }
             ownership = claimedOwnership
-            val startedTask = backend.add(request.copy(preferredBackend = recommendation.backend), preparation)
+            val startedTask = backend.add(selectedRequest, preparation)
             task = startedTask
             val active = ownershipStore.attachTask(request.id, claimedOwnership.generation, startedTask.taskId)
             backend.onOwnershipAttached(startedTask.taskId, active)
@@ -409,11 +764,7 @@ class BackendCoordinator(
                             request.id,
                             claimedOwnership.generation,
                             BackendReconciliationResult(
-                                classification = if (detached) {
-                                    BackendReconciliationClassification.ResumableArtifact
-                                } else {
-                                    BackendReconciliationClassification.BackendTaskOrphaned
-                                },
+                                classification = if (detached) BackendReconciliationClassification.ResumableArtifact else BackendReconciliationClassification.BackendTaskOrphaned,
                                 message = if (detached) {
                                     "Backend task startup was interrupted before durable attachment; the task was stopped and its artifacts were preserved."
                                 } else {
@@ -432,8 +783,8 @@ class BackendCoordinator(
                             request.id,
                             claimedOwnership.generation,
                             BackendReconciliationResult(
-                                classification = BackendReconciliationClassification.ResumableArtifact,
-                                message = "Backend adoption failed before a new task was started: ${error.message ?: error::class.java.simpleName}",
+                                BackendReconciliationClassification.ResumableArtifact,
+                                "Backend adoption failed before a new task was started: ${error.message ?: error::class.java.simpleName}",
                                 safeToResume = true,
                             ),
                         )
@@ -453,12 +804,7 @@ class BackendCoordinator(
         return ownershipStore.release(downloadId, ownership.generation)
     }
 
-    private fun validatePreparation(
-        request: DownloadRequest,
-        backend: DownloadBackend,
-        backendType: BackendType,
-        preparation: BackendPreparation,
-    ) {
+    private fun validatePreparation(request: DownloadRequest, backend: DownloadBackend, backendType: BackendType, preparation: BackendPreparation) {
         require(preparation.downloadId == request.id) { "Backend preparation belongs to a different download" }
         require(preparation.backend == backendType) { "Backend preparation type does not match the selected backend" }
         require(preparation.runtimeIdentity == backend.runtimeIdentity) { "Backend preparation runtime identity is stale" }
@@ -469,14 +815,18 @@ class BackendCoordinator(
         val sourceScheme = runCatching { URI(request.sourceUrl).scheme?.lowercase(Locale.ROOT) }.getOrNull()
             ?: throw BackendCapabilityException("Source URL has no supported scheme")
         if (sourceScheme !in capabilities.protocols.map { it.lowercase(Locale.ROOT) }) {
-            throw BackendCapabilityException("Selected backend does not support $sourceScheme")
+            throw if (capabilities.protocols.isEmpty()) BackendUnavailableException("Selected backend is unavailable")
+            else BackendCapabilityException("Selected backend does not support $sourceScheme")
         }
         val destinationScheme = runCatching { URI(request.destinationUri).scheme?.lowercase(Locale.ROOT) }.getOrNull()
         if (destinationScheme in setOf("content", "xdm") && !capabilities.supportsSafDestination) {
-            throw BackendCapabilityException("Selected backend cannot write Android document destinations yet")
+            throw BackendCapabilityException("Selected backend cannot write Android document destinations")
         }
         if (request.requireSelectiveRepair && !capabilities.supportsSelectiveRepair) {
             throw BackendCapabilityException("Selected backend does not support selective repair")
+        }
+        if (request.isMediaRequest && !capabilities.supportsMediaPlaylists) {
+            throw BackendCapabilityException("Selected backend does not support this media workflow")
         }
     }
 }
@@ -530,6 +880,6 @@ object DestinationIdentity {
         }
         val directoryLike = uri?.scheme?.lowercase(Locale.ROOT) in setOf("content", "xdm")
         val child = fileName?.trim()?.takeIf { it.isNotEmpty() && directoryLike }
-        return if (child == null) base else "$base/${java.net.URLEncoder.encode(child, Charsets.UTF_8.name()).replace("+", "%20")}" 
+        return if (child == null) base else "$base/${java.net.URLEncoder.encode(child, Charsets.UTF_8.name()).replace("+", "%20")}"
     }
 }

@@ -14,6 +14,10 @@ data class DownloadEntity(
     val destinationUri: String,
     val state: String,
     val backend: String,
+    @ColumnInfo(defaultValue = "'Automatic'") val requestedBackend: String,
+    @ColumnInfo(defaultValue = "'DefaultNative'") val backendSelectionReason: String,
+    @ColumnInfo(defaultValue = "''") val backendSelectionExplanation: String,
+    @ColumnInfo(defaultValue = "1") val allowBackendFallback: Boolean,
     val bytesReceived: Long,
     val totalBytes: Long?,
     val speedBytesPerSecond: Long,
@@ -126,6 +130,29 @@ data class Aria2SessionMappingEntity(
     val lastErrorMessage: String?,
 )
 
+
+
+@Entity(
+    tableName = "backend_migrations",
+    indices = [Index("downloadId"), Index("stage"), Index("updatedAtEpochMs")],
+)
+data class BackendMigrationEntity(
+    @PrimaryKey val id: String,
+    val downloadId: String,
+    val sourceBackend: String,
+    val targetBackend: String,
+    val sourceGeneration: Long,
+    val targetGeneration: Long?,
+    val sourceTaskId: String?,
+    val targetTaskId: String?,
+    val stage: String,
+    val sourceArtifactIdentity: String,
+    val targetArtifactIdentity: String?,
+    val restartFromZero: Boolean,
+    val message: String,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+)
 
 @Entity(tableName = "destination_claims", indices = [Index("downloadId", unique = true)])
 data class DestinationClaimEntity(

@@ -1,6 +1,6 @@
 # XDM Android
 
-Standalone Android download manager implemented through Phase 5 with the Phase 6B embedded-aria2 runtime foundation: modular Kotlin/Compose architecture, Room persistence, reconciled physical-artifact ownership, native HTTP/HTTPS transfers, Android long-running execution, public/SAF storage, and a supervised authenticated loopback aria2 process boundary.
+Standalone Android download manager implemented through Phase 7: modular Kotlin/Compose architecture, Room persistence, reconciled physical-artifact ownership, native HTTP/HTTPS transfers, Android long-running execution, public/SAF storage, and a supervised authenticated loopback aria2 process boundary.
 
 ## Build
 
@@ -20,24 +20,19 @@ To build debug and official signed release APKs from the repository root, provid
 
 Use `./build-release-apk.sh debug` for a debug APK without release signing, or `./build-release-apk.sh release` for only the signed release APK. The script accepts signing values from environment variables or `app/XDM.Android/release-signing.env`: `XDM_RELEASE_STORE_FILE`, `XDM_RELEASE_STORE_PASSWORD`, `XDM_RELEASE_KEY_ALIAS`, and `XDM_RELEASE_KEY_PASSWORD`. It writes APKs to `dist/android/`.
 
-## Implemented through Phase 5 + Phase 6B runtime foundation
+## Implemented through Phase 7
 
-- Fourteen-module Compose project and Room schema v5.
-- Transactional per-file backend ownership using physical artifact sets, stable backend instance IDs, rotating process-session IDs, and capability-based backend selection.
-- Startup reconciliation quarantines legacy, missing, malformed, conflicting, and unavailable backend artifacts instead of silently releasing their destinations.
-- Reconciled resumable artifacts can be adopted only through a new ownership generation.
-- Native HTTP/HTTPS segmentation, pause/resume, durable checkpoints, strict range/validator checks, retry, and crash-safe staging.
-- UIDT on supported Android versions with foreground-service fallback, notification actions, WorkManager restoration, and reboot recovery.
-- Debug, beta, and release variants plus repository-root Android CI.
-- MediaStore public collections and SAF folder/SD-card destinations.
-- Persisted URI permissions and destination-health records.
-- App-private staging followed by atomic file promotion or copy/flush/content-provider commit.
-- Overwrite, resume, rename, skip, and compare conflict policy persistence.
-- Optional embedded aria2 process foundation using an ARM64 APK-native executable, loopback-only authenticated JSON-RPC, random app-private secret, session saving, bounded shutdown, and unexpected-exit observation.
-- Diagnostics can run a real start/authenticate/save/shutdown smoke probe without adding a new top-level route.
-- Production aria2 task creation remains gated until durable GID mapping and event reconciliation are installed; native and aria2 ownership still cannot overlap.
+- Fourteen-module Compose project and Room schema v7.
+- Native HTTP/HTTPS and operational embedded aria2 backends with exclusive transactional destination ownership.
+- Capability-based automatic selection explains protocol, destination, authentication, expiry, mirror, size, host-history, diagnostics, and battery factors.
+- Optional fallback is permitted only before a backend task is created and owns the destination.
+- Requested backend, actual backend, selection reason, explanation, and fallback policy survive process restarts.
+- Controlled native-to-aria2 and aria2-to-native migration pauses and retires the source writer, inspects artifacts, prepares a distinct target partial, transfers ownership by generation, and journals every stage.
+- Cross-backend partial files are never silently reused. Existing bytes are preserved as recovery artifacts when the user explicitly restarts with another backend.
+- Settings exposes the live backend capability matrix and recent migration history without adding new top-level navigation.
+- Native segmentation, strict resume validation, Android background execution, MediaStore/SAF storage, and aria2 authenticated loopback RPC remain fully integrated.
 
-See `docs/architecture/PHASE-6B-ARIA2-RUNTIME-FOUNDATION.md`, `docs/architecture/PHASE-6A-OWNERSHIP-HARDENING.md`, `docs/architecture/PHASES-0-1.md`, `PHASES-2-3.md`, `PHASE-4.md`, and `PHASE-5.md`.
+See `docs/architecture/PHASE-7-BACKEND-STRATEGY-MIGRATION.md` and the earlier architecture documents in `docs/architecture/`.
 
 
 ## Supplying the ARM64 aria2 runtime

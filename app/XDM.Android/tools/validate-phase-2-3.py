@@ -10,7 +10,6 @@ checks = {
     "checkpoint persistence": (root / "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeCheckpointStore.kt", "class NativeCheckpointStore"),
     "range validation": (root / "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt", "Content-Range"),
     "atomic promotion": (root / "storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/FileDestinationWriter.kt", "StandardCopyOption.ATOMIC_MOVE"),
-    "database schema v6": (root / "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt", "version = 6"),
 }
 errors = []
 for name, (path, needle) in checks.items():
@@ -22,6 +21,12 @@ for name, (path, needle) in checks.items():
         errors.append(f"{name} marker not found in {path.relative_to(root)}: {needle}")
     if "TODO(" in text or "TODO:" in text:
         errors.append(f"unfinished TODO in {path.relative_to(root)}")
+
+app_database = (root / "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt").read_text(encoding="utf-8")
+import re
+match = re.search(r"version\s*=\s*(\d+)", app_database)
+if match is None or int(match.group(1)) < 6:
+    errors.append("database schema must remain at least v6")
 
 native_tests = root / "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt"
 ownership_tests = root / "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt"

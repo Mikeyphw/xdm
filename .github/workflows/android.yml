@@ -42,6 +42,7 @@ jobs:
           python3 tools/validate-ownership-hardening.py
           python3 tools/validate-phase-6b.py
           python3 tools/validate-phase-6.py
+          python3 tools/validate-phase-7.py
       - name: Bootstrap wrapper
         run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.4.1
       - name: Install official ARM64 aria2 runtime

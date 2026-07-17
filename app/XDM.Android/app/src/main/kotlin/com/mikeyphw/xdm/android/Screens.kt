@@ -45,6 +45,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.verticalScroll
 import com.mikeyphw.xdm.android.model.BackendRecommendation
+import com.mikeyphw.xdm.android.model.BackendCapabilityRow
+import com.mikeyphw.xdm.android.model.BackendMigrationRecord
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
@@ -59,7 +61,16 @@ import com.mikeyphw.xdm.android.util.formatBytes
 import com.mikeyphw.xdm.android.util.formatSpeed
 
 @Composable
-fun DownloadsScreen(downloads: List<Download>, compact: Boolean, active: ActiveTransferSummary, onTogglePause: (Download) -> Unit, onPauseAll: () -> Unit, onResumeAll: () -> Unit) {
+fun DownloadsScreen(
+    downloads: List<Download>,
+    compact: Boolean,
+    active: ActiveTransferSummary,
+    capabilities: List<BackendCapabilityRow>,
+    onTogglePause: (Download) -> Unit,
+    onMigrateBackend: (Download) -> Unit,
+    onPauseAll: () -> Unit,
+    onResumeAll: () -> Unit,
+) {
     var filter by remember { mutableStateOf<DownloadState?>(null) }
     Column(Modifier.fillMaxSize()) {
         if (active.activeCount > 0) {
@@ -103,7 +114,7 @@ fun DownloadsScreen(downloads: List<Download>, compact: Boolean, active: ActiveT
         } else {
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 12.dp)) {
                 items(visible, key = Download::id) { download ->
-                    DownloadCard(download, compact, onTogglePause)
+                    DownloadCard(download, compact, capabilities, onTogglePause, onMigrateBackend)
                 }
             }
         }
@@ -111,7 +122,13 @@ fun DownloadsScreen(downloads: List<Download>, compact: Boolean, active: ActiveT
 }
 
 @Composable
-private fun DownloadCard(download: Download, compact: Boolean, onTogglePause: (Download) -> Unit) {
+private fun DownloadCard(
+    download: Download,
+    compact: Boolean,
+    capabilities: List<BackendCapabilityRow>,
+    onTogglePause: (Download) -> Unit,
+    onMigrateBackend: (Download) -> Unit,
+) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(if (compact) 10.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
@@ -122,6 +139,9 @@ private fun DownloadCard(download: Download, compact: Boolean, onTogglePause: (D
                 Column(Modifier.weight(1f)) {
                     Text(download.fileName, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("${download.state.name} • ${download.backend.name}", style = MaterialTheme.typography.bodySmall)
+                    if (download.backendSelectionExplanation.isNotBlank()) {
+                        Text(download.backendSelectionExplanation, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
                 }
                 if (download.state in setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Paused, DownloadState.Failed)) {
                     IconButton(onClick = { onTogglePause(download) }) {
@@ -138,6 +158,29 @@ private fun DownloadCard(download: Download, compact: Boolean, onTogglePause: (D
                     if (download.speedBytesPerSecond > 0) Text(download.speedBytesPerSecond.formatSpeed(), style = MaterialTheme.typography.bodySmall)
                 }
             }
+            val targetBackend = when (download.backend) {
+                BackendType.Native -> BackendType.Aria2
+                BackendType.Aria2 -> BackendType.Native
+                BackendType.Automatic -> null
+            }
+            val targetCapability = capabilities.firstOrNull { it.backend == targetBackend }
+            val destinationScheme = download.destinationUri.substringBefore(':').lowercase()
+            val documentDestination = destinationScheme in setOf("content", "xdm")
+            val targetCompatible = targetCapability?.available == true &&
+                (!documentDestination || targetCapability.saf)
+            if (
+                download.state in setOf(DownloadState.Paused, DownloadState.Failed, DownloadState.RecoveryRequired) &&
+                targetBackend != null &&
+                targetCompatible
+            ) {
+                val target = if (targetBackend == BackendType.Aria2) "aria2" else "XDM Native"
+                Button(onClick = { onMigrateBackend(download) }) {
+                    Text(if (download.bytesReceived > 0) "Restart with $target" else "Switch to $target")
+                }
+                if (download.bytesReceived > 0) {
+                    Text("Existing partial bytes are preserved for recovery and are not reused silently.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
             download.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         }
     }
@@ -151,14 +194,18 @@ fun AddDownloadScreen(
     onDestinationChanged: (String) -> Unit,
     onSafDestinationSelected: (String) -> Unit,
     onConflictPolicyChanged: (FilenameConflictPolicy) -> Unit,
-    onAdd: (String, String, BackendType, String, FilenameConflictPolicy) -> Unit,
-    recommend: (String, String, BackendType, String, FilenameConflictPolicy) -> BackendRecommendation,
+    onAdd: (String, String, BackendType, String, FilenameConflictPolicy, Boolean) -> Unit,
+    recommend: (String, String, BackendType, String, FilenameConflictPolicy, Boolean) -> BackendRecommendation,
 ) {
     var url by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var backend by remember { mutableStateOf(BackendType.Automatic) }
+    var allowFallback by remember { mutableStateOf(true) }
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { onSafDestinationSelected(it.toString()) }
+    }
+    val recommendation = url.takeIf(String::isNotBlank)?.let {
+        recommend(url, name, backend, destinationUri, conflictPolicy, allowFallback)
     }
     Column(
         Modifier
@@ -200,13 +247,38 @@ fun AddDownloadScreen(
                 FilterChip(selected = backend == value, onClick = { backend = value }, label = { Text(value.name) })
             }
         }
-        if (url.isNotBlank()) {
-            val recommendation = recommend(url, name, backend, destinationUri, conflictPolicy)
-            Text("${recommendation.backend.name}: ${recommendation.explanation}", style = MaterialTheme.typography.bodySmall)
+        Card(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Compatible fallback", fontWeight = FontWeight.Medium)
+                    Text("Fallback is allowed only before a backend task owns the destination.", style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(allowFallback, { allowFallback = it })
+            }
+        }
+        recommendation?.let { recommendation ->
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Recommended: ${recommendation.backend.name}", fontWeight = FontWeight.Medium)
+                    Text(recommendation.explanation, style = MaterialTheme.typography.bodySmall)
+                    if (!recommendation.compatible) {
+                        Text(
+                            recommendation.compatibilityIssue ?: "This backend cannot start the transfer.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    } else {
+                        val fallbackBackend = recommendation.fallbackBackend
+                        if (recommendation.fallbackAllowed && fallbackBackend != null) {
+                            Text("Fallback: ${fallbackBackend.name}, before task creation only", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            }
         }
         Button(
-            onClick = { onAdd(url, name, backend, destinationUri, conflictPolicy) },
-            enabled = url.isNotBlank() && destinationUri.isNotBlank(),
+            onClick = { onAdd(url, name, backend, destinationUri, conflictPolicy, allowFallback) },
+            enabled = url.isNotBlank() && destinationUri.isNotBlank() && recommendation?.compatible != false,
         ) { Text("Add to Default queue") }
     }
 }
@@ -278,7 +350,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { Text("Runtime health", style = MaterialTheme.typography.headlineSmall) }
-        item { DiagnosticLine("Database", "Room schema v6") }
+        item { DiagnosticLine("Database", "Room schema v7") }
         item { DiagnosticLine("Downloads", state.downloads.size.toString()) }
         item { DiagnosticLine("Queues", state.queues.size.toString()) }
         item { DiagnosticLine("Recovery records", state.recovery.size.toString()) }
@@ -342,22 +414,71 @@ private fun StatusPill(text: String) {
 }
 
 @Composable
-fun SettingsScreen(compact: Boolean, onCompactChanged: (Boolean) -> Unit) {
-    Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Appearance", style = MaterialTheme.typography.headlineSmall)
-        Card(Modifier.fillMaxWidth()) {
-            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Compact download cards", fontWeight = FontWeight.Medium)
-                    Text("Reduce vertical spacing in the download list.", style = MaterialTheme.typography.bodySmall)
+fun SettingsScreen(
+    compact: Boolean,
+    capabilities: List<BackendCapabilityRow>,
+    migrations: List<BackendMigrationRecord>,
+    onCompactChanged: (Boolean) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item { Text("Appearance", style = MaterialTheme.typography.headlineSmall) }
+        item {
+            Card(Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Compact download cards", fontWeight = FontWeight.Medium)
+                        Text("Reduce vertical spacing in the download list.", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(compact, onCompactChanged)
                 }
-                Switch(compact, onCompactChanged)
             }
         }
-        Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall)
-        Text("Version: 0.6.0-beta01", style = MaterialTheme.typography.bodySmall)
+        item { Text("Backend strategy", style = MaterialTheme.typography.headlineSmall) }
+        items(capabilities, key = { it.backend.name }) { capability ->
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(if (capability.backend == BackendType.Native) "XDM Native" else "aria2", fontWeight = FontWeight.SemiBold)
+                        StatusPill(if (capability.available) "Available" else "Unavailable")
+                    }
+                    Text(capability.summary, style = MaterialTheme.typography.bodySmall)
+                    Text("Protocols: ${capability.protocols.sorted().joinToString().ifBlank { "None" }}", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        listOfNotNull(
+                            "Segments".takeIf { capability.segmentation },
+                            "Mirrors".takeIf { capability.mirrors },
+                            "Metalink".takeIf { capability.metalink },
+                            "SAF".takeIf { capability.saf },
+                            "Repair".takeIf { capability.selectiveRepair },
+                            "Media".takeIf { capability.media },
+                        ).joinToString(" • ").ifBlank { "No optional capabilities" },
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    Text("Diagnostics: ${capability.diagnosticDetail.name} • Battery: ${capability.batteryImpact.name}", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        if (migrations.isNotEmpty()) {
+            item { Text("Recent backend migrations", style = MaterialTheme.typography.headlineSmall) }
+            items(migrations.take(5), key = BackendMigrationRecord::id) { migration ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("${migration.sourceBackend.name} → ${migration.targetBackend.name}", fontWeight = FontWeight.Medium)
+                        Text(migration.stage.name, style = MaterialTheme.typography.labelLarge)
+                        Text(migration.message, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+        item { Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall) }
+        item { Text("Version: 0.7.0-alpha01", style = MaterialTheme.typography.bodySmall) }
     }
 }
+
 
 @Composable
 fun EmptyFeatureScreen(title: String, description: String) {
