@@ -43,7 +43,7 @@ offline = false
 
 [targets.xdm_android.tasks]
 restore = ["help"]
-build = ["assembleDebug", "assembleBeta"]
+build = ["assembleDebug"]
 test = [
   ":core-model:test",
   ":transfer-api:test",
@@ -55,7 +55,7 @@ test = [
   ":persistence:testDebugUnitTest",
   ":app:testDebugUnitTest",
 ]
-lint = ["lintDebug", "lintBeta"]
+lint = ["lintDebug"]
 clean = ["clean"]
 
 [targets.xdm_android.artifacts]
