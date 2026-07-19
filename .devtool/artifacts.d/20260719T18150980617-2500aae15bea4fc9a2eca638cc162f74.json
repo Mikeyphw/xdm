@@ -1,0 +1,158 @@
+{
+  "applied_at": "2026-07-19T18:15:09.806176Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase16_packaging_recovery_readiness_overlay.zip",
+  "artifact_name": "xdm_android_phase16_packaging_recovery_readiness_overlay.zip",
+  "type": "overlay",
+  "sha256": "5af39c037ade8010ddef934e6ecfb9fd279667e2ec064bd26853f0003f58dbc2",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Prepare XDM Android packaging and recovery readiness",
+  "commit_hash": "",
+  "file_count": 15,
+  "change_counts": {
+    "add": 4,
+    "modify": 11
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 16 packaging/recovery readiness",
+    "description": "Adds schema-free install/update readiness reporting, packaging recovery contracts, CI validator coverage, and Android clipboard service copy support for XDM Android beta readiness.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "8aa111521d743806cbe954b35478f401c34b845eb800e4dcc6445279095a868b",
+          "size": 2147,
+          "source_sha256": "4d22dd37e14efcb17bb3d8cd96611222612f3bede20f00626dd948ea72960aa6"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "6a9f63d965d477d0bbbd379330ea9783ff6eca328e75c6b3be077223d58c1c70",
+          "size": 5928,
+          "source_sha256": "70be729d1040c65b4b38b7a947a818db214141cc80cac1bfeb99e924462f8491"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "f03b58dd9491a261a708bfbf4310a314f6660853089e12b9a4b27bb64ba3ed29",
+          "size": 7122,
+          "source_sha256": "ecb68a3291253d4c6e9c09abe3186e4ad379f54fb6c0e7da89ee86ca4b2efc0d"
+        },
+        {
+          "path": "app/XDM.Android/app/build.gradle.kts",
+          "action": "modify",
+          "sha256": "164933a544b3aa863d02e52b9653dbfda95180b13f875a18f3c10be2363be851",
+          "size": 4473,
+          "source_sha256": "8b8207b3b302bfbeb3513d5b043157571c942ad2a8ad1f4de131c65c63d15b59"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "3f99c022e2481dac9bedc5a4d5d20896865796ee0cf659e192e7f05a7f9f1347",
+          "size": 35941,
+          "source_sha256": "a16c19c0f25fa6fc6ce1270a943b189fa9c60bbb23a469504e1f31d8138d3d5f"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "439e214964f751ade8c121c7722e1e6800d80370c3b3f2d3eaa707452b3e367b",
+          "size": 43303,
+          "source_sha256": "af5a1d5f9a6b1d1165500e5818b301df8d4f7af8d2f96a711517e4bccdc9fd6e"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "ba8edb3554b9ac26c0f96cb451e9e25b6565f8f1f2f2a16f31c71d5eccb45775",
+          "size": 9510,
+          "source_sha256": "2f54b8cea3c2d4cb2a4ee9898efbc779c73c92f57c2b99641b092aabe24f698f"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "70defd4d05f6cb77cb66be520519bcad484a2147f63ebe8855afb43c1319fc81",
+          "size": 10581,
+          "source_sha256": "f85827252d8c9724f0e2b5cc025d2b0bf5408db359174114c1741ada98fd5235"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt",
+          "action": "add",
+          "sha256": "f9cf9f99acce1e9f731067ecc554b48aba2203e57cc8f0113108d7d64ba0e4bb",
+          "size": 7737
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt",
+          "action": "modify",
+          "sha256": "1f49bfe6349ba5a05e169991813fddbff8d7f9d14e8cdf3d2fa836ed2a4a0158",
+          "size": 9143,
+          "source_sha256": "1295d8073e051a50b0e03238afd651a86144495c57aba89702623ace8ebbced1"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModelsTest.kt",
+          "action": "add",
+          "sha256": "09db83cea551b41d1e9ab92ac631c6fac192e96142edbada5ab0f71fcc26564e",
+          "size": 2057
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-16-PACKAGING-RECOVERY-READINESS.md",
+          "action": "add",
+          "sha256": "5ffd9f40edd6f60a3ac8a9876255daaaaa5d8159cdf6a5f108be51e6f7c90002",
+          "size": 2096
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-14.py",
+          "action": "modify",
+          "sha256": "caa39fa66e134343286a7fc71cd5c47bcd784e18ca9c3f8bdeaa6c962f6f28e6",
+          "size": 4186,
+          "source_sha256": "c58c0b47e59962292ba04029e5365e5d97299febb5c81e67b08eaed7e9ab4a59"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-15.py",
+          "action": "modify",
+          "sha256": "cc27c673fd18ca992e8293013b5de904c5b2c916bba2167f4e3a8ba75adf9560",
+          "size": 4442,
+          "source_sha256": "6141f37f6c7d5c531e6a7c6b413f6f8fd8c3bd760839358a36e08cd735c47a75"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-16.py",
+          "action": "add",
+          "sha256": "a4ca7d0d5e6aaf3d96d05fde75aab524de4f1f2be2f4f4b8dc1ab490227224aa",
+          "size": 5648
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Prepare XDM Android packaging and recovery readiness"
+      }
+    },
+    "validation": {
+      "recommended_tasks": [
+        ":core-model:test",
+        ":app:compileDebugKotlin",
+        ":app:testDebugUnitTest",
+        "lintDebug"
+      ],
+      "scripts": [
+        "app/XDM.Android/tools/validate-phase-13.py",
+        "app/XDM.Android/tools/validate-phase-14.py",
+        "app/XDM.Android/tools/validate-phase-15.py",
+        "app/XDM.Android/tools/validate-phase-16.py"
+      ]
+    }
+  },
+  "history_id": "2500aae15bea4fc9a2eca638cc162f74"
+}

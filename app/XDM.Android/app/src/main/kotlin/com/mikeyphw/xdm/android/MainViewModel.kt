@@ -30,6 +30,8 @@ import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryRecord
+import com.mikeyphw.xdm.android.model.InstallUpdateReadinessReport
+import com.mikeyphw.xdm.android.model.ReleaseInstallReadinessGate
 import com.mikeyphw.xdm.android.model.ReleaseSecurityGate
 import com.mikeyphw.xdm.android.model.ReleaseSecurityReport
 import com.mikeyphw.xdm.android.model.ScheduleRule
@@ -84,11 +86,24 @@ data class MainUiState(
     val mediaVariants: List<MediaVariant> = emptyList(),
     val automationCommands: List<AutomationCommandRecord> = emptyList(),
     val releaseSecurityReport: ReleaseSecurityReport = ReleaseSecurityGate.evaluate(
-        versionName = "0.15.0-alpha01",
+        versionName = "0.16.0-alpha01",
         schemaVersion = 13,
         buildType = "debug",
         debuggable = true,
         privacySafeDiagnostics = true,
+        releaseSigningConfigured = false,
+    ),
+    val installUpdateReadinessReport: InstallUpdateReadinessReport = ReleaseInstallReadinessGate.evaluate(
+        versionName = "0.16.0-alpha01",
+        versionCode = 17,
+        packageId = "com.mikeyphw.xdm.android",
+        schemaVersion = 13,
+        buildType = "debug",
+        releaseSafetyComplete = true,
+        recoverySurfaceReady = true,
+        diagnosticsExportRedacted = true,
+        aria2PayloadGateRetained = true,
+        updateKeepsPackageIdentity = true,
         releaseSigningConfigured = false,
     ),
 )
@@ -231,6 +246,19 @@ class MainViewModel(
                 buildType = BuildConfig.BUILD_TYPE,
                 debuggable = BuildConfig.DEBUG,
                 privacySafeDiagnostics = true,
+                releaseSigningConfigured = !BuildConfig.DEBUG,
+            ),
+            installUpdateReadinessReport = ReleaseInstallReadinessGate.evaluate(
+                versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+                versionCode = BuildConfig.VERSION_CODE,
+                packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".beta"),
+                schemaVersion = 13,
+                buildType = BuildConfig.BUILD_TYPE,
+                releaseSafetyComplete = true,
+                recoverySurfaceReady = snapshot.finalizationJournals.none { it.needsRecovery } || snapshot.recovery.isNotEmpty() || snapshot.finalizationJournals.isEmpty(),
+                diagnosticsExportRedacted = true,
+                aria2PayloadGateRetained = true,
+                updateKeepsPackageIdentity = true,
                 releaseSigningConfigured = !BuildConfig.DEBUG,
             ),
         )

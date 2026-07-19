@@ -1,5 +1,8 @@
 package com.mikeyphw.xdm.android
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Build
 
 import androidx.compose.foundation.layout.Arrangement
@@ -72,10 +75,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalContext
 import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
 import com.mikeyphw.xdm.android.model.redactedDiagnosticLine
+import com.mikeyphw.xdm.android.model.ReleaseReadinessSeverity
 import com.mikeyphw.xdm.android.model.ReleaseSecuritySeverity
 import com.mikeyphw.xdm.android.util.formatBytes
 import com.mikeyphw.xdm.android.util.formatSpeed
@@ -522,7 +525,7 @@ fun RecoveryScreen(records: List<RecoveryRecord>, onValidate: (RecoveryRecord) -
 
 @Composable
 fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
-    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     val redactedSummary = PrivacyDiagnosticsRedactor.redactedHealthSummary(
         report = state.releaseSecurityReport,
         downloadCount = state.downloads.size,
@@ -530,6 +533,8 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         automationCount = state.automationCommands.size,
         rejectedHandoffCount = state.automationCommands.count { it.status.name == "Rejected" },
     )
+    val installUpdateSummary = state.installUpdateReadinessReport.redactedSummary()
+    val supportSummary = "$redactedSummary\n\n$installUpdateSummary"
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp),
@@ -549,7 +554,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                             Text(state.releaseSecurityReport.summary, style = MaterialTheme.typography.bodySmall)
                         }
                         TextButton(
-                            onClick = { clipboard.setText(AnnotatedString(redactedSummary)) },
+                            onClick = { copyTextToClipboard(context, "XDM diagnostic summary", supportSummary) },
                             modifier = Modifier
                                 .sizeIn(minWidth = 96.dp, minHeight = 48.dp)
                                 .semantics { contentDescription = "Copy privacy-safe release summary" },
@@ -563,6 +568,23 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                         }
                         Text("$severity: ${finding.title}", style = MaterialTheme.typography.bodySmall)
                     }
+                }
+            }
+        }
+        item {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Install/update readiness", fontWeight = FontWeight.Medium)
+                    Text(state.installUpdateReadinessReport.summary, style = MaterialTheme.typography.bodySmall)
+                    state.installUpdateReadinessReport.checks.take(4).forEach { check ->
+                        val severity = when (check.severity) {
+                            ReleaseReadinessSeverity.Info -> "Info"
+                            ReleaseReadinessSeverity.Warning -> "Warning"
+                            ReleaseReadinessSeverity.Blocking -> "Blocked"
+                        }
+                        Text("$severity: ${check.title}", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text("Package identity and Room schema are checked before beta packaging.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -652,6 +674,7 @@ fun SettingsScreen(
     compact: Boolean,
     capabilities: List<BackendCapabilityRow>,
     migrations: List<BackendMigrationRecord>,
+    installUpdateReadinessReport: com.mikeyphw.xdm.android.model.InstallUpdateReadinessReport,
     onCompactChanged: (Boolean) -> Unit,
 ) {
     LazyColumn(
@@ -682,6 +705,17 @@ fun SettingsScreen(
                     Text("Phase 15 polish", fontWeight = FontWeight.Medium)
                     Text("Primary actions keep 48 dp touch targets, long names truncate before controls, and filters/actions expose state descriptions for screen readers.", style = MaterialTheme.typography.bodySmall)
                     Text("Compact-phone layout keeps downloads, Diagnostics, and Settings inside existing routes.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        item { Text("Packaging and recovery", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Install update readiness ${installUpdateReadinessReport.summary}" }) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Phase 16 readiness", fontWeight = FontWeight.Medium)
+                    Text(installUpdateReadinessReport.summary, style = MaterialTheme.typography.bodySmall)
+                    Text("Package identity stays com.mikeyphw.xdm.android, update builds keep Room schema v13, and recovery surfaces remain inside the existing Recovery and Diagnostics routes.", style = MaterialTheme.typography.bodySmall)
+                    Text("Beta packaging keeps the aria2 runtime payload gate and privacy-safe diagnostic bundle.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -723,11 +757,15 @@ fun SettingsScreen(
             }
         }
         item { Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall) }
-        item { Text("Version: 0.15.0-alpha01", style = MaterialTheme.typography.bodySmall) }
+        item { Text("Version: 0.16.0-alpha01", style = MaterialTheme.typography.bodySmall) }
     }
 }
 
 
+private fun copyTextToClipboard(context: Context, label: String, value: String) {
+    val clipboard = context.getSystemService(ClipboardManager::class.java)
+    clipboard?.setPrimaryClip(ClipData.newPlainText(label, value))
+}
 
 private fun Download.accessibilitySummary(): String = buildString {
     append(fileName)

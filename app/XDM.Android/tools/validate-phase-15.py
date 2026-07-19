@@ -22,14 +22,23 @@ manifest = json.loads(require_file("PROJECT_MANIFEST.json") or "{}")
 project = manifest.get("project", {})
 database = manifest.get("database", {})
 ux = manifest.get("ux_accessibility_polish", {})
-if project.get("version") != "0.15.0-alpha01":
-    errors.append("PROJECT_MANIFEST project.version is not 0.15.0-alpha01")
+project_version = project.get("version", "")
+try:
+    minor_version = int(project_version.split(".")[1])
+except (IndexError, ValueError):
+    minor_version = -1
+if minor_version < 15:
+    errors.append("PROJECT_MANIFEST project.version is older than 0.15.x")
 if 15 not in project.get("implemented_phases", []):
     errors.append("PROJECT_MANIFEST is missing implemented phase 15")
 if database.get("version") != 13:
     errors.append("Phase 15 must keep database.version at 13")
-if manifest.get("next_phase") != "16":
-    errors.append("PROJECT_MANIFEST next_phase is not 16")
+try:
+    next_phase = int(str(manifest.get("next_phase", "0")))
+except ValueError:
+    next_phase = 0
+if next_phase < 16:
+    errors.append("PROJECT_MANIFEST next_phase is older than 16")
 for key in [
     "compact_phone_cards",
     "accessible_action_labels",
@@ -46,10 +55,12 @@ if ux.get("top_level_route_added") is not False:
     errors.append("Phase 15 must not add a top-level route")
 
 build_gradle = require_file("app/build.gradle.kts")
-if "versionCode = 16" not in build_gradle:
-    errors.append("app/build.gradle.kts missing versionCode = 16")
-if 'versionName = "0.15.0-alpha01"' not in build_gradle:
-    errors.append("app/build.gradle.kts missing versionName 0.15.0-alpha01")
+version_code_match = re.search(r'versionCode\s*=\s*(\d+)', build_gradle)
+if not version_code_match or int(version_code_match.group(1)) < 16:
+    errors.append("app/build.gradle.kts versionCode is older than phase 15")
+version_name_match = re.search(r'versionName\s*=\s*"0\.(\d+)\.0-alpha01"', build_gradle)
+if not version_name_match or int(version_name_match.group(1)) < 15:
+    errors.append("app/build.gradle.kts versionName is older than 0.15.0-alpha01")
 
 screens = require_file("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt")
 app_shell = require_file("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")

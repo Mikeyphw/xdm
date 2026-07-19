@@ -40,13 +40,18 @@ object ReleaseSecurityGate {
     ): ReleaseSecurityReport {
         val normalizedBuildType = buildType.trim().ifBlank { "unknown" }
         val findings = buildList {
-            if (!versionName.startsWith("0.14.")) {
+            val minor = versionName.removeSuffix("-debug").removeSuffix("-beta")
+                .split('.')
+                .getOrNull(1)
+                ?.toIntOrNull()
+                ?: -1
+            if (minor < 14) {
                 add(
                     ReleaseSecurityFinding(
                         id = "version.phase14",
                         severity = ReleaseSecuritySeverity.Warning,
                         title = "Version metadata",
-                        detail = "Expected a 0.14.x version for this beta hardening slice.",
+                        detail = "Expected version metadata from phase 14 or later.",
                     ),
                 )
             }

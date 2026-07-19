@@ -118,7 +118,7 @@ class ArchitectureContractTest {
         val phaseFourteenVersion = Regex("""versionName = "0\.(\d+)\.0-alpha01"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.14", phaseFourteenVersion != null && phaseFourteenVersion >= 14)
         assertTrue("Diagnostics must expose privacy-safe release summary", screens.contains("Release safety"))
-        assertTrue("Diagnostics summary copy must be a real action", screens.contains("clipboard.setText"))
+        assertTrue("Diagnostics summary copy must be a real action", screens.contains("copyTextToClipboard"))
     }
 
 
@@ -133,12 +133,35 @@ class ArchitectureContractTest {
         assertTrue("Phase 15 validator is missing", File(root, "tools/validate-phase-15.py").isFile)
         assertTrue("Manifest must record implemented phase 15", manifest.contains("15"))
         assertTrue("Phase 15 must keep Room schema at v13", manifest.contains("\"schema_version_unchanged\": 13"))
-        assertTrue("Build metadata must advance to 0.15", buildGradle.contains("versionName = \"0.15.0-alpha01\""))
+        val phaseFifteenVersion = Regex("""versionName = "0\.(\d+)\.0-alpha01"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
+        assertTrue("Build metadata must be at least 0.15", phaseFifteenVersion != null && phaseFifteenVersion >= 15)
         assertTrue("Downloads must expose a compact overview card", screens.contains("Download overview"))
         assertTrue("UI must expose accessibility state descriptions", screens.contains("stateDescription") && appShell.contains("stateDescription"))
         assertTrue("Primary actions must keep stable touch targets", screens.contains("sizeIn(minWidth = 48.dp") || screens.contains("sizeIn(minWidth = 96.dp"))
         assertTrue("Settings must expose Phase 15 polish summary", screens.contains("Phase 15 polish"))
         assertFalse("Phase 15 must not add a top-level route", AppRoute.entries.any { it.label == "UX" || it.label == "Accessibility" })
+    }
+
+
+    @Test
+    fun phaseSixteenPackagingRecoveryReadinessContractsArePresent() {
+        val root = androidRoot()
+        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
+        val buildGradle = File(root, "app/build.gradle.kts").readText()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        assertTrue("Phase 16 architecture contract is missing", File(root, "docs/architecture/PHASE-16-PACKAGING-RECOVERY-READINESS.md").isFile)
+        assertTrue("Phase 16 validator is missing", File(root, "tools/validate-phase-16.py").isFile)
+        assertTrue("Release readiness model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt").isFile)
+        assertTrue("Manifest must record implemented phase 16", manifest.contains("16"))
+        assertTrue("Phase 16 must keep Room schema at v13", manifest.contains("\"schema_version_unchanged\": 13"))
+        assertTrue("Build metadata must advance to 0.16", buildGradle.contains("versionName = \"0.16.0-alpha01\""))
+        assertTrue("Diagnostics must expose install/update readiness", screens.contains("Install/update readiness"))
+        assertTrue("Settings must expose packaging readiness", screens.contains("Phase 16 readiness"))
+        assertTrue("Clipboard API should use Android ClipboardManager", screens.contains("ClipboardManager") && screens.contains("setPrimaryClip"))
+        assertFalse("Deprecated LocalClipboardManager should be removed", screens.contains("LocalClipboardManager"))
+        assertTrue("ViewModel must evaluate install/update readiness", viewModel.contains("ReleaseInstallReadinessGate.evaluate"))
+        assertFalse("Phase 16 must not add a top-level route", AppRoute.entries.any { it.label == "Packaging" || it.label == "Updates" })
     }
 
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }

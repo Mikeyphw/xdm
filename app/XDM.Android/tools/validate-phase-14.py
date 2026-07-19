@@ -65,7 +65,7 @@ require_text("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseS
 require_text("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt", "ReleaseSecurityGate")
 require_text("core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModelsTest.kt", "redactsBearerTokensSensitiveHeadersAndQuerySecrets")
 require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Release safety")
-require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "clipboard.setText")
+require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "copyTextToClipboard")
 require_text("docs/architecture/PHASE-14-RELEASE-SAFETY.md", "Room at schema v13")
 require_text("tools/validate-phase-13.py", "database.version")
 
