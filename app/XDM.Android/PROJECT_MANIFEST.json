@@ -2,7 +2,7 @@
   "project": {
     "name": "XDM Android",
     "package_id": "com.mikeyphw.xdm.android",
-    "version": "0.13.0-alpha01",
+    "version": "0.14.0-alpha01",
     "implemented_phases": [
       0,
       1,
@@ -17,7 +17,8 @@
       10,
       11,
       12,
-      13
+      13,
+      14
     ]
   },
   "database": {
@@ -70,7 +71,7 @@
       "compare"
     ]
   },
-  "next_phase": "14",
+  "next_phase": "15",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -186,6 +187,14 @@
     "sensitive_header_redaction": true,
     "origin_attribution": true,
     "rejection_reasons": true,
+    "top_level_route_added": false
+  },
+  "release_security_hardening": {
+    "privacy_safe_diagnostics": true,
+    "redacted_diagnostic_summary": true,
+    "release_gate_script": true,
+    "schema_version_unchanged": 13,
+    "beta_build_type_retained": true,
     "top_level_route_added": false
   }
 }

@@ -16,8 +16,13 @@ require('app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt', 'Browser orig
 require('persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt', 'version = 13')
 require('persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt', 'Migration12To13')
 manifest_json = json.loads((root / 'PROJECT_MANIFEST.json').read_text(encoding='utf-8'))
-if manifest_json.get('project', {}).get('version') != '0.13.0-alpha01':
-    errors.append('PROJECT_MANIFEST project.version is not 0.13.0-alpha01')
+project_version = manifest_json.get('project', {}).get('version', '')
+try:
+    minor_version = int(project_version.split('.')[1])
+except (IndexError, ValueError):
+    minor_version = -1
+if minor_version < 13:
+    errors.append('PROJECT_MANIFEST project.version is older than 0.13.x')
 if manifest_json.get('database', {}).get('version') != 13:
     errors.append('PROJECT_MANIFEST database.version is not 13')
 if 13 not in manifest_json.get('project', {}).get('implemented_phases', []):

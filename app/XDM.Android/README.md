@@ -1,4 +1,4 @@
-## XDM Android 0.13.0-alpha01
+## XDM Android 0.14.0-alpha01
 
 Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
 
@@ -75,3 +75,8 @@ XDM Android now records external Tasker, browser, share-sheet, and deep-link sty
 ### Phase 13: browser integration hardening
 
 Browser, share-sheet, Tasker, and deep-link handoffs now use a shared normalization and idempotency policy so repeated URLs from different external sources collapse to the same command instead of duplicating downloads. Sensitive request headers such as Authorization and Cookie are redacted before persistence, while Diagnostics exposes only safe origin host, source, status, and rejection reason summaries.
+
+
+## Phase 14 release safety
+
+XDM Android now includes privacy-safe diagnostic summaries, redaction helpers, and a schema-free beta release gate for pre-release validation.

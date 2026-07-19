@@ -30,6 +30,8 @@ import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryRecord
+import com.mikeyphw.xdm.android.model.ReleaseSecurityGate
+import com.mikeyphw.xdm.android.model.ReleaseSecurityReport
 import com.mikeyphw.xdm.android.model.ScheduleRule
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
@@ -81,6 +83,14 @@ data class MainUiState(
     val mediaCaptures: List<MediaCaptureRecord> = emptyList(),
     val mediaVariants: List<MediaVariant> = emptyList(),
     val automationCommands: List<AutomationCommandRecord> = emptyList(),
+    val releaseSecurityReport: ReleaseSecurityReport = ReleaseSecurityGate.evaluate(
+        versionName = "0.14.0-alpha01",
+        schemaVersion = 13,
+        buildType = "debug",
+        debuggable = true,
+        privacySafeDiagnostics = true,
+        releaseSigningConfigured = false,
+    ),
 )
 
 class MainViewModel(
@@ -215,6 +225,14 @@ class MainViewModel(
             mediaCaptures = snapshot.mediaCaptures,
             mediaVariants = snapshot.mediaVariants,
             automationCommands = snapshot.automationCommands,
+            releaseSecurityReport = ReleaseSecurityGate.evaluate(
+                versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+                schemaVersion = 13,
+                buildType = BuildConfig.BUILD_TYPE,
+                debuggable = BuildConfig.DEBUG,
+                privacySafeDiagnostics = true,
+                releaseSigningConfigured = !BuildConfig.DEBUG,
+            ),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 

@@ -1,0 +1,135 @@
+{
+  "applied_at": "2026-07-19T16:42:59.988360Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase14_release_safety_overlay-1.zip",
+  "artifact_name": "xdm_android_phase14_release_safety_overlay-1.zip",
+  "type": "overlay",
+  "sha256": "368652eee64058f231c458e3c24adc21ff73e05cd44c285d673b29ec701c8b8b",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Add XDM Android release safety hardening",
+  "commit_hash": "",
+  "file_count": 12,
+  "change_counts": {
+    "add": 4,
+    "modify": 8
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 14 release safety",
+    "description": "Adds privacy-safe diagnostics, redaction helpers, release/beta gate validation, and schema-free beta readiness checks without adding a top-level route or bumping Room.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "0c886ff52dbfba753d383c280defe987bbc1a3b3db7805bdde7a05262effd91d",
+          "size": 5030,
+          "source_sha256": "43d641bbf62eb3dc91a856f0a8584324b52e490f1b29ee4a15bf4398c16b09d0"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "1cecbb7c1040b007b1e58711b50a30f6e303e18f9a2f352f6ae4c9030622a326",
+          "size": 6142,
+          "source_sha256": "eb2a6aecaf0b2247452bd51aede2e0b0e96f3d3544e6307168796a4a0ace453e"
+        },
+        {
+          "path": "app/XDM.Android/app/build.gradle.kts",
+          "action": "modify",
+          "sha256": "bae18edd714c30e747b3b558939faafedcdfaf4d916d0c7f3530d547fb301d3a",
+          "size": 4473,
+          "source_sha256": "c8cc48694078ae5339d7da0d385fe92250e840268b8d3e468e22115e7887103f"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "6a174c1bbb03bb183ef58b6ef3d4652ac505f1bc53cadae3b207cf617a666f6a",
+          "size": 34406,
+          "source_sha256": "d1f0e4999de77f518474640f8a360aa276c601faabfb683fd8c2f25a18c93c43"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "2e3f5d877b7f3d746d99e18a2d812a02be0490d9dce28740f4105385f4931754",
+          "size": 36155,
+          "source_sha256": "8a1d0573430701a8f109fedace9bae4b10cead3b6dd6e9787f40826f09765b61"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "649d67ae613a10655eac89e6dc7996c630be5ce369a0dcbd7530e5300e2c3a87",
+          "size": 6663,
+          "source_sha256": "1614f82c413cac27e965ef87371e0aaf60e764584220453cbeda9d35c7f32bb5"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/AutomationModels.kt",
+          "action": "modify",
+          "sha256": "e7ed7e22c6f800541997781cfcbe445d7d8306a7f0699fa50d3538d7c17df23f",
+          "size": 5419,
+          "source_sha256": "d64d2c499c68d40c9833ae9012e2e948fa54f9b3aed0a7d02b4cd7f6a1b3d434"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt",
+          "action": "add",
+          "sha256": "1295d8073e051a50b0e03238afd651a86144495c57aba89702623ace8ebbced1",
+          "size": 8979
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModelsTest.kt",
+          "action": "add",
+          "sha256": "8cca7ccbfdf84b5b6ce8fab99db4af00222570597b128496dcbefe1c8abd6513",
+          "size": 1845
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-14-RELEASE-SAFETY.md",
+          "action": "add",
+          "sha256": "915057d9292f17948e906aee86a592f0825d80c88a85779c3ab25d5067a17181",
+          "size": 2080
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-13.py",
+          "action": "modify",
+          "sha256": "b36ad0285119812ac98dde56c89988fe9adec373c1e6b2010bba2cb144e36896",
+          "size": 3281,
+          "source_sha256": "4cf558d63071a5b2d0430ece4f2b2246d636e1f0da2e7e189224c4c405cd8b34"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-14.py",
+          "action": "add",
+          "sha256": "af91861b578ac641214847e78908155881b6b6b5ba655316aa88d3c30cc1ef33",
+          "size": 3802
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Add XDM Android release safety hardening"
+      }
+    },
+    "validation": {
+      "recommended_tasks": [
+        ":core-model:test",
+        ":app:compileDebugKotlin",
+        ":app:testDebugUnitTest",
+        "lintDebug"
+      ],
+      "scripts": [
+        "app/XDM.Android/tools/validate-phase-13.py",
+        "app/XDM.Android/tools/validate-phase-14.py"
+      ]
+    }
+  },
+  "history_id": "1abe47a8afce4a439846a89ddd188bdb"
+}

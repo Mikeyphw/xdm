@@ -67,6 +67,11 @@ import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryRecord
 import com.mikeyphw.xdm.android.model.ScheduleRule
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
+import com.mikeyphw.xdm.android.model.redactedDiagnosticLine
+import com.mikeyphw.xdm.android.model.ReleaseSecuritySeverity
 import com.mikeyphw.xdm.android.util.formatBytes
 import com.mikeyphw.xdm.android.util.formatSpeed
 
@@ -469,12 +474,45 @@ fun RecoveryScreen(records: List<RecoveryRecord>, onValidate: (RecoveryRecord) -
 
 @Composable
 fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
+    val clipboard = LocalClipboardManager.current
+    val redactedSummary = PrivacyDiagnosticsRedactor.redactedHealthSummary(
+        report = state.releaseSecurityReport,
+        downloadCount = state.downloads.size,
+        mediaCaptureCount = state.mediaCaptures.size,
+        automationCount = state.automationCommands.size,
+        rejectedHandoffCount = state.automationCommands.count { it.status.name == "Rejected" },
+    )
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { Text("Runtime health", style = MaterialTheme.typography.headlineSmall) }
+        item {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Release safety", fontWeight = FontWeight.Medium)
+                            Text(state.releaseSecurityReport.summary, style = MaterialTheme.typography.bodySmall)
+                        }
+                        TextButton(onClick = { clipboard.setText(AnnotatedString(redactedSummary)) }) { Text("Copy summary") }
+                    }
+                    state.releaseSecurityReport.findings.take(3).forEach { finding ->
+                        val severity = when (finding.severity) {
+                            ReleaseSecuritySeverity.Info -> "Info"
+                            ReleaseSecuritySeverity.Warning -> "Warning"
+                            ReleaseSecuritySeverity.Blocking -> "Blocked"
+                        }
+                        Text("$severity: ${finding.title}", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
         item { DiagnosticLine("Database", "Room schema v13") }
         item { DiagnosticLine("Downloads", state.downloads.size.toString()) }
         item { DiagnosticLine("Queues", state.queues.size.toString()) }
@@ -491,10 +529,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Recent browser handoffs", fontWeight = FontWeight.Medium)
                         state.automationCommands.take(4).forEach { command ->
-                            Text(
-                                listOfNotNull(command.source.name, command.originHost, command.status.name, command.rejectionReason.name.takeIf { it != "None" }).joinToString(" • "),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
+                            Text(command.redactedDiagnosticLine(), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }

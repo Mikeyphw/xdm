@@ -103,6 +103,23 @@ class ArchitectureContractTest {
         assertTrue(File(root, "docs/architecture/PHASE-4.md").isFile)
     }
 
+
+    @Test
+    fun phaseFourteenReleaseSafetyContractsArePresent() {
+        val root = androidRoot()
+        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
+        val buildGradle = File(root, "app/build.gradle.kts").readText()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        assertTrue("Phase 14 architecture contract is missing", File(root, "docs/architecture/PHASE-14-RELEASE-SAFETY.md").isFile)
+        assertTrue("Phase 14 validator is missing", File(root, "tools/validate-phase-14.py").isFile)
+        assertTrue("Release safety model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt").isFile)
+        assertTrue("Manifest must record implemented phase 14", manifest.contains("14"))
+        assertTrue("Manifest must keep Room schema at v13", manifest.contains("\"version\": 13"))
+        assertTrue("Build metadata must advance to 0.14", buildGradle.contains("versionName = \"0.14.0-alpha01\""))
+        assertTrue("Diagnostics must expose privacy-safe release summary", screens.contains("Release safety"))
+        assertTrue("Diagnostics summary copy must be a real action", screens.contains("clipboard.setText"))
+    }
+
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }
 }
