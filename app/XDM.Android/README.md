@@ -1,4 +1,4 @@
-## XDM Android 0.14.0-alpha01
+## XDM Android 0.15.0-alpha01
 
 Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
 
@@ -80,3 +80,8 @@ Browser, share-sheet, Tasker, and deep-link handoffs now use a shared normalizat
 ## Phase 14 release safety
 
 XDM Android now includes privacy-safe diagnostic summaries, redaction helpers, and a schema-free beta release gate for pre-release validation.
+
+
+## Phase 15 UX and accessibility polish
+
+Phase 15 keeps the existing route topography while tightening the Android surface for compact phones and assistive technology. Downloads now expose a compact overview, action labels include the target file, progress indicators publish screen-reader state, release Diagnostics has an accessible copy action, and Settings records the polish contract without adding a new top-level route. Room remains at schema v13.

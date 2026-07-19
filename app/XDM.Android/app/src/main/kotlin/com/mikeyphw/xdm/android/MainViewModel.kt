@@ -84,7 +84,7 @@ data class MainUiState(
     val mediaVariants: List<MediaVariant> = emptyList(),
     val automationCommands: List<AutomationCommandRecord> = emptyList(),
     val releaseSecurityReport: ReleaseSecurityReport = ReleaseSecurityGate.evaluate(
-        versionName = "0.14.0-alpha01",
+        versionName = "0.15.0-alpha01",
         schemaVersion = 13,
         buildType = "debug",
         debuggable = true,

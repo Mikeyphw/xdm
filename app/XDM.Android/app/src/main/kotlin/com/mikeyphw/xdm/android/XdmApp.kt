@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
@@ -30,6 +31,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,6 +58,7 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
                         NavigationRailItem(
                             selected = state.route == route,
                             onClick = { viewModel.navigate(route) },
+                            modifier = Modifier.semantics { stateDescription = if (state.route == route) "${route.label} selected" else "${route.label} not selected" },
                             icon = { Icon(route.icon, route.label) },
                             label = { Text(route.label) },
                         )
@@ -91,7 +96,10 @@ private fun AppScaffold(
                 title = { Text(state.route.label) },
                 actions = {
                     if (showBottomBar) {
-                        IconButton(onClick = { showMoreMenu = true }) {
+                        IconButton(
+                            onClick = { showMoreMenu = true },
+                            modifier = Modifier.semantics { contentDescription = if (overflowRouteSelected) "More sections, ${state.route.label} selected" else "More sections" },
+                        ) {
                             Icon(
                                 Icons.Rounded.MoreVert,
                                 if (overflowRouteSelected) "More sections, ${state.route.label} selected" else "More sections",
@@ -121,6 +129,7 @@ private fun AppScaffold(
                         NavigationBarItem(
                             selected = state.route == route,
                             onClick = { viewModel.navigate(route) },
+                            modifier = Modifier.semantics { stateDescription = if (state.route == route) "${route.label} selected" else "${route.label} not selected" },
                             icon = { Icon(route.icon, route.label) },
                             label = { Text(route.label) },
                         )
@@ -130,7 +139,12 @@ private fun AppScaffold(
         },
         floatingActionButton = {
             if (state.route == AppRoute.Downloads) {
-                FloatingActionButton(onClick = { viewModel.navigate(AppRoute.Add) }) {
+                FloatingActionButton(
+                    onClick = { viewModel.navigate(AppRoute.Add) },
+                    modifier = Modifier
+                        .sizeIn(minWidth = 56.dp, minHeight = 56.dp)
+                        .semantics { contentDescription = "Add download" },
+                ) {
                     Icon(Icons.Rounded.Add, "Add download")
                 }
             }

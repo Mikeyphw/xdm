@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-07-19T17:36:35.263581Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase15_ux_accessibility_polish_overlay.zip",
+  "artifact_name": "xdm_android_phase15_ux_accessibility_polish_overlay.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "12446fe00cdb493eb9783b5f9ce0c983"
+}

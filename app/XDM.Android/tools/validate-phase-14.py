@@ -22,14 +22,23 @@ manifest = json.loads(require_file("PROJECT_MANIFEST.json") or "{}")
 project = manifest.get("project", {})
 database = manifest.get("database", {})
 release = manifest.get("release_security_hardening", {})
-if project.get("version") != "0.14.0-alpha01":
-    errors.append("PROJECT_MANIFEST project.version is not 0.14.0-alpha01")
+project_version = project.get("version", "")
+try:
+    minor_version = int(project_version.split(".")[1])
+except (IndexError, ValueError):
+    minor_version = -1
+if minor_version < 14:
+    errors.append("PROJECT_MANIFEST project.version is older than 0.14.x")
 if 14 not in project.get("implemented_phases", []):
     errors.append("PROJECT_MANIFEST is missing implemented phase 14")
 if database.get("version") != 13:
     errors.append("Phase 14 must keep database.version at 13")
-if manifest.get("next_phase") != "15":
-    errors.append("PROJECT_MANIFEST next_phase is not 15")
+try:
+    next_phase = int(str(manifest.get("next_phase", "0")))
+except ValueError:
+    next_phase = 0
+if next_phase < 15:
+    errors.append("PROJECT_MANIFEST next_phase is older than 15")
 for key in ["privacy_safe_diagnostics", "redacted_diagnostic_summary", "release_gate_script", "beta_build_type_retained"]:
     if release.get(key) is not True:
         errors.append(f"release_security_hardening.{key} is not true")
@@ -40,14 +49,15 @@ if release.get("top_level_route_added") is not False:
 
 build_gradle = require_file("app/build.gradle.kts")
 for needle in [
-    "versionCode = 15",
-    'versionName = "0.14.0-alpha01"',
     'create("beta")',
     'signingConfigs',
     'warningsAsErrors = true',
 ]:
     if needle not in build_gradle:
         errors.append(f"app/build.gradle.kts missing {needle!r}")
+version_code_match = re.search(r'versionCode\s*=\s*(\d+)', build_gradle)
+if not version_code_match or int(version_code_match.group(1)) < 15:
+    errors.append("app/build.gradle.kts versionCode is older than phase 14")
 if re.search(r'getByName\("release"\)\s*\{[^}]*isDebuggable\s*=\s*true', build_gradle, re.S):
     errors.append("release build type must not be debuggable")
 

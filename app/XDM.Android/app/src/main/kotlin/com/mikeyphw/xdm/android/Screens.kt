@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -67,6 +68,10 @@ import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryRecord
 import com.mikeyphw.xdm.android.model.ScheduleRule
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
@@ -90,6 +95,7 @@ fun DownloadsScreen(
 ) {
     var filter by remember { mutableStateOf<DownloadState?>(null) }
     Column(Modifier.fillMaxSize()) {
+        DownloadListSummary(downloads = downloads, active = active)
         if (active.activeCount > 0) {
             Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Row(
@@ -120,9 +126,19 @@ fun DownloadsScreen(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            FilterChip(selected = filter == null, onClick = { filter = null }, label = { Text("All") })
+            FilterChip(
+                selected = filter == null,
+                onClick = { filter = null },
+                label = { Text("All") },
+                modifier = Modifier.semantics { stateDescription = if (filter == null) "All downloads selected" else "All downloads not selected" },
+            )
             listOf(DownloadState.Downloading, DownloadState.Queued, DownloadState.Completed, DownloadState.Failed).forEach { state ->
-                FilterChip(selected = filter == state, onClick = { filter = state }, label = { Text(state.name) })
+                FilterChip(
+                    selected = filter == state,
+                    onClick = { filter = state },
+                    label = { Text(state.name) },
+                    modifier = Modifier.semantics { stateDescription = if (filter == state) "${state.name} downloads selected" else "${state.name} downloads not selected" },
+                )
             }
         }
         val visible = downloads.filter { filter == null || it.state == filter }
@@ -138,6 +154,22 @@ fun DownloadsScreen(
     }
 }
 
+
+@Composable
+private fun DownloadListSummary(downloads: List<Download>, active: ActiveTransferSummary) {
+    val failed = downloads.count { it.state == DownloadState.Failed || it.state == DownloadState.RecoveryRequired }
+    val completed = downloads.count { it.state == DownloadState.Completed }
+    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Download overview", modifier = Modifier.semantics { heading() }, fontWeight = FontWeight.SemiBold)
+            Text(
+                "${downloads.size} total • ${active.activeCount} active • $completed complete • $failed need attention",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
 @Composable
 private fun DownloadCard(
     download: Download,
@@ -148,7 +180,11 @@ private fun DownloadCard(
     onTogglePause: (Download) -> Unit,
     onMigrateBackend: (Download) -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = download.accessibilitySummary() },
+    ) {
         Column(Modifier.padding(if (compact) 10.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -166,15 +202,24 @@ private fun DownloadCard(
                     }
                 }
                 if (download.state in setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Paused, DownloadState.Failed)) {
-                    IconButton(onClick = { onTogglePause(download) }) {
+                    IconButton(
+                        onClick = { onTogglePause(download) },
+                        modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
+                    ) {
                         val paused = download.state == DownloadState.Paused || download.state == DownloadState.Failed
-                        Icon(if (paused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause, if (paused) "Resume" else "Pause")
+                        val action = if (paused) "Resume" else "Pause"
+                        Icon(if (paused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause, "$action ${download.fileName}")
                     }
                 }
             }
             val totalBytes = download.totalBytes
             if (totalBytes != null) {
-                LinearProgressIndicator(progress = { download.progressFraction }, modifier = Modifier.fillMaxWidth())
+                LinearProgressIndicator(
+                    progress = { download.progressFraction },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { stateDescription = download.progressAccessibilitySummary() },
+                )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("${download.bytesReceived.formatBytes()} / ${totalBytes.formatBytes()}", style = MaterialTheme.typography.bodySmall)
                     if (download.speedBytesPerSecond > 0) Text(download.speedBytesPerSecond.formatSpeed(), style = MaterialTheme.typography.bodySmall)
@@ -216,7 +261,10 @@ private fun DownloadCard(
                 targetCompatible
             ) {
                 val target = if (targetBackend == BackendType.Aria2) "aria2" else "XDM Native"
-                Button(onClick = { onMigrateBackend(download) }) {
+                Button(
+                    onClick = { onMigrateBackend(download) },
+                    modifier = Modifier.sizeIn(minWidth = 96.dp, minHeight = 48.dp),
+                ) {
                     Text(if (download.bytesReceived > 0) "Restart with $target" else "Switch to $target")
                 }
                 if (download.bytesReceived > 0) {
@@ -487,7 +535,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { Text("Runtime health", style = MaterialTheme.typography.headlineSmall) }
+        item { Text("Runtime health", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
         item {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -500,7 +548,12 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                             Text("Release safety", fontWeight = FontWeight.Medium)
                             Text(state.releaseSecurityReport.summary, style = MaterialTheme.typography.bodySmall)
                         }
-                        TextButton(onClick = { clipboard.setText(AnnotatedString(redactedSummary)) }) { Text("Copy summary") }
+                        TextButton(
+                            onClick = { clipboard.setText(AnnotatedString(redactedSummary)) },
+                            modifier = Modifier
+                                .sizeIn(minWidth = 96.dp, minHeight = 48.dp)
+                                .semantics { contentDescription = "Copy privacy-safe release summary" },
+                        ) { Text("Copy summary") }
                     }
                     state.releaseSecurityReport.findings.take(3).forEach { finding ->
                         val severity = when (finding.severity) {
@@ -566,7 +619,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
 
 @Composable
 private fun DiagnosticLine(label: String, value: String) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "$label: $value" }) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -606,7 +659,7 @@ fun SettingsScreen(
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { Text("Appearance", style = MaterialTheme.typography.headlineSmall) }
+        item { Text("Appearance", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
         item {
             Card(Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -614,11 +667,25 @@ fun SettingsScreen(
                         Text("Compact download cards", fontWeight = FontWeight.Medium)
                         Text("Reduce vertical spacing in the download list.", style = MaterialTheme.typography.bodySmall)
                     }
-                    Switch(compact, onCompactChanged)
+                    Switch(
+                        checked = compact,
+                        onCheckedChange = onCompactChanged,
+                        modifier = Modifier.semantics { stateDescription = if (compact) "Compact cards enabled" else "Compact cards disabled" },
+                    )
                 }
             }
         }
-        item { Text("Backend strategy", style = MaterialTheme.typography.headlineSmall) }
+        item { Text("Accessibility and layout", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Touch targets, compact phones, and action labels are ready" }) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Phase 15 polish", fontWeight = FontWeight.Medium)
+                    Text("Primary actions keep 48 dp touch targets, long names truncate before controls, and filters/actions expose state descriptions for screen readers.", style = MaterialTheme.typography.bodySmall)
+                    Text("Compact-phone layout keeps downloads, Diagnostics, and Settings inside existing routes.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        item { Text("Backend strategy", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
         items(capabilities, key = { it.backend.name }) { capability ->
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -656,10 +723,31 @@ fun SettingsScreen(
             }
         }
         item { Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall) }
-        item { Text("Version: 0.13.0-alpha01", style = MaterialTheme.typography.bodySmall) }
+        item { Text("Version: 0.15.0-alpha01", style = MaterialTheme.typography.bodySmall) }
     }
 }
 
+
+
+private fun Download.accessibilitySummary(): String = buildString {
+    append(fileName)
+    append(", ")
+    append(state.name.lowercase())
+    append(" using ")
+    append(backend.name)
+    totalBytes?.let { total ->
+        append(", ")
+        append(bytesReceived.formatBytes())
+        append(" of ")
+        append(total.formatBytes())
+    }
+}
+
+private fun Download.progressAccessibilitySummary(): String {
+    val total = totalBytes ?: return "Progress unavailable"
+    val percent = (progressFraction * 100).toInt().coerceIn(0, 100)
+    return "$percent percent, ${bytesReceived.formatBytes()} of ${total.formatBytes()}"
+}
 
 @Composable
 fun EmptyFeatureScreen(title: String, description: String) {
