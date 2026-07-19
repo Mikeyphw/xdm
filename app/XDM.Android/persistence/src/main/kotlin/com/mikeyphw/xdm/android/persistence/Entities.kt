@@ -187,6 +187,10 @@ data class AutomationCommandEntity(
     val resultMessage: String,
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
+    @ColumnInfo(defaultValue = "NULL") val originPackage: String? = null,
+    @ColumnInfo(defaultValue = "NULL") val originHost: String? = null,
+    @ColumnInfo(defaultValue = "NULL") val sanitizedHeaders: String? = null,
+    @ColumnInfo(defaultValue = "'None'") val rejectionReason: String = "None",
 )
 
 @Entity(tableName = "notification_records", indices = [Index("downloadId"), Index("createdAtEpochMs")])

@@ -4,6 +4,7 @@ import com.mikeyphw.xdm.android.model.AutomationCommandAction
 import com.mikeyphw.xdm.android.model.AutomationCommandRecord
 import com.mikeyphw.xdm.android.model.AutomationCommandSource
 import com.mikeyphw.xdm.android.model.AutomationCommandStatus
+import com.mikeyphw.xdm.android.model.AutomationRejectionReason
 import com.mikeyphw.xdm.android.model.BackendOwnership
 import com.mikeyphw.xdm.android.model.BackendMigrationRecord
 import com.mikeyphw.xdm.android.model.BackendSelectionReason
@@ -117,6 +118,10 @@ private fun AutomationCommandEntity.toModel() = AutomationCommandRecord(
     resultMessage = resultMessage,
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
+    originPackage = originPackage,
+    originHost = originHost,
+    sanitizedHeaders = sanitizedHeaders,
+    rejectionReason = runCatching { AutomationRejectionReason.valueOf(rejectionReason) }.getOrDefault(AutomationRejectionReason.None),
 )
 
 private fun AutomationCommandRecord.toEntity() = AutomationCommandEntity(
@@ -134,6 +139,10 @@ private fun AutomationCommandRecord.toEntity() = AutomationCommandEntity(
     resultMessage = resultMessage,
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
+    originPackage = originPackage,
+    originHost = originHost,
+    sanitizedHeaders = sanitizedHeaders,
+    rejectionReason = rejectionReason.name,
 )
 
 private fun DownloadEntity.toModel() = Download(

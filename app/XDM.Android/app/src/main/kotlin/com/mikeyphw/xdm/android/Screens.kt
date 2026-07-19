@@ -475,7 +475,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { Text("Runtime health", style = MaterialTheme.typography.headlineSmall) }
-        item { DiagnosticLine("Database", "Room schema v12") }
+        item { DiagnosticLine("Database", "Room schema v13") }
         item { DiagnosticLine("Downloads", state.downloads.size.toString()) }
         item { DiagnosticLine("Queues", state.queues.size.toString()) }
         item { DiagnosticLine("Recovery records", state.recovery.size.toString()) }
@@ -483,6 +483,23 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         item { DiagnosticLine("Media captures", state.mediaCaptures.size.toString()) }
         item { DiagnosticLine("Media variants", state.mediaVariants.size.toString()) }
         item { DiagnosticLine("Automation commands", state.automationCommands.size.toString()) }
+        item { DiagnosticLine("Browser origins", state.automationCommands.mapNotNull { it.originHost }.distinct().size.toString()) }
+        item { DiagnosticLine("Rejected handoffs", state.automationCommands.count { it.status.name == "Rejected" }.toString()) }
+        if (state.automationCommands.isNotEmpty()) {
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Recent browser handoffs", fontWeight = FontWeight.Medium)
+                        state.automationCommands.take(4).forEach { command ->
+                            Text(
+                                listOfNotNull(command.source.name, command.originHost, command.status.name, command.rejectionReason.name.takeIf { it != "None" }).joinToString(" • "),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
+        }
         item { DiagnosticLine("Native backend", "HTTP/HTTPS, checkpoints, resume and segmentation") }
         item { DiagnosticLine("Execution", "UIDT on Android 14+, foreground dataSync fallback") }
         item { DiagnosticLine("Active transfers", state.activeTransfers.activeCount.toString()) }
@@ -604,7 +621,7 @@ fun SettingsScreen(
             }
         }
         item { Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall) }
-        item { Text("Version: 0.11.0-alpha01", style = MaterialTheme.typography.bodySmall) }
+        item { Text("Version: 0.13.0-alpha01", style = MaterialTheme.typography.bodySmall) }
     }
 }
 

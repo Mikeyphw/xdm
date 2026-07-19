@@ -23,6 +23,8 @@ object TaskerContract {
         pageTitle: String? = null,
         pageUrl: String? = null,
         idempotencyKey: String? = null,
+        originPackage: String? = null,
+        rawHeaders: String? = null,
     ): AutomationCommandDraft? {
         val action = when (actionName) {
             AddUrlAction -> AutomationCommandAction.EnqueueDownload
@@ -39,6 +41,8 @@ object TaskerContract {
             pageTitle = pageTitle,
             pageUrl = pageUrl,
             explicitIdempotencyKey = idempotencyKey,
+            originPackage = originPackage,
+            rawHeaders = rawHeaders,
         )
     }
 }

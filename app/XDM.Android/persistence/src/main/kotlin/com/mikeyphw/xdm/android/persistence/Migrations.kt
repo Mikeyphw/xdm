@@ -271,4 +271,15 @@ object Migrations {
         }
     }
 
+    val Migration12To13 = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE automation_commands ADD COLUMN originPackage TEXT")
+            db.execSQL("ALTER TABLE automation_commands ADD COLUMN originHost TEXT")
+            db.execSQL("ALTER TABLE automation_commands ADD COLUMN sanitizedHeaders TEXT")
+            db.execSQL("ALTER TABLE automation_commands ADD COLUMN rejectionReason TEXT NOT NULL DEFAULT 'None'")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_automation_commands_originHost ON automation_commands(originHost)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_automation_commands_rejectionReason ON automation_commands(rejectionReason)")
+        }
+    }
+
 }

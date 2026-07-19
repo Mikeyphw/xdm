@@ -31,4 +31,33 @@ class AutomationModelsTest {
         assertTrue(tasker.stableIdempotencyKey != share.stableIdempotencyKey)
         assertEquals("external:Tasker:same-event", tasker.stableIdempotencyKey)
     }
+
+    @Test
+    fun browserShareAndTaskerUrlsDeduplicateAcrossSources() {
+        val browser = AutomationCommandDraft(
+            source = AutomationCommandSource.BrowserExtension,
+            action = AutomationCommandAction.EnqueueDownload,
+            url = "https://EXAMPLE.test:443/video.mp4.",
+        )
+        val tasker = AutomationCommandDraft(
+            source = AutomationCommandSource.Tasker,
+            action = AutomationCommandAction.EnqueueDownload,
+            url = " https://example.test/video.mp4 ",
+        )
+
+        assertEquals("https://example.test/video.mp4", browser.normalizedUrl)
+        assertEquals(browser.stableIdempotencyKey, tasker.stableIdempotencyKey)
+    }
+
+    @Test
+    fun sensitiveBrowserHeadersAreRedacted() {
+        val draft = AutomationCommandDraft(
+            source = AutomationCommandSource.BrowserExtension,
+            action = AutomationCommandAction.EnqueueDownload,
+            url = "https://example.test/file.bin",
+            rawHeaders = "Authorization: Bearer secret\nCookie: session=secret\nUser-Agent: XDM",
+        )
+
+        assertEquals("authorization: <redacted>\ncookie: <redacted>\nUser-Agent: XDM", draft.sanitizedHeaders)
+    }
 }

@@ -1,0 +1,205 @@
+{
+  "applied_at": "2026-07-18T18:28:44.762683Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_phase13_browser_handoff_hardening_overlay-3.zip",
+  "artifact_name": "xdm_android_phase13_browser_handoff_hardening_overlay-3.zip",
+  "type": "overlay",
+  "sha256": "7696782f54d5037b5d9b27150f7012b51638082bd1e88d1cbfbc7df280e1a9c5",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Harden XDM Android browser handoffs",
+  "commit_hash": "",
+  "file_count": 20,
+  "change_counts": {
+    "add": 3,
+    "modify": 17
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 13 browser handoff hardening",
+    "description": "Hardens browser/share/Tasker handoff normalization, cross-source duplicate suppression, sensitive header redaction, origin attribution, and rejected-command diagnostics without adding a new top-level route.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "43d641bbf62eb3dc91a856f0a8584324b52e490f1b29ee4a15bf4398c16b09d0",
+          "size": 4760,
+          "source_sha256": "8c9ae8d5fa05c10c87a9b421b8823b23586fb7d1ce8b9a23b559d00be49c8a3f"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "eb2a6aecaf0b2247452bd51aede2e0b0e96f3d3544e6307168796a4a0ace453e",
+          "size": 5969,
+          "source_sha256": "d712a8d60357a4ab424c8be213f06a0220ba7c7932668798936bf9dcf7283193"
+        },
+        {
+          "path": "app/XDM.Android/app/build.gradle.kts",
+          "action": "modify",
+          "sha256": "c8cc48694078ae5339d7da0d385fe92250e840268b8d3e468e22115e7887103f",
+          "size": 4473,
+          "source_sha256": "255bfa188c9e5d4aaf71f040b10a358cebf78c6898dec9d873b4ae9fd2bd960a"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+          "action": "modify",
+          "sha256": "8f9c7c4cf17fb7e6f94f0c715529fc060169e2c9c6c73ae46e5a17ae75070094",
+          "size": 4808,
+          "source_sha256": "5ea57ac33eb351cc83efd108ce7825491577e20462aa286fb8c758eba22fa221"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "d1f0e4999de77f518474640f8a360aa276c601faabfb683fd8c2f25a18c93c43",
+          "size": 33563,
+          "source_sha256": "eec12807ef15b875817c1989db117e6666effba942a9c877eb7f83a99213dd94"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "8a1d0573430701a8f109fedace9bae4b10cead3b6dd6e9787f40826f09765b61",
+          "size": 34256,
+          "source_sha256": "cd9bb8cb10c1b5c5d182e8d9b42f24f326f38871d7e33c752f061babf2a81385"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+          "action": "modify",
+          "sha256": "01f5bdeaa252e2c2f718954b5bdbcf41a90ee598450ae3568760c42cc9034cb4",
+          "size": 5921,
+          "source_sha256": "9f34087c79313f714e33e7c021df8b7b9a12b9678c08672287375fb3b9a2ebac"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/SharedLinkParser.kt",
+          "action": "modify",
+          "sha256": "7def69edd6ebe9fd432ccc78e5576b779a8d94be423d43c35fa17b15acb43f2d",
+          "size": 686,
+          "source_sha256": "fe40b555314a6f7757be07ea3abaa5e1fe506d7ca1960cc6aa61de362db0a339"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/test/kotlin/com/mikeyphw/xdm/android/browser/SharedLinkParserTest.kt",
+          "action": "modify",
+          "sha256": "d09779f571e1ff8f9a18084506df5ebb33f49840670f1dd5328d06e5f5e1c8ec",
+          "size": 683,
+          "source_sha256": "0ac38fdcf40f98d512cdd679db7557467b678e406bc7561ea8945a1f52f7b2be"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/AutomationModels.kt",
+          "action": "modify",
+          "sha256": "d64d2c499c68d40c9833ae9012e2e948fa54f9b3aed0a7d02b4cd7f6a1b3d434",
+          "size": 6012,
+          "source_sha256": "12fae8358cedc039fa49ff09751c099aef7908c40300e3e533872fcad359a3f3"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/AutomationModelsTest.kt",
+          "action": "modify",
+          "sha256": "690ca8eac050d0fc86de1d21c20726dafd3f1ebb0f8d03586c2491d2191af549",
+          "size": 2477,
+          "source_sha256": "00d64db574208af9a8b47572029e4fdc50133ca28c1070dfa8ee045ee436f264"
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt",
+          "action": "modify",
+          "sha256": "d717267c4edd77ed6ee395d7d6341ab86ba2ace94e5d9f229cdc3efd14263bc9",
+          "size": 1848,
+          "source_sha256": "6900ff7914b819fd2a8f68bdc4a69b5067d6889b6fb4d3976545a30206490a9c"
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+          "action": "modify",
+          "sha256": "faf58c566ae677566d8bcb032415ed59d404255216bf11b3ea3700d1344670b0",
+          "size": 15987,
+          "source_sha256": "4808b5b22b7a63fd217375a062269628d736a0ca938293832fa074538423bff3"
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt",
+          "action": "modify",
+          "sha256": "966b8cb2cc907e8c74e74d1665fe2e36072f2829769b8b49cec441f079353b62",
+          "size": 12505,
+          "source_sha256": "d1bae387263ea0369b2eba5eae0867bb45c02d4493fba0029f6350a2c3679cf6"
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+          "action": "modify",
+          "sha256": "c090d6d966069a8b70bbf1238c403d43cba1cb4ea0570db236384a9b721efb95",
+          "size": 15824,
+          "source_sha256": "823105540b69cd476b16d7ea62e77dd4f2c4446c7d33b66cc2ec2ce061a27620"
+        },
+        {
+          "path": "app/XDM.Android/tasker-plugin/src/main/kotlin/com/mikeyphw/xdm/android/tasker/TaskerContract.kt",
+          "action": "modify",
+          "sha256": "ca2a4dfe78381453d52ffd71704441c62c764a61b5315c22de3115c6a3ca0bed",
+          "size": 1960,
+          "source_sha256": "42284a1275d511eff35cb0cb83a937804d02f9d3855482d109d37404d95b3d8b"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-12.py",
+          "action": "modify",
+          "sha256": "0dbe2fa4b4fc2ad590760f93fe09b707f69be3d5c0b4713371a6bc7abcff459c",
+          "size": 3022,
+          "source_sha256": "14db9c41871f3bfafce68fd50eb42a4ef2a2624668a58529e0711362d6079b50"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-13-BROWSER-HANDOFF-HARDENING.md",
+          "action": "add",
+          "sha256": "5cc025a9e8fbfc4ce5123753abd0ad3df0c793881a020011c1ec241f6f350d64",
+          "size": 936
+        },
+        {
+          "path": "app/XDM.Android/persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/13.json",
+          "action": "add",
+          "sha256": "05073f2e9276b129ae8c53fe9684b01a68001103488a8bdf4e514a6503abd949",
+          "size": 62711
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-13.py",
+          "action": "add",
+          "sha256": "4cf558d63071a5b2d0430ece4f2b2246d636e1f0da2e7e189224c4c405cd8b34",
+          "size": 3145
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Harden XDM Android browser handoffs"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Requires the applied Phase 12 automation intake baseline (user baseline commit 8adf1fb).",
+      "Bumps XDM Android to 0.13.0-alpha01 and Room schema 13.",
+      "No .devtool.toml changes are included.",
+      "Browser handoff diagnostics never render raw headers or cookies.",
+      "Room schemas contain no unsupported top-level version key.",
+      "Phase 12 validator is made cumulative-version aware for schema 13 and newer."
+    ]
+  },
+  "history_id": "15d6afd283724d848c1f6b8fd4fe8830"
+}

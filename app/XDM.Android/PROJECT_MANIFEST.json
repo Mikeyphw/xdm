@@ -2,7 +2,7 @@
   "project": {
     "name": "XDM Android",
     "package_id": "com.mikeyphw.xdm.android",
-    "version": "0.12.0-alpha01",
+    "version": "0.13.0-alpha01",
     "implemented_phases": [
       0,
       1,
@@ -16,11 +16,12 @@
       9,
       10,
       11,
-      12
+      12,
+      13
     ]
   },
   "database": {
-    "version": 12,
+    "version": 13,
     "migrations": [
       "1_to_2",
       "2_to_3",
@@ -32,7 +33,8 @@
       "8_to_9",
       "9_to_10",
       "10_to_11",
-      "11_to_12"
+      "11_to_12",
+      "12_to_13"
     ],
     "destination_permission_health": true
   },
@@ -68,7 +70,7 @@
       "compare"
     ]
   },
-  "next_phase": "13",
+  "next_phase": "14",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -176,6 +178,14 @@
     ],
     "share_and_view_capture": true,
     "duplicate_download_suppression": true,
+    "top_level_route_added": false
+  },
+  "browser_handoff_hardening": {
+    "url_normalization": true,
+    "cross_source_duplicate_detection": true,
+    "sensitive_header_redaction": true,
+    "origin_attribution": true,
+    "rejection_reasons": true,
     "top_level_route_added": false
   }
 }

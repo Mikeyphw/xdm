@@ -15,6 +15,7 @@ import com.mikeyphw.xdm.android.model.AutomationCommandAction
 import com.mikeyphw.xdm.android.model.AutomationCommandDraft
 import com.mikeyphw.xdm.android.model.AutomationCommandSource
 import com.mikeyphw.xdm.android.tasker.TaskerContract
+import com.mikeyphw.xdm.android.browser.BrowserHandoffContract
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -51,6 +52,8 @@ class MainActivity : ComponentActivity() {
             pageTitle = incoming.getStringExtra(TaskerContract.ExtraPageTitle),
             pageUrl = incoming.getStringExtra(TaskerContract.ExtraPageUrl),
             idempotencyKey = incoming.getStringExtra(TaskerContract.ExtraIdempotencyKey),
+            originPackage = browserOriginPackage(incoming),
+            rawHeaders = browserHeaders(incoming),
         )
         if (taskerDraft != null) {
             viewModel.ingestAutomationCommand(taskerDraft)
@@ -63,6 +66,8 @@ class MainActivity : ComponentActivity() {
                 url = incoming.getStringExtra(Intent.EXTRA_TEXT),
                 pageTitle = incoming.getStringExtra(Intent.EXTRA_SUBJECT),
                 explicitIdempotencyKey = incoming.getStringExtra(TaskerContract.ExtraIdempotencyKey),
+                originPackage = browserOriginPackage(incoming),
+                rawHeaders = browserHeaders(incoming),
             )
             Intent.ACTION_VIEW -> AutomationCommandDraft(
                 source = AutomationCommandSource.ViewIntent,
@@ -70,11 +75,23 @@ class MainActivity : ComponentActivity() {
                 url = incoming.dataString,
                 pageUrl = incoming.dataString,
                 explicitIdempotencyKey = incoming.getStringExtra(TaskerContract.ExtraIdempotencyKey),
+                originPackage = browserOriginPackage(incoming),
+                rawHeaders = browserHeaders(incoming),
             )
             else -> null
         }
         if (draft?.normalizedUrl != null) viewModel.ingestAutomationCommand(draft)
     }
+
+    private fun browserOriginPackage(intent: Intent): String? =
+        intent.getStringExtra(BrowserHandoffContract.ExtraOriginPackage)
+            ?: referrer?.host
+            ?: intent.component?.packageName
+
+    private fun browserHeaders(intent: Intent): String? = listOfNotNull(
+        intent.getStringExtra(BrowserHandoffContract.ExtraRequestHeaders),
+        intent.getStringExtra(BrowserHandoffContract.ExtraCookieHeader)?.let { "Cookie: $it" },
+    ).joinToString("\n").takeIf { it.isNotBlank() }
 
     private fun requestNotificationPermissionIfNeeded() {
         if (
