@@ -46,3 +46,11 @@ Diagnostics may use technical language, but they must remain user-facing and mus
 New aria2, recovery, scheduling, storage, media, Tasker, diagnostics, and protocol-lab UI must respect this topography. New work should prefer adding panels, detail screens, dialogs, or sub-navigation inside existing routes instead of adding top-level destinations.
 
 Every future phase that changes navigation or major screen behavior must add or update Compose tests and source contract tests. The tests are part of this contract.
+
+## Visual Language Rules
+
+Runtime screens must use the shared XDM UI primitives for typography, status, and spacing instead of ad hoc bold text or raw Material defaults. The app theme must install `XdmTypography`, and screen code should prefer `XdmSectionHeader`, `XdmCardTitle`, `XdmSupportingText`, `XdmMetadataText`, `XdmMetricText`, and `XdmStatusBadge` for reusable hierarchy.
+
+User-facing enum values must be translated through UI labels. Do not render raw enum names such as `RecoveryRequired`, `RequiresRefresh`, `Sha256`, or backend identifiers directly in cards, chips, copied summaries, or accessibility descriptions. State, verification, checksum, backend, media, recovery, filename-conflict, and migration values must use readable labels and, where status is visible, a semantic status tone.
+
+Numbers that update during transfers, such as bytes, speeds, percentages, and counts, should use the metric text role so live updates do not make the layout flicker.

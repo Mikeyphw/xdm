@@ -31,7 +31,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,7 +43,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,6 +70,7 @@ import com.mikeyphw.xdm.android.model.displayName
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
+import com.mikeyphw.xdm.android.model.AutomationCommandStatus
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
@@ -128,8 +127,8 @@ fun DownloadsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column {
-                        Text("${active.activeCount} active download${if (active.activeCount == 1) "" else "s"}", fontWeight = FontWeight.SemiBold)
-                        Text(active.speedBytesPerSecond.formatSpeed(), style = MaterialTheme.typography.bodySmall)
+                        XdmCardTitle("${active.activeCount} active download${if (active.activeCount == 1) "" else "s"}")
+                        XdmMetricText(active.speedBytesPerSecond.formatSpeed())
                     }
                     Button(onClick = onPauseAll) { Text("Pause all") }
                 }
@@ -141,7 +140,7 @@ fun DownloadsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Paused downloads are ready to continue")
+                    XdmSupportingText("Paused downloads are ready to continue")
                     Button(onClick = onResumeAll) { Text("Resume all") }
                 }
             }
@@ -160,8 +159,8 @@ fun DownloadsScreen(
                 FilterChip(
                     selected = filter == state,
                     onClick = { filter = state },
-                    label = { Text(state.name) },
-                    modifier = Modifier.semantics { stateDescription = if (filter == state) "${state.name} downloads selected" else "${state.name} downloads not selected" },
+                    label = { Text(state.uiLabel()) },
+                    modifier = Modifier.semantics { stateDescription = if (filter == state) "${state.uiLabel()} downloads selected" else "${state.uiLabel()} downloads not selected" },
                 )
             }
         }
@@ -188,13 +187,13 @@ private fun HistoryManagementCard(
 ) {
     Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("History management", modifier = Modifier.semantics { heading() }, fontWeight = FontWeight.SemiBold)
-            Text(report.summary, style = MaterialTheme.typography.bodySmall)
+            XdmCardTitle("History management", modifier = Modifier.semantics { heading() })
+            XdmSupportingText(report.summary)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 TextButton(onClick = onCopyHistory, enabled = historyText.isNotBlank()) { Text("Copy history index") }
                 TextButton(onClick = onClearFinished, enabled = report.removableHistory > 0) { Text("Clear finished history") }
             }
-            Text("History actions only remove app records; downloaded files stay in their destination.", style = MaterialTheme.typography.bodySmall)
+            XdmMetadataText("History actions only remove app records; downloaded files stay in their destination.")
         }
     }
 }
@@ -205,10 +204,10 @@ private fun DownloadListSummary(downloads: List<Download>, active: ActiveTransfe
     val completed = downloads.count { it.state == DownloadState.Completed }
     Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Download overview", modifier = Modifier.semantics { heading() }, fontWeight = FontWeight.SemiBold)
+            XdmCardTitle("Download overview", modifier = Modifier.semantics { heading() })
             Text(
                 "${downloads.size} total • ${active.activeCount} active • $completed complete • $failed need attention",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
             )
         }
     }
@@ -238,13 +237,16 @@ private fun DownloadCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(download.fileName, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${download.state.name} • ${download.backend.name}", style = MaterialTheme.typography.bodySmall)
+                    XdmCardTitle(download.fileName, maxLines = 1)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        XdmStatusBadge(download.state.uiLabel(), tone = download.state.statusTone())
+                        XdmMetadataText(download.backend.uiLabel())
+                    }
                     if (download.backendSelectionExplanation.isNotBlank()) {
-                        Text(download.backendSelectionExplanation, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        XdmMetadataText(download.backendSelectionExplanation, maxLines = 2)
                     }
                     download.mimeType?.takeIf { it.startsWith("video/") || it.startsWith("audio/") || it.contains("mpegurl") || it.contains("dash") }?.let {
-                        Text("Media type: $it", style = MaterialTheme.typography.bodySmall)
+                        XdmMetadataText("Media type: $it")
                     }
                 }
                 if (download.state in setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Paused, DownloadState.Failed)) {
@@ -267,8 +269,8 @@ private fun DownloadCard(
                         .semantics { stateDescription = download.progressAccessibilitySummary() },
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${download.bytesReceived.formatBytes()} / ${totalBytes.formatBytes()}", style = MaterialTheme.typography.bodySmall)
-                    if (download.speedBytesPerSecond > 0) Text(download.speedBytesPerSecond.formatSpeed(), style = MaterialTheme.typography.bodySmall)
+                    XdmMetricText("${download.bytesReceived.formatBytes()} / ${totalBytes.formatBytes()}")
+                    if (download.speedBytesPerSecond > 0) XdmMetricText(download.speedBytesPerSecond.formatSpeed())
                 }
             }
             val latestVerification = verificationRecords.firstOrNull { it.downloadId == download.id }
@@ -277,16 +279,16 @@ private fun DownloadCard(
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         val status = latestVerification?.status ?: if (download.state == DownloadState.Verifying) VerificationStatus.Running else VerificationStatus.Pending
-                        Text("Verification: ${status.name}", fontWeight = FontWeight.Medium)
+                        XdmCardTitle("Verification: ${status.uiLabel()}")
                         latestChecksum?.let { checksum ->
                             val result = when (checksum.matchesExpectation) {
                                 true -> "match"
                                 false -> "mismatch"
                                 null -> "recorded"
                             }
-                            Text("${checksum.algorithm.name}: $result", style = MaterialTheme.typography.bodySmall)
+                            XdmMetadataText("${checksum.algorithm.uiLabel()}: $result")
                         }
-                        latestVerification?.message?.let { Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                        latestVerification?.message?.let { XdmMetadataText(it, maxLines = 2) }
                     }
                 }
             }
@@ -306,7 +308,7 @@ private fun DownloadCard(
                 targetBackend != null &&
                 targetCompatible
             ) {
-                val target = if (targetBackend == BackendType.Aria2) "aria2" else "XDM Native"
+                val target = targetBackend.uiLabel()
                 Button(
                     onClick = { onMigrateBackend(download) },
                     modifier = Modifier.sizeIn(minWidth = 96.dp, minHeight = 48.dp),
@@ -314,7 +316,7 @@ private fun DownloadCard(
                     Text(if (download.bytesReceived > 0) "Restart with $target" else "Switch to $target")
                 }
                 if (download.bytesReceived > 0) {
-                    Text("Existing partial bytes are preserved for recovery and are not reused silently.", style = MaterialTheme.typography.bodySmall)
+                    XdmMetadataText("Existing partial bytes are preserved for recovery and are not reused silently.")
                 }
             }
             if (download.state in setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)) {
@@ -324,7 +326,7 @@ private fun DownloadCard(
                     TextButton(onClick = { onRemoveHistory(download) }) { Text("Remove history") }
                 }
             }
-            download.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            download.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
         }
     }
 }
@@ -360,7 +362,7 @@ fun AddDownloadScreen(
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("New download", style = MaterialTheme.typography.headlineSmall)
+        XdmSectionHeader("New download")
         OutlinedTextField(url, { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         OutlinedTextField(
             name,
@@ -383,20 +385,20 @@ fun AddDownloadScreen(
         Text("Existing filename", style = MaterialTheme.typography.labelLarge)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilenameConflictPolicy.entries.forEach { value ->
-                FilterChip(selected = conflictPolicy == value, onClick = { onConflictPolicyChanged(value) }, label = { Text(value.name) })
+                FilterChip(selected = conflictPolicy == value, onClick = { onConflictPolicyChanged(value) }, label = { Text(value.uiLabel()) })
             }
         }
         Text("Backend", style = MaterialTheme.typography.labelLarge)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             BackendType.entries.forEach { value ->
-                FilterChip(selected = backend == value, onClick = { backend = value }, label = { Text(value.name) })
+                FilterChip(selected = backend == value, onClick = { backend = value }, label = { Text(value.uiLabel()) })
             }
         }
         Card(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Compatible fallback", fontWeight = FontWeight.Medium)
-                    Text("Fallback is allowed only before a backend task owns the destination.", style = MaterialTheme.typography.bodySmall)
+                    XdmCardTitle("Compatible fallback")
+                    XdmMetadataText("Fallback is allowed only before a backend task owns the destination.")
                 }
                 Switch(allowFallback, { allowFallback = it })
             }
@@ -412,15 +414,15 @@ fun AddDownloadScreen(
         )
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChecksumAlgorithm.entries.forEach { value ->
-                FilterChip(selected = checksumAlgorithm == value, onClick = { checksumAlgorithm = value }, label = { Text(value.name) })
+                FilterChip(selected = checksumAlgorithm == value, onClick = { checksumAlgorithm = value }, label = { Text(value.uiLabel()) })
             }
         }
 
         recommendation?.let { recommendation ->
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Recommended: ${recommendation.backend.name}", fontWeight = FontWeight.Medium)
-                    Text(recommendation.explanation, style = MaterialTheme.typography.bodySmall)
+                    XdmCardTitle("Recommended: ${recommendation.backend.uiLabel()}")
+                    XdmSupportingText(recommendation.explanation)
                     if (!recommendation.compatible) {
                         Text(
                             recommendation.compatibilityIssue ?: "This backend cannot start the transfer.",
@@ -430,7 +432,7 @@ fun AddDownloadScreen(
                     } else {
                         val fallbackBackend = recommendation.fallbackBackend
                         if (recommendation.fallbackAllowed && fallbackBackend != null) {
-                            Text("Fallback: ${fallbackBackend.name}, before task creation only", style = MaterialTheme.typography.labelMedium)
+                            Text("Fallback: ${fallbackBackend.uiLabel()}, before task creation only", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
@@ -461,10 +463,10 @@ fun QueuesScreen(queues: List<QueueDefinition>) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(queue.name, fontWeight = FontWeight.SemiBold)
-                        Text("Up to ${queue.maxConcurrent} concurrent downloads", style = MaterialTheme.typography.bodySmall)
+                        XdmCardTitle(queue.name)
+                        XdmMetadataText("Up to ${queue.maxConcurrent} concurrent downloads")
                     }
-                    StatusPill(if (queue.isEnabled) "Enabled" else "Disabled")
+                    StatusPill(enabledLabel(queue.isEnabled), enabledTone(queue.isEnabled))
                 }
             }
         }
@@ -485,11 +487,11 @@ fun SchedulerScreen(rules: List<ScheduleRule>) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(rule.name, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                        StatusPill(if (rule.enabled) "Enabled" else "Disabled")
+                        XdmCardTitle(rule.name, modifier = Modifier.weight(1f))
+                        StatusPill(enabledLabel(rule.enabled), enabledTone(rule.enabled))
                     }
                     scheduleConstraintSummary(rule.constraintsJson).forEach { summary ->
-                        Text(summary, style = MaterialTheme.typography.bodySmall)
+                        XdmMetadataText(summary)
                     }
                 }
             }
@@ -517,10 +519,10 @@ fun MediaInboxScreen(
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                         Column(Modifier.weight(1f)) {
-                            Text(capture.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(capture.sourceUrl, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            XdmCardTitle(capture.title, maxLines = 1)
+                            XdmMetadataText(capture.sourceUrl, maxLines = 2)
                         }
-                        StatusPill(capture.kind.name)
+                        StatusPill(capture.kind.uiLabel(), XdmStatusTone.Info)
                     }
                     Text(
                         listOfNotNull(
@@ -529,12 +531,12 @@ fun MediaInboxScreen(
                             "${capture.variantCount} variant${if (capture.variantCount == 1) "" else "s"}",
                             capture.durationMs?.let { "${it / 1000}s" },
                         ).joinToString(" • "),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        StatusPill(capture.status.name)
-                        StatusPill(capture.resolutionStatus.name)
-                        capture.downloadId?.let { StatusPill("Queued") }
+                        StatusPill(capture.status.uiLabel(), if (capture.status == MediaCaptureStatus.DownloadCreated) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                        StatusPill(capture.resolutionStatus.uiLabel(), if (capture.resolutionStatus == MediaResolutionStatus.Failed || capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh) XdmStatusTone.Warning else XdmStatusTone.Neutral)
+                        capture.downloadId?.let { StatusPill("Queued", XdmStatusTone.Success) }
                     }
                     if (captureVariants.isNotEmpty()) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -573,12 +575,12 @@ fun RecoveryScreen(records: List<RecoveryRecord>, onValidate: (RecoveryRecord) -
         items(records, key = RecoveryRecord::id) { record ->
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(record.classification.name, fontWeight = FontWeight.SemiBold)
+                    XdmCardTitle(record.classification.uiLabel())
                     Text(record.artifactPath, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(record.reason, style = MaterialTheme.typography.bodySmall)
+                    XdmSupportingText(record.reason)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        StatusPill(record.recommendedAction.name)
-                        StatusPill(if (record.safeToResume) "Safe resume" else "Paused")
+                        StatusPill(record.recommendedAction.uiLabel(), record.classification.statusTone())
+                        StatusPill(if (record.safeToResume) "Safe resume" else "Paused", if (record.safeToResume) XdmStatusTone.Success else XdmStatusTone.Warning)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = { onValidate(record) }) { Text(if (record.safeToResume) "Resume" else "Validate") }
@@ -598,7 +600,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         downloadCount = state.downloads.size,
         mediaCaptureCount = state.mediaCaptures.size,
         automationCount = state.automationCommands.size,
-        rejectedHandoffCount = state.automationCommands.count { it.status.name == "Rejected" },
+        rejectedHandoffCount = state.automationCommands.count { it.status == AutomationCommandStatus.Rejected },
     )
     val installUpdateSummary = state.installUpdateReadinessReport.redactedSummary()
     val finalReleaseSummary = state.finalReleaseGateReport.redactedSummary()
@@ -608,7 +610,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { Text("Runtime health", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item { XdmSectionHeader("Runtime health") }
         item {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -618,8 +620,8 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text("App integrity", fontWeight = FontWeight.Medium)
-                            Text(state.releaseSecurityReport.summary, style = MaterialTheme.typography.bodySmall)
+                            XdmCardTitle("App integrity")
+                            XdmSupportingText(state.releaseSecurityReport.summary)
                         }
                         TextButton(
                             onClick = { copyTextToClipboard(context, "XDM diagnostic summary", supportSummary) },
@@ -634,7 +636,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                             ReleaseSecuritySeverity.Warning -> "Warning"
                             ReleaseSecuritySeverity.Blocking -> "Blocked"
                         }
-                        Text("$severity: ${finding.title}", style = MaterialTheme.typography.bodySmall)
+                        XdmMetadataText("$severity: ${finding.title}")
                     }
                 }
             }
@@ -642,15 +644,15 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         item {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Update compatibility", fontWeight = FontWeight.Medium)
-                    Text(state.installUpdateReadinessReport.summary, style = MaterialTheme.typography.bodySmall)
+                    XdmCardTitle("Update compatibility")
+                    XdmSupportingText(state.installUpdateReadinessReport.summary)
                     state.installUpdateReadinessReport.checks.take(4).forEach { check ->
                         val severity = when (check.severity) {
                             ReleaseReadinessSeverity.Info -> "Info"
                             ReleaseReadinessSeverity.Warning -> "Warning"
                             ReleaseReadinessSeverity.Blocking -> "Blocked"
                         }
-                        Text("$severity: ${check.title}", style = MaterialTheme.typography.bodySmall)
+                        XdmMetadataText("$severity: ${check.title}")
                     }
                 }
             }
@@ -658,15 +660,15 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         item {
             Card(Modifier.fillMaxWidth().semantics { contentDescription = "Final release gate ${state.finalReleaseGateReport.summary}" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Release readiness", fontWeight = FontWeight.Medium)
-                    Text(state.finalReleaseGateReport.summary, style = MaterialTheme.typography.bodySmall)
+                    XdmCardTitle("Release readiness")
+                    XdmSupportingText(state.finalReleaseGateReport.summary)
                     state.finalReleaseGateReport.checks.take(4).forEach { check ->
                         val severity = when (check.severity) {
                             FinalReleaseGateSeverity.Info -> "Info"
                             FinalReleaseGateSeverity.Warning -> "Warning"
                             FinalReleaseGateSeverity.Blocking -> "Blocked"
                         }
-                        Text("$severity: ${check.title}", style = MaterialTheme.typography.bodySmall)
+                        XdmMetadataText("$severity: ${check.title}")
                     }
                 }
             }
@@ -682,14 +684,14 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         item { DiagnosticLine("Media variants", state.mediaVariants.size.toString()) }
         item { DiagnosticLine("Automation commands", state.automationCommands.size.toString()) }
         item { DiagnosticLine("Browser origins", state.automationCommands.mapNotNull { it.originHost }.distinct().size.toString()) }
-        item { DiagnosticLine("Rejected handoffs", state.automationCommands.count { it.status.name == "Rejected" }.toString()) }
+        item { DiagnosticLine("Rejected handoffs", state.automationCommands.count { it.status == AutomationCommandStatus.Rejected }.toString()) }
         if (state.automationCommands.isNotEmpty()) {
             item {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Recent browser handoffs", fontWeight = FontWeight.Medium)
+                        XdmCardTitle("Recent browser handoffs")
                         state.automationCommands.take(4).forEach { command ->
-                            Text(command.redactedDiagnosticLine(), style = MaterialTheme.typography.bodySmall)
+                            XdmMetadataText(command.redactedDiagnosticLine())
                         }
                     }
                 }
@@ -707,8 +709,8 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text("aria2 runtime", fontWeight = FontWeight.Medium)
-                            Text(state.aria2Diagnostics.status, style = MaterialTheme.typography.labelLarge)
+                            XdmCardTitle("aria2 runtime")
+                            XdmMetricText(state.aria2Diagnostics.status)
                         }
                         Button(
                             onClick = onRunAria2SmokeTest,
@@ -717,7 +719,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                             Text(if (state.aria2Diagnostics.smokeTestRunning) "Testing…" else "Run probe")
                         }
                     }
-                    Text(state.aria2Diagnostics.detail, style = MaterialTheme.typography.bodySmall)
+                    XdmMetadataText(state.aria2Diagnostics.detail)
                 }
             }
         }
@@ -732,7 +734,7 @@ private fun DiagnosticLine(label: String, value: String) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            Text(label, modifier = Modifier.weight(0.35f), fontWeight = FontWeight.Medium)
+            XdmCardTitle(label, modifier = Modifier.weight(0.35f))
             Text(
                 value,
                 modifier = Modifier.weight(0.65f),
@@ -744,14 +746,8 @@ private fun DiagnosticLine(label: String, value: String) {
 }
 
 @Composable
-private fun StatusPill(text: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        shape = MaterialTheme.shapes.small,
-    ) {
-        Text(text, Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
-    }
+private fun StatusPill(text: String, tone: XdmStatusTone = XdmStatusTone.Neutral) {
+    XdmStatusBadge(text, tone = tone)
 }
 
 @Composable
@@ -786,13 +782,13 @@ fun SettingsScreen(
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { Text("Appearance", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item { XdmSectionHeader("Appearance") }
         item {
             Card(Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Compact download cards", fontWeight = FontWeight.Medium)
-                        Text("Reduce vertical spacing in the download list.", style = MaterialTheme.typography.bodySmall)
+                        XdmCardTitle("Compact download cards")
+                        XdmMetadataText("Reduce vertical spacing in the download list.")
                     }
                     Switch(
                         checked = compact,
@@ -802,12 +798,12 @@ fun SettingsScreen(
                 }
             }
         }
-        item { Text("Settings import/export", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item { XdmSectionHeader("Settings import/export") }
         item {
             Card(Modifier.fillMaxWidth().semantics { contentDescription = "Settings import export snapshot" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Portable settings snapshot", fontWeight = FontWeight.Medium)
-                    Text("Exports layout density, destination defaults, filename conflict policy, proxy metadata, and post-processing choices. Secrets are not exported.", style = MaterialTheme.typography.bodySmall)
+                    XdmCardTitle("Portable settings snapshot")
+                    XdmMetadataText("Exports layout density, destination defaults, filename conflict policy, proxy metadata, and post-processing choices. Secrets are not exported.")
                     TextButton(onClick = { copyTextToClipboard(context, "XDM settings snapshot", settingsExportText) }) { Text("Copy export") }
                     OutlinedTextField(
                         importText,
@@ -820,14 +816,14 @@ fun SettingsScreen(
                 }
             }
         }
-        item { Text("Proxy and credentials", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item { XdmSectionHeader("Proxy and credentials") }
         item {
             Card(Modifier.fillMaxWidth().semantics { contentDescription = "Proxy credential profile ${proxySettings.redactedSummary}" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Proxy profile", fontWeight = FontWeight.Medium)
-                            Text(proxySettings.redactedSummary, style = MaterialTheme.typography.bodySmall)
+                            XdmCardTitle("Proxy profile")
+                            XdmMetadataText(proxySettings.redactedSummary)
                         }
                         Switch(proxyEnabled, { proxyEnabled = it })
                     }
@@ -839,14 +835,14 @@ fun SettingsScreen(
                 }
             }
         }
-        item { Text("Conversion and post-processing", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item { XdmSectionHeader("Conversion and post-processing") }
         item {
             Card(Modifier.fillMaxWidth().semantics { contentDescription = "Conversion post processing ${postProcessingSettings.redactedSummary}" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Post-processing hook", fontWeight = FontWeight.Medium)
-                            Text(postProcessingSettings.redactedSummary, style = MaterialTheme.typography.bodySmall)
+                            XdmCardTitle("Post-processing hook")
+                            XdmMetadataText(postProcessingSettings.redactedSummary)
                         }
                         Switch(postEnabled, { postEnabled = it })
                     }
@@ -857,29 +853,29 @@ fun SettingsScreen(
                     }
                     OutlinedTextField(postLabel, { postLabel = it }, label = { Text("Custom label") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     Button(onClick = { onPostProcessingChanged(PostProcessingSettings(postEnabled, postPreset, postLabel)) }) { Text("Save post-processing") }
-                    Text("Conversion starts only when the selected backend supports the chosen preset.", style = MaterialTheme.typography.bodySmall)
+                    XdmMetadataText("Conversion starts only when the selected backend supports the chosen preset.")
                 }
             }
         }
-        item { Text("Protocol expansion", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item { XdmSectionHeader("Protocol expansion") }
         item {
             Card(Modifier.fillMaxWidth().semantics { contentDescription = "Protocol expansion ${protocolExpansionReport.summary}" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(protocolExpansionReport.summary, fontWeight = FontWeight.Medium)
-                    protocolExpansionReport.rows.forEach { row -> Text("${row.protocol.uppercase()}: ${row.recommendation}", style = MaterialTheme.typography.bodySmall) }
+                    XdmCardTitle(protocolExpansionReport.summary)
+                    protocolExpansionReport.rows.forEach { row -> XdmMetadataText("${row.protocol.uppercase()}: ${row.recommendation}") }
                 }
             }
         }
-        item { Text("Backend strategy", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item { XdmSectionHeader("Backend strategy") }
         items(capabilities, key = { it.backend.name }) { capability ->
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(if (capability.backend == BackendType.Native) "XDM Native" else "aria2", fontWeight = FontWeight.SemiBold)
-                        StatusPill(if (capability.available) "Available" else "Unavailable")
+                        XdmCardTitle(capability.backend.uiLabel())
+                        StatusPill(if (capability.available) "Available" else "Unavailable", if (capability.available) XdmStatusTone.Success else XdmStatusTone.Warning)
                     }
-                    Text(capability.summary, style = MaterialTheme.typography.bodySmall)
-                    Text("Protocols: ${capability.protocols.sorted().joinToString().ifBlank { "None" }}", style = MaterialTheme.typography.bodySmall)
+                    XdmSupportingText(capability.summary)
+                    XdmMetadataText("Protocols: ${capability.protocols.sorted().joinToString().ifBlank { "None" }}")
                     Text(
                         listOfNotNull(
                             "Segments".takeIf { capability.segmentation },
@@ -891,18 +887,18 @@ fun SettingsScreen(
                         ).joinToString(" • ").ifBlank { "No optional capabilities" },
                         style = MaterialTheme.typography.labelMedium,
                     )
-                    Text("Diagnostics: ${capability.diagnosticDetail.name} • Battery: ${capability.batteryImpact.name}", style = MaterialTheme.typography.bodySmall)
+                    XdmMetadataText("Diagnostics: ${capability.diagnosticDetail.uiLabel()} • Battery: ${capability.batteryImpact.uiLabel()}")
                 }
             }
         }
         if (migrations.isNotEmpty()) {
-            item { Text("Recent backend migrations", style = MaterialTheme.typography.headlineSmall) }
+            item { XdmSectionHeader("Recent backend migrations") }
             items(migrations.take(5), key = BackendMigrationRecord::id) { migration ->
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("${migration.sourceBackend.name} → ${migration.targetBackend.name}", fontWeight = FontWeight.Medium)
-                        Text(migration.stage.name, style = MaterialTheme.typography.labelLarge)
-                        Text(migration.message, style = MaterialTheme.typography.bodySmall)
+                        XdmCardTitle("${migration.sourceBackend.uiLabel()} → ${migration.targetBackend.uiLabel()}")
+                        XdmMetricText(migration.stage.uiLabel())
+                        XdmMetadataText(migration.message)
                     }
                 }
             }
@@ -919,9 +915,9 @@ private fun copyTextToClipboard(context: Context, label: String, value: String) 
 private fun Download.accessibilitySummary(): String = buildString {
     append(fileName)
     append(", ")
-    append(state.name.lowercase())
+    append(state.uiLabel().lowercase())
     append(" using ")
-    append(backend.name)
+    append(backend.uiLabel())
     totalBytes?.let { total ->
         append(", ")
         append(bytesReceived.formatBytes())
@@ -979,7 +975,7 @@ fun EmptyFeatureScreen(title: String, description: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        XdmSectionHeader(title)
         Spacer(Modifier.height(8.dp))
         Text(description, style = MaterialTheme.typography.bodyMedium)
     }
@@ -987,8 +983,8 @@ fun EmptyFeatureScreen(title: String, description: String) {
 
 private fun Download.fileManagementSummary(): String = buildString {
     appendLine("File: $fileName")
-    appendLine("State: ${state.name}")
-    appendLine("Backend: ${backend.name}")
+    appendLine("State: ${state.uiLabel()}")
+    appendLine("Backend: ${backend.uiLabel()}")
     appendLine("URL: $sourceUrl")
     appendLine("Destination: $destinationUri")
     appendLine("Progress: ${bytesReceived.formatBytes()}${totalBytes?.let { " / ${it.formatBytes()}" } ?: ""}")

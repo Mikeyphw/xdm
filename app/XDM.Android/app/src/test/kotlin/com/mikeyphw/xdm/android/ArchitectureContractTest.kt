@@ -220,6 +220,34 @@ class ArchitectureContractTest {
         assertFalse("Post-17 parity must not add a top-level route", AppRoute.entries.any { it.label in setOf("History", "Proxy", "Convert", "Packaging") })
     }
 
+
+    @Test
+    fun uiUxPhaseTwoDesignSystemContractsArePresent() {
+        val root = androidRoot()
+        val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
+        val mainActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val design = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmDesignSystem.kt").readText()
+        val labels = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmUiLabels.kt").readText()
+
+        assertTrue("UI contract must define visual language rules", contract.contains("Visual Language Rules"))
+        assertTrue("Theme must install shared typography", mainActivity.contains("typography = XdmTypography"))
+        listOf("XdmTypography", "XdmSpacing", "XdmSectionHeader", "XdmCardTitle", "XdmSupportingText", "XdmMetadataText", "XdmMetricText", "XdmStatusBadge").forEach { primitive ->
+            assertTrue("Design system missing $primitive", design.contains(primitive))
+        }
+        listOf("DownloadState.uiLabel", "BackendType.uiLabel", "ChecksumAlgorithm.uiLabel", "VerificationStatus.uiLabel", "FilenameConflictPolicy.uiLabel", "MediaCaptureStatus.uiLabel", "RecoveryClassification.uiLabel", "BackendMigrationStage.uiLabel").forEach { label ->
+            assertTrue("UI label mapping missing $label", labels.contains(label))
+        }
+        assertTrue("Download cards must use semantic state badges", screens.contains("XdmStatusBadge(download.state.uiLabel(), tone = download.state.statusTone())"))
+        assertTrue("Transfer metrics must use the metric text role", screens.contains("XdmMetricText"))
+        assertTrue("Filter chips must use readable download state labels", screens.contains("state.uiLabel()"))
+        assertTrue("Checksum UI must use readable algorithm labels", screens.contains("checksum.algorithm.uiLabel()"))
+        assertTrue("Recovery UI must use readable action labels", screens.contains("record.recommendedAction.uiLabel()"))
+        assertFalse("Download filters must not render raw enum names", screens.contains("Text(state.name)"))
+        assertFalse("Verification cards must not render raw enum names", screens.contains("Verification: ${'$'}{status.name}"))
+        assertFalse("Copied file summaries must not render raw state names", screens.contains("State: ${'$'}{state.name}"))
+    }
+
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }
 }

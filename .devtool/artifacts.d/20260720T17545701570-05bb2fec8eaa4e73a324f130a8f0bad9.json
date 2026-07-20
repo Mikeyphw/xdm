@@ -1,0 +1,91 @@
+{
+  "applied_at": "2026-07-20T17:54:57.015701Z",
+  "artifact": "/home/mike/Downloads/xdm_android_ui_ux_phase2_overlay_fixed.zip",
+  "artifact_name": "xdm_android_ui_ux_phase2_overlay_fixed.zip",
+  "type": "overlay",
+  "sha256": "a640973d47f815de2fa9093916dcfdc97c3814b03f21f8771acb004064d98c40",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "feat(android): add UI typography foundation",
+  "commit_hash": "",
+  "file_count": 6,
+  "change_counts": {
+    "add": 2,
+    "modify": 4
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android UI/UX Audit Phase 2 Fixed",
+    "description": "Adds a shared Android design-system layer for typography, spacing, status badges, metric text, and user-facing enum labels, with Compose lint-compliant modifier ordering.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "e5d1c470db6d3dc9844f38b063c3f1e98dfcce717ebc7c262e8de6c66db63e26",
+          "size": 53645,
+          "source_sha256": "a43a5511fa64896f3d77ef6538b0b884c06bd27e7de918e6a4f57dd32ef08ac7"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+          "action": "modify",
+          "sha256": "54a73b9a2b027099c98632fbe58013dfbc7b1e9e503858dad109da616bac4d6a",
+          "size": 4837,
+          "source_sha256": "c56e0f3912f67b6aaab55c2571ad3fd3bc1228bddac3f35f59b0a87b5c5982be"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmDesignSystem.kt",
+          "action": "add",
+          "sha256": "b40117c3ed4013cab7b0cf73d58a485c1516205ae49c676049361eb83eb827d4",
+          "size": 5694
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmUiLabels.kt",
+          "action": "add",
+          "sha256": "2d2136490e35915de01c9c00a6764d8ad2e53ef340b7e963afdf6449439fbe16",
+          "size": 6892
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "5b7226f78daaedf44a082d9d784559d5ebdbe4da6a930b3b628bf4c2cc041894",
+          "size": 18234,
+          "source_sha256": "2a801c4e77d3056b5a918cd51f33fc5187ba2b310f5d94899d0aa5e3e25e9b96"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+          "action": "modify",
+          "sha256": "da18cf1b43e635824c1b5c5a753a513aedbe9bafaedd300b56ffda3b26943459",
+          "size": 3914,
+          "source_sha256": "4474f33a836839a72d03c7fecfa39bc7d7f947a552c206ea0e1651c9b77f229e"
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "feat(android): add UI typography foundation"
+      }
+    },
+    "validation": {
+      "commands": [
+        {
+          "command": "./gradlew test",
+          "working_directory": "app/XDM.Android"
+        }
+      ]
+    }
+  },
+  "history_id": "05bb2fec8eaa4e73a324f130a8f0bad9"
+}

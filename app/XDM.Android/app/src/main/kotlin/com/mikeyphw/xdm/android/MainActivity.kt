@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val scheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
-            MaterialTheme(colorScheme = scheme) { XdmApp(viewModel, requestNotifications = ::requestNotificationPermissionIfNeeded) }
+            MaterialTheme(colorScheme = scheme, typography = XdmTypography) { XdmApp(viewModel, requestNotifications = ::requestNotificationPermissionIfNeeded) }
         }
         handleExternalIntent(intent)
     }
