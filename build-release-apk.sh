@@ -9,9 +9,9 @@ BUILD_TYPE="${1:-all}"
 
 usage() {
   cat >&2 <<'EOF'
-Usage: ./build-release-apk.sh [debug|release|all]
+Usage: ./build-release-apk.sh [debug|beta|release|all]
 
-Builds Android APKs. With no argument, builds debug and release.
+Builds Android APKs. With no argument, builds debug, beta and release.
 
 Release builds require signing inputs exported in the environment or placed in:
   app/XDM.Android/release-signing.env
@@ -25,6 +25,8 @@ Required variables:
 Optional variables:
   XDM_RELEASE_OUT_DIR          Output directory, default: dist/android
   XDM_ANDROID_BUILD_APK        Override tools/devtool-gradle.sh builder
+
+Every copied APK gets a neighboring .sha256 checksum file.
 EOF
 }
 
@@ -35,6 +37,15 @@ fi
 
 version_name() {
   sed -n 's/^[[:space:]]*versionName = "\(.*\)"/\1/p' "$ANDROID_ROOT/app/build.gradle.kts" | head -n 1
+}
+
+write_checksum() {
+  local file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" > "$file.sha256"
+  else
+    shasum -a 256 "$file" > "$file.sha256"
+  fi
 }
 
 build_debug() {
@@ -52,7 +63,29 @@ build_debug() {
   name="$(version_name)"
   dest="$OUT_DIR/xdm-android-${name:-debug}-debug.apk"
   cp "$apk" "$dest"
+  write_checksum "$dest"
   echo "Debug APK: $dest"
+}
+
+build_beta() {
+  local apk dest name
+  mkdir -p "$OUT_DIR"
+
+  "$ANDROID_ROOT/tools/devtool-gradle.sh" clean lintBeta testDebugUnitTest assembleBeta
+
+  APK_DIR="$ANDROID_ROOT/app/build/outputs/apk/beta"
+  mapfile -t beta_apks < <(find "$APK_DIR" -maxdepth 1 -type f -name '*beta*.apk' | sort)
+  if (( ${#beta_apks[@]} == 0 )); then
+    echo "No beta APK found in $APK_DIR" >&2
+    exit 1
+  fi
+
+  apk="${beta_apks[-1]}"
+  name="$(version_name)"
+  dest="$OUT_DIR/xdm-android-${name:-beta}-beta.apk"
+  cp "$apk" "$dest"
+  write_checksum "$dest"
+  echo "Beta APK: $dest"
 }
 
 require_release_signing() {
@@ -105,6 +138,7 @@ build_release() {
   dest="$OUT_DIR/xdm-android-${name:-release}-release.apk"
 
   cp "$apk" "$dest"
+  write_checksum "$dest"
 
   if command -v apksigner >/dev/null 2>&1; then
     apksigner verify --verbose --print-certs "$dest"
@@ -119,11 +153,15 @@ case "$BUILD_TYPE" in
   debug)
     build_debug
     ;;
+  beta)
+    build_beta
+    ;;
   release)
     build_release
     ;;
   all)
     build_debug
+    build_beta
     build_release
     ;;
   *)

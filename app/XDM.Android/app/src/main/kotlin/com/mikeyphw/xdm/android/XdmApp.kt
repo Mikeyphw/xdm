@@ -194,6 +194,7 @@ private fun AppScaffold(
                     state.backendCapabilities,
                     state.backendMigrations,
                     state.installUpdateReadinessReport,
+                    state.finalReleaseGateReport,
                     viewModel::setCompactDensity,
                 )
             }

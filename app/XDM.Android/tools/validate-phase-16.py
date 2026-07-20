@@ -33,8 +33,13 @@ if 16 not in project.get("implemented_phases", []):
     errors.append("PROJECT_MANIFEST is missing implemented phase 16")
 if database.get("version") != 13:
     errors.append("Phase 16 must keep database.version at 13")
-if str(manifest.get("next_phase")) != "17":
-    errors.append("PROJECT_MANIFEST next_phase is not 17")
+next_phase = manifest.get("next_phase")
+try:
+    next_phase_number = int(str(next_phase))
+except (TypeError, ValueError):
+    next_phase_number = 999 if str(next_phase).lower() == "complete" else 0
+if next_phase_number < 17:
+    errors.append("PROJECT_MANIFEST next_phase is older than 17")
 for key in [
     "install_update_gate_script",
     "recovery_surface_ready",
@@ -53,10 +58,12 @@ if readiness.get("top_level_route_added") is not False:
     errors.append("Phase 16 must not add a top-level route")
 
 build_gradle = require_file("app/build.gradle.kts")
-if "versionCode = 17" not in build_gradle:
-    errors.append("app/build.gradle.kts missing versionCode = 17")
-if 'versionName = "0.16.0-alpha01"' not in build_gradle:
-    errors.append("app/build.gradle.kts missing versionName 0.16.0-alpha01")
+version_code_match = re.search(r'versionCode\s*=\s*(\d+)', build_gradle)
+if not version_code_match or int(version_code_match.group(1)) < 17:
+    errors.append("app/build.gradle.kts versionCode is older than phase 16")
+version_name_match = re.search(r'versionName\s*=\s*"0\.(\d+)\.0-(?:alpha01|rc01)"', build_gradle)
+if not version_name_match or int(version_name_match.group(1)) < 16:
+    errors.append("app/build.gradle.kts versionName is older than 0.16.0-alpha01/rc01")
 for needle in ['applicationId = "com.mikeyphw.xdm.android"', 'applicationIdSuffix = ".beta"', 'applicationIdSuffix = ".debug"']:
     if needle not in build_gradle:
         errors.append(f"app/build.gradle.kts missing {needle!r}")

@@ -2,7 +2,7 @@
   "project": {
     "name": "XDM Android",
     "package_id": "com.mikeyphw.xdm.android",
-    "version": "0.16.0-alpha01",
+    "version": "0.17.0-rc01",
     "implemented_phases": [
       0,
       1,
@@ -20,7 +20,8 @@
       13,
       14,
       15,
-      16
+      16,
+      17
     ]
   },
   "database": {
@@ -73,7 +74,7 @@
       "compare"
     ]
   },
-  "next_phase": "17",
+  "next_phase": "complete",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -222,6 +223,24 @@
     "aria2_payload_gate_retained": true,
     "ci_static_validators_updated": true,
     "deprecated_clipboard_api_removed": true,
+    "top_level_route_added": false
+  },
+  "final_public_release_gate": {
+    "schema_version_unchanged": 13,
+    "version_code": 18,
+    "version_name": "0.17.0-rc01",
+    "release_candidate": true,
+    "full_validation_required": true,
+    "full_validation_gate_script": true,
+    "static_validators_complete": true,
+    "release_docs_complete": true,
+    "package_identity_locked": "com.mikeyphw.xdm.android",
+    "room_schema_locked": 13,
+    "diagnostics_redacted": true,
+    "install_update_ready": true,
+    "aria2_payload_gate_required_for_publishable_artifacts": true,
+    "signed_release_verification_documented": true,
+    "artifact_checksums_documented": true,
     "top_level_route_added": false
   }
 }

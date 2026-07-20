@@ -18876,6 +18876,176 @@
         }
       },
       "history_id": "2500aae15bea4fc9a2eca638cc162f74"
+    },
+    {
+      "applied_at": "2026-07-19T18:48:47.144876Z",
+      "artifact": "/home/mike/Downloads/xdm_android_phase17_final_public_release_gate_overlay.zip",
+      "artifact_name": "xdm_android_phase17_final_public_release_gate_overlay.zip",
+      "type": "overlay",
+      "sha256": "9fac1b3858248d6456ed2b2545fc083e020c15b82752293bfa4cb4a741dad006",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "Add XDM Android final public release gate",
+      "commit_hash": "",
+      "file_count": 17,
+      "change_counts": {
+        "unchanged": 17
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 17 final public release gate",
+        "description": "Adds the final schema-free public release gate, release-candidate metadata, full validation scripts, CI Phase 17 coverage, checksum-aware APK packaging, and Diagnostics/Settings release readiness reporting.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "build-release-apk.sh",
+              "action": "modify",
+              "sha256": "a5d4bfe098abef8031880d4799be5c8a5f21d4d8a6459c7f801da527d9051c2f",
+              "size": 4333,
+              "source_sha256": "e4773abdb15dba4751f888970a2921f26430465b4c0bc92173e8a52d5e3bbfb3"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "6577a03ff4574bbc3ff1f2a27360582c51443325e086e33653b3724b38756254",
+              "size": 6613,
+              "source_sha256": "6a9f63d965d477d0bbbd379330ea9783ff6eca328e75c6b3be077223d58c1c70"
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "sha256": "dd8b7a9ea8a36889c2d5540559a674a0b753aa84f8f021c77899a322659752be",
+              "size": 7927,
+              "source_sha256": "f03b58dd9491a261a708bfbf4310a314f6660853089e12b9a4b27bb64ba3ed29"
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "sha256": "ecd968a7673f85509821f31dd8b388f2e023bc0d12e03fb90d8034801416c014",
+              "size": 4470,
+              "source_sha256": "164933a544b3aa863d02e52b9653dbfda95180b13f875a18f3c10be2363be851"
+            },
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "62a6d9f553afcc61d34970b2d9158a7223bd5be06509c2c066f2b69893ecd1d9",
+              "size": 2282,
+              "source_sha256": "8aa111521d743806cbe954b35478f401c34b845eb800e4dcc6445279095a868b"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "4807e615c78e1f143dbabca60f8810af0aa43fbc993cd430b3e9feb16a3f3105",
+              "size": 37512,
+              "source_sha256": "3f99c022e2481dac9bedc5a4d5d20896865796ee0cf659e192e7f05a7f9f1347"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "5116c7c4ec9b809dba105f42e6720a5a95989a16cc5be97de1741ab539e2a31b",
+              "size": 45639,
+              "source_sha256": "439e214964f751ade8c121c7722e1e6800d80370c3b3f2d3eaa707452b3e367b"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "50c4bc6ab983c38bc1e70bf8d2dcf8d2e72292db46ff2a8051ef458a15ff3ba4",
+              "size": 9560,
+              "source_sha256": "ba8edb3554b9ac26c0f96cb451e9e25b6565f8f1f2f2a16f31c71d5eccb45775"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "93a76602fe965e7ee61a8a7548f245296336db870f0b387135fe3e0700bac3d1",
+              "size": 12615,
+              "source_sha256": "70defd4d05f6cb77cb66be520519bcad484a2147f63ebe8855afb43c1319fc81"
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModels.kt",
+              "action": "add",
+              "sha256": "3136dc5e6960dac970ac1e7efcedbab78117b8dde21eac25494620e14dd6376f",
+              "size": 10640
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModelsTest.kt",
+              "action": "add",
+              "sha256": "397c5b1a9b5eaefc7582fb42b54de9ca4cdc951835b9d860613a2cc07d02a369",
+              "size": 2244
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-17-FINAL-RELEASE-GATE.md",
+              "action": "add",
+              "sha256": "2dd07797adee88a57da6e3838aa49ecfde6dc7e0a4d951a554555d7c1fb8ad3a",
+              "size": 2112
+            },
+            {
+              "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+              "action": "add",
+              "sha256": "549431f02d9312d4a9b64a8cfd971eed8a5fd14da14aff1268a3607c62f2ee25",
+              "size": 1096
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-14.py",
+              "action": "modify",
+              "sha256": "95fe09fb2bf2cbb066603b5070074725f6e15b0e9972fd284f6220064cd719f7",
+              "size": 4285,
+              "source_sha256": "caa39fa66e134343286a7fc71cd5c47bcd784e18ca9c3f8bdeaa6c962f6f28e6"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-15.py",
+              "action": "modify",
+              "sha256": "fc598a009d123867bfecddf12c984910316b5faa220f199de6719b7986a705d9",
+              "size": 4555,
+              "source_sha256": "cc27c673fd18ca992e8293013b5de904c5b2c916bba2167f4e3a8ba75adf9560"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-16.py",
+              "action": "modify",
+              "sha256": "013daa7985f938275b55c4a2f291e0d560683d86a04a97d4bf17249e12eec7ce",
+              "size": 6064,
+              "source_sha256": "a4ca7d0d5e6aaf3d96d05fde75aab524de4f1f2be2f4f4b8dc1ab490227224aa"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-17.py",
+              "action": "add",
+              "sha256": "4e302306e77eeb2fa5c4330b49c82599b9af8257b08e6fc0e5912b4d5f84d492",
+              "size": 5784
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add XDM Android final public release gate"
+          }
+        },
+        "validation": {
+          "full_gate_required": true,
+          "scripts": [
+            "app/XDM.Android/tools/run-final-release-gate.sh",
+            "app/XDM.Android/tools/validate-phase-17.py"
+          ],
+          "recommended_tasks": [
+            "lintDebug",
+            "lintBeta",
+            "testDebugUnitTest",
+            "assembleDebug",
+            "assembleBeta"
+          ]
+        }
+      },
+      "history_id": "192d605a6e45466a85a9495d70209e35"
     }
   ]
 }

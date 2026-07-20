@@ -115,7 +115,7 @@ class ArchitectureContractTest {
         assertTrue("Release safety model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 14", manifest.contains("14"))
         assertTrue("Manifest must keep Room schema at v13", manifest.contains("\"version\": 13"))
-        val phaseFourteenVersion = Regex("""versionName = "0\.(\d+)\.0-alpha01"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
+        val phaseFourteenVersion = Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc01)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.14", phaseFourteenVersion != null && phaseFourteenVersion >= 14)
         assertTrue("Diagnostics must expose privacy-safe release summary", screens.contains("Release safety"))
         assertTrue("Diagnostics summary copy must be a real action", screens.contains("copyTextToClipboard"))
@@ -133,7 +133,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 15 validator is missing", File(root, "tools/validate-phase-15.py").isFile)
         assertTrue("Manifest must record implemented phase 15", manifest.contains("15"))
         assertTrue("Phase 15 must keep Room schema at v13", manifest.contains("\"schema_version_unchanged\": 13"))
-        val phaseFifteenVersion = Regex("""versionName = "0\.(\d+)\.0-alpha01"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
+        val phaseFifteenVersion = Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc01)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.15", phaseFifteenVersion != null && phaseFifteenVersion >= 15)
         assertTrue("Downloads must expose a compact overview card", screens.contains("Download overview"))
         assertTrue("UI must expose accessibility state descriptions", screens.contains("stateDescription") && appShell.contains("stateDescription"))
@@ -155,13 +155,37 @@ class ArchitectureContractTest {
         assertTrue("Release readiness model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 16", manifest.contains("16"))
         assertTrue("Phase 16 must keep Room schema at v13", manifest.contains("\"schema_version_unchanged\": 13"))
-        assertTrue("Build metadata must advance to 0.16", buildGradle.contains("versionName = \"0.16.0-alpha01\""))
+        assertTrue("Build metadata must be at least 0.16", Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc01)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()?.let { it >= 16 } == true)
         assertTrue("Diagnostics must expose install/update readiness", screens.contains("Install/update readiness"))
         assertTrue("Settings must expose packaging readiness", screens.contains("Phase 16 readiness"))
         assertTrue("Clipboard API should use Android ClipboardManager", screens.contains("ClipboardManager") && screens.contains("setPrimaryClip"))
         assertFalse("Deprecated LocalClipboardManager should be removed", screens.contains("LocalClipboardManager"))
         assertTrue("ViewModel must evaluate install/update readiness", viewModel.contains("ReleaseInstallReadinessGate.evaluate"))
         assertFalse("Phase 16 must not add a top-level route", AppRoute.entries.any { it.label == "Packaging" || it.label == "Updates" })
+    }
+
+
+
+    @Test
+    fun phaseSeventeenFinalReleaseGateContractsArePresent() {
+        val root = androidRoot()
+        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
+        val buildGradle = File(root, "app/build.gradle.kts").readText()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        val workflow = File(root, ".github/workflows/android.yml").readText()
+        assertTrue("Phase 17 architecture contract is missing", File(root, "docs/architecture/PHASE-17-FINAL-RELEASE-GATE.md").isFile)
+        assertTrue("Phase 17 validator is missing", File(root, "tools/validate-phase-17.py").isFile)
+        assertTrue("Final release model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModels.kt").isFile)
+        assertTrue("Manifest must record implemented phase 17", manifest.contains("17"))
+        assertTrue("Phase 17 must keep Room schema at v13", manifest.contains("\"room_schema_locked\": 13"))
+        assertTrue("Build metadata must advance to 0.17 rc", buildGradle.contains("versionName = \"0.17.0-rc01\""))
+        assertTrue("Build metadata must advance versionCode", buildGradle.contains("versionCode = 18"))
+        assertTrue("Diagnostics must expose final release gate", screens.contains("Final release gate"))
+        assertTrue("Settings must expose Phase 17 gate", screens.contains("Phase 17 final gate"))
+        assertTrue("ViewModel must evaluate final public release readiness", viewModel.contains("FinalPublicReleaseGate.evaluate"))
+        assertTrue("CI must run Phase 17 validator", workflow.contains("validate-phase-17.py"))
+        assertFalse("Phase 17 must not add a top-level release route", AppRoute.entries.any { it.label == "Release" || it.label == "Final" })
     }
 
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }

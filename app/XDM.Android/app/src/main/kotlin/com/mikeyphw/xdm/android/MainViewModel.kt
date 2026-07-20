@@ -31,6 +31,8 @@ import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryRecord
 import com.mikeyphw.xdm.android.model.InstallUpdateReadinessReport
+import com.mikeyphw.xdm.android.model.FinalPublicReleaseGate
+import com.mikeyphw.xdm.android.model.FinalReleaseGateReport
 import com.mikeyphw.xdm.android.model.ReleaseInstallReadinessGate
 import com.mikeyphw.xdm.android.model.ReleaseSecurityGate
 import com.mikeyphw.xdm.android.model.ReleaseSecurityReport
@@ -85,8 +87,24 @@ data class MainUiState(
     val mediaCaptures: List<MediaCaptureRecord> = emptyList(),
     val mediaVariants: List<MediaVariant> = emptyList(),
     val automationCommands: List<AutomationCommandRecord> = emptyList(),
+    val finalReleaseGateReport: FinalReleaseGateReport = FinalPublicReleaseGate.evaluate(
+        versionName = "0.17.0-rc01",
+        versionCode = 18,
+        packageId = "com.mikeyphw.xdm.android",
+        schemaVersion = 13,
+        buildType = "debug",
+        releaseSafetyReady = true,
+        installUpdateReady = true,
+        diagnosticsRedacted = true,
+        aria2PayloadVerified = false,
+        staticValidatorsComplete = true,
+        releaseDocsComplete = true,
+        noNewTopLevelRoutes = true,
+        fullValidationPassed = false,
+        releaseSigningConfigured = false,
+    ),
     val releaseSecurityReport: ReleaseSecurityReport = ReleaseSecurityGate.evaluate(
-        versionName = "0.16.0-alpha01",
+        versionName = "0.17.0-rc01",
         schemaVersion = 13,
         buildType = "debug",
         debuggable = true,
@@ -94,8 +112,8 @@ data class MainUiState(
         releaseSigningConfigured = false,
     ),
     val installUpdateReadinessReport: InstallUpdateReadinessReport = ReleaseInstallReadinessGate.evaluate(
-        versionName = "0.16.0-alpha01",
-        versionCode = 17,
+        versionName = "0.17.0-rc01",
+        versionCode = 18,
         packageId = "com.mikeyphw.xdm.android",
         schemaVersion = 13,
         buildType = "debug",
@@ -259,6 +277,22 @@ class MainViewModel(
                 diagnosticsExportRedacted = true,
                 aria2PayloadGateRetained = true,
                 updateKeepsPackageIdentity = true,
+                releaseSigningConfigured = !BuildConfig.DEBUG,
+            ),
+            finalReleaseGateReport = FinalPublicReleaseGate.evaluate(
+                versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+                versionCode = BuildConfig.VERSION_CODE,
+                packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".beta"),
+                schemaVersion = 13,
+                buildType = BuildConfig.BUILD_TYPE,
+                releaseSafetyReady = true,
+                installUpdateReady = true,
+                diagnosticsRedacted = true,
+                aria2PayloadVerified = false,
+                staticValidatorsComplete = true,
+                releaseDocsComplete = true,
+                noNewTopLevelRoutes = true,
+                fullValidationPassed = false,
                 releaseSigningConfigured = !BuildConfig.DEBUG,
             ),
         )

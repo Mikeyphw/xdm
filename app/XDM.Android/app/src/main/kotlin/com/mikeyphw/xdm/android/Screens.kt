@@ -79,6 +79,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
 import com.mikeyphw.xdm.android.model.redactedDiagnosticLine
 import com.mikeyphw.xdm.android.model.ReleaseReadinessSeverity
+import com.mikeyphw.xdm.android.model.FinalReleaseGateSeverity
 import com.mikeyphw.xdm.android.model.ReleaseSecuritySeverity
 import com.mikeyphw.xdm.android.util.formatBytes
 import com.mikeyphw.xdm.android.util.formatSpeed
@@ -534,7 +535,8 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         rejectedHandoffCount = state.automationCommands.count { it.status.name == "Rejected" },
     )
     val installUpdateSummary = state.installUpdateReadinessReport.redactedSummary()
-    val supportSummary = "$redactedSummary\n\n$installUpdateSummary"
+    val finalReleaseSummary = state.finalReleaseGateReport.redactedSummary()
+    val supportSummary = "$redactedSummary\n\n$installUpdateSummary\n\n$finalReleaseSummary"
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp),
@@ -585,6 +587,23 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                         Text("$severity: ${check.title}", style = MaterialTheme.typography.bodySmall)
                     }
                     Text("Package identity and Room schema are checked before beta packaging.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        item {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Final release gate ${state.finalReleaseGateReport.summary}" }) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Final release gate", fontWeight = FontWeight.Medium)
+                    Text(state.finalReleaseGateReport.summary, style = MaterialTheme.typography.bodySmall)
+                    state.finalReleaseGateReport.checks.take(4).forEach { check ->
+                        val severity = when (check.severity) {
+                            FinalReleaseGateSeverity.Info -> "Info"
+                            FinalReleaseGateSeverity.Warning -> "Warning"
+                            FinalReleaseGateSeverity.Blocking -> "Blocked"
+                        }
+                        Text("$severity: ${check.title}", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text("Public release requires the full devtool validation gate, release docs, signed release verification, and artifact checksum records.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -675,6 +694,7 @@ fun SettingsScreen(
     capabilities: List<BackendCapabilityRow>,
     migrations: List<BackendMigrationRecord>,
     installUpdateReadinessReport: com.mikeyphw.xdm.android.model.InstallUpdateReadinessReport,
+    finalReleaseGateReport: com.mikeyphw.xdm.android.model.FinalReleaseGateReport,
     onCompactChanged: (Boolean) -> Unit,
 ) {
     LazyColumn(
@@ -719,6 +739,16 @@ fun SettingsScreen(
                 }
             }
         }
+        item {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Final release gate ${finalReleaseGateReport.summary}" }) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Phase 17 final gate", fontWeight = FontWeight.Medium)
+                    Text(finalReleaseGateReport.summary, style = MaterialTheme.typography.bodySmall)
+                    Text("The last overlay does not add routes or database migrations; it locks the public release gate around full validation, release docs, signed APK verification, and artifact checksums.", style = MaterialTheme.typography.bodySmall)
+                    Text("Use the full devtool --validate pass for the final release, not the medium selected-task gate.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
         item { Text("Backend strategy", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
         items(capabilities, key = { it.backend.name }) { capability ->
             Card(Modifier.fillMaxWidth()) {
@@ -757,7 +787,7 @@ fun SettingsScreen(
             }
         }
         item { Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall) }
-        item { Text("Version: 0.16.0-alpha01", style = MaterialTheme.typography.bodySmall) }
+        item { Text("Version: 0.17.0-rc01", style = MaterialTheme.typography.bodySmall) }
     }
 }
 
