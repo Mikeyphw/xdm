@@ -4,6 +4,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
+import org.json.JSONArray
+import org.json.JSONObject
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -443,6 +445,13 @@ fun AddDownloadScreen(
 
 @Composable
 fun QueuesScreen(queues: List<QueueDefinition>) {
+    if (queues.isEmpty()) {
+        EmptyFeatureScreen(
+            "No download queues",
+            "Queues group downloads and control how many transfers can run together.",
+        )
+        return
+    }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(queues, key = QueueDefinition::id) { queue ->
             Card(Modifier.fillMaxWidth()) {
@@ -451,7 +460,7 @@ fun QueuesScreen(queues: List<QueueDefinition>) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(Modifier.weight(1f)) {
                         Text(queue.name, fontWeight = FontWeight.SemiBold)
                         Text("Up to ${queue.maxConcurrent} concurrent downloads", style = MaterialTheme.typography.bodySmall)
                     }
@@ -464,19 +473,29 @@ fun QueuesScreen(queues: List<QueueDefinition>) {
 
 @Composable
 fun SchedulerScreen(rules: List<ScheduleRule>) {
+    if (rules.isEmpty()) {
+        EmptyFeatureScreen(
+            "No schedules",
+            "Schedules can start or pause queues automatically when their conditions are met.",
+        )
+        return
+    }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(rules, key = ScheduleRule::id) { rule ->
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(rule.name, fontWeight = FontWeight.SemiBold)
-                    Text(if (rule.enabled) "Enabled" else "Disabled")
-                    Text(rule.constraintsJson, style = MaterialTheme.typography.bodySmall)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(rule.name, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                        StatusPill(if (rule.enabled) "Enabled" else "Disabled")
+                    }
+                    scheduleConstraintSummary(rule.constraintsJson).forEach { summary ->
+                        Text(summary, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         }
     }
 }
-
 
 @Composable
 fun MediaInboxScreen(
@@ -599,7 +618,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text("Release safety", fontWeight = FontWeight.Medium)
+                            Text("App integrity", fontWeight = FontWeight.Medium)
                             Text(state.releaseSecurityReport.summary, style = MaterialTheme.typography.bodySmall)
                         }
                         TextButton(
@@ -623,7 +642,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
         item {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Install/update readiness", fontWeight = FontWeight.Medium)
+                    Text("Update compatibility", fontWeight = FontWeight.Medium)
                     Text(state.installUpdateReadinessReport.summary, style = MaterialTheme.typography.bodySmall)
                     state.installUpdateReadinessReport.checks.take(4).forEach { check ->
                         val severity = when (check.severity) {
@@ -633,14 +652,13 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                         }
                         Text("$severity: ${check.title}", style = MaterialTheme.typography.bodySmall)
                     }
-                    Text("Package identity and Room schema are checked before beta packaging.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
         item {
             Card(Modifier.fillMaxWidth().semantics { contentDescription = "Final release gate ${state.finalReleaseGateReport.summary}" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Final release gate", fontWeight = FontWeight.Medium)
+                    Text("Release readiness", fontWeight = FontWeight.Medium)
                     Text(state.finalReleaseGateReport.summary, style = MaterialTheme.typography.bodySmall)
                     state.finalReleaseGateReport.checks.take(4).forEach { check ->
                         val severity = when (check.severity) {
@@ -650,15 +668,12 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                         }
                         Text("$severity: ${check.title}", style = MaterialTheme.typography.bodySmall)
                     }
-                    Text("Public release requires the full devtool validation gate, release docs, signed release verification, and artifact checksum records.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
         item { DiagnosticLine("Desktop parity", state.desktopParityReport.summary) }
         item { DiagnosticLine("Protocol coverage", state.protocolExpansionReport.summary) }
-        item { DiagnosticLine("Release packaging", state.releasePackagingReport.summary) }
         item { DiagnosticLine("Settings exchange", "Import/export snapshot is available from Settings") }
-        item { DiagnosticLine("Database", "Room schema v13") }
         item { DiagnosticLine("Downloads", state.downloads.size.toString()) }
         item { DiagnosticLine("Queues", state.queues.size.toString()) }
         item { DiagnosticLine("Recovery records", state.recovery.size.toString()) }
@@ -842,7 +857,7 @@ fun SettingsScreen(
                     }
                     OutlinedTextField(postLabel, { postLabel = it }, label = { Text("Custom label") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     Button(onClick = { onPostProcessingChanged(PostProcessingSettings(postEnabled, postPreset, postLabel)) }) { Text("Save post-processing") }
-                    Text("This is the app-facing policy surface. Actual conversion execution remains gated behind explicit backend/package support.", style = MaterialTheme.typography.bodySmall)
+                    Text("Conversion starts only when the selected backend supports the chosen preset.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -852,48 +867,6 @@ fun SettingsScreen(
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(protocolExpansionReport.summary, fontWeight = FontWeight.Medium)
                     protocolExpansionReport.rows.forEach { row -> Text("${row.protocol.uppercase()}: ${row.recommendation}", style = MaterialTheme.typography.bodySmall) }
-                }
-            }
-        }
-        item { Text("Accessibility and layout", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
-        item {
-            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Touch targets, compact phones, and action labels are ready" }) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Phase 15 polish", fontWeight = FontWeight.Medium)
-                    Text("Primary actions keep 48 dp touch targets, long names truncate before controls, and filters/actions expose state descriptions for screen readers.", style = MaterialTheme.typography.bodySmall)
-                    Text("Compact-phone layout keeps downloads, Diagnostics, and Settings inside existing routes.", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-        item { Text("Packaging and recovery", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
-        item {
-            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Install update readiness ${installUpdateReadinessReport.summary}" }) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Phase 16 readiness", fontWeight = FontWeight.Medium)
-                    Text(installUpdateReadinessReport.summary, style = MaterialTheme.typography.bodySmall)
-                    Text("Package identity stays com.mikeyphw.xdm.android, update builds keep Room schema v13, and recovery surfaces remain inside the existing Recovery and Diagnostics routes.", style = MaterialTheme.typography.bodySmall)
-                    Text("Beta packaging keeps the aria2 runtime payload gate and privacy-safe diagnostic bundle.", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-        item {
-            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Final release gate ${finalReleaseGateReport.summary}" }) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Phase 17 final gate", fontWeight = FontWeight.Medium)
-                    Text(finalReleaseGateReport.summary, style = MaterialTheme.typography.bodySmall)
-                    Text("The last overlay does not add routes or database migrations; it locks the public release gate around full validation, release docs, signed APK verification, and artifact checksums.", style = MaterialTheme.typography.bodySmall)
-                    Text("Use the full devtool --validate pass for the final release, not the medium selected-task gate.", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-        item {
-            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Release packaging ${releasePackagingReport.summary}" }) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Release/non-debug APK packaging", fontWeight = FontWeight.Medium)
-                    Text("Version ${releasePackagingReport.versionName} (${releasePackagingReport.versionCode})", style = MaterialTheme.typography.bodySmall)
-                    Text("Release package: ${releasePackagingReport.packageId}", style = MaterialTheme.typography.bodySmall)
-                    Text("Beta package: ${releasePackagingReport.betaPackageId}", style = MaterialTheme.typography.bodySmall)
-                    Text("Run ${releasePackagingReport.checksumScript} to assemble release/beta APKs and write SHA-256 checksum files.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -934,8 +907,6 @@ fun SettingsScreen(
                 }
             }
         }
-        item { Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall) }
-        item { Text("Version: 0.18.0-rc01", style = MaterialTheme.typography.bodySmall) }
     }
 }
 
@@ -964,6 +935,42 @@ private fun Download.progressAccessibilitySummary(): String {
     val percent = (progressFraction * 100).toInt().coerceIn(0, 100)
     return "$percent percent, ${bytesReceived.formatBytes()} of ${total.formatBytes()}"
 }
+
+private fun scheduleConstraintSummary(rawJson: String): List<String> {
+    if (rawJson.isBlank() || rawJson.trim() == "{}") return listOf("No additional conditions")
+    return runCatching {
+        val json = JSONObject(rawJson)
+        buildList {
+            json.optString("days").takeIf { it.isNotBlank() }?.let { add("Days: ${humanizeValue(it)}") }
+            json.optString("startTime").takeIf { it.isNotBlank() }?.let { start ->
+                val end = json.optString("endTime").takeIf { it.isNotBlank() }
+                add(if (end == null) "Starts at $start" else "Time: $start–$end")
+            }
+            if (json.optBoolean("unmetered", false) || json.optBoolean("unmeteredOnly", false)) add("Network: Unmetered only")
+            if (json.optBoolean("charging", false) || json.optBoolean("requiresCharging", false)) add("Power: Charging required")
+            json.optInt("minimumBatteryPercent", -1).takeIf { it >= 0 }?.let { add("Battery: At least $it%") }
+            json.optString("networkType").takeIf { it.isNotBlank() }?.let { add("Network: ${humanizeValue(it)}") }
+            if (isEmpty()) {
+                json.keys().asSequence().forEach { key ->
+                    val value = json.opt(key)
+                    if (value != null && value != JSONObject.NULL) add("${humanizeValue(key)}: ${humanizeJsonValue(value)}")
+                }
+            }
+        }.ifEmpty { listOf("No additional conditions") }
+    }.getOrElse { listOf("Schedule conditions are saved and will be applied automatically") }
+}
+
+private fun humanizeJsonValue(value: Any): String = when (value) {
+    is Boolean -> if (value) "Required" else "Not required"
+    is JSONArray -> (0 until value.length()).joinToString(", ") { humanizeValue(value.optString(it)) }
+    else -> humanizeValue(value.toString())
+}
+
+private fun humanizeValue(value: String): String = value
+    .replace('_', ' ')
+    .replace(Regex("([a-z])([A-Z])"), "$1 $2")
+    .trim()
+    .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
 @Composable
 fun EmptyFeatureScreen(title: String, description: String) {

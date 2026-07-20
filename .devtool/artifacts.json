@@ -20167,6 +20167,198 @@
         }
       },
       "history_id": "f88be36c396d46d2ae075e8108817010"
+    },
+    {
+      "applied_at": "2026-07-20T17:08:10.207590Z",
+      "artifact": "/home/mike/Downloads/xdm_android_ui_ux_phase1_overlay.zip",
+      "artifact_name": "xdm_android_ui_ux_phase1_overlay.zip",
+      "type": "overlay",
+      "sha256": "2bad36b1888d7a31ae8d21f5b6e4a5317831d61d26f0827f09e1df8dfb40b5b0",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "feat(android): implement UI UX audit phase 1",
+      "commit_hash": "",
+      "file_count": 2,
+      "change_counts": {
+        "modify": 2
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android UI/UX Audit Phase 1",
+        "description": "Removes internal engineering language from the Android UI, humanizes scheduler constraints, adds meaningful queue and scheduler empty states, and updates architecture contracts to prevent regression.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "a43a5511fa64896f3d77ef6538b0b884c06bd27e7de918e6a4f57dd32ef08ac7",
+              "size": 55753,
+              "source_sha256": "b1842f73b1391a563c8830baff17d421c72e6471583c83b400b18b6b2ba74392"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "85d171b0f1f564c5461cf4ef656a955b3ca02862153e9bf50b87079ea3bca4b7",
+              "size": 15371,
+              "source_sha256": "4638fc829c625cf0644a042b8be62517fb3f9d9e6166c464c977e49db805f519"
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "feat(android): implement UI UX audit phase 1"
+          }
+        },
+        "validation": {
+          "commands": [
+            {
+              "command": "./gradlew test",
+              "working_directory": "app/XDM.Android"
+            }
+          ]
+        }
+      },
+      "history_id": "2a86f57321bf4d25b4bf03bf270b11d0"
+    },
+    {
+      "applied_at": "2026-07-20T17:26:45.387832Z",
+      "artifact": "/home/mike/Downloads/xdm_android_ui_ux_phase1_overlay.zip",
+      "artifact_name": "xdm_android_ui_ux_phase1_overlay.zip",
+      "type": "overlay",
+      "sha256": "2bad36b1888d7a31ae8d21f5b6e4a5317831d61d26f0827f09e1df8dfb40b5b0",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "feat(android): implement UI UX audit phase 1",
+      "commit_hash": "",
+      "file_count": 2,
+      "change_counts": {
+        "modify": 2
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android UI/UX Audit Phase 1",
+        "description": "Removes internal engineering language from the Android UI, humanizes scheduler constraints, adds meaningful queue and scheduler empty states, and updates architecture contracts to prevent regression.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "a43a5511fa64896f3d77ef6538b0b884c06bd27e7de918e6a4f57dd32ef08ac7",
+              "size": 55753,
+              "source_sha256": "b1842f73b1391a563c8830baff17d421c72e6471583c83b400b18b6b2ba74392"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "85d171b0f1f564c5461cf4ef656a955b3ca02862153e9bf50b87079ea3bca4b7",
+              "size": 15371,
+              "source_sha256": "4638fc829c625cf0644a042b8be62517fb3f9d9e6166c464c977e49db805f519"
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "feat(android): implement UI UX audit phase 1"
+          }
+        },
+        "validation": {
+          "commands": [
+            {
+              "command": "./gradlew test",
+              "working_directory": "app/XDM.Android"
+            }
+          ]
+        }
+      },
+      "history_id": "430b93b2c38347e7a55e75459ae47a3c"
+    },
+    {
+      "applied_at": "2026-07-20T17:32:40.983856Z",
+      "artifact": "/home/mike/Downloads/xdm_android_ui_ux_phase1_overlay_fixed.zip",
+      "artifact_name": "xdm_android_ui_ux_phase1_overlay_fixed.zip",
+      "type": "overlay",
+      "sha256": "67c5d318d26375814dbb7c83f683f5640bd4efb6f38ef21f28aff5f779e18d46",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "feat(android): implement UI UX audit phase 1",
+      "commit_hash": "",
+      "file_count": 2,
+      "change_counts": {
+        "modify": 2
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android UI/UX Audit Phase 1 Fixed",
+        "description": "Removes internal engineering language from the Android UI, humanizes scheduler constraints, adds queue and scheduler empty states, and fixes architecture contracts to match the Phase 1 product UI contract.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "a43a5511fa64896f3d77ef6538b0b884c06bd27e7de918e6a4f57dd32ef08ac7",
+              "size": 55753,
+              "source_sha256": "b1842f73b1391a563c8830baff17d421c72e6471583c83b400b18b6b2ba74392"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "2a801c4e77d3056b5a918cd51f33fc5187ba2b310f5d94899d0aa5e3e25e9b96",
+              "size": 15757,
+              "source_sha256": "4638fc829c625cf0644a042b8be62517fb3f9d9e6166c464c977e49db805f519"
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "feat(android): implement UI UX audit phase 1"
+          }
+        },
+        "validation": {
+          "commands": [
+            {
+              "command": "./gradlew test",
+              "working_directory": "app/XDM.Android"
+            }
+          ]
+        }
+      },
+      "history_id": "e2a5312a1cb24c54a506979da23ee7a9"
     }
   ]
 }
