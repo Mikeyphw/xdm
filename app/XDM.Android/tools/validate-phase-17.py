@@ -33,8 +33,8 @@ if "alpha" in project_version.lower():
     errors.append("PROJECT_MANIFEST project.version must not be alpha for Phase 17")
 if 17 not in project.get("implemented_phases", []):
     errors.append("PROJECT_MANIFEST is missing implemented phase 17")
-if str(manifest.get("next_phase")).lower() != "complete":
-    errors.append("PROJECT_MANIFEST next_phase must be complete")
+if str(manifest.get("next_phase")).lower() not in {"complete", "post17-parity"}:
+    errors.append("PROJECT_MANIFEST next_phase must be complete or post17-parity")
 if database.get("version") != 13:
     errors.append("Phase 17 must keep database.version at 13")
 for key in [
@@ -62,8 +62,9 @@ build_gradle = require_file("app/build.gradle.kts")
 version_code_match = re.search(r'versionCode\s*=\s*(\d+)', build_gradle)
 if not version_code_match or int(version_code_match.group(1)) < 18:
     errors.append("app/build.gradle.kts versionCode is older than phase 17")
-if 'versionName = "0.17.0-rc01"' not in build_gradle:
-    errors.append("app/build.gradle.kts missing versionName 0.17.0-rc01")
+version_name_match = re.search(r'versionName\s*=\s*"0\.(\d+)\.0-rc\d+"', build_gradle)
+if not version_name_match or int(version_name_match.group(1)) < 17:
+    errors.append("app/build.gradle.kts missing a 0.17+ release-candidate versionName")
 for needle in [
     'applicationId = "com.mikeyphw.xdm.android"',
     'applicationIdSuffix = ".beta"',

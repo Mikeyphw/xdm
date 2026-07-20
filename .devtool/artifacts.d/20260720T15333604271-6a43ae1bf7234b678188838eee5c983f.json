@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-07-20T15:33:36.042717Z",
+  "artifact": "/home/mike/Downloads/xdm_android_post17_desktop_parity_overlay.zip",
+  "artifact_name": "xdm_android_post17_desktop_parity_overlay.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "6a43ae1bf7234b678188838eee5c983f"
+}

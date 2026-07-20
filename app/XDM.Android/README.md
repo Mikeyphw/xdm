@@ -1,4 +1,4 @@
-## XDM Android 0.17.0-rc01
+## XDM Android 0.18.0-rc01
 
 Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
 
@@ -106,3 +106,8 @@ XDM Android now includes privacy-safe diagnostic summaries, redaction helpers, a
 ## Phase 15 UX and accessibility polish
 
 Phase 15 keeps the existing route topography while tightening the Android surface for compact phones and assistive technology. Downloads now expose a compact overview, action labels include the target file, progress indicators publish screen-reader state, release Diagnostics has an accessible copy action, and Settings records the polish contract without adding a new top-level route. Room remains at schema v13.
+
+
+### Post-17 desktop parity
+
+XDM Android now exposes settings import/export, history/file management, proxy/credential profile metadata, conversion/post-processing policy, protocol coverage polish, and release/non-debug packaging helpers without adding a new top-level route or migrating Room past schema v13.

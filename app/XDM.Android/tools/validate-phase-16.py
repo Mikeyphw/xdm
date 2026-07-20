@@ -37,7 +37,7 @@ next_phase = manifest.get("next_phase")
 try:
     next_phase_number = int(str(next_phase))
 except (TypeError, ValueError):
-    next_phase_number = 999 if str(next_phase).lower() == "complete" else 0
+    next_phase_number = 999 if str(next_phase).lower() in {"complete", "post17-parity"} else 0
 if next_phase_number < 17:
     errors.append("PROJECT_MANIFEST next_phase is older than 17")
 for key in [

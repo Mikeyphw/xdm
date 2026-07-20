@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-for validator in   tools/validate-foundation.py   tools/validate-phase-2-3.py   tools/validate-phase-4.py   tools/validate-phase-5.py   tools/validate-ownership-hardening.py   tools/validate-phase-6b.py   tools/validate-phase-6.py   tools/validate-phase-7.py   tools/validate-phase-8.py   tools/validate-phase-9.py   tools/validate-phase-10.py   tools/validate-phase-11.py   tools/validate-phase-12.py   tools/validate-phase-13.py   tools/validate-phase-14.py   tools/validate-phase-15.py   tools/validate-phase-16.py   tools/validate-phase-17.py; do
+for validator in   tools/validate-foundation.py   tools/validate-phase-2-3.py   tools/validate-phase-4.py   tools/validate-phase-5.py   tools/validate-ownership-hardening.py   tools/validate-phase-6b.py   tools/validate-phase-6.py   tools/validate-phase-7.py   tools/validate-phase-8.py   tools/validate-phase-9.py   tools/validate-phase-10.py   tools/validate-phase-11.py   tools/validate-phase-12.py   tools/validate-phase-13.py   tools/validate-phase-14.py   tools/validate-phase-15.py   tools/validate-phase-16.py   tools/validate-phase-17.py   tools/validate-post17-desktop-parity.py; do
   python3 "$validator"
 done
 

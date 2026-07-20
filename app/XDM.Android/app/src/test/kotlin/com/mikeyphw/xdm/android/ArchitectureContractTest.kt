@@ -179,13 +179,39 @@ class ArchitectureContractTest {
         assertTrue("Final release model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 17", manifest.contains("17"))
         assertTrue("Phase 17 must keep Room schema at v13", manifest.contains("\"room_schema_locked\": 13"))
-        assertTrue("Build metadata must advance to 0.17 rc", buildGradle.contains("versionName = \"0.17.0-rc01\""))
-        assertTrue("Build metadata must advance versionCode", buildGradle.contains("versionCode = 18"))
+        val finalGateVersion = Regex("""versionName\s*=\s*"0\.(\d+)\.0-(?:alpha01|rc\d+)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
+        val finalGateVersionCode = Regex("""versionCode\s*(?:=|\.set\()\s*(\d+)""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
+        assertTrue("Build metadata must stay on a 0.17+ release train", finalGateVersion?.let { it >= 17 } == true)
+        assertTrue("Build metadata must advance versionCode", finalGateVersionCode?.let { it >= 18 } == true)
         assertTrue("Diagnostics must expose final release gate", screens.contains("Final release gate"))
         assertTrue("Settings must expose Phase 17 gate", screens.contains("Phase 17 final gate"))
         assertTrue("ViewModel must evaluate final public release readiness", viewModel.contains("FinalPublicReleaseGate.evaluate"))
         assertTrue("CI must run Phase 17 validator", workflow.contains("validate-phase-17.py"))
         assertFalse("Phase 17 must not add a top-level release route", AppRoute.entries.any { it.label == "Release" || it.label == "Final" })
+    }
+
+
+    @Test
+    fun postSeventeenDesktopParityContractsArePresent() {
+        val root = androidRoot()
+        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        val workflow = File(root, ".github/workflows/android.yml").readText()
+        assertTrue("Post-17 parity contract is missing", File(root, "docs/architecture/POST-17-DESKTOP-PARITY.md").isFile)
+        assertTrue("Post-17 parity validator is missing", File(root, "tools/validate-post17-desktop-parity.py").isFile)
+        assertTrue("Desktop parity model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DesktopParityModels.kt").isFile)
+        assertTrue("Manifest must record desktop parity", manifest.contains("desktop_parity"))
+        assertTrue("Desktop parity must keep Room schema at v13", manifest.contains("\"schema_version_unchanged\": 13"))
+        assertTrue("Settings must expose import/export", screens.contains("Settings import/export"))
+        assertTrue("Downloads must expose history management", screens.contains("History management"))
+        assertTrue("Settings must expose proxy credentials", screens.contains("Proxy and credentials"))
+        assertTrue("Settings must expose conversion post-processing", screens.contains("Conversion and post-processing"))
+        assertTrue("Settings must expose protocol expansion", screens.contains("Protocol expansion"))
+        assertTrue("Settings must expose release packaging", screens.contains("Release/non-debug APK packaging"))
+        assertTrue("ViewModel must import settings snapshots", viewModel.contains("importSettingsSnapshot"))
+        assertTrue("CI must run post-17 parity validator", workflow.contains("validate-post17-desktop-parity.py"))
+        assertFalse("Post-17 parity must not add a top-level route", AppRoute.entries.any { it.label in setOf("History", "Proxy", "Convert", "Packaging") })
     }
 
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }

@@ -37,6 +37,18 @@ import com.mikeyphw.xdm.android.model.ReleaseInstallReadinessGate
 import com.mikeyphw.xdm.android.model.ReleaseSecurityGate
 import com.mikeyphw.xdm.android.model.ReleaseSecurityReport
 import com.mikeyphw.xdm.android.model.ScheduleRule
+import com.mikeyphw.xdm.android.model.DesktopParityGate
+import com.mikeyphw.xdm.android.model.DesktopParityReport
+import com.mikeyphw.xdm.android.model.HistoryManagementPolicy
+import com.mikeyphw.xdm.android.model.HistoryManagementReport
+import com.mikeyphw.xdm.android.model.PostProcessingSettings
+import com.mikeyphw.xdm.android.model.ProtocolExpansionPolish
+import com.mikeyphw.xdm.android.model.ProtocolExpansionReport
+import com.mikeyphw.xdm.android.model.ProxyCredentialSettings
+import com.mikeyphw.xdm.android.model.ReleasePackagingGate
+import com.mikeyphw.xdm.android.model.ReleasePackagingReport
+import com.mikeyphw.xdm.android.model.SettingsExchangeCodec
+import com.mikeyphw.xdm.android.model.SettingsExchangeSnapshot
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
@@ -87,9 +99,17 @@ data class MainUiState(
     val mediaCaptures: List<MediaCaptureRecord> = emptyList(),
     val mediaVariants: List<MediaVariant> = emptyList(),
     val automationCommands: List<AutomationCommandRecord> = emptyList(),
+    val proxySettings: ProxyCredentialSettings = ProxyCredentialSettings(),
+    val postProcessingSettings: PostProcessingSettings = PostProcessingSettings(),
+    val settingsSnapshot: SettingsExchangeSnapshot = SettingsExchangeSnapshot(),
+    val settingsExportText: String = SettingsExchangeSnapshot().toPortableText(),
+    val historyReport: HistoryManagementReport = HistoryManagementPolicy.summarize(emptyList()),
+    val protocolExpansionReport: ProtocolExpansionReport = ProtocolExpansionPolish.summarize(emptyList()),
+    val releasePackagingReport: ReleasePackagingReport = ReleasePackagingGate.report("0.18.0-rc01", 19, "com.mikeyphw.xdm.android"),
+    val desktopParityReport: DesktopParityReport = DesktopParityGate.evaluate(true, true, true, true, true, true),
     val finalReleaseGateReport: FinalReleaseGateReport = FinalPublicReleaseGate.evaluate(
-        versionName = "0.17.0-rc01",
-        versionCode = 18,
+        versionName = "0.18.0-rc01",
+        versionCode = 19,
         packageId = "com.mikeyphw.xdm.android",
         schemaVersion = 13,
         buildType = "debug",
@@ -112,8 +132,8 @@ data class MainUiState(
         releaseSigningConfigured = false,
     ),
     val installUpdateReadinessReport: InstallUpdateReadinessReport = ReleaseInstallReadinessGate.evaluate(
-        versionName = "0.17.0-rc01",
-        versionCode = 18,
+        versionName = "0.18.0-rc01",
+        versionCode = 19,
         packageId = "com.mikeyphw.xdm.android",
         schemaVersion = 13,
         buildType = "debug",
@@ -238,6 +258,13 @@ class MainViewModel(
         routeOverride,
         runtimeUi,
     ) { snapshot, prefs, override, runtime ->
+        val settingsSnapshot = SettingsExchangeSnapshot(
+            compactDensity = prefs.compactDensity,
+            destinationUri = prefs.destinationUri,
+            conflictPolicy = prefs.conflictPolicy,
+            proxy = prefs.proxySettings,
+            postProcessing = prefs.postProcessingSettings,
+        )
         MainUiState(
             route = override ?: prefs.lastRoute,
             compactDensity = prefs.compactDensity,
@@ -258,6 +285,25 @@ class MainViewModel(
             mediaCaptures = snapshot.mediaCaptures,
             mediaVariants = snapshot.mediaVariants,
             automationCommands = snapshot.automationCommands,
+            proxySettings = prefs.proxySettings,
+            postProcessingSettings = prefs.postProcessingSettings,
+            settingsSnapshot = settingsSnapshot,
+            settingsExportText = settingsSnapshot.toPortableText(),
+            historyReport = HistoryManagementPolicy.summarize(snapshot.downloads),
+            protocolExpansionReport = ProtocolExpansionPolish.summarize(runtime.third),
+            releasePackagingReport = ReleasePackagingGate.report(
+                versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+                versionCode = BuildConfig.VERSION_CODE,
+                packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".beta"),
+            ),
+            desktopParityReport = DesktopParityGate.evaluate(
+                settingsImportExport = true,
+                historyManagement = true,
+                proxyCredentials = true,
+                conversionPostProcessing = true,
+                protocolExpansion = true,
+                releasePackaging = true,
+            ),
             releaseSecurityReport = ReleaseSecurityGate.evaluate(
                 versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
                 schemaVersion = 13,
@@ -350,6 +396,31 @@ class MainViewModel(
 
     fun setCompactDensity(compact: Boolean) {
         viewModelScope.launch { preferences.setCompactDensity(compact) }
+    }
+
+    fun setProxySettings(settings: ProxyCredentialSettings) {
+        viewModelScope.launch { preferences.setProxySettings(settings) }
+    }
+
+    fun setPostProcessingSettings(settings: PostProcessingSettings) {
+        viewModelScope.launch { preferences.setPostProcessingSettings(settings) }
+    }
+
+    fun importSettingsSnapshot(text: String) {
+        val snapshot = SettingsExchangeCodec.decode(text) ?: return
+        viewModelScope.launch { preferences.importSnapshot(snapshot) }
+    }
+
+    fun clearFinishedHistory() {
+        val finished = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)
+        val candidates = uiState.value.downloads.filter { it.state in finished }
+        if (candidates.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) { candidates.forEach { repository.deleteDownload(it.id) } }
+    }
+
+    fun removeDownloadFromHistory(download: Download) {
+        if (!HistoryManagementPolicy.isSafeToRemoveFromHistory(download)) return
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteDownload(download.id) }
     }
 
     fun addDownload(

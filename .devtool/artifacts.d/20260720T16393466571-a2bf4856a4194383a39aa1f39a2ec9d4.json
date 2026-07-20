@@ -1,0 +1,183 @@
+{
+  "applied_at": "2026-07-20T16:39:34.665714Z",
+  "artifact": "/home/mike/Downloads/xdm_android_post17_desktop_parity_overlay.zip",
+  "artifact_name": "xdm_android_post17_desktop_parity_overlay.zip",
+  "type": "overlay",
+  "sha256": "cad417fa4157e48d7cc8b88190ded84b5162e9b5ac9a20e2a7db1f7588edb41a",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Add XDM Android post-17 desktop parity surfaces",
+  "commit_hash": "",
+  "file_count": 20,
+  "change_counts": {
+    "add": 5,
+    "modify": 15
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Post-17 desktop parity",
+    "description": "Adds settings import/export, history and file-management actions, proxy credential profile UI, conversion/post-processing policy, protocol expansion polish, and release/non-debug APK packaging helpers without migrating Room or adding a top-level route.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "4ed6a43f000a2f49fa0437b389cb6cf679d5f0d48e6c1db457834dbbbd48595f",
+          "size": 2435,
+          "source_sha256": "62a6d9f553afcc61d34970b2d9158a7223bd5be06509c2c066f2b69893ecd1d9"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "c26fb97e17cb729ef75c93ab0a3049bd3fa6e84ac064de55db3e6b5126ad5476",
+          "size": 7055,
+          "source_sha256": "6577a03ff4574bbc3ff1f2a27360582c51443325e086e33653b3724b38756254"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "373bded3a8b3d09ce65bdcd365ada18f1fced4bc625f7f7adbe32bc4e447a8bb",
+          "size": 8238,
+          "source_sha256": "dd8b7a9ea8a36889c2d5540559a674a0b753aa84f8f021c77899a322659752be"
+        },
+        {
+          "path": "app/XDM.Android/app/build.gradle.kts",
+          "action": "modify",
+          "sha256": "f0421b29763a093e4ce5625621463a630fa340d9f5a29729897a008f2e281a35",
+          "size": 4470,
+          "source_sha256": "ecd968a7673f85509821f31dd8b388f2e023bc0d12e03fb90d8034801416c014"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "c604b1f1d555d1f3d13c3ac559e99b1ecb4c2f0ff42353c6c466193bc4784df1",
+          "size": 41510,
+          "source_sha256": "4807e615c78e1f143dbabca60f8810af0aa43fbc993cd430b3e9feb16a3f3105"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "b1842f73b1391a563c8830baff17d421c72e6471583c83b400b18b6b2ba74392",
+          "size": 57478,
+          "source_sha256": "5116c7c4ec9b809dba105f42e6720a5a95989a16cc5be97de1741ab539e2a31b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferencesStore.kt",
+          "action": "modify",
+          "sha256": "8a681f1ffb047e9d6a8faa8eb8092160e316a82e448abf0858d432843603ecfa",
+          "size": 6014,
+          "source_sha256": "587f572c6db974ce4ecb839fdd1cde69fd593334baecf0d58f8ca9d81b1ea53d"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "c44ee4fdaf820d7afc9e563579875b631d8450f44727e8f558e940f3d6ccced3",
+          "size": 10112,
+          "source_sha256": "50c4bc6ab983c38bc1e70bf8d2dcf8d2e72292db46ff2a8051ef458a15ff3ba4"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "4638fc829c625cf0644a042b8be62517fb3f9d9e6166c464c977e49db805f519",
+          "size": 15021,
+          "source_sha256": "93a76602fe965e7ee61a8a7548f245296336db870f0b387135fe3e0700bac3d1"
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+          "action": "modify",
+          "sha256": "1d637873a67bb0c5f9ef1c20db20d91087c937337a54db6ef7d23c3cb95becd7",
+          "size": 16066,
+          "source_sha256": "faf58c566ae677566d8bcb032415ed59d404255216bf11b3ea3700d1344670b0"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "606002495f63dc6b7b9da71530a54a1a4d08cbaa30bd89ee39760b112a273cc7",
+          "size": 1138,
+          "source_sha256": "549431f02d9312d4a9b64a8cfd971eed8a5fd14da14aff1268a3607c62f2ee25"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-14.py",
+          "action": "modify",
+          "sha256": "e489ec483ad595813d4eac4e69ce40be53e8bc0e790e473be3cfec4e46ecfb3b",
+          "size": 4304,
+          "source_sha256": "95fe09fb2bf2cbb066603b5070074725f6e15b0e9972fd284f6220064cd719f7"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-15.py",
+          "action": "modify",
+          "sha256": "bd408f62f1a41e444ede219b51016b24abe17f834a67e48666d90701c6d36fb9",
+          "size": 4574,
+          "source_sha256": "fc598a009d123867bfecddf12c984910316b5faa220f199de6719b7986a705d9"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-16.py",
+          "action": "modify",
+          "sha256": "f6cf1316f17f57ced8bdba98b70b339fb5536dfc02b8ee0921d4fd1f2b8c64cf",
+          "size": 6083,
+          "source_sha256": "013daa7985f938275b55c4a2f291e0d560683d86a04a97d4bf17249e12eec7ce"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-17.py",
+          "action": "modify",
+          "sha256": "a116324b326c7666c01ccdcd9a42acc072ed89da76694a468c4c5e757d8a92c2",
+          "size": 5939,
+          "source_sha256": "4e302306e77eeb2fa5c4330b49c82599b9af8257b08e6fc0e5912b4d5f84d492"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DesktopParityModels.kt",
+          "action": "add",
+          "sha256": "e3be2d9d94a96d4e48b9f2775e395f8f48a81f6efab0917fe92e4c14ba15cb56",
+          "size": 10789
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DesktopParityModelsTest.kt",
+          "action": "add",
+          "sha256": "914370b591661f302088952af1d6b4b015728f28228c04fcbb80d4c65126001f",
+          "size": 2398
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/POST-17-DESKTOP-PARITY.md",
+          "action": "add",
+          "sha256": "0c9e6032b0e5dd55b65d4fd646c68b535e03961642a3b188e38dbf99bac2f861",
+          "size": 1230
+        },
+        {
+          "path": "app/XDM.Android/tools/build-release-artifacts.sh",
+          "action": "add",
+          "sha256": "d213d838e1a63f8742af6955b11acfdccf1c20205dd3fcdb5a501abfd9793ff2",
+          "size": 674
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-post17-desktop-parity.py",
+          "action": "add",
+          "sha256": "878388691e0963f17c37aff69678f4b75c6ce0789407105f4ec6e14dcc658369",
+          "size": 4006
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Add XDM Android post-17 desktop parity surfaces"
+      }
+    },
+    "validation": {
+      "notes": [
+        "Run selected medium gate for app/core model first; final public release still requires full devtool validation."
+      ]
+    }
+  },
+  "history_id": "a2bf4856a4194383a39aa1f39a2ec9d4"
+}

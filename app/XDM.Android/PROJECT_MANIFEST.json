@@ -2,7 +2,7 @@
   "project": {
     "name": "XDM Android",
     "package_id": "com.mikeyphw.xdm.android",
-    "version": "0.17.0-rc01",
+    "version": "0.18.0-rc01",
     "implemented_phases": [
       0,
       1,
@@ -21,7 +21,8 @@
       14,
       15,
       16,
-      17
+      17,
+      18
     ]
   },
   "database": {
@@ -74,7 +75,7 @@
       "compare"
     ]
   },
-  "next_phase": "complete",
+  "next_phase": "post17-parity",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -241,6 +242,19 @@
     "aria2_payload_gate_required_for_publishable_artifacts": true,
     "signed_release_verification_documented": true,
     "artifact_checksums_documented": true,
+    "top_level_route_added": false
+  },
+  "desktop_parity": {
+    "schema_version_unchanged": 13,
+    "version_code": 19,
+    "version_name": "0.18.0-rc01",
+    "settings_import_export": true,
+    "history_file_management": true,
+    "proxy_credentials_ui": true,
+    "conversion_post_processing": true,
+    "protocol_expansion_polish": true,
+    "release_non_debug_packaging": true,
+    "no_secrets_in_settings_export": true,
     "top_level_route_added": false
   }
 }

@@ -159,8 +159,11 @@ private fun AppScaffold(
                     state.backendCapabilities,
                     state.checksumResults,
                     state.verificationRecords,
+                    state.historyReport,
                     viewModel::togglePause,
                     viewModel::migrateBackend,
+                    viewModel::removeDownloadFromHistory,
+                    viewModel::clearFinishedHistory,
                     viewModel::pauseAll,
                     viewModel::resumeAll,
                 )
@@ -195,7 +198,15 @@ private fun AppScaffold(
                     state.backendMigrations,
                     state.installUpdateReadinessReport,
                     state.finalReleaseGateReport,
+                    state.proxySettings,
+                    state.postProcessingSettings,
+                    state.settingsExportText,
+                    state.protocolExpansionReport,
+                    state.releasePackagingReport,
                     viewModel::setCompactDensity,
+                    viewModel::setProxySettings,
+                    viewModel::setPostProcessingSettings,
+                    viewModel::importSettingsSnapshot,
                 )
             }
         }

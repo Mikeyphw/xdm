@@ -58,7 +58,15 @@ import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.model.VerificationStatus
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.ConversionPreset
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.HistoryManagementPolicy
+import com.mikeyphw.xdm.android.model.HistoryManagementReport
+import com.mikeyphw.xdm.android.model.PostProcessingSettings
+import com.mikeyphw.xdm.android.model.ProtocolExpansionReport
+import com.mikeyphw.xdm.android.model.ProxyCredentialSettings
+import com.mikeyphw.xdm.android.model.ReleasePackagingReport
+import com.mikeyphw.xdm.android.model.displayName
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
@@ -92,14 +100,24 @@ fun DownloadsScreen(
     capabilities: List<BackendCapabilityRow>,
     checksumResults: List<ChecksumResult>,
     verificationRecords: List<VerificationRecord>,
+    historyReport: HistoryManagementReport,
     onTogglePause: (Download) -> Unit,
     onMigrateBackend: (Download) -> Unit,
+    onRemoveHistory: (Download) -> Unit,
+    onClearFinishedHistory: () -> Unit,
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
 ) {
+    val context = LocalContext.current
     var filter by remember { mutableStateOf<DownloadState?>(null) }
     Column(Modifier.fillMaxSize()) {
         DownloadListSummary(downloads = downloads, active = active)
+        HistoryManagementCard(
+            report = historyReport,
+            historyText = HistoryManagementPolicy.exportIndex(downloads),
+            onCopyHistory = { copyTextToClipboard(context, "XDM history index", HistoryManagementPolicy.exportIndex(downloads)) },
+            onClearFinished = onClearFinishedHistory,
+        )
         if (active.activeCount > 0) {
             Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Row(
@@ -151,13 +169,33 @@ fun DownloadsScreen(
         } else {
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 12.dp)) {
                 items(visible, key = Download::id) { download ->
-                    DownloadCard(download, compact, capabilities, checksumResults, verificationRecords, onTogglePause, onMigrateBackend)
+                    DownloadCard(download, compact, capabilities, checksumResults, verificationRecords, onTogglePause, onMigrateBackend, onRemoveHistory)
                 }
             }
         }
     }
 }
 
+
+@Composable
+private fun HistoryManagementCard(
+    report: HistoryManagementReport,
+    historyText: String,
+    onCopyHistory: () -> Unit,
+    onClearFinished: () -> Unit,
+) {
+    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("History management", modifier = Modifier.semantics { heading() }, fontWeight = FontWeight.SemiBold)
+            Text(report.summary, style = MaterialTheme.typography.bodySmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                TextButton(onClick = onCopyHistory, enabled = historyText.isNotBlank()) { Text("Copy history index") }
+                TextButton(onClick = onClearFinished, enabled = report.removableHistory > 0) { Text("Clear finished history") }
+            }
+            Text("History actions only remove app records; downloaded files stay in their destination.", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
 
 @Composable
 private fun DownloadListSummary(downloads: List<Download>, active: ActiveTransferSummary) {
@@ -183,7 +221,9 @@ private fun DownloadCard(
     verificationRecords: List<VerificationRecord>,
     onTogglePause: (Download) -> Unit,
     onMigrateBackend: (Download) -> Unit,
+    onRemoveHistory: (Download) -> Unit,
 ) {
+    val context = LocalContext.current
     Card(
         Modifier
             .fillMaxWidth()
@@ -273,6 +313,13 @@ private fun DownloadCard(
                 }
                 if (download.bytesReceived > 0) {
                     Text("Existing partial bytes are preserved for recovery and are not reused silently.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            if (download.state in setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                    TextButton(onClick = { copyTextToClipboard(context, "XDM source URL", download.sourceUrl) }) { Text("Copy URL") }
+                    TextButton(onClick = { copyTextToClipboard(context, "XDM file info", download.fileManagementSummary()) }) { Text("Copy file info") }
+                    TextButton(onClick = { onRemoveHistory(download) }) { Text("Remove history") }
                 }
             }
             download.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -607,6 +654,10 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                 }
             }
         }
+        item { DiagnosticLine("Desktop parity", state.desktopParityReport.summary) }
+        item { DiagnosticLine("Protocol coverage", state.protocolExpansionReport.summary) }
+        item { DiagnosticLine("Release packaging", state.releasePackagingReport.summary) }
+        item { DiagnosticLine("Settings exchange", "Import/export snapshot is available from Settings") }
         item { DiagnosticLine("Database", "Room schema v13") }
         item { DiagnosticLine("Downloads", state.downloads.size.toString()) }
         item { DiagnosticLine("Queues", state.queues.size.toString()) }
@@ -695,8 +746,26 @@ fun SettingsScreen(
     migrations: List<BackendMigrationRecord>,
     installUpdateReadinessReport: com.mikeyphw.xdm.android.model.InstallUpdateReadinessReport,
     finalReleaseGateReport: com.mikeyphw.xdm.android.model.FinalReleaseGateReport,
+    proxySettings: ProxyCredentialSettings,
+    postProcessingSettings: PostProcessingSettings,
+    settingsExportText: String,
+    protocolExpansionReport: ProtocolExpansionReport,
+    releasePackagingReport: ReleasePackagingReport,
     onCompactChanged: (Boolean) -> Unit,
+    onProxyChanged: (ProxyCredentialSettings) -> Unit,
+    onPostProcessingChanged: (PostProcessingSettings) -> Unit,
+    onImportSettings: (String) -> Unit,
 ) {
+    val context = LocalContext.current
+    var importText by remember { mutableStateOf("") }
+    var proxyEnabled by remember(proxySettings) { mutableStateOf(proxySettings.enabled) }
+    var proxyHost by remember(proxySettings) { mutableStateOf(proxySettings.host) }
+    var proxyPort by remember(proxySettings) { mutableStateOf(proxySettings.port?.toString().orEmpty()) }
+    var proxyUsername by remember(proxySettings) { mutableStateOf(proxySettings.username) }
+    var proxyAlias by remember(proxySettings) { mutableStateOf(proxySettings.credentialAlias) }
+    var postEnabled by remember(postProcessingSettings) { mutableStateOf(postProcessingSettings.enabled) }
+    var postPreset by remember(postProcessingSettings) { mutableStateOf(postProcessingSettings.preset) }
+    var postLabel by remember(postProcessingSettings) { mutableStateOf(postProcessingSettings.customCommandLabel) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp),
@@ -715,6 +784,74 @@ fun SettingsScreen(
                         onCheckedChange = onCompactChanged,
                         modifier = Modifier.semantics { stateDescription = if (compact) "Compact cards enabled" else "Compact cards disabled" },
                     )
+                }
+            }
+        }
+        item { Text("Settings import/export", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Settings import export snapshot" }) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Portable settings snapshot", fontWeight = FontWeight.Medium)
+                    Text("Exports layout density, destination defaults, filename conflict policy, proxy metadata, and post-processing choices. Secrets are not exported.", style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = { copyTextToClipboard(context, "XDM settings snapshot", settingsExportText) }) { Text("Copy export") }
+                    OutlinedTextField(
+                        importText,
+                        { importText = it },
+                        label = { Text("Paste settings snapshot") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 6,
+                    )
+                    Button(onClick = { onImportSettings(importText); importText = "" }, enabled = importText.isNotBlank()) { Text("Import snapshot") }
+                }
+            }
+        }
+        item { Text("Proxy and credentials", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Proxy credential profile ${proxySettings.redactedSummary}" }) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Proxy profile", fontWeight = FontWeight.Medium)
+                            Text(proxySettings.redactedSummary, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(proxyEnabled, { proxyEnabled = it })
+                    }
+                    OutlinedTextField(proxyHost, { proxyHost = it }, label = { Text("Host") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    OutlinedTextField(proxyPort, { proxyPort = it.filter { char -> char.isDigit() }.take(5) }, label = { Text("Port") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    OutlinedTextField(proxyUsername, { proxyUsername = it }, label = { Text("Username") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    OutlinedTextField(proxyAlias, { proxyAlias = it }, label = { Text("Credential alias") }, modifier = Modifier.fillMaxWidth(), singleLine = true, supportingText = { Text("Store a label only; passwords stay outside exported diagnostics and settings snapshots.") })
+                    Button(onClick = { onProxyChanged(ProxyCredentialSettings(proxyEnabled, proxyHost, proxyPort.toIntOrNull()?.takeIf { it in 1..65535 }, proxyUsername, proxyAlias)) }) { Text("Save proxy profile") }
+                }
+            }
+        }
+        item { Text("Conversion and post-processing", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Conversion post processing ${postProcessingSettings.redactedSummary}" }) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Post-processing hook", fontWeight = FontWeight.Medium)
+                            Text(postProcessingSettings.redactedSummary, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(postEnabled, { postEnabled = it })
+                    }
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ConversionPreset.entries.forEach { preset ->
+                            FilterChip(selected = postPreset == preset, onClick = { postPreset = preset }, label = { Text(preset.displayName()) })
+                        }
+                    }
+                    OutlinedTextField(postLabel, { postLabel = it }, label = { Text("Custom label") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    Button(onClick = { onPostProcessingChanged(PostProcessingSettings(postEnabled, postPreset, postLabel)) }) { Text("Save post-processing") }
+                    Text("This is the app-facing policy surface. Actual conversion execution remains gated behind explicit backend/package support.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        item { Text("Protocol expansion", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
+        item {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Protocol expansion ${protocolExpansionReport.summary}" }) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(protocolExpansionReport.summary, fontWeight = FontWeight.Medium)
+                    protocolExpansionReport.rows.forEach { row -> Text("${row.protocol.uppercase()}: ${row.recommendation}", style = MaterialTheme.typography.bodySmall) }
                 }
             }
         }
@@ -746,6 +883,17 @@ fun SettingsScreen(
                     Text(finalReleaseGateReport.summary, style = MaterialTheme.typography.bodySmall)
                     Text("The last overlay does not add routes or database migrations; it locks the public release gate around full validation, release docs, signed APK verification, and artifact checksums.", style = MaterialTheme.typography.bodySmall)
                     Text("Use the full devtool --validate pass for the final release, not the medium selected-task gate.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        item {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Release packaging ${releasePackagingReport.summary}" }) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Release/non-debug APK packaging", fontWeight = FontWeight.Medium)
+                    Text("Version ${releasePackagingReport.versionName} (${releasePackagingReport.versionCode})", style = MaterialTheme.typography.bodySmall)
+                    Text("Release package: ${releasePackagingReport.packageId}", style = MaterialTheme.typography.bodySmall)
+                    Text("Beta package: ${releasePackagingReport.betaPackageId}", style = MaterialTheme.typography.bodySmall)
+                    Text("Run ${releasePackagingReport.checksumScript} to assemble release/beta APKs and write SHA-256 checksum files.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -787,7 +935,7 @@ fun SettingsScreen(
             }
         }
         item { Text("Package: com.mikeyphw.xdm.android", style = MaterialTheme.typography.bodySmall) }
-        item { Text("Version: 0.17.0-rc01", style = MaterialTheme.typography.bodySmall) }
+        item { Text("Version: 0.18.0-rc01", style = MaterialTheme.typography.bodySmall) }
     }
 }
 
@@ -829,3 +977,15 @@ fun EmptyFeatureScreen(title: String, description: String) {
         Text(description, style = MaterialTheme.typography.bodyMedium)
     }
 }
+
+private fun Download.fileManagementSummary(): String = buildString {
+    appendLine("File: $fileName")
+    appendLine("State: ${state.name}")
+    appendLine("Backend: ${backend.name}")
+    appendLine("URL: $sourceUrl")
+    appendLine("Destination: $destinationUri")
+    appendLine("Progress: ${bytesReceived.formatBytes()}${totalBytes?.let { " / ${it.formatBytes()}" } ?: ""}")
+    mimeType?.takeIf { it.isNotBlank() }?.let { appendLine("MIME type: $it") }
+    userLabel?.takeIf { it.isNotBlank() }?.let { appendLine("Label: $it") }
+    errorMessage?.takeIf { it.isNotBlank() }?.let { appendLine("Last error: $it") }
+}.trimEnd()

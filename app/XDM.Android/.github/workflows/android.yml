@@ -42,6 +42,7 @@ jobs:
           python3 tools/validate-phase-15.py
           python3 tools/validate-phase-16.py
           python3 tools/validate-phase-17.py
+          python3 tools/validate-post17-desktop-parity.py
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
       - run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta
@@ -52,3 +53,5 @@ jobs:
           python3 tools/verify-aria2-runtime.py --require-payload --apk "$apk"
       - name: Final public release gate
         run: tools/run-final-release-gate.sh --ci
+      - name: Smoke beta artifact helper
+        run: bash -n tools/build-release-artifacts.sh

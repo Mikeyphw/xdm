@@ -71,6 +71,7 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun findAutomationCommandByKey(idempotencyKey: String): AutomationCommandRecord? = database.automationCommandDao().findByIdempotencyKey(idempotencyKey)?.toModel()
     suspend fun saveAutomationCommand(record: AutomationCommandRecord) = database.automationCommandDao().upsert(record.toEntity())
     suspend fun findDownload(id: String): Download? = database.downloadDao().findById(id)?.toModel()
+    suspend fun deleteDownload(id: String) = database.downloadDao().delete(id)
     suspend fun findDownloadsByStates(states: Set<DownloadState>): List<Download> =
         if (states.isEmpty()) emptyList() else database.downloadDao().findByStates(states.map { it.name }).map { it.toModel() }
 
