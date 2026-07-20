@@ -68,3 +68,13 @@ The list must support text search and sort choices. Empty results caused by filt
 The Add route must present the common path first: URL, optional filename, destination, recommendation, and a persistent bottom action. Existing-file behavior, backend overrides, fallback, and checksum verification are advanced options and must stay folded by default.
 
 Settings must make deferred-save sections explicit. Proxy and post-processing drafts must show saved versus unsaved state, expose real save actions, and provide a reset path. Import/export must remain user-facing, secret-safe, and clear about what is ready to import.
+
+## Secondary Route Operational Rules
+
+Queues and Scheduler are management surfaces, not read-only dashboards. Queues must expose create, edit, enable or disable, and delete controls inside the Queues route. The default queue may be protected from deletion, but the UI must explain the disabled action through its enabled state rather than shipping a placeholder.
+
+Scheduler must expose create, edit, enable or disable, delete, queue selection, human-readable condition editing, and a next eligible window summary. It must continue to store scheduler conditions through the existing model while never rendering raw JSON as the primary UI.
+
+Media cards must emphasize origin, selected quality, and download readiness before technical URLs. Variant selection belongs in an explicit selector area with clear selected state and variant details.
+
+Recovery cards must lead with the user consequence and safe recommendation. Artifact paths and IDs belong behind technical details, and destructive-looking actions must clarify whether they only remove a recovery record or also affect files.

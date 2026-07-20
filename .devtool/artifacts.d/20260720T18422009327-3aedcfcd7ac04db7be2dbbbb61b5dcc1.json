@@ -1,0 +1,99 @@
+{
+  "applied_at": "2026-07-20T18:42:20.093274Z",
+  "artifact": "/home/mike/xdm_android_ui_ux_phase5_overlay.zip",
+  "artifact_name": "xdm_android_ui_ux_phase5_overlay.zip",
+  "type": "overlay",
+  "sha256": "cc616db8e853e9efb01dc3c985bb47c4f47daca5d1e8d98679fc8e7936142300",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "feat(android): operationalize secondary UI routes",
+  "commit_hash": "",
+  "file_count": 7,
+  "change_counts": {
+    "modify": 7
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android UI/UX Audit Phase 5",
+    "description": "Operationalizes secondary routes with queue and schedule management, clearer media variant selection, and safer recovery cards.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "3764c444bac1d80dfc852b577ba6a24797143614dcf5de54627e0d18ba7834de",
+          "size": 87354,
+          "source_sha256": "7d8740d0843eed94947b2ffec3217f494ad08700038375b73364fd6e9393f173"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "a8821db0658756526bfdce3d0ee8d0d3b654cbcbb33d7d24f5b4208811959938",
+          "size": 10762,
+          "source_sha256": "c44ee4fdaf820d7afc9e563579875b631d8450f44727e8f558e940f3d6ccced3"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "2b6f116a082f0f57c032c4d65169e358a8a04fd7eda5e64a28f68ce078bfec91",
+          "size": 44032,
+          "source_sha256": "c604b1f1d555d1f3d13c3ac559e99b1ecb4c2f0ff42353c6c466193bc4784df1"
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadDao.kt",
+          "action": "modify",
+          "sha256": "fea5b37f77ecf80bc906e0597710a140169c81faa625264fb4f7cf5a9e76f2f2",
+          "size": 3374,
+          "source_sha256": "f82c3364f7c7c52e3b2b3d6f347d98ccbea202fb2def2fa1a0282d388b9c8144"
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+          "action": "modify",
+          "sha256": "c6bb5cad8d1d6f5011c9fafca89c0a3817d9926de42849bf4d96531a90db52f0",
+          "size": 16435,
+          "source_sha256": "1d637873a67bb0c5f9ef1c20db20d91087c937337a54db6ef7d23c3cb95becd7"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "52bceccf2b17ea5daf5bf658b63f9aac0048ca4d670530feb7efa1fb675419f6",
+          "size": 23616,
+          "source_sha256": "a7b87c28b1cddf1997a4ea57d8c0b64698c758feb9ef6a42d51c23acbfeac890"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+          "action": "modify",
+          "sha256": "573fc460210e62134196c4e1b4c929cc05b763a93f76e1b989a73f8ddb3289a8",
+          "size": 6385,
+          "source_sha256": "5f06874dd560b0b46e1eda681473135af80c6d1107b1aafe24797b33ce976463"
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "feat(android): operationalize secondary UI routes"
+      }
+    },
+    "validation": {
+      "commands": [
+        {
+          "command": "./gradlew test",
+          "working_directory": "app/XDM.Android"
+        }
+      ]
+    }
+  },
+  "history_id": "3aedcfcd7ac04db7be2dbbbb61b5dcc1"
+}

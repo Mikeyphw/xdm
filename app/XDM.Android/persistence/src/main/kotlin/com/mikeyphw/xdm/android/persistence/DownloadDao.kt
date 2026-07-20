@@ -39,6 +39,9 @@ interface QueueDao {
 
     @Upsert
     suspend fun upsertAll(entities: List<QueueEntity>)
+
+    @Query("DELETE FROM queues WHERE id = :id")
+    suspend fun delete(id: String)
 }
 
 @Dao
@@ -48,6 +51,9 @@ interface ScheduleDao {
 
     @Upsert
     suspend fun upsertAll(entities: List<ScheduleRuleEntity>)
+
+    @Query("DELETE FROM schedule_rules WHERE id = :id")
+    suspend fun delete(id: String)
 }
 
 @Dao

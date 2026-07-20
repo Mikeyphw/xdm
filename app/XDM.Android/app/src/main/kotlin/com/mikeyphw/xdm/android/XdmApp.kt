@@ -180,8 +180,21 @@ private fun AppScaffold(
                     },
                     recommend = viewModel::backendRecommendation,
                 )
-                AppRoute.Queues -> QueuesScreen(state.queues)
-                AppRoute.Scheduler -> SchedulerScreen(state.schedules)
+                AppRoute.Queues -> QueuesScreen(
+                    queues = state.queues,
+                    onCreateQueue = viewModel::createQueue,
+                    onUpdateQueue = viewModel::updateQueue,
+                    onToggleQueue = viewModel::setQueueEnabled,
+                    onDeleteQueue = viewModel::deleteQueue,
+                )
+                AppRoute.Scheduler -> SchedulerScreen(
+                    rules = state.schedules,
+                    queues = state.queues,
+                    onCreateSchedule = viewModel::createSchedule,
+                    onUpdateSchedule = viewModel::updateSchedule,
+                    onToggleSchedule = viewModel::setScheduleEnabled,
+                    onDeleteSchedule = viewModel::deleteSchedule,
+                )
                 AppRoute.Media -> MediaInboxScreen(
                     state.mediaCaptures,
                     state.mediaVariants,

@@ -76,6 +76,8 @@ import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
 import com.mikeyphw.xdm.android.model.QueueDefinition
+import com.mikeyphw.xdm.android.model.RecoveryAction
+import com.mikeyphw.xdm.android.model.RecoveryClassification
 import com.mikeyphw.xdm.android.model.RecoveryRecord
 import com.mikeyphw.xdm.android.model.ScheduleRule
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
@@ -577,54 +579,342 @@ fun AddDownloadScreen(
 }
 
 @Composable
-fun QueuesScreen(queues: List<QueueDefinition>) {
-    if (queues.isEmpty()) {
-        EmptyFeatureScreen(
-            "No download queues",
-            "Queues group downloads and control how many transfers can run together.",
-        )
-        return
-    }
+fun QueuesScreen(
+    queues: List<QueueDefinition>,
+    onCreateQueue: (String, Int) -> Unit,
+    onUpdateQueue: (QueueDefinition, String, Int, Boolean) -> Unit,
+    onToggleQueue: (QueueDefinition, Boolean) -> Unit,
+    onDeleteQueue: (QueueDefinition) -> Unit,
+) {
+    var newQueueName by remember { mutableStateOf("") }
+    var newQueueLimit by remember { mutableStateOf("3") }
+    val newLimit = newQueueLimit.toIntOrNull()?.coerceIn(1, 16) ?: 3
+
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(queues, key = QueueDefinition::id) { queue ->
-            Card(Modifier.fillMaxWidth()) {
-                Row(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        XdmCardTitle(queue.name)
-                        XdmMetadataText("Up to ${queue.maxConcurrent} concurrent downloads")
-                    }
-                    StatusPill(enabledLabel(queue.isEnabled), enabledTone(queue.isEnabled))
+        item {
+            XdmListCard {
+                XdmCardTitle("Create queue")
+                XdmSupportingText("Queues group downloads and set how many transfers may run at the same time.")
+                OutlinedTextField(
+                    value = newQueueName,
+                    onValueChange = { newQueueName = it.take(48) },
+                    label = { Text("Queue name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = newQueueLimit,
+                    onValueChange = { newQueueLimit = it.filter { char -> char.isDigit() }.take(2) },
+                    label = { Text("Concurrent downloads") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    supportingText = { Text("Use 1–16. Higher values may drain battery faster.") },
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = {
+                            onCreateQueue(newQueueName, newLimit)
+                            newQueueName = ""
+                            newQueueLimit = "3"
+                        },
+                    ) { Text("Create queue") }
+                    XdmMetadataText("Starts enabled")
                 }
+            }
+        }
+        if (queues.isEmpty()) {
+            item {
+                XdmListCard {
+                    XdmCardTitle("No download queues")
+                    XdmSupportingText("Create a queue to separate nightly, media, large-file, or low-priority downloads.")
+                }
+            }
+        } else {
+            items(queues, key = QueueDefinition::id) { queue ->
+                QueueManagementCard(
+                    queue = queue,
+                    onUpdateQueue = onUpdateQueue,
+                    onToggleQueue = onToggleQueue,
+                    onDeleteQueue = onDeleteQueue,
+                )
             }
         }
     }
 }
 
 @Composable
-fun SchedulerScreen(rules: List<ScheduleRule>) {
-    if (rules.isEmpty()) {
-        EmptyFeatureScreen(
-            "No schedules",
-            "Schedules can start or pause queues automatically when their conditions are met.",
-        )
-        return
+private fun QueueManagementCard(
+    queue: QueueDefinition,
+    onUpdateQueue: (QueueDefinition, String, Int, Boolean) -> Unit,
+    onToggleQueue: (QueueDefinition, Boolean) -> Unit,
+    onDeleteQueue: (QueueDefinition) -> Unit,
+) {
+    var editing by remember(queue.id) { mutableStateOf(false) }
+    var draftName by remember(queue.id, editing) { mutableStateOf(queue.name) }
+    var draftLimit by remember(queue.id, editing) { mutableStateOf(queue.maxConcurrent.toString()) }
+    var draftEnabled by remember(queue.id, editing) { mutableStateOf(queue.isEnabled) }
+    val draftLimitNumber = draftLimit.toIntOrNull()?.coerceIn(1, 16) ?: queue.maxConcurrent
+    val dirty = draftName.trim() != queue.name || draftLimitNumber != queue.maxConcurrent || draftEnabled != queue.isEnabled
+
+    XdmListCard {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmCardTitle(queue.name)
+                XdmMetadataText("Up to ${queue.maxConcurrent} concurrent download${if (queue.maxConcurrent == 1) "" else "s"}")
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                StatusPill(enabledLabel(queue.isEnabled), enabledTone(queue.isEnabled))
+                Switch(
+                    checked = queue.isEnabled,
+                    onCheckedChange = { onToggleQueue(queue, it) },
+                    modifier = Modifier.semantics { stateDescription = if (queue.isEnabled) "Queue enabled" else "Queue disabled" },
+                )
+            }
+        }
+        if (queue.id == "default") {
+            XdmMetadataText("Default queue is protected so new downloads always have a landing place.")
+        }
+        if (editing) {
+            OutlinedTextField(
+                value = draftName,
+                onValueChange = { draftName = it.take(48) },
+                label = { Text("Queue name") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = draftLimit,
+                onValueChange = { draftLimit = it.filter { char -> char.isDigit() }.take(2) },
+                label = { Text("Concurrent downloads") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                supportingText = { Text("Use 1–16. Current effective value: $draftLimitNumber") },
+            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                XdmSupportingText("Enabled", modifier = Modifier.weight(1f))
+                Switch(checked = draftEnabled, onCheckedChange = { draftEnabled = it })
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                Button(
+                    onClick = {
+                        onUpdateQueue(queue, draftName, draftLimitNumber, draftEnabled)
+                        editing = false
+                    },
+                    enabled = dirty && draftName.isNotBlank(),
+                ) { Text("Save queue") }
+                TextButton(onClick = { editing = false }) { Text("Cancel") }
+                TextButton(onClick = { onDeleteQueue(queue); editing = false }, enabled = queue.id != "default") { Text("Delete queue") }
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                TextButton(onClick = { editing = true }) { Text("Edit") }
+                TextButton(onClick = { onDeleteQueue(queue) }, enabled = queue.id != "default") { Text("Delete") }
+            }
+        }
     }
+}
+
+@Composable
+fun SchedulerScreen(
+    rules: List<ScheduleRule>,
+    queues: List<QueueDefinition>,
+    onCreateSchedule: (String, String?, String) -> Unit,
+    onUpdateSchedule: (ScheduleRule, String, String?, Boolean, String) -> Unit,
+    onToggleSchedule: (ScheduleRule, Boolean) -> Unit,
+    onDeleteSchedule: (ScheduleRule) -> Unit,
+) {
+    var newScheduleName by remember { mutableStateOf("") }
+    var selectedQueueId by remember { mutableStateOf<String?>(queues.firstOrNull()?.id) }
+    var unmeteredOnly by remember { mutableStateOf(true) }
+    var chargingRequired by remember { mutableStateOf(false) }
+    var minimumBattery by remember { mutableStateOf("30") }
+    var startTime by remember { mutableStateOf("01:00") }
+    var endTime by remember { mutableStateOf("06:00") }
+    var days by remember { mutableStateOf("Weekdays") }
+    val createConstraints = buildScheduleConstraintsJson(days, startTime, endTime, unmeteredOnly, chargingRequired, minimumBattery)
+
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(rules, key = ScheduleRule::id) { rule ->
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        XdmCardTitle(rule.name, modifier = Modifier.weight(1f))
-                        StatusPill(enabledLabel(rule.enabled), enabledTone(rule.enabled))
-                    }
-                    scheduleConstraintSummary(rule.constraintsJson).forEach { summary ->
-                        XdmMetadataText(summary)
-                    }
+        item {
+            XdmListCard {
+                XdmCardTitle("Create schedule")
+                XdmSupportingText("Schedules enable queues automatically when time, power, battery, and network conditions line up.")
+                OutlinedTextField(
+                    value = newScheduleName,
+                    onValueChange = { newScheduleName = it.take(48) },
+                    label = { Text("Schedule name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                QueuePicker(queues = queues, selectedQueueId = selectedQueueId, onSelected = { selectedQueueId = it })
+                ScheduleConditionEditor(
+                    days = days,
+                    onDaysChanged = { days = it },
+                    startTime = startTime,
+                    onStartTimeChanged = { startTime = it.take(5) },
+                    endTime = endTime,
+                    onEndTimeChanged = { endTime = it.take(5) },
+                    unmeteredOnly = unmeteredOnly,
+                    onUnmeteredOnlyChanged = { unmeteredOnly = it },
+                    chargingRequired = chargingRequired,
+                    onChargingRequiredChanged = { chargingRequired = it },
+                    minimumBattery = minimumBattery,
+                    onMinimumBatteryChanged = { minimumBattery = it.filter { char -> char.isDigit() }.take(3) },
+                )
+                Button(
+                    onClick = {
+                        onCreateSchedule(newScheduleName, selectedQueueId, createConstraints)
+                        newScheduleName = ""
+                    },
+                ) { Text("Create schedule") }
+            }
+        }
+        if (rules.isEmpty()) {
+            item {
+                XdmListCard {
+                    XdmCardTitle("No schedules")
+                    XdmSupportingText("Create a schedule to run queues only during safe windows, such as Wi‑Fi while charging overnight.")
                 }
+            }
+        } else {
+            items(rules, key = ScheduleRule::id) { rule ->
+                ScheduleManagementCard(
+                    rule = rule,
+                    queues = queues,
+                    onUpdateSchedule = onUpdateSchedule,
+                    onToggleSchedule = onToggleSchedule,
+                    onDeleteSchedule = onDeleteSchedule,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QueuePicker(queues: List<QueueDefinition>, selectedQueueId: String?, onSelected: (String?) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        XdmMetadataText("Queue")
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = selectedQueueId == null, onClick = { onSelected(null) }, label = { Text("All queues") })
+            queues.forEach { queue ->
+                FilterChip(selected = selectedQueueId == queue.id, onClick = { onSelected(queue.id) }, label = { Text(queue.name) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScheduleConditionEditor(
+    days: String,
+    onDaysChanged: (String) -> Unit,
+    startTime: String,
+    onStartTimeChanged: (String) -> Unit,
+    endTime: String,
+    onEndTimeChanged: (String) -> Unit,
+    unmeteredOnly: Boolean,
+    onUnmeteredOnlyChanged: (Boolean) -> Unit,
+    chargingRequired: Boolean,
+    onChargingRequiredChanged: (Boolean) -> Unit,
+    minimumBattery: String,
+    onMinimumBatteryChanged: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(days, onDaysChanged, label = { Text("Days") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(startTime, onStartTimeChanged, label = { Text("Start") }, modifier = Modifier.weight(1f), singleLine = true)
+            OutlinedTextField(endTime, onEndTimeChanged, label = { Text("End") }, modifier = Modifier.weight(1f), singleLine = true)
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            XdmSupportingText("Unmetered network only", modifier = Modifier.weight(1f))
+            Switch(checked = unmeteredOnly, onCheckedChange = onUnmeteredOnlyChanged)
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            XdmSupportingText("Charging required", modifier = Modifier.weight(1f))
+            Switch(checked = chargingRequired, onCheckedChange = onChargingRequiredChanged)
+        }
+        OutlinedTextField(
+            minimumBattery,
+            onMinimumBatteryChanged,
+            label = { Text("Minimum battery %") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            supportingText = { Text("Leave blank to ignore battery level.") },
+        )
+    }
+}
+
+@Composable
+private fun ScheduleManagementCard(
+    rule: ScheduleRule,
+    queues: List<QueueDefinition>,
+    onUpdateSchedule: (ScheduleRule, String, String?, Boolean, String) -> Unit,
+    onToggleSchedule: (ScheduleRule, Boolean) -> Unit,
+    onDeleteSchedule: (ScheduleRule) -> Unit,
+) {
+    var editing by remember(rule.id) { mutableStateOf(false) }
+    var draftName by remember(rule.id, editing) { mutableStateOf(rule.name) }
+    var draftQueueId by remember(rule.id, editing) { mutableStateOf(rule.queueId) }
+    var draftEnabled by remember(rule.id, editing) { mutableStateOf(rule.enabled) }
+    var draftDays by remember(rule.id, editing) { mutableStateOf(scheduleString(rule.constraintsJson, "days", "Every day")) }
+    var draftStart by remember(rule.id, editing) { mutableStateOf(scheduleString(rule.constraintsJson, "startTime", "")) }
+    var draftEnd by remember(rule.id, editing) { mutableStateOf(scheduleString(rule.constraintsJson, "endTime", "")) }
+    var draftUnmetered by remember(rule.id, editing) { mutableStateOf(scheduleBoolean(rule.constraintsJson, "unmetered", false)) }
+    var draftCharging by remember(rule.id, editing) { mutableStateOf(scheduleBoolean(rule.constraintsJson, "charging", false)) }
+    var draftBattery by remember(rule.id, editing) { mutableStateOf(scheduleInt(rule.constraintsJson, "minimumBatteryPercent")?.toString().orEmpty()) }
+    val draftConstraints = buildScheduleConstraintsJson(draftDays, draftStart, draftEnd, draftUnmetered, draftCharging, draftBattery)
+
+    XdmListCard {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmCardTitle(rule.name)
+                XdmMetadataText(rule.queueId?.let { id -> "Queue: ${queues.firstOrNull { it.id == id }?.name ?: id}" } ?: "All queues")
+                XdmMetadataText(nextRunSummary(rule.enabled, rule.constraintsJson))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                StatusPill(enabledLabel(rule.enabled), enabledTone(rule.enabled))
+                Switch(
+                    checked = rule.enabled,
+                    onCheckedChange = { onToggleSchedule(rule, it) },
+                    modifier = Modifier.semantics { stateDescription = if (rule.enabled) "Schedule enabled" else "Schedule disabled" },
+                )
+            }
+        }
+        scheduleConstraintSummary(rule.constraintsJson).forEach { summary -> XdmMetadataText(summary) }
+        if (editing) {
+            OutlinedTextField(draftName, { draftName = it.take(48) }, label = { Text("Schedule name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            QueuePicker(queues = queues, selectedQueueId = draftQueueId, onSelected = { draftQueueId = it })
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                XdmSupportingText("Enabled", modifier = Modifier.weight(1f))
+                Switch(checked = draftEnabled, onCheckedChange = { draftEnabled = it })
+            }
+            ScheduleConditionEditor(
+                days = draftDays,
+                onDaysChanged = { draftDays = it },
+                startTime = draftStart,
+                onStartTimeChanged = { draftStart = it.take(5) },
+                endTime = draftEnd,
+                onEndTimeChanged = { draftEnd = it.take(5) },
+                unmeteredOnly = draftUnmetered,
+                onUnmeteredOnlyChanged = { draftUnmetered = it },
+                chargingRequired = draftCharging,
+                onChargingRequiredChanged = { draftCharging = it },
+                minimumBattery = draftBattery,
+                onMinimumBatteryChanged = { draftBattery = it.filter { char -> char.isDigit() }.take(3) },
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                Button(
+                    onClick = {
+                        onUpdateSchedule(rule, draftName, draftQueueId, draftEnabled, draftConstraints)
+                        editing = false
+                    },
+                    enabled = draftName.isNotBlank(),
+                ) { Text("Save schedule") }
+                TextButton(onClick = { editing = false }) { Text("Cancel") }
+                TextButton(onClick = { onDeleteSchedule(rule); editing = false }) { Text("Delete schedule") }
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                TextButton(onClick = { editing = true }) { Text("Edit") }
+                TextButton(onClick = { onDeleteSchedule(rule) }) { Text("Delete") }
             }
         }
     }
@@ -645,53 +935,86 @@ fun MediaInboxScreen(
     }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(captures, key = MediaCaptureRecord::id) { capture ->
-            val captureVariants = variants.filter { it.captureId == capture.id }
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-                        Column(Modifier.weight(1f)) {
-                            XdmCardTitle(capture.title, maxLines = 1)
-                            XdmMetadataText(capture.sourceUrl, maxLines = 2)
-                        }
-                        StatusPill(capture.kind.uiLabel(), XdmStatusTone.Info)
+            val captureVariants = variants.filter { it.captureId == capture.id }.sortedBy { it.position }
+            MediaCaptureCard(capture, captureVariants, onDownload, onResolve, onSelectVariant, onRemove)
+        }
+    }
+}
+
+@Composable
+private fun MediaCaptureCard(
+    capture: MediaCaptureRecord,
+    captureVariants: List<MediaVariant>,
+    onDownload: (MediaCaptureRecord) -> Unit,
+    onResolve: (MediaCaptureRecord) -> Unit,
+    onSelectVariant: (MediaCaptureRecord, String) -> Unit,
+    onRemove: (MediaCaptureRecord) -> Unit,
+) {
+    var variantSelectorExpanded by remember(capture.id) { mutableStateOf(false) }
+    val selectedVariant = captureVariants.firstOrNull { it.id == capture.selectedVariantId } ?: captureVariants.firstOrNull()
+    XdmListCard {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmCardTitle(capture.title, maxLines = 1)
+                XdmMetadataText(mediaOriginLabel(capture), maxLines = 1)
+            }
+            StatusPill(capture.kind.uiLabel(), XdmStatusTone.Info)
+        }
+        XdmSupportingText(
+            listOfNotNull(
+                capture.mimeType,
+                capture.container,
+                capture.durationMs?.let { formatDurationSeconds(it) },
+            ).joinToString(" • ").ifBlank { "Media details will appear after resolution." },
+            maxLines = 2,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            StatusPill(capture.status.uiLabel(), if (capture.status == MediaCaptureStatus.DownloadCreated) XdmStatusTone.Success else XdmStatusTone.Neutral)
+            StatusPill(capture.resolutionStatus.uiLabel(), if (capture.resolutionStatus == MediaResolutionStatus.Failed || capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh) XdmStatusTone.Warning else XdmStatusTone.Neutral)
+            capture.downloadId?.let { StatusPill("Queued", XdmStatusTone.Success) }
+        }
+        if (captureVariants.isNotEmpty()) {
+            XdmListCard(compact = true) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        XdmMetadataText("Selected variant")
+                        XdmMetricText(selectedVariant?.qualityLabel ?: "Automatic")
                     }
-                    Text(
-                        listOfNotNull(
-                            capture.mimeType,
-                            capture.container,
-                            "${capture.variantCount} variant${if (capture.variantCount == 1) "" else "s"}",
-                            capture.durationMs?.let { "${it / 1000}s" },
-                        ).joinToString(" • "),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        StatusPill(capture.status.uiLabel(), if (capture.status == MediaCaptureStatus.DownloadCreated) XdmStatusTone.Success else XdmStatusTone.Neutral)
-                        StatusPill(capture.resolutionStatus.uiLabel(), if (capture.resolutionStatus == MediaResolutionStatus.Failed || capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh) XdmStatusTone.Warning else XdmStatusTone.Neutral)
-                        capture.downloadId?.let { StatusPill("Queued", XdmStatusTone.Success) }
-                    }
-                    if (captureVariants.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Variants", style = MaterialTheme.typography.labelLarge)
-                            captureVariants.take(4).forEach { variant ->
-                                val selected = capture.selectedVariantId == variant.id
-                                FilterChip(
-                                    selected = selected,
-                                    onClick = { onSelectVariant(capture, variant.id) },
-                                    label = { Text(if (selected) "${variant.qualityLabel} selected" else variant.qualityLabel) },
-                                )
-                            }
-                        }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(
-                            onClick = { onDownload(capture) },
-                            enabled = capture.status != MediaCaptureStatus.DownloadCreated && capture.resolutionStatus != MediaResolutionStatus.RequiresRefresh,
-                        ) { Text(if (capture.status == MediaCaptureStatus.DownloadCreated) "Added" else "Download") }
-                        TextButton(onClick = { onResolve(capture) }) { Text(if (capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh) "Refresh" else "Resolve") }
-                        TextButton(onClick = { onRemove(capture) }) { Text("Remove") }
+                    TextButton(onClick = { variantSelectorExpanded = !variantSelectorExpanded }) { Text(if (variantSelectorExpanded) "Hide variants" else "Choose variant") }
+                }
+                if (variantSelectorExpanded) {
+                    captureVariants.forEach { variant ->
+                        VariantSelectorRow(
+                            variant = variant,
+                            selected = capture.selectedVariantId == variant.id || (capture.selectedVariantId == null && selectedVariant?.id == variant.id),
+                            onSelect = { onSelectVariant(capture, variant.id) },
+                        )
                     }
                 }
             }
+        } else {
+            XdmMetadataText("No variants yet. Resolve metadata to discover quality options.")
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            Button(
+                onClick = { onDownload(capture) },
+                enabled = capture.status != MediaCaptureStatus.DownloadCreated && capture.resolutionStatus != MediaResolutionStatus.RequiresRefresh,
+            ) { Text(if (capture.status == MediaCaptureStatus.DownloadCreated) "Added" else "Download selected") }
+            TextButton(onClick = { onResolve(capture) }) { Text(if (capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh) "Refresh metadata" else "Resolve metadata") }
+            TextButton(onClick = { onRemove(capture) }) { Text("Remove capture") }
+        }
+    }
+}
+
+@Composable
+private fun VariantSelectorRow(variant: MediaVariant, selected: Boolean, onSelect: () -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                XdmCardTitle(variant.qualityLabel)
+                XdmMetadataText(variantDetails(variant), maxLines = 2)
+            }
+            FilterChip(selected = selected, onClick = onSelect, label = { Text(if (selected) "Selected" else "Select") })
         }
     }
 }
@@ -704,20 +1027,37 @@ fun RecoveryScreen(records: List<RecoveryRecord>, onValidate: (RecoveryRecord) -
     }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(records, key = RecoveryRecord::id) { record ->
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    XdmCardTitle(record.classification.uiLabel())
-                    Text(record.artifactPath, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    XdmSupportingText(record.reason)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        StatusPill(record.recommendedAction.uiLabel(), record.classification.statusTone())
-                        StatusPill(if (record.safeToResume) "Safe resume" else "Paused", if (record.safeToResume) XdmStatusTone.Success else XdmStatusTone.Warning)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { onValidate(record) }) { Text(if (record.safeToResume) "Resume" else "Validate") }
-                        TextButton(onClick = { onRemove(record) }) { Text("Remove") }
-                    }
-                }
+            RecoveryRecordCard(record, onValidate, onRemove)
+        }
+    }
+}
+
+@Composable
+private fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryRecord) -> Unit, onRemove: (RecoveryRecord) -> Unit) {
+    var technicalExpanded by remember(record.id) { mutableStateOf(false) }
+    XdmListCard {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmCardTitle(recoveryProblemTitle(record))
+                XdmSupportingText(record.reason)
+            }
+            StatusPill(record.classification.uiLabel(), record.classification.statusTone())
+        }
+        XdmMetadataText(recoveryRecommendedExplanation(record), maxLines = 3)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            StatusPill(record.recommendedAction.uiLabel(), record.classification.statusTone())
+            StatusPill(if (record.safeToResume) "Safe to resume" else "Needs review", if (record.safeToResume) XdmStatusTone.Success else XdmStatusTone.Warning)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            Button(onClick = { onValidate(record) }) { Text(recoveryPrimaryActionLabel(record)) }
+            TextButton(onClick = { technicalExpanded = !technicalExpanded }) { Text(if (technicalExpanded) "Hide technical details" else "Technical details") }
+            TextButton(onClick = { onRemove(record) }) { Text("Remove record only") }
+        }
+        XdmMetadataText("Remove record only hides this recovery item; it does not delete downloaded files or partial data.")
+        if (technicalExpanded) {
+            XdmListCard(compact = true) {
+                XdmMetadataText("Artifact path: ${record.artifactPath}", maxLines = 3)
+                XdmMetadataText(record.downloadId?.let { "Download ID: $it" } ?: "No linked download")
             }
         }
     }
@@ -1140,6 +1480,106 @@ private fun Download.progressAccessibilitySummary(): String {
     val total = totalBytes ?: return "Progress unavailable"
     val percent = (progressFraction * 100).toInt().coerceIn(0, 100)
     return "$percent percent, ${bytesReceived.formatBytes()} of ${total.formatBytes()}"
+}
+
+
+private fun buildScheduleConstraintsJson(
+    days: String,
+    startTime: String,
+    endTime: String,
+    unmeteredOnly: Boolean,
+    chargingRequired: Boolean,
+    minimumBattery: String,
+): String {
+    val json = JSONObject()
+    days.trim().takeIf(String::isNotBlank)?.let { json.put("days", it) }
+    startTime.trim().takeIf(String::isNotBlank)?.let { json.put("startTime", it) }
+    endTime.trim().takeIf(String::isNotBlank)?.let { json.put("endTime", it) }
+    if (unmeteredOnly) json.put("unmetered", true)
+    if (chargingRequired) json.put("charging", true)
+    minimumBattery.toIntOrNull()?.coerceIn(0, 100)?.let { json.put("minimumBatteryPercent", it) }
+    return json.toString()
+}
+
+private fun scheduleBoolean(rawJson: String, key: String, default: Boolean): Boolean = runCatching {
+    JSONObject(rawJson).optBoolean(key, default)
+}.getOrDefault(default)
+
+private fun scheduleString(rawJson: String, key: String, default: String): String = runCatching {
+    JSONObject(rawJson).optString(key).ifBlank { default }
+}.getOrDefault(default)
+
+private fun scheduleInt(rawJson: String, key: String): Int? = runCatching {
+    JSONObject(rawJson).takeIf { it.has(key) }?.optInt(key)
+}.getOrNull()
+
+private fun nextRunSummary(enabled: Boolean, rawJson: String): String {
+    if (!enabled) return "Disabled; it will not run until enabled."
+    val start = scheduleString(rawJson, "startTime", "")
+    val end = scheduleString(rawJson, "endTime", "")
+    val days = scheduleString(rawJson, "days", "")
+    val window = when {
+        start.isNotBlank() && end.isNotBlank() -> "$start–$end"
+        start.isNotBlank() -> "after $start"
+        else -> "when conditions match"
+    }
+    return listOf(days.takeIf(String::isNotBlank), "Next eligible window: $window").filterNotNull().joinToString(" • ")
+}
+
+private fun mediaOriginLabel(capture: MediaCaptureRecord): String = listOfNotNull(
+    capture.pageUrl?.let(::hostFromUrl),
+    hostFromUrl(capture.sourceUrl),
+).distinct().joinToString(" • ").ifBlank { "Captured media" }
+
+private fun hostFromUrl(url: String): String = runCatching {
+    url.substringAfter("://", url).substringBefore('/').substringBefore('?').ifBlank { url }
+}.getOrDefault(url)
+
+private fun formatDurationSeconds(durationMs: Long): String {
+    val totalSeconds = (durationMs / 1000).coerceAtLeast(0)
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return if (minutes > 0) "${minutes}m ${seconds}s" else "${seconds}s"
+}
+
+private fun variantDetails(variant: MediaVariant): String = listOfNotNull(
+    variant.mimeType,
+    variant.width?.let { width -> variant.height?.let { height -> "${width}×${height}" } },
+    variant.bitrateBitsPerSecond?.takeIf { it > 0 }?.let { "${it / 1000} kbps" },
+    variant.codecs,
+    variant.language?.takeIf(String::isNotBlank)?.let { "Language: $it" },
+).joinToString(" • ").ifBlank { variant.kind.name.lowercase().replaceFirstChar { it.titlecase() } }
+
+private fun recoveryProblemTitle(record: RecoveryRecord): String = when (record.classification) {
+    RecoveryClassification.ReadyToResume -> "Interrupted download can resume"
+    RecoveryClassification.NeedsRemoteValidation -> "Download needs remote validation"
+    RecoveryClassification.NeedsRepair -> "Partial file needs repair"
+    RecoveryClassification.MissingPartialFile -> "Partial file is missing"
+    RecoveryClassification.RemoteFileChanged -> "Remote file changed"
+    RecoveryClassification.CompletionRecovered -> "Completed file was recovered"
+    RecoveryClassification.FinalizationInterrupted -> "Finishing was interrupted"
+    RecoveryClassification.BackendTaskOrphaned -> "Backend task lost its owner"
+    RecoveryClassification.OrphanedArtifact -> "Untracked partial file found"
+}
+
+private fun recoveryRecommendedExplanation(record: RecoveryRecord): String = when (record.recommendedAction) {
+    RecoveryAction.Resume -> "The partial data looks reusable. Resume keeps existing bytes and continues safely."
+    RecoveryAction.Validate -> "Validate checks the partial data before XDM decides whether it can be reused."
+    RecoveryAction.VerifyAndRepair -> "XDM should verify trusted blocks and repair only the damaged range when possible."
+    RecoveryAction.RestartFromZero -> "Restart discards reuse assumptions and creates a fresh backend task."
+    RecoveryAction.AdoptOrphan -> "Adopt links this artifact to a managed download only after validation."
+    RecoveryAction.LocateFile -> "Locate the missing file before any resume or repair action."
+    RecoveryAction.RemoveRecord -> "Remove only clears the recovery warning; it does not delete user files."
+}
+
+private fun recoveryPrimaryActionLabel(record: RecoveryRecord): String = when (record.recommendedAction) {
+    RecoveryAction.Resume -> "Resume download"
+    RecoveryAction.Validate -> "Validate safely"
+    RecoveryAction.VerifyAndRepair -> "Verify and repair"
+    RecoveryAction.RestartFromZero -> "Restart download"
+    RecoveryAction.AdoptOrphan -> "Validate and adopt"
+    RecoveryAction.LocateFile -> "Locate file"
+    RecoveryAction.RemoveRecord -> "Review record"
 }
 
 private fun scheduleConstraintSummary(rawJson: String): List<String> {

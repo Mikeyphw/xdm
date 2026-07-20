@@ -271,6 +271,36 @@ class ArchitectureContractTest {
         assertFalse("Add route must not use the old queue-specific button copy", screens.contains("Add to Default queue"))
     }
 
+
+    @Test
+    fun uiUxPhaseFiveSecondaryRoutesAreOperational() {
+        val root = androidRoot()
+        val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        val repository = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt").readText()
+        val dao = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadDao.kt").readText()
+
+        assertTrue("UI contract must define secondary route operational rules", contract.contains("Secondary Route Operational Rules"))
+        assertTrue("Queues route must expose creation", screens.contains("Create queue") && appShell.contains("onCreateQueue = viewModel::createQueue"))
+        assertTrue("Queues route must expose edit/save", screens.contains("Save queue") && viewModel.contains("fun updateQueue"))
+        assertTrue("Queues route must expose enable toggles", screens.contains("onToggleQueue") && viewModel.contains("fun setQueueEnabled"))
+        assertTrue("Queues route must expose deletion", screens.contains("Delete queue") && repository.contains("deleteQueue") && dao.contains("DELETE FROM queues"))
+        assertTrue("Scheduler route must expose creation", screens.contains("Create schedule") && appShell.contains("onCreateSchedule = viewModel::createSchedule"))
+        assertTrue("Scheduler route must expose edit/save", screens.contains("Save schedule") && viewModel.contains("fun updateSchedule"))
+        assertTrue("Scheduler route must expose enable toggles", screens.contains("onToggleSchedule") && viewModel.contains("fun setScheduleEnabled"))
+        assertTrue("Scheduler route must expose deletion", screens.contains("Delete schedule") && repository.contains("deleteSchedule") && dao.contains("DELETE FROM schedule_rules"))
+        assertTrue("Scheduler must show a next-run summary", screens.contains("Next eligible window"))
+        assertTrue("Scheduler must edit human-readable conditions", screens.contains("Unmetered network only") && screens.contains("Charging required") && screens.contains("Minimum battery %"))
+        assertTrue("Media route must expose a variant selector", screens.contains("Choose variant") && screens.contains("Selected variant") && screens.contains("VariantSelectorRow"))
+        assertTrue("Media cards must emphasize origin instead of raw URL", screens.contains("mediaOriginLabel") && !screens.contains("XdmMetadataText(capture.sourceUrl"))
+        assertTrue("Recovery route must clarify safe record-only removal", screens.contains("Remove record only") && screens.contains("Technical details"))
+        assertTrue("Recovery route must lead with consequence copy", screens.contains("recoveryProblemTitle") && screens.contains("recoveryRecommendedExplanation"))
+        assertFalse("Secondary routes must not contain placeholder actions", screens.contains("onClick = {}"))
+        assertFalse("Scheduler must not render raw constraints JSON", screens.contains("Text(rule.constraintsJson"))
+    }
+
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }
 }

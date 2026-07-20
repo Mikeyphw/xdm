@@ -358,6 +358,67 @@ class MainViewModel(
     }
 
 
+
+    fun createQueue(name: String, maxConcurrent: Int) {
+        val trimmed = name.trim().ifBlank { "Queue ${uiState.value.queues.size + 1}" }
+        val queue = QueueDefinition(
+            id = "queue-${UUID.randomUUID()}",
+            name = trimmed.take(48),
+            isEnabled = true,
+            maxConcurrent = maxConcurrent.coerceIn(1, 16),
+            createdAtEpochMs = System.currentTimeMillis(),
+        )
+        viewModelScope.launch(Dispatchers.IO) { repository.saveQueue(queue) }
+    }
+
+    fun updateQueue(queue: QueueDefinition, name: String, maxConcurrent: Int, enabled: Boolean) {
+        val updated = queue.copy(
+            name = name.trim().ifBlank { queue.name }.take(48),
+            maxConcurrent = maxConcurrent.coerceIn(1, 16),
+            isEnabled = enabled,
+        )
+        viewModelScope.launch(Dispatchers.IO) { repository.saveQueue(updated) }
+    }
+
+    fun setQueueEnabled(queue: QueueDefinition, enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) { repository.saveQueue(queue.copy(isEnabled = enabled)) }
+    }
+
+    fun deleteQueue(queue: QueueDefinition) {
+        if (queue.id == "default") return
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteQueue(queue.id) }
+    }
+
+    fun createSchedule(name: String, queueId: String?, constraintsJson: String) {
+        val trimmed = name.trim().ifBlank { "Schedule ${uiState.value.schedules.size + 1}" }
+        val rule = ScheduleRule(
+            id = "schedule-${UUID.randomUUID()}",
+            queueId = queueId,
+            name = trimmed.take(48),
+            enabled = true,
+            constraintsJson = constraintsJson.ifBlank { "{}" },
+        )
+        viewModelScope.launch(Dispatchers.IO) { repository.saveSchedule(rule) }
+    }
+
+    fun updateSchedule(rule: ScheduleRule, name: String, queueId: String?, enabled: Boolean, constraintsJson: String) {
+        val updated = rule.copy(
+            name = name.trim().ifBlank { rule.name }.take(48),
+            queueId = queueId,
+            enabled = enabled,
+            constraintsJson = constraintsJson.ifBlank { "{}" },
+        )
+        viewModelScope.launch(Dispatchers.IO) { repository.saveSchedule(updated) }
+    }
+
+    fun setScheduleEnabled(rule: ScheduleRule, enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) { repository.saveSchedule(rule.copy(enabled = enabled)) }
+    }
+
+    fun deleteSchedule(rule: ScheduleRule) {
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteSchedule(rule.id) }
+    }
+
     fun runAria2SmokeTest() {
         if (aria2SmokeRunning.value) return
         viewModelScope.launch(Dispatchers.IO) {
