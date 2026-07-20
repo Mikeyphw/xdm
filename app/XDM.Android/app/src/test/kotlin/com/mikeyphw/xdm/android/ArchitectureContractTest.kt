@@ -68,7 +68,8 @@ class ArchitectureContractTest {
         val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         assertTrue("Filename field should describe inference", screens.contains("XDM will infer a name from the URL"))
-        assertTrue("Add button should not require a nonblank filename", screens.contains("enabled = url.isNotBlank() && destinationUri.isNotBlank()"))
+        assertTrue("Add button should not require a nonblank filename", screens.contains("val canSubmit = url.isNotBlank() && destinationUri.isNotBlank()"))
+        assertTrue("Add button should use the filename-independent submit state", screens.contains("enabled = canSubmit"))
         assertTrue("ViewModel should centralize inferred filename resolution", viewModel.contains("private fun resolveFileName"))
         assertFalse("ViewModel should not reject blank filename", viewModel.contains("fileName.isBlank()"))
     }
@@ -246,6 +247,28 @@ class ArchitectureContractTest {
         assertFalse("Download filters must not render raw enum names", screens.contains("Text(state.name)"))
         assertFalse("Verification cards must not render raw enum names", screens.contains("Verification: ${'$'}{status.name}"))
         assertFalse("Copied file summaries must not render raw state names", screens.contains("State: ${'$'}{state.name}"))
+    }
+
+
+    @Test
+    fun uiUxPhaseThreeAndFourWorkflowContractsArePresent() {
+        val root = androidRoot()
+        val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+
+        assertTrue("UI contract must define Downloads scanability rules", contract.contains("Downloads Scanability Rules"))
+        assertTrue("UI contract must define form and settings workflow rules", contract.contains("Form and Settings Workflow Rules"))
+        assertTrue("Downloads must keep history tools behind an affordance", screens.contains("History tools"))
+        assertTrue("Downloads must support search", screens.contains("Search downloads"))
+        assertTrue("Downloads must support sort choices", screens.contains("DownloadSort"))
+        assertTrue("Download rows must expose details without always rendering everything", screens.contains("Hide details") && screens.contains("Details"))
+        assertTrue("Filtered empty state must explain how to recover", screens.contains("No matching downloads"))
+        assertTrue("Add route must fold advanced settings", screens.contains("Advanced download options") && screens.contains("advancedExpanded"))
+        assertTrue("Add route must use a persistent bottom action", screens.contains("Ready to add to the default queue") && screens.contains("Start download"))
+        assertTrue("Settings must show unsaved draft state", screens.contains("Unsaved") && screens.contains("Saved"))
+        assertTrue("Settings must provide reset paths", screens.contains("Reset"))
+        assertFalse("Download history must not be a permanent standalone card", screens.contains("private fun HistoryManagementCard"))
+        assertFalse("Add route must not use the old queue-specific button copy", screens.contains("Add to Default queue"))
     }
 
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }

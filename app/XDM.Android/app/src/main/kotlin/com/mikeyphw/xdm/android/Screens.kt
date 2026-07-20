@@ -48,7 +48,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.verticalScroll
 import com.mikeyphw.xdm.android.model.BackendRecommendation
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.BackendMigrationRecord
@@ -93,6 +92,7 @@ import com.mikeyphw.xdm.android.model.ReleaseSecuritySeverity
 import com.mikeyphw.xdm.android.util.formatBytes
 import com.mikeyphw.xdm.android.util.formatSpeed
 
+
 @Composable
 fun DownloadsScreen(
     downloads: List<Download>,
@@ -111,64 +111,45 @@ fun DownloadsScreen(
 ) {
     val context = LocalContext.current
     var filter by remember { mutableStateOf<DownloadState?>(null) }
+    var query by remember { mutableStateOf("") }
+    var sort by remember { mutableStateOf(DownloadSort.Attention) }
+    var showHistoryTools by remember { mutableStateOf(false) }
+    val visible = downloads
+        .filter { download -> filter == null || download.state == filter }
+        .filter { download -> query.isBlank() || download.matchesQuery(query) }
+        .sortForUi(sort)
+
     Column(Modifier.fillMaxSize()) {
-        DownloadListSummary(downloads = downloads, active = active)
-        HistoryManagementCard(
-            report = historyReport,
-            historyText = HistoryManagementPolicy.exportIndex(downloads),
+        DownloadListSummary(
+            downloads = downloads,
+            active = active,
+            historyReport = historyReport,
+            showHistoryTools = showHistoryTools,
+            onToggleHistoryTools = { showHistoryTools = !showHistoryTools },
             onCopyHistory = { copyTextToClipboard(context, "XDM history index", HistoryManagementPolicy.exportIndex(downloads)) },
             onClearFinished = onClearFinishedHistory,
+            onPauseAll = onPauseAll,
+            onResumeAll = onResumeAll,
         )
-        if (active.activeCount > 0) {
-            Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Row(
-                    Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        XdmCardTitle("${active.activeCount} active download${if (active.activeCount == 1) "" else "s"}")
-                        XdmMetricText(active.speedBytesPerSecond.formatSpeed())
-                    }
-                    Button(onClick = onPauseAll) { Text("Pause all") }
-                }
-            }
-        } else if (downloads.any { it.state == DownloadState.Paused }) {
-            Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Row(
-                    Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    XdmSupportingText("Paused downloads are ready to continue")
-                    Button(onClick = onResumeAll) { Text("Resume all") }
-                }
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterChip(
-                selected = filter == null,
-                onClick = { filter = null },
-                label = { Text("All") },
-                modifier = Modifier.semantics { stateDescription = if (filter == null) "All downloads selected" else "All downloads not selected" },
-            )
-            listOf(DownloadState.Downloading, DownloadState.Queued, DownloadState.Completed, DownloadState.Failed).forEach { state ->
-                FilterChip(
-                    selected = filter == state,
-                    onClick = { filter = state },
-                    label = { Text(state.uiLabel()) },
-                    modifier = Modifier.semantics { stateDescription = if (filter == state) "${state.uiLabel()} downloads selected" else "${state.uiLabel()} downloads not selected" },
-                )
-            }
-        }
-        val visible = downloads.filter { filter == null || it.state == filter }
+        DownloadListControls(
+            query = query,
+            onQueryChanged = { query = it },
+            filter = filter,
+            onFilterChanged = { filter = it },
+            sort = sort,
+            onSortChanged = { sort = it },
+            downloads = downloads,
+        )
         if (visible.isEmpty()) {
-            EmptyFeatureScreen("No downloads", "Add a URL to create the first download.")
+            val title = if (downloads.isEmpty()) "No downloads" else "No matching downloads"
+            val description = if (downloads.isEmpty()) {
+                "Add a URL to create the first download."
+            } else {
+                "Change the search, sort, or state filter to widen the list."
+            }
+            EmptyFeatureScreen(title, description)
         } else {
-            LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 12.dp)) {
+            LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 10.dp)) {
                 items(visible, key = Download::id) { download ->
                     DownloadCard(download, compact, capabilities, checksumResults, verificationRecords, onTogglePause, onMigrateBackend, onRemoveHistory)
                 }
@@ -179,38 +160,118 @@ fun DownloadsScreen(
 
 
 @Composable
-private fun HistoryManagementCard(
-    report: HistoryManagementReport,
-    historyText: String,
+private fun DownloadListSummary(
+    downloads: List<Download>,
+    active: ActiveTransferSummary,
+    historyReport: HistoryManagementReport,
+    showHistoryTools: Boolean,
+    onToggleHistoryTools: () -> Unit,
     onCopyHistory: () -> Unit,
     onClearFinished: () -> Unit,
+    onPauseAll: () -> Unit,
+    onResumeAll: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            XdmCardTitle("History management", modifier = Modifier.semantics { heading() })
-            XdmSupportingText(report.summary)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                TextButton(onClick = onCopyHistory, enabled = historyText.isNotBlank()) { Text("Copy history index") }
-                TextButton(onClick = onClearFinished, enabled = report.removableHistory > 0) { Text("Clear finished history") }
+    val failed = downloads.count { it.state == DownloadState.Failed || it.state == DownloadState.RecoveryRequired }
+    val completed = downloads.count { it.state == DownloadState.Completed }
+    val paused = downloads.count { it.state == DownloadState.Paused }
+    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    XdmCardTitle("Download overview", modifier = Modifier.semantics { heading() })
+                    XdmSupportingText(
+                        "${downloads.size} total • ${active.activeCount} active • $completed complete • $failed need attention",
+                        maxLines = 2,
+                    )
+                }
+                if (active.activeCount > 0) {
+                    Button(onClick = onPauseAll) { Text("Pause all") }
+                } else if (paused > 0) {
+                    Button(onClick = onResumeAll) { Text("Resume all") }
+                }
             }
-            XdmMetadataText("History actions only remove app records; downloaded files stay in their destination.")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (active.activeCount > 0) XdmStatusBadge("${active.activeCount} active", tone = XdmStatusTone.Info)
+                if (active.speedBytesPerSecond > 0) XdmMetricText(active.speedBytesPerSecond.formatSpeed())
+                TextButton(onClick = onToggleHistoryTools) { Text(if (showHistoryTools) "Hide history tools" else "History tools") }
+            }
+            if (showHistoryTools) {
+                XdmSupportingText(historyReport.summary)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                    TextButton(onClick = onCopyHistory, enabled = downloads.isNotEmpty()) { Text("Copy history index") }
+                    TextButton(onClick = onClearFinished, enabled = historyReport.removableHistory > 0) { Text("Clear finished history") }
+                }
+                XdmMetadataText("History management only removes app records; downloaded files stay in their destination.")
+            }
         }
     }
 }
 
 @Composable
-private fun DownloadListSummary(downloads: List<Download>, active: ActiveTransferSummary) {
-    val failed = downloads.count { it.state == DownloadState.Failed || it.state == DownloadState.RecoveryRequired }
-    val completed = downloads.count { it.state == DownloadState.Completed }
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            XdmCardTitle("Download overview", modifier = Modifier.semantics { heading() })
-            Text(
-                "${downloads.size} total • ${active.activeCount} active • $completed complete • $failed need attention",
-                style = MaterialTheme.typography.bodyMedium,
+private fun DownloadListControls(
+    query: String,
+    onQueryChanged: (String) -> Unit,
+    filter: DownloadState?,
+    onFilterChanged: (DownloadState?) -> Unit,
+    sort: DownloadSort,
+    onSortChanged: (DownloadSort) -> Unit,
+    downloads: List<Download>,
+) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChanged,
+            label = { Text("Search downloads") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            supportingText = { Text("Search by file name, label, URL, destination, or backend.") },
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            DownloadFilterChip(
+                label = "All ${downloads.size}",
+                selected = filter == null,
+                onClick = { onFilterChanged(null) },
             )
+            listOf(DownloadState.Downloading, DownloadState.Queued, DownloadState.Completed, DownloadState.Failed).forEach { state ->
+                val count = downloads.count { it.state == state }
+                DownloadFilterChip(
+                    label = "${state.uiLabel()} $count",
+                    selected = filter == state,
+                    onClick = { onFilterChanged(state) },
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            DownloadSort.entries.forEach { value ->
+                FilterChip(
+                    selected = sort == value,
+                    onClick = { onSortChanged(value) },
+                    label = { Text(value.label) },
+                    modifier = Modifier.semantics { stateDescription = if (sort == value) "Sorted by ${value.label}" else "Not sorted by ${value.label}" },
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun DownloadFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        modifier = Modifier.semantics { stateDescription = if (selected) "$label selected" else "$label not selected" },
+    )
 }
 
 @Composable
@@ -225,12 +286,13 @@ private fun DownloadCard(
     onRemoveHistory: (Download) -> Unit,
 ) {
     val context = LocalContext.current
+    var expanded by remember(download.id) { mutableStateOf(false) }
     Card(
         Modifier
             .fillMaxWidth()
             .semantics { contentDescription = download.accessibilitySummary() },
     ) {
-        Column(Modifier.padding(if (compact) 10.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(if (compact) 10.dp else 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -240,13 +302,7 @@ private fun DownloadCard(
                     XdmCardTitle(download.fileName, maxLines = 1)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         XdmStatusBadge(download.state.uiLabel(), tone = download.state.statusTone())
-                        XdmMetadataText(download.backend.uiLabel())
-                    }
-                    if (download.backendSelectionExplanation.isNotBlank()) {
-                        XdmMetadataText(download.backendSelectionExplanation, maxLines = 2)
-                    }
-                    download.mimeType?.takeIf { it.startsWith("video/") || it.startsWith("audio/") || it.contains("mpegurl") || it.contains("dash") }?.let {
-                        XdmMetadataText("Media type: $it")
+                        XdmMetadataText(download.backend.uiLabel(), maxLines = 1)
                     }
                 }
                 if (download.state in setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Paused, DownloadState.Failed)) {
@@ -270,66 +326,104 @@ private fun DownloadCard(
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     XdmMetricText("${download.bytesReceived.formatBytes()} / ${totalBytes.formatBytes()}")
-                    if (download.speedBytesPerSecond > 0) XdmMetricText(download.speedBytesPerSecond.formatSpeed())
+                    XdmMetricText(if (download.speedBytesPerSecond > 0) download.speedBytesPerSecond.formatSpeed() else "Waiting")
                 }
+            } else {
+                XdmMetadataText(download.destinationUri, maxLines = 1)
             }
-            val latestVerification = verificationRecords.firstOrNull { it.downloadId == download.id }
-            val latestChecksum = checksumResults.firstOrNull { it.downloadId == download.id }
-            if (download.state == DownloadState.Verifying || download.state == DownloadState.Repairing || latestVerification != null || latestChecksum != null) {
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        val status = latestVerification?.status ?: if (download.state == DownloadState.Verifying) VerificationStatus.Running else VerificationStatus.Pending
-                        XdmCardTitle("Verification: ${status.uiLabel()}")
-                        latestChecksum?.let { checksum ->
-                            val result = when (checksum.matchesExpectation) {
-                                true -> "match"
-                                false -> "mismatch"
-                                null -> "recorded"
-                            }
-                            XdmMetadataText("${checksum.algorithm.uiLabel()}: $result")
-                        }
-                        latestVerification?.message?.let { XdmMetadataText(it, maxLines = 2) }
-                    }
-                }
+            download.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, maxLines = if (expanded) Int.MAX_VALUE else 2) }
+            TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide details" else "Details") }
+            if (expanded) {
+                DownloadDetails(
+                    download = download,
+                    capabilities = capabilities,
+                    checksumResults = checksumResults,
+                    verificationRecords = verificationRecords,
+                    onMigrateBackend = onMigrateBackend,
+                    onRemoveHistory = onRemoveHistory,
+                    onCopyUrl = { copyTextToClipboard(context, "XDM source URL", download.sourceUrl) },
+                    onCopyFileInfo = { copyTextToClipboard(context, "XDM file info", download.fileManagementSummary()) },
+                )
             }
-
-            val targetBackend = when (download.backend) {
-                BackendType.Native -> BackendType.Aria2
-                BackendType.Aria2 -> BackendType.Native
-                BackendType.Automatic -> null
-            }
-            val targetCapability = capabilities.firstOrNull { it.backend == targetBackend }
-            val destinationScheme = download.destinationUri.substringBefore(':').lowercase()
-            val documentDestination = destinationScheme in setOf("content", "xdm")
-            val targetCompatible = targetCapability?.available == true &&
-                (!documentDestination || targetCapability.saf)
-            if (
-                download.state in setOf(DownloadState.Paused, DownloadState.Failed, DownloadState.RecoveryRequired) &&
-                targetBackend != null &&
-                targetCompatible
-            ) {
-                val target = targetBackend.uiLabel()
-                Button(
-                    onClick = { onMigrateBackend(download) },
-                    modifier = Modifier.sizeIn(minWidth = 96.dp, minHeight = 48.dp),
-                ) {
-                    Text(if (download.bytesReceived > 0) "Restart with $target" else "Switch to $target")
-                }
-                if (download.bytesReceived > 0) {
-                    XdmMetadataText("Existing partial bytes are preserved for recovery and are not reused silently.")
-                }
-            }
-            if (download.state in setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                    TextButton(onClick = { copyTextToClipboard(context, "XDM source URL", download.sourceUrl) }) { Text("Copy URL") }
-                    TextButton(onClick = { copyTextToClipboard(context, "XDM file info", download.fileManagementSummary()) }) { Text("Copy file info") }
-                    TextButton(onClick = { onRemoveHistory(download) }) { Text("Remove history") }
-                }
-            }
-            download.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
         }
     }
 }
+
+@Composable
+private fun DownloadDetails(
+    download: Download,
+    capabilities: List<BackendCapabilityRow>,
+    checksumResults: List<ChecksumResult>,
+    verificationRecords: List<VerificationRecord>,
+    onMigrateBackend: (Download) -> Unit,
+    onRemoveHistory: (Download) -> Unit,
+    onCopyUrl: () -> Unit,
+    onCopyFileInfo: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        XdmMetadataText("Destination: ${download.destinationUri}", maxLines = 2)
+        XdmMetadataText("Source: ${download.sourceUrl}", maxLines = 2)
+        if (download.backendSelectionExplanation.isNotBlank()) {
+            XdmSupportingText(download.backendSelectionExplanation, maxLines = 3)
+        }
+        download.mimeType?.takeIf { it.startsWith("video/") || it.startsWith("audio/") || it.contains("mpegurl") || it.contains("dash") }?.let {
+            XdmMetadataText("Media type: $it")
+        }
+        val latestVerification = verificationRecords.firstOrNull { it.downloadId == download.id }
+        val latestChecksum = checksumResults.firstOrNull { it.downloadId == download.id }
+        if (download.state == DownloadState.Verifying || download.state == DownloadState.Repairing || latestVerification != null || latestChecksum != null) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val status = latestVerification?.status ?: if (download.state == DownloadState.Verifying) VerificationStatus.Running else VerificationStatus.Pending
+                    XdmCardTitle("Verification: ${status.uiLabel()}")
+                    latestChecksum?.let { checksum ->
+                        val result = when (checksum.matchesExpectation) {
+                            true -> "match"
+                            false -> "mismatch"
+                            null -> "recorded"
+                        }
+                        XdmMetadataText("${checksum.algorithm.uiLabel()}: $result")
+                    }
+                    latestVerification?.message?.let { XdmMetadataText(it, maxLines = 2) }
+                }
+            }
+        }
+
+        val targetBackend = when (download.backend) {
+            BackendType.Native -> BackendType.Aria2
+            BackendType.Aria2 -> BackendType.Native
+            BackendType.Automatic -> null
+        }
+        val targetCapability = capabilities.firstOrNull { it.backend == targetBackend }
+        val destinationScheme = download.destinationUri.substringBefore(':').lowercase()
+        val documentDestination = destinationScheme in setOf("content", "xdm")
+        val targetCompatible = targetCapability?.available == true && (!documentDestination || targetCapability.saf)
+        if (
+            download.state in setOf(DownloadState.Paused, DownloadState.Failed, DownloadState.RecoveryRequired) &&
+            targetBackend != null &&
+            targetCompatible
+        ) {
+            val target = targetBackend.uiLabel()
+            Button(
+                onClick = { onMigrateBackend(download) },
+                modifier = Modifier.sizeIn(minWidth = 96.dp, minHeight = 48.dp),
+            ) {
+                Text(if (download.bytesReceived > 0) "Restart with $target" else "Switch to $target")
+            }
+            if (download.bytesReceived > 0) {
+                XdmMetadataText("Existing partial bytes are preserved for recovery and are not reused silently.")
+            }
+        }
+        if (download.state in setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                TextButton(onClick = onCopyUrl) { Text("Copy URL") }
+                TextButton(onClick = onCopyFileInfo) { Text("Copy file info") }
+                TextButton(onClick = { onRemoveHistory(download) }) { Text("Remove history") }
+            }
+        }
+    }
+}
+
 
 @Composable
 fun AddDownloadScreen(
@@ -348,100 +442,137 @@ fun AddDownloadScreen(
     var allowFallback by remember { mutableStateOf(true) }
     var expectedChecksum by remember { mutableStateOf("") }
     var checksumAlgorithm by remember { mutableStateOf(ChecksumAlgorithm.Sha256) }
+    var advancedExpanded by remember { mutableStateOf(false) }
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { onSafDestinationSelected(it.toString()) }
     }
     val recommendation = url.takeIf(String::isNotBlank)?.let {
         recommend(url, name, backend, destinationUri, conflictPolicy, allowFallback)
     }
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .imePadding()
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        XdmSectionHeader("New download")
-        OutlinedTextField(url, { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-        OutlinedTextField(
-            name,
-            { name = it },
-            label = { Text("Filename") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            supportingText = { Text("Optional. XDM will infer a name from the URL when this is empty.") },
-        )
-        Text("Destination", style = MaterialTheme.typography.labelLarge)
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DestinationCatalog.available(Build.VERSION.SDK_INT).forEach { choice ->
-                FilterChip(selected = destinationUri == choice.uri, onClick = { onDestinationChanged(choice.uri) }, label = { Text(choice.label) })
-            }
-            savedDestinations.forEach { destination ->
-                FilterChip(selected = destinationUri == destination.uri, onClick = { onDestinationChanged(destination.uri) }, label = { Text(destination.displayName) })
-            }
-        }
-        Button(onClick = { folderPicker.launch(null) }) { Text("Choose folder or SD card") }
-        Text("Existing filename", style = MaterialTheme.typography.labelLarge)
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilenameConflictPolicy.entries.forEach { value ->
-                FilterChip(selected = conflictPolicy == value, onClick = { onConflictPolicyChanged(value) }, label = { Text(value.uiLabel()) })
-            }
-        }
-        Text("Backend", style = MaterialTheme.typography.labelLarge)
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BackendType.entries.forEach { value ->
-                FilterChip(selected = backend == value, onClick = { backend = value }, label = { Text(value.uiLabel()) })
-            }
-        }
-        Card(Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    XdmCardTitle("Compatible fallback")
-                    XdmMetadataText("Fallback is allowed only before a backend task owns the destination.")
-                }
-                Switch(allowFallback, { allowFallback = it })
-            }
-        }
-        Text("Verification", style = MaterialTheme.typography.labelLarge)
-        OutlinedTextField(
-            expectedChecksum,
-            { expectedChecksum = it },
-            label = { Text("Expected checksum") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            supportingText = { Text("Optional SHA-256 or SHA-512. A matching checksum is required before final completion.") },
-        )
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ChecksumAlgorithm.entries.forEach { value ->
-                FilterChip(selected = checksumAlgorithm == value, onClick = { checksumAlgorithm = value }, label = { Text(value.uiLabel()) })
-            }
-        }
+    val canSubmit = url.isNotBlank() && destinationUri.isNotBlank() && recommendation?.compatible != false
 
-        recommendation?.let { recommendation ->
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    XdmCardTitle("Recommended: ${recommendation.backend.uiLabel()}")
-                    XdmSupportingText(recommendation.explanation)
-                    if (!recommendation.compatible) {
-                        Text(
-                            recommendation.compatibilityIssue ?: "This backend cannot start the transfer.",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    } else {
-                        val fallbackBackend = recommendation.fallbackBackend
-                        if (recommendation.fallbackAllowed && fallbackBackend != null) {
-                            Text("Fallback: ${fallbackBackend.uiLabel()}, before task creation only", style = MaterialTheme.typography.labelMedium)
+    Column(Modifier.fillMaxSize().imePadding()) {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item {
+                XdmSupportingText("Paste a URL, choose where it should land, then start the transfer. Advanced backend and verification controls stay folded until needed.")
+            }
+            item {
+                OutlinedTextField(url, { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            }
+            item {
+                OutlinedTextField(
+                    name,
+                    { name = it },
+                    label = { Text("Filename") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    supportingText = { Text("Optional. XDM will infer a name from the URL when this is empty.") },
+                )
+            }
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        XdmCardTitle("Destination")
+                        XdmMetadataText(destinationUri.ifBlank { "Choose where completed files should be saved." }, maxLines = 2)
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            DestinationCatalog.available(Build.VERSION.SDK_INT).forEach { choice ->
+                                FilterChip(selected = destinationUri == choice.uri, onClick = { onDestinationChanged(choice.uri) }, label = { Text(choice.label) })
+                            }
+                            savedDestinations.forEach { destination ->
+                                FilterChip(selected = destinationUri == destination.uri, onClick = { onDestinationChanged(destination.uri) }, label = { Text(destination.displayName) })
+                            }
+                        }
+                        Button(onClick = { folderPicker.launch(null) }) { Text("Choose folder or SD card") }
+                    }
+                }
+            }
+            recommendation?.let { recommendation ->
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                XdmCardTitle("Recommended backend", modifier = Modifier.weight(1f))
+                                XdmStatusBadge(recommendation.backend.uiLabel(), tone = if (recommendation.compatible) XdmStatusTone.Success else XdmStatusTone.Error)
+                            }
+                            XdmSupportingText(recommendation.explanation)
+                            if (!recommendation.compatible) {
+                                Text(
+                                    recommendation.compatibilityIssue ?: "This backend cannot start the transfer.",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            } else {
+                                val fallbackBackend = recommendation.fallbackBackend
+                                if (recommendation.fallbackAllowed && fallbackBackend != null) {
+                                    XdmMetadataText("Fallback: ${fallbackBackend.uiLabel()}, before task creation only")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                XdmCardTitle("Advanced download options")
+                                XdmMetadataText("Existing-file behavior, backend selection, fallback, and checksum verification.")
+                            }
+                            TextButton(onClick = { advancedExpanded = !advancedExpanded }) { Text(if (advancedExpanded) "Hide" else "Show") }
+                        }
+                        if (advancedExpanded) {
+                            XdmCardTitle("Existing filename")
+                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilenameConflictPolicy.entries.forEach { value ->
+                                    FilterChip(selected = conflictPolicy == value, onClick = { onConflictPolicyChanged(value) }, label = { Text(value.uiLabel()) })
+                                }
+                            }
+                            XdmCardTitle("Backend")
+                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                BackendType.entries.forEach { value ->
+                                    FilterChip(selected = backend == value, onClick = { backend = value }, label = { Text(value.uiLabel()) })
+                                }
+                            }
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    XdmCardTitle("Compatible fallback")
+                                    XdmMetadataText("Allowed only before a backend task owns the destination.")
+                                }
+                                Switch(checked = allowFallback, onCheckedChange = { allowFallback = it })
+                            }
+                            XdmCardTitle("Verification")
+                            OutlinedTextField(
+                                expectedChecksum,
+                                { expectedChecksum = it },
+                                label = { Text("Expected checksum") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                supportingText = { Text("Optional SHA-256 or SHA-512. A matching checksum is required before final completion.") },
+                            )
+                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ChecksumAlgorithm.entries.forEach { value ->
+                                    FilterChip(selected = checksumAlgorithm == value, onClick = { checksumAlgorithm = value }, label = { Text(value.uiLabel()) })
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-        Button(
-            onClick = { onAdd(url, name, backend, destinationUri, conflictPolicy, allowFallback, expectedChecksum, checksumAlgorithm) },
-            enabled = url.isNotBlank() && destinationUri.isNotBlank() && recommendation?.compatible != false,
-        ) { Text("Add to Default queue") }
+        Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                XdmMetadataText(if (canSubmit) "Ready to add to the default queue." else "Enter a valid URL and destination.", modifier = Modifier.weight(1f))
+                Button(
+                    onClick = { onAdd(url, name, backend, destinationUri, conflictPolicy, allowFallback, expectedChecksum, checksumAlgorithm) },
+                    enabled = canSubmit,
+                ) { Text("Start download") }
+            }
+        }
     }
 }
 
@@ -750,6 +881,7 @@ private fun StatusPill(text: String, tone: XdmStatusTone = XdmStatusTone.Neutral
     XdmStatusBadge(text, tone = tone)
 }
 
+
 @Composable
 fun SettingsScreen(
     compact: Boolean,
@@ -777,6 +909,12 @@ fun SettingsScreen(
     var postEnabled by remember(postProcessingSettings) { mutableStateOf(postProcessingSettings.enabled) }
     var postPreset by remember(postProcessingSettings) { mutableStateOf(postProcessingSettings.preset) }
     var postLabel by remember(postProcessingSettings) { mutableStateOf(postProcessingSettings.customCommandLabel) }
+    val proxyDraft = ProxyCredentialSettings(proxyEnabled, proxyHost, proxyPort.toIntOrNull()?.takeIf { it in 1..65535 }, proxyUsername, proxyAlias)
+    val proxyDirty = proxyDraft != proxySettings
+    val proxyPortValid = proxyPort.isBlank() || proxyPort.toIntOrNull()?.let { it in 1..65535 } == true
+    val postDraft = PostProcessingSettings(postEnabled, postPreset, postLabel)
+    val postDirty = postDraft != postProcessingSettings
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp),
@@ -803,16 +941,23 @@ fun SettingsScreen(
             Card(Modifier.fillMaxWidth().semantics { contentDescription = "Settings import export snapshot" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     XdmCardTitle("Portable settings snapshot")
-                    XdmMetadataText("Exports layout density, destination defaults, filename conflict policy, proxy metadata, and post-processing choices. Secrets are not exported.")
-                    TextButton(onClick = { copyTextToClipboard(context, "XDM settings snapshot", settingsExportText) }) { Text("Copy export") }
+                    XdmSupportingText("Copy a safe backup, paste one back here, and review whether it looks ready before importing.")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { copyTextToClipboard(context, "XDM settings snapshot", settingsExportText) }) { Text("Copy export") }
+                        StatusPill(if (importText.isBlank()) "No import" else "Import ready", if (importText.isBlank()) XdmStatusTone.Neutral else XdmStatusTone.Info)
+                    }
                     OutlinedTextField(
                         importText,
                         { importText = it },
                         label = { Text("Paste settings snapshot") },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 6,
+                        supportingText = { Text("Secrets are not included in exported snapshots.") },
                     )
-                    Button(onClick = { onImportSettings(importText); importText = "" }, enabled = importText.isNotBlank()) { Text("Import snapshot") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onImportSettings(importText); importText = "" }, enabled = importText.isNotBlank()) { Text("Import snapshot") }
+                        TextButton(onClick = { importText = "" }, enabled = importText.isNotBlank()) { Text("Clear") }
+                    }
                 }
             }
         }
@@ -825,13 +970,37 @@ fun SettingsScreen(
                             XdmCardTitle("Proxy profile")
                             XdmMetadataText(proxySettings.redactedSummary)
                         }
-                        Switch(proxyEnabled, { proxyEnabled = it })
+                        StatusPill(if (proxyDirty) "Unsaved" else "Saved", if (proxyDirty) XdmStatusTone.Warning else XdmStatusTone.Success)
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        XdmSupportingText("Use proxy", modifier = Modifier.weight(1f))
+                        Switch(checked = proxyEnabled, onCheckedChange = { proxyEnabled = it })
                     }
                     OutlinedTextField(proxyHost, { proxyHost = it }, label = { Text("Host") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                    OutlinedTextField(proxyPort, { proxyPort = it.filter { char -> char.isDigit() }.take(5) }, label = { Text("Port") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    OutlinedTextField(
+                        proxyPort,
+                        { proxyPort = it.filter { char -> char.isDigit() }.take(5) },
+                        label = { Text("Port") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        isError = !proxyPortValid,
+                        supportingText = { Text(if (proxyPortValid) "Optional. Use 1–65535." else "Port must be between 1 and 65535.") },
+                    )
                     OutlinedTextField(proxyUsername, { proxyUsername = it }, label = { Text("Username") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     OutlinedTextField(proxyAlias, { proxyAlias = it }, label = { Text("Credential alias") }, modifier = Modifier.fillMaxWidth(), singleLine = true, supportingText = { Text("Store a label only; passwords stay outside exported diagnostics and settings snapshots.") })
-                    Button(onClick = { onProxyChanged(ProxyCredentialSettings(proxyEnabled, proxyHost, proxyPort.toIntOrNull()?.takeIf { it in 1..65535 }, proxyUsername, proxyAlias)) }) { Text("Save proxy profile") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onProxyChanged(proxyDraft) }, enabled = proxyDirty && proxyPortValid) { Text("Save proxy profile") }
+                        TextButton(
+                            onClick = {
+                                proxyEnabled = proxySettings.enabled
+                                proxyHost = proxySettings.host
+                                proxyPort = proxySettings.port?.toString().orEmpty()
+                                proxyUsername = proxySettings.username
+                                proxyAlias = proxySettings.credentialAlias
+                            },
+                            enabled = proxyDirty,
+                        ) { Text("Reset") }
+                    }
                 }
             }
         }
@@ -844,7 +1013,11 @@ fun SettingsScreen(
                             XdmCardTitle("Post-processing hook")
                             XdmMetadataText(postProcessingSettings.redactedSummary)
                         }
-                        Switch(postEnabled, { postEnabled = it })
+                        StatusPill(if (postDirty) "Unsaved" else "Saved", if (postDirty) XdmStatusTone.Warning else XdmStatusTone.Success)
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        XdmSupportingText("Run after completion", modifier = Modifier.weight(1f))
+                        Switch(checked = postEnabled, onCheckedChange = { postEnabled = it })
                     }
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ConversionPreset.entries.forEach { preset ->
@@ -852,7 +1025,17 @@ fun SettingsScreen(
                         }
                     }
                     OutlinedTextField(postLabel, { postLabel = it }, label = { Text("Custom label") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                    Button(onClick = { onPostProcessingChanged(PostProcessingSettings(postEnabled, postPreset, postLabel)) }) { Text("Save post-processing") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onPostProcessingChanged(postDraft) }, enabled = postDirty) { Text("Save post-processing") }
+                        TextButton(
+                            onClick = {
+                                postEnabled = postProcessingSettings.enabled
+                                postPreset = postProcessingSettings.preset
+                                postLabel = postProcessingSettings.customCommandLabel
+                            },
+                            enabled = postDirty,
+                        ) { Text("Reset") }
+                    }
                     XdmMetadataText("Conversion starts only when the selected backend supports the chosen preset.")
                 }
             }
@@ -906,6 +1089,33 @@ fun SettingsScreen(
     }
 }
 
+
+
+
+private enum class DownloadSort(val label: String) {
+    Attention("Needs attention"),
+    Recent("Newest first"),
+    Name("Name"),
+    Progress("Progress"),
+}
+
+private fun List<Download>.sortForUi(sort: DownloadSort): List<Download> = when (sort) {
+    DownloadSort.Attention -> sortedWith(
+        compareByDescending<Download> { if (it.state == DownloadState.Failed || it.state == DownloadState.RecoveryRequired) 1 else 0 }
+            .thenByDescending { if (it.state == DownloadState.Downloading || it.state == DownloadState.Connecting) 1 else 0 }
+            .thenByDescending { it.createdAtEpochMs },
+    )
+    DownloadSort.Recent -> sortedByDescending { it.createdAtEpochMs }
+    DownloadSort.Name -> sortedBy { it.fileName.lowercase() }
+    DownloadSort.Progress -> sortedByDescending { it.progressFraction }
+}
+
+private fun Download.matchesQuery(query: String): Boolean {
+    val needle = query.trim().lowercase()
+    if (needle.isBlank()) return true
+    return listOf(fileName, sourceUrl, destinationUri, userLabel.orEmpty(), backend.uiLabel(), state.uiLabel())
+        .any { it.lowercase().contains(needle) }
+}
 
 private fun copyTextToClipboard(context: Context, label: String, value: String) {
     val clipboard = context.getSystemService(ClipboardManager::class.java)

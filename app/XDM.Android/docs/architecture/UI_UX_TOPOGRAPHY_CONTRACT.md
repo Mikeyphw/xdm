@@ -54,3 +54,17 @@ Runtime screens must use the shared XDM UI primitives for typography, status, an
 User-facing enum values must be translated through UI labels. Do not render raw enum names such as `RecoveryRequired`, `RequiresRefresh`, `Sha256`, or backend identifiers directly in cards, chips, copied summaries, or accessibility descriptions. State, verification, checksum, backend, media, recovery, filename-conflict, and migration values must use readable labels and, where status is visible, a semantic status tone.
 
 Numbers that update during transfers, such as bytes, speeds, percentages, and counts, should use the metric text role so live updates do not make the layout flicker.
+
+## Downloads Scanability Rules
+
+The Downloads route must prioritize the transfer list. Summary, history, search, filter, and sort controls must remain compact enough that download rows are visible quickly on a compact phone. History management belongs behind a visible tool affordance, not as a permanent card above the list.
+
+Download cards should show the scan-critical row first: file name, readable state badge, backend label, progress, speed, and the primary pause/resume action. Verification, source URL, destination URI, backend migration, copy actions, and history removal belong in a details area so each row does not become a miniature control room.
+
+The list must support text search and sort choices. Empty results caused by filters or search must explain how to recover from the narrow result set.
+
+## Form and Settings Workflow Rules
+
+The Add route must present the common path first: URL, optional filename, destination, recommendation, and a persistent bottom action. Existing-file behavior, backend overrides, fallback, and checksum verification are advanced options and must stay folded by default.
+
+Settings must make deferred-save sections explicit. Proxy and post-processing drafts must show saved versus unsaved state, expose real save actions, and provide a reset path. Import/export must remain user-facing, secret-safe, and clear about what is ready to import.

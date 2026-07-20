@@ -1,0 +1,71 @@
+{
+  "applied_at": "2026-07-20T18:23:31.810156Z",
+  "artifact": "/home/mike/xdm_android_ui_ux_phase3_4_overlay_fixed.zip",
+  "artifact_name": "xdm_android_ui_ux_phase3_4_overlay_fixed.zip",
+  "type": "overlay",
+  "sha256": "a3c306684b1a79a0686978b599948b0ad9cb01caacee262392e18ddd0c04b626",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "feat(android): redesign downloads and settings workflows",
+  "commit_hash": "",
+  "file_count": 3,
+  "change_counts": {
+    "modify": 3
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android UI/UX Audit Phases 3 and 4 Fixed",
+    "description": "Redesigns downloads and Add/Settings workflows with updated filename-inference contracts.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "7d8740d0843eed94947b2ffec3217f494ad08700038375b73364fd6e9393f173",
+          "size": 64469,
+          "source_sha256": "e5d1c470db6d3dc9844f38b063c3f1e98dfcce717ebc7c262e8de6c66db63e26"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "a7b87c28b1cddf1997a4ea57d8c0b64698c758feb9ef6a42d51c23acbfeac890",
+          "size": 20272,
+          "source_sha256": "70acb1700731f9b1da9cb27a327949fa4930a97217e3085a5af0c3c5c14f962c"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+          "action": "modify",
+          "sha256": "5f06874dd560b0b46e1eda681473135af80c6d1107b1aafe24797b33ce976463",
+          "size": 5301,
+          "source_sha256": "da18cf1b43e635824c1b5c5a753a513aedbe9bafaedd300b56ffda3b26943459"
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "feat(android): redesign downloads and settings workflows"
+      }
+    },
+    "validation": {
+      "commands": [
+        {
+          "command": "./gradlew test",
+          "working_directory": "app/XDM.Android"
+        }
+      ]
+    }
+  },
+  "history_id": "4f92ec7a1bae4c679c478f6cb3f6f5db"
+}

@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-07-20T18:10:35.910926Z",
+  "artifact": "/home/mike/Downloads/xdm_android_ui_ux_phase3_4_overlay.zip",
+  "artifact_name": "xdm_android_ui_ux_phase3_4_overlay.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "437b3b5477f74d5d834588300fe3a502"
+}
