@@ -64,3 +64,15 @@ required = true
 [env]
 DOTNET_CLI_TELEMETRY_OPTOUT = "1"
 DOTNET_NOLOGO = "1"
+
+[validation]
+android_safe = true
+max_workers = 1
+cpu_limit = 2
+split_gradle = true
+no_daemon = true
+low_priority = true
+parallel = false
+gradle_heap_mb = 512
+gradle_metaspace_mb = 384
+memory_guard_mb = 256
