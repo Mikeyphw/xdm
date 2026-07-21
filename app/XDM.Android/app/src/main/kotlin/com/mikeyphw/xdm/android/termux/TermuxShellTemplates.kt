@@ -6,6 +6,7 @@ object TermuxShellTemplates {
         is XdmTermuxCommand.ProbeTool -> probeToolScript(command.tool)
         is XdmTermuxCommand.Aria2Download -> aria2DownloadScript(command)
         is XdmTermuxCommand.YtDlpMetadata -> ytdlpMetadataScript(command.url)
+        is XdmTermuxCommand.YtDlpDownload -> ytdlpDownloadScript(command)
         is XdmTermuxCommand.FfprobeInspect -> ffprobeInspectScript(command.path)
         is XdmTermuxCommand.FfmpegConvert -> ffmpegConvertScript(command)
         is XdmTermuxCommand.Aria2StartDaemon -> aria2StartDaemonScript(command.config)
@@ -47,14 +48,36 @@ object TermuxShellTemplates {
         appendLine("--dir ${shellQuote(command.destination)} ${shellQuote(command.url)}")
     }
 
-    private fun ytdlpMetadataScript(url: String): String = "yt-dlp --dump-single-json --no-warnings ${shellQuote(url)}"
+    private fun ytdlpMetadataScript(url: String): String = buildString {
+        appendLine("set -e")
+        appendLine("if command -v yt-dlp >/dev/null 2>&1; then :; else printf 'XDM_MEDIA\tytdlp_metadata\tmissing\tyt-dlp not found\n'; exit 127; fi")
+        appendLine("printf 'XDM_MEDIA\tytdlp_metadata\tstarted\n'")
+        appendLine("yt-dlp --dump-single-json --no-warnings ${shellQuote(url)}")
+    }
 
-    private fun ffprobeInspectScript(path: String): String = "ffprobe -hide_banner -show_format -show_streams -print_format json ${shellQuote(path)}"
+    private fun ytdlpDownloadScript(command: XdmTermuxCommand.YtDlpDownload): String = buildString {
+        appendLine("set -e")
+        appendLine("if command -v yt-dlp >/dev/null 2>&1; then :; else printf 'XDM_MEDIA\tytdlp_download\tmissing\tyt-dlp not found\n'; exit 127; fi")
+        appendLine("mkdir -p ${shellQuote(command.destination)}")
+        append("yt-dlp --no-part --newline --paths ${shellQuote(command.destination)} --output ${shellQuote(command.outputTemplate)} ")
+        command.format?.trim()?.takeIf { it.isNotBlank() }?.let { append("--format ${shellQuote(it)} ") }
+        appendLine(shellQuote(command.url))
+    }
+
+    private fun ffprobeInspectScript(path: String): String = buildString {
+        appendLine("set -e")
+        appendLine("if command -v ffprobe >/dev/null 2>&1; then :; else printf 'XDM_MEDIA\tffprobe\tmissing\tffprobe not found\n'; exit 127; fi")
+        appendLine("ffprobe -hide_banner -show_format -show_streams -print_format json ${shellQuote(path)}")
+    }
 
     private fun ffmpegConvertScript(command: XdmTermuxCommand.FfmpegConvert): String = buildString {
+        appendLine("set -e")
+        appendLine("if command -v ffmpeg >/dev/null 2>&1; then :; else printf 'XDM_MEDIA\tffmpeg\tmissing\tffmpeg not found\n'; exit 127; fi")
+        appendLine("mkdir -p ${shellQuote(command.output.substringBeforeLast('/', missingDelimiterValue = "."))}")
         append("ffmpeg -hide_banner -y -i ${shellQuote(command.input)} ")
         append(when (command.preset.lowercase()) {
             "audio" -> "-vn -c:a copy "
+            "faststart" -> "-c copy -movflags +faststart "
             "remux" -> "-c copy "
             else -> "-c:v copy -c:a copy "
         })

@@ -28,6 +28,7 @@ import com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackend
 import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
 import com.mikeyphw.xdm.android.termux.TermuxBridgeManager
 import com.mikeyphw.xdm.android.termux.TermuxAria2CockpitManager
+import com.mikeyphw.xdm.android.termux.TermuxMediaPipelineManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -70,6 +71,7 @@ class XdmApplication : Application(), TransferRuntimeProvider {
         val aria2SessionStore = Aria2SessionStore(this)
         val termuxBridgeManager = TermuxBridgeManager(this)
         val termuxAria2CockpitManager = TermuxAria2CockpitManager(this)
+        val termuxMediaPipelineManager = TermuxMediaPipelineManager(this)
         val aria2ProcessManager = Aria2ProcessManager(
             capabilityProbe = AndroidAria2CapabilityProbe(this, aria2SessionStore),
             sessionStore = aria2SessionStore,
@@ -114,6 +116,7 @@ class XdmApplication : Application(), TransferRuntimeProvider {
             aria2ProcessManager = aria2ProcessManager,
             termuxBridgeManager = termuxBridgeManager,
             termuxAria2CockpitManager = termuxAria2CockpitManager,
+            termuxMediaPipelineManager = termuxMediaPipelineManager,
         )
     }
 }
@@ -129,4 +132,5 @@ data class AppContainer(
     val aria2ProcessManager: Aria2ProcessManager,
     val termuxBridgeManager: TermuxBridgeManager,
     val termuxAria2CockpitManager: TermuxAria2CockpitManager,
+    val termuxMediaPipelineManager: TermuxMediaPipelineManager,
 )

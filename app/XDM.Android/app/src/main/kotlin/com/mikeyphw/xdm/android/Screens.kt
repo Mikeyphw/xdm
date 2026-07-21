@@ -98,6 +98,8 @@ import com.mikeyphw.xdm.android.termux.TermuxRootMode
 import com.mikeyphw.xdm.android.termux.TermuxBridgeStatus
 import com.mikeyphw.xdm.android.termux.TermuxAria2CockpitStatus
 import com.mikeyphw.xdm.android.termux.TermuxAria2DaemonState
+import com.mikeyphw.xdm.android.termux.TermuxMediaJobStatus
+import com.mikeyphw.xdm.android.termux.TermuxMediaPipelineStatus
 
 
 @Composable
@@ -948,19 +950,47 @@ private fun ScheduleManagementCard(
 fun MediaInboxScreen(
     captures: List<MediaCaptureRecord>,
     variants: List<MediaVariant>,
+    termuxMediaPipeline: TermuxMediaPipelineStatus,
     onDownload: (MediaCaptureRecord) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
     onRemove: (MediaCaptureRecord) -> Unit,
+    onTermuxMetadata: (MediaCaptureRecord) -> Unit,
+    onTermuxInspect: (MediaCaptureRecord) -> Unit,
+    onTermuxYtDlpDownload: (MediaCaptureRecord) -> Unit,
+    onTermuxConvert: (MediaCaptureRecord, ConversionPreset) -> Unit,
+    onClearTermuxMediaJobs: () -> Unit,
 ) {
+    val context = LocalContext.current
     if (captures.isEmpty()) {
-        EmptyFeatureScreen("Media inbox", "Share a video, audio, HLS, or DASH URL to capture metadata and queue it safely.")
+        LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
+            item { EmptyFeatureScreen("Media inbox", "Share a video, audio, HLS, or DASH URL to capture metadata and queue it safely.") }
+        }
         return
     }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
+        item {
+            TextButton(
+                onClick = { copyTextToClipboard(context, "XDM Termux media diagnostics", termuxMediaPipeline.diagnosticsSummary()) },
+                modifier = Modifier.sizeIn(minWidth = 96.dp, minHeight = 48.dp),
+            ) { Text("Copy media diagnostics") }
+        }
         items(captures, key = MediaCaptureRecord::id) { capture ->
             val captureVariants = variants.filter { it.captureId == capture.id }.sortedBy { it.position }
-            MediaCaptureCard(capture, captureVariants, onDownload, onResolve, onSelectVariant, onRemove)
+            MediaCaptureCard(
+                capture,
+                captureVariants,
+                onDownload,
+                onResolve,
+                onSelectVariant,
+                onRemove,
+                onTermuxMetadata,
+                onTermuxInspect,
+                onTermuxYtDlpDownload,
+                onTermuxConvert,
+            )
         }
     }
 }
@@ -973,6 +1003,10 @@ private fun MediaCaptureCard(
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
     onRemove: (MediaCaptureRecord) -> Unit,
+    onTermuxMetadata: (MediaCaptureRecord) -> Unit,
+    onTermuxInspect: (MediaCaptureRecord) -> Unit,
+    onTermuxYtDlpDownload: (MediaCaptureRecord) -> Unit,
+    onTermuxConvert: (MediaCaptureRecord, ConversionPreset) -> Unit,
 ) {
     var variantSelectorExpanded by remember(capture.id) { mutableStateOf(false) }
     val selectedVariant = captureVariants.firstOrNull { it.id == capture.selectedVariantId } ?: captureVariants.firstOrNull()
@@ -1026,6 +1060,46 @@ private fun MediaCaptureCard(
             ) { Text(if (capture.status == MediaCaptureStatus.DownloadCreated) "Added" else "Download selected") }
             TextButton(onClick = { onResolve(capture) }) { Text(if (capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh) "Refresh metadata" else "Resolve metadata") }
             TextButton(onClick = { onRemove(capture) }) { Text("Remove capture") }
+        }
+        XdmListCard(compact = true) {
+            XdmMetadataText("Termux media pipeline")
+            XdmSupportingText("Use typed yt-dlp, FFprobe, and FFmpeg jobs through Termux. No raw shell commands are exposed.")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                TextButton(onClick = { onTermuxMetadata(capture) }) { Text("yt-dlp metadata") }
+                TextButton(onClick = { onTermuxInspect(capture) }) { Text("FFprobe") }
+                TextButton(onClick = { onTermuxYtDlpDownload(capture) }) { Text("yt-dlp download") }
+                TextButton(onClick = { onTermuxConvert(capture, ConversionPreset.VideoFastStart) }) { Text("Fast-start MP4") }
+                TextButton(onClick = { onTermuxConvert(capture, ConversionPreset.AudioExtract) }) { Text("Extract audio") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TermuxMediaPipelineCard(pipeline: TermuxMediaPipelineStatus, onClearCompleted: () -> Unit) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Termux media pipeline ${pipeline.readinessLabel}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    XdmCardTitle("Termux media pipeline")
+                    XdmMetricText(pipeline.readinessLabel)
+                }
+                TextButton(onClick = onClearCompleted, enabled = pipeline.jobs.any { it.status == TermuxMediaJobStatus.Completed || it.status == TermuxMediaJobStatus.Failed }) { Text("Clear done") }
+            }
+            XdmSupportingText("yt-dlp discovers variants and downloads media; FFprobe inspects streams; FFmpeg remuxes, fast-starts, and extracts audio inside Termux.")
+            XdmMetadataText(pipeline.lastAction, maxLines = 2)
+            pipeline.recentJobs.take(4).forEach { job ->
+                XdmListCard(compact = true) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                        Column(Modifier.weight(1f)) {
+                            XdmCardTitle(job.kind.label, maxLines = 1)
+                            XdmMetadataText(job.title, maxLines = 1)
+                            XdmMetadataText(job.message.ifBlank { job.output }, maxLines = 2)
+                        }
+                        StatusPill(job.status.label, if (job.status == TermuxMediaJobStatus.Failed) XdmStatusTone.Warning else XdmStatusTone.Info)
+                    }
+                }
+            }
         }
     }
 }

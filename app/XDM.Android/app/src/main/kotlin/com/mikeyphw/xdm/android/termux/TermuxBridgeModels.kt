@@ -35,6 +35,7 @@ sealed class XdmTermuxCommand(val operation: String) {
     data object ProbeAllTools : XdmTermuxCommand("probe_all_tools")
     data class Aria2Download(val url: String, val destination: String, val fileName: String?) : XdmTermuxCommand("aria2_download")
     data class YtDlpMetadata(val url: String) : XdmTermuxCommand("ytdlp_metadata")
+    data class YtDlpDownload(val url: String, val destination: String, val outputTemplate: String, val format: String?) : XdmTermuxCommand("ytdlp_download")
     data class FfprobeInspect(val path: String) : XdmTermuxCommand("ffprobe_inspect")
     data class FfmpegConvert(val input: String, val output: String, val preset: String) : XdmTermuxCommand("ffmpeg_convert")
     data class Aria2StartDaemon(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_daemon_start")

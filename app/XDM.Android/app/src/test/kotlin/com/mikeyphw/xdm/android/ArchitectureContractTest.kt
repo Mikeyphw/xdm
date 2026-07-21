@@ -413,6 +413,34 @@ class ArchitectureContractTest {
         assertFalse("Termux aria2 cockpit must not add a top-level route", AppRoute.entries.any { it.label == "Termux" || it.label == "aria2" || it.label == "Tools" })
     }
 
+
+    @Test
+    fun termuxMediaPipelineContractsArePresent() {
+        val root = androidRoot()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
+        val mediaModels = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineModels.kt").readText()
+        val mediaManager = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt").readText()
+        val templates = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt").readText()
+        val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
+        val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
+
+        assertTrue("Phase 9 contract doc is missing", File(root, "docs/architecture/PHASE-9-TERMUX-MEDIA-CONVERSION-PIPELINE.md").isFile)
+        assertTrue("Phase 9 validator is missing", File(root, "tools/validate-termux-media-pipeline.py").isFile)
+        assertTrue("UI contract must define Phase 9 media rules", contract.contains("Phase 9 Termux Media Pipeline Rules"))
+        assertTrue("Termux media commands must be typed", models.contains("YtDlpDownload") && models.contains("FfmpegConvert"))
+        assertTrue("Media pipeline models must track jobs", mediaModels.contains("TermuxMediaPipelineStatus") && mediaModels.contains("TermuxMediaPipelineJob"))
+        assertTrue("Media manager must launch typed media tools", mediaManager.contains("extractMetadata") && mediaManager.contains("downloadWithYtDlp") && mediaManager.contains("inspectWithFfprobe"))
+        assertTrue("Shell templates must cover yt-dlp, ffprobe, and ffmpeg", templates.contains("yt-dlp --dump-single-json") && templates.contains("ffprobe -hide_banner") && templates.contains("ffmpeg -hide_banner"))
+        assertTrue("Media route must expose the Termux media pipeline", screens.contains("Termux media pipeline") && screens.contains("yt-dlp metadata") && screens.contains("Fast-start MP4"))
+        assertTrue("App shell must wire media callbacks", appShell.contains("viewModel::extractMediaMetadataWithTermux") && appShell.contains("viewModel::convertMediaWithTermux"))
+        assertTrue("ViewModel must carry media pipeline state", viewModel.contains("termuxMediaPipelineManager.status") && viewModel.contains("downloadMediaWithTermuxYtDlp"))
+        assertTrue("Project manifest must record the media pipeline", manifestJson.contains("termux_media_pipeline") && manifestJson.contains("\"root_required\": false"))
+        assertFalse("Termux media pipeline must not add a top-level route", AppRoute.entries.any { it.label == "Convert" || it.label == "Tools" || it.label == "Termux" })
+    }
+
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }
 }

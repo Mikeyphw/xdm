@@ -201,10 +201,16 @@ private fun AppScaffold(
                 AppRoute.Media -> MediaInboxScreen(
                     state.mediaCaptures,
                     state.mediaVariants,
+                    state.termuxMediaPipeline,
                     viewModel::downloadMediaCapture,
                     viewModel::resolveMediaCapture,
                     viewModel::selectMediaVariant,
                     viewModel::removeMediaCapture,
+                    viewModel::extractMediaMetadataWithTermux,
+                    viewModel::inspectMediaWithTermuxFfprobe,
+                    viewModel::downloadMediaWithTermuxYtDlp,
+                    viewModel::convertMediaWithTermux,
+                    viewModel::clearCompletedTermuxMediaJobs,
                 )
                 AppRoute.Recovery -> RecoveryScreen(state.recovery, viewModel::validateRecoveryRecord, viewModel::removeRecoveryRecord)
                 AppRoute.Diagnostics -> DiagnosticsScreen(

@@ -75,7 +75,7 @@
       "compare"
     ]
   },
-  "next_phase": "termux-media-conversion-pipeline",
+  "next_phase": "termux-post-processing-automation",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -269,6 +269,7 @@
       "aria2_download",
       "ytdlp_metadata",
       "ffprobe_inspect",
+      "ytdlp_download",
       "ffmpeg_convert",
       "aria2_daemon_start",
       "aria2_daemon_stop",
@@ -308,6 +309,26 @@
     ],
     "raw_shell_exposed": false,
     "root_required": false,
+    "top_level_route_added": false
+  },
+  "termux_media_pipeline": {
+    "schema_version_unchanged": 13,
+    "no_chroot_support": true,
+    "root_required": false,
+    "raw_shell_exposed": false,
+    "typed_media_actions": [
+      "ytdlp_metadata",
+      "ytdlp_download",
+      "ffprobe_inspect",
+      "ffmpeg_convert"
+    ],
+    "tools": [
+      "yt-dlp",
+      "ffprobe",
+      "ffmpeg"
+    ],
+    "media_route_summary": true,
+    "copyable_diagnostics": true,
     "top_level_route_added": false
   }
 }

@@ -103,3 +103,11 @@ The ShareSheet intake path must extract URLs from `EXTRA_TEXT`, `EXTRA_SUBJECT`,
 - Termux aria2 controls must be typed actions, never a raw shell text box.
 - The cockpit must not add a new top-level route; it lives under Diagnostics and Settings.
 - Root must remain optional and must not be required for Termux aria2 daemon control.
+
+
+## Phase 9 Termux Media Pipeline Rules
+
+- The Media route may expose Termux-powered media actions, but they must remain typed actions, not a raw shell surface.
+- yt-dlp metadata extraction, yt-dlp download, FFprobe inspection, and FFmpeg conversion must be discoverable from captured media cards.
+- The route must show a pipeline summary, recent jobs, and a copyable diagnostics payload.
+- Root must stay optional and chroot support must stay absent.

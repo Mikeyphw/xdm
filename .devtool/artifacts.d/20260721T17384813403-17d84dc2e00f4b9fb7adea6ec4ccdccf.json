@@ -1,0 +1,138 @@
+{
+  "applied_at": "2026-07-21T17:38:48.134031Z",
+  "artifact": "/home/mike/Downloads/xdm_android_termux_media_pipeline_phase9_overlay_fixed.zip",
+  "artifact_name": "xdm_android_termux_media_pipeline_phase9_overlay_fixed.zip",
+  "type": "overlay",
+  "sha256": "5aaaa8959affb4765b50865101288d69b8b10f7a0cb0f3508390d695ad54c03b",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Implement Android Termux media pipeline phase 9",
+  "commit_hash": "",
+  "file_count": 13,
+  "change_counts": {
+    "add": 4,
+    "modify": 9
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Termux Media Pipeline Phase 9 (compile fix)",
+    "description": "Adds the Termux-powered media and conversion pipeline with a fixed Kotlin contract string literal for unit-test compilation.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "6a1951182be6fc5439dd8e31091a6a522a9b96bef692cb09299e8a86f68595ae",
+          "size": 8985,
+          "source_sha256": "b0ff98483ed97b59b8075ec54e78211f9d0b63c55332b7ff951df506c5ee007f"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "88a535ae4f50f515c45e38bda5c69d81afa3eb336af7bd804d7971fda18141b9",
+          "size": 49334,
+          "source_sha256": "0a0667218385ff4391c634dea207352b757a3a3057a702d7989f38d0d9445f68"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "b338e56f80811bbfc6547044896448c341ae3d24f11f68dd25d9a5ca5285c08e",
+          "size": 104437,
+          "source_sha256": "7ca527710b8f8aeba7854ae8602cfcd947355946bb1d8c2cd729d140913ff3ae"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "31ebdaadfdfa57f72a1c809f7b2226d4e68afb56a80680810636da99318f2346",
+          "size": 12145,
+          "source_sha256": "6e8add5829292fd24d43ebd16fa3949716bae24c50107660a1e550b03fff3087"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+          "action": "modify",
+          "sha256": "03f408f931d23ad5fd5154290d234cc2c3e3835a847ee6111eea56cb65a2d76b",
+          "size": 6684,
+          "source_sha256": "ab0ef80bf837971bd9729b4ef3c0063d0332dc69fe809405609121742b23f0bc"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt",
+          "action": "modify",
+          "sha256": "8ffc719954c746a5062d9025ec50f5fe94d01cd44a55c6b265caa815834a911e",
+          "size": 5627,
+          "source_sha256": "bd8bd33c1ee3836006d2d3d7c863e1be9c4ce11c2340cbe6e9df977efdd8a28b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt",
+          "action": "add",
+          "sha256": "ec8b5712565e3abfd8ea0fe04d66b8167334da4f6bf58102565a56655811b7e8",
+          "size": 5614
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineModels.kt",
+          "action": "add",
+          "sha256": "b922770d6fcb01210a1f5f27b6fad612ddfcc9ff010a74cbfc923b8b5673ec99",
+          "size": 2118
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt",
+          "action": "modify",
+          "sha256": "e0203c81b690e030ef919af1361e9c88483a699cc8f6059667391964b22c3d4b",
+          "size": 8295,
+          "source_sha256": "a59b8c5db9aea473a49604e6bcce68320fe702f58087bb3343d3ddc9387f2468"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "9efa9b539736076fd0527637c5901d45106a88b1039de3500537412d95d1dab7",
+          "size": 38152,
+          "source_sha256": "db65a6b0f3b88b25d492d8b5edaa062580c2aa85dafcba470d7514cd11f65532"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-9-TERMUX-MEDIA-CONVERSION-PIPELINE.md",
+          "action": "add",
+          "sha256": "27b251a74d6a507aef7a5683e0740ea8a94aa2dfe80432ef925af263e9029aba",
+          "size": 1024
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+          "action": "modify",
+          "sha256": "1553ad849ef890033a7e91af58cb3f9e07570eaa1454a20b0743ce018f5567ff",
+          "size": 8771,
+          "source_sha256": "6bd9b4e3cc46dfa542a22e6ea789401249c33c18bdbf610074447046c8416abe"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-termux-media-pipeline.py",
+          "action": "add",
+          "sha256": "dbcd1e21601b51688bd677eaed57da13aadeee0b204e3b1f89bb6a870ec7c627",
+          "size": 1157
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Implement Android Termux media pipeline phase 9"
+      }
+    },
+    "validation": {
+      "commands": [
+        "python3 tools/validate-termux-bridge.py",
+        "python3 tools/validate-termux-media-pipeline.py",
+        "python3 tools/verify-aria2-runtime.py"
+      ],
+      "notes": "Gradle validation is performed by Devtool on the target machine; sandbox validation used Python static bridge checks and project inventory checks because Gradle wrapper download is unavailable."
+    }
+  },
+  "history_id": "17d84dc2e00f4b9fb7adea6ec4ccdccf"
+}
