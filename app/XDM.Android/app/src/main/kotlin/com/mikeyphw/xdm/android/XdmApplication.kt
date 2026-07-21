@@ -29,6 +29,7 @@ import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
 import com.mikeyphw.xdm.android.termux.TermuxBridgeManager
 import com.mikeyphw.xdm.android.termux.TermuxAria2CockpitManager
 import com.mikeyphw.xdm.android.termux.TermuxMediaPipelineManager
+import com.mikeyphw.xdm.android.termux.PostProcessingAutomationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -72,6 +73,7 @@ class XdmApplication : Application(), TransferRuntimeProvider {
         val termuxBridgeManager = TermuxBridgeManager(this)
         val termuxAria2CockpitManager = TermuxAria2CockpitManager(this)
         val termuxMediaPipelineManager = TermuxMediaPipelineManager(this)
+        val postProcessingAutomationManager = PostProcessingAutomationManager(this, termuxMediaPipelineManager, termuxBridgeManager)
         val aria2ProcessManager = Aria2ProcessManager(
             capabilityProbe = AndroidAria2CapabilityProbe(this, aria2SessionStore),
             sessionStore = aria2SessionStore,
@@ -117,6 +119,7 @@ class XdmApplication : Application(), TransferRuntimeProvider {
             termuxBridgeManager = termuxBridgeManager,
             termuxAria2CockpitManager = termuxAria2CockpitManager,
             termuxMediaPipelineManager = termuxMediaPipelineManager,
+            postProcessingAutomationManager = postProcessingAutomationManager,
         )
     }
 }
@@ -133,4 +136,5 @@ data class AppContainer(
     val termuxBridgeManager: TermuxBridgeManager,
     val termuxAria2CockpitManager: TermuxAria2CockpitManager,
     val termuxMediaPipelineManager: TermuxMediaPipelineManager,
+    val postProcessingAutomationManager: PostProcessingAutomationManager,
 )

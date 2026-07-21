@@ -100,6 +100,8 @@ import com.mikeyphw.xdm.android.termux.TermuxAria2CockpitStatus
 import com.mikeyphw.xdm.android.termux.TermuxAria2DaemonState
 import com.mikeyphw.xdm.android.termux.TermuxMediaJobStatus
 import com.mikeyphw.xdm.android.termux.TermuxMediaPipelineStatus
+import com.mikeyphw.xdm.android.termux.PostProcessingAutomationStatus
+import com.mikeyphw.xdm.android.termux.PostProcessingAutomationEventStatus
 
 
 @Composable
@@ -117,6 +119,8 @@ fun DownloadsScreen(
     onClearFinishedHistory: () -> Unit,
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
+    onPreviewPostProcessing: (Download) -> Unit,
+    onRunPostProcessing: (Download) -> Unit,
 ) {
     val context = LocalContext.current
     var filter by remember { mutableStateOf<DownloadState?>(null) }
@@ -160,7 +164,7 @@ fun DownloadsScreen(
         } else {
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 10.dp)) {
                 items(visible, key = Download::id) { download ->
-                    DownloadCard(download, compact, capabilities, checksumResults, verificationRecords, onTogglePause, onMigrateBackend, onRemoveHistory)
+                    DownloadCard(download, compact, capabilities, checksumResults, verificationRecords, onTogglePause, onMigrateBackend, onRemoveHistory, onPreviewPostProcessing, onRunPostProcessing)
                 }
             }
         }
@@ -293,6 +297,8 @@ private fun DownloadCard(
     onTogglePause: (Download) -> Unit,
     onMigrateBackend: (Download) -> Unit,
     onRemoveHistory: (Download) -> Unit,
+    onPreviewPostProcessing: (Download) -> Unit,
+    onRunPostProcessing: (Download) -> Unit,
 ) {
     val context = LocalContext.current
     var expanded by remember(download.id) { mutableStateOf(false) }
@@ -352,6 +358,8 @@ private fun DownloadCard(
                     onRemoveHistory = onRemoveHistory,
                     onCopyUrl = { copyTextToClipboard(context, "XDM source URL", download.sourceUrl) },
                     onCopyFileInfo = { copyTextToClipboard(context, "XDM file info", download.fileManagementSummary()) },
+                    onPreviewPostProcessing = { onPreviewPostProcessing(download) },
+                    onRunPostProcessing = { onRunPostProcessing(download) },
                 )
             }
         }
@@ -368,6 +376,8 @@ private fun DownloadDetails(
     onRemoveHistory: (Download) -> Unit,
     onCopyUrl: () -> Unit,
     onCopyFileInfo: () -> Unit,
+    onPreviewPostProcessing: () -> Unit,
+    onRunPostProcessing: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         XdmMetadataText("Destination: ${download.destinationUri}", maxLines = 2)
@@ -427,8 +437,11 @@ private fun DownloadDetails(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 TextButton(onClick = onCopyUrl) { Text("Copy URL") }
                 TextButton(onClick = onCopyFileInfo) { Text("Copy file info") }
+                TextButton(onClick = onPreviewPostProcessing) { Text("Preview rules") }
+                TextButton(onClick = onRunPostProcessing) { Text("Run rules") }
                 TextButton(onClick = { onRemoveHistory(download) }) { Text("Remove history") }
             }
+            XdmMetadataText("Post-processing actions are typed and can use Termux/root only through safe templates.")
         }
     }
 }
@@ -951,6 +964,7 @@ fun MediaInboxScreen(
     captures: List<MediaCaptureRecord>,
     variants: List<MediaVariant>,
     termuxMediaPipeline: TermuxMediaPipelineStatus,
+    postProcessingAutomation: PostProcessingAutomationStatus,
     onDownload: (MediaCaptureRecord) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
@@ -960,17 +974,21 @@ fun MediaInboxScreen(
     onTermuxYtDlpDownload: (MediaCaptureRecord) -> Unit,
     onTermuxConvert: (MediaCaptureRecord, ConversionPreset) -> Unit,
     onClearTermuxMediaJobs: () -> Unit,
+    onPreviewPostProcessing: (MediaCaptureRecord) -> Unit,
+    onRunPostProcessing: (MediaCaptureRecord) -> Unit,
 ) {
     val context = LocalContext.current
     if (captures.isEmpty()) {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
+            item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
             item { EmptyFeatureScreen("Media inbox", "Share a video, audio, HLS, or DASH URL to capture metadata and queue it safely.") }
         }
         return
     }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
+        item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
         item {
             TextButton(
                 onClick = { copyTextToClipboard(context, "XDM Termux media diagnostics", termuxMediaPipeline.diagnosticsSummary()) },
@@ -990,6 +1008,8 @@ fun MediaInboxScreen(
                 onTermuxInspect,
                 onTermuxYtDlpDownload,
                 onTermuxConvert,
+                onPreviewPostProcessing,
+                onRunPostProcessing,
             )
         }
     }
@@ -1007,6 +1027,8 @@ private fun MediaCaptureCard(
     onTermuxInspect: (MediaCaptureRecord) -> Unit,
     onTermuxYtDlpDownload: (MediaCaptureRecord) -> Unit,
     onTermuxConvert: (MediaCaptureRecord, ConversionPreset) -> Unit,
+    onPreviewPostProcessing: (MediaCaptureRecord) -> Unit,
+    onRunPostProcessing: (MediaCaptureRecord) -> Unit,
 ) {
     var variantSelectorExpanded by remember(capture.id) { mutableStateOf(false) }
     val selectedVariant = captureVariants.firstOrNull { it.id == capture.selectedVariantId } ?: captureVariants.firstOrNull()
@@ -1072,6 +1094,14 @@ private fun MediaCaptureCard(
                 TextButton(onClick = { onTermuxConvert(capture, ConversionPreset.AudioExtract) }) { Text("Extract audio") }
             }
         }
+        XdmListCard(compact = true) {
+            XdmMetadataText("Post-processing automation")
+            XdmSupportingText("Preview or run matching post-processing rules for this media capture using typed Termux/root actions only.")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                TextButton(onClick = { onPreviewPostProcessing(capture) }) { Text("Preview rules") }
+                TextButton(onClick = { onRunPostProcessing(capture) }) { Text("Run rules") }
+            }
+        }
     }
 }
 
@@ -1099,6 +1129,58 @@ private fun TermuxMediaPipelineCard(pipeline: TermuxMediaPipelineStatus, onClear
                         StatusPill(job.status.label, if (job.status == TermuxMediaJobStatus.Failed) XdmStatusTone.Warning else XdmStatusTone.Info)
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PostProcessingAutomationCard(
+    automation: PostProcessingAutomationStatus,
+    onEnabledChanged: ((Boolean) -> Unit)?,
+    onRetryFailed: (() -> Unit)?,
+    onClearEvents: (() -> Unit)?,
+) {
+    val context = LocalContext.current
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Post-processing automation ${automation.readinessLabel}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    XdmCardTitle("Post-processing automation")
+                    XdmMetricText(automation.readinessLabel)
+                }
+                onEnabledChanged?.let { callback ->
+                    Switch(
+                        checked = automation.enabled,
+                        onCheckedChange = callback,
+                        modifier = Modifier.semantics { stateDescription = if (automation.enabled) "Post-processing automation enabled" else "Post-processing automation disabled" },
+                    )
+                } ?: StatusPill(if (automation.enabled) "Enabled" else "Disabled", if (automation.enabled) XdmStatusTone.Success else XdmStatusTone.Neutral)
+            }
+            XdmSupportingText("Rules are previewable and execute only through typed Termux media, checksum, cleanup, move/rename, or optional root actions.")
+            XdmMetadataText(automation.lastMessage, maxLines = 3)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                onRetryFailed?.let { TextButton(onClick = it, enabled = automation.failedEvents.isNotEmpty()) { Text("Retry failed") } }
+                onClearEvents?.let { TextButton(onClick = it, enabled = automation.events.isNotEmpty()) { Text("Clear events") } }
+                TextButton(onClick = { copyTextToClipboard(context, "XDM post-processing diagnostics", automation.diagnosticsSummary()) }) { Text("Copy diagnostics") }
+            }
+            automation.enabledRules.take(3).forEach { rule ->
+                XdmListCard(compact = true) {
+                    XdmCardTitle(rule.name, maxLines = 1)
+                    XdmMetadataText(rule.summary, maxLines = 2)
+                    rule.conditions.takeIf { it.isNotEmpty() }?.let { conditions ->
+                        XdmMetadataText("When ${conditions.joinToString { it.summary }}", maxLines = 2)
+                    }
+                }
+            }
+            automation.recentEvents.take(4).forEach { event ->
+                val tone = when (event.status) {
+                    PostProcessingAutomationEventStatus.Failed -> XdmStatusTone.Warning
+                    PostProcessingAutomationEventStatus.Completed, PostProcessingAutomationEventStatus.Queued -> XdmStatusTone.Info
+                    PostProcessingAutomationEventStatus.Preview, PostProcessingAutomationEventStatus.Skipped -> XdmStatusTone.Neutral
+                }
+                XdmMetadataText("${event.summary}: ${event.message}", maxLines = 2)
+                StatusPill(event.status.label, tone)
             }
         }
     }
@@ -1176,6 +1258,8 @@ fun DiagnosticsScreen(
     onPauseAllTermuxAria2Tasks: () -> Unit,
     onResumeAllTermuxAria2Tasks: () -> Unit,
     onSaveTermuxAria2Session: () -> Unit,
+    onRetryPostProcessing: () -> Unit,
+    onClearPostProcessingEvents: () -> Unit,
 ) {
     val context = LocalContext.current
     val redactedSummary = PrivacyDiagnosticsRedactor.redactedHealthSummary(
@@ -1266,6 +1350,7 @@ fun DiagnosticsScreen(
         item { DiagnosticLine("Media captures", state.mediaCaptures.size.toString()) }
         item { DiagnosticLine("Media variants", state.mediaVariants.size.toString()) }
         item { DiagnosticLine("Automation commands", state.automationCommands.size.toString()) }
+        item { DiagnosticLine("Post-processing events", state.postProcessingAutomation.events.size.toString()) }
         item { DiagnosticLine("Browser origins", state.automationCommands.mapNotNull { it.originHost }.distinct().size.toString()) }
         item { DiagnosticLine("Rejected handoffs", state.automationCommands.count { it.status == AutomationCommandStatus.Rejected }.toString()) }
         if (state.automationCommands.isNotEmpty()) {
@@ -1305,6 +1390,14 @@ fun DiagnosticsScreen(
                     XdmMetadataText(state.aria2Diagnostics.detail)
                 }
             }
+        }
+        item {
+            PostProcessingAutomationCard(
+                automation = state.postProcessingAutomation,
+                onEnabledChanged = null,
+                onRetryFailed = onRetryPostProcessing,
+                onClearEvents = onClearPostProcessingEvents,
+            )
         }
         item {
             TermuxBridgeDiagnosticsCard(
@@ -1574,6 +1667,7 @@ fun SettingsScreen(
     releasePackagingReport: ReleasePackagingReport,
     termuxBridge: TermuxBridgeStatus,
     termuxAria2: TermuxAria2CockpitStatus,
+    postProcessingAutomation: PostProcessingAutomationStatus,
     onCompactChanged: (Boolean) -> Unit,
     onProxyChanged: (ProxyCredentialSettings) -> Unit,
     onPostProcessingChanged: (PostProcessingSettings) -> Unit,
@@ -1587,6 +1681,9 @@ fun SettingsScreen(
     onFixDownloadPermissionsWithRoot: () -> Unit,
     onTermuxAria2EnabledChanged: (Boolean) -> Unit,
     onRotateTermuxAria2Secret: () -> Unit,
+    onPostProcessingAutomationEnabledChanged: (Boolean) -> Unit,
+    onRetryPostProcessing: () -> Unit,
+    onClearPostProcessingEvents: () -> Unit,
 ) {
     val context = LocalContext.current
     var importText by remember { mutableStateOf("") }
@@ -1708,6 +1805,7 @@ fun SettingsScreen(
         }
         item { TermuxAria2SettingsCard(termuxAria2, onTermuxAria2EnabledChanged, onRotateTermuxAria2Secret) }
         item { XdmSectionHeader("Conversion and post-processing") }
+        item { PostProcessingAutomationCard(postProcessingAutomation, onPostProcessingAutomationEnabledChanged, onRetryPostProcessing, onClearPostProcessingEvents) }
         item {
             Card(Modifier.fillMaxWidth().semantics { contentDescription = "Conversion post processing ${postProcessingSettings.redactedSummary}" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

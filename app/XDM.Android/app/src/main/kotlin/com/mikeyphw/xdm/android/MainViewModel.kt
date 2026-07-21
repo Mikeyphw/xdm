@@ -72,6 +72,8 @@ import com.mikeyphw.xdm.android.termux.TermuxAria2CockpitManager
 import com.mikeyphw.xdm.android.termux.TermuxAria2CockpitStatus
 import com.mikeyphw.xdm.android.termux.TermuxMediaPipelineManager
 import com.mikeyphw.xdm.android.termux.TermuxMediaPipelineStatus
+import com.mikeyphw.xdm.android.termux.PostProcessingAutomationManager
+import com.mikeyphw.xdm.android.termux.PostProcessingAutomationStatus
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -112,6 +114,7 @@ data class MainUiState(
     val termuxBridge: TermuxBridgeStatus = TermuxBridgeStatus(),
     val termuxAria2: TermuxAria2CockpitStatus = TermuxAria2CockpitStatus(),
     val termuxMediaPipeline: TermuxMediaPipelineStatus = TermuxMediaPipelineStatus(),
+    val postProcessingAutomation: PostProcessingAutomationStatus = PostProcessingAutomationStatus(),
     val backendCapabilities: List<BackendCapabilityRow> = emptyList(),
     val backendMigrations: List<BackendMigrationRecord> = emptyList(),
     val checksumResults: List<ChecksumResult> = emptyList(),
@@ -178,6 +181,7 @@ class MainViewModel(
     private val termuxBridgeManager: TermuxBridgeManager,
     private val termuxAria2CockpitManager: TermuxAria2CockpitManager,
     private val termuxMediaPipelineManager: TermuxMediaPipelineManager,
+    private val postProcessingAutomationManager: PostProcessingAutomationManager,
 ) : ViewModel() {
     private val routeOverride = MutableStateFlow<AppRoute?>(null)
     private val aria2Capability = MutableStateFlow<Aria2CapabilityReport?>(null)
@@ -280,20 +284,22 @@ class MainViewModel(
         val termuxBridge: TermuxBridgeStatus,
         val termuxAria2: TermuxAria2CockpitStatus,
         val termuxMediaPipeline: TermuxMediaPipelineStatus,
+        val postProcessingAutomation: PostProcessingAutomationStatus,
     )
 
     private data class TermuxUiSnapshot(
         val bridge: TermuxBridgeStatus,
         val aria2: TermuxAria2CockpitStatus,
         val mediaPipeline: TermuxMediaPipelineStatus,
+        val postProcessingAutomation: PostProcessingAutomationStatus,
     )
 
-    private val termuxUi = combine(termuxBridgeManager.status, termuxAria2CockpitManager.status, termuxMediaPipelineManager.status) { bridge, aria2, mediaPipeline ->
-        TermuxUiSnapshot(bridge, aria2, mediaPipeline)
+    private val termuxUi = combine(termuxBridgeManager.status, termuxAria2CockpitManager.status, termuxMediaPipelineManager.status, postProcessingAutomationManager.status) { bridge, aria2, mediaPipeline, postAutomation ->
+        TermuxUiSnapshot(bridge, aria2, mediaPipeline, postAutomation)
     }
 
     private val runtimeUi = combine(transferRuntime.summary, aria2Diagnostics, capabilitySnapshot, termuxUi) { active, aria2, capabilities, termux ->
-        RuntimeUiSnapshot(active, aria2, backendSelectionPolicy.capabilityRows(capabilities), termux.bridge, termux.aria2, termux.mediaPipeline)
+        RuntimeUiSnapshot(active, aria2, backendSelectionPolicy.capabilityRows(capabilities), termux.bridge, termux.aria2, termux.mediaPipeline, termux.postProcessingAutomation)
     }
 
     val uiState: StateFlow<MainUiState> = combine(
@@ -326,6 +332,7 @@ class MainViewModel(
             termuxBridge = runtime.termuxBridge,
             termuxAria2 = runtime.termuxAria2,
             termuxMediaPipeline = runtime.termuxMediaPipeline,
+            postProcessingAutomation = runtime.postProcessingAutomation,
             backendCapabilities = runtime.capabilities,
             backendMigrations = snapshot.backendMigrations,
             checksumResults = snapshot.checksumResults,
@@ -401,6 +408,7 @@ class MainViewModel(
         refreshBackendCapabilities()
         termuxBridgeManager.refreshStatus()
         termuxMediaPipelineManager.refreshStatus()
+        postProcessingAutomationManager.refreshStatus()
     }
 
     fun navigate(route: AppRoute) {
@@ -501,6 +509,7 @@ class MainViewModel(
         termuxBridgeManager.openTermux()
         termuxBridgeManager.refreshStatus()
         termuxMediaPipelineManager.refreshStatus()
+        postProcessingAutomationManager.refreshStatus()
     }
 
     fun setTermuxRootMode(mode: TermuxRootMode) {
@@ -577,6 +586,35 @@ class MainViewModel(
 
     fun clearCompletedTermuxMediaJobs() {
         termuxMediaPipelineManager.clearCompleted()
+    }
+
+
+    fun setPostProcessingAutomationEnabled(enabled: Boolean) {
+        postProcessingAutomationManager.setEnabled(enabled)
+    }
+
+    fun previewPostProcessingForDownload(download: Download) {
+        postProcessingAutomationManager.preview(download)
+    }
+
+    fun runPostProcessingForDownload(download: Download) {
+        postProcessingAutomationManager.runForDownload(download)
+    }
+
+    fun previewPostProcessingForMedia(record: MediaCaptureRecord) {
+        postProcessingAutomationManager.preview(record)
+    }
+
+    fun runPostProcessingForMedia(record: MediaCaptureRecord) {
+        postProcessingAutomationManager.runForMedia(record)
+    }
+
+    fun retryFailedPostProcessing() {
+        postProcessingAutomationManager.retryLastFailed()
+    }
+
+    fun clearPostProcessingEvents() {
+        postProcessingAutomationManager.clearEvents()
     }
 
     fun refreshAria2Probe() {
@@ -1074,6 +1112,7 @@ class MainViewModel(
             container.termuxBridgeManager,
             container.termuxAria2CockpitManager,
             container.termuxMediaPipelineManager,
+            container.postProcessingAutomationManager,
         ) as T
     }
 }

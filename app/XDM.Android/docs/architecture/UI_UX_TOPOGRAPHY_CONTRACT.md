@@ -119,3 +119,11 @@ The ShareSheet intake path must extract URLs from `EXTRA_TEXT`, `EXTRA_SUBJECT`,
 - Medium-risk root actions require root mode to be enabled and a successful root probe before launch.
 - Every root action must create a visible audit record and be included in copyable Termux diagnostics.
 - Root actions must be launched through the existing Termux RUN_COMMAND bridge and remain chroot-free.
+
+## Phase 11 Post-processing Automation Rules
+
+- Post-processing automation must be visible from Settings and Diagnostics.
+- Media captures must expose preview and run actions for matching rules.
+- The UI must show enabled rules, recent events, and failures without exposing raw shell commands.
+- Diagnostics must include copyable post-processing automation evidence.
+- Root-backed post-processing must remain optional and typed.

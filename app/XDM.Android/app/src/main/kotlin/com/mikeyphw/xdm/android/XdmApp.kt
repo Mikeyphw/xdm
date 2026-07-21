@@ -166,6 +166,8 @@ private fun AppScaffold(
                     viewModel::clearFinishedHistory,
                     viewModel::pauseAll,
                     viewModel::resumeAll,
+                    viewModel::previewPostProcessingForDownload,
+                    viewModel::runPostProcessingForDownload,
                 )
                 AppRoute.Add -> AddDownloadScreen(
                     destinationUri = state.destinationUri,
@@ -202,6 +204,7 @@ private fun AppScaffold(
                     state.mediaCaptures,
                     state.mediaVariants,
                     state.termuxMediaPipeline,
+                    state.postProcessingAutomation,
                     viewModel::downloadMediaCapture,
                     viewModel::resolveMediaCapture,
                     viewModel::selectMediaVariant,
@@ -211,6 +214,8 @@ private fun AppScaffold(
                     viewModel::downloadMediaWithTermuxYtDlp,
                     viewModel::convertMediaWithTermux,
                     viewModel::clearCompletedTermuxMediaJobs,
+                    viewModel::previewPostProcessingForMedia,
+                    viewModel::runPostProcessingForMedia,
                 )
                 AppRoute.Recovery -> RecoveryScreen(state.recovery, viewModel::validateRecoveryRecord, viewModel::removeRecoveryRecord)
                 AppRoute.Diagnostics -> DiagnosticsScreen(
@@ -227,6 +232,8 @@ private fun AppScaffold(
                     viewModel::pauseAllTermuxAria2Tasks,
                     viewModel::resumeAllTermuxAria2Tasks,
                     viewModel::saveTermuxAria2Session,
+                    viewModel::retryFailedPostProcessing,
+                    viewModel::clearPostProcessingEvents,
                 )
                 AppRoute.Settings -> SettingsScreen(
                     state.compactDensity,
@@ -241,6 +248,7 @@ private fun AppScaffold(
                     state.releasePackagingReport,
                     state.termuxBridge,
                     state.termuxAria2,
+                    state.postProcessingAutomation,
                     viewModel::setCompactDensity,
                     viewModel::setProxySettings,
                     viewModel::setPostProcessingSettings,
@@ -254,6 +262,9 @@ private fun AppScaffold(
                     viewModel::fixTermuxDownloadPermissionsWithRoot,
                     viewModel::setTermuxAria2Enabled,
                     viewModel::rotateTermuxAria2Secret,
+                    viewModel::setPostProcessingAutomationEnabled,
+                    viewModel::retryFailedPostProcessing,
+                    viewModel::clearPostProcessingEvents,
                 )
             }
         }

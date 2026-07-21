@@ -23615,6 +23615,145 @@
         }
       },
       "history_id": "f3a39e8fa8334feaad325753d973ba73"
+    },
+    {
+      "applied_at": "2026-07-21T18:39:31.189038Z",
+      "artifact": "/home/mike/Downloads/xdm_android_termux_post_processing_phase11_overlay.zip",
+      "artifact_name": "xdm_android_termux_post_processing_phase11_overlay.zip",
+      "type": "overlay",
+      "sha256": "506d63121da12d051381ed73593925808e5763b235bb9c569ded86b9c9cb4937",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Add Termux post-processing automation for Android",
+      "commit_hash": "",
+      "file_count": 13,
+      "change_counts": {
+        "add": 4,
+        "modify": 9
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Termux Post-processing Automation Phase 11",
+        "description": "Adds Phase 11 post-processing automation for XDM Android with previewable typed rules, download/media triggers, safe Termux post-process commands, optional root handoff, event log, diagnostics, docs, validator, and static architecture contracts. No chroot and no raw shell UI are added.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "f21056b27f0f6680d92e10a11e092699257edc0aa4f79518db93d2c1cf89401b",
+              "size": 10396,
+              "source_sha256": "05a2203c48b9e7e33f73f571b4e46cdd1d4f7f1e302ba03804845c5ca5bce121"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "4eb821a44b9c001b825a27577079d96e11865017d567f7cf9e138dc15c7d4f0c",
+              "size": 51436,
+              "source_sha256": "5d98512e39a79e84619dafae467867d043d7e773992919e5fe55cb52828b887d"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "fe452d8814aebf71de80a5d4e8260fd41ccce528194188f3d0cf35e2be68587c",
+              "size": 113692,
+              "source_sha256": "e45158a91404dde92e2aea342185322ae1278c280a65fbe12d1530cc1ee96abf"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "28e99071fdbf55799a3ff9f8ac178d9a27762e3d668c625942ec50b76f97c8c7",
+              "size": 13223,
+              "source_sha256": "2a48c7e21d759d39dedd5897d1caadb8ee2cba9c22e23be736cc453e73c3d354"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "sha256": "51e9cb2d6d53aa5c4a48c9f13db37b1706becb1464bfc32963846e3ff099899b",
+              "size": 7041,
+              "source_sha256": "03f408f931d23ad5fd5154290d234cc2c3e3835a847ee6111eea56cb65a2d76b"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingAutomationManager.kt",
+              "action": "add",
+              "sha256": "43c12c89d952ccce54523265b558619c3729e61987902fe872e4eed780196ab2",
+              "size": 10604
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingAutomationModels.kt",
+              "action": "add",
+              "sha256": "ee1dce5bffefc24064bfed4c948df8792d3dc3d83f58350e811b544c30565e55",
+              "size": 10186
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt",
+              "action": "modify",
+              "sha256": "d3aaee154c2f4aaec8f130de2aacbeb1926e8453f73a1da2f5459d7ad730b7b7",
+              "size": 7182,
+              "source_sha256": "d5b043a34cdc56387c0756541b27d4174f835829b8d7c4d2a7d75402f7f84569"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt",
+              "action": "modify",
+              "sha256": "56b78cfa185540b3a92ad8e249339453dd51322ee07fe4a9321275e7fcd18298",
+              "size": 16214,
+              "source_sha256": "b3918752583b173a0146e88cf7e6a10f001220efc6f2a40dce16911529f474f2"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "67c438d44b12661a6727b6e71df63be897d93feac41a53b97234d6ca6fb88466",
+              "size": 44992,
+              "source_sha256": "8c889c8c766f058c5caee8dcf3271cf8344b7154d6d78ccb4c31e4f362b00393"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-11-POST-PROCESSING-AUTOMATION.md",
+              "action": "add",
+              "sha256": "87f08aa41ec20f430389ff8acbb211fe24cba863d85f9e1f702a469f9612da24",
+              "size": 1176
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+              "action": "modify",
+              "sha256": "5da00d2d039d12bad1fd9243b1a826964ceea701cf58ca83f34327dd2f833c2e",
+              "size": 9849,
+              "source_sha256": "d1e95599e554f56109620d2ab4bef0f3ab4a4d5c8cfba82574ced63020daae9c"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-termux-post-processing-automation.py",
+              "action": "add",
+              "sha256": "058c9170df56619ac7b1c744dfd973dba98dd0cef26d5de76c3631597255199e",
+              "size": 1875
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add Termux post-processing automation for Android"
+          }
+        },
+        "validation": {
+          "commands": [
+            "python3 tools/validate-termux-post-processing-automation.py",
+            "python3 tools/validate-termux-root-mode.py",
+            "python3 tools/validate-termux-media-pipeline.py",
+            "python3 tools/validate-termux-bridge.py",
+            "./gradlew testDebugUnitTest assembleDebug"
+          ]
+        }
+      },
+      "history_id": "f48efee30cda4cd8b5a7a07365323ebd"
     }
   ]
 }

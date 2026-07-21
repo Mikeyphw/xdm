@@ -9,6 +9,7 @@ object TermuxShellTemplates {
         is XdmTermuxCommand.YtDlpDownload -> ytdlpDownloadScript(command)
         is XdmTermuxCommand.FfprobeInspect -> ffprobeInspectScript(command.path)
         is XdmTermuxCommand.FfmpegConvert -> ffmpegConvertScript(command)
+        is XdmTermuxCommand.PostProcess -> postProcessScript(command.plan)
         is XdmTermuxCommand.Aria2StartDaemon -> aria2StartDaemonScript(command.config)
         is XdmTermuxCommand.Aria2StopDaemon -> aria2RpcScript(command.config, "aria2.shutdown", "XDM_ARIA2_DAEMON\tstopping")
         is XdmTermuxCommand.Aria2ProbeDaemon -> aria2ProbeDaemonScript(command.config)
@@ -84,6 +85,53 @@ object TermuxShellTemplates {
             else -> "-c:v copy -c:a copy "
         })
         append(shellQuote(command.output))
+    }
+
+
+
+    private fun postProcessScript(plan: TermuxPostProcessingPlan): String = buildString {
+        appendLine("set -e")
+        appendLine("printf 'XDM_POST_PROCESS\tstarted\t${shellMarker(plan.kind.label)}\n'")
+        when (plan.kind) {
+            PostProcessingActionKind.MoveToFolder -> {
+                appendLine("mkdir -p ${shellQuote(plan.outputPath)}")
+                appendLine("mv -n ${shellQuote(plan.inputPath)} ${shellQuote(plan.outputPath)}")
+            }
+            PostProcessingActionKind.RenameByPattern -> {
+                appendLine("mkdir -p ${shellQuote(plan.outputPath.substringBeforeLast('/', missingDelimiterValue = "."))}")
+                appendLine("mv -n ${shellQuote(plan.inputPath)} ${shellQuote(plan.outputPath)}")
+            }
+            PostProcessingActionKind.VerifySha256 -> {
+                appendLine("if command -v sha256sum >/dev/null 2>&1; then :; else printf 'XDM_POST_PROCESS\tmissing\tsha256sum not found\n'; exit 127; fi")
+                appendLine("ACTUAL=${'$'}(sha256sum ${shellQuote(plan.inputPath)} | awk '{print ${'$'}1}')")
+                appendLine("printf 'XDM_POST_PROCESS\tsha256\t%s\n' \"${'$'}ACTUAL\"")
+                if (plan.expectedSha256.isNotBlank()) {
+                    appendLine("test \"${'$'}ACTUAL\" = ${shellQuote(plan.expectedSha256.lowercase())}")
+                }
+            }
+            PostProcessingActionKind.FfprobeInspect -> {
+                appendLine("if command -v ffprobe >/dev/null 2>&1; then :; else printf 'XDM_POST_PROCESS\tmissing\tffprobe not found\n'; exit 127; fi")
+                appendLine("ffprobe -hide_banner -show_format -show_streams -print_format json ${shellQuote(plan.inputPath)}")
+            }
+            PostProcessingActionKind.RemuxFastStart -> {
+                appendLine("if command -v ffmpeg >/dev/null 2>&1; then :; else printf 'XDM_POST_PROCESS\tmissing\tffmpeg not found\n'; exit 127; fi")
+                appendLine("mkdir -p ${shellQuote(plan.outputPath.substringBeforeLast('/', missingDelimiterValue = "."))}")
+                appendLine("ffmpeg -hide_banner -y -i ${shellQuote(plan.inputPath)} -c copy -movflags +faststart ${shellQuote(plan.outputPath)}")
+            }
+            PostProcessingActionKind.ExtractAudio -> {
+                appendLine("if command -v ffmpeg >/dev/null 2>&1; then :; else printf 'XDM_POST_PROCESS\tmissing\tffmpeg not found\n'; exit 127; fi")
+                appendLine("mkdir -p ${shellQuote(plan.outputPath.substringBeforeLast('/', missingDelimiterValue = "."))}")
+                appendLine("ffmpeg -hide_banner -y -i ${shellQuote(plan.inputPath)} -vn -c:a copy ${shellQuote(plan.outputPath)}")
+            }
+            PostProcessingActionKind.CleanupPartials -> {
+                appendLine("TARGET=${shellQuote(plan.inputPath)}")
+                appendLine("case \"${'$'}TARGET\" in *XDM*|*Download*|*download*) rm -f \"${'$'}TARGET.aria2\" \"${'$'}TARGET.part\" \"${'$'}TARGET.tmp\"; printf 'XDM_POST_PROCESS\tcleanup\t%s\n' \"${'$'}TARGET\" ;; *) printf 'XDM_POST_PROCESS\tdenied\tpath outside XDM/download areas\n'; exit 3 ;; esac")
+            }
+            PostProcessingActionKind.FixPermissionsWithRoot -> {
+                appendLine("printf 'XDM_POST_PROCESS\troot_required\tuse typed root action\n'")
+            }
+        }
+        appendLine("printf 'XDM_POST_PROCESS\tfinished\t${shellMarker(plan.kind.label)}\n'")
     }
 
 

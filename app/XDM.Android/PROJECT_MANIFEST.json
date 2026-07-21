@@ -75,7 +75,7 @@
       "compare"
     ]
   },
-  "next_phase": "termux-post-processing-automation",
+  "next_phase": "automation-rule-editor-and-foreground-post-processing",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -277,7 +277,8 @@
       "aria2_session_save",
       "aria2_tasks_active",
       "aria2_tasks_pause_all",
-      "aria2_tasks_resume_all"
+      "aria2_tasks_resume_all",
+      "post_process"
     ],
     "raw_shell_exposed": false,
     "chroot_support": false,
@@ -346,6 +347,40 @@
     ],
     "medium_risk_requires_probe": true,
     "audit_log_visible": true,
+    "copyable_diagnostics": true,
+    "top_level_route_added": false
+  },
+  "termux_post_processing_automation": {
+    "schema_version_unchanged": 13,
+    "no_chroot_support": true,
+    "root_required": false,
+    "raw_shell_exposed": false,
+    "enabled_default": true,
+    "rules_previewable": true,
+    "typed_rule_actions": [
+      "move_to_folder",
+      "rename_by_pattern",
+      "verify_sha256",
+      "ffprobe_inspect",
+      "remux_faststart",
+      "extract_audio",
+      "cleanup_partials",
+      "fix_permissions_with_root"
+    ],
+    "triggers": [
+      "download_completed",
+      "download_failed",
+      "media_captured",
+      "media_download_created"
+    ],
+    "conditions": [
+      "file_extension",
+      "mime_type",
+      "source_host",
+      "backend",
+      "minimum_size_bytes"
+    ],
+    "event_log_visible": true,
     "copyable_diagnostics": true,
     "top_level_route_added": false
   }

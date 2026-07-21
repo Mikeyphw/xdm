@@ -469,6 +469,38 @@ class ArchitectureContractTest {
         assertFalse("Optional root mode must not add a top-level route", AppRoute.entries.any { it.label == "Root" || it.label == "Termux" || it.label == "Tools" })
     }
 
+
+
+    @Test
+    fun termuxPostProcessingAutomationContractsArePresent() {
+        val root = androidRoot()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        val app = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt").readText()
+        val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingAutomationModels.kt").readText()
+        val manager = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingAutomationManager.kt").readText()
+        val bridgeModels = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
+        val templates = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt").readText()
+        val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
+        val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
+
+        assertTrue("Phase 11 contract doc is missing", File(root, "docs/architecture/PHASE-11-POST-PROCESSING-AUTOMATION.md").isFile)
+        assertTrue("Phase 11 validator is missing", File(root, "tools/validate-termux-post-processing-automation.py").isFile)
+        assertTrue("UI contract must define Phase 11 automation rules", contract.contains("Phase 11 Post-processing Automation Rules"))
+        assertTrue("Post-processing models must define typed rules", models.contains("PostProcessingAutomationRule") && models.contains("PostProcessingAutomationTrigger") && models.contains("TermuxPostProcessingPlan"))
+        assertTrue("Post-processing manager must preview and run rules", manager.contains("preview(download") && manager.contains("runForDownload") && manager.contains("runForMedia"))
+        assertTrue("Termux commands must include a typed post-processing plan", bridgeModels.contains("PostProcess") && bridgeModels.contains("TermuxPostProcessingPlan"))
+        assertTrue("Shell templates must include typed post-processing actions", templates.contains("XDM_POST_PROCESS") && templates.contains("PostProcessingActionKind.CleanupPartials") && templates.contains("-movflags +faststart"))
+        assertTrue("Settings and Diagnostics must expose post-processing automation", screens.contains("Post-processing automation") && screens.contains("Retry failed") && screens.contains("Copy diagnostics"))
+        assertTrue("Media route must expose preview and run actions", screens.contains("Preview rules") && screens.contains("Run rules"))
+        assertTrue("App shell must wire automation callbacks", appShell.contains("viewModel::previewPostProcessingForMedia") && appShell.contains("viewModel::setPostProcessingAutomationEnabled"))
+        assertTrue("ViewModel must carry automation state", viewModel.contains("postProcessingAutomationManager.status") && viewModel.contains("runPostProcessingForMedia"))
+        assertTrue("Application must create the automation manager", app.contains("PostProcessingAutomationManager") && app.contains("postProcessingAutomationManager"))
+        assertTrue("Project manifest must record post-processing automation", manifestJson.contains("termux_post_processing_automation") && manifestJson.contains("\"raw_shell_exposed\": false") && manifestJson.contains("\"root_required\": false"))
+        assertFalse("Post-processing automation must not add a top-level route", AppRoute.entries.any { it.label == "Automation" || it.label == "Post" || it.label == "Tools" })
+    }
+
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }
 }
