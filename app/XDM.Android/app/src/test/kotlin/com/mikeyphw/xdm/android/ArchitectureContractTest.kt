@@ -353,6 +353,37 @@ class ArchitectureContractTest {
         assertTrue("Alignment documentation must explain strict builds", alignmentDoc.contains("-Pxdm.requireAria2Runtime=true"))
     }
 
+
+    @Test
+    fun termuxCommandRunnerAndOptionalRootFoundationContractsArePresent() {
+        val root = androidRoot()
+        val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
+        val runner = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxCommandRunner.kt").readText()
+        val resultService = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxResultService.kt").readText()
+        val templates = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt").readText()
+        val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
+        assertTrue("Termux bridge contract is missing", File(root, "docs/architecture/PHASE-7-TERMUX-COMMAND-RUNNER.md").isFile)
+        assertTrue("Termux bridge validator is missing", File(root, "tools/validate-termux-bridge.py").isFile)
+        assertTrue("Manifest must declare RUN_COMMAND", manifest.contains("com.termux.permission.RUN_COMMAND"))
+        assertTrue("Manifest must query Termux", manifest.contains("com.termux") && manifest.contains("com.termux.api"))
+        assertTrue("Manifest must register the result service", manifest.contains(".termux.TermuxResultService"))
+        assertTrue("Runner must use Termux RUN_COMMAND service", runner.contains("com.termux.app.RunCommandService") && runner.contains("com.termux.RUN_COMMAND"))
+        assertTrue("Runner must return results through PendingIntent", runner.contains("RUN_COMMAND_PENDING_INTENT") && resultService.contains("getBundleExtra(\"result\")"))
+        assertTrue("Termux commands must be typed", models.contains("sealed class XdmTermuxCommand") && templates.contains("XdmTermuxCommand.ProbeAllTools"))
+        assertTrue("Typed commands must cover media tools", templates.contains("yt-dlp") && templates.contains("ffprobe") && templates.contains("ffmpeg"))
+        assertTrue("Optional root mode must default to off", models.contains("TermuxRootMode") && models.contains("Off(\"Off\""))
+        assertTrue("Root actions must be typed", models.contains("sealed class XdmRootAction"))
+        assertTrue("Diagnostics must expose Termux status", screens.contains("Termux bridge") && appShell.contains("viewModel::runTermuxToolProbe"))
+        assertTrue("Settings must expose optional root mode", screens.contains("Termux backend") && screens.contains("Optional root mode"))
+        assertTrue("ViewModel must carry Termux state", viewModel.contains("termuxBridgeManager.status") && viewModel.contains("setTermuxRootMode"))
+        assertTrue("Project manifest must record Termux bridge", manifestJson.contains("termux_bridge") && manifestJson.contains("\"chroot_support\": false"))
+        assertFalse("Termux bridge must not add a top-level route", AppRoute.entries.any { it.label == "Termux" || it.label == "Tools" || it.label == "Root" })
+    }
+
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }
 }

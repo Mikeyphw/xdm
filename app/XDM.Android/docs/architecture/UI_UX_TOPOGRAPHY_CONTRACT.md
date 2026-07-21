@@ -86,3 +86,12 @@ XDM must be discoverable as an Android download target from browsers that delega
 Shared text and browser handoffs must never fall through to a normal cold-launch experience. Media URLs may open the Media route when stream metadata is detected. Ordinary HTTP(S) URLs must open the Add route with the URL prefilled, preserving user review before the transfer starts.
 
 The ShareSheet intake path must extract URLs from `EXTRA_TEXT`, `EXTRA_SUBJECT`, or the first ClipData text item before rejecting the handoff. Rejections should be visible in Diagnostics, but supported links must navigate to the relevant user workflow.
+
+
+## Phase 7 Termux Bridge Rules
+
+- Termux support must appear inside Diagnostics and Settings, not as a new top-level route.
+- The Android app may launch only typed XDM commands through Termux RUN_COMMAND.
+- Do not add a raw shell textbox or arbitrary root command endpoint.
+- Root mode defaults to Off and represents policy only until a typed privileged action is implemented.
+- Chroot support is intentionally excluded from the Android product surface.

@@ -22329,6 +22329,745 @@
         }
       },
       "history_id": "c012ff1744604205936a6b664265a490"
+    },
+    {
+      "applied_at": "2026-07-21T15:46:58.688658Z",
+      "artifact": "/home/mike/Downloads/xdm_android_termux_bridge_phase7_overlay.zip",
+      "artifact_name": "xdm_android_termux_bridge_phase7_overlay.zip",
+      "type": "overlay",
+      "sha256": "6ee055494d07d0ba84c4ec66462bc7a6c781db31a632752bdb007ceda0729c3c",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "Implement Android Termux bridge phase 7",
+      "commit_hash": "",
+      "file_count": 29,
+      "change_counts": {
+        "add": 9,
+        "modify": 12,
+        "unchanged": 8
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Termux Bridge Phase 7",
+        "description": "Implements the Termux RUN_COMMAND bridge, typed XDM command templates, Termux diagnostics/settings UI, optional root-mode foundation, raw ELF aria2 runtime support, and folds in launcher/browser handoff fixes.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "bb7e15d205c8aa7c34230481a47ace3680d8a1a77987a00bf0a5e8c94e5c31b5",
+              "size": 2510,
+              "source_sha256": "4ed6a43f000a2f49fa0437b389cb6cf679d5f0d48e6c1db457834dbbbd48595f"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "b9c2813e3cc6e1451e29635b2fda0936226dc85af670b0304f731dba5b53f9cd",
+              "size": 7673,
+              "source_sha256": "c26fb97e17cb729ef75c93ab0a3049bd3fa6e84ac064de55db3e6b5126ad5476"
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "sha256": "5eeb0db6200a4198c33b8a1f12a7690476de5f4ff15c6f4bf1e999a19812910a",
+              "size": 4952,
+              "source_sha256": "f0421b29763a093e4ce5625621463a630fa340d9f5a29729897a008f2e281a35"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "bcf541c5ad0e2ff7264657c79ed762fe7674f16fbb5a2ad6c176448c338779a3",
+              "size": 2972,
+              "source_sha256": "22cf45b6b19447468e579fccb80c89a7e3d344d31471d2002bb2c8e524f422f8"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+              "action": "modify",
+              "sha256": "0d049a6fc4c7adc146176a29f6d275610ec2c5a7523b9886ff25bc8e41ba6480",
+              "size": 5357,
+              "source_sha256": "54a73b9a2b027099c98632fbe58013dfbc7b1e9e503858dad109da616bac4d6a"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "79c346734792444915c6b4f5c908e9e14e5ecb75ed5fd0cfe725436f3cd38f11",
+              "size": 46470,
+              "source_sha256": "2b6f116a082f0f57c032c4d65169e358a8a04fd7eda5e64a28f68ce078bfec91"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "f1157deb3d8c23cafb9197b45e5e8f8f9af831bb03a476136354d04dffaf38c1",
+              "size": 93254,
+              "source_sha256": "3764c444bac1d80dfc852b577ba6a24797143614dcf5de54627e0d18ba7834de"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "6f87d5e4c1a51868efef04e8efb700ea3e33868ad561b842a71e80cb01185589",
+              "size": 11256,
+              "source_sha256": "a8821db0658756526bfdce3d0ee8d0d3b654cbcbb33d7d24f5b4208811959938"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "sha256": "7857042e7074f5fbf7888b95131367916faa9a6c2be9633b1c9677d84db60f18",
+              "size": 6145,
+              "source_sha256": "01f5bdeaa252e2c2f718954b5bdbcf41a90ee598450ae3568760c42cc9034cb4"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeManager.kt",
+              "action": "add",
+              "sha256": "1f5b125f7c26f71c06cfbc42508490988653811a2b7dac1a41ed9cc971618482",
+              "size": 818
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt",
+              "action": "add",
+              "sha256": "e43551f9a9fa39c0482eae66e3753d897ba3a0e47a2ce7054b4075f94d9c3b08",
+              "size": 4675
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxCommandRunner.kt",
+              "action": "add",
+              "sha256": "7671e40e5cbe69340e8dc000013b08d0d05252036cac103fc4ddaae9991bd38e",
+              "size": 4444
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxPaths.kt",
+              "action": "add",
+              "sha256": "02b0713121cf4c75d8e801b99ce4861322823c2c9d9fd954867a35a83ca1ce92",
+              "size": 1051
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxResultService.kt",
+              "action": "add",
+              "sha256": "ea28bbc1fae12c645771447a0ef41c52a3bf163ba345f3343b9a3c0f08010352",
+              "size": 1857
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxRunStore.kt",
+              "action": "add",
+              "sha256": "b81519ef6d58e941d7e4339d7f30756c59d8c8c4522ea1d6ebfe1ff2e203ccab",
+              "size": 6324
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt",
+              "action": "add",
+              "sha256": "c9b0ae5ba072f8a12329806cd5875ff3aa1eb1e742dd846268e62cbc4e232479",
+              "size": 2894
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/drawable/ic_launcher_foreground.xml",
+              "action": "add",
+              "sha256": "ca5addf5e53e1333de7de399e9097efc05771f7abe8ac5e9a006234ef1111e48",
+              "size": 832
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi/ic_launcher.xml",
+              "action": "add",
+              "sha256": "32715ff646f6b9fef7c321138e4a14556c4a1f98a87b06070b56f41643dad718",
+              "size": 270
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml",
+              "action": "add",
+              "sha256": "32715ff646f6b9fef7c321138e4a14556c4a1f98a87b06070b56f41643dad718",
+              "size": 270
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/values/colors.xml",
+              "action": "add",
+              "sha256": "3004c8892d5d2017497c33ef48faa3723a09ae0d000f4d0c1256a1a08cc62739",
+              "size": 121
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "5bd6db88bcfb7629d313295e8ca81b73c163197b2be6d9e7a34c05b116a382b7",
+              "size": 31319,
+              "source_sha256": "52bceccf2b17ea5daf5bf658b63f9aac0048ca4d670530feb7efa1fb675419f6"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/ARIA2_RUNTIME_ALIGNMENT.md",
+              "action": "add",
+              "sha256": "bae40df8e72590bfdb945186c45365f4904a4d546339d66ce71df26b43f80f7c",
+              "size": 1048
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-7-TERMUX-COMMAND-RUNNER.md",
+              "action": "add",
+              "sha256": "ea39427416c0e1071de711b6ba2ea28f6c3ca0a65c12d7e003eaf3d3a9966c8b",
+              "size": 1673
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+              "action": "modify",
+              "sha256": "29815508c5ffd7696a11d452d80ed118deedb039ed4b650ab422605209558150",
+              "size": 7271,
+              "source_sha256": "573fc460210e62134196c4e1b4c929cc05b763a93f76e1b989a73f8ddb3289a8"
+            },
+            {
+              "path": "app/XDM.Android/tools/install-aria2-runtime.py",
+              "action": "modify",
+              "sha256": "994ec5688d673c09f23e0222b94da03cd52c814981c51f2f6e4227fae32df5cb",
+              "size": 7814,
+              "source_sha256": "ccfb7c158948cf526e6cf4d8a28def2b53e46ac96d94c8652a811780411310a2"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-termux-bridge.py",
+              "action": "add",
+              "sha256": "cfd89ba4669c72df34f6e98ff463a83777c6733f66df2fe7399bcfe87b745ac8",
+              "size": 2282
+            },
+            {
+              "path": "app/XDM.Android/tools/verify-aria2-runtime.py",
+              "action": "modify",
+              "sha256": "6eba7d93ecd51519f6a5c8f99412fd84b4a3b172c7b3faf31b3923e060ba2c18",
+              "size": 6884,
+              "source_sha256": "cb926ae1781ec310a865524a3ee11de952cb8f4b1f319bff7d60abecd6d971ec"
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/build.gradle.kts",
+              "action": "modify",
+              "sha256": "d5d30d0214c2c9693163013e32c4e40fc1e553b6d5116e3caedf1f7c0a40da82",
+              "size": 2198,
+              "source_sha256": "a6420eccad2fdd83ce6d59a3aa90113855bc2dea47e9fbe8900e336e9c03dd8f"
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/runtime/aria2-runtime.json",
+              "action": "modify",
+              "sha256": "582f46370830dd2f5b3c9b60a2bc657145e1ba0a1f84e48cf8a63a00494db613",
+              "size": 586,
+              "source_sha256": "2257cc929cf1faec0462ff9a84a6d92dd16e50fca3ff8f7810da8e8e9c5c286a"
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Implement Android Termux bridge phase 7"
+          }
+        },
+        "validation": {
+          "notes": [
+            "Run Devtool validation for xdm_android. Static Termux bridge contract is available at app/XDM.Android/tools/validate-termux-bridge.py. Strict aria2 builds should pass -Pxdm.requireAria2Runtime=true."
+          ]
+        }
+      },
+      "history_id": "95aeeddef47e4614b59c77e025587681"
+    },
+    {
+      "applied_at": "2026-07-21T16:12:55.784890Z",
+      "artifact": "/home/mike/Downloads/xdm_android_termux_bridge_phase7_overlay_rebased.zip",
+      "artifact_name": "xdm_android_termux_bridge_phase7_overlay_rebased.zip",
+      "type": "overlay",
+      "sha256": "92b037add517dca87068cd0584acdc518f85604315038f8ab6fe9be43fe0f28c",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Implement Android Termux bridge phase 7",
+      "commit_hash": "",
+      "file_count": 18,
+      "change_counts": {
+        "add": 9,
+        "modify": 9
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Termux Bridge Phase 7 Rebased",
+        "description": "Rebased Phase 7 onto the current Android tree: adds the Termux RUN_COMMAND bridge, typed XDM command templates, Termux diagnostics/settings UI, optional root-mode foundation, and no chroot support. Existing launcher, browser handoff, and aria2 runtime fixes are preserved instead of re-added.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "bb7e15d205c8aa7c34230481a47ace3680d8a1a77987a00bf0a5e8c94e5c31b5",
+              "size": 2510,
+              "source_sha256": "4ed6a43f000a2f49fa0437b389cb6cf679d5f0d48e6c1db457834dbbbd48595f"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "b9c2813e3cc6e1451e29635b2fda0936226dc85af670b0304f731dba5b53f9cd",
+              "size": 7673,
+              "source_sha256": "c26fb97e17cb729ef75c93ab0a3049bd3fa6e84ac064de55db3e6b5126ad5476"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "8b224a6aa5b5c8787853b66f73f9bcd4d30f1f5e0381849110c8da07e4dc4706",
+              "size": 2972,
+              "source_sha256": "3a9e76867f41ae54bc8652d505dffcee9ac63a14825e3c474fb62acfaaec169f"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "7dad9fea05dd6cb162ecbbc8b9f51ac6fc1b60139d0be9d15c75cf5845f3625b",
+              "size": 46359,
+              "source_sha256": "9c63fa20c261108e798692370feba1fdaae39a87fde632338ec6588a1f1080fa"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "dde2bee8d164ab9d55052ff7e5145d267566565bcb9e04c6f57fcb943f0d80e7",
+              "size": 93255,
+              "source_sha256": "a9da243b64521fc108047094158b274c6e0f76e0c57ffe8b71767c420379cffe"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "6f87d5e4c1a51868efef04e8efb700ea3e33868ad561b842a71e80cb01185589",
+              "size": 11256,
+              "source_sha256": "5849d92ad0b09d566a88b8f1dab12ebb48fad0b91d564310f96b5b54ac7d599c"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "sha256": "7857042e7074f5fbf7888b95131367916faa9a6c2be9633b1c9677d84db60f18",
+              "size": 6145,
+              "source_sha256": "01f5bdeaa252e2c2f718954b5bdbcf41a90ee598450ae3568760c42cc9034cb4"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeManager.kt",
+              "action": "add",
+              "sha256": "1f5b125f7c26f71c06cfbc42508490988653811a2b7dac1a41ed9cc971618482",
+              "size": 818
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt",
+              "action": "add",
+              "sha256": "e43551f9a9fa39c0482eae66e3753d897ba3a0e47a2ce7054b4075f94d9c3b08",
+              "size": 4675
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxCommandRunner.kt",
+              "action": "add",
+              "sha256": "7671e40e5cbe69340e8dc000013b08d0d05252036cac103fc4ddaae9991bd38e",
+              "size": 4444
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxPaths.kt",
+              "action": "add",
+              "sha256": "02b0713121cf4c75d8e801b99ce4861322823c2c9d9fd954867a35a83ca1ce92",
+              "size": 1051
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxResultService.kt",
+              "action": "add",
+              "sha256": "ea28bbc1fae12c645771447a0ef41c52a3bf163ba345f3343b9a3c0f08010352",
+              "size": 1857
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxRunStore.kt",
+              "action": "add",
+              "sha256": "b81519ef6d58e941d7e4339d7f30756c59d8c8c4522ea1d6ebfe1ff2e203ccab",
+              "size": 6324
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt",
+              "action": "add",
+              "sha256": "c9b0ae5ba072f8a12329806cd5875ff3aa1eb1e742dd846268e62cbc4e232479",
+              "size": 2894
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "88cbbcf91ecfd2206a3f6623da869952853bd803d157aa586c2bc9532fc20f8d",
+              "size": 31943,
+              "source_sha256": "fad782159a4cea9809388b05781cb6d8c98b3a825eb62551f6f3085b0a7066ee"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-7-TERMUX-COMMAND-RUNNER.md",
+              "action": "add",
+              "sha256": "ea39427416c0e1071de711b6ba2ea28f6c3ca0a65c12d7e003eaf3d3a9966c8b",
+              "size": 1673
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+              "action": "modify",
+              "sha256": "468dd5ee2348a8f855a32dd1986684f2a8fe6ee526c88132abf0ce3dcc97a2c9",
+              "size": 7727,
+              "source_sha256": "29815508c5ffd7696a11d452d80ed118deedb039ed4b650ab422605209558150"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-termux-bridge.py",
+              "action": "add",
+              "sha256": "cfd89ba4669c72df34f6e98ff463a83777c6733f66df2fe7399bcfe87b745ac8",
+              "size": 2282
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Implement Android Termux bridge phase 7"
+          }
+        },
+        "validation": {
+          "commands": [
+            "python3 tools/validate-termux-bridge.py",
+            "python3 tools/verify-aria2-runtime.py"
+          ],
+          "notes": "Gradle validation is performed by devtool on the target machine; sandbox validation was limited to Python syntax and static Termux bridge checks."
+        }
+      },
+      "history_id": "debb41402b9d499da6e082247d803136"
+    },
+    {
+      "applied_at": "2026-07-21T16:39:18.899584Z",
+      "artifact": "/home/mike/Downloads/xdm_android_termux_bridge_phase7_overlay_lintfix.zip",
+      "artifact_name": "xdm_android_termux_bridge_phase7_overlay_lintfix.zip",
+      "type": "overlay",
+      "sha256": "f65780eb3efa4c88c15c895ad125f007521213e6520dbd7fb44ba650fc79d745",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Implement Android Termux bridge phase 7",
+      "commit_hash": "",
+      "file_count": 18,
+      "change_counts": {
+        "add": 9,
+        "modify": 9
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Termux Bridge Phase 7 Rebased Lint Fix",
+        "description": "Rebased Phase 7 with Termux RUN_COMMAND bridge and optional root foundation, plus a lint-safe Termux path resolver that avoids hardcoded /data paths while preserving existing launcher, browser handoff, and aria2 fixes.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "bb7e15d205c8aa7c34230481a47ace3680d8a1a77987a00bf0a5e8c94e5c31b5",
+              "size": 2510,
+              "source_sha256": "4ed6a43f000a2f49fa0437b389cb6cf679d5f0d48e6c1db457834dbbbd48595f"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "b9c2813e3cc6e1451e29635b2fda0936226dc85af670b0304f731dba5b53f9cd",
+              "size": 7673,
+              "source_sha256": "c26fb97e17cb729ef75c93ab0a3049bd3fa6e84ac064de55db3e6b5126ad5476"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "8b224a6aa5b5c8787853b66f73f9bcd4d30f1f5e0381849110c8da07e4dc4706",
+              "size": 2972,
+              "source_sha256": "3a9e76867f41ae54bc8652d505dffcee9ac63a14825e3c474fb62acfaaec169f"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "7dad9fea05dd6cb162ecbbc8b9f51ac6fc1b60139d0be9d15c75cf5845f3625b",
+              "size": 46359,
+              "source_sha256": "9c63fa20c261108e798692370feba1fdaae39a87fde632338ec6588a1f1080fa"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "dde2bee8d164ab9d55052ff7e5145d267566565bcb9e04c6f57fcb943f0d80e7",
+              "size": 93255,
+              "source_sha256": "a9da243b64521fc108047094158b274c6e0f76e0c57ffe8b71767c420379cffe"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "6f87d5e4c1a51868efef04e8efb700ea3e33868ad561b842a71e80cb01185589",
+              "size": 11256,
+              "source_sha256": "5849d92ad0b09d566a88b8f1dab12ebb48fad0b91d564310f96b5b54ac7d599c"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "sha256": "7857042e7074f5fbf7888b95131367916faa9a6c2be9633b1c9677d84db60f18",
+              "size": 6145,
+              "source_sha256": "01f5bdeaa252e2c2f718954b5bdbcf41a90ee598450ae3568760c42cc9034cb4"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeManager.kt",
+              "action": "add",
+              "sha256": "1f5b125f7c26f71c06cfbc42508490988653811a2b7dac1a41ed9cc971618482",
+              "size": 818
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt",
+              "action": "add",
+              "sha256": "e43551f9a9fa39c0482eae66e3753d897ba3a0e47a2ce7054b4075f94d9c3b08",
+              "size": 4675
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxCommandRunner.kt",
+              "action": "add",
+              "sha256": "5e3abe8c43b50b9eae0ec4bb6f15bdc6682ea324251af9c575df843cf97e6cd4",
+              "size": 4451
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxPaths.kt",
+              "action": "add",
+              "sha256": "2d04161e6ef4a73cd03270e5c032a764651ab8860c13cd162d80cbcff6dc67ce",
+              "size": 1762
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxResultService.kt",
+              "action": "add",
+              "sha256": "ea28bbc1fae12c645771447a0ef41c52a3bf163ba345f3343b9a3c0f08010352",
+              "size": 1857
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxRunStore.kt",
+              "action": "add",
+              "sha256": "b81519ef6d58e941d7e4339d7f30756c59d8c8c4522ea1d6ebfe1ff2e203ccab",
+              "size": 6324
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt",
+              "action": "add",
+              "sha256": "c9b0ae5ba072f8a12329806cd5875ff3aa1eb1e742dd846268e62cbc4e232479",
+              "size": 2894
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "88cbbcf91ecfd2206a3f6623da869952853bd803d157aa586c2bc9532fc20f8d",
+              "size": 31943,
+              "source_sha256": "fad782159a4cea9809388b05781cb6d8c98b3a825eb62551f6f3085b0a7066ee"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-7-TERMUX-COMMAND-RUNNER.md",
+              "action": "add",
+              "sha256": "ea39427416c0e1071de711b6ba2ea28f6c3ca0a65c12d7e003eaf3d3a9966c8b",
+              "size": 1673
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+              "action": "modify",
+              "sha256": "468dd5ee2348a8f855a32dd1986684f2a8fe6ee526c88132abf0ce3dcc97a2c9",
+              "size": 7727,
+              "source_sha256": "29815508c5ffd7696a11d452d80ed118deedb039ed4b650ab422605209558150"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-termux-bridge.py",
+              "action": "add",
+              "sha256": "cfd89ba4669c72df34f6e98ff463a83777c6733f66df2fe7399bcfe87b745ac8",
+              "size": 2282
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Implement Android Termux bridge phase 7"
+          }
+        },
+        "validation": {
+          "commands": [
+            "python3 tools/validate-termux-bridge.py",
+            "python3 tools/verify-aria2-runtime.py"
+          ],
+          "notes": "Gradle validation is performed by devtool on the target machine; sandbox validation was limited to Python syntax and static Termux bridge checks."
+        }
+      },
+      "history_id": "8a62b4cdcca5451b9f0f9ff15bd5ff6b"
+    },
+    {
+      "applied_at": "2026-07-21T16:45:49.796755Z",
+      "artifact": "/home/mike/Downloads/xdm_android_termux_bridge_phase7_overlay_lintfix2.zip",
+      "artifact_name": "xdm_android_termux_bridge_phase7_overlay_lintfix2.zip",
+      "type": "overlay",
+      "sha256": "8dadbf66c98d0544ac43ce875b177e441fb1a3f85de3f448a12e58e6c5f87fb5",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Implement Android Termux bridge phase 7",
+      "commit_hash": "",
+      "file_count": 18,
+      "change_counts": {
+        "add": 9,
+        "modify": 9
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Termux Bridge Phase 7 Lint Fix 2",
+        "description": "Rebased Phase 7 with Termux RUN_COMMAND bridge and optional root foundation, plus lint-safe Termux path and permission handling for minSdk 26.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "bb7e15d205c8aa7c34230481a47ace3680d8a1a77987a00bf0a5e8c94e5c31b5",
+              "size": 2510,
+              "source_sha256": "4ed6a43f000a2f49fa0437b389cb6cf679d5f0d48e6c1db457834dbbbd48595f"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "b9c2813e3cc6e1451e29635b2fda0936226dc85af670b0304f731dba5b53f9cd",
+              "size": 7673,
+              "source_sha256": "c26fb97e17cb729ef75c93ab0a3049bd3fa6e84ac064de55db3e6b5126ad5476"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "8b224a6aa5b5c8787853b66f73f9bcd4d30f1f5e0381849110c8da07e4dc4706",
+              "size": 2972,
+              "source_sha256": "3a9e76867f41ae54bc8652d505dffcee9ac63a14825e3c474fb62acfaaec169f"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "7dad9fea05dd6cb162ecbbc8b9f51ac6fc1b60139d0be9d15c75cf5845f3625b",
+              "size": 46359,
+              "source_sha256": "9c63fa20c261108e798692370feba1fdaae39a87fde632338ec6588a1f1080fa"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "dde2bee8d164ab9d55052ff7e5145d267566565bcb9e04c6f57fcb943f0d80e7",
+              "size": 93255,
+              "source_sha256": "a9da243b64521fc108047094158b274c6e0f76e0c57ffe8b71767c420379cffe"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "6f87d5e4c1a51868efef04e8efb700ea3e33868ad561b842a71e80cb01185589",
+              "size": 11256,
+              "source_sha256": "5849d92ad0b09d566a88b8f1dab12ebb48fad0b91d564310f96b5b54ac7d599c"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "sha256": "7857042e7074f5fbf7888b95131367916faa9a6c2be9633b1c9677d84db60f18",
+              "size": 6145,
+              "source_sha256": "01f5bdeaa252e2c2f718954b5bdbcf41a90ee598450ae3568760c42cc9034cb4"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeManager.kt",
+              "action": "add",
+              "sha256": "1f5b125f7c26f71c06cfbc42508490988653811a2b7dac1a41ed9cc971618482",
+              "size": 818
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt",
+              "action": "add",
+              "sha256": "e43551f9a9fa39c0482eae66e3753d897ba3a0e47a2ce7054b4075f94d9c3b08",
+              "size": 4675
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxCommandRunner.kt",
+              "action": "add",
+              "sha256": "5e3abe8c43b50b9eae0ec4bb6f15bdc6682ea324251af9c575df843cf97e6cd4",
+              "size": 4451
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxPaths.kt",
+              "action": "add",
+              "sha256": "2d04161e6ef4a73cd03270e5c032a764651ab8860c13cd162d80cbcff6dc67ce",
+              "size": 1762
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxResultService.kt",
+              "action": "add",
+              "sha256": "ea28bbc1fae12c645771447a0ef41c52a3bf163ba345f3343b9a3c0f08010352",
+              "size": 1857
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxRunStore.kt",
+              "action": "add",
+              "sha256": "3ba2c39d665f52b22e54df6727f7702240635b87d773324c114f98ce49abc112",
+              "size": 6263
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt",
+              "action": "add",
+              "sha256": "c9b0ae5ba072f8a12329806cd5875ff3aa1eb1e742dd846268e62cbc4e232479",
+              "size": 2894
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "88cbbcf91ecfd2206a3f6623da869952853bd803d157aa586c2bc9532fc20f8d",
+              "size": 31943,
+              "source_sha256": "fad782159a4cea9809388b05781cb6d8c98b3a825eb62551f6f3085b0a7066ee"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-7-TERMUX-COMMAND-RUNNER.md",
+              "action": "add",
+              "sha256": "ea39427416c0e1071de711b6ba2ea28f6c3ca0a65c12d7e003eaf3d3a9966c8b",
+              "size": 1673
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+              "action": "modify",
+              "sha256": "468dd5ee2348a8f855a32dd1986684f2a8fe6ee526c88132abf0ce3dcc97a2c9",
+              "size": 7727,
+              "source_sha256": "29815508c5ffd7696a11d452d80ed118deedb039ed4b650ab422605209558150"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-termux-bridge.py",
+              "action": "add",
+              "sha256": "cfd89ba4669c72df34f6e98ff463a83777c6733f66df2fe7399bcfe87b745ac8",
+              "size": 2282
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Implement Android Termux bridge phase 7"
+          }
+        },
+        "validation": {
+          "commands": [
+            "python3 tools/validate-termux-bridge.py",
+            "python3 tools/verify-aria2-runtime.py"
+          ],
+          "notes": "Gradle validation is performed by devtool on the target machine; sandbox validation was limited to Python syntax and static Termux bridge checks."
+        }
+      },
+      "history_id": "47385d9a57044f228c1ee8bb1d860b9f"
     }
   ]
 }

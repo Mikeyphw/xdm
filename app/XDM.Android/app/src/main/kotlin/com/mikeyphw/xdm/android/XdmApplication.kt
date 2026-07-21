@@ -26,6 +26,7 @@ import com.mikeyphw.xdm.android.transfer.aria2.Aria2SessionStore
 import com.mikeyphw.xdm.android.transfer.aria2.EmbeddedAria2Backend
 import com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackend
 import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
+import com.mikeyphw.xdm.android.termux.TermuxBridgeManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -66,6 +67,7 @@ class XdmApplication : Application(), TransferRuntimeProvider {
         val destinationWriter = AndroidDestinationWriter(this)
         val runtimeIdentities = BackendRuntimeIdentityStore(this)
         val aria2SessionStore = Aria2SessionStore(this)
+        val termuxBridgeManager = TermuxBridgeManager(this)
         val aria2ProcessManager = Aria2ProcessManager(
             capabilityProbe = AndroidAria2CapabilityProbe(this, aria2SessionStore),
             sessionStore = aria2SessionStore,
@@ -108,6 +110,7 @@ class XdmApplication : Application(), TransferRuntimeProvider {
             executionStarter = TransferExecutionStarter(this),
             destinationWriter = destinationWriter,
             aria2ProcessManager = aria2ProcessManager,
+            termuxBridgeManager = termuxBridgeManager,
         )
     }
 }
@@ -121,4 +124,5 @@ data class AppContainer(
     val executionStarter: TransferExecutionStarter,
     val destinationWriter: AndroidDestinationWriter,
     val aria2ProcessManager: Aria2ProcessManager,
+    val termuxBridgeManager: TermuxBridgeManager,
 )

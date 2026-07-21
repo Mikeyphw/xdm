@@ -64,6 +64,9 @@ import com.mikeyphw.xdm.android.util.sanitizeFileName
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2CapabilityReport
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessManager
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessState
+import com.mikeyphw.xdm.android.termux.TermuxRootMode
+import com.mikeyphw.xdm.android.termux.TermuxBridgeStatus
+import com.mikeyphw.xdm.android.termux.TermuxBridgeManager
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -101,6 +104,7 @@ data class MainUiState(
     val externalAddDraft: ExternalAddDraft? = null,
     val destinationPermissions: List<DestinationPermission> = emptyList(),
     val aria2Diagnostics: Aria2DiagnosticsUi = Aria2DiagnosticsUi(),
+    val termuxBridge: TermuxBridgeStatus = TermuxBridgeStatus(),
     val backendCapabilities: List<BackendCapabilityRow> = emptyList(),
     val backendMigrations: List<BackendMigrationRecord> = emptyList(),
     val checksumResults: List<ChecksumResult> = emptyList(),
@@ -164,6 +168,7 @@ class MainViewModel(
     private val executionStarter: TransferExecutionStarter,
     private val destinationWriter: AndroidDestinationWriter,
     private val aria2ProcessManager: Aria2ProcessManager,
+    private val termuxBridgeManager: TermuxBridgeManager,
 ) : ViewModel() {
     private val routeOverride = MutableStateFlow<AppRoute?>(null)
     private val aria2Capability = MutableStateFlow<Aria2CapabilityReport?>(null)
@@ -259,8 +264,15 @@ class MainViewModel(
         )
     }
 
-    private val runtimeUi = combine(transferRuntime.summary, aria2Diagnostics, capabilitySnapshot) { active, aria2, capabilities ->
-        Triple(active, aria2, backendSelectionPolicy.capabilityRows(capabilities))
+    private data class RuntimeUiSnapshot(
+        val activeTransfers: ActiveTransferSummary,
+        val aria2: Aria2DiagnosticsUi,
+        val capabilities: List<BackendCapabilityRow>,
+        val termuxBridge: TermuxBridgeStatus,
+    )
+
+    private val runtimeUi = combine(transferRuntime.summary, aria2Diagnostics, capabilitySnapshot, termuxBridgeManager.status) { active, aria2, capabilities, termux ->
+        RuntimeUiSnapshot(active, aria2, backendSelectionPolicy.capabilityRows(capabilities), termux)
     }
 
     val uiState: StateFlow<MainUiState> = combine(
@@ -284,13 +296,14 @@ class MainViewModel(
             queues = snapshot.queues,
             schedules = snapshot.schedules,
             recovery = snapshot.recovery,
-            activeTransfers = runtime.first,
+            activeTransfers = runtime.activeTransfers,
             destinationUri = prefs.destinationUri,
             conflictPolicy = prefs.conflictPolicy,
             externalAddDraft = addDraft,
             destinationPermissions = snapshot.destinationPermissions,
-            aria2Diagnostics = runtime.second,
-            backendCapabilities = runtime.third,
+            aria2Diagnostics = runtime.aria2,
+            termuxBridge = runtime.termuxBridge,
+            backendCapabilities = runtime.capabilities,
             backendMigrations = snapshot.backendMigrations,
             checksumResults = snapshot.checksumResults,
             verificationRecords = snapshot.verificationRecords,
@@ -303,7 +316,7 @@ class MainViewModel(
             settingsSnapshot = settingsSnapshot,
             settingsExportText = settingsSnapshot.toPortableText(),
             historyReport = HistoryManagementPolicy.summarize(snapshot.downloads),
-            protocolExpansionReport = ProtocolExpansionPolish.summarize(runtime.third),
+            protocolExpansionReport = ProtocolExpansionPolish.summarize(runtime.capabilities),
             releasePackagingReport = ReleasePackagingGate.report(
                 versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
                 versionCode = BuildConfig.VERSION_CODE,
@@ -363,6 +376,7 @@ class MainViewModel(
         }
         refreshAria2Probe()
         refreshBackendCapabilities()
+        termuxBridgeManager.refreshStatus()
     }
 
     fun navigate(route: AppRoute) {
@@ -442,6 +456,7 @@ class MainViewModel(
                 aria2SmokeMessage.value = result.summary
                 aria2Capability.value = aria2ProcessManager.probe()
                 refreshBackendCapabilities()
+        termuxBridgeManager.refreshStatus()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Throwable) {
@@ -452,6 +467,19 @@ class MainViewModel(
                 aria2SmokeRunning.value = false
             }
         }
+    }
+
+    fun runTermuxToolProbe() {
+        termuxBridgeManager.runToolProbe()
+    }
+
+    fun openTermux() {
+        termuxBridgeManager.openTermux()
+        termuxBridgeManager.refreshStatus()
+    }
+
+    fun setTermuxRootMode(mode: TermuxRootMode) {
+        termuxBridgeManager.setRootMode(mode)
     }
 
     fun refreshAria2Probe() {
@@ -946,6 +974,7 @@ class MainViewModel(
             container.executionStarter,
             container.destinationWriter,
             container.aria2ProcessManager,
+            container.termuxBridgeManager,
         ) as T
     }
 }

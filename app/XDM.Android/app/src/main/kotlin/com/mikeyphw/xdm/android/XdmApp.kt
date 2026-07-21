@@ -207,7 +207,11 @@ private fun AppScaffold(
                     viewModel::removeMediaCapture,
                 )
                 AppRoute.Recovery -> RecoveryScreen(state.recovery, viewModel::validateRecoveryRecord, viewModel::removeRecoveryRecord)
-                AppRoute.Diagnostics -> DiagnosticsScreen(state, viewModel::runAria2SmokeTest)
+                AppRoute.Diagnostics -> DiagnosticsScreen(
+                    state,
+                    viewModel::runAria2SmokeTest,
+                    viewModel::runTermuxToolProbe,
+                )
                 AppRoute.Settings -> SettingsScreen(
                     state.compactDensity,
                     state.backendCapabilities,
@@ -219,10 +223,14 @@ private fun AppScaffold(
                     state.settingsExportText,
                     state.protocolExpansionReport,
                     state.releasePackagingReport,
+                    state.termuxBridge,
                     viewModel::setCompactDensity,
                     viewModel::setProxySettings,
                     viewModel::setPostProcessingSettings,
                     viewModel::importSettingsSnapshot,
+                    viewModel::runTermuxToolProbe,
+                    viewModel::openTermux,
+                    viewModel::setTermuxRootMode,
                 )
             }
         }

@@ -75,7 +75,7 @@
       "compare"
     ]
   },
-  "next_phase": "post17-parity",
+  "next_phase": "termux-aria2-cockpit",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -255,6 +255,28 @@
     "protocol_expansion_polish": true,
     "release_non_debug_packaging": true,
     "no_secrets_in_settings_export": true,
+    "top_level_route_added": false
+  },
+  "termux_bridge": {
+    "schema_version_unchanged": 13,
+    "run_command_permission": true,
+    "package_visibility": [
+      "com.termux",
+      "com.termux.api"
+    ],
+    "typed_command_templates": [
+      "probe_all_tools",
+      "aria2_download",
+      "ytdlp_metadata",
+      "ffprobe_inspect",
+      "ffmpeg_convert"
+    ],
+    "raw_shell_exposed": false,
+    "chroot_support": false,
+    "optional_root_mode": true,
+    "root_mode_default": "Off",
+    "root_actions_typed_only": true,
+    "result_service": "com.mikeyphw.xdm.android.termux.TermuxResultService",
     "top_level_route_added": false
   }
 }

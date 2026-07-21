@@ -94,6 +94,8 @@ import com.mikeyphw.xdm.android.model.FinalReleaseGateSeverity
 import com.mikeyphw.xdm.android.model.ReleaseSecuritySeverity
 import com.mikeyphw.xdm.android.util.formatBytes
 import com.mikeyphw.xdm.android.util.formatSpeed
+import com.mikeyphw.xdm.android.termux.TermuxRootMode
+import com.mikeyphw.xdm.android.termux.TermuxBridgeStatus
 
 
 @Composable
@@ -1084,7 +1086,11 @@ private fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryReco
 }
 
 @Composable
-fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
+fun DiagnosticsScreen(
+    state: MainUiState,
+    onRunAria2SmokeTest: () -> Unit,
+    onRunTermuxProbe: () -> Unit,
+) {
     val context = LocalContext.current
     val redactedSummary = PrivacyDiagnosticsRedactor.redactedHealthSummary(
         report = state.releaseSecurityReport,
@@ -1214,6 +1220,7 @@ fun DiagnosticsScreen(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
                 }
             }
         }
+        item { TermuxBridgeDiagnosticsCard(state.termuxBridge, onRunTermuxProbe) }
     }
 }
 
@@ -1236,6 +1243,86 @@ private fun DiagnosticLine(label: String, value: String) {
     }
 }
 
+
+@Composable
+private fun TermuxBridgeDiagnosticsCard(termux: TermuxBridgeStatus, onRunProbe: () -> Unit) {
+    val context = LocalContext.current
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Termux bridge ${termux.readinessLabel}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    XdmCardTitle("Termux bridge")
+                    XdmMetricText(termux.readinessLabel)
+                }
+                Button(onClick = onRunProbe, enabled = termux.canRunProbe) { Text("Probe tools") }
+            }
+            XdmSupportingText(termux.summary)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                StatusPill(if (termux.termuxInstalled) "Termux installed" else "Termux missing", if (termux.termuxInstalled) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (termux.runCommandPermissionGranted) "RUN_COMMAND ready" else "Permission needed", if (termux.runCommandPermissionGranted) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (termux.rootAvailable) "Root available" else "Root optional", if (termux.rootAvailable) XdmStatusTone.Info else XdmStatusTone.Neutral)
+            }
+            termux.toolRows.forEach { row ->
+                XdmMetadataText("${row.tool.displayName}: ${row.statusLabel} — ${row.versionLine}", maxLines = 2)
+            }
+            termux.recentRuns.firstOrNull()?.let { run ->
+                XdmMetadataText("Last Termux run: ${run.summary} ${run.exitCode?.let { "exit $it" } ?: "pending"}", maxLines = 2)
+            }
+            TextButton(
+                onClick = { copyTextToClipboard(context, "XDM Termux diagnostics", termux.diagnosticsSummary()) },
+                modifier = Modifier.sizeIn(minWidth = 96.dp, minHeight = 48.dp),
+            ) { Text("Copy Termux diagnostics") }
+        }
+    }
+}
+
+@Composable
+private fun TermuxBridgeSettingsCard(
+    termux: TermuxBridgeStatus,
+    onRunProbe: () -> Unit,
+    onOpenTermux: () -> Unit,
+    onRootModeChanged: (TermuxRootMode) -> Unit,
+) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Termux backend ${termux.readinessLabel}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    XdmCardTitle("External tools through Termux")
+                    XdmSupportingText("Use Termux for aria2c, FFmpeg, FFprobe, yt-dlp, and Python without adding a raw shell to XDM.")
+                }
+                StatusPill(termux.readinessLabel, termux.statusTone())
+            }
+            XdmMetadataText(termux.summary)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                Button(onClick = onRunProbe, enabled = termux.canRunProbe) { Text("Probe tools") }
+                TextButton(onClick = onOpenTermux, enabled = termux.termuxInstalled) { Text("Open Termux") }
+            }
+            XdmSectionHeader("Optional root mode")
+            XdmSupportingText("Root is off by default and only unlocks typed file/process actions; XDM never exposes a raw root shell endpoint.")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                TermuxRootMode.entries.forEach { mode ->
+                    FilterChip(
+                        selected = termux.rootMode == mode,
+                        onClick = { onRootModeChanged(mode) },
+                        label = { Text(mode.label) },
+                    )
+                }
+            }
+            XdmMetadataText(termux.rootMode.description)
+        }
+    }
+}
+
+private fun TermuxBridgeStatus.statusTone(): XdmStatusTone = when {
+    !termuxInstalled || !runCommandPermissionGranted -> XdmStatusTone.Warning
+    toolRows.any { it.available } -> XdmStatusTone.Success
+    else -> XdmStatusTone.Info
+}
+
 @Composable
 private fun StatusPill(text: String, tone: XdmStatusTone = XdmStatusTone.Neutral) {
     XdmStatusBadge(text, tone = tone)
@@ -1254,10 +1341,14 @@ fun SettingsScreen(
     settingsExportText: String,
     protocolExpansionReport: ProtocolExpansionReport,
     releasePackagingReport: ReleasePackagingReport,
+    termuxBridge: TermuxBridgeStatus,
     onCompactChanged: (Boolean) -> Unit,
     onProxyChanged: (ProxyCredentialSettings) -> Unit,
     onPostProcessingChanged: (PostProcessingSettings) -> Unit,
     onImportSettings: (String) -> Unit,
+    onRunTermuxProbe: () -> Unit,
+    onOpenTermux: () -> Unit,
+    onRootModeChanged: (TermuxRootMode) -> Unit,
 ) {
     val context = LocalContext.current
     var importText by remember { mutableStateOf("") }
@@ -1364,6 +1455,8 @@ fun SettingsScreen(
                 }
             }
         }
+        item { XdmSectionHeader("Termux backend") }
+        item { TermuxBridgeSettingsCard(termuxBridge, onRunTermuxProbe, onOpenTermux, onRootModeChanged) }
         item { XdmSectionHeader("Conversion and post-processing") }
         item {
             Card(Modifier.fillMaxWidth().semantics { contentDescription = "Conversion post processing ${postProcessingSettings.redactedSummary}" }) {
