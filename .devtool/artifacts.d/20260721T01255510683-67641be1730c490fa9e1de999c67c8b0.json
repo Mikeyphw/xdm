@@ -1,0 +1,149 @@
+{
+  "applied_at": "2026-07-21T01:25:55.106830Z",
+  "artifact": "/home/mike/Downloads/xdm_android_launcher_icon_overlay.zip",
+  "artifact_name": "xdm_android_launcher_icon_overlay.zip",
+  "type": "overlay",
+  "sha256": "897ffd63629064cc26210a27fe7e426a6bd0fa6f994b0c6954c151f82cd6fb06",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "feat(android): add launcher icon identity",
+  "commit_hash": "",
+  "file_count": 16,
+  "change_counts": {
+    "add": 14,
+    "modify": 2
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Launcher Icon Identity",
+    "description": "Packages the desktop XDM logo as Android launcher/adaptive icons, wires the launcher manifest icon fields, and adds a contract test so the Android app keeps a proper app icon.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+          "action": "modify",
+          "sha256": "77a1385aa9dddc752a2d6201bb5a1fe5141ffa5cd1b15b3e7ee0cb8782efd5e6",
+          "size": 2541,
+          "source_sha256": "d2bf01dcc37b077c79efcb6e022a70efb1a28fd66783fe5137246215e6ddbec6"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/values/colors.xml",
+          "action": "add",
+          "sha256": "3004c8892d5d2017497c33ef48faa3723a09ae0d000f4d0c1256a1a08cc62739",
+          "size": 121
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/drawable/ic_launcher_foreground.xml",
+          "action": "add",
+          "sha256": "ca5addf5e53e1333de7de399e9097efc05771f7abe8ac5e9a006234ef1111e48",
+          "size": 832
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+          "action": "add",
+          "sha256": "32715ff646f6b9fef7c321138e4a14556c4a1f98a87b06070b56f41643dad718",
+          "size": 270
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml",
+          "action": "add",
+          "sha256": "32715ff646f6b9fef7c321138e4a14556c4a1f98a87b06070b56f41643dad718",
+          "size": 270
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "c707fde2537c30827cc9caab414362d5bf447509941a838c2e67fcfc7f8cc712",
+          "size": 27431,
+          "source_sha256": "71e68cb31e235421bfb5d4d8fd5b33632f790d598aa94eac2653e64084ffa624"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/mipmap-mdpi/ic_launcher.png",
+          "action": "add",
+          "sha256": "981a30ff99880a744482fa23472d2d0b626f66b08f4b4b7fdb1e4f359097a8e3",
+          "size": 2194
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png",
+          "action": "add",
+          "sha256": "1d1e30ca1d846b54727e582b23a4e9c4fcc949aabfd654add31083c43d55251a",
+          "size": 2107
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/mipmap-hdpi/ic_launcher.png",
+          "action": "add",
+          "sha256": "6af072088f3cc601b5bc16432aa8bef2ed940e8cccf908551f84d93f8197085c",
+          "size": 3250
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png",
+          "action": "add",
+          "sha256": "54078787b503bf3f618e0e893010d98939340f1f1c0c48097aea7a54af53df90",
+          "size": 3120
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/mipmap-xhdpi/ic_launcher.png",
+          "action": "add",
+          "sha256": "ed4618ceda40d4e790cb9d06e35cb5bc275e5752d6db1415ea54f3ae9f1762fe",
+          "size": 4197
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png",
+          "action": "add",
+          "sha256": "d1a51d8201ee64aadac14b462c257f479ff7aadb2ac19e0014c6887efc429935",
+          "size": 4035
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
+          "action": "add",
+          "sha256": "a30297363a304db96a48b3a40818b0e33dc55c3b1c945f5245ef7dfc85c7f416",
+          "size": 6388
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png",
+          "action": "add",
+          "sha256": "428f5bc8242b6cf4861c987570702f8f15db52077b8945f5b5b6a281143f3d0c",
+          "size": 6140
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+          "action": "add",
+          "sha256": "4961f83932b3568eec0a3547957b043dde452cb84540402ce662dd442046019f",
+          "size": 8112
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png",
+          "action": "add",
+          "sha256": "80fdf12bbc9b93c4df007d4e693151070e40fcadb244bd4699cac5538be14c73",
+          "size": 7740
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "feat(android): add launcher icon identity"
+      }
+    },
+    "validation": {
+      "commands": [
+        {
+          "command": "./gradlew test",
+          "working_directory": "app/XDM.Android"
+        }
+      ]
+    }
+  },
+  "history_id": "67641be1730c490fa9e1de999c67c8b0"
+}

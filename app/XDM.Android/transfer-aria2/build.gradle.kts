@@ -54,7 +54,7 @@ val verifyAria2Runtime by tasks.registering(Exec::class) {
     commandLine(
         "python3",
         "tools/verify-aria2-runtime.py",
-        *if (requireAria2Runtime.get()) arrayOf("--require-payload") else emptyArray(),
+        *if (requireAria2Runtime.get()) arrayOf("--require-payload", "--require-16kb-alignment") else emptyArray(),
     )
 }
 
