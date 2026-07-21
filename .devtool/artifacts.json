@@ -21563,6 +21563,619 @@
         }
       },
       "history_id": "fc7bce3d9a814cfbac08e64b8dbfb40f"
+    },
+    {
+      "applied_at": "2026-07-21T13:27:49.557214Z",
+      "artifact": "/home/mike/Downloads/xdm_android_launcher_icon_overlay_fixed2.zip",
+      "artifact_name": "xdm_android_launcher_icon_overlay_fixed2.zip",
+      "type": "overlay",
+      "sha256": "",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 0,
+      "change_counts": {},
+      "manifest": {},
+      "history_id": "a556af723261463a90b2a684c81d7638"
+    },
+    {
+      "applied_at": "2026-07-21T13:28:02.176766Z",
+      "artifact": "/home/mike/xdm_android_launcher_icon_overlay_fixed2.zip",
+      "artifact_name": "xdm_android_launcher_icon_overlay_fixed2.zip",
+      "type": "overlay",
+      "sha256": "050ca2f906f9090525c7334e0fea9cd23790316324f1c13bab343d8dc9acac55",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "feat(android): add launcher icon and aria2 alignment gate",
+      "commit_hash": "",
+      "file_count": 10,
+      "change_counts": {
+        "add": 5,
+        "modify": 5
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Launcher Icon and Optional Aria2 Alignment Gate",
+        "description": "Adds a vector/adaptive Android launcher icon without legacy PNG lint noise and keeps optional aria2 development builds from failing Android Lint on the currently pinned non-16KB-aligned runtime, while preserving strict 16 KB alignment checks for aria2-required distribution builds.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "3a9e76867f41ae54bc8652d505dffcee9ac63a14825e3c474fb62acfaaec169f",
+              "size": 2541,
+              "source_sha256": "d2bf01dcc37b077c79efcb6e022a70efb1a28fd66783fe5137246215e6ddbec6"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/values/colors.xml",
+              "action": "add",
+              "sha256": "3004c8892d5d2017497c33ef48faa3723a09ae0d000f4d0c1256a1a08cc62739",
+              "size": 121
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/drawable/ic_launcher_foreground.xml",
+              "action": "add",
+              "sha256": "ca5addf5e53e1333de7de399e9097efc05771f7abe8ac5e9a006234ef1111e48",
+              "size": 832
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi/ic_launcher.xml",
+              "action": "add",
+              "sha256": "32715ff646f6b9fef7c321138e4a14556c4a1f98a87b06070b56f41643dad718",
+              "size": 270
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml",
+              "action": "add",
+              "sha256": "32715ff646f6b9fef7c321138e4a14556c4a1f98a87b06070b56f41643dad718",
+              "size": 270
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "sha256": "5eeb0db6200a4198c33b8a1f12a7690476de5f4ff15c6f4bf1e999a19812910a",
+              "size": 4952,
+              "source_sha256": "f0421b29763a093e4ce5625621463a630fa340d9f5a29729897a008f2e281a35"
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/build.gradle.kts",
+              "action": "modify",
+              "sha256": "d5d30d0214c2c9693163013e32c4e40fc1e553b6d5116e3caedf1f7c0a40da82",
+              "size": 2198,
+              "source_sha256": "a6420eccad2fdd83ce6d59a3aa90113855bc2dea47e9fbe8900e336e9c03dd8f"
+            },
+            {
+              "path": "app/XDM.Android/tools/verify-aria2-runtime.py",
+              "action": "modify",
+              "sha256": "6eba7d93ecd51519f6a5c8f99412fd84b4a3b172c7b3faf31b3923e060ba2c18",
+              "size": 6884,
+              "source_sha256": "cb926ae1781ec310a865524a3ee11de952cb8f4b1f319bff7d60abecd6d971ec"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/ARIA2_RUNTIME_ALIGNMENT.md",
+              "action": "add",
+              "sha256": "bae40df8e72590bfdb945186c45365f4904a4d546339d66ce71df26b43f80f7c",
+              "size": 1048
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "d99ff70eb879db1816070be74dd863b2574301ea22e0dd116e859a358a1d26eb",
+              "size": 28006,
+              "source_sha256": "71e68cb31e235421bfb5d4d8fd5b33632f790d598aa94eac2653e64084ffa624"
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "feat(android): add launcher icon and aria2 alignment gate"
+          }
+        },
+        "validation": {
+          "commands": [
+            {
+              "command": "./gradlew test",
+              "working_directory": "app/XDM.Android"
+            }
+          ]
+        }
+      },
+      "history_id": "54092620eced4d4fbc2b597fafded084"
+    },
+    {
+      "applied_at": "2026-07-21T13:33:33.201252Z",
+      "artifact": "/home/mike/xdm_android_launcher_icon_overlay_fixed2.zip",
+      "artifact_name": "xdm_android_launcher_icon_overlay_fixed2.zip",
+      "type": "overlay",
+      "sha256": "050ca2f906f9090525c7334e0fea9cd23790316324f1c13bab343d8dc9acac55",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "feat(android): add launcher icon and aria2 alignment gate",
+      "commit_hash": "",
+      "file_count": 10,
+      "change_counts": {
+        "add": 5,
+        "modify": 5
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Launcher Icon and Optional Aria2 Alignment Gate",
+        "description": "Adds a vector/adaptive Android launcher icon without legacy PNG lint noise and keeps optional aria2 development builds from failing Android Lint on the currently pinned non-16KB-aligned runtime, while preserving strict 16 KB alignment checks for aria2-required distribution builds.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "3a9e76867f41ae54bc8652d505dffcee9ac63a14825e3c474fb62acfaaec169f",
+              "size": 2541,
+              "source_sha256": "d2bf01dcc37b077c79efcb6e022a70efb1a28fd66783fe5137246215e6ddbec6"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/values/colors.xml",
+              "action": "add",
+              "sha256": "3004c8892d5d2017497c33ef48faa3723a09ae0d000f4d0c1256a1a08cc62739",
+              "size": 121
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/drawable/ic_launcher_foreground.xml",
+              "action": "add",
+              "sha256": "ca5addf5e53e1333de7de399e9097efc05771f7abe8ac5e9a006234ef1111e48",
+              "size": 832
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi/ic_launcher.xml",
+              "action": "add",
+              "sha256": "32715ff646f6b9fef7c321138e4a14556c4a1f98a87b06070b56f41643dad718",
+              "size": 270
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml",
+              "action": "add",
+              "sha256": "32715ff646f6b9fef7c321138e4a14556c4a1f98a87b06070b56f41643dad718",
+              "size": 270
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "sha256": "5eeb0db6200a4198c33b8a1f12a7690476de5f4ff15c6f4bf1e999a19812910a",
+              "size": 4952,
+              "source_sha256": "f0421b29763a093e4ce5625621463a630fa340d9f5a29729897a008f2e281a35"
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/build.gradle.kts",
+              "action": "modify",
+              "sha256": "d5d30d0214c2c9693163013e32c4e40fc1e553b6d5116e3caedf1f7c0a40da82",
+              "size": 2198,
+              "source_sha256": "a6420eccad2fdd83ce6d59a3aa90113855bc2dea47e9fbe8900e336e9c03dd8f"
+            },
+            {
+              "path": "app/XDM.Android/tools/verify-aria2-runtime.py",
+              "action": "modify",
+              "sha256": "6eba7d93ecd51519f6a5c8f99412fd84b4a3b172c7b3faf31b3923e060ba2c18",
+              "size": 6884,
+              "source_sha256": "cb926ae1781ec310a865524a3ee11de952cb8f4b1f319bff7d60abecd6d971ec"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/ARIA2_RUNTIME_ALIGNMENT.md",
+              "action": "add",
+              "sha256": "bae40df8e72590bfdb945186c45365f4904a4d546339d66ce71df26b43f80f7c",
+              "size": 1048
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "d99ff70eb879db1816070be74dd863b2574301ea22e0dd116e859a358a1d26eb",
+              "size": 28006,
+              "source_sha256": "71e68cb31e235421bfb5d4d8fd5b33632f790d598aa94eac2653e64084ffa624"
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "feat(android): add launcher icon and aria2 alignment gate"
+          }
+        },
+        "validation": {
+          "commands": [
+            {
+              "command": "./gradlew test",
+              "working_directory": "app/XDM.Android"
+            }
+          ]
+        }
+      },
+      "history_id": "323b7b19444449398fea9aca5be0e49a"
+    },
+    {
+      "applied_at": "2026-07-21T13:39:37.803258Z",
+      "artifact": "/home/mike/Downloads/xdm_android_launcher_icon_overlay_fixed3.zip",
+      "artifact_name": "xdm_android_launcher_icon_overlay_fixed3.zip",
+      "type": "overlay",
+      "sha256": "c462d51b7cdf3604d678b0950dbc4813d212da146ef0ec32321de8d96e23d453",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "feat(android): add launcher icon monochrome layer",
+      "commit_hash": "",
+      "file_count": 11,
+      "change_counts": {
+        "add": 6,
+        "modify": 5
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Launcher Icon and Optional Aria2 Alignment Gate Fixed",
+        "description": "Adds vector/adaptive Android launcher icons with a monochrome themed-icon layer, avoids legacy PNG lint noise, and keeps optional aria2 development builds from failing Android Lint while preserving strict 16 KB alignment checks for aria2-required distribution builds.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "3a9e76867f41ae54bc8652d505dffcee9ac63a14825e3c474fb62acfaaec169f",
+              "size": 2541,
+              "source_sha256": "d2bf01dcc37b077c79efcb6e022a70efb1a28fd66783fe5137246215e6ddbec6"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/values/colors.xml",
+              "action": "add",
+              "sha256": "3004c8892d5d2017497c33ef48faa3723a09ae0d000f4d0c1256a1a08cc62739",
+              "size": 121
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/drawable/ic_launcher_foreground.xml",
+              "action": "add",
+              "sha256": "ca5addf5e53e1333de7de399e9097efc05771f7abe8ac5e9a006234ef1111e48",
+              "size": 832
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/drawable/ic_launcher_monochrome.xml",
+              "action": "add",
+              "sha256": "be126df90f172a3a425e4f8a864f9d449bd597f611ad182af98d4269f6dcd69d",
+              "size": 836
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi/ic_launcher.xml",
+              "action": "add",
+              "sha256": "bbaf996b7b1356da55819d20c1920c34e20b1288fe7cec441aefeda5ea53d24a",
+              "size": 341
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml",
+              "action": "add",
+              "sha256": "bbaf996b7b1356da55819d20c1920c34e20b1288fe7cec441aefeda5ea53d24a",
+              "size": 341
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "sha256": "5eeb0db6200a4198c33b8a1f12a7690476de5f4ff15c6f4bf1e999a19812910a",
+              "size": 4952,
+              "source_sha256": "f0421b29763a093e4ce5625621463a630fa340d9f5a29729897a008f2e281a35"
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/build.gradle.kts",
+              "action": "modify",
+              "sha256": "d5d30d0214c2c9693163013e32c4e40fc1e553b6d5116e3caedf1f7c0a40da82",
+              "size": 2198,
+              "source_sha256": "a6420eccad2fdd83ce6d59a3aa90113855bc2dea47e9fbe8900e336e9c03dd8f"
+            },
+            {
+              "path": "app/XDM.Android/tools/verify-aria2-runtime.py",
+              "action": "modify",
+              "sha256": "6eba7d93ecd51519f6a5c8f99412fd84b4a3b172c7b3faf31b3923e060ba2c18",
+              "size": 6884,
+              "source_sha256": "cb926ae1781ec310a865524a3ee11de952cb8f4b1f319bff7d60abecd6d971ec"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/ARIA2_RUNTIME_ALIGNMENT.md",
+              "action": "add",
+              "sha256": "bae40df8e72590bfdb945186c45365f4904a4d546339d66ce71df26b43f80f7c",
+              "size": 1048
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "1a9ef52b826c005b8d03276346d36e686e9c6ee4fdddd28c64dd06263355af22",
+              "size": 28630,
+              "source_sha256": "71e68cb31e235421bfb5d4d8fd5b33632f790d598aa94eac2653e64084ffa624"
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "feat(android): add launcher icon monochrome layer"
+          }
+        },
+        "validation": {
+          "commands": [
+            {
+              "command": "./gradlew test",
+              "working_directory": "app/XDM.Android"
+            }
+          ]
+        }
+      },
+      "history_id": "ad304508f72d491bae7e9c11687aec9f"
+    },
+    {
+      "applied_at": "2026-07-21T13:40:38.392216Z",
+      "artifact": "/home/mike/Downloads/xdm_android_launcher_icon_overlay_fixed3.zip",
+      "artifact_name": "xdm_android_launcher_icon_overlay_fixed3.zip",
+      "type": "overlay",
+      "sha256": "c462d51b7cdf3604d678b0950dbc4813d212da146ef0ec32321de8d96e23d453",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "feat(android): add launcher icon monochrome layer",
+      "commit_hash": "",
+      "file_count": 11,
+      "change_counts": {
+        "add": 6,
+        "modify": 5
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Launcher Icon and Optional Aria2 Alignment Gate Fixed",
+        "description": "Adds vector/adaptive Android launcher icons with a monochrome themed-icon layer, avoids legacy PNG lint noise, and keeps optional aria2 development builds from failing Android Lint while preserving strict 16 KB alignment checks for aria2-required distribution builds.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "3a9e76867f41ae54bc8652d505dffcee9ac63a14825e3c474fb62acfaaec169f",
+              "size": 2541,
+              "source_sha256": "d2bf01dcc37b077c79efcb6e022a70efb1a28fd66783fe5137246215e6ddbec6"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/values/colors.xml",
+              "action": "add",
+              "sha256": "3004c8892d5d2017497c33ef48faa3723a09ae0d000f4d0c1256a1a08cc62739",
+              "size": 121
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/drawable/ic_launcher_foreground.xml",
+              "action": "add",
+              "sha256": "ca5addf5e53e1333de7de399e9097efc05771f7abe8ac5e9a006234ef1111e48",
+              "size": 832
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/drawable/ic_launcher_monochrome.xml",
+              "action": "add",
+              "sha256": "be126df90f172a3a425e4f8a864f9d449bd597f611ad182af98d4269f6dcd69d",
+              "size": 836
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi/ic_launcher.xml",
+              "action": "add",
+              "sha256": "bbaf996b7b1356da55819d20c1920c34e20b1288fe7cec441aefeda5ea53d24a",
+              "size": 341
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml",
+              "action": "add",
+              "sha256": "bbaf996b7b1356da55819d20c1920c34e20b1288fe7cec441aefeda5ea53d24a",
+              "size": 341
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "sha256": "5eeb0db6200a4198c33b8a1f12a7690476de5f4ff15c6f4bf1e999a19812910a",
+              "size": 4952,
+              "source_sha256": "f0421b29763a093e4ce5625621463a630fa340d9f5a29729897a008f2e281a35"
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/build.gradle.kts",
+              "action": "modify",
+              "sha256": "d5d30d0214c2c9693163013e32c4e40fc1e553b6d5116e3caedf1f7c0a40da82",
+              "size": 2198,
+              "source_sha256": "a6420eccad2fdd83ce6d59a3aa90113855bc2dea47e9fbe8900e336e9c03dd8f"
+            },
+            {
+              "path": "app/XDM.Android/tools/verify-aria2-runtime.py",
+              "action": "modify",
+              "sha256": "6eba7d93ecd51519f6a5c8f99412fd84b4a3b172c7b3faf31b3923e060ba2c18",
+              "size": 6884,
+              "source_sha256": "cb926ae1781ec310a865524a3ee11de952cb8f4b1f319bff7d60abecd6d971ec"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/ARIA2_RUNTIME_ALIGNMENT.md",
+              "action": "add",
+              "sha256": "bae40df8e72590bfdb945186c45365f4904a4d546339d66ce71df26b43f80f7c",
+              "size": 1048
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "1a9ef52b826c005b8d03276346d36e686e9c6ee4fdddd28c64dd06263355af22",
+              "size": 28630,
+              "source_sha256": "71e68cb31e235421bfb5d4d8fd5b33632f790d598aa94eac2653e64084ffa624"
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "feat(android): add launcher icon monochrome layer"
+          }
+        },
+        "validation": {
+          "commands": [
+            {
+              "command": "./gradlew test",
+              "working_directory": "app/XDM.Android"
+            }
+          ]
+        }
+      },
+      "history_id": "368fd78208614bf395bba09e71150893"
+    },
+    {
+      "applied_at": "2026-07-21T13:44:41.224625Z",
+      "artifact": "/home/mike/Downloads/xdm_android_launcher_icon_overlay_fixed4.zip",
+      "artifact_name": "xdm_android_launcher_icon_overlay_fixed4.zip",
+      "type": "overlay",
+      "sha256": "12a48a7b858bc442917141883bfac9785d9099c23e71ad9cae056fd10ae1cae9",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "feat(android): add launcher icon monochrome layer",
+      "commit_hash": "",
+      "file_count": 11,
+      "change_counts": {
+        "add": 6,
+        "modify": 5
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Launcher Icon and Optional Aria2 Alignment Gate Fixed 4",
+        "description": "Adds vector/adaptive Android launcher icons with a monochrome themed-icon layer, fixes the launcher icon contract string escaping, avoids legacy PNG lint noise, and keeps optional aria2 development builds from failing Android Lint while preserving strict 16 KB alignment checks for aria2-required distribution builds.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "3a9e76867f41ae54bc8652d505dffcee9ac63a14825e3c474fb62acfaaec169f",
+              "size": 2541,
+              "source_sha256": "d2bf01dcc37b077c79efcb6e022a70efb1a28fd66783fe5137246215e6ddbec6"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/values/colors.xml",
+              "action": "add",
+              "sha256": "3004c8892d5d2017497c33ef48faa3723a09ae0d000f4d0c1256a1a08cc62739",
+              "size": 121
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/drawable/ic_launcher_foreground.xml",
+              "action": "add",
+              "sha256": "ca5addf5e53e1333de7de399e9097efc05771f7abe8ac5e9a006234ef1111e48",
+              "size": 832
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/drawable/ic_launcher_monochrome.xml",
+              "action": "add",
+              "sha256": "be126df90f172a3a425e4f8a864f9d449bd597f611ad182af98d4269f6dcd69d",
+              "size": 836
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi/ic_launcher.xml",
+              "action": "add",
+              "sha256": "bbaf996b7b1356da55819d20c1920c34e20b1288fe7cec441aefeda5ea53d24a",
+              "size": 341
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml",
+              "action": "add",
+              "sha256": "bbaf996b7b1356da55819d20c1920c34e20b1288fe7cec441aefeda5ea53d24a",
+              "size": 341
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "sha256": "5eeb0db6200a4198c33b8a1f12a7690476de5f4ff15c6f4bf1e999a19812910a",
+              "size": 4952,
+              "source_sha256": "f0421b29763a093e4ce5625621463a630fa340d9f5a29729897a008f2e281a35"
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/build.gradle.kts",
+              "action": "modify",
+              "sha256": "d5d30d0214c2c9693163013e32c4e40fc1e553b6d5116e3caedf1f7c0a40da82",
+              "size": 2198,
+              "source_sha256": "a6420eccad2fdd83ce6d59a3aa90113855bc2dea47e9fbe8900e336e9c03dd8f"
+            },
+            {
+              "path": "app/XDM.Android/tools/verify-aria2-runtime.py",
+              "action": "modify",
+              "sha256": "6eba7d93ecd51519f6a5c8f99412fd84b4a3b172c7b3faf31b3923e060ba2c18",
+              "size": 6884,
+              "source_sha256": "cb926ae1781ec310a865524a3ee11de952cb8f4b1f319bff7d60abecd6d971ec"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/ARIA2_RUNTIME_ALIGNMENT.md",
+              "action": "add",
+              "sha256": "bae40df8e72590bfdb945186c45365f4904a4d546339d66ce71df26b43f80f7c",
+              "size": 1048
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "fad782159a4cea9809388b05781cb6d8c98b3a825eb62551f6f3085b0a7066ee",
+              "size": 28630,
+              "source_sha256": "71e68cb31e235421bfb5d4d8fd5b33632f790d598aa94eac2653e64084ffa624"
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "feat(android): add launcher icon monochrome layer"
+          }
+        },
+        "validation": {
+          "commands": [
+            {
+              "command": "./gradlew test",
+              "working_directory": "app/XDM.Android"
+            }
+          ]
+        }
+      },
+      "history_id": "0d396cacd65146329c4db979f7639bd5"
     }
   ]
 }

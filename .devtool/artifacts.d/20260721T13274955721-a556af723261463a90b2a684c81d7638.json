@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-07-21T13:27:49.557214Z",
+  "artifact": "/home/mike/Downloads/xdm_android_launcher_icon_overlay_fixed2.zip",
+  "artifact_name": "xdm_android_launcher_icon_overlay_fixed2.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "a556af723261463a90b2a684c81d7638"
+}

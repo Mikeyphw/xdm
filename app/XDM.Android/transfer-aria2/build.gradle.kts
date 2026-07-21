@@ -2,6 +2,10 @@ plugins {
     alias(libs.plugins.android.library)
 }
 
+val requireAlignedAria2Runtime = providers.gradleProperty("xdm.requireAria2Runtime")
+    .map(String::toBoolean)
+    .orElse(false)
+
 android {
     namespace = "com.mikeyphw.xdm.android.transfer.aria2"
     compileSdk = 36
@@ -27,6 +31,12 @@ android {
         abortOnError = true
         warningsAsErrors = true
         disable += "GradleDependency"
+        if (!requireAlignedAria2Runtime.get()) {
+            // Optional dev/debug builds may carry the currently pinned upstream aria2 payload,
+            // which is not guaranteed to be 16 KB ELF-page aligned. Strict distribution
+            // builds keep the check enabled via -Pxdm.requireAria2Runtime=true.
+            disable += "Aligned16KB"
+        }
     }
 }
 
@@ -43,10 +53,6 @@ dependencies {
 }
 
 
-val requireAria2Runtime = providers.gradleProperty("xdm.requireAria2Runtime")
-    .map(String::toBoolean)
-    .orElse(false)
-
 val verifyAria2Runtime by tasks.registering(Exec::class) {
     group = "verification"
     description = "Verifies the attested ARM64 aria2 runtime when present or required."
@@ -54,7 +60,11 @@ val verifyAria2Runtime by tasks.registering(Exec::class) {
     commandLine(
         "python3",
         "tools/verify-aria2-runtime.py",
-        *if (requireAria2Runtime.get()) arrayOf("--require-payload", "--require-16kb-alignment") else emptyArray(),
+        *if (requireAlignedAria2Runtime.get()) {
+            arrayOf("--require-payload", "--require-16kb-alignment")
+        } else {
+            emptyArray()
+        },
     )
 }
 

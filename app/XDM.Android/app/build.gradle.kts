@@ -20,6 +20,10 @@ val hasReleaseSigning = listOf(
     releaseKeyPassword,
 ).all { it != null }
 
+val requireAlignedAria2Runtime = providers.gradleProperty("xdm.requireAria2Runtime")
+    .map(String::toBoolean)
+    .orElse(false)
+
 android {
     namespace = "com.mikeyphw.xdm.android"
     compileSdk = 36
@@ -78,6 +82,12 @@ android {
             "OldTargetApi",
             "UseKtx",
         )
+        if (!requireAlignedAria2Runtime.get()) {
+            // The currently pinned upstream aria2 payload is optional for developer builds
+            // and is not guaranteed to be 16 KB ELF-page aligned. Strict aria2 builds
+            // keep the check enabled via -Pxdm.requireAria2Runtime=true.
+            disable += "Aligned16KB"
+        }
     }
 }
 

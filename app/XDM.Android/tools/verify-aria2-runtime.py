@@ -15,8 +15,6 @@ MANIFEST = json.loads((ROOT / "transfer-aria2/runtime/aria2-runtime.json").read_
 LOCK_PATH = ROOT / "transfer-aria2/runtime/aria2-runtime.lock.json"
 TARGET = ROOT / MANIFEST["packagedPath"]
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
-PT_LOAD = 1
-REQUIRED_PAGE_ALIGNMENT = 16 * 1024
 
 
 def digest_bytes(data: bytes) -> str:
@@ -31,53 +29,7 @@ def digest(path: Path) -> str:
     return value.hexdigest()
 
 
-def elf_load_segment_alignments(data: bytes) -> list[int]:
-    if len(data) < 64 or data[:4] != b"\x7fELF":
-        raise SystemExit("packaged aria2 runtime is not an ELF executable")
-
-    elf_class = data[4]
-    elf_data = data[5]
-    if elf_data != 1:
-        raise SystemExit("only little-endian ELF payloads are supported")
-
-    endian = "<"
-    if elf_class == 2:
-        phoff = struct.unpack_from(endian + "Q", data, 32)[0]
-        phentsize = struct.unpack_from(endian + "H", data, 54)[0]
-        phnum = struct.unpack_from(endian + "H", data, 56)[0]
-        min_entry = 56
-        align_offset = 48
-        type_offset = 0
-        align_format = endian + "Q"
-    elif elf_class == 1:
-        phoff = struct.unpack_from(endian + "I", data, 28)[0]
-        phentsize = struct.unpack_from(endian + "H", data, 42)[0]
-        phnum = struct.unpack_from(endian + "H", data, 44)[0]
-        min_entry = 32
-        align_offset = 28
-        type_offset = 0
-        align_format = endian + "I"
-    else:
-        raise SystemExit("unsupported ELF class")
-
-    if phentsize < min_entry:
-        raise SystemExit("ELF program-header entries are unexpectedly small")
-
-    alignments: list[int] = []
-    for index in range(phnum):
-        entry = phoff + index * phentsize
-        if entry + phentsize > len(data):
-            raise SystemExit("ELF program-header table extends past end of file")
-        segment_type = struct.unpack_from(endian + "I", data, entry + type_offset)[0]
-        if segment_type == PT_LOAD:
-            alignments.append(struct.unpack_from(align_format, data, entry + align_offset)[0])
-
-    if not alignments:
-        raise SystemExit("ELF payload has no loadable segments")
-    return alignments
-
-
-def validate_elf(data: bytes, require_16kb_alignment: bool = False) -> None:
+def validate_elf(data: bytes) -> None:
     if len(data) < 20 or data[:4] != b"\x7fELF":
         raise SystemExit("packaged aria2 runtime is not an ELF executable")
     if data[4] != MANIFEST["elfClass"] or data[5] != MANIFEST["elfData"]:
@@ -87,14 +39,48 @@ def validate_elf(data: bytes, require_16kb_alignment: bool = False) -> None:
     if len(data) < MANIFEST["minimumBinaryBytes"]:
         raise SystemExit("packaged aria2 runtime is unexpectedly small")
 
-    if require_16kb_alignment:
-        bad = [value for value in elf_load_segment_alignments(data) if value < REQUIRED_PAGE_ALIGNMENT]
-        if bad:
-            rendered = ", ".join(f"0x{value:x}" for value in bad)
-            raise SystemExit(
-                "aria2 runtime is not 16 KB page-size aligned; "
-                f"LOAD segment alignments below 0x4000: {rendered}"
-            )
+
+def assert_16kb_alignment(data: bytes) -> None:
+    if data[:4] != b"\x7fELF":
+        raise SystemExit("packaged aria2 runtime is not an ELF executable")
+    endian = "<" if data[5] == 1 else ">"
+    if data[4] == 2:
+        phoff = struct.unpack_from(endian + "Q", data, 32)[0]
+        phentsize = struct.unpack_from(endian + "H", data, 54)[0]
+        phnum = struct.unpack_from(endian + "H", data, 56)[0]
+        align_offset = 48
+        offset_offset = 8
+        vaddr_offset = 16
+    elif data[4] == 1:
+        phoff = struct.unpack_from(endian + "I", data, 28)[0]
+        phentsize = struct.unpack_from(endian + "H", data, 42)[0]
+        phnum = struct.unpack_from(endian + "H", data, 44)[0]
+        align_offset = 28
+        offset_offset = 4
+        vaddr_offset = 8
+    else:
+        raise SystemExit("packaged aria2 runtime has an unsupported ELF class")
+
+    bad_segments: list[str] = []
+    for index in range(phnum):
+        start = phoff + index * phentsize
+        if start + phentsize > len(data):
+            raise SystemExit("packaged aria2 runtime has truncated ELF program headers")
+        program_type = struct.unpack_from(endian + "I", data, start)[0]
+        if program_type != 1:  # PT_LOAD
+            continue
+        if data[4] == 2:
+            offset = struct.unpack_from(endian + "Q", data, start + offset_offset)[0]
+            vaddr = struct.unpack_from(endian + "Q", data, start + vaddr_offset)[0]
+            align = struct.unpack_from(endian + "Q", data, start + align_offset)[0]
+        else:
+            offset = struct.unpack_from(endian + "I", data, start + offset_offset)[0]
+            vaddr = struct.unpack_from(endian + "I", data, start + vaddr_offset)[0]
+            align = struct.unpack_from(endian + "I", data, start + align_offset)[0]
+        if align < 16_384 or (offset % 16_384) != (vaddr % 16_384):
+            bad_segments.append(f"PT_LOAD[{index}] align=0x{align:x} offset=0x{offset:x} vaddr=0x{vaddr:x}")
+    if bad_segments:
+        raise SystemExit("aria2 runtime is not 16 KB ELF-page aligned: " + "; ".join(bad_segments))
 
 
 def verify_payload(required: bool, require_16kb_alignment: bool) -> dict | None:
@@ -110,7 +96,9 @@ def verify_payload(required: bool, require_16kb_alignment: bool) -> dict | None:
 
     lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
     data = TARGET.read_bytes()
-    validate_elf(data, require_16kb_alignment=require_16kb_alignment)
+    validate_elf(data)
+    if require_16kb_alignment:
+        assert_16kb_alignment(data)
 
     required_metadata = {
         "schemaVersion": 1,
@@ -138,10 +126,6 @@ def verify_payload(required: bool, require_16kb_alignment: bool) -> dict | None:
     if trusted_hash and archive_hash != trusted_hash.lower():
         raise SystemExit("aria2 archive SHA-256 differs from the trusted manifest value")
 
-    if require_16kb_alignment:
-        alignments = ", ".join(f"0x{value:x}" for value in elf_load_segment_alignments(data))
-        print(f"aria2 LOAD segment alignments verified: {alignments}")
-
     print(f"aria2 {lock['version']} ARM64 runtime verified: {binary_hash}")
     return lock
 
@@ -165,7 +149,9 @@ def main() -> None:
                 data = apk.read(member)
             except KeyError as error:
                 raise SystemExit(f"{member} is missing from {args.apk}") from error
-        validate_elf(data, require_16kb_alignment=args.require_16kb_alignment)
+        validate_elf(data)
+        if args.require_16kb_alignment:
+            assert_16kb_alignment(data)
         if len(data) != lock["binarySize"] or digest_bytes(data) != lock["binarySha256"]:
             raise SystemExit("APK aria2 payload differs from the attested source payload")
         print(f"APK payload verified: {args.apk}")

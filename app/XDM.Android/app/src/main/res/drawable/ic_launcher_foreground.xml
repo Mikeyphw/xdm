@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- XDM desktop launcher mark adapted from app/XDM/xdm-logo.svg. -->
+    <path
+        android:fillColor="#4F8CFF"
+        android:pathData="M224,112C224,94 238,80 256,80C274,80 288,94 288,112V250L336,202C348,190 368,190 380,202C392,214 392,234 380,246L279,347C266,360 246,360 233,347L132,246C120,234 120,214 132,202C144,190 164,190 176,202L224,250Z" />
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M112,352C112,334 126,320 144,320H190L226,356C243,373 269,373 286,356L322,320H368C386,320 400,334 400,352V384C400,410 378,432 352,432H160C134,432 112,410 112,384Z" />
+</vector>

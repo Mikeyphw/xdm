@@ -323,6 +323,36 @@ class ArchitectureContractTest {
         assertFalse("Supported non-media links must not be rejected as missing media", viewModel.contains("No supported media URL detected"))
     }
 
+
+    @Test
+    fun launcherIconAndAria2AlignmentContractsArePresent() {
+        val root = androidRoot()
+        val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
+        val appBuild = File(root, "app/build.gradle.kts").readText()
+        val aria2Build = File(root, "transfer-aria2/build.gradle.kts").readText()
+        val verifier = File(root, "tools/verify-aria2-runtime.py").readText()
+        val alignmentDoc = File(root, "docs/architecture/ARIA2_RUNTIME_ALIGNMENT.md").readText()
+        val resRoot = File(root, "app/src/main/res")
+        val launcherPngs = resRoot.walkTopDown()
+            .filter { it.isFile && it.name.startsWith("ic_launcher") && it.extension == "png" }
+            .toList()
+
+        assertTrue("Manifest must wire launcher icon", manifest.contains("android:icon=\"@mipmap/ic_launcher\""))
+        assertTrue("Manifest must wire round launcher icon", manifest.contains("android:roundIcon=\"@mipmap/ic_launcher_round\""))
+        assertTrue("Adaptive launcher icon must be present", File(root, "app/src/main/res/mipmap-anydpi/ic_launcher.xml").isFile)
+        assertTrue("Adaptive round launcher icon must be present", File(root, "app/src/main/res/mipmap-anydpi/ic_launcher_round.xml").isFile)
+        assertTrue("Launcher foreground vector must be present", File(root, "app/src/main/res/drawable/ic_launcher_foreground.xml").isFile)
+        assertTrue("Launcher monochrome vector must be present", File(root, "app/src/main/res/drawable/ic_launcher_monochrome.xml").isFile)
+        assertTrue("Adaptive launcher icon must provide themed-icon monochrome layer", File(root, "app/src/main/res/mipmap-anydpi/ic_launcher.xml").readText().contains("<monochrome android:drawable=\"@drawable/ic_launcher_monochrome"))
+        assertTrue("Adaptive round launcher icon must provide themed-icon monochrome layer", File(root, "app/src/main/res/mipmap-anydpi/ic_launcher_round.xml").readText().contains("<monochrome android:drawable=\"@drawable/ic_launcher_monochrome"))
+        assertTrue("Launcher icons should stay vector/adaptive because minSdk is 26", launcherPngs.isEmpty())
+        assertTrue("Default app lint must ignore optional upstream aria2 16 KB alignment", appBuild.contains("disable += \"Aligned16KB\""))
+        assertTrue("Aria2 module lint must ignore optional upstream aria2 16 KB alignment", aria2Build.contains("disable += \"Aligned16KB\""))
+        assertTrue("Strict aria2 builds must require payload and 16 KB alignment", aria2Build.contains("--require-16kb-alignment"))
+        assertTrue("Verifier must implement the 16 KB alignment gate", verifier.contains("assert_16kb_alignment") && verifier.contains("PT_LOAD"))
+        assertTrue("Alignment documentation must explain strict builds", alignmentDoc.contains("-Pxdm.requireAria2Runtime=true"))
+    }
+
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }
 }
