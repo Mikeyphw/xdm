@@ -9,9 +9,5 @@ object BrowserHandoffContract {
 }
 
 object SharedLinkParser {
-    private val urlPattern = Regex("""https?://[^\s<>()\[\]{}\"']+""", RegexOption.IGNORE_CASE)
-    fun parse(text: String): List<String> = urlPattern.findAll(text)
-        .mapNotNull { BrowserHandoffPolicy.normalizedUrl(it.value) }
-        .distinct()
-        .toList()
+    fun parse(text: String): List<String> = BrowserHandoffPolicy.urlsInText(text)
 }

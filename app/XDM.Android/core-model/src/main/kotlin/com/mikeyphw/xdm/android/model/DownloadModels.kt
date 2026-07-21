@@ -285,10 +285,62 @@ data class Download(
     val backendSelectionReason: BackendSelectionReason = BackendSelectionReason.DefaultNative,
     val backendSelectionExplanation: String = "",
     val allowBackendFallback: Boolean = true,
+    val archived: Boolean = false,
 ) {
     val progressFraction: Float
         get() = totalBytes?.takeIf { it > 0 }?.let { (bytesReceived.toDouble() / it).coerceIn(0.0, 1.0).toFloat() } ?: 0f
 }
+
+data class DownloadTag(
+    val id: String,
+    val name: String,
+    val colorArgb: Long,
+)
+
+data class DownloadTagAssignment(
+    val downloadId: String,
+    val tagId: String,
+)
+
+enum class ArchiveState { Visible, Archived }
+enum class DuplicateUrlAction { Ask, OpenExisting, Skip, AddAgain }
+enum class DestinationRuleMatch { Host, Extension, MimeType, Fallback }
+
+data class SavedSearch(
+    val id: String,
+    val name: String,
+    val query: String,
+    val state: DownloadState? = null,
+    val includeArchived: Boolean = false,
+    val createdAtEpochMs: Long,
+)
+
+data class DuplicateUrlRule(
+    val id: String,
+    val hostPattern: String,
+    val action: DuplicateUrlAction,
+    val enabled: Boolean = true,
+)
+
+data class DestinationRule(
+    val id: String,
+    val name: String,
+    val match: DestinationRuleMatch,
+    val pattern: String,
+    val destinationUri: String,
+    val enabled: Boolean = true,
+    val priority: Int = 0,
+)
+
+data class ClipboardInboxItem(
+    val id: String,
+    val url: String,
+    val title: String?,
+    val sourceTextHash: String,
+    val status: String,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+)
 
 data class QueueDefinition(
     val id: String,

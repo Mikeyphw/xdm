@@ -282,4 +282,59 @@ object Migrations {
         }
     }
 
+    val Migration13To14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE downloads ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_archived ON downloads(archived)")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS saved_searches (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    query TEXT NOT NULL,
+                    state TEXT,
+                    includeArchived INTEGER NOT NULL DEFAULT 0,
+                    createdAtEpochMs INTEGER NOT NULL
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_saved_searches_name ON saved_searches(name)")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS duplicate_url_rules (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    hostPattern TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    enabled INTEGER NOT NULL DEFAULT 1
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_duplicate_url_rules_hostPattern ON duplicate_url_rules(hostPattern)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_duplicate_url_rules_enabled ON duplicate_url_rules(enabled)")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS destination_rules (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    match TEXT NOT NULL,
+                    pattern TEXT NOT NULL,
+                    destinationUri TEXT NOT NULL,
+                    enabled INTEGER NOT NULL DEFAULT 1,
+                    priority INTEGER NOT NULL DEFAULT 0
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_destination_rules_enabled ON destination_rules(enabled)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_destination_rules_priority ON destination_rules(priority)")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS clipboard_inbox (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    url TEXT NOT NULL,
+                    title TEXT,
+                    sourceTextHash TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    createdAtEpochMs INTEGER NOT NULL,
+                    updatedAtEpochMs INTEGER NOT NULL
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_clipboard_inbox_url ON clipboard_inbox(url)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_clipboard_inbox_status ON clipboard_inbox(status)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_clipboard_inbox_updatedAtEpochMs ON clipboard_inbox(updatedAtEpochMs)")
+        }
+    }
+
 }

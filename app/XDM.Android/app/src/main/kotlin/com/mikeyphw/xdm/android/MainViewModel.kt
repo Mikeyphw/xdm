@@ -11,7 +11,12 @@ import com.mikeyphw.xdm.android.model.AutomationCommandRecord
 import com.mikeyphw.xdm.android.model.AutomationCommandStatus
 import com.mikeyphw.xdm.android.model.AutomationCommandSource
 import com.mikeyphw.xdm.android.model.AutomationRejectionReason
+import com.mikeyphw.xdm.android.model.BackupRestorePolicy
+import com.mikeyphw.xdm.android.model.BackupRestoreReport
+import com.mikeyphw.xdm.android.model.BrowserIntegrationStatus
 import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
+import com.mikeyphw.xdm.android.model.ClipboardInboxItem
+import com.mikeyphw.xdm.android.model.ClipboardInboxPolicy
 import com.mikeyphw.xdm.android.model.ConversionPreset
 import com.mikeyphw.xdm.android.model.ChecksumExpectation
 import com.mikeyphw.xdm.android.model.ChecksumResult
@@ -22,8 +27,14 @@ import com.mikeyphw.xdm.android.model.BackendCapabilities
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.BackendMigrationRecord
 import com.mikeyphw.xdm.android.model.DestinationPermission
+import com.mikeyphw.xdm.android.model.DestinationRule
+import com.mikeyphw.xdm.android.model.DestinationRuleMatch
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.DownloadTag
+import com.mikeyphw.xdm.android.model.DownloadTagAssignment
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.DuplicateUrlAction
+import com.mikeyphw.xdm.android.model.DuplicateUrlRule
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
@@ -43,6 +54,8 @@ import com.mikeyphw.xdm.android.model.DesktopParityGate
 import com.mikeyphw.xdm.android.model.DesktopParityReport
 import com.mikeyphw.xdm.android.model.HistoryManagementPolicy
 import com.mikeyphw.xdm.android.model.HistoryManagementReport
+import com.mikeyphw.xdm.android.model.OrganizationPowerTools
+import com.mikeyphw.xdm.android.model.OrganizationPowerToolsReport
 import com.mikeyphw.xdm.android.model.PostProcessingSettings
 import com.mikeyphw.xdm.android.model.ProtocolExpansionPolish
 import com.mikeyphw.xdm.android.model.ProtocolExpansionReport
@@ -51,6 +64,7 @@ import com.mikeyphw.xdm.android.model.ReleasePackagingGate
 import com.mikeyphw.xdm.android.model.ReleasePackagingReport
 import com.mikeyphw.xdm.android.model.SettingsExchangeCodec
 import com.mikeyphw.xdm.android.model.SettingsExchangeSnapshot
+import com.mikeyphw.xdm.android.model.SavedSearch
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
@@ -123,11 +137,20 @@ data class MainUiState(
     val mediaCaptures: List<MediaCaptureRecord> = emptyList(),
     val mediaVariants: List<MediaVariant> = emptyList(),
     val automationCommands: List<AutomationCommandRecord> = emptyList(),
+    val tags: List<DownloadTag> = emptyList(),
+    val tagAssignments: List<DownloadTagAssignment> = emptyList(),
+    val savedSearches: List<SavedSearch> = emptyList(),
+    val destinationRules: List<DestinationRule> = emptyList(),
+    val duplicateRules: List<DuplicateUrlRule> = emptyList(),
+    val clipboardInbox: List<ClipboardInboxItem> = emptyList(),
     val proxySettings: ProxyCredentialSettings = ProxyCredentialSettings(),
     val postProcessingSettings: PostProcessingSettings = PostProcessingSettings(),
     val settingsSnapshot: SettingsExchangeSnapshot = SettingsExchangeSnapshot(),
     val settingsExportText: String = SettingsExchangeSnapshot().toPortableText(),
     val historyReport: HistoryManagementReport = HistoryManagementPolicy.summarize(emptyList()),
+    val organizationReport: OrganizationPowerToolsReport = OrganizationPowerTools.summarize(emptyList(), emptyList(), emptyList(), emptyList(), emptyList()),
+    val browserIntegrationStatus: BrowserIntegrationStatus = BrowserIntegrationStatus(true, true, true, 0, 0),
+    val backupRestoreReport: BackupRestoreReport = BackupRestorePolicy.evaluate(SettingsExchangeSnapshot().toPortableText()),
     val protocolExpansionReport: ProtocolExpansionReport = ProtocolExpansionPolish.summarize(emptyList()),
     val releasePackagingReport: ReleasePackagingReport = ReleasePackagingGate.report("0.18.0-rc01", 19, "com.mikeyphw.xdm.android"),
     val desktopParityReport: DesktopParityReport = DesktopParityGate.evaluate(true, true, true, true, true, true),
@@ -135,7 +158,7 @@ data class MainUiState(
         versionName = "0.18.0-rc01",
         versionCode = 19,
         packageId = "com.mikeyphw.xdm.android",
-        schemaVersion = 13,
+        schemaVersion = 14,
         buildType = "debug",
         releaseSafetyReady = true,
         installUpdateReady = true,
@@ -149,7 +172,7 @@ data class MainUiState(
     ),
     val releaseSecurityReport: ReleaseSecurityReport = ReleaseSecurityGate.evaluate(
         versionName = "0.17.0-rc01",
-        schemaVersion = 13,
+        schemaVersion = 14,
         buildType = "debug",
         debuggable = true,
         privacySafeDiagnostics = true,
@@ -159,7 +182,7 @@ data class MainUiState(
         versionName = "0.18.0-rc01",
         versionCode = 19,
         packageId = "com.mikeyphw.xdm.android",
-        schemaVersion = 13,
+        schemaVersion = 14,
         buildType = "debug",
         releaseSafetyComplete = true,
         recoverySurfaceReady = true,
@@ -204,6 +227,12 @@ class MainViewModel(
         val mediaCaptures: List<MediaCaptureRecord>,
         val mediaVariants: List<MediaVariant>,
         val automationCommands: List<AutomationCommandRecord>,
+        val tags: List<DownloadTag>,
+        val tagAssignments: List<DownloadTagAssignment>,
+        val savedSearches: List<SavedSearch>,
+        val destinationRules: List<DestinationRule>,
+        val duplicateRules: List<DuplicateUrlRule>,
+        val clipboardInbox: List<ClipboardInboxItem>,
     )
 
     private data class RepositoryBaseSnapshot(
@@ -228,7 +257,60 @@ class MainViewModel(
 
     private val mediaAutomationSnapshot = combine(mediaSnapshot, repository.automationCommands) { media, automation -> media to automation }
 
-    private val repositorySnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations, verificationSnapshot, repository.finalizationJournals, mediaAutomationSnapshot) { base, migrations, verification, finalization, mediaAutomation ->
+    private data class OrganizationSnapshot(
+        val tags: List<DownloadTag>,
+        val tagAssignments: List<DownloadTagAssignment>,
+        val savedSearches: List<SavedSearch>,
+        val destinationRules: List<DestinationRule>,
+        val duplicateRules: List<DuplicateUrlRule>,
+        val clipboardInbox: List<ClipboardInboxItem>,
+    )
+
+    private data class RuleSnapshot(
+        val destinationRules: List<DestinationRule>,
+        val duplicateRules: List<DuplicateUrlRule>,
+        val clipboardInbox: List<ClipboardInboxItem>,
+    )
+
+    private val organizationBaseSnapshot = combine(repository.tags, repository.tagAssignments, repository.savedSearches) { tags, assignments, searches ->
+        Triple(tags, assignments, searches)
+    }
+
+    private val ruleSnapshot = combine(repository.destinationRules, repository.duplicateRules, repository.clipboardInbox) { destinations, duplicates, clipboard ->
+        RuleSnapshot(destinations, duplicates, clipboard)
+    }
+
+    private val organizationSnapshot = combine(organizationBaseSnapshot, ruleSnapshot) { base, rules ->
+        OrganizationSnapshot(base.first, base.second, base.third, rules.destinationRules, rules.duplicateRules, rules.clipboardInbox)
+    }
+
+    private data class RepositoryRuntimeSnapshot(
+        val base: RepositoryBaseSnapshot,
+        val migrations: List<BackendMigrationRecord>,
+        val verification: Pair<List<ChecksumResult>, List<VerificationRecord>>,
+    )
+
+    private val repositoryRuntimeSnapshot = combine(repositoryBaseSnapshot, repository.backendMigrations, verificationSnapshot) { base, migrations, verification ->
+        RepositoryRuntimeSnapshot(base, migrations, verification)
+    }
+
+    private data class RepositoryMediaSnapshot(
+        val finalization: List<FinalizationJournal>,
+        val mediaAutomation: Pair<Pair<List<MediaCaptureRecord>, List<MediaVariant>>, List<AutomationCommandRecord>>,
+        val organization: OrganizationSnapshot,
+    )
+
+    private val repositoryMediaSnapshot = combine(repository.finalizationJournals, mediaAutomationSnapshot, organizationSnapshot) { finalization, mediaAutomation, organization ->
+        RepositoryMediaSnapshot(finalization, mediaAutomation, organization)
+    }
+
+    private val repositorySnapshot = combine(repositoryRuntimeSnapshot, repositoryMediaSnapshot) { runtime, extra ->
+        val base = runtime.base
+        val migrations = runtime.migrations
+        val verification = runtime.verification
+        val finalization = extra.finalization
+        val mediaAutomation = extra.mediaAutomation
+        val organization = extra.organization
         val media = mediaAutomation.first
         val automation = mediaAutomation.second
         RepositorySnapshot(
@@ -244,6 +326,12 @@ class MainViewModel(
             media.first,
             media.second,
             automation,
+            organization.tags,
+            organization.tagAssignments,
+            organization.savedSearches,
+            organization.destinationRules,
+            organization.duplicateRules,
+            organization.clipboardInbox,
         )
     }
 
@@ -315,7 +403,11 @@ class MainViewModel(
             conflictPolicy = prefs.conflictPolicy,
             proxy = prefs.proxySettings,
             postProcessing = prefs.postProcessingSettings,
+            savedSearches = snapshot.savedSearches,
+            destinationRules = snapshot.destinationRules,
+            duplicateRules = snapshot.duplicateRules,
         )
+        val settingsExportText = settingsSnapshot.toPortableText()
         MainUiState(
             route = override ?: prefs.lastRoute,
             compactDensity = prefs.compactDensity,
@@ -341,11 +433,26 @@ class MainViewModel(
             mediaCaptures = snapshot.mediaCaptures,
             mediaVariants = snapshot.mediaVariants,
             automationCommands = snapshot.automationCommands,
+            tags = snapshot.tags,
+            tagAssignments = snapshot.tagAssignments,
+            savedSearches = snapshot.savedSearches,
+            destinationRules = snapshot.destinationRules,
+            duplicateRules = snapshot.duplicateRules,
+            clipboardInbox = snapshot.clipboardInbox,
             proxySettings = prefs.proxySettings,
             postProcessingSettings = prefs.postProcessingSettings,
             settingsSnapshot = settingsSnapshot,
-            settingsExportText = settingsSnapshot.toPortableText(),
+            settingsExportText = settingsExportText,
             historyReport = HistoryManagementPolicy.summarize(snapshot.downloads),
+            organizationReport = OrganizationPowerTools.summarize(snapshot.tags, snapshot.savedSearches, snapshot.destinationRules, snapshot.duplicateRules, snapshot.downloads),
+            browserIntegrationStatus = BrowserIntegrationStatus(
+                shareHandoff = true,
+                viewHandoff = true,
+                clipboardInbox = true,
+                recentOrigins = snapshot.automationCommands.mapNotNull { it.originHost }.distinct().size,
+                rejectedHandoffs = snapshot.automationCommands.count { it.status == AutomationCommandStatus.Rejected },
+            ),
+            backupRestoreReport = BackupRestorePolicy.evaluate(settingsExportText),
             protocolExpansionReport = ProtocolExpansionPolish.summarize(runtime.capabilities),
             releasePackagingReport = ReleasePackagingGate.report(
                 versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
@@ -362,7 +469,7 @@ class MainViewModel(
             ),
             releaseSecurityReport = ReleaseSecurityGate.evaluate(
                 versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
-                schemaVersion = 13,
+                schemaVersion = 14,
                 buildType = BuildConfig.BUILD_TYPE,
                 debuggable = BuildConfig.DEBUG,
                 privacySafeDiagnostics = true,
@@ -372,7 +479,7 @@ class MainViewModel(
                 versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
                 versionCode = BuildConfig.VERSION_CODE,
                 packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".beta"),
-                schemaVersion = 13,
+                schemaVersion = 14,
                 buildType = BuildConfig.BUILD_TYPE,
                 releaseSafetyComplete = true,
                 recoverySurfaceReady = snapshot.finalizationJournals.none { it.needsRecovery } || snapshot.recovery.isNotEmpty() || snapshot.finalizationJournals.isEmpty(),
@@ -385,7 +492,7 @@ class MainViewModel(
                 versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
                 versionCode = BuildConfig.VERSION_CODE,
                 packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".beta"),
-                schemaVersion = 13,
+                schemaVersion = 14,
                 buildType = BuildConfig.BUILD_TYPE,
                 releaseSafetyReady = true,
                 installUpdateReady = true,
@@ -645,7 +752,104 @@ class MainViewModel(
 
     fun importSettingsSnapshot(text: String) {
         val snapshot = SettingsExchangeCodec.decode(text) ?: return
-        viewModelScope.launch { preferences.importSnapshot(snapshot) }
+        viewModelScope.launch(Dispatchers.IO) {
+            preferences.importSnapshot(snapshot)
+            snapshot.savedSearches.forEach { repository.saveSavedSearch(it.copy(createdAtEpochMs = if (it.createdAtEpochMs == 0L) System.currentTimeMillis() else it.createdAtEpochMs)) }
+            snapshot.destinationRules.forEach { repository.saveDestinationRule(it) }
+            snapshot.duplicateRules.forEach { repository.saveDuplicateRule(it) }
+        }
+    }
+
+    fun createTag(name: String) {
+        val trimmed = name.trim().take(32)
+        if (trimmed.isBlank()) return
+        val tag = DownloadTag("tag-${UUID.nameUUIDFromBytes(trimmed.lowercase().toByteArray())}", trimmed, 0xff4f7cff)
+        viewModelScope.launch(Dispatchers.IO) { repository.saveTag(tag) }
+    }
+
+    fun assignTag(download: Download, tag: DownloadTag) {
+        viewModelScope.launch(Dispatchers.IO) { repository.assignTag(download.id, tag.id) }
+    }
+
+    fun saveSearch(name: String, query: String, state: DownloadState?, includeArchived: Boolean) {
+        val trimmed = name.trim().take(48)
+        if (trimmed.isBlank()) return
+        val search = SavedSearch(
+            id = "search-${UUID.randomUUID()}",
+            name = trimmed,
+            query = query.trim().take(160),
+            state = state,
+            includeArchived = includeArchived,
+            createdAtEpochMs = System.currentTimeMillis(),
+        )
+        viewModelScope.launch(Dispatchers.IO) { repository.saveSavedSearch(search) }
+    }
+
+    fun deleteSavedSearch(search: SavedSearch) {
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteSavedSearch(search.id) }
+    }
+
+    fun archiveDownloads(downloads: List<Download>, archived: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) { repository.setArchived(downloads.map { it.id }, archived) }
+    }
+
+    fun bulkPause(downloads: List<Download>) {
+        val ids = downloads.filter { it.state in setOf(DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading) }.map { it.id }.toSet()
+        if (ids.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            ids.forEach { id -> repository.findDownload(id)?.let { repository.save(it.copy(state = DownloadState.Paused, updatedAtEpochMs = System.currentTimeMillis())) } }
+        }
+    }
+
+    fun bulkResume(downloads: List<Download>) {
+        val candidates = downloads.filter { it.state in setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower) }
+        if (candidates.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            candidates.forEach { executionStarter.start(it.id, it.totalBytes, userVisible = true) }
+        }
+    }
+
+    fun saveDestinationRule(name: String, match: DestinationRuleMatch, pattern: String, destinationUri: String) {
+        val trimmed = name.trim().take(48)
+        val matchText = pattern.trim().take(96)
+        if (trimmed.isBlank() || matchText.isBlank() || destinationUri.isBlank()) return
+        val priority = uiState.value.destinationRules.size + 1
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.saveDestinationRule(DestinationRule("dest-${UUID.randomUUID()}", trimmed, match, matchText, destinationUri, true, priority))
+        }
+    }
+
+    fun saveDuplicateRule(hostPattern: String, action: DuplicateUrlAction) {
+        val host = hostPattern.trim().lowercase().take(96)
+        if (host.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.saveDuplicateRule(DuplicateUrlRule("dup-${UUID.randomUUID()}", host, action, true))
+        }
+    }
+
+    fun scanClipboardText(text: String) {
+        val items = ClipboardInboxPolicy.itemsFromText(text, uiState.value.clipboardInbox, System.currentTimeMillis())
+        if (items.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) { repository.saveClipboardItems(items) }
+    }
+
+    fun acceptClipboardItem(item: ClipboardInboxItem) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.saveClipboardItem(item.copy(status = "Accepted", updatedAtEpochMs = System.currentTimeMillis()))
+            processAutomationCommand(
+                AutomationCommandDraft(
+                    source = AutomationCommandSource.DeepLink,
+                    action = AutomationCommandAction.CaptureMedia,
+                    url = item.url,
+                    pageTitle = item.title,
+                    explicitIdempotencyKey = item.id,
+                ),
+            )
+        }
+    }
+
+    fun dismissClipboardItem(item: ClipboardInboxItem) {
+        viewModelScope.launch(Dispatchers.IO) { repository.saveClipboardItem(item.copy(status = "Dismissed", updatedAtEpochMs = System.currentTimeMillis())) }
     }
 
     fun clearFinishedHistory() {
@@ -672,9 +876,15 @@ class MainViewModel(
     ) {
         if (url.isBlank() || destination.isBlank()) return
         val safeName = resolveFileName(url, fileName)
+        val duplicate = OrganizationPowerTools.duplicateFor(url, uiState.value.downloads)
+        if (duplicate != null) {
+            navigate(AppRoute.Downloads)
+            return
+        }
         val now = System.currentTimeMillis()
         val mediaCandidate = mediaCaptureService.candidateFor(url)
-        val request = previewRequest(url, safeName, backend, destination, conflictPolicy, allowFallback, isMediaRequest = mediaCandidate != null)
+        val resolvedDestination = OrganizationPowerTools.destinationFor(url, safeName, mediaCandidate?.mimeType, uiState.value.destinationRules, destination)
+        val request = previewRequest(url, safeName, backend, resolvedDestination, conflictPolicy, allowFallback, isMediaRequest = mediaCandidate != null)
         val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
         if (!recommendation.compatible) return
         val resolvedBackend = recommendation.backend
@@ -682,7 +892,7 @@ class MainViewModel(
             id = UUID.randomUUID().toString(),
             fileName = safeName,
             sourceUrl = url.trim(),
-            destinationUri = destination,
+            destinationUri = resolvedDestination,
             state = DownloadState.Queued,
             backend = resolvedBackend,
             bytesReceived = 0,

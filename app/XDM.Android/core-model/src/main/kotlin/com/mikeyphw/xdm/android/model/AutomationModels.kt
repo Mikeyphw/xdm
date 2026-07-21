@@ -60,6 +60,11 @@ object BrowserHandoffPolicy {
         return normalizeHttpUrl(cleaned)
     }
 
+    fun urlsInText(text: String): List<String> = urlPattern.findAll(text)
+        .mapNotNull { normalizedUrl(it.value) }
+        .distinct()
+        .toList()
+
     fun originHost(raw: String?): String? = normalizedUrl(raw)?.let { url ->
         runCatching { URI(url).host?.lowercase(Locale.US)?.takeIf { it.isNotBlank() } }.getOrNull()
     }

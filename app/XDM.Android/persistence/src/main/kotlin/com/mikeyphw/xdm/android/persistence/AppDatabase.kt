@@ -25,13 +25,17 @@ import androidx.room.RoomDatabase
         NotificationRecordEntity::class,
         TagEntity::class,
         DownloadTagCrossRef::class,
+        SavedSearchEntity::class,
+        DuplicateUrlRuleEntity::class,
+        DestinationRuleEntity::class,
+        ClipboardInboxEntity::class,
         DestinationPermissionEntity::class,
         Aria2SessionMappingEntity::class,
         BackendMigrationEntity::class,
         DestinationClaimEntity::class,
         OwnershipCounterEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -48,4 +52,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun finalizationDao(): FinalizationDao
     abstract fun mediaCaptureDao(): MediaCaptureDao
     abstract fun automationCommandDao(): AutomationCommandDao
+    abstract fun organizationDao(): OrganizationDao
 }

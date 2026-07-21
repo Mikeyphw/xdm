@@ -27,6 +27,57 @@ interface DownloadDao {
 
     @Query("DELETE FROM downloads WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("UPDATE downloads SET archived = :archived, updatedAtEpochMs = :updatedAtEpochMs WHERE id IN (:ids)")
+    suspend fun setArchived(ids: List<String>, archived: Boolean, updatedAtEpochMs: Long)
+}
+
+@Dao
+interface OrganizationDao {
+    @Query("SELECT * FROM tags ORDER BY name")
+    fun observeTags(): Flow<List<TagEntity>>
+
+    @Query("SELECT * FROM download_tags")
+    fun observeTagAssignments(): Flow<List<DownloadTagCrossRef>>
+
+    @Query("SELECT * FROM saved_searches ORDER BY createdAtEpochMs DESC")
+    fun observeSavedSearches(): Flow<List<SavedSearchEntity>>
+
+    @Query("SELECT * FROM destination_rules ORDER BY priority DESC, name")
+    fun observeDestinationRules(): Flow<List<DestinationRuleEntity>>
+
+    @Query("SELECT * FROM duplicate_url_rules ORDER BY hostPattern")
+    fun observeDuplicateRules(): Flow<List<DuplicateUrlRuleEntity>>
+
+    @Query("SELECT * FROM clipboard_inbox ORDER BY updatedAtEpochMs DESC")
+    fun observeClipboardInbox(): Flow<List<ClipboardInboxEntity>>
+
+    @Upsert
+    suspend fun upsertTag(entity: TagEntity)
+
+    @Upsert
+    suspend fun upsertTagAssignment(entity: DownloadTagCrossRef)
+
+    @Query("DELETE FROM download_tags WHERE downloadId = :downloadId AND tagId = :tagId")
+    suspend fun deleteTagAssignment(downloadId: String, tagId: String)
+
+    @Upsert
+    suspend fun upsertSavedSearch(entity: SavedSearchEntity)
+
+    @Query("DELETE FROM saved_searches WHERE id = :id")
+    suspend fun deleteSavedSearch(id: String)
+
+    @Upsert
+    suspend fun upsertDestinationRule(entity: DestinationRuleEntity)
+
+    @Upsert
+    suspend fun upsertDuplicateRule(entity: DuplicateUrlRuleEntity)
+
+    @Upsert
+    suspend fun upsertClipboardItems(entities: List<ClipboardInboxEntity>)
+
+    @Upsert
+    suspend fun upsertClipboardItem(entity: ClipboardInboxEntity)
 }
 
 @Dao

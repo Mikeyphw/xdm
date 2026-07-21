@@ -13,8 +13,8 @@ require('browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/Sh
 require('app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt', 'BrowserHandoffContract.ExtraRequestHeaders')
 require('app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt', 'AutomationRejectionReason')
 require('app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt', 'Browser origins')
-require('persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt', 'version = 13')
-require('persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt', 'Migration12To13')
+require('persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt', 'version = 14')
+require('persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt', 'Migration13To14')
 manifest_json = json.loads((root / 'PROJECT_MANIFEST.json').read_text(encoding='utf-8'))
 project_version = manifest_json.get('project', {}).get('version', '')
 try:
@@ -23,17 +23,17 @@ except (IndexError, ValueError):
     minor_version = -1
 if minor_version < 13:
     errors.append('PROJECT_MANIFEST project.version is older than 0.13.x')
-if manifest_json.get('database', {}).get('version') != 13:
-    errors.append('PROJECT_MANIFEST database.version is not 13')
+if manifest_json.get('database', {}).get('version') != 14:
+    errors.append('PROJECT_MANIFEST database.version is not 14')
 if 13 not in manifest_json.get('project', {}).get('implemented_phases', []):
     errors.append('PROJECT_MANIFEST is missing implemented phase 13')
 if manifest_json.get('browser_handoff_hardening', {}).get('top_level_route_added') is not False:
     errors.append('Phase 13 must not add a top-level route')
-schema = json.loads((root / 'persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/13.json').read_text(encoding='utf-8'))
+schema = json.loads((root / 'persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/14.json').read_text(encoding='utf-8'))
 if 'version' in schema:
     errors.append('Room schema has unsupported top-level version key')
-if schema.get('database', {}).get('version') != 13:
-    errors.append('Room schema database.version is not 13')
+if schema.get('database', {}).get('version') != 14:
+    errors.append('Room schema database.version is not 14')
 automation = next((entity for entity in schema.get('database', {}).get('entities', []) if entity.get('tableName') == 'automation_commands'), None)
 if not automation:
     errors.append('Room schema is missing automation_commands')

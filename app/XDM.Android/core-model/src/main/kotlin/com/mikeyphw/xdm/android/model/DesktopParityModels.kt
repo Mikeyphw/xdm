@@ -39,6 +39,9 @@ data class SettingsExchangeSnapshot(
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val proxy: ProxyCredentialSettings = ProxyCredentialSettings(),
     val postProcessing: PostProcessingSettings = PostProcessingSettings(),
+    val savedSearches: List<SavedSearch> = emptyList(),
+    val destinationRules: List<DestinationRule> = emptyList(),
+    val duplicateRules: List<DuplicateUrlRule> = emptyList(),
 ) {
     fun toPortableText(): String = buildString {
         appendLine("xdm.settings.export=v1")
@@ -53,6 +56,15 @@ data class SettingsExchangeSnapshot(
         appendLine("post.enabled=${postProcessing.enabled}")
         appendLine("post.preset=${postProcessing.preset.name}")
         appendLine("post.customCommandLabel=${postProcessing.customCommandLabel.escapeSettingValue()}")
+        savedSearches.forEachIndexed { index, search ->
+            appendLine("savedSearch.$index=${listOf(search.id, search.name, search.query, search.state?.name.orEmpty(), search.includeArchived.toString()).joinToString("|") { it.escapeSettingValue() }}")
+        }
+        destinationRules.forEachIndexed { index, rule ->
+            appendLine("destinationRule.$index=${listOf(rule.id, rule.name, rule.match.name, rule.pattern, rule.destinationUri, rule.enabled.toString(), rule.priority.toString()).joinToString("|") { it.escapeSettingValue() }}")
+        }
+        duplicateRules.forEachIndexed { index, rule ->
+            appendLine("duplicateRule.$index=${listOf(rule.id, rule.hostPattern, rule.action.name, rule.enabled.toString()).joinToString("|") { it.escapeSettingValue() }}")
+        }
     }.trimEnd()
 }
 
@@ -82,6 +94,44 @@ object SettingsExchangeCodec {
                 preset = values["post.preset"]?.let { runCatching { ConversionPreset.valueOf(it) }.getOrNull() } ?: ConversionPreset.None,
                 customCommandLabel = values["post.customCommandLabel"].orEmpty(),
             ),
+            savedSearches = values.entries
+                .filter { it.key.startsWith("savedSearch.") }
+                .mapNotNull { (_, value) ->
+                    val parts = value.split('|')
+                    if (parts.size < 5) null else SavedSearch(
+                        id = parts[0].ifBlank { "search-${parts[1].hashCode()}" },
+                        name = parts[1],
+                        query = parts[2],
+                        state = parts[3].takeIf(String::isNotBlank)?.let { runCatching { DownloadState.valueOf(it) }.getOrNull() },
+                        includeArchived = parts[4].toBooleanStrictOrNull() ?: false,
+                        createdAtEpochMs = 0,
+                    )
+                },
+            destinationRules = values.entries
+                .filter { it.key.startsWith("destinationRule.") }
+                .mapNotNull { (_, value) ->
+                    val parts = value.split('|')
+                    if (parts.size < 7) null else DestinationRule(
+                        id = parts[0].ifBlank { "destination-${parts[1].hashCode()}" },
+                        name = parts[1],
+                        match = runCatching { DestinationRuleMatch.valueOf(parts[2]) }.getOrDefault(DestinationRuleMatch.Host),
+                        pattern = parts[3],
+                        destinationUri = parts[4],
+                        enabled = parts[5].toBooleanStrictOrNull() ?: true,
+                        priority = parts[6].toIntOrNull() ?: 0,
+                    )
+                },
+            duplicateRules = values.entries
+                .filter { it.key.startsWith("duplicateRule.") }
+                .mapNotNull { (_, value) ->
+                    val parts = value.split('|')
+                    if (parts.size < 4) null else DuplicateUrlRule(
+                        id = parts[0].ifBlank { "duplicate-${parts[1].hashCode()}" },
+                        hostPattern = parts[1],
+                        action = runCatching { DuplicateUrlAction.valueOf(parts[2]) }.getOrDefault(DuplicateUrlAction.Ask),
+                        enabled = parts[3].toBooleanStrictOrNull() ?: true,
+                    )
+                },
         )
     }
 }
@@ -95,10 +145,90 @@ object HistoryManagementPolicy {
     private val removableStates = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)
     fun summarize(downloads: List<Download>) = HistoryManagementReport(downloads.size, downloads.count { it.state in activeStates }, downloads.count { it.state == DownloadState.Completed }, downloads.count { it.state == DownloadState.Failed || it.state == DownloadState.RecoveryRequired }, downloads.count { it.state == DownloadState.Cancelled }, downloads.count { it.state in removableStates })
     fun isSafeToRemoveFromHistory(download: Download): Boolean = download.state in removableStates
+    fun visible(downloads: List<Download>, includeArchived: Boolean): List<Download> =
+        downloads.filter { includeArchived || !it.archived }
     fun exportIndex(downloads: List<Download>): String = buildString {
         appendLine("XDM Android history index")
         downloads.sortedByDescending { it.updatedAtEpochMs }.forEach { download -> appendLine("${download.state.name}\t${download.backend.name}\t${download.fileName}\t${download.sourceUrl.redactQuerySecrets()}") }
     }.trimEnd()
+}
+
+data class OrganizationPowerToolsReport(
+    val tags: Int,
+    val savedSearches: Int,
+    val destinationRules: Int,
+    val duplicateRules: Int,
+    val archivedDownloads: Int,
+) {
+    val summary: String get() = "$tags tags • $savedSearches searches • $destinationRules destination rules • $duplicateRules duplicate rules • $archivedDownloads archived"
+}
+
+object OrganizationPowerTools {
+    fun summarize(tags: List<DownloadTag>, searches: List<SavedSearch>, destinations: List<DestinationRule>, duplicates: List<DuplicateUrlRule>, downloads: List<Download>) =
+        OrganizationPowerToolsReport(tags.size, searches.size, destinations.count { it.enabled }, duplicates.count { it.enabled }, downloads.count { it.archived })
+
+    fun duplicateFor(url: String, downloads: List<Download>): Download? {
+        val normalized = BrowserHandoffPolicy.normalizedUrl(url) ?: return null
+        return downloads.firstOrNull { BrowserHandoffPolicy.normalizedUrl(it.sourceUrl) == normalized }
+    }
+
+    fun destinationFor(url: String, fileName: String, mimeType: String?, rules: List<DestinationRule>, fallback: String): String {
+        val host = BrowserHandoffPolicy.originHost(url).orEmpty()
+        val extension = fileName.substringAfterLast('.', "").lowercase(Locale.US)
+        return rules.filter { it.enabled }.sortedByDescending { it.priority }.firstOrNull { rule ->
+            val pattern = rule.pattern.lowercase(Locale.US)
+            when (rule.match) {
+                DestinationRuleMatch.Host -> host.endsWith(pattern.removePrefix("*."))
+                DestinationRuleMatch.Extension -> extension == pattern.removePrefix(".")
+                DestinationRuleMatch.MimeType -> mimeType?.lowercase(Locale.US)?.startsWith(pattern.removeSuffix("*")) == true
+                DestinationRuleMatch.Fallback -> true
+            }
+        }?.destinationUri ?: fallback
+    }
+}
+
+data class BrowserIntegrationStatus(
+    val shareHandoff: Boolean,
+    val viewHandoff: Boolean,
+    val clipboardInbox: Boolean,
+    val recentOrigins: Int,
+    val rejectedHandoffs: Int,
+) {
+    val summary: String get() = "Share ${ready(shareHandoff)} • browser ${ready(viewHandoff)} • clipboard ${ready(clipboardInbox)} • $recentOrigins origins • $rejectedHandoffs rejected"
+    private fun ready(value: Boolean) = if (value) "ready" else "off"
+}
+
+object ClipboardInboxPolicy {
+    fun itemsFromText(text: String, existing: List<ClipboardInboxItem>, now: Long): List<ClipboardInboxItem> {
+        val seen = existing.map { BrowserHandoffPolicy.normalizedUrl(it.url) }.toSet()
+        return BrowserHandoffPolicy.urlsInText(text)
+            .filter { it !in seen }
+            .map { url ->
+                ClipboardInboxItem(
+                    id = "clip-" + url.hashCode().toUInt().toString(16),
+                    url = url,
+                    title = BrowserHandoffPolicy.originHost(url),
+                    sourceTextHash = text.hashCode().toUInt().toString(16),
+                    status = "New",
+                    createdAtEpochMs = now,
+                    updatedAtEpochMs = now,
+                )
+            }
+    }
+}
+
+data class BackupRestoreReport(val safe: Boolean, val itemCount: Int, val message: String) {
+    val summary: String get() = if (safe) "Backup ready: $itemCount portable items" else "Backup needs attention: $message"
+}
+
+object BackupRestorePolicy {
+    private val forbidden = listOf("cookie", "authorization", "password", "secret", "token=", "post.body")
+    fun evaluate(exportText: String): BackupRestoreReport {
+        val lower = exportText.lowercase(Locale.US)
+        val blocked = forbidden.firstOrNull { it in lower }
+        val count = exportText.lineSequence().count { it.contains('=') }
+        return if (blocked == null) BackupRestoreReport(true, count, "Safe to copy or restore") else BackupRestoreReport(false, count, "Contains blocked field $blocked")
+    }
 }
 
 data class ProtocolSupportRow(val protocol: String, val native: Boolean, val aria2: Boolean, val recommendation: String)

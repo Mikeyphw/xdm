@@ -31,8 +31,8 @@ if minor_version < 15:
     errors.append("PROJECT_MANIFEST project.version is older than 0.15.x")
 if 15 not in project.get("implemented_phases", []):
     errors.append("PROJECT_MANIFEST is missing implemented phase 15")
-if database.get("version") != 13:
-    errors.append("Phase 15 must keep database.version at 13")
+if database.get("version") != 14:
+    errors.append("Phase 15 must keep database.version at 14")
 next_phase_raw = manifest.get("next_phase", "0")
 try:
     next_phase = int(str(next_phase_raw))
@@ -50,8 +50,8 @@ for key in [
 ]:
     if ux.get(key) is not True:
         errors.append(f"ux_accessibility_polish.{key} is not true")
-if ux.get("schema_version_unchanged") != 13:
-    errors.append("ux_accessibility_polish.schema_version_unchanged is not 13")
+if ux.get("schema_version_unchanged") != 14:
+    errors.append("ux_accessibility_polish.schema_version_unchanged is not 14")
 if ux.get("top_level_route_added") is not False:
     errors.append("Phase 15 must not add a top-level route")
 
@@ -67,7 +67,6 @@ screens = require_file("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt"
 app_shell = require_file("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")
 for needle in [
     "Download overview",
-    "Phase 15 polish",
     "stateDescription",
     "contentDescription",
     "sizeIn(minWidth = 48.dp",
@@ -82,15 +81,15 @@ if "AppRoute.entries" not in app_shell:
 require_text("docs/architecture/PHASE-15-UX-ACCESSIBILITY-POLISH.md", "No Room schema bump")
 require_text("app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt", "phaseFifteenUxAccessibilityContractsArePresent")
 
-schema_path = root / "persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/13.json"
+schema_path = root / "persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/14.json"
 if not schema_path.is_file():
-    errors.append("Room schema 13.json is missing")
+    errors.append("Room schema 14.json is missing")
 else:
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     if "version" in schema:
         errors.append("Room schema has unsupported top-level version key")
-    if schema.get("database", {}).get("version") != 13:
-        errors.append("Room schema database.version is not 13")
+    if schema.get("database", {}).get("version") != 14:
+        errors.append("Room schema database.version is not 14")
 
 routes = re.findall(r'AppRoute\.([A-Za-z]+)', app_shell)
 if "Accessibility" in routes or "UX" in routes:

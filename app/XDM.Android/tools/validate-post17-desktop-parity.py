@@ -14,7 +14,7 @@ project = manifest.get("project", {})
 parity = manifest.get("desktop_parity", {})
 if project.get("version") != "0.18.0-rc01": errors.append("project.version must be 0.18.0-rc01")
 if 18 not in project.get("implemented_phases", []): errors.append("implemented_phases must include post-17 parity marker 18")
-if manifest.get("database", {}).get("version") != 13: errors.append("desktop parity must keep Room schema v13")
+if manifest.get("database", {}).get("version") != 14: errors.append("desktop parity must keep Room schema v14")
 for key in ["settings_import_export", "history_file_management", "proxy_credentials_ui", "conversion_post_processing", "protocol_expansion_polish", "release_non_debug_packaging", "no_secrets_in_settings_export"]:
     if parity.get(key) is not True: errors.append(f"desktop_parity.{key} is not true")
 if parity.get("top_level_route_added") is not False: errors.append("desktop parity must not add a top-level route")
@@ -34,7 +34,7 @@ for path, needle in [
     ("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Proxy and credentials"),
     ("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Conversion and post-processing"),
     ("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Protocol expansion"),
-    ("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Release/non-debug APK packaging"),
+    ("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Update compatibility"),
     ("tools/build-release-artifacts.sh", "assembleRelease"),
     ("tools/build-release-artifacts.sh", "sha256sum"),
     ("docs/architecture/POST-17-DESKTOP-PARITY.md", "No new top-level route"),

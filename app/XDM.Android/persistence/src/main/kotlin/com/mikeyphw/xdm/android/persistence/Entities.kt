@@ -6,7 +6,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "downloads", indices = [Index("state"), Index("queueId"), Index("updatedAtEpochMs")])
+@Entity(tableName = "downloads", indices = [Index("state"), Index("queueId"), Index("updatedAtEpochMs"), Index("archived")])
 data class DownloadEntity(
     @PrimaryKey val id: String,
     val fileName: String,
@@ -29,6 +29,7 @@ data class DownloadEntity(
     val userLabel: String?,
     @ColumnInfo(defaultValue = "'Rename'") val conflictPolicy: String,
     val mimeType: String?,
+    @ColumnInfo(defaultValue = "0") val archived: Boolean = false,
 )
 
 @Entity(tableName = "download_sources", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId")])
@@ -201,6 +202,46 @@ data class TagEntity(@PrimaryKey val id: String, val name: String, val colorArgb
 
 @Entity(tableName = "download_tags", primaryKeys = ["downloadId", "tagId"], indices = [Index("tagId")])
 data class DownloadTagCrossRef(val downloadId: String, val tagId: String)
+
+@Entity(tableName = "saved_searches", indices = [Index("name")])
+data class SavedSearchEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val query: String,
+    val state: String?,
+    @ColumnInfo(defaultValue = "0") val includeArchived: Boolean,
+    val createdAtEpochMs: Long,
+)
+
+@Entity(tableName = "duplicate_url_rules", indices = [Index("hostPattern"), Index("enabled")])
+data class DuplicateUrlRuleEntity(
+    @PrimaryKey val id: String,
+    val hostPattern: String,
+    val action: String,
+    @ColumnInfo(defaultValue = "1") val enabled: Boolean,
+)
+
+@Entity(tableName = "destination_rules", indices = [Index("enabled"), Index("priority")])
+data class DestinationRuleEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val match: String,
+    val pattern: String,
+    val destinationUri: String,
+    @ColumnInfo(defaultValue = "1") val enabled: Boolean,
+    @ColumnInfo(defaultValue = "0") val priority: Int,
+)
+
+@Entity(tableName = "clipboard_inbox", indices = [Index("url", unique = true), Index("status"), Index("updatedAtEpochMs")])
+data class ClipboardInboxEntity(
+    @PrimaryKey val id: String,
+    val url: String,
+    val title: String?,
+    val sourceTextHash: String,
+    val status: String,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+)
 
 @Entity(tableName = "destination_permissions", indices = [Index("providerType"), Index("status")])
 data class DestinationPermissionEntity(

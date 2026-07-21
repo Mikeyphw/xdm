@@ -26,7 +26,7 @@
     ]
   },
   "database": {
-    "version": 13,
+    "version": 14,
     "migrations": [
       "1_to_2",
       "2_to_3",
@@ -39,9 +39,43 @@
       "9_to_10",
       "10_to_11",
       "11_to_12",
-      "12_to_13"
+      "12_to_13",
+      "13_to_14"
     ],
-    "destination_permission_health": true
+    "destination_permission_health": true,
+    "organization_power_tools": true,
+    "clipboard_inbox": true,
+    "backup_restore_metadata": true
+  },
+  "organization_history_power_tools": {
+    "schema_version": 14,
+    "tags": true,
+    "saved_searches": true,
+    "archive_unarchive": true,
+    "duplicate_url_rules": true,
+    "destination_rules": true,
+    "visible_history_export": true,
+    "bulk_selection_actions": true,
+    "top_level_route_added": false
+  },
+  "browser_clipboard_inbox": {
+    "schema_version": 14,
+    "share_sheet_handoff": true,
+    "browser_view_handoff": true,
+    "manual_clipboard_review": true,
+    "url_normalization": true,
+    "origin_attribution": true,
+    "sensitive_header_redaction": true,
+    "top_level_route_added": false
+  },
+  "backup_restore_hardening": {
+    "schema_version": 14,
+    "portable_settings_snapshot": true,
+    "organization_rules_included": true,
+    "credentials_excluded": true,
+    "post_bodies_excluded": true,
+    "diagnostics_redacted": true,
+    "top_level_route_added": false
   },
   "execution": {
     "uidt": true,
@@ -75,7 +109,7 @@
       "compare"
     ]
   },
-  "next_phase": "automation-rule-editor-and-foreground-post-processing",
+  "next_phase": "post17-parity",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -197,12 +231,12 @@
     "privacy_safe_diagnostics": true,
     "redacted_diagnostic_summary": true,
     "release_gate_script": true,
-    "schema_version_unchanged": 13,
+    "schema_version_unchanged": 14,
     "beta_build_type_retained": true,
     "top_level_route_added": false
   },
   "ux_accessibility_polish": {
-    "schema_version_unchanged": 13,
+    "schema_version_unchanged": 14,
     "compact_phone_cards": true,
     "accessible_action_labels": true,
     "state_descriptions": true,
@@ -212,7 +246,7 @@
     "top_level_route_added": false
   },
   "release_install_readiness": {
-    "schema_version_unchanged": 13,
+    "schema_version_unchanged": 14,
     "version_code": 17,
     "version_name": "0.16.0-alpha01",
     "package_id_stable": "com.mikeyphw.xdm.android",
@@ -227,7 +261,7 @@
     "top_level_route_added": false
   },
   "final_public_release_gate": {
-    "schema_version_unchanged": 13,
+    "schema_version_unchanged": 14,
     "version_code": 18,
     "version_name": "0.17.0-rc01",
     "release_candidate": true,
@@ -236,7 +270,7 @@
     "static_validators_complete": true,
     "release_docs_complete": true,
     "package_identity_locked": "com.mikeyphw.xdm.android",
-    "room_schema_locked": 13,
+    "room_schema_locked": 14,
     "diagnostics_redacted": true,
     "install_update_ready": true,
     "aria2_payload_gate_required_for_publishable_artifacts": true,
@@ -245,7 +279,7 @@
     "top_level_route_added": false
   },
   "desktop_parity": {
-    "schema_version_unchanged": 13,
+    "schema_version_unchanged": 14,
     "version_code": 19,
     "version_name": "0.18.0-rc01",
     "settings_import_export": true,
@@ -258,7 +292,7 @@
     "top_level_route_added": false
   },
   "termux_bridge": {
-    "schema_version_unchanged": 13,
+    "schema_version_unchanged": 14,
     "run_command_permission": true,
     "package_visibility": [
       "com.termux",
@@ -289,7 +323,7 @@
     "top_level_route_added": false
   },
   "termux_aria2_cockpit": {
-    "schema_version_unchanged": 13,
+    "schema_version_unchanged": 14,
     "enabled_default": false,
     "no_chroot_support": true,
     "rpc_secret_generated_by_app": true,
@@ -313,7 +347,7 @@
     "top_level_route_added": false
   },
   "termux_media_pipeline": {
-    "schema_version_unchanged": 13,
+    "schema_version_unchanged": 14,
     "no_chroot_support": true,
     "root_required": false,
     "raw_shell_exposed": false,
@@ -333,7 +367,7 @@
     "top_level_route_added": false
   },
   "termux_optional_root": {
-    "schema_version_unchanged": 13,
+    "schema_version_unchanged": 14,
     "enabled_default": "Off",
     "no_chroot_support": true,
     "root_required": false,
@@ -351,7 +385,7 @@
     "top_level_route_added": false
   },
   "termux_post_processing_automation": {
-    "schema_version_unchanged": 13,
+    "schema_version_unchanged": 14,
     "no_chroot_support": true,
     "root_required": false,
     "raw_shell_exposed": false,

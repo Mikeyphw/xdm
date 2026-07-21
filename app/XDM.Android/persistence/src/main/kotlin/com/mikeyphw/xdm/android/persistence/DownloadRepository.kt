@@ -5,6 +5,7 @@ import com.mikeyphw.xdm.android.model.AutomationCommandRecord
 import com.mikeyphw.xdm.android.model.AutomationCommandSource
 import com.mikeyphw.xdm.android.model.AutomationCommandStatus
 import com.mikeyphw.xdm.android.model.AutomationRejectionReason
+import com.mikeyphw.xdm.android.model.ClipboardInboxItem
 import com.mikeyphw.xdm.android.model.BackendOwnership
 import com.mikeyphw.xdm.android.model.BackendMigrationRecord
 import com.mikeyphw.xdm.android.model.BackendSelectionReason
@@ -14,7 +15,13 @@ import com.mikeyphw.xdm.android.model.TrustedBlockManifest
 import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.DownloadTag
+import com.mikeyphw.xdm.android.model.DownloadTagAssignment
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.DestinationRule
+import com.mikeyphw.xdm.android.model.DestinationRuleMatch
+import com.mikeyphw.xdm.android.model.DuplicateUrlAction
+import com.mikeyphw.xdm.android.model.DuplicateUrlRule
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaSourceKind
@@ -29,6 +36,7 @@ import com.mikeyphw.xdm.android.model.DestinationType
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryRecord
 import com.mikeyphw.xdm.android.model.ScheduleRule
+import com.mikeyphw.xdm.android.model.SavedSearch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -45,6 +53,12 @@ class DownloadRepository(private val database: AppDatabase) {
     val mediaCaptures: Flow<List<MediaCaptureRecord>> = database.mediaCaptureDao().observeAll().map { rows -> rows.map(MediaCaptureEntity::toModel) }
     val mediaVariants: Flow<List<MediaVariant>> = database.mediaCaptureDao().observeVariants().map { rows -> rows.map(MediaVariantEntity::toModel) }
     val automationCommands: Flow<List<AutomationCommandRecord>> = database.automationCommandDao().observeAll().map { rows -> rows.map(AutomationCommandEntity::toModel) }
+    val tags: Flow<List<DownloadTag>> = database.organizationDao().observeTags().map { rows -> rows.map(TagEntity::toModel) }
+    val tagAssignments: Flow<List<DownloadTagAssignment>> = database.organizationDao().observeTagAssignments().map { rows -> rows.map { DownloadTagAssignment(it.downloadId, it.tagId) } }
+    val savedSearches: Flow<List<SavedSearch>> = database.organizationDao().observeSavedSearches().map { rows -> rows.map(SavedSearchEntity::toModel) }
+    val destinationRules: Flow<List<DestinationRule>> = database.organizationDao().observeDestinationRules().map { rows -> rows.map(DestinationRuleEntity::toModel) }
+    val duplicateRules: Flow<List<DuplicateUrlRule>> = database.organizationDao().observeDuplicateRules().map { rows -> rows.map(DuplicateUrlRuleEntity::toModel) }
+    val clipboardInbox: Flow<List<ClipboardInboxItem>> = database.organizationDao().observeClipboardInbox().map { rows -> rows.map(ClipboardInboxEntity::toModel) }
 
     suspend fun countDownloads(): Int = database.downloadDao().count()
     suspend fun countQueues(): Int = database.queueDao().count()
@@ -76,6 +90,18 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun saveAutomationCommand(record: AutomationCommandRecord) = database.automationCommandDao().upsert(record.toEntity())
     suspend fun findDownload(id: String): Download? = database.downloadDao().findById(id)?.toModel()
     suspend fun deleteDownload(id: String) = database.downloadDao().delete(id)
+    suspend fun setArchived(ids: List<String>, archived: Boolean) {
+        if (ids.isNotEmpty()) database.downloadDao().setArchived(ids, archived, System.currentTimeMillis())
+    }
+    suspend fun saveTag(tag: DownloadTag) = database.organizationDao().upsertTag(tag.toEntity())
+    suspend fun assignTag(downloadId: String, tagId: String) = database.organizationDao().upsertTagAssignment(DownloadTagCrossRef(downloadId, tagId))
+    suspend fun removeTag(downloadId: String, tagId: String) = database.organizationDao().deleteTagAssignment(downloadId, tagId)
+    suspend fun saveSavedSearch(search: SavedSearch) = database.organizationDao().upsertSavedSearch(search.toEntity())
+    suspend fun deleteSavedSearch(id: String) = database.organizationDao().deleteSavedSearch(id)
+    suspend fun saveDestinationRule(rule: DestinationRule) = database.organizationDao().upsertDestinationRule(rule.toEntity())
+    suspend fun saveDuplicateRule(rule: DuplicateUrlRule) = database.organizationDao().upsertDuplicateRule(rule.toEntity())
+    suspend fun saveClipboardItems(items: List<ClipboardInboxItem>) = database.organizationDao().upsertClipboardItems(items.map { it.toEntity() })
+    suspend fun saveClipboardItem(item: ClipboardInboxItem) = database.organizationDao().upsertClipboardItem(item.toEntity())
     suspend fun findDownloadsByStates(states: Set<DownloadState>): List<Download> =
         if (states.isEmpty()) emptyList() else database.downloadDao().findByStates(states.map { it.name }).map { it.toModel() }
 
@@ -172,6 +198,7 @@ private fun DownloadEntity.toModel() = Download(
     backendSelectionReason = runCatching { BackendSelectionReason.valueOf(backendSelectionReason) }.getOrDefault(BackendSelectionReason.DefaultNative),
     backendSelectionExplanation = backendSelectionExplanation,
     allowBackendFallback = allowBackendFallback,
+    archived = archived,
 )
 private fun Download.toEntity() = DownloadEntity(
     id = id,
@@ -195,6 +222,7 @@ private fun Download.toEntity() = DownloadEntity(
     userLabel = userLabel,
     conflictPolicy = conflictPolicy.name,
     mimeType = mimeType,
+    archived = archived,
 )
 private fun QueueEntity.toModel() = QueueDefinition(id, name, isEnabled, maxConcurrent, createdAtEpochMs)
 private fun QueueDefinition.toEntity() = QueueEntity(id, name, isEnabled, maxConcurrent, createdAtEpochMs)
@@ -220,6 +248,37 @@ private fun DestinationPermission.toEntity() = DestinationPermissionEntity(
     lastValidatedAtEpochMs = lastValidatedAtEpochMs,
     lastError = lastError,
 )
+
+private fun TagEntity.toModel() = DownloadTag(id, name, colorArgb)
+private fun DownloadTag.toEntity() = TagEntity(id, name, colorArgb)
+private fun SavedSearchEntity.toModel() = SavedSearch(
+    id = id,
+    name = name,
+    query = query,
+    state = state?.let { runCatching { DownloadState.valueOf(it) }.getOrNull() },
+    includeArchived = includeArchived,
+    createdAtEpochMs = createdAtEpochMs,
+)
+private fun SavedSearch.toEntity() = SavedSearchEntity(id, name, query, state?.name, includeArchived, createdAtEpochMs)
+private fun DuplicateUrlRuleEntity.toModel() = DuplicateUrlRule(
+    id = id,
+    hostPattern = hostPattern,
+    action = runCatching { DuplicateUrlAction.valueOf(action) }.getOrDefault(DuplicateUrlAction.Ask),
+    enabled = enabled,
+)
+private fun DuplicateUrlRule.toEntity() = DuplicateUrlRuleEntity(id, hostPattern, action.name, enabled)
+private fun DestinationRuleEntity.toModel() = DestinationRule(
+    id = id,
+    name = name,
+    match = runCatching { DestinationRuleMatch.valueOf(match) }.getOrDefault(DestinationRuleMatch.Host),
+    pattern = pattern,
+    destinationUri = destinationUri,
+    enabled = enabled,
+    priority = priority,
+)
+private fun DestinationRule.toEntity() = DestinationRuleEntity(id, name, match.name, pattern, destinationUri, enabled, priority)
+private fun ClipboardInboxEntity.toModel() = ClipboardInboxItem(id, url, title, sourceTextHash, status, createdAtEpochMs, updatedAtEpochMs)
+private fun ClipboardInboxItem.toEntity() = ClipboardInboxEntity(id, url, title, sourceTextHash, status, createdAtEpochMs, updatedAtEpochMs)
 
 private fun MediaCaptureEntity.toModel() = MediaCaptureRecord(
     id = id,

@@ -35,8 +35,8 @@ if 17 not in project.get("implemented_phases", []):
     errors.append("PROJECT_MANIFEST is missing implemented phase 17")
 if str(manifest.get("next_phase")).lower() not in {"complete", "post17-parity"}:
     errors.append("PROJECT_MANIFEST next_phase must be complete or post17-parity")
-if database.get("version") != 13:
-    errors.append("Phase 17 must keep database.version at 13")
+if database.get("version") != 14:
+    errors.append("Phase 17 must keep database.version at 14")
 for key in [
     "release_candidate",
     "full_validation_required",
@@ -51,8 +51,8 @@ for key in [
 ]:
     if final_gate.get(key) is not True:
         errors.append(f"final_public_release_gate.{key} is not true")
-if final_gate.get("schema_version_unchanged") != 13 or final_gate.get("room_schema_locked") != 13:
-    errors.append("final_public_release_gate must lock Room schema at 13")
+if final_gate.get("schema_version_unchanged") != 14 or final_gate.get("room_schema_locked") != 14:
+    errors.append("final_public_release_gate must lock Room schema at 14")
 if final_gate.get("package_identity_locked") != "com.mikeyphw.xdm.android":
     errors.append("final_public_release_gate.package_identity_locked is not com.mikeyphw.xdm.android")
 if final_gate.get("top_level_route_added") is not False:
@@ -79,7 +79,7 @@ require_text("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/FinalRel
 require_text("core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModelsTest.kt", "cleanSignedReleaseReportPassesFinalGate")
 require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt", "FinalPublicReleaseGate.evaluate")
 require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Final release gate")
-require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Phase 17 final gate")
+require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Release readiness")
 require_text("docs/architecture/PHASE-17-FINAL-RELEASE-GATE.md", "full devtool validation")
 require_text("tools/run-final-release-gate.sh", "validate-phase-17.py")
 require_text("app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt", "phaseSeventeenFinalReleaseGateContractsArePresent")
@@ -92,15 +92,15 @@ for task in ["lintBeta", "assembleBeta", "verify-aria2-runtime.py", "run-final-r
     if task not in workflow:
         errors.append(f"Android CI is missing {task}")
 
-schema_path = root / "persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/13.json"
+schema_path = root / "persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/14.json"
 if not schema_path.is_file():
-    errors.append("Room schema 13.json is missing")
+    errors.append("Room schema 14.json is missing")
 else:
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     if "version" in schema:
         errors.append("Room schema has unsupported top-level version key")
-    if schema.get("database", {}).get("version") != 13:
-        errors.append("Room schema database.version is not 13")
+    if schema.get("database", {}).get("version") != 14:
+        errors.append("Room schema database.version is not 14")
 
 app_shell = require_file("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")
 routes = re.findall(r'AppRoute\.([A-Za-z]+)', app_shell)

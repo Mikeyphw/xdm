@@ -31,8 +31,8 @@ if minor_version < 16:
     errors.append("PROJECT_MANIFEST project.version is older than 0.16.x")
 if 16 not in project.get("implemented_phases", []):
     errors.append("PROJECT_MANIFEST is missing implemented phase 16")
-if database.get("version") != 13:
-    errors.append("Phase 16 must keep database.version at 13")
+if database.get("version") != 14:
+    errors.append("Phase 16 must keep database.version at 14")
 next_phase = manifest.get("next_phase")
 try:
     next_phase_number = int(str(next_phase))
@@ -50,8 +50,8 @@ for key in [
 ]:
     if readiness.get(key) is not True:
         errors.append(f"release_install_readiness.{key} is not true")
-if readiness.get("schema_version_unchanged") != 13:
-    errors.append("release_install_readiness.schema_version_unchanged is not 13")
+if readiness.get("schema_version_unchanged") != 14:
+    errors.append("release_install_readiness.schema_version_unchanged is not 14")
 if readiness.get("package_id_stable") != "com.mikeyphw.xdm.android":
     errors.append("release_install_readiness.package_id_stable is not com.mikeyphw.xdm.android")
 if readiness.get("top_level_route_added") is not False:
@@ -72,8 +72,8 @@ require_text("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseR
 require_text("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt", "InstallUpdateReadinessReport")
 require_text("core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModelsTest.kt", "cleanBetaReadinessReportHasNoBlockingChecks")
 require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt", "ReleaseInstallReadinessGate.evaluate")
-require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Install/update readiness")
-require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Phase 16 readiness")
+require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Update compatibility")
+require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Portable settings snapshot")
 require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "ClipboardManager")
 require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "setPrimaryClip")
 if "LocalClipboardManager" in require_file("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt"):
@@ -89,15 +89,15 @@ for task in ["lintBeta", "assembleBeta", "verify-aria2-runtime.py"]:
     if task not in workflow:
         errors.append(f"Android CI is missing {task}")
 
-schema_path = root / "persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/13.json"
+schema_path = root / "persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/14.json"
 if not schema_path.is_file():
-    errors.append("Room schema 13.json is missing")
+    errors.append("Room schema 14.json is missing")
 else:
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     if "version" in schema:
         errors.append("Room schema has unsupported top-level version key")
-    if schema.get("database", {}).get("version") != 13:
-        errors.append("Room schema database.version is not 13")
+    if schema.get("database", {}).get("version") != 14:
+        errors.append("Room schema database.version is not 14")
 
 app_shell = require_file("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")
 routes = re.findall(r'AppRoute\.([A-Za-z]+)', app_shell)

@@ -52,16 +52,26 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.mikeyphw.xdm.android.model.BackendRecommendation
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.BackendMigrationRecord
+import com.mikeyphw.xdm.android.model.BackupRestoreReport
+import com.mikeyphw.xdm.android.model.BrowserIntegrationStatus
 import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
 import com.mikeyphw.xdm.android.model.ChecksumResult
+import com.mikeyphw.xdm.android.model.ClipboardInboxItem
 import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.model.VerificationStatus
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.ConversionPreset
+import com.mikeyphw.xdm.android.model.DestinationRule
+import com.mikeyphw.xdm.android.model.DestinationRuleMatch
+import com.mikeyphw.xdm.android.model.DownloadTag
+import com.mikeyphw.xdm.android.model.DownloadTagAssignment
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.DuplicateUrlAction
+import com.mikeyphw.xdm.android.model.DuplicateUrlRule
 import com.mikeyphw.xdm.android.model.HistoryManagementPolicy
 import com.mikeyphw.xdm.android.model.HistoryManagementReport
+import com.mikeyphw.xdm.android.model.OrganizationPowerToolsReport
 import com.mikeyphw.xdm.android.model.PostProcessingSettings
 import com.mikeyphw.xdm.android.model.ProtocolExpansionReport
 import com.mikeyphw.xdm.android.model.ProxyCredentialSettings
@@ -81,6 +91,7 @@ import com.mikeyphw.xdm.android.model.RecoveryAction
 import com.mikeyphw.xdm.android.model.RecoveryClassification
 import com.mikeyphw.xdm.android.model.RecoveryRecord
 import com.mikeyphw.xdm.android.model.ScheduleRule
+import com.mikeyphw.xdm.android.model.SavedSearch
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -113,10 +124,21 @@ fun DownloadsScreen(
     checksumResults: List<ChecksumResult>,
     verificationRecords: List<VerificationRecord>,
     historyReport: HistoryManagementReport,
+    organizationReport: OrganizationPowerToolsReport,
+    tags: List<DownloadTag>,
+    tagAssignments: List<DownloadTagAssignment>,
+    savedSearches: List<SavedSearch>,
     onTogglePause: (Download) -> Unit,
     onMigrateBackend: (Download) -> Unit,
     onRemoveHistory: (Download) -> Unit,
     onClearFinishedHistory: () -> Unit,
+    onArchiveDownloads: (List<Download>, Boolean) -> Unit,
+    onBulkPause: (List<Download>) -> Unit,
+    onBulkResume: (List<Download>) -> Unit,
+    onCreateTag: (String) -> Unit,
+    onAssignTag: (Download, DownloadTag) -> Unit,
+    onSaveSearch: (String, String, DownloadState?, Boolean) -> Unit,
+    onDeleteSavedSearch: (SavedSearch) -> Unit,
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
     onPreviewPostProcessing: (Download) -> Unit,
@@ -127,10 +149,14 @@ fun DownloadsScreen(
     var query by remember { mutableStateOf("") }
     var sort by remember { mutableStateOf(DownloadSort.Attention) }
     var showHistoryTools by remember { mutableStateOf(false) }
+    var includeArchived by remember { mutableStateOf(false) }
+    var selectedIds by remember { mutableStateOf(setOf<String>()) }
     val visible = downloads
+        .filter { includeArchived || !it.archived }
         .filter { download -> filter == null || download.state == filter }
         .filter { download -> query.isBlank() || download.matchesQuery(query) }
         .sortForUi(sort)
+    val selectedDownloads = visible.filter { it.id in selectedIds }
 
     Column(Modifier.fillMaxSize()) {
         DownloadListSummary(
@@ -143,6 +169,27 @@ fun DownloadsScreen(
             onClearFinished = onClearFinishedHistory,
             onPauseAll = onPauseAll,
             onResumeAll = onResumeAll,
+        )
+        OrganizationPowerToolsCard(
+            report = organizationReport,
+            tags = tags,
+            tagAssignments = tagAssignments,
+            savedSearches = savedSearches,
+            visible = visible,
+            selected = selectedDownloads,
+            query = query,
+            filter = filter,
+            includeArchived = includeArchived,
+            onIncludeArchivedChanged = { includeArchived = it },
+            onSelectAllVisible = { selectedIds = visible.map { it.id }.toSet() },
+            onClearSelection = { selectedIds = emptySet() },
+            onArchiveSelected = { archived -> onArchiveDownloads(selectedDownloads, archived); selectedIds = emptySet() },
+            onBulkPause = { onBulkPause(selectedDownloads) },
+            onBulkResume = { onBulkResume(selectedDownloads) },
+            onCreateTag = onCreateTag,
+            onAssignTag = { tag -> selectedDownloads.forEach { onAssignTag(it, tag) } },
+            onSaveSearch = onSaveSearch,
+            onDeleteSavedSearch = onDeleteSavedSearch,
         )
         DownloadListControls(
             query = query,
@@ -164,6 +211,15 @@ fun DownloadsScreen(
         } else {
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 10.dp)) {
                 items(visible, key = Download::id) { download ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        FilterChip(
+                            selected = download.id in selectedIds,
+                            onClick = {
+                                selectedIds = if (download.id in selectedIds) selectedIds - download.id else selectedIds + download.id
+                            },
+                            label = { Text(if (download.id in selectedIds) "Selected" else "Select") },
+                        )
+                    }
                     DownloadCard(download, compact, capabilities, checksumResults, verificationRecords, onTogglePause, onMigrateBackend, onRemoveHistory, onPreviewPostProcessing, onRunPostProcessing)
                 }
             }
@@ -219,6 +275,82 @@ private fun DownloadListSummary(
                     TextButton(onClick = onClearFinished, enabled = historyReport.removableHistory > 0) { Text("Clear finished history") }
                 }
                 XdmMetadataText("History management only removes app records; downloaded files stay in their destination.")
+            }
+        }
+    }
+}
+
+@Composable
+private fun OrganizationPowerToolsCard(
+    report: OrganizationPowerToolsReport,
+    tags: List<DownloadTag>,
+    tagAssignments: List<DownloadTagAssignment>,
+    savedSearches: List<SavedSearch>,
+    visible: List<Download>,
+    selected: List<Download>,
+    query: String,
+    filter: DownloadState?,
+    includeArchived: Boolean,
+    onIncludeArchivedChanged: (Boolean) -> Unit,
+    onSelectAllVisible: () -> Unit,
+    onClearSelection: () -> Unit,
+    onArchiveSelected: (Boolean) -> Unit,
+    onBulkPause: () -> Unit,
+    onBulkResume: () -> Unit,
+    onCreateTag: (String) -> Unit,
+    onAssignTag: (DownloadTag) -> Unit,
+    onSaveSearch: (String, String, DownloadState?, Boolean) -> Unit,
+    onDeleteSavedSearch: (SavedSearch) -> Unit,
+) {
+    var tagName by remember { mutableStateOf("") }
+    var searchName by remember { mutableStateOf("") }
+    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    XdmCardTitle("Organization and history tools")
+                    XdmSupportingText(report.summary)
+                }
+                Switch(
+                    checked = includeArchived,
+                    onCheckedChange = onIncludeArchivedChanged,
+                    modifier = Modifier.semantics { stateDescription = if (includeArchived) "Archived downloads shown" else "Archived downloads hidden" },
+                )
+            }
+            XdmMetadataText("${visible.size} visible • ${selected.size} selected • ${tagAssignments.size} tag assignments")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                TextButton(onClick = onSelectAllVisible, enabled = visible.isNotEmpty()) { Text("Select visible") }
+                TextButton(onClick = onClearSelection, enabled = selected.isNotEmpty()) { Text("Clear selection") }
+                TextButton(onClick = { onBulkPause() }, enabled = selected.isNotEmpty()) { Text("Pause selected") }
+                TextButton(onClick = { onBulkResume() }, enabled = selected.isNotEmpty()) { Text("Resume selected") }
+                TextButton(onClick = { onArchiveSelected(true) }, enabled = selected.isNotEmpty()) { Text("Archive selected") }
+                TextButton(onClick = { onArchiveSelected(false) }, enabled = selected.isNotEmpty()) { Text("Unarchive selected") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(tagName, { tagName = it }, label = { Text("New tag") }, modifier = Modifier.weight(1f), singleLine = true)
+                Button(onClick = { onCreateTag(tagName); tagName = "" }, enabled = tagName.isNotBlank()) { Text("Create tag") }
+            }
+            if (tags.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                    tags.forEach { tag ->
+                        FilterChip(
+                            selected = selected.any { download -> tagAssignments.any { it.downloadId == download.id && it.tagId == tag.id } },
+                            onClick = { onAssignTag(tag) },
+                            enabled = selected.isNotEmpty(),
+                            label = { Text(tag.name) },
+                        )
+                    }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(searchName, { searchName = it }, label = { Text("Saved search name") }, modifier = Modifier.weight(1f), singleLine = true)
+                Button(onClick = { onSaveSearch(searchName, query, filter, includeArchived); searchName = "" }, enabled = searchName.isNotBlank()) { Text("Save search") }
+            }
+            savedSearches.take(4).forEach { search ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    XdmMetadataText("${search.name}: ${search.query.ifBlank { "All downloads" }}${search.state?.let { " • ${it.uiLabel()}" }.orEmpty()}", modifier = Modifier.weight(1f))
+                    TextButton(onClick = { onDeleteSavedSearch(search) }) { Text("Delete") }
+                }
             }
         }
     }
@@ -1246,6 +1378,8 @@ private fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryReco
 @Composable
 fun DiagnosticsScreen(
     state: MainUiState,
+    browserStatus: BrowserIntegrationStatus,
+    clipboardInbox: List<ClipboardInboxItem>,
     onRunAria2SmokeTest: () -> Unit,
     onRunTermuxProbe: () -> Unit,
     onRunTermuxRootProbe: () -> Unit,
@@ -1260,6 +1394,9 @@ fun DiagnosticsScreen(
     onSaveTermuxAria2Session: () -> Unit,
     onRetryPostProcessing: () -> Unit,
     onClearPostProcessingEvents: () -> Unit,
+    onScanClipboardText: (String) -> Unit,
+    onAcceptClipboardItem: (ClipboardInboxItem) -> Unit,
+    onDismissClipboardItem: (ClipboardInboxItem) -> Unit,
 ) {
     val context = LocalContext.current
     val redactedSummary = PrivacyDiagnosticsRedactor.redactedHealthSummary(
@@ -1353,6 +1490,15 @@ fun DiagnosticsScreen(
         item { DiagnosticLine("Post-processing events", state.postProcessingAutomation.events.size.toString()) }
         item { DiagnosticLine("Browser origins", state.automationCommands.mapNotNull { it.originHost }.distinct().size.toString()) }
         item { DiagnosticLine("Rejected handoffs", state.automationCommands.count { it.status == AutomationCommandStatus.Rejected }.toString()) }
+        item {
+            BrowserIntegrationDiagnosticsCard(
+                status = browserStatus,
+                inbox = clipboardInbox,
+                onScanClipboardText = onScanClipboardText,
+                onAccept = onAcceptClipboardItem,
+                onDismiss = onDismissClipboardItem,
+            )
+        }
         if (state.automationCommands.isNotEmpty()) {
             item {
                 Card(Modifier.fillMaxWidth()) {
@@ -1438,6 +1584,49 @@ private fun DiagnosticLine(label: String, value: String) {
                 textAlign = TextAlign.End,
                 style = MaterialTheme.typography.bodyMedium,
             )
+        }
+    }
+}
+
+@Composable
+private fun BrowserIntegrationDiagnosticsCard(
+    status: BrowserIntegrationStatus,
+    inbox: List<ClipboardInboxItem>,
+    onScanClipboardText: (String) -> Unit,
+    onAccept: (ClipboardInboxItem) -> Unit,
+    onDismiss: (ClipboardInboxItem) -> Unit,
+) {
+    val context = LocalContext.current
+    val clipboard = context.getSystemService(ClipboardManager::class.java)
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Browser integration ${status.summary}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    XdmCardTitle("Browser integration and clipboard inbox")
+                    XdmSupportingText(status.summary)
+                }
+                Button(
+                    onClick = {
+                        val text = clipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+                        onScanClipboardText(text)
+                    },
+                ) { Text("Scan clipboard") }
+            }
+            XdmMetadataText("Share sheet, browser VIEW handoff, typed extras, sanitized headers, duplicate command handling, and clipboard review are active.")
+            if (inbox.isEmpty()) {
+                XdmMetadataText("Clipboard inbox is empty.")
+            } else {
+                inbox.take(5).forEach { item ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            XdmMetadataText("${item.status}: ${item.title ?: hostFromUrl(item.url)}", maxLines = 1)
+                            XdmMetadataText(item.url, maxLines = 1)
+                        }
+                        TextButton(onClick = { onAccept(item) }, enabled = item.status == "New") { Text("Add") }
+                        TextButton(onClick = { onDismiss(item) }, enabled = item.status == "New") { Text("Dismiss") }
+                    }
+                }
+            }
         }
     }
 }
@@ -1663,6 +1852,9 @@ fun SettingsScreen(
     proxySettings: ProxyCredentialSettings,
     postProcessingSettings: PostProcessingSettings,
     settingsExportText: String,
+    backupRestoreReport: BackupRestoreReport,
+    destinationRules: List<DestinationRule>,
+    duplicateRules: List<DuplicateUrlRule>,
     protocolExpansionReport: ProtocolExpansionReport,
     releasePackagingReport: ReleasePackagingReport,
     termuxBridge: TermuxBridgeStatus,
@@ -1672,6 +1864,8 @@ fun SettingsScreen(
     onProxyChanged: (ProxyCredentialSettings) -> Unit,
     onPostProcessingChanged: (PostProcessingSettings) -> Unit,
     onImportSettings: (String) -> Unit,
+    onSaveDestinationRule: (String, DestinationRuleMatch, String, String) -> Unit,
+    onSaveDuplicateRule: (String, DuplicateUrlAction) -> Unit,
     onRunTermuxProbe: () -> Unit,
     onOpenTermux: () -> Unit,
     onRootModeChanged: (TermuxRootMode) -> Unit,
@@ -1695,6 +1889,11 @@ fun SettingsScreen(
     var postEnabled by remember(postProcessingSettings) { mutableStateOf(postProcessingSettings.enabled) }
     var postPreset by remember(postProcessingSettings) { mutableStateOf(postProcessingSettings.preset) }
     var postLabel by remember(postProcessingSettings) { mutableStateOf(postProcessingSettings.customCommandLabel) }
+    var destinationRuleName by remember { mutableStateOf("") }
+    var destinationRulePattern by remember { mutableStateOf("") }
+    var destinationRuleMatch by remember { mutableStateOf(DestinationRuleMatch.Host) }
+    var duplicateHost by remember { mutableStateOf("") }
+    var duplicateAction by remember { mutableStateOf(DuplicateUrlAction.OpenExisting) }
     val proxyDraft = ProxyCredentialSettings(proxyEnabled, proxyHost, proxyPort.toIntOrNull()?.takeIf { it in 1..65535 }, proxyUsername, proxyAlias)
     val proxyDirty = proxyDraft != proxySettings
     val proxyPortValid = proxyPort.isBlank() || proxyPort.toIntOrNull()?.let { it in 1..65535 } == true
@@ -1728,6 +1927,7 @@ fun SettingsScreen(
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     XdmCardTitle("Portable settings snapshot")
                     XdmSupportingText("Copy a safe backup, paste one back here, and review whether it looks ready before importing.")
+                    XdmMetadataText(backupRestoreReport.summary)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { copyTextToClipboard(context, "XDM settings snapshot", settingsExportText) }) { Text("Copy export") }
                         StatusPill(if (importText.isBlank()) "No import" else "Import ready", if (importText.isBlank()) XdmStatusTone.Neutral else XdmStatusTone.Info)
@@ -1744,6 +1944,47 @@ fun SettingsScreen(
                         Button(onClick = { onImportSettings(importText); importText = "" }, enabled = importText.isNotBlank()) { Text("Import snapshot") }
                         TextButton(onClick = { importText = "" }, enabled = importText.isNotBlank()) { Text("Clear") }
                     }
+                }
+            }
+        }
+        item { XdmSectionHeader("Rules and restore hardening") }
+        item {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Destination rules ${destinationRules.size}" }) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    XdmCardTitle("Destination rules")
+                    XdmSupportingText("Route new downloads by host, extension, MIME type, or fallback destination before the download is queued.")
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DestinationRuleMatch.entries.forEach { match ->
+                            FilterChip(selected = destinationRuleMatch == match, onClick = { destinationRuleMatch = match }, label = { Text(match.name.lowercase().replaceFirstChar { it.titlecase() }) })
+                        }
+                    }
+                    OutlinedTextField(destinationRuleName, { destinationRuleName = it }, label = { Text("Rule name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    OutlinedTextField(destinationRulePattern, { destinationRulePattern = it }, label = { Text("Pattern") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    Button(
+                        onClick = {
+                            onSaveDestinationRule(destinationRuleName, destinationRuleMatch, destinationRulePattern, settingsExportText.lineSequence().firstOrNull { it.startsWith("destinationUri=") }?.substringAfter('=').orEmpty())
+                            destinationRuleName = ""
+                            destinationRulePattern = ""
+                        },
+                        enabled = destinationRuleName.isNotBlank() && destinationRulePattern.isNotBlank(),
+                    ) { Text("Save destination rule") }
+                    destinationRules.take(4).forEach { rule -> XdmMetadataText("${rule.name}: ${rule.match.name} ${rule.pattern} → ${rule.destinationUri}", maxLines = 2) }
+                }
+            }
+        }
+        item {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Duplicate URL rules ${duplicateRules.size}" }) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    XdmCardTitle("Duplicate URL rules")
+                    XdmSupportingText("Detect repeated source URLs before enqueueing and prefer opening the existing record by default.")
+                    OutlinedTextField(duplicateHost, { duplicateHost = it }, label = { Text("Host pattern") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DuplicateUrlAction.entries.forEach { action ->
+                            FilterChip(selected = duplicateAction == action, onClick = { duplicateAction = action }, label = { Text(action.name.replace(Regex("([a-z])([A-Z])"), "$1 $2")) })
+                        }
+                    }
+                    Button(onClick = { onSaveDuplicateRule(duplicateHost, duplicateAction); duplicateHost = "" }, enabled = duplicateHost.isNotBlank()) { Text("Save duplicate rule") }
+                    duplicateRules.take(4).forEach { rule -> XdmMetadataText("${rule.hostPattern}: ${rule.action.name} (${if (rule.enabled) "enabled" else "disabled"})") }
                 }
             }
         }

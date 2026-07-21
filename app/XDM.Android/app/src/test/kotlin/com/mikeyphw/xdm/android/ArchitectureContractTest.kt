@@ -115,7 +115,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 14 validator is missing", File(root, "tools/validate-phase-14.py").isFile)
         assertTrue("Release safety model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 14", manifest.contains("14"))
-        assertTrue("Manifest must keep Room schema at v13", manifest.contains("\"version\": 13"))
+        assertTrue("Manifest must record Room schema v14", manifest.contains("\"version\": 14"))
         val phaseFourteenVersion = Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc01)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.14", phaseFourteenVersion != null && phaseFourteenVersion >= 14)
         assertTrue("Diagnostics must expose privacy-safe app integrity summary", screens.contains("App integrity"))
@@ -134,7 +134,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 15 architecture contract is missing", File(root, "docs/architecture/PHASE-15-UX-ACCESSIBILITY-POLISH.md").isFile)
         assertTrue("Phase 15 validator is missing", File(root, "tools/validate-phase-15.py").isFile)
         assertTrue("Manifest must record implemented phase 15", manifest.contains("15"))
-        assertTrue("Phase 15 must keep Room schema at v13", manifest.contains("\"schema_version_unchanged\": 13"))
+        assertTrue("Phase 15 baseline must be carried forward on Room schema v14", manifest.contains("\"schema_version_unchanged\": 14"))
         val phaseFifteenVersion = Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc01)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.15", phaseFifteenVersion != null && phaseFifteenVersion >= 15)
         assertTrue("Downloads must expose a compact overview card", screens.contains("Download overview"))
@@ -159,7 +159,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 16 validator is missing", File(root, "tools/validate-phase-16.py").isFile)
         assertTrue("Release readiness model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 16", manifest.contains("16"))
-        assertTrue("Phase 16 must keep Room schema at v13", manifest.contains("\"schema_version_unchanged\": 13"))
+        assertTrue("Phase 16 baseline must be carried forward on Room schema v14", manifest.contains("\"schema_version_unchanged\": 14"))
         assertTrue("Build metadata must be at least 0.16", Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc01)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()?.let { it >= 16 } == true)
         assertTrue("Diagnostics must expose user-facing update compatibility", screens.contains("Update compatibility"))
         assertFalse("Diagnostics must not expose install/update implementation wording", screens.contains("Install/update readiness"))
@@ -184,7 +184,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 17 validator is missing", File(root, "tools/validate-phase-17.py").isFile)
         assertTrue("Final release model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 17", manifest.contains("17"))
-        assertTrue("Phase 17 must keep Room schema at v13", manifest.contains("\"room_schema_locked\": 13"))
+        assertTrue("Phase 17 baseline must be carried forward on Room schema v14", manifest.contains("\"room_schema_locked\": 14"))
         val finalGateVersion = Regex("""versionName\s*=\s*"0\.(\d+)\.0-(?:alpha01|rc\d+)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         val finalGateVersionCode = Regex("""versionCode\s*(?:=|\.set\()\s*(\d+)""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must stay on a 0.17+ release train", finalGateVersion?.let { it >= 17 } == true)
@@ -208,7 +208,7 @@ class ArchitectureContractTest {
         assertTrue("Post-17 parity validator is missing", File(root, "tools/validate-post17-desktop-parity.py").isFile)
         assertTrue("Desktop parity model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DesktopParityModels.kt").isFile)
         assertTrue("Manifest must record desktop parity", manifest.contains("desktop_parity"))
-        assertTrue("Desktop parity must keep Room schema at v13", manifest.contains("\"schema_version_unchanged\": 13"))
+        assertTrue("Desktop parity must be carried forward on Room schema v14", manifest.contains("\"schema_version_unchanged\": 14"))
         assertTrue("Settings must expose import/export", screens.contains("Settings import/export"))
         assertTrue("Downloads must expose history management", screens.contains("History management"))
         assertTrue("Settings must expose proxy credentials", screens.contains("Proxy and credentials"))
@@ -321,6 +321,38 @@ class ArchitectureContractTest {
         assertTrue("Add route must prefill external links", screens.contains("initialUrl") && screens.contains("Link received") && screens.contains("LaunchedEffect(externalDraftId)"))
         assertTrue("App shell must pass external drafts to Add", appShell.contains("initialUrl = state.externalAddDraft?.url"))
         assertFalse("Supported non-media links must not be rejected as missing media", viewModel.contains("No supported media URL detected"))
+    }
+
+    @Test
+    fun phasesTwelveToFourteenPowerToolsArePresent() {
+        val root = androidRoot()
+        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
+        val models = File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadModels.kt").readText()
+        val desktopModels = File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DesktopParityModels.kt").readText()
+        val database = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt").readText()
+        val migrations = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt").readText()
+        val repository = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt").readText()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+
+        assertTrue("Manifest must record organization power tools", manifest.contains("organization_history_power_tools"))
+        assertTrue("Manifest must record browser clipboard inbox", manifest.contains("browser_clipboard_inbox"))
+        assertTrue("Manifest must record backup restore hardening", manifest.contains("backup_restore_hardening"))
+        assertTrue("Room schema must advance to v14", database.contains("version = 14") && migrations.contains("Migration13To14"))
+        listOf("SavedSearch", "DuplicateUrlRule", "DestinationRule", "ClipboardInboxItem", "archived").forEach { symbol ->
+            assertTrue("Download model missing $symbol", models.contains(symbol) || desktopModels.contains(symbol))
+        }
+        listOf("saved_searches", "duplicate_url_rules", "destination_rules", "clipboard_inbox").forEach { table ->
+            assertTrue("Repository persistence missing $table", repository.contains(table) || migrations.contains(table))
+        }
+        assertTrue("Downloads must expose organization tools", screens.contains("Organization and history tools") && screens.contains("Archive selected") && screens.contains("Save search"))
+        assertTrue("Diagnostics must expose browser integration and clipboard inbox", screens.contains("Browser integration and clipboard inbox") && screens.contains("Scan clipboard"))
+        assertTrue("Settings must expose destination and duplicate rules", screens.contains("Destination rules") && screens.contains("Duplicate URL rules"))
+        assertTrue("Settings must expose backup hardening", screens.contains("Backup ready") || screens.contains("backupRestoreReport"))
+        assertTrue("App shell must wire Phase 12-14 actions", appShell.contains("viewModel::archiveDownloads") && appShell.contains("viewModel::scanClipboardText") && appShell.contains("viewModel::saveDestinationRule"))
+        assertTrue("ViewModel must evaluate organization, browser, and backup reports", viewModel.contains("OrganizationPowerTools.summarize") && viewModel.contains("BrowserIntegrationStatus") && viewModel.contains("BackupRestorePolicy.evaluate"))
+        assertFalse("Phases 12-14 must not add new top-level routes", AppRoute.entries.any { it.label in setOf("History", "Browser", "Clipboard", "Backup", "Updater") })
     }
 
 
