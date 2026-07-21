@@ -75,7 +75,7 @@
       "compare"
     ]
   },
-  "next_phase": "termux-aria2-cockpit",
+  "next_phase": "termux-media-conversion-pipeline",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -269,7 +269,14 @@
       "aria2_download",
       "ytdlp_metadata",
       "ffprobe_inspect",
-      "ffmpeg_convert"
+      "ffmpeg_convert",
+      "aria2_daemon_start",
+      "aria2_daemon_stop",
+      "aria2_daemon_probe",
+      "aria2_session_save",
+      "aria2_tasks_active",
+      "aria2_tasks_pause_all",
+      "aria2_tasks_resume_all"
     ],
     "raw_shell_exposed": false,
     "chroot_support": false,
@@ -277,6 +284,30 @@
     "root_mode_default": "Off",
     "root_actions_typed_only": true,
     "result_service": "com.mikeyphw.xdm.android.termux.TermuxResultService",
+    "top_level_route_added": false
+  },
+  "termux_aria2_cockpit": {
+    "schema_version_unchanged": 13,
+    "enabled_default": false,
+    "no_chroot_support": true,
+    "rpc_secret_generated_by_app": true,
+    "loopback_rpc_only": true,
+    "default_rpc_port": 16800,
+    "session_file_under_termux_home": true,
+    "log_file_under_termux_home": true,
+    "typed_daemon_actions": [
+      "start",
+      "stop",
+      "probe",
+      "save_session"
+    ],
+    "typed_task_actions": [
+      "tell_active",
+      "pause_all",
+      "resume_all"
+    ],
+    "raw_shell_exposed": false,
+    "root_required": false,
     "top_level_route_added": false
   }
 }

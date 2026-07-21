@@ -96,6 +96,8 @@ import com.mikeyphw.xdm.android.util.formatBytes
 import com.mikeyphw.xdm.android.util.formatSpeed
 import com.mikeyphw.xdm.android.termux.TermuxRootMode
 import com.mikeyphw.xdm.android.termux.TermuxBridgeStatus
+import com.mikeyphw.xdm.android.termux.TermuxAria2CockpitStatus
+import com.mikeyphw.xdm.android.termux.TermuxAria2DaemonState
 
 
 @Composable
@@ -1090,6 +1092,13 @@ fun DiagnosticsScreen(
     state: MainUiState,
     onRunAria2SmokeTest: () -> Unit,
     onRunTermuxProbe: () -> Unit,
+    onStartTermuxAria2Daemon: () -> Unit,
+    onStopTermuxAria2Daemon: () -> Unit,
+    onProbeTermuxAria2Daemon: () -> Unit,
+    onRefreshTermuxAria2Tasks: () -> Unit,
+    onPauseAllTermuxAria2Tasks: () -> Unit,
+    onResumeAllTermuxAria2Tasks: () -> Unit,
+    onSaveTermuxAria2Session: () -> Unit,
 ) {
     val context = LocalContext.current
     val redactedSummary = PrivacyDiagnosticsRedactor.redactedHealthSummary(
@@ -1221,6 +1230,18 @@ fun DiagnosticsScreen(
             }
         }
         item { TermuxBridgeDiagnosticsCard(state.termuxBridge, onRunTermuxProbe) }
+        item {
+            TermuxAria2CockpitCard(
+                aria2 = state.termuxAria2,
+                onStart = onStartTermuxAria2Daemon,
+                onStop = onStopTermuxAria2Daemon,
+                onProbe = onProbeTermuxAria2Daemon,
+                onRefreshTasks = onRefreshTermuxAria2Tasks,
+                onPauseAll = onPauseAllTermuxAria2Tasks,
+                onResumeAll = onResumeAllTermuxAria2Tasks,
+                onSaveSession = onSaveTermuxAria2Session,
+            )
+        }
     }
 }
 
@@ -1317,6 +1338,100 @@ private fun TermuxBridgeSettingsCard(
     }
 }
 
+
+@Composable
+private fun TermuxAria2CockpitCard(
+    aria2: TermuxAria2CockpitStatus,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
+    onProbe: () -> Unit,
+    onRefreshTasks: () -> Unit,
+    onPauseAll: () -> Unit,
+    onResumeAll: () -> Unit,
+    onSaveSession: () -> Unit,
+) {
+    val context = LocalContext.current
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Termux aria2 cockpit ${aria2.readinessLabel}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    XdmCardTitle("Termux aria2 cockpit")
+                    XdmMetricText(aria2.readinessLabel)
+                }
+                StatusPill(aria2.daemonState.label, aria2.statusTone())
+            }
+            XdmSupportingText("Manage a Termux-hosted aria2 RPC daemon with an app-generated secret, private session file, and typed controls.")
+            aria2.config?.let { config ->
+                XdmMetadataText("RPC: ${config.redactedEndpoint} • secret ${config.redactedSecret}")
+                XdmMetadataText("Session: ${config.sessionFile}", maxLines = 2)
+                XdmMetadataText("Downloads: ${config.downloadDir}", maxLines = 2)
+            } ?: XdmMetadataText("Enable Termux aria2 in Settings to generate the RPC secret and session paths.")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                Button(onClick = onStart, enabled = aria2.canStart) { Text("Start daemon") }
+                TextButton(onClick = onStop, enabled = aria2.canStop) { Text("Stop") }
+                TextButton(onClick = onProbe, enabled = aria2.canProbe) { Text("Probe RPC") }
+                TextButton(onClick = onRefreshTasks, enabled = aria2.canControlTasks) { Text("Tasks") }
+                TextButton(onClick = onSaveSession, enabled = aria2.canControlTasks) { Text("Save session") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                TextButton(onClick = onPauseAll, enabled = aria2.canControlTasks) { Text("Pause all") }
+                TextButton(onClick = onResumeAll, enabled = aria2.canControlTasks) { Text("Resume all") }
+                TextButton(
+                    onClick = { copyTextToClipboard(context, "XDM Termux aria2 diagnostics", aria2.diagnosticsSummary()) },
+                    enabled = aria2.config != null,
+                ) { Text("Copy aria2 diagnostics") }
+            }
+            XdmMetadataText("Health: ${aria2.lastHealth}", maxLines = 3)
+            XdmMetadataText("Last action: ${aria2.lastAction}", maxLines = 3)
+            if (aria2.taskRows.isEmpty()) {
+                XdmMetadataText("No active Termux aria2 tasks have been parsed yet. Use Tasks after the daemon is running.")
+            } else {
+                aria2.taskRows.take(4).forEach { task ->
+                    XdmMetadataText("${task.gid}: ${task.status} • ${task.progressLabel} • ${task.fileName}", maxLines = 2)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TermuxAria2SettingsCard(
+    aria2: TermuxAria2CockpitStatus,
+    onEnabledChanged: (Boolean) -> Unit,
+    onRotateSecret: () -> Unit,
+) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Termux aria2 backend ${aria2.readinessLabel}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    XdmCardTitle("Termux aria2 backend")
+                    XdmSupportingText("Use a Termux-hosted aria2 RPC daemon for large, mirror-heavy or long-running jobs while keeping native Android as the fallback.")
+                }
+                Switch(
+                    checked = aria2.enabled,
+                    onCheckedChange = onEnabledChanged,
+                    modifier = Modifier.semantics { stateDescription = if (aria2.enabled) "Termux aria2 enabled" else "Termux aria2 disabled" },
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                StatusPill(aria2.daemonState.label, aria2.statusTone())
+                StatusPill(if (aria2.config != null) "Secret generated" else "No secret", if (aria2.config != null) XdmStatusTone.Success else XdmStatusTone.Neutral)
+            }
+            aria2.config?.let { config ->
+                XdmMetadataText("Endpoint ${config.redactedEndpoint}; session and logs stay under Termux home.", maxLines = 2)
+                TextButton(onClick = onRotateSecret, enabled = aria2.enabled && aria2.daemonState != TermuxAria2DaemonState.Running) { Text("Rotate RPC secret") }
+            } ?: XdmMetadataText("Enable this to generate a local RPC secret, download directory, session file, and log path.")
+        }
+    }
+}
+
+private fun TermuxAria2CockpitStatus.statusTone(): XdmStatusTone = when (daemonState) {
+    TermuxAria2DaemonState.Running -> XdmStatusTone.Success
+    TermuxAria2DaemonState.Starting, TermuxAria2DaemonState.Stopping -> XdmStatusTone.Info
+    TermuxAria2DaemonState.Failed -> XdmStatusTone.Warning
+    TermuxAria2DaemonState.Disabled, TermuxAria2DaemonState.Stopped -> XdmStatusTone.Neutral
+}
+
 private fun TermuxBridgeStatus.statusTone(): XdmStatusTone = when {
     !termuxInstalled || !runCommandPermissionGranted -> XdmStatusTone.Warning
     toolRows.any { it.available } -> XdmStatusTone.Success
@@ -1342,6 +1457,7 @@ fun SettingsScreen(
     protocolExpansionReport: ProtocolExpansionReport,
     releasePackagingReport: ReleasePackagingReport,
     termuxBridge: TermuxBridgeStatus,
+    termuxAria2: TermuxAria2CockpitStatus,
     onCompactChanged: (Boolean) -> Unit,
     onProxyChanged: (ProxyCredentialSettings) -> Unit,
     onPostProcessingChanged: (PostProcessingSettings) -> Unit,
@@ -1349,6 +1465,8 @@ fun SettingsScreen(
     onRunTermuxProbe: () -> Unit,
     onOpenTermux: () -> Unit,
     onRootModeChanged: (TermuxRootMode) -> Unit,
+    onTermuxAria2EnabledChanged: (Boolean) -> Unit,
+    onRotateTermuxAria2Secret: () -> Unit,
 ) {
     val context = LocalContext.current
     var importText by remember { mutableStateOf("") }
@@ -1457,6 +1575,7 @@ fun SettingsScreen(
         }
         item { XdmSectionHeader("Termux backend") }
         item { TermuxBridgeSettingsCard(termuxBridge, onRunTermuxProbe, onOpenTermux, onRootModeChanged) }
+        item { TermuxAria2SettingsCard(termuxAria2, onTermuxAria2EnabledChanged, onRotateTermuxAria2Secret) }
         item { XdmSectionHeader("Conversion and post-processing") }
         item {
             Card(Modifier.fillMaxWidth().semantics { contentDescription = "Conversion post processing ${postProcessingSettings.redactedSummary}" }) {

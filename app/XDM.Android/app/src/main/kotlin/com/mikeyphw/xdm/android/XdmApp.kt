@@ -211,6 +211,13 @@ private fun AppScaffold(
                     state,
                     viewModel::runAria2SmokeTest,
                     viewModel::runTermuxToolProbe,
+                    viewModel::startTermuxAria2Daemon,
+                    viewModel::stopTermuxAria2Daemon,
+                    viewModel::probeTermuxAria2Daemon,
+                    viewModel::refreshTermuxAria2Tasks,
+                    viewModel::pauseAllTermuxAria2Tasks,
+                    viewModel::resumeAllTermuxAria2Tasks,
+                    viewModel::saveTermuxAria2Session,
                 )
                 AppRoute.Settings -> SettingsScreen(
                     state.compactDensity,
@@ -224,6 +231,7 @@ private fun AppScaffold(
                     state.protocolExpansionReport,
                     state.releasePackagingReport,
                     state.termuxBridge,
+                    state.termuxAria2,
                     viewModel::setCompactDensity,
                     viewModel::setProxySettings,
                     viewModel::setPostProcessingSettings,
@@ -231,6 +239,8 @@ private fun AppScaffold(
                     viewModel::runTermuxToolProbe,
                     viewModel::openTermux,
                     viewModel::setTermuxRootMode,
+                    viewModel::setTermuxAria2Enabled,
+                    viewModel::rotateTermuxAria2Secret,
                 )
             }
         }

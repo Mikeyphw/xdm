@@ -8,6 +8,13 @@ object TermuxShellTemplates {
         is XdmTermuxCommand.YtDlpMetadata -> ytdlpMetadataScript(command.url)
         is XdmTermuxCommand.FfprobeInspect -> ffprobeInspectScript(command.path)
         is XdmTermuxCommand.FfmpegConvert -> ffmpegConvertScript(command)
+        is XdmTermuxCommand.Aria2StartDaemon -> aria2StartDaemonScript(command.config)
+        is XdmTermuxCommand.Aria2StopDaemon -> aria2RpcScript(command.config, "aria2.shutdown", "XDM_ARIA2_DAEMON\tstopping")
+        is XdmTermuxCommand.Aria2ProbeDaemon -> aria2ProbeDaemonScript(command.config)
+        is XdmTermuxCommand.Aria2SaveSession -> aria2RpcScript(command.config, "aria2.saveSession", "XDM_ARIA2_SESSION\tsaved")
+        is XdmTermuxCommand.Aria2TellActive -> aria2RpcScript(command.config, "aria2.tellActive", "XDM_ARIA2_TASKS\tactive")
+        is XdmTermuxCommand.Aria2PauseAll -> aria2RpcScript(command.config, "aria2.pauseAll", "XDM_ARIA2_TASKS\tpaused")
+        is XdmTermuxCommand.Aria2ResumeAll -> aria2RpcScript(command.config, "aria2.unpauseAll", "XDM_ARIA2_TASKS\tresumed")
     }
 
     private fun probeAllToolsScript(): String = buildString {
@@ -52,6 +59,54 @@ object TermuxShellTemplates {
             else -> "-c:v copy -c:a copy "
         })
         append(shellQuote(command.output))
+    }
+
+
+    private fun aria2StartDaemonScript(config: TermuxAria2RpcConfig): String = buildString {
+        appendLine("set -e")
+        appendLine("mkdir -p ${shellQuote(config.downloadDir)} ${shellQuote(config.sessionFile.substringBeforeLast('/'))} ${shellQuote(config.logFile.substringBeforeLast('/'))}")
+        appendLine("touch ${shellQuote(config.sessionFile)}")
+        appendLine("if command -v aria2c >/dev/null 2>&1; then :; else printf 'XDM_ARIA2_DAEMON\\tmissing\\taria2c not found\\n'; exit 127; fi")
+        appendLine("if pgrep -f ${shellQuote("aria2c.*--rpc-listen-port=${config.port}")} >/dev/null 2>&1; then printf 'XDM_ARIA2_DAEMON\\trunning\\t${config.redactedEndpoint}\\n'; exit 0; fi")
+        append("nohup aria2c --enable-rpc=true --rpc-listen-all=false ")
+        append("--rpc-listen-port ${config.port} --rpc-secret ${shellQuote(config.secret)} ")
+        append("--continue=true --auto-file-renaming=true --allow-overwrite=false ")
+        append("--input-file ${shellQuote(config.sessionFile)} --save-session ${shellQuote(config.sessionFile)} --save-session-interval=30 ")
+        append("--dir ${shellQuote(config.downloadDir)} ")
+        appendLine(">> ${shellQuote(config.logFile)} 2>&1 &")
+        appendLine("XDM_ARIA2_PID=${'$'}!")
+        appendLine("sleep 1")
+        appendLine("printf 'XDM_ARIA2_DAEMON\\tstarted\\t${config.redactedEndpoint}\\tpid=%s\\n' \"${'$'}XDM_ARIA2_PID\"")
+    }
+
+    private fun aria2ProbeDaemonScript(config: TermuxAria2RpcConfig): String = buildString {
+        appendLine("set +e")
+        appendLine("if pgrep -f ${shellQuote("aria2c.*--rpc-listen-port=${config.port}")} >/dev/null 2>&1; then printf 'XDM_ARIA2_DAEMON\\trunning\\t${config.redactedEndpoint}\\n'; else printf 'XDM_ARIA2_DAEMON\\tstopped\\t${config.redactedEndpoint}\\n'; fi")
+        append(aria2RpcBody(config, "aria2.getVersion", "XDM_ARIA2_RPC\\tversion"))
+    }
+
+    private fun aria2RpcScript(config: TermuxAria2RpcConfig, method: String, marker: String): String = buildString {
+        appendLine("set +e")
+        append(aria2RpcBody(config, method, marker))
+    }
+
+    private fun aria2RpcBody(config: TermuxAria2RpcConfig, method: String, marker: String): String {
+        val payload = "{\"jsonrpc\":\"2.0\",\"id\":\"xdm\",\"method\":\"$method\",\"params\":[\"token:${config.secret}\"]}"
+        return """
+            if command -v curl >/dev/null 2>&1; then
+              XDM_ARIA2_RESPONSE="${'$'}(curl -fsS --max-time 5 -H 'Content-Type: application/json' -d ${shellQuote(payload)} ${shellQuote(config.endpoint)} 2>&1)"
+              XDM_ARIA2_EXIT=${'$'}?
+              if [ "${'$'}XDM_ARIA2_EXIT" -eq 0 ]; then
+                printf '$marker\t%s\n' "${'$'}XDM_ARIA2_RESPONSE"
+              else
+                printf 'XDM_ARIA2_RPC\tfailed\t%s\n' "${'$'}XDM_ARIA2_RESPONSE"
+                exit "${'$'}XDM_ARIA2_EXIT"
+              fi
+            else
+              printf 'XDM_ARIA2_RPC\tmissing\tcurl not found\n'
+              exit 127
+            fi
+        """.trimIndent() + "\n"
     }
 
     fun shellQuote(value: String): String = "'" + value.replace("'", "'\\''") + "'"

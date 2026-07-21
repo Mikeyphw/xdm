@@ -8,6 +8,7 @@ enum class ExternalTool(val binaryName: String, val displayName: String, val ver
     Ffprobe("ffprobe", "FFprobe", listOf("-version")),
     YtDlp("yt-dlp", "yt-dlp", listOf("--version")),
     Python("python", "Python", listOf("--version")),
+    Curl("curl", "curl", listOf("--version")),
 }
 
 enum class TermuxRootMode(val label: String, val description: String) {
@@ -36,6 +37,13 @@ sealed class XdmTermuxCommand(val operation: String) {
     data class YtDlpMetadata(val url: String) : XdmTermuxCommand("ytdlp_metadata")
     data class FfprobeInspect(val path: String) : XdmTermuxCommand("ffprobe_inspect")
     data class FfmpegConvert(val input: String, val output: String, val preset: String) : XdmTermuxCommand("ffmpeg_convert")
+    data class Aria2StartDaemon(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_daemon_start")
+    data class Aria2StopDaemon(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_daemon_stop")
+    data class Aria2ProbeDaemon(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_daemon_probe")
+    data class Aria2SaveSession(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_session_save")
+    data class Aria2TellActive(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_tasks_active")
+    data class Aria2PauseAll(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_tasks_pause_all")
+    data class Aria2ResumeAll(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_tasks_resume_all")
 }
 
 data class TermuxToolProbeRow(

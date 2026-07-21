@@ -67,6 +67,8 @@ import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessState
 import com.mikeyphw.xdm.android.termux.TermuxRootMode
 import com.mikeyphw.xdm.android.termux.TermuxBridgeStatus
 import com.mikeyphw.xdm.android.termux.TermuxBridgeManager
+import com.mikeyphw.xdm.android.termux.TermuxAria2CockpitManager
+import com.mikeyphw.xdm.android.termux.TermuxAria2CockpitStatus
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -105,6 +107,7 @@ data class MainUiState(
     val destinationPermissions: List<DestinationPermission> = emptyList(),
     val aria2Diagnostics: Aria2DiagnosticsUi = Aria2DiagnosticsUi(),
     val termuxBridge: TermuxBridgeStatus = TermuxBridgeStatus(),
+    val termuxAria2: TermuxAria2CockpitStatus = TermuxAria2CockpitStatus(),
     val backendCapabilities: List<BackendCapabilityRow> = emptyList(),
     val backendMigrations: List<BackendMigrationRecord> = emptyList(),
     val checksumResults: List<ChecksumResult> = emptyList(),
@@ -169,6 +172,7 @@ class MainViewModel(
     private val destinationWriter: AndroidDestinationWriter,
     private val aria2ProcessManager: Aria2ProcessManager,
     private val termuxBridgeManager: TermuxBridgeManager,
+    private val termuxAria2CockpitManager: TermuxAria2CockpitManager,
 ) : ViewModel() {
     private val routeOverride = MutableStateFlow<AppRoute?>(null)
     private val aria2Capability = MutableStateFlow<Aria2CapabilityReport?>(null)
@@ -269,10 +273,11 @@ class MainViewModel(
         val aria2: Aria2DiagnosticsUi,
         val capabilities: List<BackendCapabilityRow>,
         val termuxBridge: TermuxBridgeStatus,
+        val termuxAria2: TermuxAria2CockpitStatus,
     )
 
-    private val runtimeUi = combine(transferRuntime.summary, aria2Diagnostics, capabilitySnapshot, termuxBridgeManager.status) { active, aria2, capabilities, termux ->
-        RuntimeUiSnapshot(active, aria2, backendSelectionPolicy.capabilityRows(capabilities), termux)
+    private val runtimeUi = combine(transferRuntime.summary, aria2Diagnostics, capabilitySnapshot, termuxBridgeManager.status, termuxAria2CockpitManager.status) { active, aria2, capabilities, termux, termuxAria2 ->
+        RuntimeUiSnapshot(active, aria2, backendSelectionPolicy.capabilityRows(capabilities), termux, termuxAria2)
     }
 
     val uiState: StateFlow<MainUiState> = combine(
@@ -303,6 +308,7 @@ class MainViewModel(
             destinationPermissions = snapshot.destinationPermissions,
             aria2Diagnostics = runtime.aria2,
             termuxBridge = runtime.termuxBridge,
+            termuxAria2 = runtime.termuxAria2,
             backendCapabilities = runtime.capabilities,
             backendMigrations = snapshot.backendMigrations,
             checksumResults = snapshot.checksumResults,
@@ -480,6 +486,42 @@ class MainViewModel(
 
     fun setTermuxRootMode(mode: TermuxRootMode) {
         termuxBridgeManager.setRootMode(mode)
+    }
+
+    fun setTermuxAria2Enabled(enabled: Boolean) {
+        termuxAria2CockpitManager.setEnabled(enabled)
+    }
+
+    fun startTermuxAria2Daemon() {
+        termuxAria2CockpitManager.startDaemon()
+    }
+
+    fun stopTermuxAria2Daemon() {
+        termuxAria2CockpitManager.stopDaemon()
+    }
+
+    fun probeTermuxAria2Daemon() {
+        termuxAria2CockpitManager.probeDaemon()
+    }
+
+    fun saveTermuxAria2Session() {
+        termuxAria2CockpitManager.saveSession()
+    }
+
+    fun refreshTermuxAria2Tasks() {
+        termuxAria2CockpitManager.refreshTasks()
+    }
+
+    fun pauseAllTermuxAria2Tasks() {
+        termuxAria2CockpitManager.pauseAll()
+    }
+
+    fun resumeAllTermuxAria2Tasks() {
+        termuxAria2CockpitManager.resumeAll()
+    }
+
+    fun rotateTermuxAria2Secret() {
+        termuxAria2CockpitManager.rotateSecret()
     }
 
     fun refreshAria2Probe() {
@@ -975,6 +1017,7 @@ class MainViewModel(
             container.destinationWriter,
             container.aria2ProcessManager,
             container.termuxBridgeManager,
+            container.termuxAria2CockpitManager,
         ) as T
     }
 }

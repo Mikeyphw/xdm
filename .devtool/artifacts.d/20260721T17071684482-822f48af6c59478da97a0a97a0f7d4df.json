@@ -1,0 +1,138 @@
+{
+  "applied_at": "2026-07-21T17:07:16.844827Z",
+  "artifact": "/home/mike/Downloads/xdm_android_termux_aria2_cockpit_phase8_overlay.zip",
+  "artifact_name": "xdm_android_termux_aria2_cockpit_phase8_overlay.zip",
+  "type": "overlay",
+  "sha256": "4ee74e422d70aad62af4ffc46b4eb3d2fae14aa517028ebe8170dd2b0675b2ea",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Implement Android Termux aria2 cockpit phase 8",
+  "commit_hash": "",
+  "file_count": 13,
+  "change_counts": {
+    "add": 3,
+    "modify": 10
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Termux aria2 Cockpit Phase 8",
+    "description": "Adds the Termux aria2 RPC cockpit on top of Phase 7: optional backend enablement, generated local RPC secret, start/stop/probe/session/task controls, diagnostics, settings, docs and contracts. No chroot and no raw shell exposure.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "b0ff98483ed97b59b8075ec54e78211f9d0b63c55332b7ff951df506c5ee007f",
+          "size": 8495,
+          "source_sha256": "b9c2813e3cc6e1451e29635b2fda0936226dc85af670b0304f731dba5b53f9cd"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "0a0667218385ff4391c634dea207352b757a3a3057a702d7989f38d0d9445f68",
+          "size": 47674,
+          "source_sha256": "7dad9fea05dd6cb162ecbbc8b9f51ac6fc1b60139d0be9d15c75cf5845f3625b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "7ca527710b8f8aeba7854ae8602cfcd947355946bb1d8c2cd729d140913ff3ae",
+          "size": 100071,
+          "source_sha256": "dde2bee8d164ab9d55052ff7e5145d267566565bcb9e04c6f57fcb943f0d80e7"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "6e8add5829292fd24d43ebd16fa3949716bae24c50107660a1e550b03fff3087",
+          "size": 11795,
+          "source_sha256": "6f87d5e4c1a51868efef04e8efb700ea3e33868ad561b842a71e80cb01185589"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+          "action": "modify",
+          "sha256": "ab0ef80bf837971bd9729b4ef3c0063d0332dc69fe809405609121742b23f0bc",
+          "size": 6411,
+          "source_sha256": "7857042e7074f5fbf7888b95131367916faa9a6c2be9633b1c9677d84db60f18"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxAria2CockpitManager.kt",
+          "action": "add",
+          "sha256": "13a2846007c8657fb996e44bcf875a7249d4957f5b5425d31a8ad4973c201c23",
+          "size": 7374
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxAria2CockpitModels.kt",
+          "action": "add",
+          "sha256": "625a87c1b5845ffc2c2406aad7ef5b0fad86b0585c57aa4334d9603b4962e15c",
+          "size": 3051
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt",
+          "action": "modify",
+          "sha256": "bd8bd33c1ee3836006d2d3d7c863e1be9c4ce11c2340cbe6e9df977efdd8a28b",
+          "size": 5470,
+          "source_sha256": "e43551f9a9fa39c0482eae66e3753d897ba3a0e47a2ce7054b4075f94d9c3b08"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt",
+          "action": "modify",
+          "sha256": "a59b8c5db9aea473a49604e6bcce68320fe702f58087bb3343d3ddc9387f2468",
+          "size": 6732,
+          "source_sha256": "c9b0ae5ba072f8a12329806cd5875ff3aa1eb1e742dd846268e62cbc4e232479"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "db65a6b0f3b88b25d492d8b5edaa062580c2aa85dafcba470d7514cd11f65532",
+          "size": 35081,
+          "source_sha256": "88cbbcf91ecfd2206a3f6623da869952853bd803d157aa586c2bc9532fc20f8d"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-8-TERMUX-ARIA2-COCKPIT.md",
+          "action": "add",
+          "sha256": "e04a71743b75af201fd6c83196e9bb27be3d531aa907680895250f9f3d56a8c6",
+          "size": 1138
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+          "action": "modify",
+          "sha256": "6bd9b4e3cc46dfa542a22e6ea789401249c33c18bdbf610074447046c8416abe",
+          "size": 8318,
+          "source_sha256": "468dd5ee2348a8f855a32dd1986684f2a8fe6ee526c88132abf0ce3dcc97a2c9"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-termux-bridge.py",
+          "action": "modify",
+          "sha256": "6764ebf1d4ab6e3a5a4e14598cbda9d5eae827c06941feec00c21468695375f4",
+          "size": 3169,
+          "source_sha256": "cfd89ba4669c72df34f6e98ff463a83777c6733f66df2fe7399bcfe87b745ac8"
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Implement Android Termux aria2 cockpit phase 8"
+      }
+    },
+    "validation": {
+      "commands": [
+        "python3 tools/validate-termux-bridge.py",
+        "python3 tools/verify-aria2-runtime.py"
+      ],
+      "notes": "Gradle validation is performed by devtool on the target machine; sandbox validation used Python static bridge checks and Kotlin syntax checks for pure Termux command templates."
+    }
+  },
+  "history_id": "822f48af6c59478da97a0a97a0f7d4df"
+}

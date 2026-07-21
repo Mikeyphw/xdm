@@ -384,6 +384,35 @@ class ArchitectureContractTest {
         assertFalse("Termux bridge must not add a top-level route", AppRoute.entries.any { it.label == "Termux" || it.label == "Tools" || it.label == "Root" })
     }
 
+
+    @Test
+    fun termuxAria2CockpitContractsArePresent() {
+        val root = androidRoot()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
+        val cockpitModels = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxAria2CockpitModels.kt").readText()
+        val cockpitManager = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxAria2CockpitManager.kt").readText()
+        val templates = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt").readText()
+        val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
+        val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
+
+        assertTrue("Phase 8 contract doc is missing", File(root, "docs/architecture/PHASE-8-TERMUX-ARIA2-COCKPIT.md").isFile)
+        assertTrue("UI contract must define Termux aria2 cockpit rules", contract.contains("Phase 8 Termux aria2 Cockpit Rules"))
+        assertTrue("Termux aria2 commands must be typed", models.contains("Aria2StartDaemon") && models.contains("Aria2TellActive") && models.contains("Aria2PauseAll"))
+        assertTrue("Termux aria2 models must keep local RPC state", cockpitModels.contains("TermuxAria2CockpitStatus") && cockpitModels.contains("redactedSecret"))
+        assertTrue("Manager must generate an app-owned secret", cockpitManager.contains("generateSecret") && cockpitManager.contains("SecretKey"))
+        assertTrue("Manager must use a non-default local RPC port", cockpitManager.contains("DefaultPort = 16800"))
+        assertTrue("Shell templates must start and control the RPC daemon", templates.contains("--enable-rpc=true") && templates.contains("aria2.tellActive") && templates.contains("aria2.saveSession"))
+        assertTrue("Diagnostics must expose cockpit controls", screens.contains("Termux aria2 cockpit") && screens.contains("Start daemon") && screens.contains("Pause all"))
+        assertTrue("Settings must expose backend enablement", screens.contains("Termux aria2 backend") && screens.contains("Rotate RPC secret"))
+        assertTrue("App shell must wire cockpit actions", appShell.contains("viewModel::startTermuxAria2Daemon") && appShell.contains("viewModel::setTermuxAria2Enabled"))
+        assertTrue("ViewModel must carry cockpit state", viewModel.contains("termuxAria2CockpitManager.status") && viewModel.contains("rotateTermuxAria2Secret"))
+        assertTrue("Project manifest must record the cockpit", manifestJson.contains("termux_aria2_cockpit") && manifestJson.contains("\"root_required\": false"))
+        assertFalse("Termux aria2 cockpit must not add a top-level route", AppRoute.entries.any { it.label == "Termux" || it.label == "aria2" || it.label == "Tools" })
+    }
+
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }
 }

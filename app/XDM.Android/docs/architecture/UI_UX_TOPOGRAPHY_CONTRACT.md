@@ -95,3 +95,11 @@ The ShareSheet intake path must extract URLs from `EXTRA_TEXT`, `EXTRA_SUBJECT`,
 - Do not add a raw shell textbox or arbitrary root command endpoint.
 - Root mode defaults to Off and represents policy only until a typed privileged action is implemented.
 - Chroot support is intentionally excluded from the Android product surface.
+
+## Phase 8 Termux aria2 Cockpit Rules
+
+- Settings must include a Termux aria2 backend card that is disabled by default and can rotate its RPC secret while the daemon is stopped.
+- Diagnostics must include a Termux aria2 cockpit card with start, stop, probe, task refresh, pause-all, resume-all, session-save and copy-diagnostics actions.
+- Termux aria2 controls must be typed actions, never a raw shell text box.
+- The cockpit must not add a new top-level route; it lives under Diagnostics and Settings.
+- Root must remain optional and must not be required for Termux aria2 daemon control.

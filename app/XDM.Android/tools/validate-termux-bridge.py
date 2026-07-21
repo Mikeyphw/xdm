@@ -10,6 +10,9 @@ required_files = [
     'app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxRunStore.kt',
     'app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt',
     'docs/architecture/PHASE-7-TERMUX-COMMAND-RUNNER.md',
+    'app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxAria2CockpitModels.kt',
+    'app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxAria2CockpitManager.kt',
+    'docs/architecture/PHASE-8-TERMUX-ARIA2-COCKPIT.md',
 ]
 missing = [path for path in required_files if not (root / path).is_file()]
 if missing:
@@ -36,16 +39,27 @@ for required in [
         raise SystemExit(f'Runner missing {required}')
 
 models = (root / 'app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt').read_text()
-for required in ['sealed class XdmTermuxCommand', 'TermuxRootMode', 'sealed class XdmRootAction', 'Off("Off"']:
+for required in ['sealed class XdmTermuxCommand', 'TermuxRootMode', 'sealed class XdmRootAction', 'Off("Off"', 'Aria2StartDaemon', 'Aria2TellActive']:
     if required not in models:
         raise SystemExit(f'Models missing {required}')
 
 screens = (root / 'app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt').read_text()
-for required in ['Termux bridge', 'Termux backend', 'Optional root mode', 'Copy Termux diagnostics']:
+for required in ['Termux bridge', 'Termux backend', 'Optional root mode', 'Copy Termux diagnostics', 'Termux aria2 cockpit', 'Start daemon', 'Rotate RPC secret']:
     if required not in screens:
         raise SystemExit(f'UI missing {required}')
 
 if 'raw shell' in screens.lower() and 'never exposes a raw root shell endpoint' not in screens:
     raise SystemExit('UI appears to expose raw shell wording unexpectedly')
+
+
+phase8 = (root / 'app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxAria2CockpitManager.kt').read_text()
+for required in ['DefaultPort = 16800', 'rotateSecret', 'Aria2StartDaemon', 'Aria2TellActive']:
+    if required not in phase8:
+        raise SystemExit(f'Phase 8 cockpit missing {required}')
+
+manifest_json = (root / 'PROJECT_MANIFEST.json').read_text()
+for required in ['termux_aria2_cockpit', 'raw_shell_exposed', 'no_chroot_support']:
+    if required not in manifest_json:
+        raise SystemExit(f'Project manifest missing {required}')
 
 print('Termux bridge validation passed')
