@@ -9,6 +9,7 @@ import com.mikeyphw.xdm.android.model.AutomationCommandDraft
 import com.mikeyphw.xdm.android.model.AutomationCommandIds
 import com.mikeyphw.xdm.android.model.AutomationCommandRecord
 import com.mikeyphw.xdm.android.model.AutomationCommandStatus
+import com.mikeyphw.xdm.android.model.AutomationCommandSource
 import com.mikeyphw.xdm.android.model.AutomationRejectionReason
 import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
 import com.mikeyphw.xdm.android.model.ChecksumExpectation
@@ -79,6 +80,13 @@ data class Aria2DiagnosticsUi(
     val smokeTestRunning: Boolean = false,
 )
 
+data class ExternalAddDraft(
+    val id: String,
+    val url: String,
+    val fileName: String = "",
+    val sourceLabel: String = "External app",
+)
+
 data class MainUiState(
     val route: AppRoute = AppRoute.Downloads,
     val compactDensity: Boolean = false,
@@ -89,6 +97,7 @@ data class MainUiState(
     val activeTransfers: ActiveTransferSummary = ActiveTransferSummary(),
     val destinationUri: String = DestinationUris.PUBLIC_DOWNLOADS,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
+    val externalAddDraft: ExternalAddDraft? = null,
     val destinationPermissions: List<DestinationPermission> = emptyList(),
     val aria2Diagnostics: Aria2DiagnosticsUi = Aria2DiagnosticsUi(),
     val backendCapabilities: List<BackendCapabilityRow> = emptyList(),
@@ -160,6 +169,7 @@ class MainViewModel(
     private val aria2SmokeMessage = MutableStateFlow<String?>(null)
     private val aria2SmokeRunning = MutableStateFlow(false)
     private val capabilitySnapshot = MutableStateFlow<Map<BackendType, BackendCapabilities>>(emptyMap())
+    private val externalAddDraft = MutableStateFlow<ExternalAddDraft?>(null)
     private val mediaCaptureService = MediaCaptureService()
 
     private data class RepositorySnapshot(
@@ -257,7 +267,8 @@ class MainViewModel(
         preferences.values,
         routeOverride,
         runtimeUi,
-    ) { snapshot, prefs, override, runtime ->
+        externalAddDraft,
+    ) { snapshot, prefs, override, runtime, addDraft ->
         val settingsSnapshot = SettingsExchangeSnapshot(
             compactDensity = prefs.compactDensity,
             destinationUri = prefs.destinationUri,
@@ -275,6 +286,7 @@ class MainViewModel(
             activeTransfers = runtime.first,
             destinationUri = prefs.destinationUri,
             conflictPolicy = prefs.conflictPolicy,
+            externalAddDraft = addDraft,
             destinationPermissions = snapshot.destinationPermissions,
             aria2Diagnostics = runtime.second,
             backendCapabilities = runtime.third,
@@ -539,6 +551,7 @@ class MainViewModel(
                 )
             }
             executionStarter.start(download.id, userVisible = true)
+            externalAddDraft.value = null
             navigate(AppRoute.Downloads)
         }
     }
@@ -649,7 +662,7 @@ class MainViewModel(
         )
         val records = mediaCaptureService.detect(text, draft.pageTitle, draft.pageUrl)
         if (records.isEmpty()) {
-            repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "No supported media URL detected", rejectionReason = AutomationRejectionReason.NoMediaDetected, updatedAtEpochMs = System.currentTimeMillis()))
+            openExternalAddDraft(command, draft, "No media stream was detected; opened Add Download instead")
             return
         }
         val merged = records.map { record ->
@@ -671,6 +684,24 @@ class MainViewModel(
             ),
         )
         navigate(AppRoute.Media)
+    }
+
+    private suspend fun openExternalAddDraft(command: AutomationCommandRecord, draft: AutomationCommandDraft, message: String) {
+        val url = draft.normalizedUrl ?: return repository.saveAutomationCommand(
+            command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing download URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = System.currentTimeMillis()),
+        )
+        externalAddDraft.value = ExternalAddDraft(
+            id = command.id,
+            url = url,
+            fileName = draft.fileName?.trim()?.takeIf { it.isNotBlank() }.orEmpty(),
+            sourceLabel = when (draft.source) {
+                AutomationCommandSource.ShareSheet -> "Shared link"
+                AutomationCommandSource.ViewIntent -> "Browser handoff"
+                else -> "External app"
+            },
+        )
+        repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Executed, resultMessage = message, updatedAtEpochMs = System.currentTimeMillis()))
+        navigate(AppRoute.Add)
     }
 
     private suspend fun executeEnqueueCommand(command: AutomationCommandRecord, draft: AutomationCommandDraft, now: Long) {

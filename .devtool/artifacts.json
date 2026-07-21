@@ -20918,6 +20918,204 @@
         }
       },
       "history_id": "3aedcfcd7ac04db7be2dbbbb61b5dcc1"
+    },
+    {
+      "applied_at": "2026-07-20T23:39:45.038119Z",
+      "artifact": "/home/mike/Downloads/xdm_android_browser_share_handoff_overlay.zip",
+      "artifact_name": "xdm_android_browser_share_handoff_overlay.zip",
+      "type": "overlay",
+      "sha256": "09e585defd4816fb51afd2e0292d2ca2f1ff9b48ff36c12bdf3824e473a94ea6",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "fix(android): handle browser and share download handoffs",
+      "commit_hash": "",
+      "file_count": 7,
+      "change_counts": {
+        "modify": 7
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Browser and Share Handoff Fix",
+        "description": "Makes XDM discoverable for typed browser download-manager intents and routes shared/browser links into Add or Media workflows instead of cold-launching silently.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "d2bf01dcc37b077c79efcb6e022a70efb1a28fd66783fe5137246215e6ddbec6",
+              "size": 2444,
+              "source_sha256": "22cf45b6b19447468e579fccb80c89a7e3d344d31471d2002bb2c8e524f422f8"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+              "action": "modify",
+              "sha256": "0d049a6fc4c7adc146176a29f6d275610ec2c5a7523b9886ff25bc8e41ba6480",
+              "size": 5357,
+              "source_sha256": "54a73b9a2b027099c98632fbe58013dfbc7b1e9e503858dad109da616bac4d6a"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "2a7cac211dfa3c9dd745bf2fbb29d40e0d80ee7ad51cf9af93c0da4db7d4e017",
+              "size": 45360,
+              "source_sha256": "2b6f116a082f0f57c032c4d65169e358a8a04fd7eda5e64a28f68ce078bfec91"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "a9da243b64521fc108047094158b274c6e0f76e0c57ffe8b71767c420379cffe",
+              "size": 88218,
+              "source_sha256": "3764c444bac1d80dfc852b577ba6a24797143614dcf5de54627e0d18ba7834de"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "5849d92ad0b09d566a88b8f1dab12ebb48fad0b91d564310f96b5b54ac7d599c",
+              "size": 10962,
+              "source_sha256": "a8821db0658756526bfdce3d0ee8d0d3b654cbcbb33d7d24f5b4208811959938"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "71e68cb31e235421bfb5d4d8fd5b33632f790d598aa94eac2653e64084ffa624",
+              "size": 25807,
+              "source_sha256": "52bceccf2b17ea5daf5bf658b63f9aac0048ca4d670530feb7efa1fb675419f6"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+              "action": "modify",
+              "sha256": "29815508c5ffd7696a11d452d80ed118deedb039ed4b650ab422605209558150",
+              "size": 7271,
+              "source_sha256": "573fc460210e62134196c4e1b4c929cc05b763a93f76e1b989a73f8ddb3289a8"
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "fix(android): handle browser and share download handoffs"
+          }
+        },
+        "validation": {
+          "commands": [
+            {
+              "command": "./gradlew test",
+              "working_directory": "app/XDM.Android"
+            }
+          ]
+        }
+      },
+      "history_id": "05deaefcf68f46e384a306e83e50ba38"
+    },
+    {
+      "applied_at": "2026-07-21T01:00:14.813517Z",
+      "artifact": "/home/mike/Downloads/xdm_android_browser_share_handoff_overlay_fixed.zip",
+      "artifact_name": "xdm_android_browser_share_handoff_overlay_fixed.zip",
+      "type": "overlay",
+      "sha256": "abffebd79f6ff262e336d8b53392fecf63b4ce4bad997a713b02dd9561eed747",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "fix(android): handle browser and share handoffs",
+      "commit_hash": "",
+      "file_count": 7,
+      "change_counts": {
+        "modify": 7
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Browser and Share Handoff Fix (fixed)",
+        "description": "Makes XDM discoverable for typed browser download-manager intents and routes shared/browser links into Add or Media workflows instead of cold-launching silently. Fixes the missing AutomationCommandSource import in MainViewModel.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "d2bf01dcc37b077c79efcb6e022a70efb1a28fd66783fe5137246215e6ddbec6",
+              "size": 2444,
+              "source_sha256": "22cf45b6b19447468e579fccb80c89a7e3d344d31471d2002bb2c8e524f422f8"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+              "action": "modify",
+              "sha256": "0d049a6fc4c7adc146176a29f6d275610ec2c5a7523b9886ff25bc8e41ba6480",
+              "size": 5357,
+              "source_sha256": "54a73b9a2b027099c98632fbe58013dfbc7b1e9e503858dad109da616bac4d6a"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "8402d74cace657d7fabd81817146218d5b182ffde0e9f3bcbae512ae10bcdf04",
+              "size": 45422,
+              "source_sha256": "2b6f116a082f0f57c032c4d65169e358a8a04fd7eda5e64a28f68ce078bfec91"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "sha256": "a9da243b64521fc108047094158b274c6e0f76e0c57ffe8b71767c420379cffe",
+              "size": 88218,
+              "source_sha256": "3764c444bac1d80dfc852b577ba6a24797143614dcf5de54627e0d18ba7834de"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "5849d92ad0b09d566a88b8f1dab12ebb48fad0b91d564310f96b5b54ac7d599c",
+              "size": 10962,
+              "source_sha256": "a8821db0658756526bfdce3d0ee8d0d3b654cbcbb33d7d24f5b4208811959938"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "71e68cb31e235421bfb5d4d8fd5b33632f790d598aa94eac2653e64084ffa624",
+              "size": 25807,
+              "source_sha256": "52bceccf2b17ea5daf5bf658b63f9aac0048ca4d670530feb7efa1fb675419f6"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+              "action": "modify",
+              "sha256": "29815508c5ffd7696a11d452d80ed118deedb039ed4b650ab422605209558150",
+              "size": 7271,
+              "source_sha256": "573fc460210e62134196c4e1b4c929cc05b763a93f76e1b989a73f8ddb3289a8"
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "fix(android): handle browser and share handoffs"
+          }
+        },
+        "validation": {
+          "commands": [
+            {
+              "command": "./gradlew test",
+              "working_directory": "app/XDM.Android"
+            }
+          ]
+        }
+      },
+      "history_id": "28ed33e0d05b4099ae898e6064abf3ae"
     }
   ]
 }

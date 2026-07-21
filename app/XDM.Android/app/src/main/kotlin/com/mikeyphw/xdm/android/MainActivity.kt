@@ -63,7 +63,8 @@ class MainActivity : ComponentActivity() {
             Intent.ACTION_SEND -> AutomationCommandDraft(
                 source = AutomationCommandSource.ShareSheet,
                 action = AutomationCommandAction.CaptureMedia,
-                url = incoming.getStringExtra(Intent.EXTRA_TEXT),
+                url = sharedText(incoming),
+                fileName = incoming.getStringExtra(TaskerContract.ExtraFileName),
                 pageTitle = incoming.getStringExtra(Intent.EXTRA_SUBJECT),
                 explicitIdempotencyKey = incoming.getStringExtra(TaskerContract.ExtraIdempotencyKey),
                 originPackage = browserOriginPackage(incoming),
@@ -72,7 +73,9 @@ class MainActivity : ComponentActivity() {
             Intent.ACTION_VIEW -> AutomationCommandDraft(
                 source = AutomationCommandSource.ViewIntent,
                 action = AutomationCommandAction.CaptureMedia,
-                url = incoming.dataString,
+                url = incoming.dataString ?: sharedText(incoming),
+                fileName = incoming.getStringExtra(TaskerContract.ExtraFileName),
+                pageTitle = incoming.getStringExtra(TaskerContract.ExtraPageTitle),
                 pageUrl = incoming.dataString,
                 explicitIdempotencyKey = incoming.getStringExtra(TaskerContract.ExtraIdempotencyKey),
                 originPackage = browserOriginPackage(incoming),
@@ -82,6 +85,12 @@ class MainActivity : ComponentActivity() {
         }
         if (draft?.normalizedUrl != null) viewModel.ingestAutomationCommand(draft)
     }
+
+
+    private fun sharedText(intent: Intent): String? =
+        intent.getStringExtra(Intent.EXTRA_TEXT)
+            ?: intent.getStringExtra(Intent.EXTRA_SUBJECT)
+            ?: intent.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString()
 
     private fun browserOriginPackage(intent: Intent): String? =
         intent.getStringExtra(BrowserHandoffContract.ExtraOriginPackage)

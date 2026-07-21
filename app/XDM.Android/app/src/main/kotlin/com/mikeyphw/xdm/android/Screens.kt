@@ -35,6 +35,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -432,19 +433,28 @@ fun AddDownloadScreen(
     destinationUri: String,
     conflictPolicy: FilenameConflictPolicy,
     savedDestinations: List<DestinationPermission>,
+    externalDraftId: String? = null,
+    initialUrl: String? = null,
+    initialFileName: String? = null,
     onDestinationChanged: (String) -> Unit,
     onSafDestinationSelected: (String) -> Unit,
     onConflictPolicyChanged: (FilenameConflictPolicy) -> Unit,
     onAdd: (String, String, BackendType, String, FilenameConflictPolicy, Boolean, String, ChecksumAlgorithm) -> Unit,
     recommend: (String, String, BackendType, String, FilenameConflictPolicy, Boolean) -> BackendRecommendation,
 ) {
-    var url by remember { mutableStateOf("") }
-    var name by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf(initialUrl.orEmpty()) }
+    var name by remember { mutableStateOf(initialFileName.orEmpty()) }
     var backend by remember { mutableStateOf(BackendType.Automatic) }
     var allowFallback by remember { mutableStateOf(true) }
     var expectedChecksum by remember { mutableStateOf("") }
     var checksumAlgorithm by remember { mutableStateOf(ChecksumAlgorithm.Sha256) }
     var advancedExpanded by remember { mutableStateOf(false) }
+    LaunchedEffect(externalDraftId) {
+        if (externalDraftId != null) {
+            url = initialUrl.orEmpty()
+            name = initialFileName.orEmpty()
+        }
+    }
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { onSafDestinationSelected(it.toString()) }
     }
@@ -459,6 +469,16 @@ fun AddDownloadScreen(
             contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            if (externalDraftId != null) {
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            XdmCardTitle("Link received")
+                            XdmSupportingText("Review the shared or browser-provided link, then start the download when ready.")
+                        }
+                    }
+                }
+            }
             item {
                 XdmSupportingText("Paste a URL, choose where it should land, then start the transfer. Advanced backend and verification controls stay folded until needed.")
             }

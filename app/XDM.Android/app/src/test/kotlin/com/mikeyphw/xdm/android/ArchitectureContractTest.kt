@@ -301,6 +301,28 @@ class ArchitectureContractTest {
         assertFalse("Scheduler must not render raw constraints JSON", screens.contains("Text(rule.constraintsJson"))
     }
 
+
+    @Test
+    fun browserAndShareHandoffsOpenDownloadWorkflows() {
+        val root = androidRoot()
+        val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
+        val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
+        val activity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+
+        assertTrue("UI contract must define browser/share handoff rules", contract.contains("Browser and Share Handoff Rules"))
+        assertTrue("Manifest must expose ShareSheet text intake", manifest.contains("android.intent.action.SEND") && manifest.contains("android:mimeType=\"text/*\""))
+        assertTrue("Manifest must expose typed browser download-manager VIEW intake", manifest.contains("android:mimeType=\"*/*\"") && manifest.contains("android:scheme=\"http\"") && manifest.contains("android:scheme=\"https\""))
+        assertTrue("ShareSheet intake must inspect shared text and clip data", activity.contains("sharedText(incoming)") && activity.contains("Intent.EXTRA_TEXT") && activity.contains("clipData"))
+        assertTrue("Browser/share non-media links must open Add instead of being rejected", viewModel.contains("openExternalAddDraft") && viewModel.contains("navigate(AppRoute.Add)"))
+        assertTrue("External Add drafts must survive into UI state", viewModel.contains("externalAddDraft = addDraft"))
+        assertTrue("Add route must prefill external links", screens.contains("initialUrl") && screens.contains("Link received") && screens.contains("LaunchedEffect(externalDraftId)"))
+        assertTrue("App shell must pass external drafts to Add", appShell.contains("initialUrl = state.externalAddDraft?.url"))
+        assertFalse("Supported non-media links must not be rejected as missing media", viewModel.contains("No supported media URL detected"))
+    }
+
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }
 }

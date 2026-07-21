@@ -78,3 +78,11 @@ Scheduler must expose create, edit, enable or disable, delete, queue selection, 
 Media cards must emphasize origin, selected quality, and download readiness before technical URLs. Variant selection belongs in an explicit selector area with clear selected state and variant details.
 
 Recovery cards must lead with the user consequence and safe recommendation. Artifact paths and IDs belong behind technical details, and destructive-looking actions must clarify whether they only remove a recovery record or also affect files.
+
+## Browser and Share Handoff Rules
+
+XDM must be discoverable as an Android download target from browsers that delegate downloads through typed `ACTION_VIEW` intents. The app manifest must keep plain HTTP(S) view handling and also advertise typed HTTP(S) view handling with a MIME wildcard so browser-provided download intents can resolve to XDM.
+
+Shared text and browser handoffs must never fall through to a normal cold-launch experience. Media URLs may open the Media route when stream metadata is detected. Ordinary HTTP(S) URLs must open the Add route with the URL prefilled, preserving user review before the transfer starts.
+
+The ShareSheet intake path must extract URLs from `EXTRA_TEXT`, `EXTRA_SUBJECT`, or the first ClipData text item before rejecting the handoff. Rejections should be visible in Diagnostics, but supported links must navigate to the relevant user workflow.
