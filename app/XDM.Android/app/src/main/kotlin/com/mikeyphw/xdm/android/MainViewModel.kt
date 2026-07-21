@@ -507,6 +507,22 @@ class MainViewModel(
         termuxBridgeManager.setRootMode(mode)
     }
 
+    fun runTermuxRootProbe() {
+        termuxBridgeManager.runRootProbe()
+    }
+
+    fun collectTermuxRootProcessDiagnostics() {
+        termuxBridgeManager.collectRootProcessDiagnostics()
+    }
+
+    fun killStuckTermuxAria2WithRoot() {
+        termuxBridgeManager.killStuckTermuxAria2Daemon()
+    }
+
+    fun fixTermuxDownloadPermissionsWithRoot() {
+        termuxBridgeManager.fixTermuxDownloadPermissions("storage/downloads/XDM")
+    }
+
     fun setTermuxAria2Enabled(enabled: Boolean) {
         termuxAria2CockpitManager.setEnabled(enabled)
     }

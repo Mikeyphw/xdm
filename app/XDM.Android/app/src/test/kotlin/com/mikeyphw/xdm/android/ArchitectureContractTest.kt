@@ -441,6 +441,34 @@ class ArchitectureContractTest {
         assertFalse("Termux media pipeline must not add a top-level route", AppRoute.entries.any { it.label == "Convert" || it.label == "Tools" || it.label == "Termux" })
     }
 
+
+    @Test
+    fun termuxOptionalRootModeContractsArePresent() {
+        val root = androidRoot()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
+        val manager = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeManager.kt").readText()
+        val runStore = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxRunStore.kt").readText()
+        val templates = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt").readText()
+        val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
+        val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
+
+        assertTrue("Phase 10 contract doc is missing", File(root, "docs/architecture/PHASE-10-OPTIONAL-ROOT-MODE.md").isFile)
+        assertTrue("Phase 10 validator is missing", File(root, "tools/validate-termux-root-mode.py").isFile)
+        assertTrue("UI contract must define Phase 10 root rules", contract.contains("Phase 10 Optional Root Mode Rules"))
+        assertTrue("Root actions must remain typed", models.contains("XdmRootAction") && models.contains("RootActionAuditRecord") && models.contains("RootProbe"))
+        assertTrue("Root manager must expose guarded actions", manager.contains("collectRootProcessDiagnostics") && manager.contains("killStuckTermuxAria2Daemon") && manager.contains("rootMode == TermuxRootMode.Off"))
+        assertTrue("Root actions must be audited", runStore.contains("recordRootActionLaunch") && runStore.contains("rootAudit") && runStore.contains("lastRootMessage"))
+        assertTrue("Shell templates must use su only behind typed actions", templates.contains("su -c") && templates.contains("XDM_ROOT_ACTION") && templates.contains("process is not XDM-owned"))
+        assertTrue("Diagnostics/settings must expose root controls", screens.contains("Optional root actions") && screens.contains("Root audit") && screens.contains("Kill stuck aria2"))
+        assertTrue("App shell must wire root actions", appShell.contains("viewModel::runTermuxRootProbe") && appShell.contains("viewModel::killStuckTermuxAria2WithRoot"))
+        assertTrue("ViewModel must carry root actions", viewModel.contains("collectTermuxRootProcessDiagnostics") && viewModel.contains("fixTermuxDownloadPermissionsWithRoot"))
+        assertTrue("Project manifest must record optional root", manifestJson.contains("termux_optional_root") && manifestJson.contains("\"raw_shell_exposed\": false") && manifestJson.contains("\"root_required\": false"))
+        assertFalse("Optional root mode must not add a top-level route", AppRoute.entries.any { it.label == "Root" || it.label == "Termux" || it.label == "Tools" })
+    }
+
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }
 }

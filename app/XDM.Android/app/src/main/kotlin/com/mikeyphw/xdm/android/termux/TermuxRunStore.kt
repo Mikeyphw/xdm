@@ -14,6 +14,7 @@ object TermuxRunStore {
     private const val RootModeKey = "root_mode"
     private const val MaxPreviewCharacters = 1_600
     private const val MaxRecentRuns = 8
+    private const val MaxRootAudit = 8
 
     private val statusFlow = MutableStateFlow(TermuxBridgeStatus())
     val status: StateFlow<TermuxBridgeStatus> = statusFlow
@@ -43,6 +44,46 @@ object TermuxRunStore {
             .putString(RootModeKey, mode.name)
             .apply()
         statusFlow.update { it.copy(rootMode = mode, updatedAtEpochMs = System.currentTimeMillis()) }
+    }
+
+    fun recordRootActionLaunch(runId: String, action: XdmRootAction, started: Boolean, message: String) {
+        val now = System.currentTimeMillis()
+        val record = RootActionAuditRecord(
+            runId = runId.ifBlank { "root-launch-$now" },
+            actionLabel = action.label,
+            risk = action.risk,
+            status = if (started) TermuxRunStatus.Started else TermuxRunStatus.Failed,
+            message = message,
+            createdAtEpochMs = now,
+            finishedAtEpochMs = if (started) null else now,
+        )
+        statusFlow.update {
+            it.copy(
+                rootAudit = (listOf(record) + it.rootAudit.filterNot { old -> old.runId == record.runId }).take(MaxRootAudit),
+                lastRootMessage = record.summary,
+                updatedAtEpochMs = now,
+            )
+        }
+    }
+
+    fun recordRootProbeLaunch(runId: String, started: Boolean, message: String) {
+        val now = System.currentTimeMillis()
+        val record = RootActionAuditRecord(
+            runId = runId.ifBlank { "root-probe-$now" },
+            actionLabel = "Probe root",
+            risk = RootActionRisk.Low,
+            status = if (started) TermuxRunStatus.Started else TermuxRunStatus.Failed,
+            message = message,
+            createdAtEpochMs = now,
+            finishedAtEpochMs = if (started) null else now,
+        )
+        statusFlow.update {
+            it.copy(
+                rootAudit = (listOf(record) + it.rootAudit.filterNot { old -> old.runId == record.runId }).take(MaxRootAudit),
+                lastRootMessage = record.summary,
+                updatedAtEpochMs = now,
+            )
+        }
     }
 
     fun recordStarted(runId: String, operation: String) {
@@ -94,11 +135,37 @@ object TermuxRunStore {
             error = error.preview(),
         )
         val parsedTools = parseProbe(stdout)
-        val rootAvailable = stdout.lineSequence().any { it.trim() == "XDM_ROOT	available" }
+        val rootAvailableFromProbe = stdout.lineSequence().any { it.trim() == "XDM_ROOT	available" || it.trim() == "XDM_ROOT_PROBE	ready" }
+        val rootActionOutput = stdout.lineSequence().filter { it.startsWith("XDM_ROOT_ACTION") || it.startsWith("XDM_ROOT_DIAGNOSTICS") || it.startsWith("XDM_ROOT_PROBE") }.joinToString("; ").preview()
         statusFlow.update { current ->
+            val existingRoot = current.rootAudit.firstOrNull { it.runId == runId }
+            val updatedRootAudit = if (existingRoot != null || operation.startsWith("root_")) {
+                val base = existingRoot ?: RootActionAuditRecord(
+                    runId = runId,
+                    actionLabel = operation.removePrefix("root_").replace('_', ' '),
+                    risk = RootActionRisk.Low,
+                    status = TermuxRunStatus.Started,
+                    message = "Finished through Termux result service.",
+                    createdAtEpochMs = now,
+                )
+                val rootRecord = base.copy(
+                    status = if (failed) TermuxRunStatus.Failed else TermuxRunStatus.Succeeded,
+                    message = rootActionOutput.ifBlank { if (failed) stderr.preview().ifBlank { error.preview() } else "Root action completed." },
+                    finishedAtEpochMs = now,
+                )
+                (listOf(rootRecord) + current.rootAudit.filterNot { it.runId == runId }).take(MaxRootAudit)
+            } else {
+                current.rootAudit
+            }
             current.copy(
                 toolRows = if (parsedTools.isEmpty()) current.toolRows else parsedTools,
-                rootAvailable = if (parsedTools.isEmpty()) current.rootAvailable else rootAvailable,
+                rootAvailable = when {
+                    operation.startsWith("root_") && !failed -> true
+                    parsedTools.isNotEmpty() -> rootAvailableFromProbe
+                    else -> current.rootAvailable || rootAvailableFromProbe
+                },
+                rootAudit = updatedRootAudit,
+                lastRootMessage = updatedRootAudit.firstOrNull()?.summary ?: current.lastRootMessage,
                 recentRuns = (listOf(updatedRecord) + current.recentRuns.filterNot { it.runId == runId }).take(MaxRecentRuns),
                 lastMessage = if (failed) error.ifBlank { stderr.preview().ifBlank { "Termux command failed with exit $exitCode." } } else "Termux $operation completed.",
                 updatedAtEpochMs = now,

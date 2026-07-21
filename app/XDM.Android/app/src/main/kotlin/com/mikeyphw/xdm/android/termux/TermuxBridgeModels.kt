@@ -23,11 +23,24 @@ enum class RootActionRisk {
     Destructive,
 }
 
-sealed class XdmRootAction(open val risk: RootActionRisk) {
-    data class FixFilePermissions(val path: String) : XdmRootAction(RootActionRisk.Medium)
-    data class KillOwnedProcess(val pid: Int) : XdmRootAction(RootActionRisk.Medium)
-    data class MoveCompletedFile(val from: String, val to: String) : XdmRootAction(RootActionRisk.Medium)
-    data class CollectProcessDiagnostics(val packageName: String) : XdmRootAction(RootActionRisk.Low)
+sealed class XdmRootAction(open val risk: RootActionRisk, open val label: String) {
+    data class FixFilePermissions(val path: String) : XdmRootAction(RootActionRisk.Medium, "Fix output permissions")
+    data class KillOwnedProcess(val pid: Int) : XdmRootAction(RootActionRisk.Medium, "Kill owned process")
+    data class KillTermuxAria2Daemon(val port: Int) : XdmRootAction(RootActionRisk.Medium, "Kill stuck Termux aria2")
+    data class MoveCompletedFile(val from: String, val to: String) : XdmRootAction(RootActionRisk.Medium, "Move completed file")
+    data class CollectProcessDiagnostics(val packageName: String) : XdmRootAction(RootActionRisk.Low, "Collect root process diagnostics")
+}
+
+data class RootActionAuditRecord(
+    val runId: String,
+    val actionLabel: String,
+    val risk: RootActionRisk,
+    val status: TermuxRunStatus,
+    val message: String,
+    val createdAtEpochMs: Long,
+    val finishedAtEpochMs: Long? = null,
+) {
+    val summary: String get() = "$actionLabel • ${status.name.lowercase(Locale.US)} • $message"
 }
 
 sealed class XdmTermuxCommand(val operation: String) {
@@ -45,6 +58,8 @@ sealed class XdmTermuxCommand(val operation: String) {
     data class Aria2TellActive(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_tasks_active")
     data class Aria2PauseAll(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_tasks_pause_all")
     data class Aria2ResumeAll(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_tasks_resume_all")
+    data object RootProbe : XdmTermuxCommand("root_probe")
+    data class RootAction(val action: XdmRootAction) : XdmTermuxCommand("root_${action.label.lowercase(Locale.US).replace(" ", "_")}")
 }
 
 data class TermuxToolProbeRow(
@@ -87,10 +102,15 @@ data class TermuxBridgeStatus(
     val rootAvailable: Boolean = false,
     val toolRows: List<TermuxToolProbeRow> = ExternalTool.entries.map { TermuxToolProbeRow(it) },
     val recentRuns: List<TermuxRunRecord> = emptyList(),
+    val rootAudit: List<RootActionAuditRecord> = emptyList(),
+    val lastRootMessage: String = "Root actions have not run yet.",
     val lastMessage: String = "Termux has not been checked yet.",
     val updatedAtEpochMs: Long = 0L,
 ) {
     val canRunProbe: Boolean get() = termuxInstalled && runCommandPermissionGranted
+    val rootProbeSucceeded: Boolean get() = rootAudit.any { it.actionLabel == "Probe root" && it.status == TermuxRunStatus.Succeeded }
+    val canRunRootProbe: Boolean get() = canRunProbe
+    val canRunRootAction: Boolean get() = canRunProbe && rootMode != TermuxRootMode.Off && rootAvailable && rootProbeSucceeded
 
     val readinessLabel: String get() = when {
         !termuxInstalled -> "Termux missing"
@@ -111,8 +131,12 @@ data class TermuxBridgeStatus(
         appendLine("RUN_COMMAND granted: $runCommandPermissionGranted")
         appendLine("Root mode: ${rootMode.label}")
         appendLine("Root available: $rootAvailable")
+        appendLine("Last root action: $lastRootMessage")
         toolRows.forEach { row ->
             appendLine("${row.tool.displayName}: ${row.statusLabel} ${row.versionLine}".trim())
+        }
+        rootAudit.take(4).forEach { audit ->
+            appendLine("Root ${audit.runId}: ${audit.summary}")
         }
         recentRuns.take(3).forEach { run ->
             appendLine("Run ${run.runId}: ${run.summary} exit=${run.exitCode ?: "pending"}")

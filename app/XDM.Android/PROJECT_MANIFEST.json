@@ -330,5 +330,23 @@
     "media_route_summary": true,
     "copyable_diagnostics": true,
     "top_level_route_added": false
+  },
+  "termux_optional_root": {
+    "schema_version_unchanged": 13,
+    "enabled_default": "Off",
+    "no_chroot_support": true,
+    "root_required": false,
+    "raw_shell_exposed": false,
+    "typed_root_actions": [
+      "root_probe",
+      "collect_process_diagnostics",
+      "kill_stuck_termux_aria2",
+      "fix_output_permissions",
+      "move_completed_file_foundation"
+    ],
+    "medium_risk_requires_probe": true,
+    "audit_log_visible": true,
+    "copyable_diagnostics": true,
+    "top_level_route_added": false
   }
 }

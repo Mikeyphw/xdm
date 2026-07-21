@@ -1166,6 +1166,9 @@ fun DiagnosticsScreen(
     state: MainUiState,
     onRunAria2SmokeTest: () -> Unit,
     onRunTermuxProbe: () -> Unit,
+    onRunTermuxRootProbe: () -> Unit,
+    onCollectRootDiagnostics: () -> Unit,
+    onKillStuckAria2WithRoot: () -> Unit,
     onStartTermuxAria2Daemon: () -> Unit,
     onStopTermuxAria2Daemon: () -> Unit,
     onProbeTermuxAria2Daemon: () -> Unit,
@@ -1303,7 +1306,15 @@ fun DiagnosticsScreen(
                 }
             }
         }
-        item { TermuxBridgeDiagnosticsCard(state.termuxBridge, onRunTermuxProbe) }
+        item {
+            TermuxBridgeDiagnosticsCard(
+                termux = state.termuxBridge,
+                onRunProbe = onRunTermuxProbe,
+                onRunRootProbe = onRunTermuxRootProbe,
+                onCollectRootDiagnostics = onCollectRootDiagnostics,
+                onKillStuckAria2WithRoot = onKillStuckAria2WithRoot,
+            )
+        }
         item {
             TermuxAria2CockpitCard(
                 aria2 = state.termuxAria2,
@@ -1340,7 +1351,13 @@ private fun DiagnosticLine(label: String, value: String) {
 
 
 @Composable
-private fun TermuxBridgeDiagnosticsCard(termux: TermuxBridgeStatus, onRunProbe: () -> Unit) {
+private fun TermuxBridgeDiagnosticsCard(
+    termux: TermuxBridgeStatus,
+    onRunProbe: () -> Unit,
+    onRunRootProbe: () -> Unit,
+    onCollectRootDiagnostics: () -> Unit,
+    onKillStuckAria2WithRoot: () -> Unit,
+) {
     val context = LocalContext.current
     Card(Modifier.fillMaxWidth().semantics { contentDescription = "Termux bridge ${termux.readinessLabel}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1364,6 +1381,17 @@ private fun TermuxBridgeDiagnosticsCard(termux: TermuxBridgeStatus, onRunProbe: 
             termux.toolRows.forEach { row ->
                 XdmMetadataText("${row.tool.displayName}: ${row.statusLabel} — ${row.versionLine}", maxLines = 2)
             }
+            XdmSectionHeader("Optional root actions")
+            XdmSupportingText("Root actions are launched through Termux as typed, logged operations. Root mode must be enabled before medium-risk actions can run.")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                TextButton(onClick = onRunRootProbe, enabled = termux.canRunRootProbe) { Text("Probe root") }
+                TextButton(onClick = onCollectRootDiagnostics, enabled = termux.canRunRootAction) { Text("Root diagnostics") }
+                TextButton(onClick = onKillStuckAria2WithRoot, enabled = termux.canRunRootAction) { Text("Kill stuck aria2") }
+            }
+            XdmMetadataText(termux.lastRootMessage, maxLines = 3)
+            termux.rootAudit.take(3).forEach { audit ->
+                XdmMetadataText("Root audit: ${audit.summary}", maxLines = 2)
+            }
             termux.recentRuns.firstOrNull()?.let { run ->
                 XdmMetadataText("Last Termux run: ${run.summary} ${run.exitCode?.let { "exit $it" } ?: "pending"}", maxLines = 2)
             }
@@ -1375,12 +1403,17 @@ private fun TermuxBridgeDiagnosticsCard(termux: TermuxBridgeStatus, onRunProbe: 
     }
 }
 
+
 @Composable
 private fun TermuxBridgeSettingsCard(
     termux: TermuxBridgeStatus,
     onRunProbe: () -> Unit,
     onOpenTermux: () -> Unit,
     onRootModeChanged: (TermuxRootMode) -> Unit,
+    onRunRootProbe: () -> Unit,
+    onCollectRootDiagnostics: () -> Unit,
+    onKillStuckAria2WithRoot: () -> Unit,
+    onFixDownloadPermissionsWithRoot: () -> Unit,
 ) {
     Card(Modifier.fillMaxWidth().semantics { contentDescription = "Termux backend ${termux.readinessLabel}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1408,6 +1441,15 @@ private fun TermuxBridgeSettingsCard(
                 }
             }
             XdmMetadataText(termux.rootMode.description)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                TextButton(onClick = onRunRootProbe, enabled = termux.canRunRootProbe) { Text("Probe root") }
+                TextButton(onClick = onCollectRootDiagnostics, enabled = termux.canRunRootAction) { Text("Root diagnostics") }
+                TextButton(onClick = onKillStuckAria2WithRoot, enabled = termux.canRunRootAction) { Text("Kill stuck aria2") }
+                TextButton(onClick = onFixDownloadPermissionsWithRoot, enabled = termux.canRunRootAction) { Text("Fix XDM permissions") }
+            }
+            termux.rootAudit.take(4).forEach { audit ->
+                XdmMetadataText("Root audit: ${audit.summary}", maxLines = 2)
+            }
         }
     }
 }
@@ -1539,6 +1581,10 @@ fun SettingsScreen(
     onRunTermuxProbe: () -> Unit,
     onOpenTermux: () -> Unit,
     onRootModeChanged: (TermuxRootMode) -> Unit,
+    onRunTermuxRootProbe: () -> Unit,
+    onCollectRootDiagnostics: () -> Unit,
+    onKillStuckAria2WithRoot: () -> Unit,
+    onFixDownloadPermissionsWithRoot: () -> Unit,
     onTermuxAria2EnabledChanged: (Boolean) -> Unit,
     onRotateTermuxAria2Secret: () -> Unit,
 ) {
@@ -1648,7 +1694,18 @@ fun SettingsScreen(
             }
         }
         item { XdmSectionHeader("Termux backend") }
-        item { TermuxBridgeSettingsCard(termuxBridge, onRunTermuxProbe, onOpenTermux, onRootModeChanged) }
+        item {
+            TermuxBridgeSettingsCard(
+                termux = termuxBridge,
+                onRunProbe = onRunTermuxProbe,
+                onOpenTermux = onOpenTermux,
+                onRootModeChanged = onRootModeChanged,
+                onRunRootProbe = onRunTermuxRootProbe,
+                onCollectRootDiagnostics = onCollectRootDiagnostics,
+                onKillStuckAria2WithRoot = onKillStuckAria2WithRoot,
+                onFixDownloadPermissionsWithRoot = onFixDownloadPermissionsWithRoot,
+            )
+        }
         item { TermuxAria2SettingsCard(termuxAria2, onTermuxAria2EnabledChanged, onRotateTermuxAria2Secret) }
         item { XdmSectionHeader("Conversion and post-processing") }
         item {

@@ -1,0 +1,133 @@
+{
+  "applied_at": "2026-07-21T18:02:47.660328Z",
+  "artifact": "/home/mike/Downloads/xdm_android_termux_optional_root_phase10_overlay.zip",
+  "artifact_name": "xdm_android_termux_optional_root_phase10_overlay.zip",
+  "type": "overlay",
+  "sha256": "89b2312dc7996767d5056a3e37a87f8ccca908040a20f4f5effc7c9414274d47",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Add optional Termux root mode for Android",
+  "commit_hash": "",
+  "file_count": 12,
+  "change_counts": {
+    "add": 2,
+    "modify": 10
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Termux Optional Root Mode Phase 10",
+    "description": "Adds optional root mode for Termux-backed XDM Android with typed root actions, audit records, root diagnostics, and guardrails. Root remains off by default and no chroot/raw shell UI is added.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "05a2203c48b9e7e33f73f571b4e46cdd1d4f7f1e302ba03804845c5ca5bce121",
+          "size": 9511,
+          "source_sha256": "6a1951182be6fc5439dd8e31091a6a522a9b96bef692cb09299e8a86f68595ae"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "5d98512e39a79e84619dafae467867d043d7e773992919e5fe55cb52828b887d",
+          "size": 49773,
+          "source_sha256": "88a535ae4f50f515c45e38bda5c69d81afa3eb336af7bd804d7971fda18141b9"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "e45158a91404dde92e2aea342185322ae1278c280a65fbe12d1530cc1ee96abf",
+          "size": 107478,
+          "source_sha256": "b338e56f80811bbfc6547044896448c341ae3d24f11f68dd25d9a5ca5285c08e"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "2a48c7e21d759d39dedd5897d1caadb8ee2cba9c22e23be736cc453e73c3d354",
+          "size": 12574,
+          "source_sha256": "31ebdaadfdfa57f72a1c809f7b2226d4e68afb56a80680810636da99318f2346"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeManager.kt",
+          "action": "modify",
+          "sha256": "c09ce1c97f3f3be76e47bc701c2962d18c7a34e47f9bbe39ce01f31ab2adb14f",
+          "size": 2700,
+          "source_sha256": "1f5b125f7c26f71c06cfbc42508490988653811a2b7dac1a41ed9cc971618482"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt",
+          "action": "modify",
+          "sha256": "d5b043a34cdc56387c0756541b27d4174f835829b8d7c4d2a7d75402f7f84569",
+          "size": 7045,
+          "source_sha256": "8ffc719954c746a5062d9025ec50f5fe94d01cd44a55c6b265caa815834a911e"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxRunStore.kt",
+          "action": "modify",
+          "sha256": "558ef60825e04772ef1df70211281c6375f418ece3f75a7b2d5a57e05f96b4c3",
+          "size": 9675,
+          "source_sha256": "3ba2c39d665f52b22e54df6727f7702240635b87d773324c114f98ce49abc112"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt",
+          "action": "modify",
+          "sha256": "b3918752583b173a0146e88cf7e6a10f001220efc6f2a40dce16911529f474f2",
+          "size": 12725,
+          "source_sha256": "e0203c81b690e030ef919af1361e9c88483a699cc8f6059667391964b22c3d4b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "8c889c8c766f058c5caee8dcf3271cf8344b7154d6d78ccb4c31e4f362b00393",
+          "size": 41254,
+          "source_sha256": "9efa9b539736076fd0527637c5901d45106a88b1039de3500537412d95d1dab7"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-10-OPTIONAL-ROOT-MODE.md",
+          "action": "add",
+          "sha256": "ee08f2e62c04c8275c72beefcd23d89d30e7f4d538a0e88bdd28a05942e7773a",
+          "size": 839
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+          "action": "modify",
+          "sha256": "d1e95599e554f56109620d2ab4bef0f3ab4a4d5c8cfba82574ced63020daae9c",
+          "size": 9419,
+          "source_sha256": "1553ad849ef890033a7e91af58cb3f9e07570eaa1454a20b0743ce018f5567ff"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-termux-root-mode.py",
+          "action": "add",
+          "sha256": "aae88bb793d5655cd7e5f911e204f9f1b393d6a388bc422e80555a8ad9d4c779",
+          "size": 1599
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Add optional Termux root mode for Android"
+      }
+    },
+    "validation": {
+      "commands": [
+        "python3 tools/validate-termux-root-mode.py",
+        "python3 tools/validate-termux-bridge.py",
+        "python3 tools/validate-termux-media-pipeline.py",
+        "./gradlew testDebugUnitTest assembleDebug"
+      ]
+    }
+  },
+  "history_id": "f3a39e8fa8334feaad325753d973ba73"
+}

@@ -111,3 +111,11 @@ The ShareSheet intake path must extract URLs from `EXTRA_TEXT`, `EXTRA_SUBJECT`,
 - yt-dlp metadata extraction, yt-dlp download, FFprobe inspection, and FFmpeg conversion must be discoverable from captured media cards.
 - The route must show a pipeline summary, recent jobs, and a copyable diagnostics payload.
 - Root must stay optional and chroot support must stay absent.
+
+## Phase 10 Optional Root Mode Rules
+
+- Root mode remains off by default and is never required for the Termux bridge, aria2 cockpit, or media pipeline.
+- Root operations must be typed actions such as root probe, process diagnostics, stuck aria2 termination, permission repair, or completed-file move. XDM must not expose a raw root shell.
+- Medium-risk root actions require root mode to be enabled and a successful root probe before launch.
+- Every root action must create a visible audit record and be included in copyable Termux diagnostics.
+- Root actions must be launched through the existing Termux RUN_COMMAND bridge and remain chroot-free.

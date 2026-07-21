@@ -16,6 +16,8 @@ object TermuxShellTemplates {
         is XdmTermuxCommand.Aria2TellActive -> aria2RpcScript(command.config, "aria2.tellActive", "XDM_ARIA2_TASKS\tactive")
         is XdmTermuxCommand.Aria2PauseAll -> aria2RpcScript(command.config, "aria2.pauseAll", "XDM_ARIA2_TASKS\tpaused")
         is XdmTermuxCommand.Aria2ResumeAll -> aria2RpcScript(command.config, "aria2.unpauseAll", "XDM_ARIA2_TASKS\tresumed")
+        XdmTermuxCommand.RootProbe -> rootProbeScript()
+        is XdmTermuxCommand.RootAction -> rootActionScript(command.action)
     }
 
     private fun probeAllToolsScript(): String = buildString {
@@ -85,6 +87,62 @@ object TermuxShellTemplates {
     }
 
 
+
+    private fun rootProbeScript(): String = buildString {
+        appendLine("set +e")
+        appendLine("if command -v su >/dev/null 2>&1; then printf 'XDM_ROOT\\tavailable\\n'; else printf 'XDM_ROOT\\tmissing\\n'; exit 127; fi")
+        appendLine("su -c ${shellQuote("id -u; id; printf 'XDM_ROOT_PROBE\\tready\\n'")} 2>&1")
+    }
+
+    private fun rootActionScript(action: XdmRootAction): String = buildString {
+        appendLine("set +e")
+        appendLine("if command -v su >/dev/null 2>&1; then :; else printf 'XDM_ROOT_ACTION\\tmissing\\tsu not found\\n'; exit 127; fi")
+        appendLine("printf 'XDM_ROOT_ACTION\\tstarted\\t${shellMarker(action.label)}\\n'")
+        appendLine("su -c ${shellQuote(rootInnerScript(action))} 2>&1")
+        appendLine("XDM_ROOT_EXIT=${'$'}?")
+        appendLine("if [ \"${'$'}XDM_ROOT_EXIT\" -eq 0 ]; then printf 'XDM_ROOT_ACTION\\tfinished\\t${shellMarker(action.label)}\\n'; else printf 'XDM_ROOT_ACTION\\tfailed\\t${shellMarker(action.label)}\\t%s\\n' \"${'$'}XDM_ROOT_EXIT\"; fi")
+        appendLine("exit \"${'$'}XDM_ROOT_EXIT\"")
+    }
+
+    private fun rootInnerScript(action: XdmRootAction): String = when (action) {
+        is XdmRootAction.CollectProcessDiagnostics -> rootCollectProcessDiagnosticsScript(action.packageName)
+        is XdmRootAction.KillTermuxAria2Daemon -> rootKillTermuxAria2Script(action.port)
+        is XdmRootAction.KillOwnedProcess -> rootKillOwnedProcessScript(action.pid)
+        is XdmRootAction.FixFilePermissions -> rootFixPermissionsScript(action.path)
+        is XdmRootAction.MoveCompletedFile -> rootMoveCompletedFileScript(action.from, action.to)
+    }
+
+    private fun rootCollectProcessDiagnosticsScript(packageName: String): String = buildString {
+        appendLine("printf 'XDM_ROOT_DIAGNOSTICS\\tidentity\\t'")
+        appendLine("id")
+        appendLine("printf 'XDM_ROOT_DIAGNOSTICS\\tprocesses\\n'")
+        appendLine("ps -A 2>/dev/null | grep -E ${shellQuote("aria2c|ffmpeg|ffprobe|yt-dlp|${packageName}|com.termux")} | head -n 80 || true")
+    }
+
+    private fun rootKillTermuxAria2Script(port: Int): String = buildString {
+        appendLine("TARGET_PORT=${port.coerceIn(1024, 65535)}")
+        appendLine("MATCHES=${'$'}(for pid in ${'$'}(pidof aria2c 2>/dev/null); do cmd=${'$'}(tr '\\0' ' ' < /proc/${'$'}pid/cmdline 2>/dev/null); case \"${'$'}cmd\" in *--rpc-listen-port=${'$'}TARGET_PORT*) printf '%s ' \"${'$'}pid\" ;; esac; done)")
+        appendLine("if [ -z \"${'$'}MATCHES\" ]; then printf 'XDM_ROOT_ACTION\\tnoop\\tno matching XDM aria2 daemon\\n'; exit 0; fi")
+        appendLine("for pid in ${'$'}MATCHES; do kill -TERM \"${'$'}pid\"; printf 'XDM_ROOT_ACTION\\tkilled\\taria2c pid=%s\\n' \"${'$'}pid\"; done")
+    }
+
+    private fun rootKillOwnedProcessScript(pid: Int): String = buildString {
+        appendLine("TARGET_PID=${pid.coerceAtLeast(1)}")
+        appendLine("CMDLINE=${'$'}(tr '\\0' ' ' < /proc/${'$'}TARGET_PID/cmdline 2>/dev/null || true)")
+        appendLine("case \"${'$'}CMDLINE\" in *aria2c*16800*|*ffmpeg*XDM*|*yt-dlp*XDM*) kill -TERM \"${'$'}TARGET_PID\"; printf 'XDM_ROOT_ACTION\\tkilled\\tpid=%s\\n' \"${'$'}TARGET_PID\" ;; *) printf 'XDM_ROOT_ACTION\\tdenied\\tprocess is not XDM-owned\\n'; exit 3 ;; esac")
+    }
+
+    private fun rootFixPermissionsScript(path: String): String = buildString {
+        appendLine("TARGET=${shellQuote(path)}")
+        appendLine("case \"${'$'}TARGET\" in *XDM*|*Download*|*download*) chmod -R u+rwX,g+rwX \"${'$'}TARGET\"; printf 'XDM_ROOT_ACTION\\tpermissions_fixed\\t%s\\n' \"${'$'}TARGET\" ;; *) printf 'XDM_ROOT_ACTION\\tdenied\\tpath is outside XDM/download areas\\n'; exit 3 ;; esac")
+    }
+
+    private fun rootMoveCompletedFileScript(from: String, to: String): String = buildString {
+        appendLine("FROM=${shellQuote(from)}")
+        appendLine("TO=${shellQuote(to)}")
+        appendLine("case \"${'$'}FROM:${'$'}TO\" in *XDM*|*Download*|*download*) mkdir -p \"${'$'}(dirname \"${'$'}TO\")\"; mv -n \"${'$'}FROM\" \"${'$'}TO\"; printf 'XDM_ROOT_ACTION\\tmoved\\t%s\\t%s\\n' \"${'$'}FROM\" \"${'$'}TO\" ;; *) printf 'XDM_ROOT_ACTION\\tdenied\\tpaths are outside XDM/download areas\\n'; exit 3 ;; esac")
+    }
+
     private fun aria2StartDaemonScript(config: TermuxAria2RpcConfig): String = buildString {
         appendLine("set -e")
         appendLine("mkdir -p ${shellQuote(config.downloadDir)} ${shellQuote(config.sessionFile.substringBeforeLast('/'))} ${shellQuote(config.logFile.substringBeforeLast('/'))}")
@@ -131,6 +189,8 @@ object TermuxShellTemplates {
             fi
         """.trimIndent() + "\n"
     }
+
+    private fun shellMarker(value: String): String = value.replace('\t', ' ').replace('\n', ' ').take(80)
 
     fun shellQuote(value: String): String = "'" + value.replace("'", "'\\''") + "'"
 }
