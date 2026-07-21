@@ -8,4 +8,5 @@ android {
 }
 
 
-dependencies { implementation(project(":core-model")); implementation(project(":transfer-api")); implementation(libs.kotlinx.coroutines.android); testImplementation(libs.junit) }
+dependencies { implementation(project(":core-model"))
+    implementation(project(":core-utils")); implementation(project(":transfer-api")); implementation(libs.kotlinx.coroutines.android); testImplementation(libs.junit) }

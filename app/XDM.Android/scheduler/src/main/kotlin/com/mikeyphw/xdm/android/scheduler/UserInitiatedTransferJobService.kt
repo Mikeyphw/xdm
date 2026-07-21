@@ -44,14 +44,13 @@ class UserInitiatedTransferJobService : JobService() {
             val state = runtime.execute(downloadId)
             updater.cancel()
             val result = runtime.findDownload(downloadId)
-            val completed = state == DownloadState.Completed
             setNotification(
                 params,
                 TransferNotifications.ACTIVE_NOTIFICATION_ID + params.jobId,
-                notifications.terminal(downloadId, result?.fileName ?: "Download", completed, result?.errorMessage),
+                notifications.terminal(downloadId, result?.fileName ?: "Download", state, result?.errorMessage),
                 JOB_END_NOTIFICATION_POLICY_DETACH,
             )
-            val reschedule = state !in setOf(DownloadState.Completed, DownloadState.Cancelled, DownloadState.Failed, DownloadState.RecoveryRequired)
+            val reschedule = state in setOf(DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)
             jobFinished(params, reschedule)
             jobs.remove(params.jobId)
         }

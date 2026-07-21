@@ -42,6 +42,7 @@ android {
 
 dependencies {
     implementation(project(":core-model"))
+    implementation(project(":core-utils"))
     implementation(project(":transfer-api"))
     implementation(project(":storage"))
     implementation(libs.kotlinx.coroutines.android)

@@ -6,6 +6,7 @@ import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
+import com.mikeyphw.xdm.android.util.sanitizeFileName
 import java.net.URI
 import java.security.MessageDigest
 import java.util.Locale
@@ -231,11 +232,11 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             MediaSourceKind.AudioStream -> pathName?.substringAfterLast('.', "")?.takeIf(String::isNotBlank)?.let { ".$it" } ?: ".m4a"
             else -> pathName?.substringAfterLast('.', "")?.takeIf(String::isNotBlank)?.let { ".$it" } ?: ".mp4"
         }
-        val base = (pathName?.substringBeforeLast('.', missingDelimiterValue = "")?.takeIf(String::isNotBlank) ?: title)
-            .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_")
-            .trim('.', ' ')
-            .ifBlank { "captured-media" }
-            .take(160)
+        val base = sanitizeFileName(
+            pathName?.substringBeforeLast('.', missingDelimiterValue = "")?.takeIf(String::isNotBlank) ?: title,
+            fallback = "captured-media",
+            maxLength = 160,
+        )
         return if (base.endsWith(extension, ignoreCase = true)) base else base + extension
     }
 

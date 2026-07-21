@@ -31,10 +31,9 @@ class TransferForegroundService : Service() {
         startForeground()
         terminalJob = scope.launch {
             runtime.terminalEvents.collectLatest { event ->
-                val completed = event.state == com.mikeyphw.xdm.android.model.DownloadState.Completed
                 getSystemService(android.app.NotificationManager::class.java).notify(
                     5000 + event.downloadId.stableSystemId(),
-                    notifications.terminal(event.downloadId, event.fileName, completed, event.message),
+                    notifications.terminal(event.downloadId, event.fileName, event.state, event.message),
                 )
             }
         }

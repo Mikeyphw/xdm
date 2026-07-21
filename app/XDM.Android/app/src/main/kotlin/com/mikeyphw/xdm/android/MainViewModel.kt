@@ -60,6 +60,7 @@ import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.newChecksumExpectationId
 import com.mikeyphw.xdm.android.transfer.normalizeHex
+import com.mikeyphw.xdm.android.util.sanitizeFileName
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2CapabilityReport
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessManager
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessState
@@ -923,11 +924,6 @@ class MainViewModel(
         isMediaRequest = isMediaRequest,
     )
 
-    private fun sanitizeFileName(value: String): String = value.trim()
-        .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_")
-        .trim('.', ' ')
-        .ifBlank { "download.bin" }
-        .take(180)
 
     private fun resolveFileName(url: String, requestedName: String): String {
         if (requestedName.isNotBlank()) return sanitizeFileName(requestedName)

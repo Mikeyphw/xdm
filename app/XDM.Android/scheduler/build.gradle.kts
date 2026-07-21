@@ -9,6 +9,7 @@ android {
 
 dependencies {
     implementation(project(":core-model"))
+    implementation(project(":core-utils"))
     implementation(project(":persistence"))
     implementation(project(":transfer-api"))
     implementation(project(":transfer-native"))

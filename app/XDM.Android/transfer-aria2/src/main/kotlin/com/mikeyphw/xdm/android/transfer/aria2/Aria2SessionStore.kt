@@ -3,6 +3,7 @@ package com.mikeyphw.xdm.android.transfer.aria2
 import android.content.Context
 import com.mikeyphw.xdm.android.model.BackendArtifactIdentity
 import com.mikeyphw.xdm.android.transfer.Aria2TaskMapping
+import com.mikeyphw.xdm.android.util.sanitizeFileName
 import java.io.File
 import java.util.UUID
 import kotlinx.serialization.json.buildJsonObject
@@ -126,11 +127,7 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
         return taskFiles(downloadId, output).artifacts()
     }
 
-    private fun safeFileName(value: String): String = value
-        .replace(Regex("[\\/:*?\"<>|\\p{Cntrl}]"), "_")
-        .trim('.', ' ')
-        .ifBlank { "download.bin" }
-        .take(180)
+    private fun safeFileName(value: String): String = sanitizeFileName(value)
 
     private fun File.safeConfigurationPath(): String = canonicalPath.also { path ->
         require('\n' !in path && '\r' !in path) { "Unsafe aria2 configuration path" }

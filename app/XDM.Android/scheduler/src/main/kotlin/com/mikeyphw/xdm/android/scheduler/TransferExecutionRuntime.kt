@@ -314,16 +314,17 @@ class TransferExecutionRuntime(
         }
         val message = reconciliation?.message ?: error.message ?: error::class.java.simpleName
         val current = store.find(download.id) ?: download
+        val storedMessage = if (state == DownloadState.Paused) null else message
         store.save(
             current.copy(
                 state = state,
                 speedBytesPerSecond = 0,
-                errorMessage = message,
+                errorMessage = storedMessage,
                 updatedAtEpochMs = System.currentTimeMillis(),
             ),
         )
-        if (state == DownloadState.Failed || state == DownloadState.RecoveryRequired) {
-            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, state, message))
+        if (state == DownloadState.Paused || state == DownloadState.Failed || state == DownloadState.RecoveryRequired) {
+            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, state, storedMessage))
         }
     }
 
@@ -335,7 +336,7 @@ class TransferExecutionRuntime(
         val storedAfterCompletion = store.find(download.id)
         val finalState = storedAfterCompletion?.state ?: finalSnapshot.state
         val finalMessage = storedAfterCompletion?.errorMessage ?: finalSnapshot.errorMessage
-        if (finalState in TERMINAL_STATES || finalState == DownloadState.RecoveryRequired) {
+        if (finalState in TERMINAL_STATES || finalState == DownloadState.Paused || finalState == DownloadState.RecoveryRequired) {
             _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage))
         }
     }

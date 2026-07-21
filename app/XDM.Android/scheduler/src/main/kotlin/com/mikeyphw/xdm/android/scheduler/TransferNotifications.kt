@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.util.sanitizeNotificationText
 import java.util.Locale
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
@@ -85,21 +87,69 @@ class TransferNotifications(private val context: Context) {
             .build()
     }
 
-    fun terminal(downloadId: String, fileName: String, completed: Boolean, message: String?): Notification {
+    fun terminal(downloadId: String, fileName: String, state: DownloadState, message: String?): Notification {
         ensureChannels()
+        val profile = notificationProfile(state, fileName, message)
         return NotificationCompat.Builder(context, CHANNEL_STATUS)
-            .setSmallIcon(if (completed) android.R.drawable.stat_sys_download_done else android.R.drawable.stat_notify_error)
-            .setContentTitle(if (completed) "Download complete" else "Download failed")
-            .setContentText(message ?: fileName)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message ?: fileName))
+            .setSmallIcon(profile.icon)
+            .setContentTitle(profile.title)
+            .setContentText(profile.text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(profile.text))
             .setAutoCancel(true)
             .setContentIntent(openAppPendingIntent())
             .apply {
-                if (!completed) addAction(android.R.drawable.ic_popup_sync, "Retry", actionPendingIntent(ACTION_RETRY, downloadId, 20 + downloadId.hashCode()))
+                when (state) {
+                    DownloadState.Paused -> addAction(android.R.drawable.ic_media_play, "Resume", actionPendingIntent(ACTION_RESUME, downloadId, 20 + downloadId.hashCode()))
+                    DownloadState.Failed -> addAction(android.R.drawable.ic_popup_sync, "Retry", actionPendingIntent(ACTION_RETRY, downloadId, 20 + downloadId.hashCode()))
+                    DownloadState.RecoveryRequired -> addAction(android.R.drawable.ic_popup_sync, "Retry", actionPendingIntent(ACTION_RETRY, downloadId, 20 + downloadId.hashCode()))
+                    else -> Unit
+                }
                 addAction(android.R.drawable.ic_menu_close_clear_cancel, "Mute", actionPendingIntent(ACTION_MUTE, downloadId, 21 + downloadId.hashCode()))
             }
             .build()
     }
+
+    fun terminal(downloadId: String, fileName: String, completed: Boolean, message: String?): Notification =
+        terminal(downloadId, fileName, if (completed) DownloadState.Completed else DownloadState.Failed, message)
+
+    private fun notificationProfile(state: DownloadState, fileName: String, message: String?): NotificationProfile = when (state) {
+        DownloadState.Completed -> NotificationProfile(
+            icon = android.R.drawable.stat_sys_download_done,
+            title = "Download complete",
+            text = fileName,
+        )
+        DownloadState.Paused -> NotificationProfile(
+            icon = android.R.drawable.stat_sys_download,
+            title = "Download paused",
+            text = "Partial download preserved. Tap Resume to continue.",
+        )
+        DownloadState.Cancelled -> NotificationProfile(
+            icon = android.R.drawable.stat_notify_error,
+            title = "Download cancelled",
+            text = fileName,
+        )
+        DownloadState.RecoveryRequired -> NotificationProfile(
+            icon = android.R.drawable.stat_notify_error,
+            title = "Download needs attention",
+            text = sanitizeNotificationText(message, "Download needs recovery before it can resume. Open XDM for details."),
+        )
+        DownloadState.Failed -> NotificationProfile(
+            icon = android.R.drawable.stat_notify_error,
+            title = "Download failed",
+            text = sanitizeNotificationText(message, "Download could not continue. Open XDM for details."),
+        )
+        else -> NotificationProfile(
+            icon = android.R.drawable.stat_sys_download,
+            title = "Download paused",
+            text = "Partial download preserved. Tap Resume to continue.",
+        )
+    }
+
+    private data class NotificationProfile(
+        val icon: Int,
+        val title: String,
+        val text: String,
+    )
 
     fun notifyRestored(count: Int) {
         if (count > 0) manager.notify(RESTORE_NOTIFICATION_ID, restored(count))

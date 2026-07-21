@@ -17,6 +17,7 @@ import android.provider.OpenableColumns
 import com.mikeyphw.xdm.android.model.DestinationHealthStatus
 import com.mikeyphw.xdm.android.model.DestinationType
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
+import com.mikeyphw.xdm.android.util.sanitizeFileName
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -302,7 +303,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
 
     private fun isRegularFileDestination(uri: String): Boolean = uri.startsWith("file:") || !uri.contains("://")
     private fun safeComponent(value: String): String = value.replace(Regex("[^A-Za-z0-9._-]"), "_").take(120)
-    private fun safeFileName(value: String): String = value.replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim('.', ' ').ifBlank { "download.bin" }.take(180)
+    private fun safeFileName(value: String): String = sanitizeFileName(value)
     private fun guessMimeType(name: String): String = URLConnection.guessContentTypeFromName(name) ?: "application/octet-stream"
 
     private data class DestinationRoot(

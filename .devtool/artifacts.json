@@ -22176,6 +22176,159 @@
         }
       },
       "history_id": "0d396cacd65146329c4db979f7639bd5"
+    },
+    {
+      "applied_at": "2026-07-21T14:18:02.193372Z",
+      "artifact": "/home/mike/Downloads/xdm_android_download_pause_regex_notification_fix_overlay.zip",
+      "artifact_name": "xdm_android_download_pause_regex_notification_fix_overlay.zip",
+      "type": "overlay",
+      "sha256": "206e3073d9783e2a1f97300be4cd90df91e59611b4262c9509163697c03b4ef1",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "fix(android): sanitize paused download notifications",
+      "commit_hash": "",
+      "file_count": 15,
+      "change_counts": {
+        "add": 3,
+        "modify": 12
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Download Pause Regex Notification Fix",
+        "description": "Centralizes filename sanitization without runtime regex character-class patterns, prevents raw regex/internal exceptions from notification banners, and reports resumable paused downloads as paused with Resume instead of failed.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "9c63fa20c261108e798692370feba1fdaae39a87fde632338ec6588a1f1080fa",
+              "size": 45268,
+              "source_sha256": "2b6f116a082f0f57c032c4d65169e358a8a04fd7eda5e64a28f68ce078bfec91"
+            },
+            {
+              "path": "app/XDM.Android/core-utils/src/main/kotlin/com/mikeyphw/xdm/android/util/SafeText.kt",
+              "action": "add",
+              "sha256": "1144dfcff5ce8893cd0ea789a98f5ba9d837be185e972667bc04172ec85ad456",
+              "size": 2052
+            },
+            {
+              "path": "app/XDM.Android/core-utils/src/test/kotlin/com/mikeyphw/xdm/android/util/SafeTextTest.kt",
+              "action": "add",
+              "sha256": "5dff6406bc3f3ffe799d0dc26d5b960a772ba5586c56470404621cf0fe0ad59c",
+              "size": 745
+            },
+            {
+              "path": "app/XDM.Android/media/build.gradle.kts",
+              "action": "modify",
+              "sha256": "419fc9ab062e8e223c8c4c0cbed94e3935c6af8efecc06a61845891d4f593570",
+              "size": 590,
+              "source_sha256": "b82dadccb984e4549b1af9c2534c4c3421ff735e6451d2601033647709afbc55"
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaInboxContract.kt",
+              "action": "modify",
+              "sha256": "dc6df8e4ab75bfb1373271ab55c57fc2cb086b4d8d58efabc0e5e5bbd9a286eb",
+              "size": 14603,
+              "source_sha256": "5123f514a947d614729e7f89b8b120724b15d5981eb6b55b57329bab30f84172"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/build.gradle.kts",
+              "action": "modify",
+              "sha256": "70d044f1fc55ca566698cce30a0a9c553f60e201b7bdda9ad4e54e6569d204f5",
+              "size": 892,
+              "source_sha256": "2db24b55054c6672c2d56bad7de980b3c49ce2fb5ac7ad14efdec41b497c2d06"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt",
+              "action": "modify",
+              "sha256": "acec5c466aca1c3212dbfff379d8775eb6ff8ab02e7d9b8e003c0101ff7a7f6f",
+              "size": 19361,
+              "source_sha256": "35d1fa8d23825c1a33a277becdf033a77b21e28a617b2cdbc3bc6233b0209172"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt",
+              "action": "modify",
+              "sha256": "8a4183be276640301aaf1f73c0b4a5a8001bfdbd29a880eb6094bb915a989c22",
+              "size": 4175,
+              "source_sha256": "1bf5e63ada5bb8ba6aeb80545b86cf3b3d57b21e67e7a9f49d99d22dda998359"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotifications.kt",
+              "action": "modify",
+              "sha256": "738db9534ee4c22b8707c351abf03e622309e5a9a35daee3bd8c6dfda9fbdd0a",
+              "size": 9345,
+              "source_sha256": "cb8fe7758cb04a46e8d64459f4aa27af46a3df7cebe389c87fc8fad6adf45b79"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt",
+              "action": "modify",
+              "sha256": "036636706aabacd58e6ded8169f888d2f85fb50423635f0f425065074b94176b",
+              "size": 2995,
+              "source_sha256": "5af61dc748dfbdd21d673d9fc64e3668f16d248d80f69ab82e41c5c176d7c68a"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+              "action": "add",
+              "sha256": "1319edbcaa7b25330a1a3b1656ec9958d17ce144531fcafdf7449cb721d5522d",
+              "size": 1593
+            },
+            {
+              "path": "app/XDM.Android/storage/build.gradle.kts",
+              "action": "modify",
+              "sha256": "79101aa8b7771220c8a3940374feb1326ecdcf0ec589c5faea101e49d9f6d9b3",
+              "size": 592,
+              "source_sha256": "57083d74bc8fa513fc26f1687a9a374a59884e9745f59f53eff00627470d26d0"
+            },
+            {
+              "path": "app/XDM.Android/storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/AndroidDestinationWriter.kt",
+              "action": "modify",
+              "sha256": "eba9885c1dbe3a0a107881260627bc4514d14cfe75f6ba85e0b707ac4ac25d5c",
+              "size": 18433,
+              "source_sha256": "fbe8b7a21a215660e363a09e7cd66ead876f41cff65f0e2db4363b68ffc126eb"
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/build.gradle.kts",
+              "action": "modify",
+              "sha256": "f69380459dc5e36a1928c4c67e8531ef6a1a3bd2894b0f1da637e878b3e3f753",
+              "size": 2241,
+              "source_sha256": "a6420eccad2fdd83ce6d59a3aa90113855bc2dea47e9fbe8900e336e9c03dd8f"
+            },
+            {
+              "path": "app/XDM.Android/transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2SessionStore.kt",
+              "action": "modify",
+              "sha256": "dedf7346f97567dcc244376744269aaeeb40e607097bc270330730be66e4939a",
+              "size": 6426,
+              "source_sha256": "3ebb73bf9029879207f442aaf68f7df629d247c5626375b0c2286289dbc9db1c"
+            }
+          ]
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "fix(android): sanitize paused download notifications"
+          }
+        },
+        "validation": {
+          "commands": [
+            {
+              "command": "./gradlew :core-utils:test :scheduler:testDebugUnitTest :media:test :storage:testDebugUnitTest :transfer-aria2:testDebugUnitTest :app:testDebugUnitTest",
+              "working_directory": "app/XDM.Android"
+            }
+          ]
+        }
+      },
+      "history_id": "c012ff1744604205936a6b664265a490"
     }
   ]
 }
