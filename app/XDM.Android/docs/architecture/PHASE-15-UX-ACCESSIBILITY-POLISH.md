@@ -13,7 +13,7 @@ Phase 15 is a schema-free UI hardening pass. It preserves the Phase 13/14 route 
 
 ## Non-goals
 
-- No Room schema bump. Database remains v13.
+- No Room schema bump. Database remains v14.
 - No new top-level route. Accessibility and layout health are shown inside Settings.
 - No placeholder controls. Every visible action invokes an existing ViewModel or clipboard operation.
 

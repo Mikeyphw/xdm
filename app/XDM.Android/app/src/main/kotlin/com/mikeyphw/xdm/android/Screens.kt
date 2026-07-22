@@ -39,13 +39,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -85,6 +83,9 @@ import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaVariant
+import com.mikeyphw.xdm.android.media.MediaDownloadPlanner
+import com.mikeyphw.xdm.android.media.OfflineMediaLibrarySummary
+import com.mikeyphw.xdm.android.media.MediaDownloadStrategy
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryAction
@@ -270,7 +271,7 @@ private fun DownloadListSummary(
             }
             if (showHistoryTools) {
                 XdmSupportingText(historyReport.summary)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                XdmActionFlowRow {
                     TextButton(onClick = onCopyHistory, enabled = downloads.isNotEmpty()) { Text("Copy history index") }
                     TextButton(onClick = onClearFinished, enabled = historyReport.removableHistory > 0) { Text("Clear finished history") }
                 }
@@ -304,13 +305,18 @@ private fun OrganizationPowerToolsCard(
 ) {
     var tagName by remember { mutableStateOf("") }
     var searchName by remember { mutableStateOf("") }
+    var toolsExpanded by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     XdmCardTitle("Organization and history tools")
-                    XdmSupportingText(report.summary)
+                    XdmSupportingText(report.summary, maxLines = 2)
                 }
+                TextButton(onClick = { toolsExpanded = !toolsExpanded }) { Text(if (toolsExpanded) "Hide" else "Show") }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                XdmMetadataText("Archived downloads", modifier = Modifier.weight(1f))
                 Switch(
                     checked = includeArchived,
                     onCheckedChange = onIncludeArchivedChanged,
@@ -318,38 +324,51 @@ private fun OrganizationPowerToolsCard(
                 )
             }
             XdmMetadataText("${visible.size} visible • ${selected.size} selected • ${tagAssignments.size} tag assignments")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                TextButton(onClick = onSelectAllVisible, enabled = visible.isNotEmpty()) { Text("Select visible") }
-                TextButton(onClick = onClearSelection, enabled = selected.isNotEmpty()) { Text("Clear selection") }
-                TextButton(onClick = { onBulkPause() }, enabled = selected.isNotEmpty()) { Text("Pause selected") }
-                TextButton(onClick = { onBulkResume() }, enabled = selected.isNotEmpty()) { Text("Resume selected") }
-                TextButton(onClick = { onArchiveSelected(true) }, enabled = selected.isNotEmpty()) { Text("Archive selected") }
-                TextButton(onClick = { onArchiveSelected(false) }, enabled = selected.isNotEmpty()) { Text("Unarchive selected") }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(tagName, { tagName = it }, label = { Text("New tag") }, modifier = Modifier.weight(1f), singleLine = true)
-                Button(onClick = { onCreateTag(tagName); tagName = "" }, enabled = tagName.isNotBlank()) { Text("Create tag") }
-            }
-            if (tags.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                    tags.forEach { tag ->
-                        FilterChip(
-                            selected = selected.any { download -> tagAssignments.any { it.downloadId == download.id && it.tagId == tag.id } },
-                            onClick = { onAssignTag(tag) },
-                            enabled = selected.isNotEmpty(),
-                            label = { Text(tag.name) },
-                        )
+            if (!toolsExpanded) {
+                XdmMetadataText("Bulk actions, tags, and saved searches stay tucked away until needed.")
+            } else {
+                XdmActionFlowRow {
+                    TextButton(onClick = onSelectAllVisible, enabled = visible.isNotEmpty()) { Text("Select visible") }
+                    if (selected.isNotEmpty()) {
+                        TextButton(onClick = onClearSelection) { Text("Clear selection") }
+                        TextButton(onClick = { onBulkPause() }) { Text("Pause selected") }
+                        TextButton(onClick = { onBulkResume() }) { Text("Resume selected") }
+                        TextButton(onClick = { onArchiveSelected(true) }) { Text("Archive selected") }
+                        TextButton(onClick = { onArchiveSelected(false) }) { Text("Unarchive selected") }
                     }
                 }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(searchName, { searchName = it }, label = { Text("Saved search name") }, modifier = Modifier.weight(1f), singleLine = true)
-                Button(onClick = { onSaveSearch(searchName, query, filter, includeArchived); searchName = "" }, enabled = searchName.isNotBlank()) { Text("Save search") }
-            }
-            savedSearches.take(4).forEach { search ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    XdmMetadataText("${search.name}: ${search.query.ifBlank { "All downloads" }}${search.state?.let { " • ${it.uiLabel()}" }.orEmpty()}", modifier = Modifier.weight(1f))
-                    TextButton(onClick = { onDeleteSavedSearch(search) }) { Text("Delete") }
+                if (selected.isEmpty()) {
+                    XdmMetadataText("Select one or more downloads to reveal bulk pause, resume, archive, and tag actions.")
+                }
+                OutlinedTextField(tagName, { tagName = it }, label = { Text("New tag") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                Button(
+                    onClick = { onCreateTag(tagName); tagName = "" },
+                    enabled = tagName.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Create tag") }
+                if (tags.isNotEmpty()) {
+                    XdmActionFlowRow {
+                        tags.forEach { tag ->
+                            FilterChip(
+                                selected = selected.any { download -> tagAssignments.any { it.downloadId == download.id && it.tagId == tag.id } },
+                                onClick = { onAssignTag(tag) },
+                                enabled = selected.isNotEmpty(),
+                                label = { Text(tag.name) },
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(searchName, { searchName = it }, label = { Text("Saved search name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                Button(
+                    onClick = { onSaveSearch(searchName, query, filter, includeArchived); searchName = "" },
+                    enabled = searchName.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Save search") }
+                savedSearches.take(4).forEach { search ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        XdmMetadataText("${search.name}: ${search.query.ifBlank { "All downloads" }}${search.state?.let { " • ${it.uiLabel()}" }.orEmpty()}", modifier = Modifier.weight(1f))
+                        TextButton(onClick = { onDeleteSavedSearch(search) }) { Text("Delete") }
+                    }
                 }
             }
         }
@@ -375,10 +394,7 @@ private fun DownloadListControls(
             singleLine = true,
             supportingText = { Text("Search by file name, label, URL, destination, or backend.") },
         )
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        XdmActionFlowRow {
             DownloadFilterChip(
                 label = "All ${downloads.size}",
                 selected = filter == null,
@@ -393,10 +409,7 @@ private fun DownloadListControls(
                 )
             }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        XdmActionFlowRow {
             DownloadSort.entries.forEach { value ->
                 FilterChip(
                     selected = sort == value,
@@ -566,7 +579,7 @@ private fun DownloadDetails(
             }
         }
         if (download.state in setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 TextButton(onClick = onCopyUrl) { Text("Copy URL") }
                 TextButton(onClick = onCopyFileInfo) { Text("Copy file info") }
                 TextButton(onClick = onPreviewPostProcessing) { Text("Preview rules") }
@@ -651,7 +664,7 @@ fun AddDownloadScreen(
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         XdmCardTitle("Destination")
                         XdmMetadataText(destinationUri.ifBlank { "Choose where completed files should be saved." }, maxLines = 2)
-                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        XdmActionFlowRow {
                             DestinationCatalog.available(Build.VERSION.SDK_INT).forEach { choice ->
                                 FilterChip(selected = destinationUri == choice.uri, onClick = { onDestinationChanged(choice.uri) }, label = { Text(choice.label) })
                             }
@@ -700,13 +713,13 @@ fun AddDownloadScreen(
                         }
                         if (advancedExpanded) {
                             XdmCardTitle("Existing filename")
-                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            XdmActionFlowRow {
                                 FilenameConflictPolicy.entries.forEach { value ->
                                     FilterChip(selected = conflictPolicy == value, onClick = { onConflictPolicyChanged(value) }, label = { Text(value.uiLabel()) })
                                 }
                             }
                             XdmCardTitle("Backend")
-                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            XdmActionFlowRow {
                                 BackendType.entries.forEach { value ->
                                     FilterChip(selected = backend == value, onClick = { backend = value }, label = { Text(value.uiLabel()) })
                                 }
@@ -727,7 +740,7 @@ fun AddDownloadScreen(
                                 singleLine = true,
                                 supportingText = { Text("Optional SHA-256 or SHA-512. A matching checksum is required before final completion.") },
                             )
-                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            XdmActionFlowRow {
                                 ChecksumAlgorithm.entries.forEach { value ->
                                     FilterChip(selected = checksumAlgorithm == value, onClick = { checksumAlgorithm = value }, label = { Text(value.uiLabel()) })
                                 }
@@ -738,11 +751,12 @@ fun AddDownloadScreen(
             }
         }
         Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
-            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                XdmMetadataText(if (canSubmit) "Ready to add to the default queue." else "Enter a valid URL and destination.", modifier = Modifier.weight(1f))
+            Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                XdmMetadataText(if (canSubmit) "Ready to add to the default queue." else "Enter a valid URL and destination.")
                 Button(
                     onClick = { onAdd(url, name, backend, destinationUri, conflictPolicy, allowFallback, expectedChecksum, checksumAlgorithm) },
                     enabled = canSubmit,
+                    modifier = Modifier.fillMaxWidth(),
                 ) { Text("Start download") }
             }
         }
@@ -779,9 +793,10 @@ fun QueuesScreen(
                     label = { Text("Concurrent downloads") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     supportingText = { Text("Use 1–16. Higher values may drain battery faster.") },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                XdmActionFlowRow {
                     Button(
                         onClick = {
                             onCreateQueue(newQueueName, newLimit)
@@ -859,13 +874,14 @@ private fun QueueManagementCard(
                 label = { Text("Concurrent downloads") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 supportingText = { Text("Use 1–16. Current effective value: $draftLimitNumber") },
             )
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 XdmSupportingText("Enabled", modifier = Modifier.weight(1f))
                 Switch(checked = draftEnabled, onCheckedChange = { draftEnabled = it })
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 Button(
                     onClick = {
                         onUpdateQueue(queue, draftName, draftLimitNumber, draftEnabled)
@@ -877,7 +893,7 @@ private fun QueueManagementCard(
                 TextButton(onClick = { onDeleteQueue(queue); editing = false }, enabled = queue.id != "default") { Text("Delete queue") }
             }
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 TextButton(onClick = { editing = true }) { Text("Edit") }
                 TextButton(onClick = { onDeleteQueue(queue) }, enabled = queue.id != "default") { Text("Delete") }
             }
@@ -964,7 +980,7 @@ fun SchedulerScreen(
 private fun QueuePicker(queues: List<QueueDefinition>, selectedQueueId: String?, onSelected: (String?) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         XdmMetadataText("Queue")
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        XdmActionFlowRow {
             FilterChip(selected = selectedQueueId == null, onClick = { onSelected(null) }, label = { Text("All queues") })
             queues.forEach { queue ->
                 FilterChip(selected = selectedQueueId == queue.id, onClick = { onSelected(queue.id) }, label = { Text(queue.name) })
@@ -991,8 +1007,22 @@ private fun ScheduleConditionEditor(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(days, onDaysChanged, label = { Text("Days") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(startTime, onStartTimeChanged, label = { Text("Start") }, modifier = Modifier.weight(1f), singleLine = true)
-            OutlinedTextField(endTime, onEndTimeChanged, label = { Text("End") }, modifier = Modifier.weight(1f), singleLine = true)
+            OutlinedTextField(
+                startTime,
+                onStartTimeChanged,
+                label = { Text("Start") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+            OutlinedTextField(
+                endTime,
+                onEndTimeChanged,
+                label = { Text("End") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             XdmSupportingText("Unmetered network only", modifier = Modifier.weight(1f))
@@ -1008,6 +1038,7 @@ private fun ScheduleConditionEditor(
             label = { Text("Minimum battery %") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             supportingText = { Text("Leave blank to ignore battery level.") },
         )
     }
@@ -1071,7 +1102,7 @@ private fun ScheduleManagementCard(
                 minimumBattery = draftBattery,
                 onMinimumBatteryChanged = { draftBattery = it.filter { char -> char.isDigit() }.take(3) },
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 Button(
                     onClick = {
                         onUpdateSchedule(rule, draftName, draftQueueId, draftEnabled, draftConstraints)
@@ -1083,7 +1114,7 @@ private fun ScheduleManagementCard(
                 TextButton(onClick = { onDeleteSchedule(rule); editing = false }) { Text("Delete schedule") }
             }
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 TextButton(onClick = { editing = true }) { Text("Edit") }
                 TextButton(onClick = { onDeleteSchedule(rule) }) { Text("Delete") }
             }
@@ -1097,6 +1128,8 @@ fun MediaInboxScreen(
     variants: List<MediaVariant>,
     termuxMediaPipeline: TermuxMediaPipelineStatus,
     postProcessingAutomation: PostProcessingAutomationStatus,
+    onBrowserMediaRequest: (url: String, pageTitle: String?, pageUrl: String?, mimeType: String?) -> Unit,
+    onOpenAddForBrowserUrl: (url: String, pageTitle: String?) -> Unit,
     onDownload: (MediaCaptureRecord) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
@@ -1110,39 +1143,96 @@ fun MediaInboxScreen(
     onRunPostProcessing: (MediaCaptureRecord) -> Unit,
 ) {
     val context = LocalContext.current
-    if (captures.isEmpty()) {
-        LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
-            item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
-            item { EmptyFeatureScreen("Media inbox", "Share a video, audio, HLS, or DASH URL to capture metadata and queue it safely.") }
+    val mediaPlanner = remember { MediaDownloadPlanner() }
+    val librarySummary = remember(captures, variants) { mediaPlanner.summarizeOfflineLibrary(captures, variants) }
+    var showBrowser by remember { mutableStateOf(false) }
+
+    Column(Modifier.fillMaxSize()) {
+        XdmListCard(compact = true) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    XdmCardTitle("Media")
+                    XdmSupportingText(
+                        "Use the built-in browser to capture video, audio, HLS, and DASH links, or review saved media from browser/share handoffs.",
+                        maxLines = 3,
+                    )
+                }
+            }
+            XdmActionFlowRow {
+                FilterChip(selected = !showBrowser, onClick = { showBrowser = false }, label = { Text("Inbox") })
+                FilterChip(selected = showBrowser, onClick = { showBrowser = true }, label = { Text("Browser") })
+            }
         }
-        return
-    }
-    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
-        item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
-        item {
-            TextButton(
-                onClick = { copyTextToClipboard(context, "XDM Termux media diagnostics", termuxMediaPipeline.diagnosticsSummary()) },
-                modifier = Modifier.sizeIn(minWidth = 96.dp, minHeight = 48.dp),
-            ) { Text("Copy media diagnostics") }
-        }
-        items(captures, key = MediaCaptureRecord::id) { capture ->
-            val captureVariants = variants.filter { it.captureId == capture.id }.sortedBy { it.position }
-            MediaCaptureCard(
-                capture,
-                captureVariants,
-                onDownload,
-                onResolve,
-                onSelectVariant,
-                onRemove,
-                onTermuxMetadata,
-                onTermuxInspect,
-                onTermuxYtDlpDownload,
-                onTermuxConvert,
-                onPreviewPostProcessing,
-                onRunPostProcessing,
+
+        if (showBrowser) {
+            BrowserScreen(
+                captures = captures,
+                onMediaRequest = onBrowserMediaRequest,
+                onOpenMediaInbox = { showBrowser = false },
+                onOpenAddForUrl = onOpenAddForBrowserUrl,
+                modifier = Modifier.weight(1f),
             )
+        } else if (captures.isEmpty()) {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
+                item { OfflineMediaLibraryCard(librarySummary) }
+                item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
+                item { EmptyFeatureScreen("Media inbox", "Share a video, audio, HLS, or DASH URL to capture metadata and queue it safely, or switch to Browser to discover media inside pages.") }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
+                item { OfflineMediaLibraryCard(librarySummary) }
+                item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
+                item {
+                    TextButton(
+                        onClick = { copyTextToClipboard(context, "XDM Termux media diagnostics", termuxMediaPipeline.diagnosticsSummary()) },
+                        modifier = Modifier.sizeIn(minWidth = 96.dp, minHeight = 48.dp),
+                    ) { Text("Copy media diagnostics") }
+                }
+                items(captures, key = MediaCaptureRecord::id) { capture ->
+                    val captureVariants = variants.filter { it.captureId == capture.id }.sortedBy { it.position }
+                    MediaCaptureCard(
+                        capture,
+                        captureVariants,
+                        onDownload,
+                        onResolve,
+                        onSelectVariant,
+                        onRemove,
+                        onTermuxMetadata,
+                        onTermuxInspect,
+                        onTermuxYtDlpDownload,
+                        onTermuxConvert,
+                        onPreviewPostProcessing,
+                        onRunPostProcessing,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OfflineMediaLibraryCard(summary: OfflineMediaLibrarySummary) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Offline library ${summary.message}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Offline library and player")
+            XdmSupportingText(summary.message, maxLines = 3)
+            XdmActionFlowRow {
+                StatusPill("${summary.playableCount} playable", if (summary.playableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                summary.adaptiveCount.takeIf { it > 0 }?.let { StatusPill("$it adaptive", XdmStatusTone.Info) }
+                summary.audioOnlyCount.takeIf { it > 0 }?.let { StatusPill("$it audio", XdmStatusTone.Neutral) }
+                summary.subtitleTrackCount.takeIf { it > 0 }?.let { StatusPill("$it subtitles", XdmStatusTone.Neutral) }
+            }
+            XdmMetadataText("Player groundwork is intentionally review-first: direct files can later open locally; adaptive streams must be resolved into safe offline assets before playback.", maxLines = 3)
         }
     }
 }
@@ -1162,8 +1252,12 @@ private fun MediaCaptureCard(
     onPreviewPostProcessing: (MediaCaptureRecord) -> Unit,
     onRunPostProcessing: (MediaCaptureRecord) -> Unit,
 ) {
+    val context = LocalContext.current
     var variantSelectorExpanded by remember(capture.id) { mutableStateOf(false) }
     val selectedVariant = captureVariants.firstOrNull { it.id == capture.selectedVariantId } ?: captureVariants.firstOrNull()
+    val mediaPlanner = remember { MediaDownloadPlanner() }
+    val mediaPlan = remember(capture, captureVariants) { mediaPlanner.plan(capture, captureVariants) }
+    val playbackCandidate = remember(capture, captureVariants) { mediaPlanner.playbackCandidate(capture, captureVariants) }
     XdmListCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
@@ -1180,10 +1274,30 @@ private fun MediaCaptureCard(
             ).joinToString(" • ").ifBlank { "Media details will appear after resolution." },
             maxLines = 2,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.horizontalScroll(rememberScrollState())) {
+        XdmActionFlowRow {
             StatusPill(capture.status.uiLabel(), if (capture.status == MediaCaptureStatus.DownloadCreated) XdmStatusTone.Success else XdmStatusTone.Neutral)
             StatusPill(capture.resolutionStatus.uiLabel(), if (capture.resolutionStatus == MediaResolutionStatus.Failed || capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh) XdmStatusTone.Warning else XdmStatusTone.Neutral)
+            StatusPill(mediaPlan.displayName, if (mediaPlan.strategy == MediaDownloadStrategy.UnsupportedProtected) XdmStatusTone.Warning else XdmStatusTone.Info)
             capture.downloadId?.let { StatusPill("Queued", XdmStatusTone.Success) }
+        }
+        XdmMetadataText(mediaPlan.explanation, maxLines = 2)
+        if (mediaPlan.needsCookieContext) {
+            XdmMetadataText("Uses page/session context. yt-dlp metadata will probe the page URL before falling back to the stream URL.", maxLines = 2)
+        }
+        playbackCandidate?.let { candidate ->
+            XdmListCard(compact = true) {
+                XdmMetadataText("Offline playback groundwork")
+                XdmSupportingText(
+                    if (candidate.needsExternalResolver) "Adaptive/protected streams stay in review-first mode until the Media3/yt-dlp resolver prepares offline assets."
+                    else "Direct media can be opened by the future offline library without a resolver hop.",
+                    maxLines = 2,
+                )
+                XdmActionFlowRow {
+                    StatusPill(if (candidate.isAdaptive) "Adaptive" else "Direct", XdmStatusTone.Info)
+                    candidate.audioTrackCount.takeIf { it > 0 }?.let { StatusPill("$it audio", XdmStatusTone.Neutral) }
+                    candidate.subtitleCount.takeIf { it > 0 }?.let { StatusPill("$it subtitles", XdmStatusTone.Neutral) }
+                }
+            }
         }
         if (captureVariants.isNotEmpty()) {
             XdmListCard(compact = true) {
@@ -1207,7 +1321,7 @@ private fun MediaCaptureCard(
         } else {
             XdmMetadataText("No variants yet. Resolve metadata to discover quality options.")
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+        XdmActionFlowRow {
             Button(
                 onClick = { onDownload(capture) },
                 enabled = capture.status != MediaCaptureStatus.DownloadCreated && capture.resolutionStatus != MediaResolutionStatus.RequiresRefresh,
@@ -1218,8 +1332,9 @@ private fun MediaCaptureCard(
         XdmListCard(compact = true) {
             XdmMetadataText("Termux media pipeline")
             XdmSupportingText("Use typed yt-dlp, FFprobe, and FFmpeg jobs through Termux. No raw shell commands are exposed.")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                TextButton(onClick = { onTermuxMetadata(capture) }) { Text("yt-dlp metadata") }
+            XdmActionFlowRow {
+                TextButton(onClick = { onTermuxMetadata(capture) }) { Text("yt-dlp page metadata") }
+                TextButton(onClick = { copyTextToClipboard(context, "XDM yt-dlp probe URL", mediaPlan.metadataProbeUrl) }) { Text("Copy probe URL") }
                 TextButton(onClick = { onTermuxInspect(capture) }) { Text("FFprobe") }
                 TextButton(onClick = { onTermuxYtDlpDownload(capture) }) { Text("yt-dlp download") }
                 TextButton(onClick = { onTermuxConvert(capture, ConversionPreset.VideoFastStart) }) { Text("Fast-start MP4") }
@@ -1229,7 +1344,7 @@ private fun MediaCaptureCard(
         XdmListCard(compact = true) {
             XdmMetadataText("Post-processing automation")
             XdmSupportingText("Preview or run matching post-processing rules for this media capture using typed Termux/root actions only.")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 TextButton(onClick = { onPreviewPostProcessing(capture) }) { Text("Preview rules") }
                 TextButton(onClick = { onRunPostProcessing(capture) }) { Text("Run rules") }
             }
@@ -1246,7 +1361,9 @@ private fun TermuxMediaPipelineCard(pipeline: TermuxMediaPipelineStatus, onClear
                     XdmCardTitle("Termux media pipeline")
                     XdmMetricText(pipeline.readinessLabel)
                 }
-                TextButton(onClick = onClearCompleted, enabled = pipeline.jobs.any { it.status == TermuxMediaJobStatus.Completed || it.status == TermuxMediaJobStatus.Failed }) { Text("Clear done") }
+                if (pipeline.jobs.any { it.status == TermuxMediaJobStatus.Completed || it.status == TermuxMediaJobStatus.Failed }) {
+                    TextButton(onClick = onClearCompleted) { Text("Clear done") }
+                }
             }
             XdmSupportingText("yt-dlp discovers variants and downloads media; FFprobe inspects streams; FFmpeg remuxes, fast-starts, and extracts audio inside Termux.")
             XdmMetadataText(pipeline.lastAction, maxLines = 2)
@@ -1291,7 +1408,7 @@ private fun PostProcessingAutomationCard(
             }
             XdmSupportingText("Rules are previewable and execute only through typed Termux media, checksum, cleanup, move/rename, or optional root actions.")
             XdmMetadataText(automation.lastMessage, maxLines = 3)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 onRetryFailed?.let { TextButton(onClick = it, enabled = automation.failedEvents.isNotEmpty()) { Text("Retry failed") } }
                 onClearEvents?.let { TextButton(onClick = it, enabled = automation.events.isNotEmpty()) { Text("Clear events") } }
                 TextButton(onClick = { copyTextToClipboard(context, "XDM post-processing diagnostics", automation.diagnosticsSummary()) }) { Text("Copy diagnostics") }
@@ -1356,11 +1473,11 @@ private fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryReco
             StatusPill(record.classification.uiLabel(), record.classification.statusTone())
         }
         XdmMetadataText(recoveryRecommendedExplanation(record), maxLines = 3)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.horizontalScroll(rememberScrollState())) {
+        XdmActionFlowRow {
             StatusPill(record.recommendedAction.uiLabel(), record.classification.statusTone())
             StatusPill(if (record.safeToResume) "Safe to resume" else "Needs review", if (record.safeToResume) XdmStatusTone.Success else XdmStatusTone.Warning)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+        XdmActionFlowRow {
             Button(onClick = { onValidate(record) }) { Text(recoveryPrimaryActionLabel(record)) }
             TextButton(onClick = { technicalExpanded = !technicalExpanded }) { Text(if (technicalExpanded) "Hide technical details" else "Technical details") }
             TextButton(onClick = { onRemove(record) }) { Text("Remove record only") }
@@ -1572,16 +1689,13 @@ fun DiagnosticsScreen(
 @Composable
 private fun DiagnosticLine(label: String, value: String) {
     Card(Modifier.fillMaxWidth().semantics { contentDescription = "$label: $value" }) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            XdmCardTitle(label, modifier = Modifier.weight(0.35f))
+            XdmCardTitle(label)
             Text(
                 value,
-                modifier = Modifier.weight(0.65f),
-                textAlign = TextAlign.End,
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
@@ -1655,7 +1769,7 @@ private fun TermuxBridgeDiagnosticsCard(
                 Button(onClick = onRunProbe, enabled = termux.canRunProbe) { Text("Probe tools") }
             }
             XdmSupportingText(termux.summary)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 StatusPill(if (termux.termuxInstalled) "Termux installed" else "Termux missing", if (termux.termuxInstalled) XdmStatusTone.Success else XdmStatusTone.Warning)
                 StatusPill(if (termux.runCommandPermissionGranted) "RUN_COMMAND ready" else "Permission needed", if (termux.runCommandPermissionGranted) XdmStatusTone.Success else XdmStatusTone.Warning)
                 StatusPill(if (termux.rootAvailable) "Root available" else "Root optional", if (termux.rootAvailable) XdmStatusTone.Info else XdmStatusTone.Neutral)
@@ -1665,7 +1779,7 @@ private fun TermuxBridgeDiagnosticsCard(
             }
             XdmSectionHeader("Optional root actions")
             XdmSupportingText("Root actions are launched through Termux as typed, logged operations. Root mode must be enabled before medium-risk actions can run.")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 TextButton(onClick = onRunRootProbe, enabled = termux.canRunRootProbe) { Text("Probe root") }
                 TextButton(onClick = onCollectRootDiagnostics, enabled = termux.canRunRootAction) { Text("Root diagnostics") }
                 TextButton(onClick = onKillStuckAria2WithRoot, enabled = termux.canRunRootAction) { Text("Kill stuck aria2") }
@@ -1707,13 +1821,13 @@ private fun TermuxBridgeSettingsCard(
                 StatusPill(termux.readinessLabel, termux.statusTone())
             }
             XdmMetadataText(termux.summary)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 Button(onClick = onRunProbe, enabled = termux.canRunProbe) { Text("Probe tools") }
                 TextButton(onClick = onOpenTermux, enabled = termux.termuxInstalled) { Text("Open Termux") }
             }
             XdmSectionHeader("Optional root mode")
             XdmSupportingText("Root is off by default and only unlocks typed file/process actions; XDM never exposes a raw root shell endpoint.")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 TermuxRootMode.entries.forEach { mode ->
                     FilterChip(
                         selected = termux.rootMode == mode,
@@ -1723,7 +1837,7 @@ private fun TermuxBridgeSettingsCard(
                 }
             }
             XdmMetadataText(termux.rootMode.description)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 TextButton(onClick = onRunRootProbe, enabled = termux.canRunRootProbe) { Text("Probe root") }
                 TextButton(onClick = onCollectRootDiagnostics, enabled = termux.canRunRootAction) { Text("Root diagnostics") }
                 TextButton(onClick = onKillStuckAria2WithRoot, enabled = termux.canRunRootAction) { Text("Kill stuck aria2") }
@@ -1764,14 +1878,14 @@ private fun TermuxAria2CockpitCard(
                 XdmMetadataText("Session: ${config.sessionFile}", maxLines = 2)
                 XdmMetadataText("Downloads: ${config.downloadDir}", maxLines = 2)
             } ?: XdmMetadataText("Enable Termux aria2 in Settings to generate the RPC secret and session paths.")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 Button(onClick = onStart, enabled = aria2.canStart) { Text("Start daemon") }
                 TextButton(onClick = onStop, enabled = aria2.canStop) { Text("Stop") }
                 TextButton(onClick = onProbe, enabled = aria2.canProbe) { Text("Probe RPC") }
                 TextButton(onClick = onRefreshTasks, enabled = aria2.canControlTasks) { Text("Tasks") }
                 TextButton(onClick = onSaveSession, enabled = aria2.canControlTasks) { Text("Save session") }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 TextButton(onClick = onPauseAll, enabled = aria2.canControlTasks) { Text("Pause all") }
                 TextButton(onClick = onResumeAll, enabled = aria2.canControlTasks) { Text("Resume all") }
                 TextButton(
@@ -1811,7 +1925,7 @@ private fun TermuxAria2SettingsCard(
                     modifier = Modifier.semantics { stateDescription = if (aria2.enabled) "Termux aria2 enabled" else "Termux aria2 disabled" },
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            XdmActionFlowRow {
                 StatusPill(aria2.daemonState.label, aria2.statusTone())
                 StatusPill(if (aria2.config != null) "Secret generated" else "No secret", if (aria2.config != null) XdmStatusTone.Success else XdmStatusTone.Neutral)
             }
@@ -1928,7 +2042,7 @@ fun SettingsScreen(
                     XdmCardTitle("Portable settings snapshot")
                     XdmSupportingText("Copy a safe backup, paste one back here, and review whether it looks ready before importing.")
                     XdmMetadataText(backupRestoreReport.summary)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    XdmActionFlowRow {
                         TextButton(onClick = { copyTextToClipboard(context, "XDM settings snapshot", settingsExportText) }) { Text("Copy export") }
                         StatusPill(if (importText.isBlank()) "No import" else "Import ready", if (importText.isBlank()) XdmStatusTone.Neutral else XdmStatusTone.Info)
                     }
@@ -1940,9 +2054,11 @@ fun SettingsScreen(
                         maxLines = 6,
                         supportingText = { Text("Secrets are not included in exported snapshots.") },
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    XdmActionFlowRow {
                         Button(onClick = { onImportSettings(importText); importText = "" }, enabled = importText.isNotBlank()) { Text("Import snapshot") }
-                        TextButton(onClick = { importText = "" }, enabled = importText.isNotBlank()) { Text("Clear") }
+                        if (importText.isNotBlank()) {
+                            TextButton(onClick = { importText = "" }) { Text("Clear") }
+                        }
                     }
                 }
             }
@@ -1953,7 +2069,7 @@ fun SettingsScreen(
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     XdmCardTitle("Destination rules")
                     XdmSupportingText("Route new downloads by host, extension, MIME type, or fallback destination before the download is queued.")
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    XdmActionFlowRow {
                         DestinationRuleMatch.entries.forEach { match ->
                             FilterChip(selected = destinationRuleMatch == match, onClick = { destinationRuleMatch = match }, label = { Text(match.name.lowercase().replaceFirstChar { it.titlecase() }) })
                         }
@@ -1978,7 +2094,7 @@ fun SettingsScreen(
                     XdmCardTitle("Duplicate URL rules")
                     XdmSupportingText("Detect repeated source URLs before enqueueing and prefer opening the existing record by default.")
                     OutlinedTextField(duplicateHost, { duplicateHost = it }, label = { Text("Host pattern") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    XdmActionFlowRow {
                         DuplicateUrlAction.entries.forEach { action ->
                             FilterChip(selected = duplicateAction == action, onClick = { duplicateAction = action }, label = { Text(action.name.replace(Regex("([a-z])([A-Z])"), "$1 $2")) })
                         }
@@ -2010,23 +2126,25 @@ fun SettingsScreen(
                         label = { Text("Port") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         isError = !proxyPortValid,
                         supportingText = { Text(if (proxyPortValid) "Optional. Use 1–65535." else "Port must be between 1 and 65535.") },
                     )
                     OutlinedTextField(proxyUsername, { proxyUsername = it }, label = { Text("Username") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     OutlinedTextField(proxyAlias, { proxyAlias = it }, label = { Text("Credential alias") }, modifier = Modifier.fillMaxWidth(), singleLine = true, supportingText = { Text("Store a label only; passwords stay outside exported diagnostics and settings snapshots.") })
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    XdmActionFlowRow {
                         Button(onClick = { onProxyChanged(proxyDraft) }, enabled = proxyDirty && proxyPortValid) { Text("Save proxy profile") }
-                        TextButton(
-                            onClick = {
-                                proxyEnabled = proxySettings.enabled
-                                proxyHost = proxySettings.host
-                                proxyPort = proxySettings.port?.toString().orEmpty()
-                                proxyUsername = proxySettings.username
-                                proxyAlias = proxySettings.credentialAlias
-                            },
-                            enabled = proxyDirty,
-                        ) { Text("Reset") }
+                        if (proxyDirty) {
+                            TextButton(
+                                onClick = {
+                                    proxyEnabled = proxySettings.enabled
+                                    proxyHost = proxySettings.host
+                                    proxyPort = proxySettings.port?.toString().orEmpty()
+                                    proxyUsername = proxySettings.username
+                                    proxyAlias = proxySettings.credentialAlias
+                                },
+                            ) { Text("Reset") }
+                        }
                     }
                 }
             }
@@ -2061,22 +2179,23 @@ fun SettingsScreen(
                         XdmSupportingText("Run after completion", modifier = Modifier.weight(1f))
                         Switch(checked = postEnabled, onCheckedChange = { postEnabled = it })
                     }
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    XdmActionFlowRow {
                         ConversionPreset.entries.forEach { preset ->
                             FilterChip(selected = postPreset == preset, onClick = { postPreset = preset }, label = { Text(preset.displayName()) })
                         }
                     }
                     OutlinedTextField(postLabel, { postLabel = it }, label = { Text("Custom label") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    XdmActionFlowRow {
                         Button(onClick = { onPostProcessingChanged(postDraft) }, enabled = postDirty) { Text("Save post-processing") }
-                        TextButton(
-                            onClick = {
-                                postEnabled = postProcessingSettings.enabled
-                                postPreset = postProcessingSettings.preset
-                                postLabel = postProcessingSettings.customCommandLabel
-                            },
-                            enabled = postDirty,
-                        ) { Text("Reset") }
+                        if (postDirty) {
+                            TextButton(
+                                onClick = {
+                                    postEnabled = postProcessingSettings.enabled
+                                    postPreset = postProcessingSettings.preset
+                                    postLabel = postProcessingSettings.customCommandLabel
+                                },
+                            ) { Text("Reset") }
+                        }
                     }
                     XdmMetadataText("Conversion starts only when the selected backend supports the chosen preset.")
                 }

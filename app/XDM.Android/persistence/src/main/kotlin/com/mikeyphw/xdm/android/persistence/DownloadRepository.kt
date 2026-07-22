@@ -86,6 +86,7 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun findMediaCapture(id: String): MediaCaptureRecord? = database.mediaCaptureDao().findById(id)?.toModel()
     suspend fun markMediaDownloadCreated(captureId: String, downloadId: String, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().markDownloadCreated(captureId, MediaCaptureStatus.DownloadCreated.name, downloadId, updatedAtEpochMs)
     suspend fun deleteMediaCapture(id: String) = database.mediaCaptureDao().delete(id)
+    suspend fun findAutomationCommand(id: String): AutomationCommandRecord? = database.automationCommandDao().findById(id)?.toModel()
     suspend fun findAutomationCommandByKey(idempotencyKey: String): AutomationCommandRecord? = database.automationCommandDao().findByIdempotencyKey(idempotencyKey)?.toModel()
     suspend fun saveAutomationCommand(record: AutomationCommandRecord) = database.automationCommandDao().upsert(record.toEntity())
     suspend fun findDownload(id: String): Download? = database.downloadDao().findById(id)?.toModel()

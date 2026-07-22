@@ -78,7 +78,7 @@ require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Clipboa
 require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "setPrimaryClip")
 if "LocalClipboardManager" in require_file("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt"):
     errors.append("Screens.kt still uses deprecated LocalClipboardManager")
-require_text("docs/architecture/PHASE-16-PACKAGING-RECOVERY-READINESS.md", "Room at schema v13")
+require_text("docs/architecture/PHASE-16-PACKAGING-RECOVERY-READINESS.md", "Room at schema v14")
 require_text("app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt", "phaseSixteenPackagingRecoveryReadinessContractsArePresent")
 
 workflow = require_file(".github/workflows/android.yml")

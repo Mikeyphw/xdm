@@ -1,31 +1,33 @@
-# XDM Android Phase 4 completion and Phase 5 storage
+# XDM Android Browser Media Continuity Overlay
 
-This overlay adds the Android application under `app/XDM.Android`, registers the native `xdm_android` DevTool target, closes the Phase 4 execution/build gates, and implements the Phase 5 destination system.
+This overlay extends the already-landed browser media downloader foundation without adding a new top-level route.
 
-## Phase 4 completion
+## Included
 
-- Debug, beta, and release variants.
-- UIDT/foreground-service execution with reboot restoration.
-- Aggregate and per-download pause, resume, retry, cancel, and mute notification actions.
-- Root Android CI that runs static contracts, lint, JVM tests, and debug/beta APK builds.
-- Native DevTool Android target with structured Gradle progress and verified APK collection.
+- Fixes browser deprecation warnings:
+  - uses AutoMirrored back/forward icons
+  - removes deprecated WebSettings.databaseEnabled usage
+- Adds browser continuity inside the Media route:
+  - persisted browser tabs
+  - recent history
+  - explicit Standard / Private / Desktop cookie profiles
+  - per-composition weak WebView navigation bridge retained
+- Expands media resolution intelligence:
+  - HLS audio/subtitle groups from EXT-X-MEDIA
+  - HLS live/protected inspection
+  - DASH AdaptationSet parsing, inherited MIME/content type/language, subtitles, audio tracks, and ContentProtection detection
+- Improves yt-dlp flow:
+  - metadata/download actions prefer the captured page URL when available
+  - Media cards expose copyable probe URLs and session-context hints
+- Adds offline library/player groundwork:
+  - summary card for playable/direct/adaptive/audio/subtitle captures
+  - review-first messaging for adaptive/protected streams
+- Adds tests and a browser media continuity validator.
 
-## Phase 5 storage
+## Guardrails
 
-- MediaStore Downloads, Movies, Music, Pictures, and Documents destinations.
-- SAF tree selection for user folders, SD cards, and document providers.
-- Persisted URI permissions and destination-health records in Room schema v4.
-- App-private staging/checkpoint/finalization artifacts.
-- Atomic file promotion where supported and copy/flush/commit for content providers.
-- Overwrite, resume, rename, skip, and compare conflict policies.
-- Native transfer-engine integration without broad all-files access.
-
-## DevTool validation
-
-Select target `xdm_android` and use the normal `--validate` pipeline. DevTool 0.15+ performs Android restore/configuration, the debug build, local tests, Android Lint, APK discovery, APK integrity/metadata/signing checks, Gradle cleanup, rollback on failure, and the artifact commit after successful validation.
-
-No custom artifact validator, embedded validation workspace, or direct `build-apk` call is included. DevTool's Android runner manages Gradle 9.4.1 and the Android toolchain.
-
-## DevTool Android compatibility
-
-This target disables DevTool structured Gradle events because DevTool 0.15 currently appends a second `--console=plain` argument when that mode is enabled. The standard Android builder output remains enabled. Artifact validation permits one infrastructure warning for ignoring an incompatible Gradle found on `PATH` while the required managed Gradle 9.4.1 is selected.
+- No AppRoute changes.
+- No new Room schema version.
+- No static WebView or Android Context storage.
+- JavaScript enablement is explicitly lint-reviewed and scoped to the embedded browser settings helper.
+- No DRM bypass. Protected streams are flagged and blocked from direct queueing.

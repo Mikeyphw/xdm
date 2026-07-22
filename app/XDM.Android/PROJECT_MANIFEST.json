@@ -417,5 +417,35 @@
     "event_log_visible": true,
     "copyable_diagnostics": true,
     "top_level_route_added": false
-  }
+  },
+  "built_in_browser_media_downloader": {
+    "schema_version": 14,
+    "webview_browser": true,
+    "request_sniffer": true,
+    "download_listener": true,
+    "media_tray": true,
+    "hls_dash_audio_video_detection": true,
+    "engine_planner": [
+      "native",
+      "aria2",
+      "yt-dlp",
+      "ffmpeg-live"
+    ],
+    "explicit_review_before_queue": true,
+    "top_level_route_added": false,
+    "browser_tabs": true,
+    "browser_history": true,
+    "cookie_profiles": [
+      "standard",
+      "private",
+      "desktop"
+    ],
+    "hls_media_groups": true,
+    "hls_live_and_protection_detection": true,
+    "dash_adaptation_sets": true,
+    "dash_content_protection_detection": true,
+    "yt_dlp_page_url_probe": true,
+    "offline_library_groundwork": true
+  },
+  "current_overlay": "phase-18b-browser-media-continuity"
 }

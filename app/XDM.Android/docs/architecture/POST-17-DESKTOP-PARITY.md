@@ -17,4 +17,4 @@ No new top-level route is added. Downloads owns history actions, Settings owns i
 
 ## Persistence
 
-Room remains locked at schema v13. Preferences live in DataStore and settings export deliberately omits secrets.
+Room remains locked at schema v14. Preferences live in DataStore and settings export deliberately omits secrets.

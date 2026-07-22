@@ -13,6 +13,9 @@ interface AutomationCommandDao {
     @Query("SELECT * FROM automation_commands WHERE idempotencyKey = :idempotencyKey LIMIT 1")
     suspend fun findByIdempotencyKey(idempotencyKey: String): AutomationCommandEntity?
 
+    @Query("SELECT * FROM automation_commands WHERE id = :id LIMIT 1")
+    suspend fun findById(id: String): AutomationCommandEntity?
+
     @Upsert
     suspend fun upsert(entity: AutomationCommandEntity)
 }

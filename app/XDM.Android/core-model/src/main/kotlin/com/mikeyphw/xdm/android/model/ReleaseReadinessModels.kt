@@ -89,13 +89,13 @@ object ReleaseInstallReadinessGate {
                     ),
                 )
             }
-            if (schemaVersion != 13) {
+            if (schemaVersion != 14) {
                 add(
                     ReleaseReadinessCheck(
                         id = "database.schema",
                         severity = ReleaseReadinessSeverity.Blocking,
                         title = "Unexpected schema migration",
-                        detail = "Phase 16 must not migrate Room; updates must preserve schema v13.",
+                        detail = "Phase 16 must not migrate Room; updates must preserve schema v14.",
                     ),
                 )
             }

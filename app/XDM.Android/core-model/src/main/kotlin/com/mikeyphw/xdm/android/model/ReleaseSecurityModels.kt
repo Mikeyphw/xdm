@@ -55,7 +55,7 @@ object ReleaseSecurityGate {
                     ),
                 )
             }
-            if (schemaVersion != 13) {
+            if (schemaVersion != 14) {
                 add(
                     ReleaseSecurityFinding(
                         id = "database.schema",

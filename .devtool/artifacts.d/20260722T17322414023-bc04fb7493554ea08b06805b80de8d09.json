@@ -1,0 +1,158 @@
+{
+  "applied_at": "2026-07-22T17:32:24.140239Z",
+  "artifact": "/home/mike/Downloads/xdm_android_browser_media_downloader_overlay.zip",
+  "artifact_name": "xdm_android_browser_media_downloader_overlay.zip",
+  "type": "overlay",
+  "sha256": "b396f4ef196046f635459291e3600cb673e686257502a4083f226a74b60453bf",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "feat(android): add browser media downloader foundation",
+  "commit_hash": "",
+  "file_count": 13,
+  "change_counts": {
+    "add": 4,
+    "modify": 9
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Browser Media Downloader",
+    "description": "Adds a clean-room built-in browser media downloader slice inside the existing Media route: WebView request sniffing, media tray, HLS/DASH/audio/video capture into the Media inbox, browser Add fallback, and a media download planner for native, aria2, yt-dlp, and live recording workflows without adding a new top-level route.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "bb5a8c4636be6b650b8a40e09c182f0bc9ecf89354bcb7e061b696aba43eec6f",
+          "size": 1261,
+          "source_sha256": "fd9383b0ededed19a15d4c7dfb7f00457b1f47d9ea74187e76f02d7384d534ff"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "38ddf06b5ba1eccbc76d6595fc4f9d4ec8c38271d894166da1d6a27e561c6e52",
+          "size": 11786,
+          "source_sha256": "8a72b8fee374952b29caeeb54d716ffaa451122864525ad18039155cc2694ec1"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "5b2b5e541a402aa883b67e277aaf2dd18b5960caeefc0aa8fef107ab8ede2aae",
+          "size": 8732,
+          "source_sha256": "1b7b51fe13bff97e3f224c4861af23d1db58d769b741b06e37a3d26814a8c59b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+          "action": "add",
+          "sha256": "25f4eca73ee97b41af69f813e1a95c809bb0b0e2f82091619e6809bcc76b59d2",
+          "size": 12982
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "465e8e467c8aed9b84c574a19b2237a52b52aa52c3cf25a2544fcd6d6858f365",
+          "size": 65795,
+          "source_sha256": "4fa4c71c4c98aaf6ef976dcca2a23d5436550bf1c154628ea1b1068ef7ceecb6"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "c289ab8cde578cd40ca67f15b899753da5d124e7aa11463e5016dc09f7a7c281",
+          "size": 128557,
+          "source_sha256": "4b5369ff18731a9b12912f6fc12bc69ff5f19d83ca2e90702d508dae5699080e"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "9f791dd90bc90728466cab50842db68adde4e4282843940e2baaa162814bd423",
+          "size": 14285,
+          "source_sha256": "e148a3bec781344e6d97b0acaf7b5976f3cfe699a24fb525e4aa0f725be7a300"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-18-BUILT-IN-BROWSER-MEDIA-DOWNLOADER.md",
+          "action": "add",
+          "sha256": "d7065c83e1633d031bb132ae39fa4c9dad84fc7f4afce87abd1e5edefa7b3ceb",
+          "size": 1845
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+          "action": "modify",
+          "sha256": "6505d0042bf883c866d3196bc1b01b06f10a26f2cf7ba6094e58b338c9561d20",
+          "size": 10280,
+          "source_sha256": "5da00d2d039d12bad1fd9243b1a826964ceea701cf58ca83f34327dd2f833c2e"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt",
+          "action": "add",
+          "sha256": "7f918d5b86d7b0f01e55aa5a4ad00e4146a695644e01a72422a621cbf8dfebae",
+          "size": 4957
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaInboxContract.kt",
+          "action": "modify",
+          "sha256": "3cae69ef8451de5f01a15ab104fae1861b5fb53a3aa370c2dce50dca28d035c9",
+          "size": 17082,
+          "source_sha256": "dc6df8e4ab75bfb1373271ab55c57fc2cb086b4d8d58efabc0e5e5bbd9a286eb"
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+          "action": "modify",
+          "sha256": "5e510b6a1cbd73bd3c14edbfa68c186f10d50c9370a95cde3fed31ce6f1b32f3",
+          "size": 5601,
+          "source_sha256": "2884b710fb81b3b4f92730bb2a92ebbc0b386f1e531ec419725001436e19822f"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-media-downloader.py",
+          "action": "add",
+          "sha256": "0e7fc94b085ce693f72bb9f4de8f0b788e4c437aed2d9344d4c240804d13a78b",
+          "size": 1940
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "feat(android): add browser media downloader foundation"
+      }
+    },
+    "validation": {
+      "commands": [
+        {
+          "command": "python3 - <<'PY'\nimport xml.etree.ElementTree as ET\nET.parse('app/src/main/AndroidManifest.xml')\nprint('manifest ok')\nPY",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "python3 tools/validate-browser-media-downloader.py",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "python3 tools/validate-phase-14.py",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "python3 tools/validate-phase-16.py",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "python3 tools/validate-phase-17.py",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "./gradlew :media:test :app:testDebugUnitTest",
+          "working_directory": "app/XDM.Android"
+        }
+      ]
+    }
+  },
+  "history_id": "bc04fb7493554ea08b06805b80de8d09"
+}

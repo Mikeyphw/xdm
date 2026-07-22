@@ -9,7 +9,7 @@ Standalone Android download manager implemented through Phase 7: modular Kotlin/
 
 ## Phase 17: final public release gate
 
-Phase 17 is the final release-candidate gate. It does not add a route or database migration. It locks the package identity, keeps Room at schema v13, exposes the final release gate in Diagnostics and Settings, runs static validators through Phase 17, documents the signed release flow, and requires the full devtool validation pass before a public artifact is accepted.
+Phase 17 is the final release-candidate gate. It does not add a route or database migration. It locks the package identity, keeps Room at schema v14, exposes the final release gate in Diagnostics and Settings, runs static validators through Phase 17, documents the signed release flow, and requires the full devtool validation pass before a public artifact is accepted.
 
 For the final gate from the repository root, use:
 
@@ -25,7 +25,7 @@ tools/run-final-release-gate.sh
 
 ## Phase 16: packaging, recovery and install/update readiness
 
-Phase 16 prepares the Android app for installable beta packaging without changing the database. The app now exposes an install/update readiness report, keeps release diagnostics privacy-safe, records the package identity contract, confirms recovery surfaces remain available before update, refreshes CI/static validators through Phase 16, and removes the deprecated Compose clipboard API in favor of the Android clipboard service. Room remains at schema v13.
+Phase 16 prepares the Android app for installable beta packaging without changing the database. The app now exposes an install/update readiness report, keeps release diagnostics privacy-safe, records the package identity contract, confirms recovery surfaces remain available before update, refreshes CI/static validators through Phase 16, and removes the deprecated Compose clipboard API in favor of the Android clipboard service. Room remains at schema v14.
 
 ## Build
 
@@ -105,9 +105,18 @@ XDM Android now includes privacy-safe diagnostic summaries, redaction helpers, a
 
 ## Phase 15 UX and accessibility polish
 
-Phase 15 keeps the existing route topography while tightening the Android surface for compact phones and assistive technology. Downloads now expose a compact overview, action labels include the target file, progress indicators publish screen-reader state, release Diagnostics has an accessible copy action, and Settings records the polish contract without adding a new top-level route. Room remains at schema v13.
+Phase 15 keeps the existing route topography while tightening the Android surface for compact phones and assistive technology. Downloads now expose a compact overview, action labels include the target file, progress indicators publish screen-reader state, release Diagnostics has an accessible copy action, and Settings records the polish contract without adding a new top-level route. Room remains at schema v14.
 
 
 ### Post-17 desktop parity
 
-XDM Android now exposes settings import/export, history/file management, proxy/credential profile metadata, conversion/post-processing policy, protocol coverage polish, and release/non-debug packaging helpers without adding a new top-level route or migrating Room past schema v13.
+XDM Android now exposes settings import/export, history/file management, proxy/credential profile metadata, conversion/post-processing policy, protocol coverage polish, and release/non-debug packaging helpers without adding a new top-level route or migrating Room past schema v14.
+
+### Built-in browser media downloader
+
+XDM Android now includes a Browser workspace inside the existing Media route for review-first media discovery. The embedded WebView observes page loads, resource requests, and browser download callbacks, then captures likely HLS, DASH, progressive video, and audio streams into the Media inbox. The Media route explains the preferred engine for each capture: native direct download, aria2 segmented download, yt-dlp resolver, or live recording workflow.
+
+### Browser media continuity
+
+The Media route now contains a browser workspace with persisted tabs, recent history, and explicit cookie profiles. Captured HLS/DASH media is enriched with audio/subtitle variants, live/protected classification, and page-first yt-dlp probing. The offline library panel summarizes direct, adaptive, audio-only, and subtitle-ready captures without adding a new top-level route.
+

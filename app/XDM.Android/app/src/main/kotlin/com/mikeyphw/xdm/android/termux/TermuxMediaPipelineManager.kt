@@ -21,13 +21,17 @@ class TermuxMediaPipelineManager(context: Context) {
         statusFlow.update { it.copy(updatedAtEpochMs = System.currentTimeMillis()) }
     }
 
-    fun extractMetadata(record: MediaCaptureRecord) = launch(
-        record = record,
-        kind = TermuxMediaJobKind.YtDlpMetadata,
-        output = "JSON metadata in Termux run log",
-        command = XdmTermuxCommand.YtDlpMetadata(record.sourceUrl),
-        message = "Queued yt-dlp metadata extraction for ${record.title}.",
-    )
+    fun extractMetadata(record: MediaCaptureRecord) {
+        val probeUrl = metadataProbeUrl(record)
+        launch(
+            record = record,
+            kind = TermuxMediaJobKind.YtDlpMetadata,
+            output = "JSON metadata in Termux run log",
+            command = XdmTermuxCommand.YtDlpMetadata(probeUrl),
+            message = "Queued yt-dlp metadata extraction for ${record.title} using ${if (probeUrl == record.pageUrl) "page URL" else "stream URL"}.",
+            inputOverride = probeUrl,
+        )
+    }
 
     fun inspectWithFfprobe(record: MediaCaptureRecord) = launch(
         record = record,
@@ -37,18 +41,22 @@ class TermuxMediaPipelineManager(context: Context) {
         message = "Queued FFprobe inspection for ${record.title}.",
     )
 
-    fun downloadWithYtDlp(record: MediaCaptureRecord, destination: String = DefaultDownloadDir) = launch(
-        record = record,
-        kind = TermuxMediaJobKind.YtDlpDownload,
-        output = destination,
-        command = XdmTermuxCommand.YtDlpDownload(
-            url = record.sourceUrl,
-            destination = destination,
-            outputTemplate = sanitizeFileName(record.title.ifBlank { record.fileName }, fallback = "xdm-media", maxLength = 96) + ".%(ext)s",
-            format = "bestvideo+bestaudio/best",
-        ),
-        message = "Queued yt-dlp download for ${record.title}.",
-    )
+    fun downloadWithYtDlp(record: MediaCaptureRecord, destination: String = DefaultDownloadDir) {
+        val probeUrl = metadataProbeUrl(record)
+        launch(
+            record = record,
+            kind = TermuxMediaJobKind.YtDlpDownload,
+            output = destination,
+            command = XdmTermuxCommand.YtDlpDownload(
+                url = probeUrl,
+                destination = destination,
+                outputTemplate = sanitizeFileName(record.title.ifBlank { record.fileName }, fallback = "xdm-media", maxLength = 96) + ".%(ext)s",
+                format = "bestvideo+bestaudio/best",
+            ),
+            message = "Queued yt-dlp download for ${record.title} using ${if (probeUrl == record.pageUrl) "page URL" else "stream URL"}.",
+            inputOverride = probeUrl,
+        )
+    }
 
     fun convert(record: MediaCaptureRecord, preset: ConversionPreset, destination: String = DefaultDownloadDir) {
         val input = record.selectedVariantUrl ?: record.sourceUrl
@@ -84,7 +92,7 @@ class TermuxMediaPipelineManager(context: Context) {
         }
     }
 
-    private fun launch(record: MediaCaptureRecord, kind: TermuxMediaJobKind, output: String, command: XdmTermuxCommand, message: String) {
+    private fun launch(record: MediaCaptureRecord, kind: TermuxMediaJobKind, output: String, command: XdmTermuxCommand, message: String, inputOverride: String? = null) {
         val startedAt = System.currentTimeMillis()
         val jobId = "termux-media-${UUID.randomUUID()}"
         val launch = runner.run(command)
@@ -96,7 +104,7 @@ class TermuxMediaPipelineManager(context: Context) {
             title = record.title.ifBlank { record.fileName },
             kind = kind,
             status = status,
-            input = record.selectedVariantUrl ?: record.sourceUrl,
+            input = inputOverride ?: record.selectedVariantUrl ?: record.sourceUrl,
             output = output,
             runId = launch.runId,
             message = if (launch.started) message else launch.error,
@@ -111,6 +119,8 @@ class TermuxMediaPipelineManager(context: Context) {
             )
         }
     }
+
+    private fun metadataProbeUrl(record: MediaCaptureRecord): String = record.pageUrl?.takeIf { it.isNotBlank() } ?: record.sourceUrl
 
     private fun ConversionPreset.shellPreset(): String = when (this) {
         ConversionPreset.AudioExtract -> "audio"

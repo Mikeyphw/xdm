@@ -7,7 +7,7 @@ Phase 14 prepares XDM Android for beta-style validation without changing the Roo
 - Keep all release-safety controls inside Diagnostics and existing validation tooling.
 - Produce a privacy-safe diagnostic summary that can be copied without raw URLs, cookies, bearer tokens, API keys, sessions, or signatures.
 - Add a deterministic release gate script that checks project metadata, build configuration, schema stability, validators, and source-level privacy contracts.
-- Keep Room at schema v13. Phase 14 is a hardening slice, not a persistence migration.
+- Keep Room at schema v14. Phase 14 is a hardening slice, not a persistence migration.
 
 ## UI contract
 

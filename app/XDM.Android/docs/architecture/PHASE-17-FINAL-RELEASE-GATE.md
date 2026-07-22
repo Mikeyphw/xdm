@@ -6,7 +6,7 @@ Phase 17 closes the Android modernization sequence with a release-candidate gate
 
 - Bump app metadata to `0.17.0-rc01` with `versionCode = 18`.
 - Keep the base package identity `com.mikeyphw.xdm.android` stable.
-- Keep Room at schema v13. No migration is introduced in this phase.
+- Keep Room at schema v14. No migration is introduced in this phase.
 - Require full devtool validation for the final public release, not a medium selected-task gate.
 - Keep privacy-safe diagnostics and install/update readiness active.
 - Verify that the aria2 payload gate is still available for publishable aria2-enabled artifacts.
@@ -30,7 +30,7 @@ The final gate passes only when:
 - `PROJECT_MANIFEST.json` lists implemented phase 17 and `next_phase` is `complete`;
 - the public package ID remains `com.mikeyphw.xdm.android`;
 - app metadata is at least `0.17.0-rc01` / `versionCode = 18`;
-- Room schema v13 exists and has no unsupported top-level `version` key;
+- Room schema v14 exists and has no unsupported top-level `version` key;
 - Diagnostics and Settings expose the final release gate inside existing routes;
 - release, install/update, payload, diagnostic-redaction, and route-topography checks remain active.
 

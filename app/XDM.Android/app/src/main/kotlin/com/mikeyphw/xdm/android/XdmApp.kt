@@ -38,8 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-private val primaryRoutes = listOf(AppRoute.Downloads, AppRoute.Queues, AppRoute.Scheduler, AppRoute.Media)
-private val overflowRoutes = listOf(AppRoute.Add, AppRoute.Recovery, AppRoute.Diagnostics, AppRoute.Settings)
+private val primaryRoutes = listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Queues)
+private val overflowRoutes = listOf(AppRoute.Add, AppRoute.Scheduler, AppRoute.Recovery, AppRoute.Diagnostics, AppRoute.Settings)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -216,6 +216,8 @@ private fun AppScaffold(
                     state.mediaVariants,
                     state.termuxMediaPipeline,
                     state.postProcessingAutomation,
+                    viewModel::captureBrowserMediaUrl,
+                    viewModel::openAddFromBrowser,
                     viewModel::downloadMediaCapture,
                     viewModel::resolveMediaCapture,
                     viewModel::selectMediaVariant,

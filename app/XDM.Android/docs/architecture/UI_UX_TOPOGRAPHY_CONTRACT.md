@@ -15,7 +15,7 @@ The stable top-level routes are:
 - Diagnostics
 - Settings
 
-Mobile layouts must keep primary work areas in the bottom bar: Downloads, Queues, Scheduler, and Media. Add, Recovery, Diagnostics, and Settings belong in the overflow menu unless a future contract revision promotes them. When an overflow route is selected, the overflow affordance must expose selected state through visible styling and accessibility text.
+Mobile layouts must keep primary work areas in the bottom bar: Downloads, Media, and Queues. Add, Scheduler, Recovery, Diagnostics, and Settings belong in the overflow menu unless a future contract revision promotes them. Browser media discovery lives inside Media so the stable route surface does not sprawl. When an overflow route is selected, the overflow affordance must expose selected state through visible styling and accessibility text.
 
 Expanded layouts may expose all top-level routes in a navigation rail. Future features must extend one of the existing routes by default. Adding a new top-level route requires updating this contract and the route contract tests.
 
@@ -83,9 +83,9 @@ Recovery cards must lead with the user consequence and safe recommendation. Arti
 
 XDM must be discoverable as an Android download target from browsers that delegate downloads through typed `ACTION_VIEW` intents. The app manifest must keep plain HTTP(S) view handling and also advertise typed HTTP(S) view handling with a MIME wildcard so browser-provided download intents can resolve to XDM.
 
-Shared text and browser handoffs must never fall through to a normal cold-launch experience. Media URLs may open the Media route when stream metadata is detected. Ordinary HTTP(S) URLs must open the Add route with the URL prefilled, preserving user review before the transfer starts.
+The Browser workspace inside Media is the built-in media discovery surface. It must use a WebView, a URL/search bar, history navigation controls, a media tray, and explicit review before queueing. Shared text and browser handoffs must never fall through to a normal cold-launch experience. Media URLs may open the Media route when stream metadata is detected. Ordinary HTTP(S) URLs must open the Add route with the URL prefilled, preserving user review before the transfer starts.
 
-The ShareSheet intake path must extract URLs from `EXTRA_TEXT`, `EXTRA_SUBJECT`, or the first ClipData text item before rejecting the handoff. Rejections should be visible in Diagnostics, but supported links must navigate to the relevant user workflow.
+The ShareSheet intake path must extract URLs from `EXTRA_TEXT`, `EXTRA_SUBJECT`, or the first ClipData text item before rejecting the handoff. Rejections should be visible in Diagnostics, but supported links must navigate to the relevant user workflow. Browser-discovered HLS, DASH, progressive video, and audio requests must be captured into the Media route instead of starting surprise downloads.
 
 
 ## Phase 7 Termux Bridge Rules

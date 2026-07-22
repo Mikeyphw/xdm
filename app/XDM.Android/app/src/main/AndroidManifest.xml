@@ -28,8 +28,23 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
                 <data android:mimeType="text/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="video/*" />
                 <data android:mimeType="audio/*" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/vnd.android.package-archive" />
+                <data android:mimeType="application/x-bittorrent" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-7z-compressed" />
+                <data android:mimeType="application/x-mpegurl" />
+                <data android:mimeType="application/vnd.apple.mpegurl" />
+                <data android:mimeType="application/dash+xml" />
+                <data android:mimeType="application/*" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -42,9 +57,48 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:mimeType="*/*" />
+                <data android:scheme="https" android:mimeType="*/*" />
+                <data android:scheme="http" android:mimeType="application/octet-stream" />
+                <data android:scheme="https" android:mimeType="application/octet-stream" />
+                <data android:scheme="http" android:mimeType="application/vnd.android.package-archive" />
+                <data android:scheme="https" android:mimeType="application/vnd.android.package-archive" />
+                <data android:scheme="http" android:mimeType="application/x-bittorrent" />
+                <data android:scheme="https" android:mimeType="application/x-bittorrent" />
+                <data android:scheme="http" android:mimeType="application/zip" />
+                <data android:scheme="https" android:mimeType="application/zip" />
+                <data android:scheme="http" android:mimeType="application/x-7z-compressed" />
+                <data android:scheme="https" android:mimeType="application/x-7z-compressed" />
+                <data android:scheme="http" android:mimeType="video/*" />
+                <data android:scheme="https" android:mimeType="video/*" />
+                <data android:scheme="http" android:mimeType="audio/*" />
+                <data android:scheme="https" android:mimeType="audio/*" />
+                <data android:scheme="http" android:mimeType="application/x-mpegurl" />
+                <data android:scheme="https" android:mimeType="application/x-mpegurl" />
+                <data android:scheme="http" android:mimeType="application/vnd.apple.mpegurl" />
+                <data android:scheme="https" android:mimeType="application/vnd.apple.mpegurl" />
+                <data android:scheme="http" android:mimeType="application/dash+xml" />
+                <data android:scheme="https" android:mimeType="application/dash+xml" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD" />
+                <action android:name="android.intent.action.DOWNLOAD_URI" />
+                <action android:name="com.android.browser.action.DOWNLOAD" />
+                <action android:name="com.android.browser.intent.action.DOWNLOAD" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" />
                 <data android:scheme="https" />
-                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD" />
+                <action android:name="android.intent.action.DOWNLOAD_URI" />
+                <action android:name="com.android.browser.action.DOWNLOAD" />
+                <action android:name="com.android.browser.intent.action.DOWNLOAD" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:mimeType="*/*" />
+                <data android:scheme="https" android:mimeType="*/*" />
             </intent-filter>
             <intent-filter>
                 <action android:name="com.mikeyphw.xdm.android.ADD_URL" />

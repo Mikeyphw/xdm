@@ -12,7 +12,7 @@ class FinalReleaseGateModelsTest {
             versionName = "0.17.0-rc01",
             versionCode = 18,
             packageId = "com.mikeyphw.xdm.android",
-            schemaVersion = 13,
+            schemaVersion = 14,
             buildType = "release",
             releaseSafetyReady = true,
             installUpdateReady = true,
@@ -37,7 +37,7 @@ class FinalReleaseGateModelsTest {
             versionName = "0.16.0-alpha01",
             versionCode = 17,
             packageId = "com.mikeyphw.xdm.android.debug",
-            schemaVersion = 14,
+            schemaVersion = 13,
             buildType = "release",
             releaseSafetyReady = false,
             installUpdateReady = false,
@@ -55,4 +55,27 @@ class FinalReleaseGateModelsTest {
         assertTrue(report.checks.any { it.id == "full.validation" && it.severity == FinalReleaseGateSeverity.Blocking })
         assertTrue(report.checks.any { it.id == "signing.release" && it.severity == FinalReleaseGateSeverity.Blocking })
     }
+    @Test
+    fun debugBuildKeepsUnrunFullValidationAsWarning() {
+        val report = FinalPublicReleaseGate.evaluate(
+            versionName = "0.18.0-rc01",
+            versionCode = 19,
+            packageId = "com.mikeyphw.xdm.android",
+            schemaVersion = 14,
+            buildType = "debug",
+            releaseSafetyReady = true,
+            installUpdateReady = true,
+            diagnosticsRedacted = true,
+            aria2PayloadVerified = false,
+            staticValidatorsComplete = true,
+            releaseDocsComplete = true,
+            noNewTopLevelRoutes = true,
+            fullValidationPassed = false,
+            releaseSigningConfigured = false,
+        )
+
+        assertEquals(0, report.blockingCount)
+        assertTrue(report.checks.any { it.id == "full.validation" && it.severity == FinalReleaseGateSeverity.Warning })
+    }
+
 }

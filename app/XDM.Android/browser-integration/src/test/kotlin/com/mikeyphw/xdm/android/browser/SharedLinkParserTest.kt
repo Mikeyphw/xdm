@@ -15,4 +15,10 @@ class SharedLinkParserTest {
         val links = SharedLinkParser.parse("Watch (HTTPS://Example.TEST:443/video.m3u8). Then ignore ftp://example.test/file")
         assertEquals(listOf("https://example.test/video.m3u8"), links)
     }
+
+    @Test
+    fun ignoresShareTextAroundDownloadUrl() {
+        val links = SharedLinkParser.parse("Download this build: https://example.test/releases/app.apk?token=abc. Thanks!")
+        assertEquals(listOf("https://example.test/releases/app.apk?token=abc"), links)
+    }
 }

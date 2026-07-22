@@ -107,13 +107,13 @@ object FinalPublicReleaseGate {
                     ),
                 )
             }
-            if (schemaVersion != 13) {
+            if (schemaVersion != 14) {
                 add(
                     FinalReleaseGateCheck(
                         id = "database.schema",
                         severity = FinalReleaseGateSeverity.Blocking,
                         title = "Unexpected Room schema for public gate",
-                        detail = "Phase 17 intentionally ships without another Room migration; schema must stay at v13.",
+                        detail = "Phase 17 intentionally ships without another Room migration; schema must stay at v14.",
                     ),
                 )
             }
@@ -188,12 +188,17 @@ object FinalPublicReleaseGate {
                 )
             }
             if (!fullValidationPassed) {
+                val requiresReleaseBlocking = normalizedBuildType == "release"
                 add(
                     FinalReleaseGateCheck(
                         id = "full.validation",
-                        severity = FinalReleaseGateSeverity.Blocking,
-                        title = "Full validation has not passed",
-                        detail = "The final public gate requires the full devtool validation pass, not a medium selected-task gate.",
+                        severity = if (requiresReleaseBlocking) FinalReleaseGateSeverity.Blocking else FinalReleaseGateSeverity.Warning,
+                        title = if (requiresReleaseBlocking) "Full validation has not passed" else "Full validation pending for release builds",
+                        detail = if (requiresReleaseBlocking) {
+                            "The final public gate requires the full devtool validation pass, not a medium selected-task gate."
+                        } else {
+                            "Debug and beta builds surface this as a warning so runtime diagnostics do not look broken before a publishable release gate is run."
+                        },
                     ),
                 )
             }

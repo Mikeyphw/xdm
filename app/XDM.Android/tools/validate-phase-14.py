@@ -67,7 +67,7 @@ require_text("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseS
 require_text("core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModelsTest.kt", "redactsBearerTokensSensitiveHeadersAndQuerySecrets")
 require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "App integrity")
 require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "copyTextToClipboard")
-require_text("docs/architecture/PHASE-14-RELEASE-SAFETY.md", "Room at schema v13")
+require_text("docs/architecture/PHASE-14-RELEASE-SAFETY.md", "Room at schema v14")
 require_text("tools/validate-phase-13.py", "database.version")
 
 schema_path = root / "persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/14.json"

@@ -4,7 +4,7 @@ Phase 16 prepares XDM Android for beta packaging and update testing without chan
 
 ## Scope
 
-- Keep Room at schema v13. Phase 16 is an install/update readiness slice, not a persistence migration.
+- Keep Room at schema v14. Phase 16 is an install/update readiness slice, not a persistence migration.
 - Advance Android metadata to `0.16.0-alpha01` with monotonic `versionCode = 17`.
 - Keep the base package identity stable as `com.mikeyphw.xdm.android` while retaining debug and beta suffixes for side-by-side testing.
 - Surface install/update readiness inside Diagnostics and Settings, not as a new top-level route.

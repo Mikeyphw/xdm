@@ -20,7 +20,7 @@ class ReleaseSecurityModelsTest {
     fun releaseGateBlocksUnexpectedSchemaButAllowsDebugBuilds() {
         val report = ReleaseSecurityGate.evaluate(
             versionName = "0.14.0-alpha01",
-            schemaVersion = 14,
+            schemaVersion = 13,
             buildType = "debug",
             debuggable = true,
             privacySafeDiagnostics = true,
@@ -36,7 +36,7 @@ class ReleaseSecurityModelsTest {
     fun cleanBetaGateProducesInfoFinding() {
         val report = ReleaseSecurityGate.evaluate(
             versionName = "0.14.0-alpha01",
-            schemaVersion = 13,
+            schemaVersion = 14,
             buildType = "beta",
             debuggable = false,
             privacySafeDiagnostics = true,

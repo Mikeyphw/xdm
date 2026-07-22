@@ -1,0 +1,241 @@
+{
+  "applied_at": "2026-07-22T15:54:59.810494Z",
+  "artifact": "/home/mike/Downloads/xdm_android_handoff_screenshot_audit_overlay.zip",
+  "artifact_name": "xdm_android_handoff_screenshot_audit_overlay.zip",
+  "type": "overlay",
+  "sha256": "8ac1389aa12147efc150695c430c2b7a745a2364847857629133d22204bef428",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "fix(android): remediate handoff and screenshot audit issues",
+  "commit_hash": "",
+  "file_count": 25,
+  "change_counts": {
+    "add": 1,
+    "modify": 24
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Handoff and Screenshot Audit Remediation",
+    "description": "Fixes Android share/browser/external-download-manager handoffs and folds in screenshot-audit remediation for phone-width clipping, Downloads density, diagnostics wrapping, disabled ghost controls, numeric inputs, and stale release-gate schema blockers.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "393ae9e2fe51622c9d37c6a684fb77d2925f477ccf1a6145ce85a2380abf3f92",
+          "size": 1911,
+          "source_sha256": "fd9383b0ededed19a15d4c7dfb7f00457b1f47d9ea74187e76f02d7384d534ff"
+        },
+        {
+          "path": "app/XDM.Android/docs/audits/SCREENSHOT_AUDIT_20260722.md",
+          "action": "add",
+          "sha256": "a233e21680e20fc3f54360a3cba2a17f0bcbeb506a43cc7c8e19aeb07045a64e",
+          "size": 8109
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+          "action": "modify",
+          "sha256": "2bbeb0a3763668e734b8847feb755083700a04993b56a9003df39db2a3796d99",
+          "size": 6979,
+          "source_sha256": "8b224a6aa5b5c8787853b66f73f9bcd4d30f1f5e0381849110c8da07e4dc4706"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/SharedLinkParser.kt",
+          "action": "modify",
+          "sha256": "a4396a103957a847aea7a8515860a58ca9b9265140728e42d9cf2be9cf634da8",
+          "size": 1188,
+          "source_sha256": "e898628205bac230719abc1ed4abb10c4310967cc1e98c98610c99750b1996dd"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/test/kotlin/com/mikeyphw/xdm/android/browser/SharedLinkParserTest.kt",
+          "action": "modify",
+          "sha256": "cb24f9953758205dea107d9737ef13f015816602009595a4d280578a80506069",
+          "size": 957,
+          "source_sha256": "d09779f571e1ff8f9a18084506df5ebb33f49840670f1dd5328d06e5f5e1c8ec"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+          "action": "modify",
+          "sha256": "1906cfcc1d41b581db1de104c8bb96993323d8826bd4c7a794bcc555f236b50c",
+          "size": 8517,
+          "source_sha256": "0d049a6fc4c7adc146176a29f6d275610ec2c5a7523b9886ff25bc8e41ba6480"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "4fa4c71c4c98aaf6ef976dcca2a23d5436550bf1c154628ea1b1068ef7ceecb6",
+          "size": 64229,
+          "source_sha256": "07cd68391512bdd5954b419533ebad5334371ec03217e26328867b41eaa54dbf"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmDesignSystem.kt",
+          "action": "modify",
+          "sha256": "824ce812e4161c1e0f60558e89bc4448968261ad0d8cc3454692a8b4f954d0f3",
+          "size": 6589,
+          "source_sha256": "b40117c3ed4013cab7b0cf73d58a485c1516205ae49c676049361eb83eb827d4"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "16c0dfed4d466efd6e82035ae2d5177f5e8a55fadffaee8bcad22c37082cc6a8",
+          "size": 126178,
+          "source_sha256": "a22569bc46f469367a779be6e0988dded8fc199c804cfd64fc823e60c9ee0776"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt",
+          "action": "modify",
+          "sha256": "05e3b5ddb0e1a559744304e134dd0fc1ea8b84f974517550a728b68589b03661",
+          "size": 9143,
+          "source_sha256": "1f49bfe6349ba5a05e169991813fddbff8d7f9d14e8cdf3d2fa836ed2a4a0158"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt",
+          "action": "modify",
+          "sha256": "bcae5bd00ccf8ea6474a18474a979bfc1018957ce164983afbcd8cd6551ea789",
+          "size": 7737,
+          "source_sha256": "f9cf9f99acce1e9f731067ecc554b48aba2203e57cc8f0113108d7d64ba0e4bb"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModels.kt",
+          "action": "modify",
+          "sha256": "bd87ec2fd6e1dc1332bcf4c6bb60c5166a67fd87131b59aa1cc1b1485c9bea96",
+          "size": 11145,
+          "source_sha256": "3136dc5e6960dac970ac1e7efcedbab78117b8dde21eac25494620e14dd6376f"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModelsTest.kt",
+          "action": "modify",
+          "sha256": "be248f4427a268fb342a5cf2a6849819650be6af2bac07060c2978a17a876b9c",
+          "size": 1845,
+          "source_sha256": "8cca7ccbfdf84b5b6ce8fab99db4af00222570597b128496dcbefe1c8abd6513"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModelsTest.kt",
+          "action": "modify",
+          "sha256": "773d65cdeeaa79025a2fb55448db3de248520cdcdd7192298016e6eac39bfc0c",
+          "size": 2057,
+          "source_sha256": "09db83cea551b41d1e9ab92ac631c6fac192e96142edbada5ab0f71fcc26564e"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModelsTest.kt",
+          "action": "modify",
+          "sha256": "54d5fa1868c2e5e228fea3ea054ea9b65044d1b6182aafbe4b5b249dfa9b64da",
+          "size": 3109,
+          "source_sha256": "397c5b1a9b5eaefc7582fb42b54de9ca4cdc951835b9d860613a2cc07d02a369"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-14.py",
+          "action": "modify",
+          "sha256": "9e0979eb93de056b680b28d6164a91629b599db369cd2db648bf3120e46d6955",
+          "size": 4429,
+          "source_sha256": "647a36d62a876f1e840ffc1927b81ee54411114c157405293b5bbf53d4d7dbe1"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-16.py",
+          "action": "modify",
+          "sha256": "7a13869a3c607132cad1678c69a37aa1a1b1dcb3c4a16d9d633626b02e936a02",
+          "size": 6087,
+          "source_sha256": "c5ae722202b640b37ce41a0da7276d7fe22f734f594d9a8ca38f0ca08c6b2ed1"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "1b7b51fe13bff97e3f224c4861af23d1db58d769b741b06e37a3d26814a8c59b",
+          "size": 8238,
+          "source_sha256": "373bded3a8b3d09ce65bdcd365ada18f1fced4bc625f7f7adbe32bc4e447a8bb"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-14-RELEASE-SAFETY.md",
+          "action": "modify",
+          "sha256": "1533217978f3aaf13d69901b0c10e6004123c1bbea241b8745624f401536c709",
+          "size": 2080,
+          "source_sha256": "915057d9292f17948e906aee86a592f0825d80c88a85779c3ab25d5067a17181"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-15-UX-ACCESSIBILITY-POLISH.md",
+          "action": "modify",
+          "sha256": "d7296b6455260e5ad0e45463c17155d23b3c9ba1bf7d62adeef8dec95f0b5592",
+          "size": 1500,
+          "source_sha256": "3401966bc77f6d3dce8b7dd3c0ae915abe66a7b21b9f236fbaa1a98b596072d0"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-16-PACKAGING-RECOVERY-READINESS.md",
+          "action": "modify",
+          "sha256": "284690c3c08b16e83f9e2b35cd7992e211fb1e699a2f749e4f70680e41e12924",
+          "size": 2096,
+          "source_sha256": "5ffd9f40edd6f60a3ac8a9876255daaaaa5d8159cdf6a5f108be51e6f7c90002"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-17-FINAL-RELEASE-GATE.md",
+          "action": "modify",
+          "sha256": "afde7e6bfc133d86b73e3a9e64dc18fbcb06a47647a780fd9710810313817ac2",
+          "size": 2112,
+          "source_sha256": "2dd07797adee88a57da6e3838aa49ecfde6dc7e0a4d951a554555d7c1fb8ad3a"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/POST-17-DESKTOP-PARITY.md",
+          "action": "modify",
+          "sha256": "2b6a035bbcb5d9543863bc3ecc8b9be31567f08739fc2a62aea20f60901c91ee",
+          "size": 1230,
+          "source_sha256": "0c9e6032b0e5dd55b65d4fd646c68b535e03961642a3b188e38dbf99bac2f861"
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AutomationCommandDao.kt",
+          "action": "modify",
+          "sha256": "19499d1fb0e3647159cd2d444c934e55ee5b9330b194c11e4b3ad12cf1b46726",
+          "size": 727,
+          "source_sha256": "907550cb237d97ee7ef2ed142620312419aec63fb208608dcadaab786e45211b"
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+          "action": "modify",
+          "sha256": "7fe784daf10f1693a7e4238dfccd4934d6e38562f90c868791a905025a005921",
+          "size": 20900,
+          "source_sha256": "9e317da6924ca443c3dad9968ccf7340ea6f96e62ef74293dc2bff3f9a750d32"
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "fix(android): remediate handoff and screenshot audit issues"
+      }
+    },
+    "validation": {
+      "commands": [
+        {
+          "command": "python3 - <<'PY'\nimport xml.etree.ElementTree as ET\nET.parse('app/src/main/AndroidManifest.xml')\nPY",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "python3 tools/validate-phase-14.py",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "python3 tools/validate-phase-16.py",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "python3 tools/validate-phase-17.py",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "./gradlew :browser-integration:test :core-model:test :app:testDebugUnitTest",
+          "working_directory": "app/XDM.Android"
+        }
+      ]
+    }
+  },
+  "history_id": "c5b2643ae48944d2bd753b2d535f0f66"
+}

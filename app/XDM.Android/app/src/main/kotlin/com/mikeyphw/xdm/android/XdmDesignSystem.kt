@@ -3,8 +3,12 @@ package com.mikeyphw.xdm.android
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -131,6 +135,23 @@ fun XdmMetricText(text: String, modifier: Modifier = Modifier) {
     )
 }
 
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun XdmActionFlowRow(
+    modifier: Modifier = Modifier,
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(XdmSpacing.ItemGap),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(XdmSpacing.TightGap),
+    content: @Composable FlowRowScope.() -> Unit,
+) {
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = horizontalArrangement,
+        verticalArrangement = verticalArrangement,
+        content = content,
+    )
+}
+
 @Composable
 fun XdmStatusBadge(text: String, modifier: Modifier = Modifier, tone: XdmStatusTone = XdmStatusTone.Neutral) {
     val colorScheme = MaterialTheme.colorScheme
@@ -156,8 +177,12 @@ fun XdmStatusBadge(text: String, modifier: Modifier = Modifier, tone: XdmStatusT
     ) {
         Text(
             text,
-            Modifier.padding(horizontal = XdmSpacing.BadgeHorizontalPadding, vertical = XdmSpacing.BadgeVerticalPadding),
+            Modifier
+                .sizeIn(minHeight = 32.dp)
+                .padding(horizontal = XdmSpacing.BadgeHorizontalPadding, vertical = XdmSpacing.BadgeVerticalPadding),
             style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

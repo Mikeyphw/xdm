@@ -1,0 +1,150 @@
+{
+  "applied_at": "2026-07-22T17:59:55.543791Z",
+  "artifact": "/home/mike/Downloads/xdm_android_browser_media_continuity_overlay.zip",
+  "artifact_name": "xdm_android_browser_media_continuity_overlay.zip",
+  "type": "overlay",
+  "sha256": "41e7dda8ffd0b47fc0c2bf04e84c65d2b89299167145488a7307356ab1647e98",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "feat(android): extend browser media downloader continuity",
+  "commit_hash": "",
+  "file_count": 11,
+  "change_counts": {
+    "add": 2,
+    "modify": 9
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Browser Media Continuity",
+    "description": "Extends the built-in Media browser with persisted tabs/history/cookie profiles, richer HLS/DASH audio-subtitle/live/protection parsing, page-first yt-dlp probing, and offline library/player groundwork without adding a top-level route.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "54abf4fd480a077d76a996e5a8e29a916be2712b8c14987b19d4c48be7378c65",
+          "size": 1365,
+          "source_sha256": "bb5a8c4636be6b650b8a40e09c182f0bc9ecf89354bcb7e061b696aba43eec6f"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "2ccdcdb7aa053fd75dc18ce8555aded15e037ec2849e8c1628372f5663632ce4",
+          "size": 12216,
+          "source_sha256": "38ddf06b5ba1eccbc76d6595fc4f9d4ec8c38271d894166da1d6a27e561c6e52"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "e5690338641b9eacdc2d6b4f8cbbbe902335196e87368736956dcac1830d17f8",
+          "size": 9141,
+          "source_sha256": "5b2b5e541a402aa883b67e277aaf2dd18b5960caeefc0aa8fef107ab8ede2aae"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+          "action": "modify",
+          "sha256": "7a366d7ae145be93fcc393b2342faaa795a90bc03f4ea8a2f9a8625f72d434c4",
+          "size": 24336,
+          "source_sha256": "4e59170f4bc598c371a6febc1e969425f3eb14ca3a3e4460657210063b9c40d8"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "39a69d5e10f94fcefea0baeb693f44d6e2585e814ab51ab96797c52346693ade",
+          "size": 131602,
+          "source_sha256": "c289ab8cde578cd40ca67f15b899753da5d124e7aa11463e5016dc09f7a7c281"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt",
+          "action": "modify",
+          "sha256": "981d9ca519229b52a45cc0e61f7defff0622708b96f730e5300e5be4e3506823",
+          "size": 6189,
+          "source_sha256": "ec8b5712565e3abfd8ea0fe04d66b8167334da4f6bf58102565a56655811b7e8"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-18-BROWSER-MEDIA-CONTINUITY.md",
+          "action": "add",
+          "sha256": "5e19e9c2e22382593b63adad508c1fc50e7bd3f8b195842c25f7c63492a8b8a6",
+          "size": 1813
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt",
+          "action": "modify",
+          "sha256": "5806d7183387cd7884f90e77dc7651c77ec52e31280fee7d5d2b0c001a1d30bf",
+          "size": 9220,
+          "source_sha256": "7f918d5b86d7b0f01e55aa5a4ad00e4146a695644e01a72422a621cbf8dfebae"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaInboxContract.kt",
+          "action": "modify",
+          "sha256": "1683eb5f4d5af0b570455c990512a5510bcd475012212bab72855386f1bd86d2",
+          "size": 26787,
+          "source_sha256": "3cae69ef8451de5f01a15ab104fae1861b5fb53a3aa370c2dce50dca28d035c9"
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+          "action": "modify",
+          "sha256": "fff39eca1ff84d4f332451481c111ee4a627e7f353a352ccf22378640afc49cd",
+          "size": 9239,
+          "source_sha256": "5e510b6a1cbd73bd3c14edbfa68c186f10d50c9370a95cde3fed31ce6f1b32f3"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-media-continuity.py",
+          "action": "add",
+          "sha256": "99b2498cdd6f3ef0c75c834b8149dc351c9a28e4c95b83b85474fb057d5099df",
+          "size": 3692
+        }
+      ]
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "feat(android): extend browser media downloader continuity"
+      }
+    },
+    "validation": {
+      "commands": [
+        {
+          "command": "python3 - <<'PY'\nimport xml.etree.ElementTree as ET\nET.parse('app/src/main/AndroidManifest.xml')\nprint('manifest ok')\nPY",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "python3 tools/validate-browser-media-downloader.py",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "python3 tools/validate-browser-media-continuity.py",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "python3 tools/validate-phase-14.py",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "python3 tools/validate-phase-16.py",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "python3 tools/validate-phase-17.py",
+          "working_directory": "app/XDM.Android"
+        },
+        {
+          "command": "./gradlew :media:test :app:testDebugUnitTest",
+          "working_directory": "app/XDM.Android"
+        }
+      ]
+    }
+  },
+  "history_id": "b66e932bd35747f3bb00ba385bd5e7b7"
+}
