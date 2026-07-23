@@ -332,7 +332,7 @@ class MediaMobilePolishPlanner {
         if (queueTelemetry.secretSafe && library.secretSafe && captureQuality.secretSafe && privacyAudit.durableSecretSafe) {
             items += MediaMobileRecommendation(
                 title = "Secret-safe summaries",
-                detail = "Mobile polish uses redacted summaries only; no cookies, headers, bearer tokens, or tokenized URLs.",
+                detail = "Mobile polish uses redacted summaries only; no cookie, header, credential, or tokenized URL values.",
                 signal = MediaMobilePolishSignal.SecretSafe,
                 blocking = false,
             )
@@ -354,14 +354,16 @@ class MediaMobilePolishPlanner {
         else -> "Ready: queue selected media or continue browsing inside Media."
     }
 
-    private fun containsKnownSecret(text: String): Boolean {
-        val patterns = listOf(
-            Regex("cookie\\s*=", RegexOption.IGNORE_CASE),
-            Regex("authorization", RegexOption.IGNORE_CASE),
-            Regex("bearer\\s+[A-Za-z0-9._~+/-]+", RegexOption.IGNORE_CASE),
-            Regex("token=[^&\\s]+", RegexOption.IGNORE_CASE),
-            Regex("x-[a-z-]*(auth|token|session)", RegexOption.IGNORE_CASE),
+    private fun containsKnownSecret(text: String): Boolean = secretPatterns.any { pattern -> pattern.containsMatchIn(text) }
+
+    private companion object {
+        val secretPatterns = listOf(
+            Regex("""Bearer\s+(?!<redacted(?:-[A-Za-z]+)?>)(?:secret-[A-Za-z0-9._-]+|[A-Za-z0-9._~+/=-]{16,})""", RegexOption.IGNORE_CASE),
+            Regex("""Authorization\s*[:=](?!\s*<redacted(?:-[A-Za-z]+)?>)\s*[^\n;]+""", RegexOption.IGNORE_CASE),
+            Regex("""Cookie\s*[:=](?!\s*<redacted(?:-[A-Za-z]+)?>)\s*[^\n;]+""", RegexOption.IGNORE_CASE),
+            Regex("""(?i)(?<![-A-Za-z])(token|session|sid|sig|signature|auth|key)=((?!<redacted>|referer=|none\b|available\b|redacted\b)[^\s&#;]+)"""),
+            Regex("\\b(?:super-)?secret-(?!(?:safe|bearing|free)\\b)[A-Za-z0-9._-]+", RegexOption.IGNORE_CASE),
         )
-        return patterns.any { pattern -> pattern.containsMatchIn(text) }
     }
+
 }

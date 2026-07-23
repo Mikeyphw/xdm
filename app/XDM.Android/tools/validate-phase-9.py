@@ -11,7 +11,7 @@ checks = {
     "finalization journal store": (ROOT / "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/RoomFinalizationJournalStore.kt", "class RoomFinalizationJournalStore"),
     "migration 8 to 9": (ROOT / "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt", "Migration8To9"),
     "schema": (ROOT / "persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/9.json", '"version": 9'),
-    "recovery ui actions": (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "record.recommendedAction.name"),
+    "recovery ui actions": (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "record.recommendedAction"),
     "startup wiring": (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt", "scanStartupRecovery"),
     "architecture": (ROOT / "docs/architecture/PHASE-9-STARTUP-RECOVERY-FINALIZATION.md", "Recovered jobs remain paused until the user explicitly acts"),
     "tests": (ROOT / "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/StartupRecoveryCoordinatorTest.kt", "activeDownloadBecomesRecoveryRequiredAndPaused"),

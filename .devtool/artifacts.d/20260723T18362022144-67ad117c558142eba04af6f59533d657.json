@@ -1,0 +1,120 @@
+{
+  "applied_at": "2026-07-23T18:36:20.221448Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase37_topography_layout_ui_ux_audit_overlay.zip",
+  "artifact_name": "xdm_android_phase37_topography_layout_ui_ux_audit_overlay.zip",
+  "type": "overlay",
+  "sha256": "75e607dfa9a15b2410d6981e85ae72c0f6ee79e6a0175d2cb51321a755932b53",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 10,
+  "change_counts": {
+    "add": 2,
+    "modify": 8
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 37 Topography Layout UI UX Audit",
+    "description": "Audit and release-readiness overlay that records the post-Phase 36 topography, layout, UI, and UX findings, wires a Phase 37 validator into CI and the final release gate, advances the manifest ledger, and preserves Phase 36 external handoff posture without runtime changes.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "a1c47f5b9898c0875d83db436619946606d9d7fc2b280bec4c5b34470309dae4",
+          "size": 1221,
+          "source_sha256": "afcd4f52623e191d034bac95bbbed9084252f7e5f080abcfcf38199a2f571267"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "c6b332724bf7666ba83212111c801fed1e4c82ec2e4366bd808140fcc96689c5",
+          "size": 3902,
+          "source_sha256": "9757ebeeecc952d5c04b311e66c1a753995f70ad06f2d914a39fa72477aafa5f"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "1d4172694ec4309ce53ae2c576740880e792faad531bd4130a2f94b4b11e6e5e",
+          "size": 31682,
+          "source_sha256": "2718dfe432a53b338ccfa70cf59a89fc5e0ae5b1c0da8f59ddd4a59ed2ce24d0"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "fbdad4dfc17e1c28d4138f70a80fbad91334dd2ec25e058fdf2938dd3062f50c",
+          "size": 90933,
+          "source_sha256": "e378fa4c622131dad4fbba0a41ed22e5e32c37680430136e7a525fa2e85ef497"
+        },
+        {
+          "path": "app/XDM.Android/docs/ui/PHASE-37-TOPOGRAPHY-LAYOUT-UI-UX-AUDIT.md",
+          "action": "create",
+          "sha256": "fcdfe4b254c94ba2c51cf291f731ec355a125f6f34ea6e7fdb8ddd6438bc9e71",
+          "size": 7035
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "a3bdd5bd026d908959b0d2328c119a7cb1496074d4b46263c623e4ee7c4c0533",
+          "size": 2663,
+          "source_sha256": "8061e68ecbe94ff33a00b77389767d487dfeecd3b7a33642fc067ed154ae5e37"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+          "action": "modify",
+          "sha256": "4536d8a65cb81b9fb632d3bd663a76d9fe2695435458c443c3554a0ca56a9adf",
+          "size": 6922,
+          "source_sha256": "84d03a87c996c138abd7695addcfa1e7599c7c30887b8ff05f684b8299ec2a40"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+          "action": "modify",
+          "sha256": "a3c071685f21fc825a6af63dcb4c64ea01ebcf681f6652de4692824cd54748d6",
+          "size": 9591,
+          "source_sha256": "96042609ea37c9fb9f5d178cdffeacbedc256d5590fdf82f40b641124a8dbf22"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+          "action": "modify",
+          "sha256": "5804c47752ef328a7ef067499d48a18f0d69cce8fb1c959bf1691222bd46f958",
+          "size": 8361,
+          "source_sha256": "39c84e10df00607afc49166dbdc01218790e18c8cb0b473831c02ca79c6be32c"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37-topography-layout-ui-ux-audit.py",
+          "action": "create",
+          "sha256": "e7c12d014efa564a269dee6cbea535f6322eb31f75d05c4f234f298f894464e1",
+          "size": 7404
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "tests": "pass",
+        "diagnostics": "pass"
+      },
+      "maximum_warnings": 0
+    },
+    "notes": [
+      "Phase 37 is docs/manifest/validator/test-contract only and makes no runtime changes.",
+      "Records topography, layout, UI, and UX audit findings after Phase 36 external download handoff landed.",
+      "Keeps compact primary routes as Downloads, Media, Queues and overflow routes as Add, Scheduler, Recovery, Diagnostics, Settings.",
+      "Documents follow-up slices for compact Add discoverability, wide-screen supporting panes, density/dashboard visual polish, and device smoke harness.",
+      "Updates Phase 34/35/36 validators to accept the later Phase 37 current_overlay value.",
+      "No new top-level route, no Room migration, no version bump, no transfer engine changes, and no media execution changes."
+    ]
+  },
+  "history_id": "67ad117c558142eba04af6f59533d657"
+}

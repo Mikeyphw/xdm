@@ -440,10 +440,10 @@ class MediaExecutionLibraryPlanner(
     private fun secretLeakReport(surfaces: List<String>): MediaSecretLeakReport {
         val findings = mutableListOf<String>()
         val patterns = listOf(
-            Regex("Bearer\\s+[A-Za-z0-9._~+/=-]+", RegexOption.IGNORE_CASE) to "authorization bearer",
-            Regex("Cookie\\s*:", RegexOption.IGNORE_CASE) to "raw cookie header",
-            Regex("(?:token|session|sid|sig|signature|auth|key)=((?!<redacted>)[^\\s&#;]+)", RegexOption.IGNORE_CASE) to "unredacted token parameter",
-            Regex("secret-[A-Za-z0-9._-]+", RegexOption.IGNORE_CASE) to "test secret literal",
+            Regex("Bearer\\s+(?!<redacted(?:-[A-Za-z]+)?>)(?:secret-[A-Za-z0-9._-]+|[A-Za-z0-9._~+/=-]{16,})", RegexOption.IGNORE_CASE) to "authorization bearer",
+            Regex("Cookie\\s*[:=](?!\\s*<redacted(?:-[A-Za-z]+)?>)\\s*[^\\n;]+", RegexOption.IGNORE_CASE) to "raw cookie header",
+            Regex("(?<![-A-Za-z])(?:token|session|sid|sig|signature|auth|key)=((?!<redacted>|referer=|none\\b|available\\b|redacted\\b)[^\\s&#;]+)", RegexOption.IGNORE_CASE) to "unredacted token parameter",
+            Regex("\\b(?:super-)?secret-(?!(?:safe|bearing|free)\\b)[A-Za-z0-9._-]+", RegexOption.IGNORE_CASE) to "test secret literal",
         )
         surfaces.forEachIndexed { index, surface ->
             patterns.forEach { (pattern, label) ->

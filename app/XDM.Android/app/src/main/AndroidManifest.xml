@@ -24,10 +24,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <intent-filter>
+                <action android:name="com.mikeyphw.xdm.android.ADD_URL" />
+                <action android:name="com.mikeyphw.xdm.android.CAPTURE_MEDIA" />
+                <action android:name="com.mikeyphw.xdm.android.PAUSE_ALL" />
+                <action android:name="com.mikeyphw.xdm.android.RESUME_ALL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ExternalAddDownloadActivity"
+            android:exported="true"
+            android:label="@string/external_add_download_label">
+            <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
                 <data android:mimeType="text/*" />
+                <data android:mimeType="*/*" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
@@ -41,34 +55,39 @@
                 <data android:mimeType="application/x-bittorrent" />
                 <data android:mimeType="application/zip" />
                 <data android:mimeType="application/x-7z-compressed" />
+                <data android:mimeType="application/x-rar-compressed" />
+                <data android:mimeType="application/pdf" />
                 <data android:mimeType="application/x-mpegurl" />
                 <data android:mimeType="application/vnd.apple.mpegurl" />
                 <data android:mimeType="application/dash+xml" />
                 <data android:mimeType="application/*" />
             </intent-filter>
-            <intent-filter>
+            <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" />
                 <data android:scheme="https" />
+                <data android:scheme="ftp" />
             </intent-filter>
-            <intent-filter>
+            <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" android:mimeType="*/*" />
                 <data android:scheme="https" android:mimeType="*/*" />
+                <data android:scheme="ftp" android:mimeType="*/*" />
                 <data android:scheme="http" android:mimeType="application/octet-stream" />
                 <data android:scheme="https" android:mimeType="application/octet-stream" />
+                <data android:scheme="ftp" android:mimeType="application/octet-stream" />
                 <data android:scheme="http" android:mimeType="application/vnd.android.package-archive" />
                 <data android:scheme="https" android:mimeType="application/vnd.android.package-archive" />
                 <data android:scheme="http" android:mimeType="application/x-bittorrent" />
                 <data android:scheme="https" android:mimeType="application/x-bittorrent" />
                 <data android:scheme="http" android:mimeType="application/zip" />
                 <data android:scheme="https" android:mimeType="application/zip" />
-                <data android:scheme="http" android:mimeType="application/x-7z-compressed" />
-                <data android:scheme="https" android:mimeType="application/x-7z-compressed" />
+                <data android:scheme="http" android:mimeType="application/pdf" />
+                <data android:scheme="https" android:mimeType="application/pdf" />
                 <data android:scheme="http" android:mimeType="video/*" />
                 <data android:scheme="https" android:mimeType="video/*" />
                 <data android:scheme="http" android:mimeType="audio/*" />
@@ -80,7 +99,115 @@
                 <data android:scheme="http" android:mimeType="application/dash+xml" />
                 <data android:scheme="https" android:mimeType="application/dash+xml" />
             </intent-filter>
-            <intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.apk" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.apk" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.zip" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.zip" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.7z" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.7z" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.rar" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.rar" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.pdf" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.pdf" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.mp4" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.mp4" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.mp3" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.mp3" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.m3u8" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.m3u8" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.torrent" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.torrent" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.DOWNLOAD" />
                 <action android:name="android.intent.action.DOWNLOAD_URI" />
                 <action android:name="com.android.browser.action.DOWNLOAD" />
@@ -89,8 +216,9 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" />
                 <data android:scheme="https" />
+                <data android:scheme="ftp" />
             </intent-filter>
-            <intent-filter>
+            <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.DOWNLOAD" />
                 <action android:name="android.intent.action.DOWNLOAD_URI" />
                 <action android:name="com.android.browser.action.DOWNLOAD" />
@@ -99,13 +227,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" android:mimeType="*/*" />
                 <data android:scheme="https" android:mimeType="*/*" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="com.mikeyphw.xdm.android.ADD_URL" />
-                <action android:name="com.mikeyphw.xdm.android.CAPTURE_MEDIA" />
-                <action android:name="com.mikeyphw.xdm.android.PAUSE_ALL" />
-                <action android:name="com.mikeyphw.xdm.android.RESUME_ALL" />
-                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="ftp" android:mimeType="*/*" />
             </intent-filter>
         </activity>
 

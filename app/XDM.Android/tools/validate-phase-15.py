@@ -59,7 +59,7 @@ build_gradle = require_file("app/build.gradle.kts")
 version_code_match = re.search(r'versionCode\s*=\s*(\d+)', build_gradle)
 if not version_code_match or int(version_code_match.group(1)) < 16:
     errors.append("app/build.gradle.kts versionCode is older than phase 15")
-version_name_match = re.search(r'versionName\s*=\s*"0\.(\d+)\.0-(?:alpha01|rc01)"', build_gradle)
+version_name_match = re.search(r'versionName\s*=\s*"0\.(\d+)\.0-(?:alpha01|rc\d+)"', build_gradle)
 if not version_name_match or int(version_name_match.group(1)) < 15:
     errors.append("app/build.gradle.kts versionName is older than 0.15.0-alpha01/rc01")
 

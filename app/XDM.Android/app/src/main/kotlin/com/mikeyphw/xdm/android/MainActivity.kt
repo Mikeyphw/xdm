@@ -22,7 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 
-class MainActivity : ComponentActivity() {
+open class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
         MainViewModel.Factory((application as XdmApplication).container)
     }
@@ -64,10 +64,12 @@ class MainActivity : ComponentActivity() {
             return
         }
         val action = incoming.action.orEmpty()
+        val promptAddDownload = shouldOpenExternalAddPrompt(incoming, action)
+        val handoffAction = if (promptAddDownload) AutomationCommandAction.PromptAddDownload else AutomationCommandAction.CaptureMedia
         val draft = when {
             action == Intent.ACTION_SEND || action == Intent.ACTION_SEND_MULTIPLE -> AutomationCommandDraft(
                 source = AutomationCommandSource.ShareSheet,
-                action = AutomationCommandAction.CaptureMedia,
+                action = handoffAction,
                 url = url,
                 fileName = fileName,
                 pageTitle = handoffTitle(incoming),
@@ -77,7 +79,7 @@ class MainActivity : ComponentActivity() {
             )
             action == Intent.ACTION_VIEW -> AutomationCommandDraft(
                 source = AutomationCommandSource.ViewIntent,
-                action = AutomationCommandAction.CaptureMedia,
+                action = handoffAction,
                 url = url,
                 fileName = fileName,
                 pageTitle = handoffTitle(incoming),
@@ -88,7 +90,7 @@ class MainActivity : ComponentActivity() {
             )
             action in BrowserHandoffContract.DownloadManagerActions -> AutomationCommandDraft(
                 source = AutomationCommandSource.ViewIntent,
-                action = AutomationCommandAction.CaptureMedia,
+                action = AutomationCommandAction.PromptAddDownload,
                 url = url,
                 fileName = fileName,
                 pageTitle = handoffTitle(incoming),
@@ -100,6 +102,11 @@ class MainActivity : ComponentActivity() {
             else -> null
         }
         if (draft?.normalizedUrl != null) viewModel.ingestAutomationCommand(draft)
+    }
+
+    private fun shouldOpenExternalAddPrompt(intent: Intent, action: String): Boolean {
+        val componentName = intent.component?.className.orEmpty()
+        return componentName.endsWith(".ExternalAddDownloadActivity") || action in BrowserHandoffContract.DownloadManagerActions
     }
 
     private fun handoffUrl(intent: Intent, sharedText: String? = null): String? =

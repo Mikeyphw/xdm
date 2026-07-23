@@ -137,6 +137,9 @@ import com.mikeyphw.xdm.android.media.MediaMobilePolishPlanner
 import com.mikeyphw.xdm.android.media.MediaMobilePolishDashboard
 import com.mikeyphw.xdm.android.media.MediaMobileSectionPriority
 import com.mikeyphw.xdm.android.media.MediaMobilePolishSignal
+import com.mikeyphw.xdm.android.media.MediaFinalValidationGatePlanner
+import com.mikeyphw.xdm.android.media.MediaFinalValidationDashboard
+import com.mikeyphw.xdm.android.media.MediaFinalValidationSeverity
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryAction
@@ -651,6 +654,7 @@ fun AddDownloadScreen(
     externalDraftId: String? = null,
     initialUrl: String? = null,
     initialFileName: String? = null,
+    externalSourceLabel: String? = null,
     onDestinationChanged: (String) -> Unit,
     onSafDestinationSelected: (String) -> Unit,
     onConflictPolicyChanged: (FilenameConflictPolicy) -> Unit,
@@ -690,6 +694,9 @@ fun AddDownloadScreen(
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             XdmCardTitle("Link received")
                             XdmSupportingText("Review the shared or browser-provided link, then start the download when ready.")
+                            XdmMetadataText("Source: ${externalSourceLabel ?: "External app"}")
+                            if (!initialFileName.isNullOrBlank()) XdmMetadataText("Filename suggestion: ${initialFileName.take(96)}")
+                            XdmMetadataText("Cookies, tokens, and request headers stay redacted; XDM never auto-queues external handoffs.")
                         }
                     }
                 }
@@ -1293,6 +1300,22 @@ fun MediaInboxScreen(
             widthClassLabel = "phone",
         )
     }
+    val mediaFinalValidation = remember(mediaMobilePolish, sessionPrivacyAudit, browserCaptureQuality, playerDiagnostics, libraryV2, termuxRuntime, nativeDirect) {
+        MediaFinalValidationGatePlanner().dashboard(
+            implementedPhases = (18..33).toList(),
+            mediaMobilePolish = mediaMobilePolish,
+            privacyAudit = sessionPrivacyAudit,
+            captureQuality = browserCaptureQuality,
+            playerReports = playerDiagnostics,
+            library = libraryV2,
+            termuxRuntime = termuxRuntime,
+            nativeDirect = nativeDirect,
+            fullValidationEnabled = true,
+            noNewTopLevelRoutes = true,
+            keepDebugSymbolsProtected = true,
+            warningsAsErrors = true,
+        )
+    }
 
     Column(Modifier.fillMaxSize()) {
         XdmListCard(compact = true) {
@@ -1327,6 +1350,7 @@ fun MediaInboxScreen(
             ) {
                 item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
                 item { MediaMobilePolishCard(mediaMobilePolish) }
+                item { MediaFinalValidationGateCard(mediaFinalValidation) }
                 item { MediaExecutionQueueCard(executionJobs) }
                 item { MediaDispatchDashboardCard(dispatchDashboard, dispatchPlans) }
                 item { MediaQueueTelemetryCard(queueTelemetry) }
@@ -1350,6 +1374,7 @@ fun MediaInboxScreen(
             ) {
                 item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
                 item { MediaMobilePolishCard(mediaMobilePolish) }
+                item { MediaFinalValidationGateCard(mediaFinalValidation) }
                 item { MediaExecutionQueueCard(executionJobs) }
                 item { MediaDispatchDashboardCard(dispatchDashboard, dispatchPlans) }
                 item { MediaQueueTelemetryCard(queueTelemetry) }
@@ -1391,6 +1416,55 @@ fun MediaInboxScreen(
     }
 }
 
+
+
+@Composable
+private fun MediaFinalValidationGateCard(dashboard: MediaFinalValidationDashboard) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media final validation gate ${dashboard.summary}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Media final validation gate")
+            XdmSupportingText(
+                "Phase 33 re-enables validation for the complete Media stack: static validators, Gradle build/test/lint, warning-zero policy, route contracts, Termux/chroot safety, and secret-leak scans.",
+                maxLines = 4,
+            )
+            XdmActionFlowRow {
+                StatusPill(if (dashboard.readyForFullValidation) "ready for full validation" else "validation blockers", if (dashboard.readyForFullValidation) XdmStatusTone.Success else XdmStatusTone.Warning)
+                dashboard.blockerCount.takeIf { it > 0 }?.let { StatusPill("$it blocker", XdmStatusTone.Error) }
+                dashboard.reviewCount.takeIf { it > 0 }?.let { StatusPill("$it review", XdmStatusTone.Warning) }
+                StatusPill("${dashboard.commandCount} commands", XdmStatusTone.Info)
+                StatusPill(if (dashboard.warningGate) "warning-zero" else "warning review", if (dashboard.warningGate) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.noNewTopLevelRoutes) "no new routes" else "route review", if (dashboard.noNewTopLevelRoutes) XdmStatusTone.Success else XdmStatusTone.Error)
+                StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
+            }
+            XdmMetadataText(dashboard.summary, maxLines = 3)
+            dashboard.checks.take(6).forEach { check ->
+                XdmListCard(compact = true) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                        Column(Modifier.weight(1f)) {
+                            XdmMetadataText(check.title, maxLines = 1)
+                            XdmSupportingText(check.summary, maxLines = 2)
+                            XdmMetadataText(check.evidence, maxLines = 2)
+                        }
+                        StatusPill(if (check.passing) "pass" else check.severity.label, toneForFinalValidation(check.severity, check.passing))
+                    }
+                }
+            }
+            XdmListCard(compact = true) {
+                XdmMetadataText("Final command ledger", maxLines = 1)
+                dashboard.commands.take(5).forEach { command ->
+                    XdmMetadataText("${command.label}: ${command.safePreview}", maxLines = 2)
+                }
+            }
+        }
+    }
+}
+
+private fun toneForFinalValidation(severity: MediaFinalValidationSeverity, passing: Boolean): XdmStatusTone = when {
+    passing -> XdmStatusTone.Success
+    severity == MediaFinalValidationSeverity.Blocker -> XdmStatusTone.Error
+    severity == MediaFinalValidationSeverity.Review -> XdmStatusTone.Warning
+    else -> XdmStatusTone.Neutral
+}
 
 
 @Composable

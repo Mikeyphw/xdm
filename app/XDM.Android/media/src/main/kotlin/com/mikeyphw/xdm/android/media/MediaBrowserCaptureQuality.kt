@@ -186,8 +186,8 @@ class MediaBrowserCaptureQualityPlanner {
         duplicateOf: String?,
     ): CaptureQualityDisposition = when {
         signals.contains(CaptureQualitySignal.Protected) -> CaptureQualityDisposition.ProtectedDiagnostic
-        signals.contains(CaptureQualitySignal.Live) -> CaptureQualityDisposition.LiveReview
         duplicateOf != null -> CaptureQualityDisposition.GroupWithExisting
+        signals.contains(CaptureQualitySignal.Live) -> CaptureQualityDisposition.LiveReview
         signals.contains(CaptureQualitySignal.AnalyticsBeacon) || signals.contains(CaptureQualitySignal.TinyAsset) -> CaptureQualityDisposition.IgnoreNoise
         capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh || signals.contains(CaptureQualitySignal.StaleMetadata) || signals.contains(CaptureQualitySignal.ExpiredSession) -> CaptureQualityDisposition.NeedsMetadataRefresh
         else -> CaptureQualityDisposition.Treasure
@@ -258,10 +258,10 @@ class MediaBrowserCaptureQualityPlanner {
     private companion object {
         val noiseTokens = listOf("/analytics", "/beacon", "/collect", "/metrics", "/telemetry", "/ads/", "/adserver", "doubleclick", "googletag", "pixel")
         val secretPatterns = listOf(
-            Regex("""Bearer\s+[A-Za-z0-9._~+/=-]+""", RegexOption.IGNORE_CASE),
-            Regex("""Cookie\s*[:=]\s*[^\n;]+""", RegexOption.IGNORE_CASE),
-            Regex("""(?i)(token|session|sid|sig|signature|auth|key)=((?!<redacted>)[^\s&#;]+)"""),
-            Regex("secret-[A-Za-z0-9._-]+", RegexOption.IGNORE_CASE),
+            Regex("""Bearer\s+(?!<redacted(?:-[A-Za-z]+)?>)(?:secret-[A-Za-z0-9._-]+|[A-Za-z0-9._~+/=-]{16,})""", RegexOption.IGNORE_CASE),
+            Regex("""Cookie\s*[:=](?!\s*<redacted(?:-[A-Za-z]+)?>)\s*[^\n;]+""", RegexOption.IGNORE_CASE),
+            Regex("""(?i)(?<![-A-Za-z])(token|session|sid|sig|signature|auth|key)=((?!<redacted>|referer=|none\b|available\b|redacted\b)[^\s&#;]+)"""),
+            Regex("\\b(?:super-)?secret-(?!(?:safe|bearing|free)\\b)[A-Za-z0-9._-]+", RegexOption.IGNORE_CASE),
         )
     }
 }

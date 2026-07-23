@@ -2,7 +2,7 @@
   "project": {
     "name": "XDM Android",
     "package_id": "com.mikeyphw.xdm.android",
-    "version": "0.20.0-rc07",
+    "version": "0.20.0-rc08",
     "implemented_phases": [
       0,
       1,
@@ -36,7 +36,11 @@
       29,
       30,
       31,
-      32
+      32,
+      33,
+      34,
+      35,
+      36
     ]
   },
   "database": {
@@ -123,7 +127,7 @@
       "compare"
     ]
   },
-  "next_phase": "media_final_validation_gate",
+  "next_phase": "complete",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -461,7 +465,7 @@
     "yt_dlp_page_url_probe": true,
     "offline_library_groundwork": true
   },
-  "current_overlay": "xdm_android_phase30_31_media_capture_privacy_overlay.zip",
+  "current_overlay": "xdm_android_phase36_external_download_handoff_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -656,7 +660,11 @@
     29,
     30,
     31,
-    32
+    32,
+    33,
+    34,
+    35,
+    36
   ],
   "media_termux_runtime_adapter": {
     "schema_version_unchanged": 14,
@@ -822,5 +830,156 @@
     "root_required": false,
     "room_schema_migration": false,
     "top_level_route_added": false
+  },
+  "media_final_validation_gate": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-validation-contract-without-code-copy",
+    "final_phase": true,
+    "validation_reenabled": true,
+    "static_validators_complete": true,
+    "gradle_build_test_lint_required": true,
+    "warning_zero_gate": true,
+    "known_kotlin_trap_scan": true,
+    "termux_chroot_strip_protection": true,
+    "secret_leak_surfaces": [
+      "Room metadata",
+      "sidecars",
+      "logs",
+      "notifications",
+      "diagnostics",
+      "Termux command previews",
+      "temporary handoff files"
+    ],
+    "no_cookie_header_token_persistence": true,
+    "drm_bypass": false,
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "phase34_release_handoff": {
+    "schema_version_unchanged": 14,
+    "phase33_landed": true,
+    "devtool_validation": {
+      "tests_passed": 149,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "diagnostic_warnings": 0,
+      "diagnostic_errors": 0,
+      "overlay": "xdm_android_phase33_media_final_validation_gate_overlay.zip"
+    },
+    "handoff_document": "docs/architecture/PHASE-34-STABILIZATION-RELEASE-HANDOFF.md",
+    "final_gate_validator": "tools/validate-phase-34-release-handoff.py",
+    "run_final_release_gate_included": true,
+    "ci_static_contract_included": true,
+    "phase33_regression_guards": [
+      "secret-safe status labels are allowed",
+      "already-redacted Cookie Bearer token session surfaces are allowed",
+      "duplicate live captures group before live review",
+      "DirectNative and Aria2Segmented lanes are direct native compatible",
+      "rcN build metadata is accepted",
+      "Diagnostics remains an existing top-level route, not a player diagnostics addition"
+    ],
+    "docs_research_locked": [
+      "Android user-initiated data transfer jobs",
+      "Android foreground service fallback constraints",
+      "Android Gradle Plugin jniLibs.keepDebugSymbols",
+      "AndroidX Media3 track selection",
+      "Kotlin regex and string literal traps"
+    ],
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "phase35_release_candidate_polish": {
+    "schema_version_unchanged": 14,
+    "phase34_landed": true,
+    "release_candidate_polish": true,
+    "handoff_document": "docs/architecture/PHASE-35-RELEASE-CANDIDATE-POLISH.md",
+    "final_gate_validator": "tools/validate-phase-35-release-candidate-polish.py",
+    "run_final_release_gate_included": true,
+    "ci_static_contract_included": true,
+    "android_release_docs_reviewed": [
+      "prepare-app-for-release",
+      "core-app-quality",
+      "user-initiated-data-transfer"
+    ],
+    "release_readiness_checklist": [
+      "package_identity_locked",
+      "version_metadata_locked",
+      "debug_and_beta_suffixes_isolated",
+      "signed_release_required",
+      "artifact_checksum_required",
+      "aria2_payload_required_for_publishable_artifacts",
+      "uidt_user_visible_transfer_required",
+      "latest_android_phone_tablet_foldable_smoke_required",
+      "zero_warning_static_gate_required",
+      "privacy_redaction_gate_required"
+    ],
+    "ship_no_ship_gate": {
+      "ship_requires_static_validators": true,
+      "ship_requires_gradle_build_lint_tests": true,
+      "ship_requires_signed_artifacts": true,
+      "ship_requires_checksums": true,
+      "ship_requires_aria2_payload_verification": true,
+      "no_ship_on_raw_secret_leak": true,
+      "no_ship_on_new_top_level_route": true,
+      "no_ship_on_room_schema_drift": true
+    },
+    "phase33_regression_guards_locked": true,
+    "phase34_handoff_locked": true,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "package_id_locked": "com.mikeyphw.xdm.android",
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "phase36_external_download_handoff": {
+    "schema_version_unchanged": 14,
+    "phase35_landed": true,
+    "handoff_document": "docs/architecture/PHASE-36-EXTERNAL-DOWNLOAD-HANDOFF.md",
+    "final_gate_validator": "tools/validate-phase-36-external-download-handoff.py",
+    "dedicated_external_add_activity": true,
+    "activity_label": "Add to XDM",
+    "sharesheet_text_plain_text_any_intake": true,
+    "browser_view_http_https_ftp_intake": true,
+    "browser_download_manager_actions": [
+      "android.intent.action.DOWNLOAD",
+      "android.intent.action.DOWNLOAD_URI",
+      "com.android.browser.action.DOWNLOAD",
+      "com.android.browser.intent.action.DOWNLOAD"
+    ],
+    "downloadable_path_patterns": [
+      "apk",
+      "zip",
+      "7z",
+      "rar",
+      "pdf",
+      "mp4",
+      "mp3",
+      "m3u8",
+      "torrent"
+    ],
+    "external_handoffs_prompt_add_first": true,
+    "media_capture_requires_explicit_capture_action": true,
+    "no_auto_queue_for_external_browser_share": true,
+    "ftp_url_normalization": true,
+    "request_headers_redacted": true,
+    "docs_research_reviewed": [
+      "android-receive-simple-data",
+      "android-deep-links-android-12",
+      "download-navi-add-download-activity"
+    ],
+    "run_final_release_gate_included": true,
+    "ci_static_contract_included": true,
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21
   }
 }

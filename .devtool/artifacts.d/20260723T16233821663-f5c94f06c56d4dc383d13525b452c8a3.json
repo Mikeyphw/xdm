@@ -1,0 +1,97 @@
+{
+  "applied_at": "2026-07-23T16:23:38.216635Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase34_stabilization_release_handoff_overlay.zip",
+  "artifact_name": "xdm_android_phase34_stabilization_release_handoff_overlay.zip",
+  "type": "overlay",
+  "sha256": "3983df57e46239748f1acd396b2bc4dd3231f6a8e86d7cd918d37b80996af238",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 7,
+  "change_counts": {
+    "add": 2,
+    "modify": 5
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 34 Stabilization Release Handoff",
+    "description": "Release-handoff stabilizer after Phase 33 landed: records the passing devtool result, advances manifest ledgers to Phase 34, adds the Phase 34 handoff document and validator, wires the validator into CI and the final release gate, and locks regression guards for the Phase 33 repair chain without runtime changes.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "e3b2d6d69cc8a04e63f3d6bbbfdaaaecc562960caf22721ca08204f664209706",
+          "size": 1537,
+          "source_sha256": "dc03f64efbdabcec4f11df8538b9940e5f115c38c1b58487b59587163cc071b2"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "95afcc96eabccdc08b0b0292f4ef16bca175af66d395f27e2f8b52390c515851",
+          "size": 26093,
+          "source_sha256": "65d7aebf3dabd90518358e7c14edf7089a4089c7edd19623c0fb3fe9474729d3"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "fb86bfe2292b10d4e9286e967c288aee38860de50f2fd0b70a0c6c456fa75d62",
+          "size": 3686,
+          "source_sha256": "1521490b87ebab4cdc92b786fb4bf26cc53530723cbad06dd42b3c08bc59a5a3"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "a91a0a523b999812adf431eb9634881d626c4db01ee3e88b3e1e9bd2f8b788a7",
+          "size": 2489,
+          "source_sha256": "269448e0ddfd69db4548b648c261efe67e59d54569f74937ae0783a711d9b3b2"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "7cf3ebd516e231f521964ac128bfb8b130730b2c026e5b79fd33b1887a2acefa",
+          "size": 80487,
+          "source_sha256": "db85a81baad7278154cccbd2727d0d6f0bf1a541607a11ae7da40dad99a2d734"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-34-STABILIZATION-RELEASE-HANDOFF.md",
+          "action": "add",
+          "sha256": "2c25513a3b0058fa4513668a0ebb76a099dfbed113d822dd18798283c79f1576",
+          "size": 3942
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+          "action": "add",
+          "sha256": "84d4e736e24757fe73ec27a0eebf88a9db3ea089d329ec8a8bc5b38f8e759951",
+          "size": 6687
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "tests": "pass",
+        "diagnostics": "pass"
+      },
+      "maximum_warnings": 0
+    },
+    "notes": [
+      "Phase 34 is docs/manifest/validator/test-contract handoff only; no runtime execution path changes.",
+      "Records Phase 33 devtool success: 149 passed, 0 failed, 0 skipped, diagnostics 0 warnings and 0 errors.",
+      "Keeps next_phase as complete so Phase 33 final-gate contracts remain valid.",
+      "Adds regression guards for safe secret labels, redacted Cookie/Bearer/token/session surfaces, duplicate live capture precedence, direct-compatible lane summaries, rcN version metadata, and the existing Diagnostics route."
+    ]
+  },
+  "history_id": "f5c94f06c56d4dc383d13525b452c8a3"
+}

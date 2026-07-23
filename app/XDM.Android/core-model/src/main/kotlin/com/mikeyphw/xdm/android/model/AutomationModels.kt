@@ -7,7 +7,7 @@ import java.util.Locale
 /** Durable external automation command sources. These are persisted so repeated Tasker,
  * browser, or share-sheet deliveries can be recognized without duplicating downloads. */
 enum class AutomationCommandSource { ShareSheet, ViewIntent, Tasker, BrowserExtension, DeepLink, Internal }
-enum class AutomationCommandAction { EnqueueDownload, CaptureMedia, PauseAll, ResumeAll, Unknown }
+enum class AutomationCommandAction { EnqueueDownload, PromptAddDownload, CaptureMedia, PauseAll, ResumeAll, Unknown }
 enum class AutomationCommandStatus { Accepted, Duplicate, Rejected, Executed, Failed }
 enum class AutomationRejectionReason { None, MissingUrl, UnsupportedAction, UnsupportedUrl, SensitivePayloadRejected, BackendUnavailable, NoMediaDetected, Duplicate }
 
@@ -51,16 +51,17 @@ data class AutomationCommandRecord(
 )
 
 object BrowserHandoffPolicy {
-    private val urlPattern = Regex("""https?://[^\s<>()\[\]{}\"']+""", RegexOption.IGNORE_CASE)
+    private val externalUrlPattern = Regex("""(?:https?|ftp)://[^\s<>()\[\]{}\"']+""", RegexOption.IGNORE_CASE)
+    private val clipboardUrlPattern = Regex("""https?://[^\s<>()\[\]{}\"']+""", RegexOption.IGNORE_CASE)
     private val trailingNoise = Regex("""[),.;:!?]+$""")
     fun normalizedUrl(raw: String?): String? {
         val candidate = raw?.trim()?.takeIf { it.isNotBlank() } ?: return null
-        val extracted = urlPattern.find(candidate)?.value ?: candidate
+        val extracted = externalUrlPattern.find(candidate)?.value ?: candidate
         val cleaned = extracted.trim().replace(trailingNoise, "")
         return normalizeHttpUrl(cleaned)
     }
 
-    fun urlsInText(text: String): List<String> = urlPattern.findAll(text)
+    fun urlsInText(text: String): List<String> = clipboardUrlPattern.findAll(text)
         .mapNotNull { normalizedUrl(it.value) }
         .distinct()
         .toList()
@@ -74,12 +75,13 @@ object BrowserHandoffPolicy {
     private fun normalizeHttpUrl(raw: String): String? {
         val uri = runCatching { URI(raw) }.getOrNull() ?: return null
         val scheme = uri.scheme?.lowercase(Locale.US) ?: return null
-        if (scheme != "http" && scheme != "https") return null
+        if (scheme != "http" && scheme != "https" && scheme != "ftp") return null
         val host = uri.host?.lowercase(Locale.US)?.takeIf { it.isNotBlank() } ?: return null
         val port = when {
             uri.port == -1 -> ""
             scheme == "http" && uri.port == 80 -> ""
             scheme == "https" && uri.port == 443 -> ""
+            scheme == "ftp" && uri.port == 21 -> ""
             else -> ":${uri.port}"
         }
         val rawPath = uri.rawPath?.takeIf { it.isNotBlank() } ?: "/"

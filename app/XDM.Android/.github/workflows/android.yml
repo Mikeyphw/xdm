@@ -44,6 +44,27 @@ jobs:
           python3 tools/validate-phase-17.py
           python3 tools/validate-post17-desktop-parity.py
           python3 tools/validate-termux-bridge.py
+          python3 tools/validate-termux-media-pipeline.py
+          python3 tools/validate-browser-media-downloader.py
+          python3 tools/validate-browser-media-continuity.py
+          python3 tools/validate-media-resolver-player.py
+          python3 tools/validate-media-execution-library.py
+          python3 tools/validate-media-download-engine-hardening.py
+          python3 tools/validate-media-dispatch-control-tower.py
+          python3 tools/validate-media-queue-telemetry.py
+          python3 tools/validate-media-queue-actions.py
+          python3 tools/validate-media-worker-bridge.py
+          python3 tools/validate-media-termux-runtime-adapter.py
+          python3 tools/validate-media-native-direct-download-engine.py
+          python3 tools/validate-media-offline-library-v2.py
+          python3 tools/validate-media-player-diagnostics.py
+          python3 tools/validate-media-browser-capture-quality.py
+          python3 tools/validate-media-session-privacy-audit.py
+          python3 tools/validate-media-mobile-polish.py
+          python3 tools/validate-media-final-validation-gate.py
+          python3 tools/validate-phase-34-release-handoff.py
+          python3 tools/validate-phase-35-release-candidate-polish.py
+          python3 tools/validate-phase-36-external-download-handoff.py
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
       - run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta
@@ -53,6 +74,6 @@ jobs:
           test -n "$apk"
           python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --apk "$apk"
       - name: Final public release gate
-        run: tools/run-final-release-gate.sh --ci
+        run: bash tools/run-final-release-gate.sh --ci
       - name: Smoke beta artifact helper
         run: bash -n tools/build-release-artifacts.sh

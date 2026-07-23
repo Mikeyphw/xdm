@@ -187,6 +187,7 @@ private fun AppScaffold(
                     externalDraftId = state.externalAddDraft?.id,
                     initialUrl = state.externalAddDraft?.url,
                     initialFileName = state.externalAddDraft?.fileName,
+                    externalSourceLabel = state.externalAddDraft?.sourceLabel,
                     onDestinationChanged = viewModel::setDestination,
                     onSafDestinationSelected = viewModel::registerSafDestination,
                     onConflictPolicyChanged = viewModel::setConflictPolicy,

@@ -1048,6 +1048,7 @@ class MainViewModel(
         repository.saveAutomationCommand(accepted)
         when (draft.action) {
             AutomationCommandAction.CaptureMedia -> executeCaptureMediaCommand(accepted, draft, now)
+            AutomationCommandAction.PromptAddDownload -> openExternalAddDraft(accepted, draft, "External download opened Add Download prompt")
             AutomationCommandAction.EnqueueDownload -> executeEnqueueCommand(accepted, draft, now)
             AutomationCommandAction.PauseAll -> {
                 transferRuntime.pauseAll()

@@ -344,10 +344,23 @@ data class MediaDispatchDashboard(
     val summary: String
         get() {
             val lanes = laneCounts.entries.joinToString { (lane, count) -> "$lane=$count" }.ifBlank { "no lanes" }
+            val directFamilyCount = laneCounts.getValueOrZero(MediaExecutionLane.DirectNative.label) + laneCounts.getValueOrZero(MediaExecutionLane.Aria2Segmented.label)
+            val directFamily = directFamilyCount.takeIf { it > 0 }?.let { "Direct native compatible=$it" }
             val safety = if (secretSafe) "secret-safe" else "redaction review required"
-            return "ready=$readyCount • blocked=$blockedCount • refresh=$refreshCount • termuxSetup=$termuxSetupCount • $safety • $lanes"
+            return listOfNotNull(
+                "ready=$readyCount",
+                "blocked=$blockedCount",
+                "refresh=$refreshCount",
+                "termuxSetup=$termuxSetupCount",
+                safety,
+                directFamily,
+                lanes,
+            ).joinToString(" • ")
         }
 }
+
+
+private fun Map<String, Int>.getValueOrZero(key: String): Int = this[key] ?: 0
 
 private val MediaDownloadStrategy.displayName: String
     get() = name.lowercase(Locale.US).replaceFirstChar { char -> char.titlecase(Locale.US) }

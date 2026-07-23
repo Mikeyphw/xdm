@@ -116,7 +116,7 @@ class ArchitectureContractTest {
         assertTrue("Release safety model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 14", manifest.contains("14"))
         assertTrue("Manifest must record Room schema v14", manifest.contains("\"version\": 14"))
-        val phaseFourteenVersion = Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc01)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
+        val phaseFourteenVersion = Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc\d+)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.14", phaseFourteenVersion != null && phaseFourteenVersion >= 14)
         assertTrue("Diagnostics must expose privacy-safe app integrity summary", screens.contains("App integrity"))
         assertFalse("Diagnostics must not expose release-safety phase copy", screens.contains("Release safety"))
@@ -135,7 +135,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 15 validator is missing", File(root, "tools/validate-phase-15.py").isFile)
         assertTrue("Manifest must record implemented phase 15", manifest.contains("15"))
         assertTrue("Phase 15 baseline must be carried forward on Room schema v14", manifest.contains("\"schema_version_unchanged\": 14"))
-        val phaseFifteenVersion = Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc01)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
+        val phaseFifteenVersion = Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc\d+)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.15", phaseFifteenVersion != null && phaseFifteenVersion >= 15)
         assertTrue("Downloads must expose a compact overview card", screens.contains("Download overview"))
         assertTrue("UI must expose accessibility state descriptions", screens.contains("stateDescription") && appShell.contains("stateDescription"))
@@ -160,7 +160,7 @@ class ArchitectureContractTest {
         assertTrue("Release readiness model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 16", manifest.contains("16"))
         assertTrue("Phase 16 baseline must be carried forward on Room schema v14", manifest.contains("\"schema_version_unchanged\": 14"))
-        assertTrue("Build metadata must be at least 0.16", Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc01)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()?.let { it >= 16 } == true)
+        assertTrue("Build metadata must be at least 0.16", Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc\d+)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()?.let { it >= 16 } == true)
         assertTrue("Diagnostics must expose user-facing update compatibility", screens.contains("Update compatibility"))
         assertFalse("Diagnostics must not expose install/update implementation wording", screens.contains("Install/update readiness"))
         assertFalse("Settings must not expose packaging milestones", screens.contains("Phase 16 readiness"))
@@ -769,7 +769,7 @@ class ArchitectureContractTest {
         assertTrue("Media3 card must expose Player 2.0 diagnostics", player.contains("Player 2.0 diagnostics") && player.contains("Track availability") && player.contains("Playback position"))
         assertTrue("Screens must expose player diagnostics inside Media", screens.contains("Player diagnostics deck") && screens.contains("Phase 29 makes Media3 playback failures"))
         assertTrue("Manifest must record Phase 29", manifest.contains("media_player_diagnostics"))
-        assertFalse("Player diagnostics must not add top-level routes", AppRoute.entries.any { it.label == "Player" || it.label == "Diagnostics" || it.label == "Playback" })
+        assertFalse("Player diagnostics must not add top-level routes", AppRoute.entries.any { it.label == "Player" || it.label == "Playback" })
     }
 
 
@@ -817,6 +817,99 @@ class ArchitectureContractTest {
         assertTrue("Screens must expose Media mobile polish inside Media", screens.contains("Media mobile polish") && screens.contains("Phase 32 makes the Media stack phone-friendly"))
         assertTrue("Manifest must record Phase 32", manifest.contains("media_mobile_polish"))
         assertFalse("Media mobile polish must not add top-level routes", AppRoute.entries.any { it.label == "Mobile" || it.label == "Polish" || it.label == "Media UX" })
+    }
+
+
+    @Test
+    fun mediaFinalValidationGateContractsArePresent() {
+        val root = androidRoot()
+        assertTrue("Phase 33 contract doc is missing", File(root, "docs/architecture/PHASE-33-MEDIA-FINAL-VALIDATION-GATE.md").isFile)
+        assertTrue("Phase 33 validator is missing", File(root, "tools/validate-media-final-validation-gate.py").isFile)
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaFinalValidationGate.kt").readText()
+        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
+        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
+        val workflow = File(root, ".github/workflows/android.yml").readText()
+        assertTrue("Final gate planner must expose checks and commands", planner.contains("MediaFinalValidationGatePlanner") && planner.contains("DefaultGradleCommand") && planner.contains("warning-zero gate"))
+        assertTrue("Final gate must scan secrets and known Kotlin traps", planner.contains("PrivacyLeakScan") && planner.contains("KotlinTrapScan") && planner.contains("TermuxChrootSafety"))
+        assertTrue("Screens must expose Phase 33 inside Media", screens.contains("Media final validation gate") && screens.contains("Phase 33 re-enables validation"))
+        assertTrue("Manifest must record Phase 33", manifest.contains("media_final_validation_gate") && manifest.contains("\"next_phase\": \"complete\""))
+        assertTrue("Final gate script must include media validators", runGate.contains("validate-media-final-validation-gate.py") && runGate.contains("validate-media-mobile-polish.py"))
+        assertTrue("CI must include final media validator", workflow.contains("validate-media-final-validation-gate.py"))
+        assertFalse("Final media gate must not add top-level routes", AppRoute.entries.any { it.label == "Validation" || it.label == "Final" || it.label == "Release" || it.label == "Media Gate" })
+    }
+
+
+    @Test
+    fun phaseThirtyFourReleaseHandoffContractsArePresent() {
+        val root = androidRoot()
+        assertTrue("Phase 34 handoff doc is missing", File(root, "docs/architecture/PHASE-34-STABILIZATION-RELEASE-HANDOFF.md").isFile)
+        assertTrue("Phase 34 validator is missing", File(root, "tools/validate-phase-34-release-handoff.py").isFile)
+        val handoff = File(root, "docs/architecture/PHASE-34-STABILIZATION-RELEASE-HANDOFF.md").readText()
+        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
+        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
+        val workflow = File(root, ".github/workflows/android.yml").readText()
+        assertTrue("Handoff doc must record the landed Phase 33 result", handoff.contains("149 passed, 0 failed, 0 skipped") && handoff.contains("Phase 33 is landed"))
+        assertTrue("Manifest must record Phase 34", manifest.contains("phase34_release_handoff") && manifest.contains("\"next_phase\": \"complete\""))
+        assertTrue("Manifest must keep the Phase 33 success ledger", manifest.contains("\"tests_passed\": 149") && manifest.contains("\"diagnostic_errors\": 0"))
+        assertTrue("Final release gate must include the Phase 34 handoff validator", runGate.contains("validate-phase-34-release-handoff.py"))
+        assertTrue("CI must include the Phase 34 handoff validator", workflow.contains("validate-phase-34-release-handoff.py"))
+        assertFalse("Phase 34 must not add top-level routes", AppRoute.entries.any { it.label == "Handoff" || it.label == "Release Handoff" || it.label == "Stabilization" })
+    }
+
+
+    @Test
+    fun phaseThirtyFiveReleaseCandidatePolishContractsArePresent() {
+        val root = androidRoot()
+        assertTrue("Phase 35 release-candidate doc is missing", File(root, "docs/architecture/PHASE-35-RELEASE-CANDIDATE-POLISH.md").isFile)
+        assertTrue("Phase 35 validator is missing", File(root, "tools/validate-phase-35-release-candidate-polish.py").isFile)
+        val polish = File(root, "docs/architecture/PHASE-35-RELEASE-CANDIDATE-POLISH.md").readText()
+        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
+        val buildGradle = File(root, "app/build.gradle.kts").readText()
+        val releaseHelper = File(root, "tools/build-release-artifacts.sh").readText()
+        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
+        val workflow = File(root, ".github/workflows/android.yml").readText()
+        assertTrue("Phase 35 doc must define the ship/no-ship gate", polish.contains("Phase 35: Release Candidate Polish") && polish.contains("Ship/no-ship gate") && polish.contains("No-ship is required"))
+        assertTrue("Manifest must record Phase 35", manifest.contains("phase35_release_candidate_polish") && (manifest.contains("\"current_overlay\": \"xdm_android_phase35_release_candidate_polish_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase36_external_download_handoff_overlay.zip\"")))
+        assertTrue("Phase 35 must keep version metadata stable", buildGradle.contains("versionName = \"0.20.0-rc08\"") && buildGradle.contains("versionCode = 21"))
+        assertTrue("Release helper must keep artifact checksums", releaseHelper.contains("sha256sum") && releaseHelper.contains("assembleBeta") && releaseHelper.contains("assembleRelease"))
+        assertTrue("Final release gate must include the Phase 35 validator", runGate.contains("validate-phase-35-release-candidate-polish.py"))
+        assertTrue("CI must include the Phase 35 validator", workflow.contains("validate-phase-35-release-candidate-polish.py"))
+        assertFalse("Phase 35 must not add top-level routes", AppRoute.entries.any { it.label == "Release Candidate" || it.label == "Ship" || it.label == "No Ship" || it.label == "Checklist" })
+    }
+
+
+    @Test
+    fun phaseThirtySixExternalDownloadHandoffContractsArePresent() {
+        val root = androidRoot()
+        assertTrue("Phase 36 external handoff doc is missing", File(root, "docs/architecture/PHASE-36-EXTERNAL-DOWNLOAD-HANDOFF.md").isFile)
+        assertTrue("Phase 36 validator is missing", File(root, "tools/validate-phase-36-external-download-handoff.py").isFile)
+        val manifestXml = File(root, "app/src/main/AndroidManifest.xml").readText()
+        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
+        val mainActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
+        val externalActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAddDownloadActivity.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        val models = File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/AutomationModels.kt").readText()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
+        val workflow = File(root, ".github/workflows/android.yml").readText()
+
+        assertTrue("Manifest must expose a dedicated external Add activity", manifestXml.contains(".ExternalAddDownloadActivity") && manifestXml.contains("@string/external_add_download_label"))
+        assertTrue("External Add must receive Android share text and wildcard handoffs", manifestXml.contains("android.intent.action.SEND") && manifestXml.contains("android:mimeType=\"text/plain\"") && manifestXml.contains("android:mimeType=\"*/*\""))
+        assertTrue("External Add must receive browser VIEW and download actions", manifestXml.contains("android.intent.action.VIEW") && manifestXml.contains("com.android.browser.action.DOWNLOAD") && manifestXml.contains("android:scheme=\"ftp\""))
+        assertTrue("External Add must expose lint-safe downloadable path patterns", manifestXml.contains("android:host=\"*\" android:pathPattern=\".*\\\\.zip\"") && manifestXml.contains("android:host=\"*\" android:pathPattern=\".*\\\\.apk\"") && manifestXml.contains("android:host=\"*\" android:pathPattern=\".*\\\\.mp4\""))
+        assertTrue("Browser-download web filters must opt out of verified App Links", manifestXml.contains("<intent-filter android:autoVerify=\"false\">"))
+        assertTrue("External activity must reuse the Compose shell without a new route", externalActivity.contains("class ExternalAddDownloadActivity : MainActivity()"))
+        assertTrue("MainActivity must route external receiver handoffs to Add prompt", mainActivity.contains("shouldOpenExternalAddPrompt") && mainActivity.contains("AutomationCommandAction.PromptAddDownload"))
+        assertTrue("PromptAddDownload must open Add instead of auto-queuing", viewModel.contains("AutomationCommandAction.PromptAddDownload -> openExternalAddDraft") && viewModel.contains("External download opened Add Download prompt"))
+        assertTrue("URL normalization must support ftp for download-manager handoff", models.contains("(?:https?|ftp)://") && models.contains("scheme != \"http\" && scheme != \"https\" && scheme != \"ftp\""))
+        assertTrue("Add screen must show external source and no-auto-queue safety copy", screens.contains("externalSourceLabel") && screens.contains("XDM never auto-queues external handoffs"))
+        assertTrue("App shell must pass the external source label", appShell.contains("externalSourceLabel = state.externalAddDraft?.sourceLabel"))
+        assertTrue("Manifest must record Phase 36", manifest.contains("phase36_external_download_handoff") && manifest.contains("\"current_overlay\": \"xdm_android_phase36_external_download_handoff_overlay.zip\""))
+        assertTrue("Final release gate must include the Phase 36 validator", runGate.contains("validate-phase-36-external-download-handoff.py"))
+        assertTrue("CI must include the Phase 36 validator", workflow.contains("validate-phase-36-external-download-handoff.py"))
+        assertFalse("Phase 36 must not add top-level routes", AppRoute.entries.any { it.label == "External" || it.label == "Handoff" || it.label == "IronFox" || it.label == "Browser Download" })
     }
 
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }

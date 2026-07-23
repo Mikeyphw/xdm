@@ -117,7 +117,7 @@ class MediaNativeDirectDownloadPlanner {
         val secretSafe = request.secretSafe && !containsKnownSecret(diagnostics) && !containsKnownSecret(redactedUrl) && !headerPolicy.persistHeaderValues
         val state = when {
             !secretSafe -> NativeDirectRequestState.BlockedSecretLeak
-            request.lane != MediaExecutionLane.DirectNative -> NativeDirectRequestState.UnsupportedAdaptive
+            request.lane == MediaExecutionLane.YtDlpAdaptive || request.lane == MediaExecutionLane.LiveRecording || request.lane == MediaExecutionLane.ProtectedBlocked -> NativeDirectRequestState.UnsupportedAdaptive
             !hasDestinationPermission -> NativeDirectRequestState.NeedsDestinationPermission
             resume.enabled -> NativeDirectRequestState.ResumeCandidate
             else -> NativeDirectRequestState.Ready
@@ -174,7 +174,7 @@ class MediaNativeDirectDownloadPlanner {
 
     private fun resumePlan(existingBytes: Long, request: MediaWorkerBridgeRequest): NativeDirectResumePlan {
         val support = when {
-            request.lane != MediaExecutionLane.DirectNative -> NativeDirectRangeSupport.NotSupported
+            request.lane == MediaExecutionLane.YtDlpAdaptive || request.lane == MediaExecutionLane.LiveRecording || request.lane == MediaExecutionLane.ProtectedBlocked -> NativeDirectRangeSupport.NotSupported
             existingBytes > 0L -> NativeDirectRangeSupport.Supported
             else -> NativeDirectRangeSupport.Unknown
         }
@@ -228,10 +228,10 @@ class MediaNativeDirectDownloadPlanner {
 
     private companion object {
         val secretPatterns = listOf(
-            Regex("""Bearer\s+[A-Za-z0-9._~+/=-]+""", RegexOption.IGNORE_CASE),
-            Regex("""Cookie\s*[:=]\s*[^\n;]+""", RegexOption.IGNORE_CASE),
-            Regex("""(?i)(token|session|sid|sig|signature|auth|key)=((?!<redacted>)[^\s&#;]+)"""),
-            Regex("secret-[A-Za-z0-9._-]+", RegexOption.IGNORE_CASE),
+            Regex("""Bearer\s+(?!<redacted(?:-[A-Za-z]+)?>)(?:secret-[A-Za-z0-9._-]+|[A-Za-z0-9._~+/=-]{16,})""", RegexOption.IGNORE_CASE),
+            Regex("""Cookie\s*[:=](?!\s*<redacted(?:-[A-Za-z]+)?>)\s*[^\n;]+""", RegexOption.IGNORE_CASE),
+            Regex("""(?i)(?<![-A-Za-z])(token|session|sid|sig|signature|auth|key)=((?!<redacted>|referer=|none\b|available\b|redacted\b)[^\s&#;]+)"""),
+            Regex("\\b(?:super-)?secret-(?!(?:safe|bearing|free)\\b)[A-Za-z0-9._-]+", RegexOption.IGNORE_CASE),
         )
     }
 }

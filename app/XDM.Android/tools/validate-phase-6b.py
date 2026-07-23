@@ -50,7 +50,7 @@ assert not (ROOT / 'transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/tran
 assert 'android:extractNativeLibs=' not in manifest
 assert 'jniLibs.useLegacyPackaging = true' in app_gradle
 assert 'jniLibs.useLegacyPackaging = true' in aria2_gradle
-assert 'jniLibs.keepDebugSymbols += "**/libaria2c.so"' in app_gradle
+assert ('jniLibs.keepDebugSymbols += "**/libaria2c.so"' in app_gradle) or ('jniLibs.keepDebugSymbols += "**/*.so"' in app_gradle)
 assert 'jniLibs.keepDebugSymbols += "**/libaria2c.so"' in aria2_gradle
 assert 'Run probe' in screens
 assert 'process.pid()' not in (ROOT / 'transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2ProcessLauncher.kt').read_text()

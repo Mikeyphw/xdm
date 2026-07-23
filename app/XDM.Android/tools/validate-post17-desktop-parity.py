@@ -12,14 +12,21 @@ def require(path, needle):
 manifest = json.loads(text("PROJECT_MANIFEST.json") or "{}")
 project = manifest.get("project", {})
 parity = manifest.get("desktop_parity", {})
-if project.get("version") != "0.18.0-rc01": errors.append("project.version must be 0.18.0-rc01")
+try:
+    project_minor = int(str(project.get("version", "0.0.0")).split(".")[1])
+except (IndexError, ValueError):
+    project_minor = -1
+if project_minor < 18: errors.append("project.version must be at least 0.18.x")
 if 18 not in project.get("implemented_phases", []): errors.append("implemented_phases must include post-17 parity marker 18")
 if manifest.get("database", {}).get("version") != 14: errors.append("desktop parity must keep Room schema v14")
 for key in ["settings_import_export", "history_file_management", "proxy_credentials_ui", "conversion_post_processing", "protocol_expansion_polish", "release_non_debug_packaging", "no_secrets_in_settings_export"]:
     if parity.get(key) is not True: errors.append(f"desktop_parity.{key} is not true")
 if parity.get("top_level_route_added") is not False: errors.append("desktop parity must not add a top-level route")
 build = text("app/build.gradle.kts")
-if 'versionName = "0.18.0-rc01"' not in build or 'versionCode = 19' not in build: errors.append("build metadata must be 0.18.0-rc01 / versionCode 19")
+import re
+version_name = re.search(r'versionName\s*=\s*"0\.(\d+)\.0-rc\d+"', build)
+version_code = re.search(r'versionCode\s*=\s*(\d+)', build)
+if not version_name or int(version_name.group(1)) < 18 or not version_code or int(version_code.group(1)) < 19: errors.append("build metadata must be at least 0.18.0-rc01 / versionCode 19")
 for path, needle in [
     ("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DesktopParityModels.kt", "SettingsExchangeCodec"),
     ("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DesktopParityModels.kt", "HistoryManagementPolicy"),

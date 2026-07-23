@@ -1,0 +1,106 @@
+{
+  "applied_at": "2026-07-23T17:07:30.425482Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase35_release_candidate_polish_overlay.zip",
+  "artifact_name": "xdm_android_phase35_release_candidate_polish_overlay.zip",
+  "type": "overlay",
+  "sha256": "083b3dbdf7903c22a324345f5b605591257063a7a2efce0ac437da25778ba73c",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 8,
+  "change_counts": {
+    "add": 2,
+    "modify": 6
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 35 Release Candidate Polish",
+    "description": "Stabilization-only release-candidate polish overlay after Phase 34 landed: records ship/no-ship criteria, advances manifest ledgers to Phase 35, adds a Phase 35 release-readiness document and validator, wires the validator into CI and the final release gate, and adds app architecture contract coverage without runtime changes.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "52b9efddebf24b2c5baddeb77a643277b317e81939c7a9275e9af185be2cb29e",
+          "size": 1441,
+          "source_sha256": "e3b2d6d69cc8a04e63f3d6bbbfdaaaecc562960caf22721ca08204f664209706"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "313646adfaa1a17ef6221559568aa0763afdd10bfe91143a16e2cb6acf3dc7be",
+          "size": 27865,
+          "source_sha256": "95afcc96eabccdc08b0b0292f4ef16bca175af66d395f27e2f8b52390c515851"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+          "action": "modify",
+          "sha256": "82d015463a61f907266c927b06acf3fde2455928aec74ecbc8136c6c64c49aa3",
+          "size": 6799,
+          "source_sha256": "84d4e736e24757fe73ec27a0eebf88a9db3ea089d329ec8a8bc5b38f8e759951"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "a18027fa34e8f77c1630744c91b94b0d2a26f0fa6694080acf52df10060ebcbc",
+          "size": 2539,
+          "source_sha256": "a91a0a523b999812adf431eb9634881d626c4db01ee3e88b3e1e9bd2f8b788a7"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "8a5e43872d103ac7da0c3a5ed9a160ab39c0b5667b101224489d7d42caf62961",
+          "size": 3756,
+          "source_sha256": "fb86bfe2292b10d4e9286e967c288aee38860de50f2fd0b70a0c6c456fa75d62"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "30c83faefc5d79cebfe2173d143da3a96580577f9d57dc35bf6d44ebf2392b29",
+          "size": 82600,
+          "source_sha256": "7cf3ebd516e231f521964ac128bfb8b130730b2c026e5b79fd33b1887a2acefa"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-35-RELEASE-CANDIDATE-POLISH.md",
+          "action": "add",
+          "sha256": "ea1cd2b09d2287b543efff281a4aa21ceec08af9b8b23ff06729b3007073750f",
+          "size": 3692
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+          "action": "add",
+          "sha256": "5a80047b8363af7f1a7d1a0c476742365b9ef96d61a94d327c261716ea714f00",
+          "size": 9142
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "tests": "pass",
+        "diagnostics": "pass"
+      },
+      "maximum_warnings": 0
+    },
+    "notes": [
+      "Phase 35 is docs/manifest/validator/test-contract release-candidate polish only; no runtime execution path changes.",
+      "Treats Phase 33 and Phase 34 as landed and preserves the Phase 33 devtool success ledger.",
+      "Keeps versionName 0.20.0-rc08 and versionCode 21; no app version bump.",
+      "Keeps package identity, Room schema, top-level routes, raw shell, root, DRM, and durable secret policies unchanged.",
+      "Adds ship/no-ship criteria for signed artifacts, checksums, aria2 payload verification, zero-warning static gates, privacy redaction, latest Android, phone, tablet, and foldable smoke readiness.",
+      "Updates Phase 34 validator to accept the later Phase 35 current_overlay value while preserving the Phase 34 handoff contract."
+    ]
+  },
+  "history_id": "693bb08e085444279437beb14b9b31b0"
+}
