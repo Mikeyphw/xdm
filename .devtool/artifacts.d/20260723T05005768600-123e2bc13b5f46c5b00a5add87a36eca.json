@@ -1,0 +1,137 @@
+{
+  "applied_at": "2026-07-23T05:00:57.686005Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_phase30_31_media_capture_privacy_overlay.zip",
+  "artifact_name": "xdm_android_phase30_31_media_capture_privacy_overlay.zip",
+  "type": "overlay",
+  "sha256": "273bef5da32fb02b104e11eee81b5db7f6201dd6e3603684ea56cd769fb00dfd",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 12,
+  "change_counts": {
+    "add": 6,
+    "modify": 6
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 30+31 Media Capture + Privacy",
+    "description": "Single devtool overlay for Phase 30 Browser Capture Quality and Phase 31 Session Privacy + Cleanup Audit with shared Media route/test/manifest files pre-merged. Includes a warning-zero carry-forward fix for Phase 29 player diagnostics.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "af4ae818c99e41ead76c32097a1a8f91ee2b0ddb3fecaa4da8d0b569bec8419c",
+          "size": 1352,
+          "source_sha256": "cce32cfa471ad38f7fb034fb2b31c0114928b3bd8bc5350693e2035a34425936"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "16f4ff028ac84bf256df5f5424ffa751abb55f54db011a925798c66284c8edfb",
+          "size": 22993,
+          "source_sha256": "8e8dadc9593021bef0a3ac5397609d45c0c7a0091e11ec447f06bd8a8b4f2353"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "2c5ee2782bc76fa2f813f760cd8ba322923e34fcc150f6c89e942b56422a92f0",
+          "size": 184948,
+          "source_sha256": "15288c5f80225e32e06b8fc1c8944cd740eeddb3253ee54dfa13e73b976de1d7"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "a2c741781f24f70407fe76304623501b5901a4d6b660b0c9515b764628430823",
+          "size": 75348,
+          "source_sha256": "1cf788d57a76c8aea63eb209433229042af3934ed13dcc8597df3ab8ec20afbb"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-30-BROWSER-CAPTURE-QUALITY.md",
+          "action": "add",
+          "sha256": "b6f7f4c75f86c41b6328f6906d08e1d1dc5cb0ceddea843dc8df4f3feb0321c6",
+          "size": 754
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-31-SESSION-PRIVACY-CLEANUP-AUDIT.md",
+          "action": "add",
+          "sha256": "242d3dc24f5c8230266e5b33fbce3a7cc7973c6ce04805db6223f7c883aa30ca",
+          "size": 882
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBrowserCaptureQuality.kt",
+          "action": "add",
+          "sha256": "aee2efd944fdeb0bbed204cc20f7772f9f33144917b51cc9665c95610cb57b0a",
+          "size": 13851
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSessionPrivacyAudit.kt",
+          "action": "add",
+          "sha256": "3c0ab78ecbecd28acd2bae8348e84e6de59bbbd69101de88e5c6e285830da626",
+          "size": 11241
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+          "action": "modify",
+          "sha256": "873141d08ddc2b02b9df1603d960cc84883fc0779224fb3eb5efe2c450617539",
+          "size": 57907,
+          "source_sha256": "d9e869a36482bc94a7c895cc04b3be08df14689a591d24e3a13eb5f45c659761"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-browser-capture-quality.py",
+          "action": "add",
+          "sha256": "b4a0c2da704f69c61468aaf1ba98c783ca10447568757c300c0a05e6ca276122",
+          "size": 1424
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-session-privacy-audit.py",
+          "action": "add",
+          "sha256": "96f0955f1f3b11d01d5cb792258c78256b66b26919e277ddba99a17f913d8d6e",
+          "size": 1396
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaPlayerDiagnostics.kt",
+          "action": "modify",
+          "sha256": "5dadf134d1ce291a1a2c6a7c34be921d795f2fac0fb3c428dea3f7408d6c8eb3",
+          "size": 9570,
+          "source_sha256": "6da1649045dec54f613c846c2681aa1116c6b326554807272a77d6351488caaa"
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "success",
+        "diagnostics": "success",
+        "maximum_warnings": 0,
+        "maximum_errors": 0
+      },
+      "commands": [
+        "python3 tools/validate-media-browser-capture-quality.py",
+        "python3 tools/validate-media-session-privacy-audit.py",
+        "python3 tools/validate-media-offline-library-v2.py",
+        "python3 tools/validate-media-player-diagnostics.py"
+      ]
+    },
+    "apply": {
+      "recommended_flag": "--no-validate",
+      "validation_deferred_until": "final_media_release_validation",
+      "phases": [
+        30,
+        31
+      ],
+      "filename_has_phase_numbers": true
+    }
+  },
+  "history_id": "123e2bc13b5f46c5b00a5add87a36eca"
+}

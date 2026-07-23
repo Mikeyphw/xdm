@@ -1,0 +1,114 @@
+{
+  "applied_at": "2026-07-23T03:31:13.969006Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_media_worker_bridge_overlay.zip",
+  "artifact_name": "xdm_android_media_worker_bridge_overlay.zip",
+  "type": "overlay",
+  "sha256": "9d3b69d601115127e36e73d55fc1ee553e13886f7c1f5bc008302589a55e47af",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 9,
+  "change_counts": {
+    "add": 3,
+    "modify": 6
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Media Worker Bridge",
+    "description": "Adds Phase 25 media worker bridge: UIDT/WorkManager/foreground/aria2/yt-dlp bridge request models, foreground notification plans, typed adapters, UI cards, contract tests, and static validator while validation remains deferred.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "00567df0e0731f9eda1b5037f73d743ad572a71e577f579890503df8bd7b676f",
+          "size": 1483,
+          "source_sha256": "c938794d1a743162443ad0ad11dcd7ba2a89df55b95baf40ef70a86dc6ff078d"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "4729b1ba6ca740ce08520f54eadd5dd27041062534d023529d384b26ea9925c4",
+          "size": 18369,
+          "source_sha256": "baa4d8f979a309bf3e5c2d5c274b5f7fd9a6a8ef7bb0b4ed343546b6ab848e51"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "bb38509d18878c60cb2d835de2e2d4f361bd76f14bfc061cb65781543bf829b7",
+          "size": 14642,
+          "source_sha256": "46c68a6c96614ff93c65a94e1b622a955269d13a7b12f23a52190dbe2796e30e"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "bc912b79a829f38eb92de220fd663d004ca85f27190567ee4effdc771dd10263",
+          "size": 163260,
+          "source_sha256": "5e062e3109d0b387cb9551ba554ccb4789f16aed6b2de89b8d92a35bfdea0c92"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "0182117b98531c1e4391f4edf0271ebd262552d0f7fd696b59390e571a45cc19",
+          "size": 66063,
+          "source_sha256": "46b50b1c3c6524b22279bb5c65b760589d980b53edb4336df6289e2285284eb0"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-25-MEDIA-WORKER-BRIDGE.md",
+          "action": "add",
+          "sha256": "2e7a95caba965cdf144a5513be53fa3bc6e2937f66e15113399362c344c3f9ab",
+          "size": 1202
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaWorkerBridge.kt",
+          "action": "add",
+          "sha256": "dbc47ce4948652c1863ca7fc5ed02b592802c22776470f025a981f03113a28a6",
+          "size": 13073
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+          "action": "modify",
+          "sha256": "a5a67bca40ab7388af81a05a67ae6527187e2c3b41fafdc5251d29c8335d0d34",
+          "size": 36773,
+          "source_sha256": "ab84ef427f3cbd3dca47ec31fd0aff80136835bf12d071dcb44333a1c3a10526"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-worker-bridge.py",
+          "action": "add",
+          "sha256": "d3161b2cc776841eef4f57bb744746c0aa9b04af93a53aaa6fd5c0521152b2be",
+          "size": 1631
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "success",
+        "diagnostics": "success",
+        "maximum_warnings": 0,
+        "maximum_errors": 0
+      },
+      "commands": [
+        "python3 tools/validate-media-worker-bridge.py",
+        "python3 tools/validate-media-queue-actions.py",
+        "python3 tools/validate-media-queue-telemetry.py",
+        "python3 tools/validate-media-dispatch-control-tower.py"
+      ]
+    },
+    "apply": {
+      "recommended_flag": "--no-validate",
+      "validation_deferred_until": "final_media_release_validation"
+    }
+  },
+  "history_id": "bdcb37535077493eb0bb1bdeaf16bde5"
+}

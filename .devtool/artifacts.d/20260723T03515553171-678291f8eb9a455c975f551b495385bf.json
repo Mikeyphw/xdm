@@ -1,0 +1,106 @@
+{
+  "applied_at": "2026-07-23T03:51:55.531712Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_media_native_direct_download_engine_overlay.zip",
+  "artifact_name": "xdm_android_media_native_direct_download_engine_overlay.zip",
+  "type": "overlay",
+  "sha256": "335ee99947776e56837d5a9b3dea8459d1b58bb891dbd46f3471d8cb29dc59e6",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 8,
+  "change_counts": {
+    "add": 3,
+    "modify": 5
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Media Native Direct Download Engine",
+    "description": "Adds Phase 27 native direct download engine planner: transient header policy, resume metadata, destination policy, redacted diagnostics, docs, tests, UI card, and validator while validation remains deferred.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "0e8d2d45fad20af9803bd88bb5378ecda16a1e6062664728086fcd02d8eff323",
+          "size": 619,
+          "source_sha256": "42f8b9ddf3694a812b053add61f4012bec22d36602019bc0bd6a460fa0b5374c"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "e92e3f1810a6e4e551541d38ff3e135bced48180b12ceeacfcbb26875b903563",
+          "size": 20050,
+          "source_sha256": "e9c7bb3fc6d27ec1d35c0be2fffe7da280b54e18919a61baa3925219c3d01493"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "86e5363b8eb61be3887c7aca38499ec1f3f0fb4a155b515bf267c002d746baff",
+          "size": 168644,
+          "source_sha256": "54ea2e02dfb0ab4772e5e460c388ce002299803996a0f63f8e71c7c05b381f0b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "211fa55e28f6322ff9f84ca9fcc41a2ca6843dcd5c35c9f33f10639a697d1fc0",
+          "size": 69178,
+          "source_sha256": "4dc294f27319939a043ed8ce00366da3cdba815193c3f786a6d4f703e605ef6c"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-27-MEDIA-NATIVE-DIRECT-DOWNLOAD-ENGINE.md",
+          "action": "add",
+          "sha256": "649e7a4bcd6de9c7accb1bd55eaf9a1e060adf91d1372f0af48579c2cb772f59",
+          "size": 712
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaNativeDirectDownloadEngine.kt",
+          "action": "add",
+          "sha256": "c1299a799d2fd90c9d92e78146e30c7245f913d9f1c112a7b5f9c0e67e5e65fc",
+          "size": 10593
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+          "action": "modify",
+          "sha256": "8655622a54bd710e90d6ea79c9fdb03b3f88e04c414523941edc497071050070",
+          "size": 45994,
+          "source_sha256": "8cc84a5088a9fe0487071032eab348d8d35001983e5dfaa0e47afff9973a36de"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-native-direct-download-engine.py",
+          "action": "add",
+          "sha256": "0155206e7678355a2285ba8f0ebda8a32b84e4916cd40fcb4e6f350fb673b95b",
+          "size": 1829
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "success",
+        "diagnostics": "success",
+        "maximum_warnings": 0,
+        "maximum_errors": 0
+      },
+      "commands": [
+        "python3 tools/validate-media-native-direct-download-engine.py",
+        "python3 tools/validate-media-termux-runtime-adapter.py",
+        "python3 tools/validate-media-worker-bridge.py"
+      ]
+    },
+    "apply": {
+      "recommended_flag": "--no-validate",
+      "validation_deferred_until": "final_media_release_validation"
+    }
+  },
+  "history_id": "678291f8eb9a455c975f551b495385bf"
+}

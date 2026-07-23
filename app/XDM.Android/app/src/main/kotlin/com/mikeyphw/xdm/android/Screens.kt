@@ -91,6 +91,52 @@ import com.mikeyphw.xdm.android.media.MediaVariantPickerGroup
 import com.mikeyphw.xdm.android.media.YtDlpMetadataProbeResult
 import com.mikeyphw.xdm.android.media.OfflineMediaLibrarySummary
 import com.mikeyphw.xdm.android.media.MediaDownloadStrategy
+import com.mikeyphw.xdm.android.media.MediaExecutionLibraryPlanner
+import com.mikeyphw.xdm.android.media.MediaExecutionJob
+import com.mikeyphw.xdm.android.media.MediaExecutionStage
+import com.mikeyphw.xdm.android.media.MediaExternalJobSnapshot
+import com.mikeyphw.xdm.android.media.MediaExecutionEnginePlan
+import com.mikeyphw.xdm.android.media.MediaDispatchDashboard
+import com.mikeyphw.xdm.android.media.MediaDispatchPlan
+import com.mikeyphw.xdm.android.media.MediaDispatchReadiness
+import com.mikeyphw.xdm.android.media.MediaExecutionDispatcher
+import com.mikeyphw.xdm.android.media.MediaQueueTelemetryDeck
+import com.mikeyphw.xdm.android.media.MediaQueueTelemetryPlanner
+import com.mikeyphw.xdm.android.media.MediaQueueTelemetryTone
+import com.mikeyphw.xdm.android.media.MediaQueueActionAvailability
+import com.mikeyphw.xdm.android.media.MediaQueueActionDashboard
+import com.mikeyphw.xdm.android.media.MediaQueueActionKind
+import com.mikeyphw.xdm.android.media.MediaQueueActionPlan
+import com.mikeyphw.xdm.android.media.MediaQueueActionPlanner
+import com.mikeyphw.xdm.android.media.MediaWorkerBridgeDashboard
+import com.mikeyphw.xdm.android.media.MediaWorkerBridgeKind
+import com.mikeyphw.xdm.android.media.MediaWorkerBridgePlanner
+import com.mikeyphw.xdm.android.media.MediaWorkerBridgeReadiness
+import com.mikeyphw.xdm.android.media.MediaWorkerBridgeRequest
+import com.mikeyphw.xdm.android.media.MediaTermuxRuntimeAdapter
+import com.mikeyphw.xdm.android.media.TermuxRuntimeDashboard
+import com.mikeyphw.xdm.android.media.TermuxRuntimeLaunchPlan
+import com.mikeyphw.xdm.android.media.MediaNativeDirectDownloadPlanner
+import com.mikeyphw.xdm.android.media.NativeDirectDashboard
+import com.mikeyphw.xdm.android.media.NativeDirectDownloadRequestPlan
+import com.mikeyphw.xdm.android.media.OfflineMediaLibraryItem
+import com.mikeyphw.xdm.android.media.MediaOfflineLibraryV2Planner
+import com.mikeyphw.xdm.android.media.OfflineLibraryV2Dashboard
+import com.mikeyphw.xdm.android.media.OfflineLibraryV2Filter
+import com.mikeyphw.xdm.android.media.OfflineLibraryV2Health
+import com.mikeyphw.xdm.android.media.MediaPlayerDiagnosticsPlanner
+import com.mikeyphw.xdm.android.media.MediaPlayerDiagnosticBucket
+import com.mikeyphw.xdm.android.media.MediaPlayerDiagnosticReport
+import com.mikeyphw.xdm.android.media.MediaBrowserCaptureQualityPlanner
+import com.mikeyphw.xdm.android.media.BrowserCaptureQualityDashboard
+import com.mikeyphw.xdm.android.media.CaptureQualityDisposition
+import com.mikeyphw.xdm.android.media.MediaSessionPrivacyAuditPlanner
+import com.mikeyphw.xdm.android.media.MediaSessionPrivacyAuditDashboard
+import com.mikeyphw.xdm.android.media.MediaPrivacySeverity
+import com.mikeyphw.xdm.android.media.MediaMobilePolishPlanner
+import com.mikeyphw.xdm.android.media.MediaMobilePolishDashboard
+import com.mikeyphw.xdm.android.media.MediaMobileSectionPriority
+import com.mikeyphw.xdm.android.media.MediaMobilePolishSignal
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
 import com.mikeyphw.xdm.android.model.QueueDefinition
 import com.mikeyphw.xdm.android.model.RecoveryAction
@@ -1131,11 +1177,13 @@ private fun ScheduleManagementCard(
 fun MediaInboxScreen(
     captures: List<MediaCaptureRecord>,
     variants: List<MediaVariant>,
+    downloads: List<Download>,
     termuxMediaPipeline: TermuxMediaPipelineStatus,
     postProcessingAutomation: PostProcessingAutomationStatus,
     onBrowserMediaRequest: (url: String, pageTitle: String?, pageUrl: String?, mimeType: String?) -> Unit,
     onOpenAddForBrowserUrl: (url: String, pageTitle: String?) -> Unit,
-    onDownload: (MediaCaptureRecord) -> Unit,
+    onDownload: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
+    onResumeOrRetryDownload: (Download) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
     onRemove: (MediaCaptureRecord) -> Unit,
@@ -1149,8 +1197,102 @@ fun MediaInboxScreen(
 ) {
     val context = LocalContext.current
     val mediaPlanner = remember { MediaDownloadPlanner() }
+    val executionPlanner = remember { MediaExecutionLibraryPlanner(mediaPlanner) }
+    val dispatchPlanner = remember { MediaExecutionDispatcher() }
+    val externalJobs = remember(termuxMediaPipeline.jobs) {
+        termuxMediaPipeline.jobs.map { job ->
+            MediaExternalJobSnapshot(
+                id = job.id,
+                captureId = job.captureId,
+                kindLabel = job.kind.label,
+                statusLabel = job.status.label,
+                running = job.status == TermuxMediaJobStatus.Queued || job.status == TermuxMediaJobStatus.Running,
+                completed = job.status == TermuxMediaJobStatus.Completed,
+                failed = job.status == TermuxMediaJobStatus.Failed,
+                output = job.output,
+                message = job.message,
+            )
+        }
+    }
     val librarySummary = remember(captures, variants) { mediaPlanner.summarizeOfflineLibrary(captures, variants) }
+    val libraryItems = remember(captures, downloads, variants) { executionPlanner.offlineLibraryItems(captures, downloads, variants) }
+    val executionJobs = remember(captures, downloads, variants, externalJobs) { executionPlanner.executionJobs(captures, downloads, variants, externalJobs) }
+    val dispatchPlans = remember(captures, variants, termuxMediaPipeline.enabled) {
+        captures.map { capture ->
+            val captureVariants = variants.filter { it.captureId == capture.id }.sortedBy { it.position }
+            val selection = MediaTrackSelection(videoVariantId = capture.selectedVariantId)
+            val spec = executionPlanner.queueSpec(capture, captureVariants, selection, "content://downloads")
+            val engine = executionPlanner.enginePlan(spec, Build.VERSION.SDK_INT)
+            dispatchPlanner.dispatchPlan(
+                spec = spec,
+                enginePlan = engine,
+                capture = capture,
+                termuxReady = termuxMediaPipeline.enabled,
+            )
+        }
+    }
+    val dispatchDashboard = remember(dispatchPlans) { dispatchPlanner.aggregate(dispatchPlans) }
+    val queueTelemetry = remember(dispatchPlans, executionJobs) { MediaQueueTelemetryPlanner().deck(dispatchPlans, executionJobs) }
+    val queueActions = remember(queueTelemetry, dispatchPlans, executionJobs) { MediaQueueActionPlanner().dashboard(queueTelemetry, dispatchPlans, executionJobs) }
+    val workerBridge = remember(captures, variants, termuxMediaPipeline.enabled, queueActions) {
+        val bridgePlanner = MediaWorkerBridgePlanner()
+        val actionPlanner = MediaQueueActionPlanner()
+        val requests = captures.map { capture ->
+            val captureVariants = variants.filter { it.captureId == capture.id }.sortedBy { it.position }
+            val selection = MediaTrackSelection(videoVariantId = capture.selectedVariantId)
+            val spec = executionPlanner.queueSpec(capture, captureVariants, selection, "content://downloads")
+            val engine = executionPlanner.enginePlan(spec, Build.VERSION.SDK_INT)
+            val dispatch = dispatchPlanner.dispatchPlan(spec, engine, capture, termuxReady = termuxMediaPipeline.enabled)
+            val actionPlan = queueActions.plans.firstOrNull { it.captureId == capture.id } ?: actionPlanner.actionPlan(dispatch, null)
+            bridgePlanner.request(spec, engine, dispatch, actionPlan)
+        }
+        bridgePlanner.dashboard(requests)
+    }
+    val termuxRuntime = remember(workerBridge, termuxMediaPipeline.enabled) {
+        val tools = if (termuxMediaPipeline.enabled) setOf("yt-dlp", "aria2c", "ffmpeg", "ffprobe") else emptySet()
+        val adapter = MediaTermuxRuntimeAdapter()
+        adapter.dashboard(workerBridge.requests.map { request -> adapter.launchPlan(request, availableTools = tools) })
+    }
+    val nativeDirect = remember(workerBridge) {
+        val planner = MediaNativeDirectDownloadPlanner()
+        planner.dashboard(workerBridge.requests.map { request -> planner.plan(request, destinationUri = "content://downloads") })
+    }
+    val libraryV2 = remember(libraryItems, queueTelemetry) {
+        val cleanupIds = queueTelemetry.rows.filter { it.cleanupArmed }.map { it.captureId }.toSet()
+        MediaOfflineLibraryV2Planner().dashboard(libraryItems, cleanupArmedCaptureIds = cleanupIds)
+    }
+    val playerDiagnostics = remember(libraryItems) {
+        val planner = MediaPlayerDiagnosticsPlanner()
+        libraryItems.mapNotNull { item -> item.toPlaybackCandidate()?.let { planner.report(it) } }
+    }
+    val browserCaptureQuality = remember(captures, variants) {
+        MediaBrowserCaptureQualityPlanner().dashboard(captures, variants)
+    }
+    val sessionPrivacyAudit = remember(captures, variants, libraryItems, executionJobs, termuxRuntime, nativeDirect, browserCaptureQuality) {
+        MediaSessionPrivacyAuditPlanner().audit(
+            captures = captures,
+            variants = variants,
+            libraryItems = libraryItems,
+            executionJobs = executionJobs,
+            diagnostics = listOf(termuxRuntime.summary, nativeDirect.summary, browserCaptureQuality.summary),
+            cleanupLedger = executionJobs.associate { it.captureId to (it.stage == MediaExecutionStage.Completed || it.stage == MediaExecutionStage.Failed || it.stage == MediaExecutionStage.Blocked) },
+        )
+    }
     var showBrowser by remember { mutableStateOf(false) }
+    val mediaMobilePolish = remember(captures, queueTelemetry, queueActions, libraryV2, playerDiagnostics, browserCaptureQuality, sessionPrivacyAudit, showBrowser) {
+        MediaMobilePolishPlanner().dashboard(
+            captures = captures,
+            queueTelemetry = queueTelemetry,
+            queueActions = queueActions,
+            library = libraryV2,
+            playerReports = playerDiagnostics,
+            captureQuality = browserCaptureQuality,
+            privacyAudit = sessionPrivacyAudit,
+            compactPreferred = true,
+            browserVisible = showBrowser,
+            widthClassLabel = "phone",
+        )
+    }
 
     Column(Modifier.fillMaxSize()) {
         XdmListCard(compact = true) {
@@ -1184,7 +1326,19 @@ fun MediaInboxScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
-                item { OfflineMediaLibraryCard(librarySummary) }
+                item { MediaMobilePolishCard(mediaMobilePolish) }
+                item { MediaExecutionQueueCard(executionJobs) }
+                item { MediaDispatchDashboardCard(dispatchDashboard, dispatchPlans) }
+                item { MediaQueueTelemetryCard(queueTelemetry) }
+                item { MediaQueueActionsCard(queueActions) }
+                item { MediaWorkerBridgeCard(workerBridge) }
+                item { MediaTermuxRuntimeAdapterCard(termuxRuntime) }
+                item { MediaNativeDirectDownloadEngineCard(nativeDirect) }
+                item { OfflineLibraryV2Card(libraryV2) }
+                item { PlayerDiagnosticsDeckCard(playerDiagnostics) }
+                item { BrowserCaptureQualityCard(browserCaptureQuality) }
+                item { SessionPrivacyAuditCard(sessionPrivacyAudit) }
+                item { OfflineMediaLibraryCard(librarySummary, libraryItems, downloads, onResumeOrRetryDownload) }
                 item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
                 item { EmptyFeatureScreen("Media inbox", "Share a video, audio, HLS, or DASH URL to capture metadata and queue it safely, or switch to Browser to discover media inside pages.") }
             }
@@ -1195,7 +1349,19 @@ fun MediaInboxScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
-                item { OfflineMediaLibraryCard(librarySummary) }
+                item { MediaMobilePolishCard(mediaMobilePolish) }
+                item { MediaExecutionQueueCard(executionJobs) }
+                item { MediaDispatchDashboardCard(dispatchDashboard, dispatchPlans) }
+                item { MediaQueueTelemetryCard(queueTelemetry) }
+                item { MediaQueueActionsCard(queueActions) }
+                item { MediaWorkerBridgeCard(workerBridge) }
+                item { MediaTermuxRuntimeAdapterCard(termuxRuntime) }
+                item { MediaNativeDirectDownloadEngineCard(nativeDirect) }
+                item { OfflineLibraryV2Card(libraryV2) }
+                item { PlayerDiagnosticsDeckCard(playerDiagnostics) }
+                item { BrowserCaptureQualityCard(browserCaptureQuality) }
+                item { SessionPrivacyAuditCard(sessionPrivacyAudit) }
+                item { OfflineMediaLibraryCard(librarySummary, libraryItems, downloads, onResumeOrRetryDownload) }
                 item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
                 item {
                     TextButton(
@@ -1225,8 +1391,581 @@ fun MediaInboxScreen(
     }
 }
 
+
+
 @Composable
-private fun OfflineMediaLibraryCard(summary: OfflineMediaLibrarySummary) {
+private fun MediaMobilePolishCard(dashboard: MediaMobilePolishDashboard) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media mobile polish ${dashboard.summary}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Media mobile polish")
+            XdmSupportingText(
+                "Phase 32 makes the Media stack phone-friendly with a sticky current-job summary, compact action strip, collapsed diagnostics, explicit empty/offline/error states, accessibility labels, and foldable guidance without adding routes.",
+                maxLines = 4,
+            )
+            XdmActionFlowRow {
+                StatusPill(dashboard.mode.label, XdmStatusTone.Info)
+                StatusPill("${dashboard.visiblePrimarySectionCount} primary", XdmStatusTone.Neutral)
+                dashboard.collapsedDiagnosticsCount.takeIf { it > 0 }?.let { StatusPill("$it collapsed", XdmStatusTone.Info) }
+                dashboard.attentionCount.takeIf { it > 0 }?.let { StatusPill("$it attention", XdmStatusTone.Warning) }
+                StatusPill(if (dashboard.noTinyScrollIslands) "no tiny scroll islands" else "scroll review", if (dashboard.noTinyScrollIslands) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.accessibilityReady) "accessibility-ready" else "accessibility review", if (dashboard.accessibilityReady) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
+            }
+            XdmListCard(compact = true) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        XdmMetadataText("Sticky current job summary", maxLines = 1)
+                        XdmSupportingText(dashboard.currentJob.summary, maxLines = 2)
+                        XdmMetadataText(dashboard.currentJob.safeDiagnostic, maxLines = 2)
+                    }
+                    StatusPill(dashboard.currentJob.primaryActionLabel, if (dashboard.currentJob.attentionRequired) XdmStatusTone.Warning else XdmStatusTone.Success)
+                }
+            }
+            XdmMetadataText(dashboard.emptyStateLabel, maxLines = 2)
+            dashboard.sections.take(4).forEach { section ->
+                XdmListCard(compact = true) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                        Column(Modifier.weight(1f)) {
+                            XdmMetadataText(section.title, maxLines = 1)
+                            XdmSupportingText(section.summary, maxLines = 2)
+                            XdmMetadataText(section.accessibilityLabel, maxLines = 2)
+                        }
+                        StatusPill(section.priority.label, toneForMobilePriority(section.priority))
+                    }
+                    XdmActionFlowRow {
+                        StatusPill("max ${section.recommendedMaxRows}", XdmStatusTone.Neutral)
+                        if (section.collapsedByDefault) StatusPill("collapsed", XdmStatusTone.Info)
+                    }
+                }
+            }
+            dashboard.recommendations.take(4).forEach { recommendation ->
+                XdmMetadataText("${recommendation.signal.label}: ${recommendation.detail}", maxLines = 2)
+            }
+        }
+    }
+}
+
+private fun toneForMobilePriority(priority: MediaMobileSectionPriority): XdmStatusTone = when (priority) {
+    MediaMobileSectionPriority.Sticky -> XdmStatusTone.Success
+    MediaMobileSectionPriority.Primary -> XdmStatusTone.Info
+    MediaMobileSectionPriority.Secondary -> XdmStatusTone.Neutral
+    MediaMobileSectionPriority.Collapsed -> XdmStatusTone.Neutral
+    MediaMobileSectionPriority.HiddenUntilNeeded -> XdmStatusTone.Warning
+}
+
+@Composable
+private fun BrowserCaptureQualityCard(dashboard: BrowserCaptureQualityDashboard) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Browser capture quality ${dashboard.summary}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Browser capture quality")
+            XdmSupportingText(
+                "Phase 30 improves sniffing quality by grouping duplicates, suppressing analytics noise, flagging stale sessions, and scoring captured media without storing secret query strings.",
+                maxLines = 3,
+            )
+            XdmActionFlowRow {
+                StatusPill("${dashboard.treasureCount} treasure", if (dashboard.treasureCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                dashboard.noiseCount.takeIf { it > 0 }?.let { StatusPill("$it noise", XdmStatusTone.Warning) }
+                dashboard.duplicateCount.takeIf { it > 0 }?.let { StatusPill("$it grouped", XdmStatusTone.Info) }
+                dashboard.refreshCount.takeIf { it > 0 }?.let { StatusPill("$it refresh", XdmStatusTone.Warning) }
+                dashboard.protectedCount.takeIf { it > 0 }?.let { StatusPill("$it protected", XdmStatusTone.Warning) }
+                dashboard.liveCount.takeIf { it > 0 }?.let { StatusPill("$it live", XdmStatusTone.Info) }
+                StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+            }
+            XdmMetadataText(dashboard.summary, maxLines = 3)
+            if (dashboard.empty) {
+                XdmMetadataText("No browser capture quality rows yet. Browse or share media to let the sniffer rank captures.", maxLines = 2)
+            } else {
+                dashboard.rows.take(5).forEach { row ->
+                    XdmListCard(compact = true) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                            Column(Modifier.weight(1f)) {
+                                XdmMetadataText(row.title, maxLines = 1)
+                                XdmSupportingText(row.summary, maxLines = 2)
+                                XdmMetadataText(row.safeDiagnostics, maxLines = 3)
+                            }
+                            StatusPill(row.disposition.label, toneForCaptureQuality(row.disposition))
+                        }
+                        XdmActionFlowRow {
+                            StatusPill("confidence ${row.confidenceScore}", XdmStatusTone.Info)
+                            StatusPill(row.sourceHost.ifBlank { "unknown host" }, XdmStatusTone.Neutral)
+                            if (row.ignoredByDefault) StatusPill("ignored by default", XdmStatusTone.Warning)
+                            if (row.refreshMetadataAvailable) StatusPill("refresh metadata", XdmStatusTone.Warning)
+                            row.duplicateOfCaptureId?.let { StatusPill("grouped", XdmStatusTone.Info) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun toneForCaptureQuality(disposition: CaptureQualityDisposition): XdmStatusTone = when (disposition) {
+    CaptureQualityDisposition.Treasure -> XdmStatusTone.Success
+    CaptureQualityDisposition.NeedsMetadataRefresh -> XdmStatusTone.Warning
+    CaptureQualityDisposition.IgnoreNoise -> XdmStatusTone.Neutral
+    CaptureQualityDisposition.GroupWithExisting -> XdmStatusTone.Info
+    CaptureQualityDisposition.ProtectedDiagnostic -> XdmStatusTone.Warning
+    CaptureQualityDisposition.LiveReview -> XdmStatusTone.Info
+}
+
+@Composable
+private fun SessionPrivacyAuditCard(dashboard: MediaSessionPrivacyAuditDashboard) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Session privacy audit ${dashboard.summary}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Session privacy audit")
+            XdmSupportingText(
+                "Phase 31 audits browser sessions, resolver handoffs, queue specs, sidecars, logs, notifications, temp files, and Termux previews for secret leaks and cleanup gaps.",
+                maxLines = 3,
+            )
+            XdmActionFlowRow {
+                dashboard.blockerCount.takeIf { it > 0 }?.let { StatusPill("$it blocker", XdmStatusTone.Error) }
+                dashboard.reviewCount.takeIf { it > 0 }?.let { StatusPill("$it review", XdmStatusTone.Warning) }
+                dashboard.cleanupDueCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup due", XdmStatusTone.Warning) }
+                dashboard.cleanupVerifiedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup verified", XdmStatusTone.Success) }
+                StatusPill(if (dashboard.durableSecretSafe) "durable secret-safe" else "durable leak blocked", if (dashboard.durableSecretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
+                StatusPill(if (dashboard.transientCleanupHealthy) "cleanup healthy" else "cleanup review", if (dashboard.transientCleanupHealthy) XdmStatusTone.Success else XdmStatusTone.Warning)
+            }
+            XdmMetadataText(dashboard.summary, maxLines = 3)
+            if (dashboard.empty) {
+                XdmMetadataText("No privacy findings yet. The audit still scans all planned surfaces when media jobs appear.", maxLines = 2)
+            } else {
+                dashboard.findings.take(6).forEach { finding ->
+                    XdmListCard(compact = true) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                            Column(Modifier.weight(1f)) {
+                                XdmMetadataText(finding.surface.label, maxLines = 1)
+                                XdmSupportingText(finding.remediation, maxLines = 2)
+                                XdmMetadataText(finding.redactedPreview, maxLines = 3)
+                            }
+                            StatusPill(finding.severity.label, toneForPrivacySeverity(finding.severity))
+                        }
+                        XdmActionFlowRow {
+                            StatusPill(finding.cleanupState.label, XdmStatusTone.Neutral)
+                            finding.captureId?.let { StatusPill(it.take(18), XdmStatusTone.Info) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun toneForPrivacySeverity(severity: MediaPrivacySeverity): XdmStatusTone = when (severity) {
+    MediaPrivacySeverity.Pass -> XdmStatusTone.Success
+    MediaPrivacySeverity.Review -> XdmStatusTone.Warning
+    MediaPrivacySeverity.Blocker -> XdmStatusTone.Error
+}
+
+
+@Composable
+private fun MediaDispatchDashboardCard(dashboard: MediaDispatchDashboard, plans: List<MediaDispatchPlan>) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media dispatch control tower ${dashboard.summary}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Media dispatch control tower")
+            XdmSupportingText("Phase 22 dispatch runbook maps each resolver choice to a safe lane, background policy, retry policy, progress signals, and terminal cleanup before the job leaves the Media inbox.", maxLines = 3)
+            XdmActionFlowRow {
+                StatusPill("${dashboard.readyCount} ready", if (dashboard.readyCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                dashboard.blockedCount.takeIf { it > 0 }?.let { StatusPill("$it blocked", XdmStatusTone.Warning) }
+                dashboard.refreshCount.takeIf { it > 0 }?.let { StatusPill("$it refresh", XdmStatusTone.Warning) }
+                dashboard.termuxSetupCount.takeIf { it > 0 }?.let { StatusPill("$it Termux setup", XdmStatusTone.Info) }
+                StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+            }
+            XdmMetadataText(dashboard.summary, maxLines = 3)
+            if (plans.isEmpty()) {
+                XdmMetadataText("No dispatch plans yet. Capture media from ShareSheet, IronFox, or the built-in browser to generate a runbook.", maxLines = 2)
+            } else {
+                plans.take(4).forEach { plan ->
+                    XdmListCard(compact = true) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                            Column(Modifier.weight(1f)) {
+                                XdmMetadataText(plan.title, maxLines = 1)
+                                XdmSupportingText(plan.summary, maxLines = 2)
+                                XdmMetadataText(plan.safeDiagnostics, maxLines = 3)
+                            }
+                            StatusPill(plan.readiness.label, toneForDispatchReadiness(plan.readiness))
+                        }
+                        XdmActionFlowRow {
+                            StatusPill(plan.lane.label, XdmStatusTone.Info)
+                            StatusPill(plan.primaryActionLabel, if (plan.queueButtonEnabled) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                            StatusPill("${plan.steps.size} steps", XdmStatusTone.Neutral)
+                            plan.progressSignals.firstOrNull()?.let { StatusPill(it.label, XdmStatusTone.Info) }
+                        }
+                        plan.warnings.takeIf { it.isNotEmpty() }?.let { warnings ->
+                            XdmMetadataText("Warnings: ${warnings.joinToString(" • ")}", maxLines = 2)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun MediaQueueTelemetryCard(deck: MediaQueueTelemetryDeck) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media queue telemetry ${deck.summary}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Media queue telemetry")
+            XdmSupportingText(
+                "Phase 23 turns dispatch runbooks into a control-room telemetry deck with progress pulse, next action, cleanup status, and redaction health before final validation.",
+                maxLines = 3,
+            )
+            XdmActionFlowRow {
+                StatusPill("${deck.readyToLaunchCount} ready", if (deck.readyToLaunchCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                deck.activeCount.takeIf { it > 0 }?.let { StatusPill("$it active", XdmStatusTone.Info) }
+                deck.needsAttentionCount.takeIf { it > 0 }?.let { StatusPill("$it attention", XdmStatusTone.Warning) }
+                deck.cleanupArmedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup armed", XdmStatusTone.Neutral) }
+                deck.terminalCount.takeIf { it > 0 }?.let { StatusPill("$it terminal", XdmStatusTone.Neutral) }
+                StatusPill(if (deck.secretSafe) "secret-safe telemetry" else "redaction review", if (deck.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+            }
+            XdmMetadataText(deck.summary, maxLines = 3)
+            if (deck.empty) {
+                XdmMetadataText("No queue telemetry yet. Capture media and prepare a dispatch runbook to populate the deck.", maxLines = 2)
+            } else {
+                deck.rows.take(5).forEach { row ->
+                    XdmListCard(compact = true) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                            Column(Modifier.weight(1f)) {
+                                XdmMetadataText(row.title, maxLines = 1)
+                                XdmSupportingText(row.summary, maxLines = 2)
+                                XdmMetadataText(row.safeDiagnostic, maxLines = 3)
+                            }
+                            StatusPill(row.tone.label, toneForQueueTelemetry(row.tone))
+                        }
+                        XdmActionFlowRow {
+                            StatusPill(row.progressLabel, XdmStatusTone.Info)
+                            StatusPill(row.nextActionLabel, if (row.stalled) XdmStatusTone.Warning else XdmStatusTone.Neutral)
+                            if (row.cleanupArmed) StatusPill("Terminal cleanup", XdmStatusTone.Success)
+                            StatusPill(if (row.secretSafe) "No leak" else "Leak blocked", if (row.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+
+@Composable
+private fun OfflineLibraryV2Card(dashboard: OfflineLibraryV2Dashboard) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Offline Library 2.0 ${dashboard.summary}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Offline Library 2.0")
+            XdmSupportingText(
+                "Phase 28 makes completed media filterable by video, audio, failed, playable, missing file, source host, and cleanup state with safe sidecar actions.",
+                maxLines = 3,
+            )
+            XdmActionFlowRow {
+                StatusPill("${dashboard.visibleCount} visible", XdmStatusTone.Neutral)
+                dashboard.playableCount.takeIf { it > 0 }?.let { StatusPill("$it playable", XdmStatusTone.Success) }
+                dashboard.videoCount.takeIf { it > 0 }?.let { StatusPill("$it video", XdmStatusTone.Info) }
+                dashboard.audioCount.takeIf { it > 0 }?.let { StatusPill("$it audio", XdmStatusTone.Info) }
+                dashboard.failedCount.takeIf { it > 0 }?.let { StatusPill("$it failed", XdmStatusTone.Warning) }
+                dashboard.missingCount.takeIf { it > 0 }?.let { StatusPill("$it missing", XdmStatusTone.Warning) }
+                dashboard.cleanupCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup", XdmStatusTone.Neutral) }
+                StatusPill(if (dashboard.secretSafe) "safe export" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+            }
+            XdmMetadataText("Filters: ${OfflineLibraryV2Filter.entries.joinToString { it.label }}", maxLines = 2)
+            dashboard.sourceHosts.takeIf { it.isNotEmpty() }?.let { hosts -> XdmMetadataText("Source hosts: ${hosts.take(5).joinToString()}", maxLines = 2) }
+            if (dashboard.empty) {
+                XdmMetadataText("No offline media rows yet. Completed downloads will appear here with sidecar actions and playback handoff.", maxLines = 2)
+            } else {
+                dashboard.rows.take(5).forEach { row -> OfflineLibraryV2RowCard(row) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OfflineLibraryV2RowCard(row: com.mikeyphw.xdm.android.media.OfflineLibraryV2Row) {
+    XdmListCard(compact = true) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText(row.title, maxLines = 1)
+                XdmSupportingText(row.summary, maxLines = 2)
+                XdmMetadataText("Sidecar: ${row.sidecarFileName}", maxLines = 1)
+                XdmMetadataText("Safe export: ${row.safeExportJson.take(180)}", maxLines = 2)
+            }
+            StatusPill(row.health.label, toneForOfflineLibraryHealth(row.health))
+        }
+        XdmActionFlowRow {
+            row.actions.filter { it.enabled }.take(5).forEach { action ->
+                StatusPill(action.kind.label, if (action.requiresConfirmation) XdmStatusTone.Warning else XdmStatusTone.Success)
+            }
+        }
+    }
+}
+
+private fun toneForOfflineLibraryHealth(health: OfflineLibraryV2Health): XdmStatusTone = when (health) {
+    OfflineLibraryV2Health.Ready -> XdmStatusTone.Success
+    OfflineLibraryV2Health.Failed,
+    OfflineLibraryV2Health.MissingFile,
+    OfflineLibraryV2Health.NeedsSidecarRepair -> XdmStatusTone.Warning
+    OfflineLibraryV2Health.NeedsCleanup -> XdmStatusTone.Info
+    OfflineLibraryV2Health.WaitingForDownload -> XdmStatusTone.Neutral
+}
+
+@Composable
+private fun PlayerDiagnosticsDeckCard(reports: List<MediaPlayerDiagnosticReport>) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Player diagnostics deck ${reports.size}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Player diagnostics deck")
+            XdmSupportingText(
+                "Phase 29 makes Media3 playback failures explainable with source, network, decoder, codec, subtitle, and protected-media buckets plus retry-prepare guidance.",
+                maxLines = 3,
+            )
+            XdmActionFlowRow {
+                StatusPill("${reports.size} reports", XdmStatusTone.Neutral)
+                reports.count { it.retryPrepareAvailable }.takeIf { it > 0 }?.let { StatusPill("$it retry", XdmStatusTone.Info) }
+                reports.count { it.protectedDiagnosticOnly }.takeIf { it > 0 }?.let { StatusPill("$it protected", XdmStatusTone.Warning) }
+                StatusPill(if (reports.all { it.sourceSafe }) "source-safe" else "redaction review", if (reports.all { it.sourceSafe }) XdmStatusTone.Success else XdmStatusTone.Warning)
+            }
+            reports.take(3).forEach { report -> PlayerDiagnosticsReportCard(report) }
+            if (reports.isEmpty()) {
+                XdmMetadataText("Completed direct media will expose Player 2.0 diagnostics here.", maxLines = 2)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerDiagnosticsReportCard(report: MediaPlayerDiagnosticReport) {
+    XdmListCard(compact = true) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText(report.title, maxLines = 1)
+                XdmSupportingText(report.message, maxLines = 3)
+                XdmMetadataText("Playback position: ${report.positionMemory.summary}", maxLines = 2)
+                XdmMetadataText("Track availability: ${report.tracks.joinToString { it.summary }}", maxLines = 2)
+                report.subtitleRows.takeIf { it.isNotEmpty() }?.let { rows -> XdmMetadataText("Subtitle availability: ${rows.joinToString { it.summary }}", maxLines = 2) }
+            }
+            StatusPill(report.bucket.label, toneForPlayerDiagnostic(report.bucket))
+        }
+        XdmActionFlowRow {
+            report.actions.take(5).forEach { action -> StatusPill(action.label, if (action.label.contains("Retry")) XdmStatusTone.Info else XdmStatusTone.Neutral) }
+        }
+    }
+}
+
+private fun toneForPlayerDiagnostic(bucket: MediaPlayerDiagnosticBucket): XdmStatusTone = when (bucket) {
+    MediaPlayerDiagnosticBucket.Ready -> XdmStatusTone.Success
+    MediaPlayerDiagnosticBucket.Network,
+    MediaPlayerDiagnosticBucket.Source,
+    MediaPlayerDiagnosticBucket.Subtitle -> XdmStatusTone.Info
+    MediaPlayerDiagnosticBucket.Decoder,
+    MediaPlayerDiagnosticBucket.UnsupportedCodec,
+    MediaPlayerDiagnosticBucket.ProtectedMedia,
+    MediaPlayerDiagnosticBucket.Unknown -> XdmStatusTone.Warning
+}
+
+@Composable
+private fun MediaNativeDirectDownloadEngineCard(dashboard: NativeDirectDashboard) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Native direct download engine ${dashboard.summary}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Native direct download engine")
+            XdmSupportingText(
+                "Phase 27 plans Android-native direct media transfers with transient headers, resume metadata, destination policy, and redacted diagnostics before any byte writer is enabled.",
+                maxLines = 3,
+            )
+            XdmActionFlowRow {
+                StatusPill("${dashboard.readyCount} ready", if (dashboard.readyCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                dashboard.resumeCount.takeIf { it > 0 }?.let { StatusPill("$it resumable", XdmStatusTone.Info) }
+                dashboard.permissionCount.takeIf { it > 0 }?.let { StatusPill("$it permission", XdmStatusTone.Warning) }
+                dashboard.unsupportedCount.takeIf { it > 0 }?.let { StatusPill("$it adaptive", XdmStatusTone.Neutral) }
+                StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+            }
+            dashboard.plans.take(3).forEach { plan -> NativeDirectDownloadPlanRow(plan) }
+            if (dashboard.plans.isEmpty()) {
+                XdmSupportingText("No direct download requests yet. Direct MP4, WebM, MP3, and M4A captures will appear here when the worker bridge is ready.")
+            }
+        }
+    }
+}
+
+@Composable
+private fun NativeDirectDownloadPlanRow(plan: NativeDirectDownloadRequestPlan) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(plan.summary, style = MaterialTheme.typography.labelLarge)
+        XdmSupportingText(plan.redactedDiagnostics.take(220), maxLines = 3)
+    }
+}
+
+@Composable
+private fun MediaTermuxRuntimeAdapterCard(dashboard: TermuxRuntimeDashboard) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media Termux runtime adapter ${dashboard.summary}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Media Termux runtime adapter")
+            XdmSupportingText(
+                "Phase 26 turns worker bridge requests into typed yt-dlp and aria2 Termux launch plans with capability probes, transient Netscape cookie/input/session files, and terminal cleanup checks.",
+                maxLines = 3,
+            )
+            XdmActionFlowRow {
+                StatusPill("${dashboard.launchableCount} launchable", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                dashboard.missingToolCount.takeIf { it > 0 }?.let { StatusPill("$it missing tools", XdmStatusTone.Warning) }
+                dashboard.cleanupArmedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup armed", XdmStatusTone.Info) }
+                StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+            }
+            dashboard.plans.take(3).forEach { plan -> TermuxRuntimeLaunchPlanRow(plan) }
+            if (dashboard.plans.isEmpty()) {
+                XdmSupportingText("No worker bridge requests yet. Capture media, choose tracks, then review the Termux launch plan before execution.")
+            }
+        }
+    }
+}
+
+@Composable
+private fun TermuxRuntimeLaunchPlanRow(plan: TermuxRuntimeLaunchPlan) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(plan.summary, style = MaterialTheme.typography.labelLarge)
+        XdmSupportingText(plan.redactedPreview.take(220), maxLines = 3)
+        plan.missingToolHints.takeIf { it.isNotEmpty() }?.let { hints ->
+            XdmSupportingText("Install/help only: ${hints.joinToString(" • ")}", maxLines = 3)
+        }
+    }
+}
+
+@Composable
+private fun MediaWorkerBridgeCard(dashboard: MediaWorkerBridgeDashboard) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media worker bridge ${dashboard.summary}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Media worker bridge")
+            XdmSupportingText(
+                "Phase 25 converts ready media actions into Android UIDT, WorkManager foreground, aria2, native, or Termux yt-dlp bridge requests without launching services yet.",
+                maxLines = 3,
+            )
+            XdmActionFlowRow {
+                StatusPill("${dashboard.launchableCount} launchable", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                dashboard.androidWorkerCount.takeIf { it > 0 }?.let { StatusPill("$it Android", XdmStatusTone.Info) }
+                dashboard.termuxWorkerCount.takeIf { it > 0 }?.let { StatusPill("$it Termux", XdmStatusTone.Info) }
+                dashboard.blockedCount.takeIf { it > 0 }?.let { StatusPill("$it blocked", XdmStatusTone.Warning) }
+                dashboard.confirmationCount.takeIf { it > 0 }?.let { StatusPill("$it confirm", XdmStatusTone.Warning) }
+                StatusPill(if (dashboard.secretSafe) "secret-safe bridge" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+            }
+            XdmMetadataText(dashboard.summary, maxLines = 3)
+            if (dashboard.empty) {
+                XdmMetadataText("No worker bridge requests yet. Queue actions become bridge requests after dispatch planning.", maxLines = 2)
+            } else {
+                dashboard.requests.take(5).forEach { request -> MediaWorkerBridgePlanCard(request) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaWorkerBridgePlanCard(request: MediaWorkerBridgeRequest) {
+    XdmListCard(compact = true) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText(request.title, maxLines = 1)
+                XdmSupportingText(request.summary, maxLines = 3)
+                XdmMetadataText(request.notification.summary, maxLines = 2)
+                XdmMetadataText(request.adapter.redactedPreview, maxLines = 3)
+            }
+            StatusPill(request.readiness.label, toneForWorkerBridge(request.readiness, request.kind))
+        }
+        XdmActionFlowRow {
+            StatusPill(request.kind.label, toneForWorkerBridge(request.readiness, request.kind))
+            StatusPill(request.backgroundPolicy.workKind.label, XdmStatusTone.Neutral)
+            StatusPill(if (request.adapter.rawShellExposed) "raw shell" else "typed adapter", if (request.adapter.rawShellExposed) XdmStatusTone.Warning else XdmStatusTone.Success)
+            if (request.cleanupAfterTerminal.isNotEmpty()) StatusPill("cleanup owned", XdmStatusTone.Success)
+            StatusPill(if (request.secretSafe) "No leak" else "Leak blocked", if (request.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+        }
+    }
+}
+
+private fun toneForWorkerBridge(readiness: MediaWorkerBridgeReadiness, kind: MediaWorkerBridgeKind): XdmStatusTone = when {
+    readiness == MediaWorkerBridgeReadiness.Ready -> XdmStatusTone.Success
+    readiness == MediaWorkerBridgeReadiness.Blocked || kind == MediaWorkerBridgeKind.BlockedDiagnostic -> XdmStatusTone.Warning
+    readiness == MediaWorkerBridgeReadiness.NeedsConfirmation -> XdmStatusTone.Warning
+    readiness == MediaWorkerBridgeReadiness.WaitingForTermux || readiness == MediaWorkerBridgeReadiness.WaitingForMetadata -> XdmStatusTone.Info
+    else -> XdmStatusTone.Neutral
+}
+
+@Composable
+private fun MediaQueueActionsCard(dashboard: MediaQueueActionDashboard) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media queue actions ${dashboard.summary}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Media queue actions")
+            XdmSupportingText(
+                "Phase 24 turns telemetry into safe action eligibility for pause, resume, retry, cancel, cleanup, refresh, Termux setup, and library handoff without executing raw commands.",
+                maxLines = 3,
+            )
+            XdmActionFlowRow {
+                StatusPill("${dashboard.launchableCount} launch", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                dashboard.pausableCount.takeIf { it > 0 }?.let { StatusPill("$it pause", XdmStatusTone.Info) }
+                dashboard.retryableCount.takeIf { it > 0 }?.let { StatusPill("$it retry/resume", XdmStatusTone.Warning) }
+                dashboard.cancellableCount.takeIf { it > 0 }?.let { StatusPill("$it cancel", XdmStatusTone.Warning) }
+                dashboard.cleanupCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup", XdmStatusTone.Neutral) }
+                StatusPill(if (dashboard.secretSafe) "secret-safe actions" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+            }
+            XdmMetadataText(dashboard.summary, maxLines = 3)
+            if (dashboard.empty) {
+                XdmMetadataText("No queue actions yet. Capture media and let dispatch telemetry build action eligibility.", maxLines = 2)
+            } else {
+                dashboard.bulkActions.takeIf { it.isNotEmpty() }?.let { bulkActions ->
+                    XdmListCard(compact = true) {
+                        XdmMetadataText("Bulk actions")
+                        bulkActions.forEach { bulk ->
+                            XdmMetadataText("${bulk.label} • ${if (bulk.requiresConfirmation) "confirmation required" else "ready"} • ${bulk.safeSummary}", maxLines = 2)
+                        }
+                    }
+                }
+                dashboard.plans.take(5).forEach { plan -> MediaQueueActionPlanCard(plan) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaQueueActionPlanCard(plan: MediaQueueActionPlan) {
+    XdmListCard(compact = true) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText(plan.title, maxLines = 1)
+                XdmSupportingText(plan.safeSummary, maxLines = 3)
+                plan.unavailableReasons.takeIf { it.isNotEmpty() }?.let { reasons ->
+                    XdmMetadataText("Unavailable: ${reasons.joinToString(" • ")}", maxLines = 2)
+                }
+            }
+            StatusPill(plan.primaryAction.kind.label, toneForQueueAction(plan.primaryAction.kind, plan.primaryAction.availability))
+        }
+        XdmActionFlowRow {
+            plan.actions.filter { it.availability != MediaQueueActionAvailability.Hidden }.take(6).forEach { action ->
+                StatusPill(action.kind.label, toneForQueueAction(action.kind, action.availability))
+            }
+        }
+    }
+}
+
+private fun toneForQueueAction(kind: MediaQueueActionKind, availability: MediaQueueActionAvailability): XdmStatusTone = when {
+    availability == MediaQueueActionAvailability.Disabled || availability == MediaQueueActionAvailability.Hidden -> XdmStatusTone.Neutral
+    kind == MediaQueueActionKind.Cancel || availability == MediaQueueActionAvailability.ConfirmationRequired -> XdmStatusTone.Warning
+    kind == MediaQueueActionKind.Launch || kind == MediaQueueActionKind.OpenLibrary -> XdmStatusTone.Success
+    kind == MediaQueueActionKind.Retry || kind == MediaQueueActionKind.Resume || kind == MediaQueueActionKind.Pause -> XdmStatusTone.Info
+    else -> XdmStatusTone.Neutral
+}
+
+private fun toneForQueueTelemetry(tone: MediaQueueTelemetryTone): XdmStatusTone = when (tone) {
+    MediaQueueTelemetryTone.Stable -> XdmStatusTone.Success
+    MediaQueueTelemetryTone.Active -> XdmStatusTone.Info
+    MediaQueueTelemetryTone.Attention,
+    MediaQueueTelemetryTone.Blocked -> XdmStatusTone.Warning
+}
+
+private fun toneForDispatchReadiness(readiness: MediaDispatchReadiness): XdmStatusTone = when (readiness) {
+    MediaDispatchReadiness.Ready -> XdmStatusTone.Success
+    MediaDispatchReadiness.AwaitingUserChoice,
+    MediaDispatchReadiness.NeedsTermuxSetup -> XdmStatusTone.Info
+    MediaDispatchReadiness.NeedsMetadataRefresh,
+    MediaDispatchReadiness.BlockedProtected,
+    MediaDispatchReadiness.BlockedSecretLeak -> XdmStatusTone.Warning
+}
+
+@Composable
+private fun OfflineMediaLibraryCard(summary: OfflineMediaLibrarySummary, items: List<OfflineMediaLibraryItem>, downloads: List<Download>, onResumeOrRetryDownload: (Download) -> Unit) {
+    var expandedPlayerId by remember { mutableStateOf<String?>(null) }
     Card(Modifier.fillMaxWidth().semantics { contentDescription = "Offline library ${summary.message}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Offline library and player")
@@ -1237,7 +1976,78 @@ private fun OfflineMediaLibraryCard(summary: OfflineMediaLibrarySummary) {
                 summary.audioOnlyCount.takeIf { it > 0 }?.let { StatusPill("$it audio", XdmStatusTone.Neutral) }
                 summary.subtitleTrackCount.takeIf { it > 0 }?.let { StatusPill("$it subtitles", XdmStatusTone.Neutral) }
             }
-            XdmMetadataText("Player groundwork is intentionally review-first: direct files can later open locally; adaptive streams must be resolved into safe offline assets before playback.", maxLines = 3)
+            XdmMetadataText("Offline media library persists redacted sidecar metadata beside completed files: title, thumbnail, duration, source host, selected track IDs, and safe playback state.", maxLines = 3)
+            if (items.isEmpty()) {
+                XdmMetadataText("No offline media items yet. Queue selected media to seed the library.", maxLines = 2)
+            } else {
+                items.take(5).forEach { item ->
+                    XdmListCard(compact = true) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                            Column(Modifier.weight(1f)) {
+                                XdmCardTitle(item.title, maxLines = 1)
+                                XdmMetadataText(listOf(item.fileName, item.sourceHost, item.durationLabel).joinToString(" • "), maxLines = 1)
+                                XdmSupportingText(item.detail, maxLines = 2)
+                            }
+                            StatusPill(item.state?.name ?: "Captured", if (item.isCompleted) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                        }
+                        XdmActionFlowRow {
+                            item.pageHost?.takeIf { it.isNotBlank() }?.let { StatusPill("Page $it", XdmStatusTone.Info) }
+                            item.thumbnailUrl?.takeIf { it.isNotBlank() }?.let { StatusPill("Thumbnail", XdmStatusTone.Info) }
+                            item.downloadId?.let { StatusPill("Job", XdmStatusTone.Neutral) }
+                        }
+                        XdmMetadataText("Sidecar: ${item.sidecar.toRedactedJson()}", maxLines = 2)
+                        val playbackCandidate = item.toPlaybackCandidate()
+                        XdmActionFlowRow {
+                            playbackCandidate?.let {
+                                TextButton(onClick = { expandedPlayerId = if (expandedPlayerId == item.captureId) null else item.captureId }) { Text(if (expandedPlayerId == item.captureId) "Hide player" else "Open player") }
+                            }
+                            val actionLabel = when {
+                                item.canResume -> "Resume media"
+                                item.canRetry -> "Retry media"
+                                else -> null
+                            }
+                            actionLabel?.let { label ->
+                                val download = item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }
+                                download?.let { TextButton(onClick = { onResumeOrRetryDownload(it) }) { Text(label) } }
+                            }
+                        }
+                        if (expandedPlayerId == item.captureId) {
+                            playbackCandidate?.let { Media3DirectPlayerCard(it) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaExecutionQueueCard(jobs: List<MediaExecutionJob>) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media execution jobs ${jobs.size}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmCardTitle("Media download execution")
+            XdmSupportingText("Tracks move through explicit states: Probing, Queued, Downloading, Completed, Failed, or Blocked. Retry and resume stay attached to the originating media capture.", maxLines = 3)
+            if (jobs.isEmpty()) {
+                XdmMetadataText("No media jobs yet.", maxLines = 1)
+            } else {
+                jobs.take(5).forEach { job ->
+                    XdmListCard(compact = true) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                            Column(Modifier.weight(1f)) {
+                                XdmMetadataText(job.title, maxLines = 1)
+                                XdmSupportingText(job.detail, maxLines = 2)
+                                XdmMetadataText(job.engine, maxLines = 1)
+                            }
+                            StatusPill(job.stage.label, when (job.stage) {
+                                MediaExecutionStage.Completed -> XdmStatusTone.Success
+                                MediaExecutionStage.Failed, MediaExecutionStage.Blocked -> XdmStatusTone.Warning
+                                MediaExecutionStage.Downloading, MediaExecutionStage.Probing -> XdmStatusTone.Info
+                                MediaExecutionStage.Queued -> XdmStatusTone.Neutral
+                            })
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1246,7 +2056,7 @@ private fun OfflineMediaLibraryCard(summary: OfflineMediaLibrarySummary) {
 private fun MediaCaptureCard(
     capture: MediaCaptureRecord,
     captureVariants: List<MediaVariant>,
-    onDownload: (MediaCaptureRecord) -> Unit,
+    onDownload: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
     onRemove: (MediaCaptureRecord) -> Unit,
@@ -1264,7 +2074,19 @@ private fun MediaCaptureCard(
         trackSelection = trackSelection.copy(videoVariantId = capture.selectedVariantId ?: trackSelection.videoVariantId)
     }
     val mediaPlanner = remember { MediaDownloadPlanner() }
+    val executionPlanner = remember { MediaExecutionLibraryPlanner(mediaPlanner) }
     val mediaPlan = remember(capture, captureVariants, trackSelection) { mediaPlanner.plan(capture, captureVariants, selection = trackSelection) }
+    val mediaQueueSpec = remember(capture, captureVariants, mediaPlan.trackSelection) {
+        executionPlanner.queueSpec(capture, captureVariants, mediaPlan.trackSelection, "content://downloads")
+    }
+    val mediaEnginePlan = remember(mediaQueueSpec) { executionPlanner.enginePlan(mediaQueueSpec, Build.VERSION.SDK_INT) }
+    val mediaDispatchPlan = remember(mediaQueueSpec, mediaEnginePlan) {
+        MediaExecutionDispatcher().dispatchPlan(mediaQueueSpec, mediaEnginePlan, capture)
+    }
+    val mediaQueueActionPlan = remember(mediaDispatchPlan) { MediaQueueActionPlanner().actionPlan(mediaDispatchPlan, null) }
+    val mediaWorkerBridgeRequest = remember(mediaQueueSpec, mediaEnginePlan, mediaDispatchPlan, mediaQueueActionPlan) {
+        MediaWorkerBridgePlanner().request(mediaQueueSpec, mediaEnginePlan, mediaDispatchPlan, mediaQueueActionPlan)
+    }
     val metadataPreview = remember(capture, captureVariants) { mediaPlanner.metadataProbePreview(capture, captureVariants) }
     val pickerGroups = remember(capture, captureVariants, trackSelection) { mediaPlanner.pickerGroups(capture, captureVariants, trackSelection) }
     val playbackCandidate = remember(capture, captureVariants) { mediaPlanner.playbackCandidate(capture, captureVariants) }
@@ -1296,8 +2118,15 @@ private fun MediaCaptureCard(
         XdmMetadataText(mediaPlan.explanation, maxLines = 3)
         MetadataProbePreviewCard(metadataPreview, mediaPlan)
         SessionHandoffCard(mediaPlan)
+        MediaEngineHardeningCard(mediaEnginePlan)
+        MediaDispatchRunbookCard(mediaDispatchPlan)
+        MediaQueueActionPlanCard(mediaQueueActionPlan)
+        MediaWorkerBridgePlanCard(mediaWorkerBridgeRequest)
         ProtectedMediaDiagnosticsCard(mediaPlan)
-        playbackCandidate?.let { candidate -> Media3DirectPlayerCard(candidate) }
+        playbackCandidate?.let { candidate ->
+            Media3DirectPlayerCard(candidate)
+            PlayerDiagnosticsReportCard(MediaPlayerDiagnosticsPlanner().report(candidate))
+        }
         if (captureVariants.isNotEmpty()) {
             XdmListCard(compact = true) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -1332,9 +2161,9 @@ private fun MediaCaptureCard(
         }
         XdmActionFlowRow {
             Button(
-                onClick = { onDownload(capture) },
+                onClick = { onDownload(capture, mediaPlan.trackSelection) },
                 enabled = mediaPlan.canQueueDirectly && capture.status != MediaCaptureStatus.DownloadCreated && capture.resolutionStatus != MediaResolutionStatus.RequiresRefresh,
-            ) { Text(if (capture.status == MediaCaptureStatus.DownloadCreated) "Added" else "Download selected") }
+            ) { Text(if (capture.status == MediaCaptureStatus.DownloadCreated) "Added" else "Queue selected") }
             TextButton(onClick = { onResolve(capture) }) { Text(if (capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh) "Refresh metadata" else "Resolve metadata") }
             TextButton(onClick = { onRemove(capture) }) { Text("Remove capture") }
         }
@@ -1386,6 +2215,43 @@ private fun SessionHandoffCard(plan: MediaDownloadPlan) {
             maxLines = 3,
         )
         XdmMetadataText(plan.sessionHandoff.redactedSummary, maxLines = 3)
+    }
+}
+
+@Composable
+private fun MediaDispatchRunbookCard(plan: MediaDispatchPlan) {
+    XdmListCard(compact = true) {
+        XdmMetadataText("Dispatch runbook")
+        XdmSupportingText("Safe dispatch is gated by readiness, selected lane, retry policy, progress signals, redacted diagnostics, and terminal cleanup.", maxLines = 3)
+        XdmActionFlowRow {
+            StatusPill(plan.readiness.label, toneForDispatchReadiness(plan.readiness))
+            StatusPill(plan.primaryActionLabel, if (plan.queueButtonEnabled) XdmStatusTone.Success else XdmStatusTone.Neutral)
+            StatusPill("${plan.steps.size} steps", XdmStatusTone.Neutral)
+            StatusPill("retry ${plan.retryPolicy.maxAttempts}", XdmStatusTone.Info)
+        }
+        XdmMetadataText(plan.safeDiagnostics, maxLines = 4)
+        plan.steps.take(3).forEach { step ->
+            XdmMetadataText("${step.kind.label}: ${step.title}", maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun MediaEngineHardeningCard(plan: MediaExecutionEnginePlan) {
+    XdmListCard(compact = true) {
+        XdmMetadataText("Download engine hardening")
+        XdmSupportingText(
+            "UIDT / WorkManager fallback / foreground service policy is selected before queueing, with transient cookie and aria2 files cleaned after terminal state.",
+            maxLines = 3,
+        )
+        XdmActionFlowRow {
+            StatusPill(plan.lane.label, XdmStatusTone.Info)
+            StatusPill(plan.backgroundPolicy.workKind.label, XdmStatusTone.Neutral)
+            plan.tempCookieFile?.let { StatusPill("Netscape cookie temp file", XdmStatusTone.Warning) }
+            plan.aria2Input?.let { StatusPill("aria2 transient input/session", XdmStatusTone.Info) }
+            StatusPill(if (plan.leakReport.safe) "No cookie leaks" else "Review leaks", if (plan.leakReport.safe) XdmStatusTone.Success else XdmStatusTone.Warning)
+        }
+        XdmMetadataText("Cleanup verified: ${plan.cleanupActions.joinToString()}", maxLines = 2)
     }
 }
 

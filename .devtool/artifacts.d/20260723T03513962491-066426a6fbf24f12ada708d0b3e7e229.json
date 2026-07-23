@@ -1,0 +1,106 @@
+{
+  "applied_at": "2026-07-23T03:51:39.624913Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_media_termux_runtime_adapter_overlay.zip",
+  "artifact_name": "xdm_android_media_termux_runtime_adapter_overlay.zip",
+  "type": "overlay",
+  "sha256": "e99c4890873edf3c8a2bbb115502260a0e110aa5b21c912e73358eca2caddf32",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 8,
+  "change_counts": {
+    "add": 3,
+    "modify": 5
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Media Termux Runtime Adapter",
+    "description": "Adds Phase 26 media Termux runtime adapter: typed yt-dlp/aria2 launch plans, capability probes, transient Netscape cookie/input/session files, cleanup verification, docs, tests, UI card, and validator while validation remains deferred.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "42f8b9ddf3694a812b053add61f4012bec22d36602019bc0bd6a460fa0b5374c",
+          "size": 540,
+          "source_sha256": "00567df0e0731f9eda1b5037f73d743ad572a71e577f579890503df8bd7b676f"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "e9c7bb3fc6d27ec1d35c0be2fffe7da280b54e18919a61baa3925219c3d01493",
+          "size": 19219,
+          "source_sha256": "4729b1ba6ca740ce08520f54eadd5dd27041062534d023529d384b26ea9925c4"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "54ea2e02dfb0ab4772e5e460c388ce002299803996a0f63f8e71c7c05b381f0b",
+          "size": 166040,
+          "source_sha256": "bc912b79a829f38eb92de220fd663d004ca85f27190567ee4effdc771dd10263"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "4dc294f27319939a043ed8ce00366da3cdba815193c3f786a6d4f703e605ef6c",
+          "size": 67676,
+          "source_sha256": "0182117b98531c1e4391f4edf0271ebd262552d0f7fd696b59390e571a45cc19"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-26-MEDIA-TERMUX-RUNTIME-ADAPTER.md",
+          "action": "add",
+          "sha256": "1bf018f9db9ee036ff2636e3d5319020b26e7af55c80f8a5f0023687a01eab1a",
+          "size": 711
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaTermuxRuntimeAdapter.kt",
+          "action": "add",
+          "sha256": "efaa797203c685cd980ac824ea497b60c9a44f58264ba0e9d93a0d7974854c6e",
+          "size": 12805
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+          "action": "modify",
+          "sha256": "8cc84a5088a9fe0487071032eab348d8d35001983e5dfaa0e47afff9973a36de",
+          "size": 41955,
+          "source_sha256": "a5a67bca40ab7388af81a05a67ae6527187e2c3b41fafdc5251d29c8335d0d34"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-termux-runtime-adapter.py",
+          "action": "add",
+          "sha256": "c2b232712da478f9fef290dea54673f89be01731cad4af6865c7731c1346ecdb",
+          "size": 1873
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "success",
+        "diagnostics": "success",
+        "maximum_warnings": 0,
+        "maximum_errors": 0
+      },
+      "commands": [
+        "python3 tools/validate-media-termux-runtime-adapter.py",
+        "python3 tools/validate-media-worker-bridge.py",
+        "python3 tools/validate-media-queue-actions.py"
+      ]
+    },
+    "apply": {
+      "recommended_flag": "--no-validate",
+      "validation_deferred_until": "final_media_release_validation"
+    }
+  },
+  "history_id": "066426a6fbf24f12ada708d0b3e7e229"
+}

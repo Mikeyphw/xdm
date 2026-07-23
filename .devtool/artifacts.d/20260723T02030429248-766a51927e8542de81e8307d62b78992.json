@@ -1,0 +1,131 @@
+{
+  "applied_at": "2026-07-23T02:03:04.292480Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_media_download_engine_hardening_overlay.zip",
+  "artifact_name": "xdm_android_media_download_engine_hardening_overlay.zip",
+  "type": "overlay",
+  "sha256": "14ced4a7e9a273a4ea4a50dc2b9045f54e2dcde06fb582335ed58c6117eac67a",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 12,
+  "change_counts": {
+    "add": 2,
+    "modify": 10
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Media Download Engine Hardening",
+    "description": "Adds Phase 21 media download engine hardening: warning-zero media tests, explicit execution lanes, UIDT/WorkManager/foreground-service policy modeling, transient Netscape cookie and aria2 input/session cleanup plans, Media3 error diagnostics, and no-secret leak sentinels.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "7f651596476fb5a3ea70936562279397f3a9b92348bf9fea41ac1644383f5624",
+          "size": 1969,
+          "source_sha256": "8208beec475cbe4427e3651e8c27ffdf08b051f5f296e8a62593ec398d44fd23"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "768acebf51d354a3cd85569e04f6eeee4c50c3c6c2f0a6f3d47853d2464a5156",
+          "size": 15016,
+          "source_sha256": "4095b2792dfc3206464a8899712b0fdca29c596d434195898ecd9bf7bdcaa2c3"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "5a26bcef0dd00f6cc1793fec678ea30e154ad7dcc0b378c9f560a3fb136f64ed",
+          "size": 11831,
+          "source_sha256": "0c98d8643936bf466ddbb43b537a351d53bd20d72e352e9d0ac9ce2dfa15052b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "b736c8ad4d5be17c29aae091c1378f2af91b19937703c01b9d9f8e89435034e5",
+          "size": 68674,
+          "source_sha256": "69c5c06bd123f5840529090ba38415700e8b5b20fae92f851aa70febfd940684"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt",
+          "action": "modify",
+          "sha256": "609d02ca9f5a772dc9effa23f80e2d817c8058681e324c2cb80df73ed944697c",
+          "size": 5182,
+          "source_sha256": "93496f755ce50cb1b424e2ab0690b3b8e3365c2677ebddef9b435cf3a473d50d"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "00e7ceffa9ca32292665468c8b9be41246ace6e0cee1e19d0218c42d1a936ab2",
+          "size": 143142,
+          "source_sha256": "c939302a243599f577e2581f223ed2594afd236c6506717a295f5b7f03d4c865"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "231fc714f0b0de4d1e2a9d7a0adfb1b064cbe25448770cc29899d44172763260",
+          "size": 57408,
+          "source_sha256": "09fdcc42172d9b55e5549ef0bc42572338fd275ef2233f7bce1a061d1d93dc72"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-21-MEDIA-DOWNLOAD-ENGINE-HARDENING.md",
+          "action": "add",
+          "sha256": "c861d41b90a09384663bd8e390c8d05dd0ac8b6880eb80c1b2332cb60efdfcad",
+          "size": 2645
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionLibrary.kt",
+          "action": "modify",
+          "sha256": "0c93c10ea6900cbdcf924cf6437c1778a9e5de7205dc4768952ea2c01de8358e",
+          "size": 28640,
+          "source_sha256": "a26cba25ca5381ee423d0ed5898612a8f516632fc7d1b7b3f14fbf3942d12def"
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+          "action": "modify",
+          "sha256": "b2e0711482417f27839c3f0cdf585786caa35ace5a71f7059521c7018a0cae67",
+          "size": 20958,
+          "source_sha256": "46c6db8a6150ca2b627dbcdadb9df049bfb7ad986ec58f4d3eb8ded27e3b7020"
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/MediaRequestHandoffStore.kt",
+          "action": "modify",
+          "sha256": "97aafe5f9461488f3932fc05e97ef6a23935c2eb0e434f090cc29040b830116e",
+          "size": 1811,
+          "source_sha256": "0480cf98754442781d8f8058bc41e728e4d860157b81f99444c0e7a7ddf06435"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-download-engine-hardening.py",
+          "action": "add",
+          "sha256": "98ab9b33dba6fb443fd8e98912af08960b455e03982e25efbd82b8e7e149a372",
+          "size": 2427
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "success",
+        "diagnostics": "success",
+        "maximum_warnings": 0,
+        "maximum_errors": 0
+      },
+      "commands": [
+        "python3 tools/validate-media-download-engine-hardening.py",
+        "python3 tools/validate-media-execution-library.py",
+        "python3 tools/validate-media-resolver-player.py"
+      ]
+    }
+  },
+  "history_id": "766a51927e8542de81e8307d62b78992"
+}

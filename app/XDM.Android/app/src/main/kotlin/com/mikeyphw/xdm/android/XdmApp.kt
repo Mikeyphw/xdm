@@ -214,11 +214,13 @@ private fun AppScaffold(
                 AppRoute.Media -> MediaInboxScreen(
                     state.mediaCaptures,
                     state.mediaVariants,
+                    state.downloads,
                     state.termuxMediaPipeline,
                     state.postProcessingAutomation,
                     viewModel::captureBrowserMediaUrl,
                     viewModel::openAddFromBrowser,
                     viewModel::downloadMediaCapture,
+                    viewModel::togglePause,
                     viewModel::resolveMediaCapture,
                     viewModel::selectMediaVariant,
                     viewModel::removeMediaCapture,

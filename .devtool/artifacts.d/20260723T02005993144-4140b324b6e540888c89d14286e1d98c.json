@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-07-23T02:00:59.931440Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_media_download_engine_hardening_overlay.zip",
+  "artifact_name": "xdm_android_media_download_engine_hardening_overlay.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "4140b324b6e540888c89d14286e1d98c"
+}

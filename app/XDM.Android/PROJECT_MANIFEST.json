@@ -2,7 +2,7 @@
   "project": {
     "name": "XDM Android",
     "package_id": "com.mikeyphw.xdm.android",
-    "version": "0.19.0-rc01",
+    "version": "0.20.0-rc07",
     "implemented_phases": [
       0,
       1,
@@ -23,7 +23,20 @@
       16,
       17,
       18,
-      19
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32
     ]
   },
   "database": {
@@ -110,7 +123,7 @@
       "compare"
     ]
   },
-  "next_phase": "media-download-execution-and-offline-library",
+  "next_phase": "media_final_validation_gate",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -448,7 +461,7 @@
     "yt_dlp_page_url_probe": true,
     "offline_library_groundwork": true
   },
-  "current_overlay": "phase-19-media-resolver-player",
+  "current_overlay": "xdm_android_phase30_31_media_capture_privacy_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -462,6 +475,352 @@
     "media3_direct_player": true,
     "protected_media_diagnostics_only": true,
     "cookie_leak_tests": true,
+    "top_level_route_added": false
+  },
+  "media_execution_library": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-execution-and-library-without-code-copy",
+    "selected_resolver_tracks_queue": true,
+    "short_lived_session_handoff_store": true,
+    "native_aria2_headers_plumbed": true,
+    "termux_ytdlp_jobs_mark_capture": true,
+    "job_states": [
+      "Probing",
+      "Queued",
+      "Downloading",
+      "Completed",
+      "Failed",
+      "Blocked"
+    ],
+    "offline_library_items": true,
+    "redacted_sidecar_metadata": true,
+    "thumbnail_title_duration_source_host": true,
+    "resume_retry_from_media": true,
+    "completed_direct_media_player": true,
+    "failure_reason_taxonomy": [
+      "unsupported_drm",
+      "live_stream",
+      "expired_session",
+      "extractor_missing",
+      "aria2_failure"
+    ],
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "top_level_route_added": false
+  },
+  "media_download_engine_hardening": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-engine-hardening-without-code-copy",
+    "no_validation_until_final_phase": true,
+    "warning_fix": "removed redundant Kotlin non-null assertion in media test selector handling",
+    "execution_lanes": [
+      "DirectNative",
+      "Aria2Segmented",
+      "YtDlpAdaptive",
+      "LiveRecording",
+      "ProtectedBlocked"
+    ],
+    "android_background_policy": [
+      "UserInitiatedDataTransfer",
+      "WorkManagerForeground",
+      "ForegroundServiceFallback",
+      "TermuxExternalJob",
+      "BlockedDiagnostic"
+    ],
+    "foreground_service_type": "dataSync",
+    "temporary_cookie_file": "Netscape format, process scoped, deleted after terminal state",
+    "aria2_transient_input_session": "generated and deleted after terminal state",
+    "media3_error_diagnostics": true,
+    "no_cookie_header_token_leaks": [
+      "logs",
+      "diagnostics",
+      "sidecars",
+      "Room-safe download explanation",
+      "Termux command rendering"
+    ],
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "top_level_route_added": false
+  },
+  "media_dispatch_control_tower": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-dispatch-control-tower-without-code-copy",
+    "no_validation_until_final_phase": true,
+    "dispatch_runbook": true,
+    "readiness_states": [
+      "Ready",
+      "AwaitingUserChoice",
+      "NeedsMetadataRefresh",
+      "NeedsTermuxSetup",
+      "BlockedProtected",
+      "BlockedSecretLeak"
+    ],
+    "dispatch_steps": [
+      "Preflight",
+      "PrepareTransientFiles",
+      "QueueBackgroundWork",
+      "LaunchTermuxJob",
+      "PersistRedactedSidecar",
+      "RegisterCleanup",
+      "VerifyRedaction",
+      "NotifyUser"
+    ],
+    "retry_policy": true,
+    "progress_signals": true,
+    "dashboard": true,
+    "redacted_diagnostics": true,
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "media_queue_telemetry": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-queue-observability-without-code-copy",
+    "no_validation_until_final_phase": true,
+    "dispatch_runbook_input": true,
+    "execution_job_input": true,
+    "telemetry_deck": true,
+    "progress_pulse": true,
+    "next_action_labels": [
+      "Launch queue",
+      "Choose tracks",
+      "Refresh metadata",
+      "Open Termux setup",
+      "Retry media",
+      "Open library",
+      "Review diagnostics"
+    ],
+    "terminal_cleanup_visible": true,
+    "redacted_diagnostics": true,
+    "secret_leak_blocking": true,
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "media_queue_actions": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-action-eligibility-without-code-copy",
+    "no_validation_until_final_phase": true,
+    "telemetry_input": true,
+    "dispatch_runbook_input": true,
+    "action_kinds": [
+      "Launch",
+      "Pause",
+      "Resume",
+      "Retry",
+      "Cancel",
+      "CleanupTerminal",
+      "RefreshMetadata",
+      "ChooseTracks",
+      "OpenTermuxSetup",
+      "ViewDiagnostics",
+      "OpenLibrary"
+    ],
+    "bulk_actions": [
+      "retry_failed",
+      "cleanup_finished",
+      "cancel_active"
+    ],
+    "destructive_actions_require_confirmation": true,
+    "redacted_diagnostics": true,
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "media_worker_bridge": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-worker-bridge-without-code-copy",
+    "no_validation_until_final_phase": true,
+    "worker_request_model": true,
+    "foreground_progress_notification_model": true,
+    "uidt_ready_policy": true,
+    "workmanager_foreground_fallback": true,
+    "legacy_datasync_foreground_service_fallback": true,
+    "termux_external_job_bridge_contract": true,
+    "aria2_launch_adapter_contract": true,
+    "yt_dlp_launch_adapter_contract": true,
+    "durable_job_ids_without_secrets": true,
+    "redacted_command_rendering": true,
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "implemented_phases": [
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32
+  ],
+  "media_termux_runtime_adapter": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-termux-runtime-adapter-without-code-copy",
+    "no_validation_until_final_phase": true,
+    "typed_termux_command_rendering": true,
+    "temporary_netscape_cookie_file_writer_plan": true,
+    "temporary_aria2_input_session_writer_plan": true,
+    "runtime_capability_probe": [
+      "yt-dlp",
+      "aria2c",
+      "ffmpeg",
+      "ffprobe"
+    ],
+    "install_help_diagnostics_only": true,
+    "cleanup_hooks": [
+      "delete_cookie_file",
+      "delete_aria2_input",
+      "delete_aria2_session",
+      "verify_redaction"
+    ],
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "media_native_direct_download_engine": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-native-direct-engine-without-code-copy",
+    "no_validation_until_final_phase": true,
+    "direct_url_executor_planner": true,
+    "transient_header_policy": true,
+    "resume_capable_partial_metadata": true,
+    "file_naming_collision_policy": true,
+    "destination_policy": [
+      "app_private",
+      "mediastore_movies",
+      "mediastore_music",
+      "saf_document",
+      "legacy_file"
+    ],
+    "progress_notification_model_reused": true,
+    "adaptive_media_rejected_from_native_lane": true,
+    "redacted_diagnostics": true,
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "media_offline_library_v2": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-offline-library-without-code-copy",
+    "no_validation_until_final_phase": true,
+    "filters": [
+      "video",
+      "audio",
+      "failed",
+      "playable",
+      "needs_cleanup",
+      "missing_file",
+      "source_host"
+    ],
+    "sorting": [
+      "recent",
+      "title",
+      "duration",
+      "state",
+      "source_host"
+    ],
+    "safe_sidecar_export": true,
+    "rename_sidecar_action": true,
+    "remove_sidecar_action_requires_confirmation": true,
+    "missing_file_detection": true,
+    "open_player_folder_share_actions": true,
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "media_player_diagnostics": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-player-diagnostics-without-code-copy",
+    "no_validation_until_final_phase": true,
+    "media3_player_error_buckets": [
+      "source",
+      "network",
+      "decoder",
+      "unsupported_codec",
+      "subtitle",
+      "protected_media",
+      "unknown"
+    ],
+    "retry_prepare_action": true,
+    "track_availability_display": true,
+    "subtitle_availability_display": true,
+    "remember_local_playback_position_plan": true,
+    "protected_media_diagnostic_only": true,
+    "drm_bypass": false,
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "media_browser_capture_quality": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-capture-quality-without-code-copy",
+    "no_validation_until_final_phase": true,
+    "confidence_scoring": true,
+    "capture_grouping": true,
+    "duplicate_suppression": true,
+    "analytics_noise_suppression": true,
+    "stale_metadata_refresh_labels": true,
+    "live_and_protected_labels": true,
+    "safe_diagnostics": true,
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "media_session_privacy_audit": {
+    "schema_version_unchanged": 14,
+    "no_validation_until_final_phase": true,
+    "scanned_surfaces": [
+      "browser_profile",
+      "resolver_session_handoff",
+      "queue_spec",
+      "room_metadata",
+      "sidecar",
+      "logs",
+      "notification",
+      "temp_files",
+      "termux_command_preview"
+    ],
+    "durable_secret_scan": true,
+    "transient_cleanup_ledger": true,
+    "redacted_findings_only": true,
+    "cookie_header_token_persistence": false,
+    "drm_bypass": false,
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
+    "top_level_route_added": false
+  },
+  "media_mobile_polish": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-mobile-polish-without-code-copy",
+    "no_validation_until_final_phase": true,
+    "sticky_current_job_summary": true,
+    "compact_primary_action_strip": true,
+    "collapsed_diagnostics_drawers": [
+      "player",
+      "privacy",
+      "cleanup",
+      "capture_quality"
+    ],
+    "empty_offline_error_states": true,
+    "accessibility_labels": true,
+    "touch_target_safe": true,
+    "no_tiny_scroll_islands": true,
+    "foldable_two_pane_guidance": true,
+    "secret_safe_summaries_only": true,
+    "raw_shell_exposed": false,
+    "root_required": false,
+    "room_schema_migration": false,
     "top_level_route_added": false
   }
 }

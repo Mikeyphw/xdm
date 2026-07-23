@@ -1,0 +1,115 @@
+{
+  "applied_at": "2026-07-23T02:58:09.661001Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_media_queue_telemetry_overlay.zip",
+  "artifact_name": "xdm_android_media_queue_telemetry_overlay.zip",
+  "type": "overlay",
+  "sha256": "6c4bf0b481ccc5ebc41da2a3a49c4cc01059e07d62298adcf5fe9591dc74a8c6",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 9,
+  "change_counts": {
+    "add": 3,
+    "modify": 6
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Media Queue Telemetry",
+    "description": "Adds Phase 23 media queue telemetry: pure Kotlin telemetry deck, progress pulse, next-action labels, terminal cleanup visibility, redacted diagnostics, Media UI card, and final-gate contracts while validation remains deferred.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "4c431dcf610e46dd7b318d99b0900068823f780d6ce6bfd633c12fa3b91161d5",
+          "size": 1691,
+          "source_sha256": "62016e06509a7fd5d64ba6e2b05f948ef299eef50db8f5e10254b9d12bf01bbe"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "31bbc414769bf0d4279a459e4908af6e5a0aefc27a0ac9aa894a84a18e017f24",
+          "size": 16730,
+          "source_sha256": "1aade873ac4abf9329a6ca924dfb0fdba8e8756ed30bee7b13a2417e1f1c5fc4"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "0bfa410ddd712002b8e897247836199ffb1461469b74d85e903dcd36164037a5",
+          "size": 13255,
+          "source_sha256": "16fd8f888fff6425158ae6ce7565e279da0e26c663acaaca590acf8d7747db67"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "b41e14b6d9b83817a7d3c1dad2e67bb39dd7dc58899a513d33461c357414af2b",
+          "size": 152883,
+          "source_sha256": "97c8eeb8a4c3c03b1413e7d7212320cd9af8f6fc66d45a6404565e6ac8f71f46"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "5368c1aa31fbf167334164e63f84266fe0a1b7425276144cc35d5f521b201f65",
+          "size": 61538,
+          "source_sha256": "16d970bd429171bd537f6108943314408c0b2f5db5040c9cc2e3fa20812f0450"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-23-MEDIA-QUEUE-TELEMETRY.md",
+          "action": "add",
+          "sha256": "80bc0d98089dd40b75f15f87b492a6660723232d6190fdfba7e47edd3b54ba8f",
+          "size": 1636
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaQueueTelemetry.kt",
+          "action": "add",
+          "sha256": "43cb312202fdaf9858fb3b29cdb4f99ce363e7230d092c4cb8621ecf3438cab1",
+          "size": 9853
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+          "action": "modify",
+          "sha256": "af7585223ce514c68ed446d8d7ed1c04b4ea835b81d3971d85408f88537069ac",
+          "size": 28814,
+          "source_sha256": "115b9b067fc5476f1100b1015c3a347a910654b33b25751d08706276761e311f"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-queue-telemetry.py",
+          "action": "add",
+          "sha256": "05f6593d4b93ac49f4a0381ba95f9588a4168cc61ae2705747d039261b4fd7d3",
+          "size": 2911
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "success",
+        "diagnostics": "success",
+        "maximum_warnings": 0,
+        "maximum_errors": 0
+      },
+      "commands": [
+        "python3 tools/validate-media-queue-telemetry.py",
+        "python3 tools/validate-media-dispatch-control-tower.py",
+        "python3 tools/validate-media-download-engine-hardening.py",
+        "python3 tools/validate-media-execution-library.py",
+        "python3 tools/validate-media-resolver-player.py"
+      ]
+    },
+    "apply": {
+      "recommended_flag": "--no-validate",
+      "validation_deferred_until": "final_media_release_validation"
+    }
+  },
+  "history_id": "4ba6156eb5dc4e6e9234861cca41f62c"
+}

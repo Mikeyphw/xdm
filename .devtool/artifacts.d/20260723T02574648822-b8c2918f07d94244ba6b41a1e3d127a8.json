@@ -1,0 +1,114 @@
+{
+  "applied_at": "2026-07-23T02:57:46.488221Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_media_dispatch_control_tower_overlay.zip",
+  "artifact_name": "xdm_android_media_dispatch_control_tower_overlay.zip",
+  "type": "overlay",
+  "sha256": "c282b8e83be77bfc940ba29d36820d9274c207e86bf55646989c899c544e4abf",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 9,
+  "change_counts": {
+    "add": 3,
+    "modify": 6
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Media Dispatch Control Tower",
+    "description": "Adds Phase 22 media dispatch control tower: pure Kotlin dispatch runbooks, readiness gates, retry policies, progress signals, redacted diagnostics, dashboard UI, and final-gate contracts while validation remains deferred for intermediate phases.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "62016e06509a7fd5d64ba6e2b05f948ef299eef50db8f5e10254b9d12bf01bbe",
+          "size": 1959,
+          "source_sha256": "7f651596476fb5a3ea70936562279397f3a9b92348bf9fea41ac1644383f5624"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "1aade873ac4abf9329a6ca924dfb0fdba8e8756ed30bee7b13a2417e1f1c5fc4",
+          "size": 15935,
+          "source_sha256": "768acebf51d354a3cd85569e04f6eeee4c50c3c6c2f0a6f3d47853d2464a5156"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "16fd8f888fff6425158ae6ce7565e279da0e26c663acaaca590acf8d7747db67",
+          "size": 12674,
+          "source_sha256": "5a26bcef0dd00f6cc1793fec678ea30e154ad7dcc0b378c9f560a3fb136f64ed"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "97c8eeb8a4c3c03b1413e7d7212320cd9af8f6fc66d45a6404565e6ac8f71f46",
+          "size": 149174,
+          "source_sha256": "00e7ceffa9ca32292665468c8b9be41246ace6e0cee1e19d0218c42d1a936ab2"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "16d970bd429171bd537f6108943314408c0b2f5db5040c9cc2e3fa20812f0450",
+          "size": 59494,
+          "source_sha256": "231fc714f0b0de4d1e2a9d7a0adfb1b064cbe25448770cc29899d44172763260"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-22-MEDIA-DISPATCH-CONTROL-TOWER.md",
+          "action": "add",
+          "sha256": "b588d62cfa4a31f6653397f3decf686436464b3ad860deb08590733f996e4f47",
+          "size": 2788
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionDispatcher.kt",
+          "action": "add",
+          "sha256": "eaca83d7ca491b6dce9856969d6b2b89d51885e328915029dd89eefb42f7a5de",
+          "size": 16907
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+          "action": "modify",
+          "sha256": "115b9b067fc5476f1100b1015c3a347a910654b33b25751d08706276761e311f",
+          "size": 25142,
+          "source_sha256": "b2e0711482417f27839c3f0cdf585786caa35ace5a71f7059521c7018a0cae67"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-dispatch-control-tower.py",
+          "action": "add",
+          "sha256": "22bbc4f6b34263c2070488773b9839e1092cc6d5d7d1e1a340f250a884438967",
+          "size": 2183
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "success",
+        "diagnostics": "success",
+        "maximum_warnings": 0,
+        "maximum_errors": 0
+      },
+      "commands": [
+        "python3 tools/validate-media-dispatch-control-tower.py",
+        "python3 tools/validate-media-download-engine-hardening.py",
+        "python3 tools/validate-media-execution-library.py",
+        "python3 tools/validate-media-resolver-player.py"
+      ]
+    },
+    "apply": {
+      "recommended_flag": "--no-validate",
+      "validation_deferred_until": "final_media_release_validation"
+    }
+  },
+  "history_id": "b8c2918f07d94244ba6b41a1e3d127a8"
+}

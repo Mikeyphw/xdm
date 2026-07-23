@@ -1,4 +1,4 @@
-## XDM Android 0.19.0-rc01
+## XDM Android 0.20.0-rc02
 
 Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
 
@@ -125,3 +125,41 @@ The Media route now contains a browser workspace with persisted tabs, recent his
 The Media route now resolves captured HLS/DASH manifests through a real picker surface: video quality, audio tracks, and subtitle tracks are selected before download planning. yt-dlp metadata previews show title, thumbnail availability, duration, extractor, and format count before the download action runs. Session handoff is review-first: referer, Origin, and cookie jar hints are passed only to typed yt-dlp/aria2/native planning paths, while diagnostics keep cookies, authorization, tokens, and signed query values redacted.
 
 Completed direct media can open in the embedded Media3 player card. Adaptive or protected streams remain resolver-first, and protected media is diagnostic-only: XDM reports the protection marker but does not bypass DRM or queue protected media.
+
+### Media execution and offline library
+
+The Media route now carries resolver-selected video, audio, and subtitle tracks into actual queue planning. Direct/progressive media can run through the native or aria2 backends, while adaptive/page-context jobs use the typed Termux yt-dlp pipeline and stay attached to the originating media capture. Request headers are handed off through a short-lived in-process store and removed after terminal execution; Room, diagnostics, and sidecar metadata keep only redacted summaries.
+
+The offline library is derived from media captures plus completed downloads inside the existing Media route. Rows show title, filename, source host, duration, thumbnail availability, state, redacted sidecar metadata, retry/resume actions, and Media3 player access for completed direct media. Protected media remains diagnostic-only with no DRM bypass and no raw shell exposure.
+
+### Media download engine hardening
+
+Phase 21 adds the next execution-hardening layer without adding a route or database migration. Media queue specs are now classified into explicit engine lanes for native direct downloads, aria2 segmented downloads, yt-dlp adaptive jobs, live recording, and protected diagnostics. The lane model chooses a UIDT-ready Android 14+ policy, WorkManager foreground fallback, legacy dataSync foreground-service fallback, Termux external job, or blocked diagnostic state before queueing.
+
+Temporary Netscape cookie files and aria2 input/session files are modeled as transient cleanup-owned artifacts only. Persistent metadata keeps redacted summaries, and the Media screen exposes the hardening policy plus no-cookie-leak status. The Media3 player card now reports player error diagnostics and exposes retry prepare for completed direct media. Per project direction, validation is deferred until the final phase; apply this overlay with `--no-validate`.
+
+### Media dispatch control tower
+
+Phase 22 keeps the existing Media route as the single workspace and adds a dispatch control tower before jobs leave the inbox. Each media capture now receives a pure-Kotlin dispatch runbook with readiness, lane, background policy summary, retry policy, progress signals, warnings, terminal cleanup, and redacted diagnostics.
+
+The dashboard counts ready, blocked, refresh-required, and Termux-required plans while preserving the no-secret contract from earlier phases. Only ready dispatch plans can proceed. Protected media remains diagnostic-only, metadata-expired media asks for refresh, and yt-dlp/live jobs require the Termux media pipeline. Per project direction, this intermediate overlay is applied with `--no-validate`; the validator and architecture contract are included for the final phase replay.
+
+## Phase 23: Media queue telemetry
+
+Phase 23 adds a Media-route telemetry deck on top of the Phase 22 dispatch control tower. It merges dispatch readiness with current execution jobs so the user can see what is ready, active, stalled, terminal, cleanup-armed, or blocked by redaction before the final validation phase.
+
+The telemetry layer is pure Kotlin and does not launch processes, persist cookies, write Room rows, add routes, or expose raw shell. It renders safe progress pulse, next action, terminal cleanup state, and redacted diagnostics inside the existing Media inbox.
+
+
+## Phase 24: Media queue actions
+
+Phase 24 turns queue telemetry into safe action eligibility inside the existing Media route. The Media queue actions card shows launch, pause, resume, retry, cancel, cleanup, refresh metadata, choose tracks, Termux setup, diagnostics, and library handoff availability without launching workers or exposing raw shell.
+
+Destructive actions are modeled as confirmation-required, terminal cleanup remains tied to redaction verification, and blocked/protected captures stay diagnostic-only. This intermediate phase is intended for `--no-validate`; the validator and architecture contract are included for the final validation replay.
+
+
+## Phase 25: Media worker bridge
+
+Phase 25 converts ready media queue actions into worker bridge requests without actually enqueueing workers yet. The bridge models Android UIDT, WorkManager foreground, foreground dataSync fallback, native direct, aria2, and Termux yt-dlp adapters with durable job IDs, redacted foreground notification text, cleanup-owned transient files, and typed arguments only.
+
+The Media worker bridge card stays inside the existing Media route. No Room migration, no new top-level route, no raw shell, and no persistent cookies or tokens are introduced. This intermediate phase is intended for `--no-validate`; the final media validation gate will replay its validator and architecture contract.

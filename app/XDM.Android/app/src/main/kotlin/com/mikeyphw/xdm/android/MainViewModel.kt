@@ -39,6 +39,7 @@ import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.media.MediaCaptureService
+import com.mikeyphw.xdm.android.media.MediaExecutionLibraryPlanner
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
@@ -70,6 +71,7 @@ import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionStarter
+import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
 import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
 import com.mikeyphw.xdm.android.storage.DestinationUris
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
@@ -214,6 +216,7 @@ class MainViewModel(
     private val capabilitySnapshot = MutableStateFlow<Map<BackendType, BackendCapabilities>>(emptyMap())
     private val externalAddDraft = MutableStateFlow<ExternalAddDraft?>(null)
     private val mediaCaptureService = MediaCaptureService()
+    private val mediaExecutionPlanner = MediaExecutionLibraryPlanner()
 
     private data class RepositorySnapshot(
         val downloads: List<Download>,
@@ -1217,42 +1220,72 @@ class MainViewModel(
         navigate(AppRoute.Add)
     }
 
-    fun downloadMediaCapture(record: MediaCaptureRecord) {
-        val now = System.currentTimeMillis()
-        val selectedUrl = record.selectedVariantUrl ?: record.sourceUrl
-        val request = previewRequest(
-            url = selectedUrl,
-            fileName = record.fileName,
-            backend = BackendType.Automatic,
-            destination = DestinationUris.PUBLIC_DOWNLOADS,
-            conflictPolicy = FilenameConflictPolicy.Rename,
-            allowFallback = true,
-            isMediaRequest = true,
-        )
-        val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
-        if (!recommendation.compatible) return
-        val download = Download(
-            id = UUID.randomUUID().toString(),
-            fileName = sanitizeFileName(record.fileName),
-            sourceUrl = selectedUrl,
-            destinationUri = DestinationUris.PUBLIC_DOWNLOADS,
-            state = DownloadState.Queued,
-            backend = recommendation.backend,
-            bytesReceived = 0,
-            totalBytes = null,
-            speedBytesPerSecond = 0,
-            queueId = "default",
-            priority = 0,
-            createdAtEpochMs = now,
-            updatedAtEpochMs = now,
-            conflictPolicy = FilenameConflictPolicy.Rename,
-            mimeType = record.mimeType,
-            requestedBackend = BackendType.Automatic,
-            backendSelectionReason = recommendation.reason,
-            backendSelectionExplanation = recommendation.explanation,
-            allowBackendFallback = true,
-        )
+    fun downloadMediaCapture(record: MediaCaptureRecord, selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = record.selectedVariantId)) {
         viewModelScope.launch(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            val variants = repository.variantsForMediaCapture(record.id)
+            val spec = mediaExecutionPlanner.queueSpec(
+                capture = record,
+                variants = variants,
+                selection = selection,
+                destinationUri = DestinationUris.PUBLIC_DOWNLOADS,
+            )
+            val enginePlan = mediaExecutionPlanner.enginePlan(spec, androidSdkInt = android.os.Build.VERSION.SDK_INT)
+            if (spec.requiresTermuxYtDlp) {
+                val job = termuxMediaPipelineManager.downloadWithYtDlp(record, variants, selection)
+                repository.markMediaDownloadCreated(record.id, job.id, now)
+                navigate(AppRoute.Media)
+                return@launch
+            }
+            if (!spec.canUseAppQueue) {
+                repository.saveMediaCapture(record.copy(resolutionStatus = com.mikeyphw.xdm.android.model.MediaResolutionStatus.Failed, updatedAtEpochMs = now))
+                navigate(AppRoute.Media)
+                return@launch
+            }
+            val request = previewRequest(
+                url = spec.sourceUrl,
+                fileName = spec.fileName,
+                backend = spec.requestedBackend,
+                destination = DestinationUris.PUBLIC_DOWNLOADS,
+                conflictPolicy = FilenameConflictPolicy.Rename,
+                allowFallback = true,
+                isMediaRequest = true,
+                headers = spec.requestHeaders,
+                mimeType = record.mimeType,
+                isExpiringUrl = spec.isExpiringUrl,
+            )
+            val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
+            if (!recommendation.compatible) return@launch
+            val download = Download(
+                id = UUID.randomUUID().toString(),
+                fileName = sanitizeFileName(spec.fileName),
+                sourceUrl = spec.sourceUrl,
+                destinationUri = DestinationUris.PUBLIC_DOWNLOADS,
+                state = DownloadState.Queued,
+                backend = recommendation.backend,
+                bytesReceived = 0,
+                totalBytes = null,
+                speedBytesPerSecond = 0,
+                queueId = "default",
+                priority = 0,
+                createdAtEpochMs = now,
+                updatedAtEpochMs = now,
+                conflictPolicy = FilenameConflictPolicy.Rename,
+                mimeType = record.mimeType,
+                requestedBackend = spec.requestedBackend,
+                backendSelectionReason = recommendation.reason,
+                backendSelectionExplanation = listOf(recommendation.explanation, spec.safeExplanation, enginePlan.safeSummary).filter(String::isNotBlank).joinToString(" ").take(900),
+                allowBackendFallback = true,
+                userLabel = spec.userLabel,
+            )
+            MediaRequestHandoffStore.remember(
+                downloadId = download.id,
+                headers = spec.requestHeaders,
+                redactedSummary = spec.redactedSessionSummary,
+                isExpiringUrl = spec.isExpiringUrl,
+                cleanupActions = enginePlan.cleanupActions,
+                tempCookieFileName = enginePlan.tempCookieFile?.fileName,
+            )
             repository.save(download)
             repository.markMediaDownloadCreated(record.id, download.id, now)
             executionStarter.start(download.id, userVisible = true)
@@ -1361,14 +1394,20 @@ class MainViewModel(
         conflictPolicy: FilenameConflictPolicy,
         allowFallback: Boolean,
         isMediaRequest: Boolean = false,
+        headers: Map<String, String> = emptyMap(),
+        mimeType: String? = null,
+        isExpiringUrl: Boolean = false,
     ) = DownloadRequest(
         id = "preview",
         sourceUrl = url.trim(),
         destinationUri = destination,
         fileName = fileName,
         preferredBackend = backend,
+        headers = headers,
         conflictPolicy = conflictPolicy,
+        mimeType = mimeType,
         allowBackendFallback = allowFallback,
+        isExpiringUrl = isExpiringUrl,
         isMediaRequest = isMediaRequest,
     )
 

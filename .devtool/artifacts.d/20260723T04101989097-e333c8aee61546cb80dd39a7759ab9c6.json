@@ -1,0 +1,137 @@
+{
+  "applied_at": "2026-07-23T04:10:19.890973Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_phase28_29_media_library_player_overlay.zip",
+  "artifact_name": "xdm_android_phase28_29_media_library_player_overlay.zip",
+  "type": "overlay",
+  "sha256": "9b96a75724b04850b273169b26d2b9674353ca8609bbdbd1174795ce466d6005",
+  "status": "failed",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 12,
+  "change_counts": {
+    "add": 6,
+    "modify": 6
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 28+29 Media Library + Player",
+    "description": "Single devtool overlay for Phase 28 Offline Library 2.0 and Phase 29 Media Player 2.0 diagnostics with shared files pre-merged for apply-overlay/no-validate workflows.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "cce32cfa471ad38f7fb034fb2b31c0114928b3bd8bc5350693e2035a34425936",
+          "size": 1107,
+          "source_sha256": "a32853a8c27df5346a6781927d513a6649c88c2c624d5fbc8973dff59e86c151"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "8e8dadc9593021bef0a3ac5397609d45c0c7a0091e11ec447f06bd8a8b4f2353",
+          "size": 21694,
+          "source_sha256": "e92e3f1810a6e4e551541d38ff3e135bced48180b12ceeacfcbb26875b903563"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt",
+          "action": "modify",
+          "sha256": "d6b68a85a41b70ed93af9835c481e45c55031f7e15960c226a5eebcf31757653",
+          "size": 7178,
+          "source_sha256": "609d02ca9f5a772dc9effa23f80e2d817c8058681e324c2cb80df73ed944697c"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "15288c5f80225e32e06b8fc1c8944cd740eeddb3253ee54dfa13e73b976de1d7",
+          "size": 176610,
+          "source_sha256": "86e5363b8eb61be3887c7aca38499ec1f3f0fb4a155b515bf267c002d746baff"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "1cf788d57a76c8aea63eb209433229042af3934ed13dcc8597df3ab8ec20afbb",
+          "size": 72323,
+          "source_sha256": "211fa55e28f6322ff9f84ca9fcc41a2ca6843dcd5c35c9f33f10639a697d1fc0"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-28-MEDIA-OFFLINE-LIBRARY-V2.md",
+          "action": "add",
+          "sha256": "e43446cee8c0f84008f989826fb9e30d82f4ad3fae632d4fc600bc70fb70d896",
+          "size": 827
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-29-MEDIA-PLAYER-DIAGNOSTICS.md",
+          "action": "add",
+          "sha256": "71cfd3e45460516956430cdd5cfb0c61d9407c4b1a0fb2585f86c15e26c9e7d5",
+          "size": 805
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaOfflineLibraryV2.kt",
+          "action": "add",
+          "sha256": "5bb0d90dbd6e4c26444d1e2f580df1d7f4c891c6e3dbb28d3539a0c073d2baa5",
+          "size": 12700
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaPlayerDiagnostics.kt",
+          "action": "add",
+          "sha256": "6da1649045dec54f613c846c2681aa1116c6b326554807272a77d6351488caaa",
+          "size": 9616
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+          "action": "modify",
+          "sha256": "d9e869a36482bc94a7c895cc04b3be08df14689a591d24e3a13eb5f45c659761",
+          "size": 51387,
+          "source_sha256": "8655622a54bd710e90d6ea79c9fdb03b3f88e04c414523941edc497071050070"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-offline-library-v2.py",
+          "action": "add",
+          "sha256": "da1dd6aa2c2f33fe58e4097ca28fc91912cc712307601a4fdc5dfbf8965c3933",
+          "size": 1343
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-player-diagnostics.py",
+          "action": "add",
+          "sha256": "bade570e1b0a4f58839f23ee5b7bf73b0831d76699678779045c23c6baa9b36e",
+          "size": 1413
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "success",
+        "diagnostics": "success",
+        "maximum_warnings": 0,
+        "maximum_errors": 0
+      },
+      "commands": [
+        "python3 tools/validate-media-offline-library-v2.py",
+        "python3 tools/validate-media-player-diagnostics.py",
+        "python3 tools/validate-media-native-direct-download-engine.py",
+        "python3 tools/validate-media-termux-runtime-adapter.py"
+      ]
+    },
+    "apply": {
+      "recommended_flag": "--no-validate",
+      "validation_deferred_until": "final_media_release_validation",
+      "phases": [
+        28,
+        29
+      ],
+      "filename_has_phase_numbers": true
+    }
+  },
+  "history_id": "e333c8aee61546cb80dd39a7759ab9c6"
+}

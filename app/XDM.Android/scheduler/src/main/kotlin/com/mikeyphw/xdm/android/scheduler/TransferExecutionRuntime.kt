@@ -240,16 +240,20 @@ class TransferExecutionRuntime(
                 return
             }
         }
+        val mediaHandoff = MediaRequestHandoffStore.forDownload(download.id)
         val request = DownloadRequest(
             id = download.id,
             sourceUrl = download.sourceUrl,
             destinationUri = download.destinationUri,
             fileName = download.fileName,
             preferredBackend = download.requestedBackend,
+            headers = mediaHandoff?.headers.orEmpty(),
             expectedLength = download.totalBytes,
             conflictPolicy = download.conflictPolicy,
             mimeType = download.mimeType,
             allowBackendFallback = download.allowBackendFallback,
+            isExpiringUrl = mediaHandoff?.isExpiringUrl == true,
+            isMediaRequest = mediaHandoff != null,
         )
         try {
             fileNames[download.id] = download.fileName
@@ -348,10 +352,12 @@ class TransferExecutionRuntime(
             if (mapping != null) runCatching { registry.require(mapping.first).remove(mapping.second) }
             backendTaskIds.remove(downloadId)
             coordinator.release(downloadId)
+            MediaRequestHandoffStore.forget(downloadId)
             snapshots.value = snapshots.value - downloadId
             fileNames.remove(downloadId)
             updateSummary()
         } else if (state !in ACTIVE_STATES) {
+            MediaRequestHandoffStore.forget(downloadId)
             snapshots.value = snapshots.value - downloadId
             updateSummary()
         }

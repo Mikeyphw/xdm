@@ -72,6 +72,13 @@ data class MediaSessionHandoff(
         return options
     }
 
+    fun requestHeaders(): Map<String, String> {
+        val requestHeaders = linkedMapOf<String, String>()
+        referer?.let { requestHeaders["Referer"] = it }
+        headers.forEach { header -> requestHeaders[header.name] = header.value }
+        return requestHeaders
+    }
+
     fun diagnosticLines(): List<String> = listOf(
         "session_handoff\t${redactedSummary}",
         "session_target\t${redactUrl(selectedVariantUrl ?: sourceUrl)}",

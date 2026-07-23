@@ -1,0 +1,70 @@
+{
+  "applied_at": "2026-07-23T05:28:38.808756Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_phase32_manifest_ledger_fix_overlay.zip",
+  "artifact_name": "xdm_android_phase32_manifest_ledger_fix_overlay.zip",
+  "type": "overlay",
+  "sha256": "03e7cfbe04f9a812682d8b9c5048ddfa7e61110231e3ccd8e1e3adfe9ea7641e",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 3,
+  "change_counts": {
+    "modify": 3
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 32 Manifest Ledger Fix",
+    "description": "Repair overlay for Phase 32 root manifest phase ledger and validator preflight after applying overlays since the patched snapshot.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "139ef8d7759640e147a66ae87c6d3432c6b90f885c43646184967e5176dc60b2",
+          "size": 375,
+          "source_sha256": "67cd7fc931d2bf6d1a8830f060a9d0de81ee9382f958cd4e95eba6f06c9553fc"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "8ec38b79436862340efc588cc0fbef2f1c493b056eedfad8cead1250f4a62488",
+          "size": 23783,
+          "source_sha256": "e9943bfa7c44d528bd07b7671aea46787243ddc0f1df52e165d3e5886baed3b3"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-mobile-polish.py",
+          "action": "modify",
+          "sha256": "63b2f19a3db1d07d1fd827eeec02957e888ed745da80809ae66640d9123c40c6",
+          "size": 3308,
+          "source_sha256": "8ad2a35dcd9ab6b75bb4330a174709a9a3443b15213deffe77363da83910e66a"
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "skipped",
+        "tests": "skipped",
+        "lint": "skipped",
+        "warnings": 0
+      },
+      "notes": "Apply with --no-validate. Static recheck was run on the reconstructed post-snapshot chain."
+    },
+    "apply": {
+      "instructions": [
+        "Apply after xdm_android_phase32_media_mobile_polish_overlay.zip if the older Phase 32 overlay was already applied."
+      ]
+    }
+  },
+  "history_id": "69db1a3ae1424b0c80fc9b33311e777d"
+}

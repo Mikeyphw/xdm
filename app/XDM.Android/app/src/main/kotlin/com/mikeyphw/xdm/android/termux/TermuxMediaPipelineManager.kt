@@ -27,10 +27,10 @@ class TermuxMediaPipelineManager(context: Context) {
         statusFlow.update { it.copy(updatedAtEpochMs = System.currentTimeMillis()) }
     }
 
-    fun extractMetadata(record: MediaCaptureRecord, variants: List<MediaVariant> = emptyList(), selection: MediaTrackSelection = MediaTrackSelection()) {
+    fun extractMetadata(record: MediaCaptureRecord, variants: List<MediaVariant> = emptyList(), selection: MediaTrackSelection = MediaTrackSelection()): TermuxMediaPipelineJob {
         val plan = planner.plan(record, variants, selection = selection, sessionHeaders = MediaDownloadPlanner.defaultSessionHeaders(record))
         val probeUrl = plan.metadataProbeUrl.takeIf { it.isNotBlank() } ?: metadataProbeUrl(record)
-        launch(
+        return launch(
             record = record,
             kind = TermuxMediaJobKind.YtDlpMetadata,
             output = "JSON metadata in Termux run log",
@@ -41,7 +41,7 @@ class TermuxMediaPipelineManager(context: Context) {
         )
     }
 
-    fun inspectWithFfprobe(record: MediaCaptureRecord) = launch(
+    fun inspectWithFfprobe(record: MediaCaptureRecord): TermuxMediaPipelineJob = launch(
         record = record,
         kind = TermuxMediaJobKind.FfprobeInspect,
         output = "FFprobe JSON in Termux run log",
@@ -54,14 +54,14 @@ class TermuxMediaPipelineManager(context: Context) {
         variants: List<MediaVariant> = emptyList(),
         selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = record.selectedVariantId),
         destination: String = DefaultDownloadDir,
-    ) {
+    ): TermuxMediaPipelineJob {
         val plan = planner.plan(
             capture = record,
             variants = variants,
             selection = selection,
             sessionHeaders = MediaDownloadPlanner.defaultSessionHeaders(record) + sessionHintHeaders(record),
         )
-        launch(
+        return launch(
             record = record,
             kind = TermuxMediaJobKind.YtDlpDownload,
             output = destination,
@@ -78,7 +78,7 @@ class TermuxMediaPipelineManager(context: Context) {
         )
     }
 
-    fun convert(record: MediaCaptureRecord, preset: ConversionPreset, destination: String = DefaultDownloadDir) {
+    fun convert(record: MediaCaptureRecord, preset: ConversionPreset, destination: String = DefaultDownloadDir): TermuxMediaPipelineJob {
         val input = record.selectedVariantUrl ?: record.sourceUrl
         val safeBase = sanitizeFileName(record.title.ifBlank { record.fileName }, fallback = "xdm-media", maxLength = 96)
         val output = when (preset) {
@@ -93,7 +93,7 @@ class TermuxMediaPipelineManager(context: Context) {
             ConversionPreset.VideoFastStart -> TermuxMediaJobKind.FfmpegFastStart
             else -> TermuxMediaJobKind.FfmpegRemux
         }
-        launch(
+        return launch(
             record = record,
             kind = kind,
             output = output,
@@ -112,7 +112,7 @@ class TermuxMediaPipelineManager(context: Context) {
         }
     }
 
-    private fun launch(record: MediaCaptureRecord, kind: TermuxMediaJobKind, output: String, command: XdmTermuxCommand, message: String, inputOverride: String? = null, redactedSession: String = "") {
+    private fun launch(record: MediaCaptureRecord, kind: TermuxMediaJobKind, output: String, command: XdmTermuxCommand, message: String, inputOverride: String? = null, redactedSession: String = ""): TermuxMediaPipelineJob {
         val startedAt = System.currentTimeMillis()
         val jobId = "termux-media-${UUID.randomUUID()}"
         val launch = runner.run(command)
@@ -139,6 +139,7 @@ class TermuxMediaPipelineManager(context: Context) {
                 updatedAtEpochMs = startedAt,
             )
         }
+        return job
     }
 
     private fun metadataProbeUrl(record: MediaCaptureRecord): String = planner.plan(record, emptyList()).metadataProbeUrl

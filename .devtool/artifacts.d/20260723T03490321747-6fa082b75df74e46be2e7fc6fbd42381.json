@@ -1,0 +1,72 @@
+{
+  "applied_at": "2026-07-23T03:49:03.217478Z",
+  "artifact": "/data/data/com.termux/files/home/Code/xdm/['/data/data/com.termux/files/home/Downloads/xdm_android_media_termux_runtime_adapter_overlay.zip', '/data/data/com.termux/files/home/Downloads/xdm_android_media_native_direct_download_engine_overlay.zip']",
+  "artifact_name": "xdm_android_media_native_direct_download_engine_overlay.zip']",
+  "type": "overlay_bundle",
+  "sha256": "28a3aa395b0fb057c570a703ebd6b3a13b43cd94d1ead2587900e954606a895d",
+  "status": "failed",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 16,
+  "change_counts": {
+    "add": 6,
+    "modify": 10
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay_bundle",
+    "kind": "devtool.overlay_bundle",
+    "name": "adhoc_overlay_bundle",
+    "description": "",
+    "target_mode": "per_overlay",
+    "overlays": [
+      {
+        "id": "xdm_android_media_termux_runtime_adapter_overlay",
+        "path": "overlays/001_xdm_android_media_termux_runtime_adapter_overlay.zip",
+        "label": "XDM Android Media Termux Runtime Adapter",
+        "required": true,
+        "target": "xdm_android"
+      },
+      {
+        "id": "xdm_android_media_native_direct_download_engine_overlay",
+        "path": "overlays/002_xdm_android_media_native_direct_download_engine_overlay.zip",
+        "label": "XDM Android Media Native Direct Download Engine",
+        "required": true,
+        "target": "xdm_android"
+      }
+    ],
+    "apply_order": [
+      {
+        "id": "xdm_android_media_termux_runtime_adapter_overlay",
+        "path": "overlays/001_xdm_android_media_termux_runtime_adapter_overlay.zip",
+        "label": "XDM Android Media Termux Runtime Adapter",
+        "required": true,
+        "target": "xdm_android"
+      },
+      {
+        "id": "xdm_android_media_native_direct_download_engine_overlay",
+        "path": "overlays/002_xdm_android_media_native_direct_download_engine_overlay.zip",
+        "label": "XDM Android Media Native Direct Download Engine",
+        "required": true,
+        "target": "xdm_android"
+      }
+    ],
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": false,
+        "strategy": "single",
+        "message": ""
+      }
+    },
+    "validation": {
+      "required": false,
+      "strategy": "per-overlay",
+      "rollback_on_failure": true
+    }
+  },
+  "history_id": "6fa082b75df74e46be2e7fc6fbd42381"
+}
