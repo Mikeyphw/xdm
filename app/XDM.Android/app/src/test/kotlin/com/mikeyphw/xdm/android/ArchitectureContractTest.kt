@@ -533,6 +533,37 @@ class ArchitectureContractTest {
         assertFalse("Post-processing automation must not add a top-level route", AppRoute.entries.any { it.label == "Automation" || it.label == "Post" || it.label == "Tools" })
     }
 
+
+    @Test
+    fun mediaResolverPlayerOverlayContractsArePresent() {
+        val root = androidRoot()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
+        val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt").readText()
+        val player = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt").readText()
+        val bridgeModels = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
+        val mediaModels = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineModels.kt").readText()
+        val mediaManager = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt").readText()
+        val templates = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt").readText()
+        val libs = File(root, "gradle/libs.versions.toml").readText()
+        val appGradle = File(root, "app/build.gradle.kts").readText()
+
+        assertTrue("Resolver/player contract doc is missing", File(root, "docs/architecture/PHASE-19-MEDIA-RESOLVER-PLAYER.md").isFile)
+        assertTrue("Resolver/player validator is missing", File(root, "tools/validate-media-resolver-player.py").isFile)
+        listOf("MediaTrackSelection", "MediaVariantPickerGroup", "MediaSessionHandoff", "YtDlpMetadataProbeResult", "ProtectedMediaDiagnostic").forEach { token ->
+            assertTrue("Planner missing $token", planner.contains(token))
+        }
+        assertTrue("Screens must expose track picking", screens.contains("Choose tracks") && screens.contains("Audio track") && screens.contains("Subtitle track"))
+        assertTrue("Screens must expose yt-dlp preview and protected diagnostics", screens.contains("yt-dlp metadata preview") && screens.contains("Protected media diagnostics"))
+        assertTrue("Screens must expose redacted session handoff", screens.contains("Cookie/header session handoff") && screens.contains("Resolver will forward referer/header context"))
+        assertTrue("Media3 player must use ExoPlayer and PlayerView", player.contains("ExoPlayer.Builder") && player.contains("PlayerView"))
+        assertTrue("Media3 dependency must be wired", libs.contains("androidx.media3:media3-exoplayer") && appGradle.contains("libs.androidx.media3.exoplayer"))
+        assertTrue("Termux commands must carry extra yt-dlp args", bridgeModels.contains("extraArguments") && templates.contains("appendYtDlpExtraArguments"))
+        assertTrue("Termux manager must fetch variants for resolver-selected tracks", viewModel.contains("variantsForMediaCapture(record.id)") && mediaManager.contains("MediaTrackSelection"))
+        assertTrue("Diagnostics must carry redacted session only", mediaModels.contains("redactedSession") && !mediaModels.contains("Cookie:"))
+        assertFalse("Resolver/player must not add top-level routes", AppRoute.entries.any { it.label == "Player" || it.label == "Resolver" || it.label == "Browser" })
+    }
+
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }
 }

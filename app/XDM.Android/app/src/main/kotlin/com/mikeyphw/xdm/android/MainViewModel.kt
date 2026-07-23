@@ -39,6 +39,7 @@ import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.media.MediaCaptureService
+import com.mikeyphw.xdm.android.media.MediaTrackSelection
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.QueueDefinition
@@ -675,16 +676,22 @@ class MainViewModel(
         termuxAria2CockpitManager.rotateSecret()
     }
 
-    fun extractMediaMetadataWithTermux(record: MediaCaptureRecord) {
-        termuxMediaPipelineManager.extractMetadata(record)
+    fun extractMediaMetadataWithTermux(record: MediaCaptureRecord, selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = record.selectedVariantId)) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val variants = repository.variantsForMediaCapture(record.id)
+            termuxMediaPipelineManager.extractMetadata(record, variants, selection)
+        }
     }
 
     fun inspectMediaWithTermuxFfprobe(record: MediaCaptureRecord) {
         termuxMediaPipelineManager.inspectWithFfprobe(record)
     }
 
-    fun downloadMediaWithTermuxYtDlp(record: MediaCaptureRecord) {
-        termuxMediaPipelineManager.downloadWithYtDlp(record)
+    fun downloadMediaWithTermuxYtDlp(record: MediaCaptureRecord, selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = record.selectedVariantId)) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val variants = repository.variantsForMediaCapture(record.id)
+            termuxMediaPipelineManager.downloadWithYtDlp(record, variants, selection)
+        }
     }
 
     fun convertMediaWithTermux(record: MediaCaptureRecord, preset: ConversionPreset) {

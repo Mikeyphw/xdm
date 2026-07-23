@@ -1,0 +1,155 @@
+{
+  "applied_at": "2026-07-22T21:22:56.152978Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_media_execution_library_overlay-4.zip",
+  "artifact_name": "xdm_android_media_execution_library_overlay-4.zip",
+  "type": "overlay",
+  "sha256": "441aa883844252c684f893f68e453197f01fa3881b41ef2e55b19ed84c084a03",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 15,
+  "change_counts": {
+    "add": 4,
+    "modify": 11
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Media Execution Library",
+    "description": "Adds Phase 20 media download execution and offline-library polish: selected resolver tracks queue into native/aria2/yt-dlp jobs, short-lived session handoff, explicit media job states, redacted sidecar metadata, resume/retry actions, and completed direct-media playback.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "8208beec475cbe4427e3651e8c27ffdf08b051f5f296e8a62593ec398d44fd23",
+          "size": 1318,
+          "source_sha256": "cc583869b0e97487013b54a4541f8c2243652a1da2050ee33433547dc025caf7"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "4095b2792dfc3206464a8899712b0fdca29c596d434195898ecd9bf7bdcaa2c3",
+          "size": 13784,
+          "source_sha256": "5e6494fcd7b143f36ef4fccbf69aeafc66464cf891c62893252a217bcad1d8b3"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "0c98d8643936bf466ddbb43b537a351d53bd20d72e352e9d0ac9ce2dfa15052b",
+          "size": 10847,
+          "source_sha256": "9ee63eaeff8e582e2775707d2f6ae47cb5bae155a27e9c3dfe8a2bc3e2c9e3ee"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "69c5c06bd123f5840529090ba38415700e8b5b20fae92f851aa70febfd940684",
+          "size": 68262,
+          "source_sha256": "5229264dfeb0840f7f2e7a7b668586d0dd26943f7ce397f32d6854ccf4c3a259"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "c939302a243599f577e2581f223ed2594afd236c6506717a295f5b7f03d4c865",
+          "size": 141608,
+          "source_sha256": "12a6273447f473aee09ba9947cd42a248b8a66763433c1f932c51b3e82e1e3db"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "d11a90a6f0ff1e4ca7c269a082a602c4437e8bcc9f4f3d43b6c4fda6b44ee361",
+          "size": 14366,
+          "source_sha256": "9f791dd90bc90728466cab50842db68adde4e4282843940e2baaa162814bd423"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt",
+          "action": "modify",
+          "sha256": "d1d486f857746035ed30c06edb4eb705ccc8a84e9f3edab168abb81edf2c3fc5",
+          "size": 8185,
+          "source_sha256": "87df6fb30e498c067d4a16e2f0aa111ef5c86f38097610060be9fb4cd28e891d"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "09fdcc42172d9b55e5549ef0bc42572338fd275ef2233f7bce1a061d1d93dc72",
+          "size": 54710,
+          "source_sha256": "ed8a5cc1ff0752678175b4d8d3d5a26f3c1f5ba8cc621bdb5300830c21e69e15"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-20-MEDIA-EXECUTION-LIBRARY.md",
+          "action": "add",
+          "sha256": "180a1dce3d5b3307a89f4673244b8e5a922814cdca1e3cc58c5dec3b7b75d7e8",
+          "size": 2297
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt",
+          "action": "modify",
+          "sha256": "208b2ab56b68742136294b024f6e0290fcf3574c831ca03cd6e17b016b5da367",
+          "size": 21415,
+          "source_sha256": "eab08413a42aec5a637e3afbf37f4dc59a97b4cd9915c2675b47bd24980fac16"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionLibrary.kt",
+          "action": "add",
+          "sha256": "c0d00823714d9cc8eeccdf817a94139b5715440ff92cf231853b55947a7b941c",
+          "size": 17474
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+          "action": "modify",
+          "sha256": "46c6db8a6150ca2b627dbcdadb9df049bfb7ad986ec58f4d3eb8ded27e3b7020",
+          "size": 17086,
+          "source_sha256": "934429ee99ea9a515943a0cc04011ec087cd1b044c2f1f24034a70e16e4e6f43"
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/MediaRequestHandoffStore.kt",
+          "action": "add",
+          "sha256": "0480cf98754442781d8f8058bc41e728e4d860157b81f99444c0e7a7ddf06435",
+          "size": 1361
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt",
+          "action": "modify",
+          "sha256": "73d10bced248cf370332d6f1584fcb4c9b286c12661921c74ea1392ac4708a2e",
+          "size": 19721,
+          "source_sha256": "acec5c466aca1c3212dbfff379d8775eb6ff8ab02e7d9b8e003c0101ff7a7f6f"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-execution-library.py",
+          "action": "add",
+          "sha256": "8b54af6b791011885028fa3a266443e5601195b0fc14c3be322eb9bf722f21ad",
+          "size": 2684
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "success",
+        "diagnostics": "success",
+        "maximum_warnings": 0,
+        "maximum_errors": 0
+      },
+      "commands": [
+        "python3 tools/validate-media-execution-library.py",
+        "python3 tools/validate-media-resolver-player.py",
+        "python3 tools/validate-browser-media-continuity.py",
+        "python3 tools/validate-termux-media-pipeline.py",
+        "python3 tools/validate-phase-14.py",
+        "python3 tools/validate-phase-16.py",
+        "python3 tools/validate-phase-17.py",
+        "./gradlew :app:testDebugUnitTest --no-daemon"
+      ]
+    }
+  },
+  "history_id": "cd4e14872f334bec91618980519dd997"
+}

@@ -3,6 +3,7 @@ package com.mikeyphw.xdm.android.media
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -185,6 +186,96 @@ class MediaCaptureServiceTest {
         assertTrue(plan.needsCookieContext)
         assertEquals(1, library.playableCount)
         assertTrue(library.adaptiveCount >= 1)
+    }
+
+    @Test
+    fun resolverPickerGroupsCreateFormatSelectorAndPreviewMetadata() {
+        val service = MediaCaptureService(clock = { 800L })
+        val record = service.recordFor(requireNotNull(service.candidateFor(
+            url = "https://cdn.example.test/show/master.m3u8?token=secret",
+            pageTitle = "Resolver episode",
+            pageUrl = "https://video.example.test/watch/resolver",
+            mimeTypeHint = "application/vnd.apple.mpegurl",
+        )))
+        val variants = service.parseHlsPlaylist(
+            captureId = record.id,
+            playlistUrl = record.sourceUrl,
+            playlistText = """
+                #EXTM3U
+                #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud",NAME="English",LANGUAGE="en",URI="audio/en.m3u8"
+                #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English CC",LANGUAGE="en",URI="subs/en.vtt"
+                #EXT-X-STREAM-INF:BANDWIDTH=900000,RESOLUTION=1280x720
+                video/720.m3u8
+                #EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1920x1080
+                video/1080.m3u8
+            """.trimIndent(),
+        )
+        val planner = MediaDownloadPlanner()
+        val video = variants.last { it.kind == com.mikeyphw.xdm.android.model.MediaVariantKind.Video }
+        val audio = variants.first { it.kind == com.mikeyphw.xdm.android.model.MediaVariantKind.Audio }
+        val subtitle = variants.first { it.kind == com.mikeyphw.xdm.android.model.MediaVariantKind.Subtitle }
+        val selection = MediaTrackSelection(videoVariantId = video.id, audioVariantId = audio.id, subtitleVariantId = subtitle.id)
+        val plan = planner.plan(record, variants, selection = selection)
+        val groups = planner.pickerGroups(record, variants, selection)
+        val preview = planner.metadataProbePreview(record, variants)
+
+        assertEquals(3, groups.size)
+        assertTrue(plan.ytDlpFormatSelector!!.contains("bestvideo"))
+        assertTrue(plan.ytDlpFormatSelector!!.contains("bestaudio"))
+        assertEquals("https://video.example.test/watch/resolver", plan.metadataProbeUrl)
+        assertEquals("Resolver episode", preview.title)
+        assertTrue(preview.formatCount >= 4)
+    }
+
+    @Test
+    fun sessionHandoffDiagnosticsRedactCookiesTokensAndAuthorization() {
+        val service = MediaCaptureService(clock = { 900L })
+        val record = service.recordFor(requireNotNull(service.candidateFor(
+            url = "https://cdn.example.test/video.mp4?token=secret-token",
+            pageTitle = "Secret clip",
+            pageUrl = "https://video.example.test/watch?session=super-secret",
+            mimeTypeHint = "video/mp4",
+        )))
+        val planner = MediaDownloadPlanner()
+        val plan = planner.plan(
+            capture = record,
+            variants = emptyList(),
+            sessionHeaders = listOf(
+                MediaSessionHeader("Cookie", "SID=secret-cookie"),
+                MediaSessionHeader("Authorization", "Bearer secret-auth"),
+                MediaSessionHeader("X-CSRF-Token", "secret-csrf"),
+            ),
+        )
+        val diagnostics = (plan.sessionHandoff.diagnosticLines() + plan.sessionHandoff.redactedSummary).joinToString("\n")
+
+        assertFalse(diagnostics.contains("secret-cookie"))
+        assertFalse(diagnostics.contains("secret-auth"))
+        assertFalse(diagnostics.contains("secret-csrf"))
+        assertFalse(diagnostics.contains("secret-token"))
+        assertTrue(diagnostics.contains("<redacted"))
+        assertTrue(plan.sessionHandoff.ytdlpArguments().contains("--cookies-from-browser=android-webview"))
+    }
+
+    @Test
+    fun ytDlpMetadataProbeJsonParsesBeforeDownloadPreview() {
+        val json = """
+            {
+              "title": "Metadata title",
+              "thumbnail": "https://img.example.test/thumb.jpg",
+              "duration": 125.5,
+              "extractor_key": "Generic",
+              "is_live": false,
+              "webpage_url": "https://video.example.test/watch",
+              "formats": [{"format_id":"720"},{"format_id":"audio"}]
+            }
+        """.trimIndent()
+        val result = MediaDownloadPlanner().parseYtDlpMetadata(json)
+
+        assertEquals("Metadata title", result.title)
+        assertEquals(125_500L, result.durationMs)
+        assertEquals("Generic", result.extractor)
+        assertEquals(2, result.formatCount)
+        assertFalse(result.isLive)
     }
 
 }

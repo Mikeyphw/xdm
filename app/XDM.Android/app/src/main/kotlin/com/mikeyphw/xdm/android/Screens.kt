@@ -83,7 +83,12 @@ import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaVariant
+import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.media.MediaDownloadPlanner
+import com.mikeyphw.xdm.android.media.MediaDownloadPlan
+import com.mikeyphw.xdm.android.media.MediaTrackSelection
+import com.mikeyphw.xdm.android.media.MediaVariantPickerGroup
+import com.mikeyphw.xdm.android.media.YtDlpMetadataProbeResult
 import com.mikeyphw.xdm.android.media.OfflineMediaLibrarySummary
 import com.mikeyphw.xdm.android.media.MediaDownloadStrategy
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
@@ -1134,9 +1139,9 @@ fun MediaInboxScreen(
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
     onRemove: (MediaCaptureRecord) -> Unit,
-    onTermuxMetadata: (MediaCaptureRecord) -> Unit,
+    onTermuxMetadata: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onTermuxInspect: (MediaCaptureRecord) -> Unit,
-    onTermuxYtDlpDownload: (MediaCaptureRecord) -> Unit,
+    onTermuxYtDlpDownload: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onTermuxConvert: (MediaCaptureRecord, ConversionPreset) -> Unit,
     onClearTermuxMediaJobs: () -> Unit,
     onPreviewPostProcessing: (MediaCaptureRecord) -> Unit,
@@ -1245,19 +1250,27 @@ private fun MediaCaptureCard(
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
     onRemove: (MediaCaptureRecord) -> Unit,
-    onTermuxMetadata: (MediaCaptureRecord) -> Unit,
+    onTermuxMetadata: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onTermuxInspect: (MediaCaptureRecord) -> Unit,
-    onTermuxYtDlpDownload: (MediaCaptureRecord) -> Unit,
+    onTermuxYtDlpDownload: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onTermuxConvert: (MediaCaptureRecord, ConversionPreset) -> Unit,
     onPreviewPostProcessing: (MediaCaptureRecord) -> Unit,
     onRunPostProcessing: (MediaCaptureRecord) -> Unit,
 ) {
     val context = LocalContext.current
     var variantSelectorExpanded by remember(capture.id) { mutableStateOf(false) }
-    val selectedVariant = captureVariants.firstOrNull { it.id == capture.selectedVariantId } ?: captureVariants.firstOrNull()
+    var trackSelection by remember(capture.id) { mutableStateOf(MediaTrackSelection(videoVariantId = capture.selectedVariantId)) }
+    LaunchedEffect(capture.selectedVariantId) {
+        trackSelection = trackSelection.copy(videoVariantId = capture.selectedVariantId ?: trackSelection.videoVariantId)
+    }
     val mediaPlanner = remember { MediaDownloadPlanner() }
-    val mediaPlan = remember(capture, captureVariants) { mediaPlanner.plan(capture, captureVariants) }
+    val mediaPlan = remember(capture, captureVariants, trackSelection) { mediaPlanner.plan(capture, captureVariants, selection = trackSelection) }
+    val metadataPreview = remember(capture, captureVariants) { mediaPlanner.metadataProbePreview(capture, captureVariants) }
+    val pickerGroups = remember(capture, captureVariants, trackSelection) { mediaPlanner.pickerGroups(capture, captureVariants, trackSelection) }
     val playbackCandidate = remember(capture, captureVariants) { mediaPlanner.playbackCandidate(capture, captureVariants) }
+    val selectedVariant = mediaPlan.selectedVariantId?.let { id -> captureVariants.firstOrNull { it.id == id } }
+        ?: captureVariants.firstOrNull { it.id == capture.selectedVariantId }
+        ?: captureVariants.firstOrNull()
     XdmListCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
@@ -1280,63 +1293,59 @@ private fun MediaCaptureCard(
             StatusPill(mediaPlan.displayName, if (mediaPlan.strategy == MediaDownloadStrategy.UnsupportedProtected) XdmStatusTone.Warning else XdmStatusTone.Info)
             capture.downloadId?.let { StatusPill("Queued", XdmStatusTone.Success) }
         }
-        XdmMetadataText(mediaPlan.explanation, maxLines = 2)
-        if (mediaPlan.needsCookieContext) {
-            XdmMetadataText("Uses page/session context. yt-dlp metadata will probe the page URL before falling back to the stream URL.", maxLines = 2)
-        }
-        playbackCandidate?.let { candidate ->
-            XdmListCard(compact = true) {
-                XdmMetadataText("Offline playback groundwork")
-                XdmSupportingText(
-                    if (candidate.needsExternalResolver) "Adaptive/protected streams stay in review-first mode until the Media3/yt-dlp resolver prepares offline assets."
-                    else "Direct media can be opened by the future offline library without a resolver hop.",
-                    maxLines = 2,
-                )
-                XdmActionFlowRow {
-                    StatusPill(if (candidate.isAdaptive) "Adaptive" else "Direct", XdmStatusTone.Info)
-                    candidate.audioTrackCount.takeIf { it > 0 }?.let { StatusPill("$it audio", XdmStatusTone.Neutral) }
-                    candidate.subtitleCount.takeIf { it > 0 }?.let { StatusPill("$it subtitles", XdmStatusTone.Neutral) }
-                }
-            }
-        }
+        XdmMetadataText(mediaPlan.explanation, maxLines = 3)
+        MetadataProbePreviewCard(metadataPreview, mediaPlan)
+        SessionHandoffCard(mediaPlan)
+        ProtectedMediaDiagnosticsCard(mediaPlan)
+        playbackCandidate?.let { candidate -> Media3DirectPlayerCard(candidate) }
         if (captureVariants.isNotEmpty()) {
             XdmListCard(compact = true) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         XdmMetadataText("Selected variant")
                         XdmMetricText(selectedVariant?.qualityLabel ?: "Automatic")
+                        XdmSupportingText("Choose tracks: Choose variant, Audio track, and Subtitle track before download.", maxLines = 2)
                     }
-                    TextButton(onClick = { variantSelectorExpanded = !variantSelectorExpanded }) { Text(if (variantSelectorExpanded) "Hide variants" else "Choose variant") }
+                    TextButton(onClick = { variantSelectorExpanded = !variantSelectorExpanded }) { Text(if (variantSelectorExpanded) "Hide variants" else "Choose variant / Choose tracks") }
                 }
                 if (variantSelectorExpanded) {
-                    captureVariants.forEach { variant ->
-                        VariantSelectorRow(
-                            variant = variant,
-                            selected = capture.selectedVariantId == variant.id || (capture.selectedVariantId == null && selectedVariant?.id == variant.id),
-                            onSelect = { onSelectVariant(capture, variant.id) },
+                    pickerGroups.forEach { group ->
+                        VariantPickerGroupCard(
+                            group = group,
+                            onSelect = { variant ->
+                                trackSelection = when (group.kind) {
+                                    MediaVariantKind.Audio -> trackSelection.copy(audioVariantId = variant.id)
+                                    MediaVariantKind.Subtitle -> trackSelection.copy(subtitleVariantId = variant.id)
+                                    MediaVariantKind.Primary, MediaVariantKind.Video -> {
+                                        onSelectVariant(capture, variant.id)
+                                        trackSelection.copy(videoVariantId = variant.id)
+                                    }
+                                    MediaVariantKind.Thumbnail -> trackSelection
+                                }
+                            },
                         )
                     }
                 }
             }
         } else {
-            XdmMetadataText("No variants yet. Resolve metadata to discover quality options.")
+            XdmMetadataText("No variants yet. Resolve metadata to discover quality, audio, and subtitle options.")
         }
         XdmActionFlowRow {
             Button(
                 onClick = { onDownload(capture) },
-                enabled = capture.status != MediaCaptureStatus.DownloadCreated && capture.resolutionStatus != MediaResolutionStatus.RequiresRefresh,
+                enabled = mediaPlan.canQueueDirectly && capture.status != MediaCaptureStatus.DownloadCreated && capture.resolutionStatus != MediaResolutionStatus.RequiresRefresh,
             ) { Text(if (capture.status == MediaCaptureStatus.DownloadCreated) "Added" else "Download selected") }
             TextButton(onClick = { onResolve(capture) }) { Text(if (capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh) "Refresh metadata" else "Resolve metadata") }
             TextButton(onClick = { onRemove(capture) }) { Text("Remove capture") }
         }
         XdmListCard(compact = true) {
             XdmMetadataText("Termux media pipeline")
-            XdmSupportingText("Use typed yt-dlp, FFprobe, and FFmpeg jobs through Termux. No raw shell commands are exposed.")
+            XdmSupportingText("yt-dlp receives page metadata, selected format hints, and redacted session handoff arguments. No raw shell commands are exposed.", maxLines = 3)
             XdmActionFlowRow {
-                TextButton(onClick = { onTermuxMetadata(capture) }) { Text("yt-dlp page metadata") }
+                TextButton(onClick = { onTermuxMetadata(capture, mediaPlan.trackSelection) }) { Text("yt-dlp page metadata") }
                 TextButton(onClick = { copyTextToClipboard(context, "XDM yt-dlp probe URL", mediaPlan.metadataProbeUrl) }) { Text("Copy probe URL") }
                 TextButton(onClick = { onTermuxInspect(capture) }) { Text("FFprobe") }
-                TextButton(onClick = { onTermuxYtDlpDownload(capture) }) { Text("yt-dlp download") }
+                TextButton(onClick = { onTermuxYtDlpDownload(capture, mediaPlan.trackSelection) }, enabled = mediaPlan.canQueueDirectly) { Text("yt-dlp download") }
                 TextButton(onClick = { onTermuxConvert(capture, ConversionPreset.VideoFastStart) }) { Text("Fast-start MP4") }
                 TextButton(onClick = { onTermuxConvert(capture, ConversionPreset.AudioExtract) }) { Text("Extract audio") }
             }
@@ -1348,6 +1357,62 @@ private fun MediaCaptureCard(
                 TextButton(onClick = { onPreviewPostProcessing(capture) }) { Text("Preview rules") }
                 TextButton(onClick = { onRunPostProcessing(capture) }) { Text("Run rules") }
             }
+        }
+    }
+}
+
+@Composable
+private fun MetadataProbePreviewCard(preview: YtDlpMetadataProbeResult, plan: MediaDownloadPlan) {
+    XdmListCard(compact = true) {
+        XdmMetadataText("yt-dlp metadata preview")
+        XdmSupportingText(preview.summary, maxLines = 2)
+        XdmActionFlowRow {
+            preview.thumbnailUrl?.takeIf { it.isNotBlank() }?.let { StatusPill("Thumbnail", XdmStatusTone.Info) }
+            preview.durationMs?.let { StatusPill(preview.durationLabel, XdmStatusTone.Neutral) }
+            StatusPill("Probe ${if (preview.webpageUrl != null) "page" else "stream"}", XdmStatusTone.Info)
+            plan.ytDlpFormatSelector?.let { StatusPill("Format selector", XdmStatusTone.Neutral) }
+        }
+        plan.ytDlpFormatSelector?.let { XdmMetadataText("yt-dlp format: $it", maxLines = 2) }
+    }
+}
+
+@Composable
+private fun SessionHandoffCard(plan: MediaDownloadPlan) {
+    XdmListCard(compact = true) {
+        XdmMetadataText("Cookie/header session handoff")
+        XdmSupportingText(
+            if (plan.sessionHandoff.needsSession) "Resolver will forward referer/header context to yt-dlp or aria2 while diagnostics stay redacted."
+            else "No page cookies or special headers were detected for this capture.",
+            maxLines = 3,
+        )
+        XdmMetadataText(plan.sessionHandoff.redactedSummary, maxLines = 3)
+    }
+}
+
+@Composable
+private fun ProtectedMediaDiagnosticsCard(plan: MediaDownloadPlan) {
+    XdmListCard(compact = true) {
+        XdmMetadataText("Protected media diagnostics")
+        XdmSupportingText(plan.protectedDiagnostic.reason, maxLines = 3)
+        XdmActionFlowRow {
+            StatusPill(plan.protectedDiagnostic.label, if (plan.protectedDiagnostic.protected) XdmStatusTone.Warning else XdmStatusTone.Neutral)
+            plan.protectedDiagnostic.scheme?.let { StatusPill(it, XdmStatusTone.Warning) }
+        }
+        XdmMetadataText(plan.protectedDiagnostic.allowedAction, maxLines = 2)
+    }
+}
+
+@Composable
+private fun VariantPickerGroupCard(group: MediaVariantPickerGroup, onSelect: (MediaVariant) -> Unit) {
+    XdmListCard(compact = true) {
+        XdmMetadataText(group.title)
+        XdmSupportingText(group.countLabel, maxLines = 1)
+        group.variants.forEach { variant ->
+            VariantSelectorRow(
+                variant = variant,
+                selected = group.selectedVariantId == variant.id,
+                onSelect = { onSelect(variant) },
+            )
         }
     }
 }

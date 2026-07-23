@@ -1,4 +1,4 @@
-## XDM Android 0.18.0-rc01
+## XDM Android 0.19.0-rc01
 
 Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
 
@@ -120,3 +120,8 @@ XDM Android now includes a Browser workspace inside the existing Media route for
 
 The Media route now contains a browser workspace with persisted tabs, recent history, and explicit cookie profiles. Captured HLS/DASH media is enriched with audio/subtitle variants, live/protected classification, and page-first yt-dlp probing. The offline library panel summarizes direct, adaptive, audio-only, and subtitle-ready captures without adding a new top-level route.
 
+### Media resolver and player
+
+The Media route now resolves captured HLS/DASH manifests through a real picker surface: video quality, audio tracks, and subtitle tracks are selected before download planning. yt-dlp metadata previews show title, thumbnail availability, duration, extractor, and format count before the download action runs. Session handoff is review-first: referer, Origin, and cookie jar hints are passed only to typed yt-dlp/aria2/native planning paths, while diagnostics keep cookies, authorization, tokens, and signed query values redacted.
+
+Completed direct media can open in the embedded Media3 player card. Adaptive or protected streams remain resolver-first, and protected media is diagnostic-only: XDM reports the protection marker but does not bypass DRM or queue protected media.

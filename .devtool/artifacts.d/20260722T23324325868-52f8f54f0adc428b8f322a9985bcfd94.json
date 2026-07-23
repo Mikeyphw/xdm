@@ -1,0 +1,189 @@
+{
+  "applied_at": "2026-07-22T23:32:43.258689Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_media_resolver_player_overlay.zip",
+  "artifact_name": "xdm_android_media_resolver_player_overlay.zip",
+  "type": "overlay",
+  "sha256": "04d071b482cf028c1b7a83fe2e15786a90b61c7f569e6bc38564adc10e95a8d0",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Add XDM Android media resolver player",
+  "commit_hash": "",
+  "file_count": 17,
+  "change_counts": {
+    "add": 3,
+    "modify": 14
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Media Resolver Player",
+    "description": "Adds Phase 19 media resolver/player support: HLS/DASH variant picker UI, audio/subtitle track selection, yt-dlp metadata preview, redacted session handoff, Media3 direct playback, protected-media diagnostics, and no-cookie-leak tests.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "cc583869b0e97487013b54a4541f8c2243652a1da2050ee33433547dc025caf7",
+          "size": 839,
+          "source_sha256": "b25077783b04fece71c0b747b3c3957a93f70c5931f4ce429993eb85b5b6360d"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "5e6494fcd7b143f36ef4fccbf69aeafc66464cf891c62893252a217bcad1d8b3",
+          "size": 12848,
+          "source_sha256": "2ccdcdb7aa053fd75dc18ce8555aded15e037ec2849e8c1628372f5663632ce4"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "9ee63eaeff8e582e2775707d2f6ae47cb5bae155a27e9c3dfe8a2bc3e2c9e3ee",
+          "size": 9947,
+          "source_sha256": "e5690338641b9eacdc2d6b4f8cbbbe902335196e87368736956dcac1830d17f8"
+        },
+        {
+          "path": "app/XDM.Android/app/build.gradle.kts",
+          "action": "modify",
+          "sha256": "1b2d115373a322d7e6c8438368007636547d520fd25d4df943425359ef2c7a30",
+          "size": 5047,
+          "source_sha256": "5eeb0db6200a4198c33b8a1f12a7690476de5f4ff15c6f4bf1e999a19812910a"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "5229264dfeb0840f7f2e7a7b668586d0dd26943f7ce397f32d6854ccf4c3a259",
+          "size": 66359,
+          "source_sha256": "465e8e467c8aed9b84c574a19b2237a52b52aa52c3cf25a2544fcd6d6858f365"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt",
+          "action": "add",
+          "sha256": "93496f755ce50cb1b424e2ab0690b3b8e3365c2677ebddef9b435cf3a473d50d",
+          "size": 3283
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "12a6273447f473aee09ba9947cd42a248b8a66763433c1f932c51b3e82e1e3db",
+          "size": 135148,
+          "source_sha256": "39a69d5e10f94fcefea0baeb693f44d6e2585e814ab51ab96797c52346693ade"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt",
+          "action": "modify",
+          "sha256": "ce6116d89e3d23196fd3baf2b5a66ae605c954a0229ae29f942e86587785ce3f",
+          "size": 7278,
+          "source_sha256": "d3aaee154c2f4aaec8f130de2aacbeb1926e8453f73a1da2f5459d7ad730b7b7"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt",
+          "action": "modify",
+          "sha256": "87df6fb30e498c067d4a16e2f0aa111ef5c86f38097610060be9fb4cd28e891d",
+          "size": 8025,
+          "source_sha256": "981d9ca519229b52a45cc0e61f7defff0622708b96f730e5300e5be4e3506823"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineModels.kt",
+          "action": "modify",
+          "sha256": "844aaf27da3d846c8b045b422b7af0636697767ae5bd9c51271593dd7c72c00b",
+          "size": 2251,
+          "source_sha256": "b922770d6fcb01210a1f5f27b6fad612ddfcc9ff010a74cbfc923b8b5673ec99"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt",
+          "action": "modify",
+          "sha256": "263665c7903c5fa37dee2e16c7a4df81741ed2e167a2ef1834c2de60acc8da4d",
+          "size": 16804,
+          "source_sha256": "56b78cfa185540b3a92ad8e249339453dd51322ee07fe4a9321275e7fcd18298"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "ed8a5cc1ff0752678175b4d8d3d5a26f3c1f5ba8cc621bdb5300830c21e69e15",
+          "size": 51717,
+          "source_sha256": "ab86a1379862e5e621538c5ba06bd533b9e7efb77d244f6847a0607a084c7af9"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-19-MEDIA-RESOLVER-PLAYER.md",
+          "action": "add",
+          "sha256": "0bb51e6b3bd756f456ac3d9ac14482d1233aa7aa7d046d0681b7f582a8a989f7",
+          "size": 2239
+        },
+        {
+          "path": "app/XDM.Android/gradle/libs.versions.toml",
+          "action": "modify",
+          "sha256": "c1d04f8a91e7aa828d8a36179b47626e8ae2524ea38b0eb6cdfaecbf7514b9c2",
+          "size": 3758,
+          "source_sha256": "b31a76bf77b4623dc18783ba5da11810d03f7a377ff1dd95b26f772461532717"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt",
+          "action": "modify",
+          "sha256": "9a6a05c63f6d1a5fbc0af4bc0749eb65c789320b8e9269d559c01748c959f43e",
+          "size": 21431,
+          "source_sha256": "5806d7183387cd7884f90e77dc7651c77ec52e31280fee7d5d2b0c001a1d30bf"
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+          "action": "modify",
+          "sha256": "934429ee99ea9a515943a0cc04011ec087cd1b044c2f1f24034a70e16e4e6f43",
+          "size": 13681,
+          "source_sha256": "fff39eca1ff84d4f332451481c111ee4a627e7f353a352ccf22378640afc49cd"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-resolver-player.py",
+          "action": "add",
+          "sha256": "8cc19caf2f304dc8c0f7726eccd41b987d106366a857d7571a4afee89f29a4ef",
+          "size": 3487
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Add XDM Android media resolver player"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "commands": [
+        "cd app/XDM.Android && python3 tools/validate-browser-media-downloader.py",
+        "cd app/XDM.Android && python3 tools/validate-browser-media-continuity.py",
+        "cd app/XDM.Android && python3 tools/validate-media-resolver-player.py",
+        "cd app/XDM.Android && tools/devtool-gradle.sh :media:test testDebugUnitTest"
+      ],
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Treats the user-supplied Super Video Downloader repository as a clean-room feature map only; no code or assets are copied.",
+      "Keeps Browser, resolver, player, and library features inside the existing Media route.",
+      "Room schema remains 14; no migration is added.",
+      "Protected media remains diagnostics-only and is not bypassed or queued.",
+      "Termux diagnostics carry redacted session summaries only."
+    ]
+  },
+  "history_id": "52f8f54f0adc428b8f322a9985bcfd94"
+}

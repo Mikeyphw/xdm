@@ -32,8 +32,8 @@ android {
         applicationId = "com.mikeyphw.xdm.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 19
-        versionName = "0.18.0-rc01"
+        versionCode = 20
+        versionName = "0.19.0-rc01"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -68,7 +68,9 @@ android {
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     packaging {
         jniLibs.useLegacyPackaging = true
-        jniLibs.keepDebugSymbols += "**/libaria2c.so"
+        // Termux/chroot ARM builds can accidentally resolve the Linux x86_64 NDK host strip tool.
+        // Keep native debug symbols for every packaged JNI lib so Gradle never shells out to that host-only llvm-strip.
+        jniLibs.keepDebugSymbols += "**/*.so"
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
     lint {
@@ -80,6 +82,9 @@ android {
             "GradleDependency",
             "MissingApplicationIcon",
             "OldTargetApi",
+            // Some existing checkouts still carry mipmap-anydpi-v26 launcher resources while minSdk is 26.
+            // Treat this as a compatibility cleanup item instead of blocking unrelated media overlays.
+            "ObsoleteSdkInt",
             "UseKtx",
         )
         if (!requireAlignedAria2Runtime.get()) {
@@ -118,6 +123,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.icons)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 

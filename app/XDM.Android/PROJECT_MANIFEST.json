@@ -2,7 +2,7 @@
   "project": {
     "name": "XDM Android",
     "package_id": "com.mikeyphw.xdm.android",
-    "version": "0.18.0-rc01",
+    "version": "0.19.0-rc01",
     "implemented_phases": [
       0,
       1,
@@ -22,7 +22,8 @@
       15,
       16,
       17,
-      18
+      18,
+      19
     ]
   },
   "database": {
@@ -109,7 +110,7 @@
       "compare"
     ]
   },
-  "next_phase": "post17-parity",
+  "next_phase": "media-download-execution-and-offline-library",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -447,5 +448,20 @@
     "yt_dlp_page_url_probe": true,
     "offline_library_groundwork": true
   },
-  "current_overlay": "phase-18b-browser-media-continuity"
+  "current_overlay": "phase-19-media-resolver-player",
+  "media_resolver_player": {
+    "schema_version_unchanged": 14,
+    "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
+    "hls_dash_variant_picker": true,
+    "audio_track_picker": true,
+    "subtitle_track_picker": true,
+    "thumbnail_title_duration_preview": true,
+    "yt_dlp_metadata_probe_preview": true,
+    "cookie_header_session_handoff": "redacted",
+    "aria2_ytdlp_native_planner_session_hints": true,
+    "media3_direct_player": true,
+    "protected_media_diagnostics_only": true,
+    "cookie_leak_tests": true,
+    "top_level_route_added": false
+  }
 }

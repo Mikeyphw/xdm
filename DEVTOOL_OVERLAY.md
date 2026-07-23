@@ -1,33 +1,17 @@
-# XDM Android Browser Media Continuity Overlay
+# xdm_android_media_resolver_player_overlay
 
-This overlay extends the already-landed browser media downloader foundation without adding a new top-level route.
+Target: `xdm_android`
 
-## Included
+Adds Phase 19 media resolver/player work on top of the browser media continuity state:
 
-- Fixes browser deprecation warnings:
-  - uses AutoMirrored back/forward icons
-  - removes deprecated WebSettings.databaseEnabled usage
-- Adds browser continuity inside the Media route:
-  - persisted browser tabs
-  - recent history
-  - explicit Standard / Private / Desktop cookie profiles
-  - per-composition weak WebView navigation bridge retained
-- Expands media resolution intelligence:
-  - HLS audio/subtitle groups from EXT-X-MEDIA
-  - HLS live/protected inspection
-  - DASH AdaptationSet parsing, inherited MIME/content type/language, subtitles, audio tracks, and ContentProtection detection
-- Improves yt-dlp flow:
-  - metadata/download actions prefer the captured page URL when available
-  - Media cards expose copyable probe URLs and session-context hints
-- Adds offline library/player groundwork:
-  - summary card for playable/direct/adaptive/audio/subtitle captures
-  - review-first messaging for adaptive/protected streams
-- Adds tests and a browser media continuity validator.
+- HLS/DASH grouped picker UI for video quality, audio tracks, and subtitles.
+- yt-dlp metadata preview before download, including title, thumbnail, duration, extractor, and format count.
+- Redacted cookie/header/session handoff models for yt-dlp, aria2, and native planning.
+- Typed Termux yt-dlp extra arguments and redacted media pipeline diagnostics.
+- Media3 direct player card for non-adaptive direct media.
+- Protected-media diagnostics panel that does not bypass or queue DRM-protected media.
+- Static validators and unit contracts for resolver planning and no cookie/token diagnostic leaks.
+- Termux/chroot build hardening: keep packaged JNI debug symbols to avoid the x86_64 Linux `llvm-strip` path on ARM hosts.
+- Lint hardening for existing `mipmap-anydpi-v26` checkout drift when `minSdk` is already 26.
 
-## Guardrails
-
-- No AppRoute changes.
-- No new Room schema version.
-- No static WebView or Android Context storage.
-- JavaScript enablement is explicitly lint-reviewed and scoped to the embedded browser settings helper.
-- No DRM bypass. Protected streams are flagged and blocked from direct queueing.
+Validation entry point: `app/XDM.Android/tools/validate-media-resolver-player.py`.

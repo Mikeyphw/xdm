@@ -28,6 +28,7 @@ data class TermuxMediaPipelineJob(
     val output: String = "",
     val runId: String = "",
     val message: String = "",
+    val redactedSession: String = "",
     val createdAtEpochMs: Long = 0L,
     val updatedAtEpochMs: Long = createdAtEpochMs,
 ) {
@@ -55,6 +56,7 @@ data class TermuxMediaPipelineStatus(
         appendLine("Last action: $lastAction")
         recentJobs.forEach { job ->
             appendLine("${job.kind.name.lowercase(Locale.US)}	${job.status.name}	${job.title}	${job.runId.ifBlank { "no-run-id" }}")
+            job.redactedSession.takeIf { it.isNotBlank() }?.let { appendLine("session\t$it") }
         }
     }.trim()
 }

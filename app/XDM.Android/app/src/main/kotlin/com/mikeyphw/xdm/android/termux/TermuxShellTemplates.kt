@@ -5,7 +5,7 @@ object TermuxShellTemplates {
         XdmTermuxCommand.ProbeAllTools -> probeAllToolsScript()
         is XdmTermuxCommand.ProbeTool -> probeToolScript(command.tool)
         is XdmTermuxCommand.Aria2Download -> aria2DownloadScript(command)
-        is XdmTermuxCommand.YtDlpMetadata -> ytdlpMetadataScript(command.url)
+        is XdmTermuxCommand.YtDlpMetadata -> ytdlpMetadataScript(command)
         is XdmTermuxCommand.YtDlpDownload -> ytdlpDownloadScript(command)
         is XdmTermuxCommand.FfprobeInspect -> ffprobeInspectScript(command.path)
         is XdmTermuxCommand.FfmpegConvert -> ffmpegConvertScript(command)
@@ -51,11 +51,13 @@ object TermuxShellTemplates {
         appendLine("--dir ${shellQuote(command.destination)} ${shellQuote(command.url)}")
     }
 
-    private fun ytdlpMetadataScript(url: String): String = buildString {
+    private fun ytdlpMetadataScript(command: XdmTermuxCommand.YtDlpMetadata): String = buildString {
         appendLine("set -e")
         appendLine("if command -v yt-dlp >/dev/null 2>&1; then :; else printf 'XDM_MEDIA\tytdlp_metadata\tmissing\tyt-dlp not found\n'; exit 127; fi")
         appendLine("printf 'XDM_MEDIA\tytdlp_metadata\tstarted\n'")
-        appendLine("yt-dlp --dump-single-json --no-warnings ${shellQuote(url)}")
+        append("yt-dlp --dump-single-json --no-warnings ")
+        appendYtDlpExtraArguments(command.extraArguments)
+        appendLine(shellQuote(command.url))
     }
 
     private fun ytdlpDownloadScript(command: XdmTermuxCommand.YtDlpDownload): String = buildString {
@@ -64,7 +66,17 @@ object TermuxShellTemplates {
         appendLine("mkdir -p ${shellQuote(command.destination)}")
         append("yt-dlp --no-part --newline --paths ${shellQuote(command.destination)} --output ${shellQuote(command.outputTemplate)} ")
         command.format?.trim()?.takeIf { it.isNotBlank() }?.let { append("--format ${shellQuote(it)} ") }
+        appendYtDlpExtraArguments(command.extraArguments)
         appendLine(shellQuote(command.url))
+    }
+
+    private fun StringBuilder.appendYtDlpExtraArguments(arguments: List<String>) {
+        arguments.chunked(2).forEach { chunk ->
+            val flag = chunk.getOrNull(0)?.takeIf { it.startsWith("--") } ?: return@forEach
+            val value = chunk.getOrNull(1)
+            append(shellQuote(flag)).append(' ')
+            if (value != null && !value.startsWith("--")) append(shellQuote(value)).append(' ')
+        }
     }
 
     private fun ffprobeInspectScript(path: String): String = buildString {
