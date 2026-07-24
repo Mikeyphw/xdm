@@ -1,0 +1,222 @@
+{
+  "applied_at": "2026-07-24T18:34:53.289517Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase49_50_download_rules_ux_polish_overlay.zip",
+  "artifact_name": "xdm_android_phase49_50_download_rules_ux_polish_overlay.zip",
+  "type": "overlay",
+  "sha256": "438f743591c018598f20f85edfafe023a2700246d5e3aa0389955ddcdb367d65",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "XDM Android Phase 49/50 browser download rules and UX polish seal",
+  "commit_hash": "",
+  "file_count": 26,
+  "change_counts": {
+    "add": 4,
+    "modify": 22
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "xdm_android_phase49_50_download_rules_ux_polish_overlay.zip",
+    "description": "Phase 49/50 combined browser download rules, file-type interception, and UX polish seal overlay.",
+    "repository": "xdm",
+    "workspace": "app/XDM.Android",
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "7bd42ff1991edce272d15feed4adc486f4c5e3005f9ce03e10a4b8e0fa49e5b0",
+          "size": 380,
+          "source_sha256": "dee4c966aa05c54df18337b2a8e5fff102c3f57fac17ed3d512b030c1b53775b"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "0b46cd7b5b47cf7c4ae63664589aab6c5cc05f167d3bd69888da8e340b2b362c",
+          "size": 41321,
+          "source_sha256": "4634e78139cb339dc6de3e9c5c7a263229bfbfedb946c81b62c5e93967dc2f3c"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+          "action": "modify",
+          "sha256": "427a8b7b2fd8aaa3196bae2a852046e4f01eb91e0ce8dc07a38a95d3b6a8fa2c",
+          "size": 103335,
+          "source_sha256": "52edcf2daa3d97974db497693d8c51a4421fe353048b1331727ddc615f5597d6"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "bb2e63fffb6c533552f16a3ebaf08752249974760f0a1a19a419bc816a6826f7",
+          "size": 140607,
+          "source_sha256": "fa7f4a27fbcd32e5155e7a7dbf469ff059fddb6d8aa2b6f3acb1950cad2cec0a"
+        },
+        {
+          "path": "app/XDM.Android/docs/browser/PHASE-49-BROWSER-DOWNLOAD-RULES-FILE-TYPE-INTERCEPTION.md",
+          "action": "add",
+          "sha256": "99f1955e4eb8014e059dbcbda7eafb821a02b3117e8ceddb59f6e01dda63256e",
+          "size": 620
+        },
+        {
+          "path": "app/XDM.Android/docs/browser/PHASE-50-BROWSER-DOWNLOADER-UX-POLISH-SEAL.md",
+          "action": "add",
+          "sha256": "67efae8e11815254b892565ed7c863e67a63de03355be370b83ac334293cf616",
+          "size": 568
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "9e9b5ba1fa96871321ab43fb3b1d3b2f14c915033aecd04837a6a00970fd301e",
+          "size": 3547,
+          "source_sha256": "4511bd333840a4cc32a4b1205bd05a869f0010f4c5ba2b0c5e01c095754d1772"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "8a871ded4d57007a3fdd74685c294da08c2897507c80484614a9954cc4f6d95a",
+          "size": 4975,
+          "source_sha256": "dbbefd5ad96e481b688d9526b710d0245aa2ecf9a243f7900144a9dfcaa390e0"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-48-browser-resource-inspector.py",
+          "action": "modify",
+          "sha256": "7f256554cd517dbd24be2c097615327869daa81bc4a2f046b7156dc83f89bb7f",
+          "size": 2298,
+          "source_sha256": "3ea9459c7958071c8bfd3153f593ca661a50ca862c185399017cb145eed5a6cd"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-42-browser-media-capture-cockpit.py",
+          "action": "modify",
+          "sha256": "4ea5136d4f50b5baee804c816387d65eb54cac57f5199b3c455454f461546551",
+          "size": 5515,
+          "source_sha256": "669b37b00708a6815ea3b8dcf7d212f88d92e64afd1e0849f4db95152db9ac66"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37a-browser-downloader-roadmap.py",
+          "action": "modify",
+          "sha256": "af7959f114a1880fa73fdbbd53d1cf2ad1ac7af15e3d8f0690cae582d65aa65a",
+          "size": 3929,
+          "source_sha256": "86dcc33b392c2d3ce9f8ff03374d3404ef46f31702395c3e4cacde0ae780a2ed"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+          "action": "modify",
+          "sha256": "1a4c734f9f76d63a6c78eda1bddf7ce3e95af2752841701d1c3faaf59b8e2fd4",
+          "size": 9303,
+          "source_sha256": "0218fc0bd290008d42a9775a55bba4da43f5c8b59474bc5321050b5a7610c6f8"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+          "action": "modify",
+          "sha256": "476537c11f2fc3f08e86282f399e81e7953db1a24bb353a54996f48281ec864f",
+          "size": 10970,
+          "source_sha256": "2043dab70a27aee23315af8ef2848f28778648b01e76034244bc00d61f2b35b2"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-39-browser-chrome-navigation.py",
+          "action": "modify",
+          "sha256": "7fb4123f0062a5df92eacbb0bf3a4782840fb4e0429e2faa05bf4f1193ff24a1",
+          "size": 5003,
+          "source_sha256": "24048a594d81a8f6095eb357719e2cfb59426db1456a49a79ff2f153e93b0f8f"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-46-browser-private-mode-data-isolation.py",
+          "action": "modify",
+          "sha256": "abf1ef2adf8f6b19459621e26198425c29234e6d2ce4457c4e2f849a57efa8b6",
+          "size": 5029,
+          "source_sha256": "7e35f7dcc3054d33e64c5750c56580df63db3359e77dec0a5c5ed610926fd4ba"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-44-browser-settings-privacy-controls.py",
+          "action": "modify",
+          "sha256": "d0a78266a58d1a0351c8c7bb064a59bbdf41779e3b41785bf89cba2385a5112b",
+          "size": 6000,
+          "source_sha256": "7c079ca793b123e41e0ceed10e2638d3bb56b2ed5a9b4159ba3bd4ed7739c9b3"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+          "action": "modify",
+          "sha256": "eec72fb0be07fef0a68faf1c6a9a57d047f8cde8a899f1230d39a13637b33917",
+          "size": 7829,
+          "source_sha256": "4af50916055c78759b6f41b28f07be10731f1b3d42b3664b98e00f3057e0d67c"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-41-browser-download-bridge.py",
+          "action": "modify",
+          "sha256": "0de3108f0d3785721eaeba50541fc4576ffa5fa63f9d086ab79615ddeae5883c",
+          "size": 5069,
+          "source_sha256": "8ca2caf457e9dae6371926ba983bf0cdd128f52f3f63d61adc541291603b9ccf"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-43-browser-library-surfaces.py",
+          "action": "modify",
+          "sha256": "8759a5a56c79b74a8ce267ecc4e87b5b1530691815115df9416dc4e7649421a7",
+          "size": 4719,
+          "source_sha256": "024f28bc4c48f054814982f591079c86a536fae83ce7866a12f16052e20f39d7"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37b-dual-launcher-navigation-split.py",
+          "action": "modify",
+          "sha256": "f387798684cf4bafbed05157293002c8d9eef6e5fee684014d7c5d1cbf6f9fbc",
+          "size": 6976,
+          "source_sha256": "442f6f1ddd0bdbc8dafcf419aa7ccc25608557bafd8df4c3bdde8523d4cf6270"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-40-browser-tabs-session-ux.py",
+          "action": "modify",
+          "sha256": "0090761feaf7365263106b21f310412310c45fe42a19a94cce720cee6fb79270",
+          "size": 4872,
+          "source_sha256": "479cb2322ec7b78ee3d7115fb65db8343639582aa39f9eaae0a04ccce0e13ccf"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-47-browser-permission-ux-settings-polish.py",
+          "action": "modify",
+          "sha256": "0360d8f40d9273a0e3117b8e2914b1c03828093b36f1296b3740a4fd6dde0228",
+          "size": 2759,
+          "source_sha256": "e3d2e128165d133c1dffdad9f3c63a63b071e181642062d57e2182d2f6dc4977"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-50-browser-downloader-ux-polish-seal.py",
+          "action": "add",
+          "sha256": "e6e24f1151323ab2faf8659270f46760f6c03b9d837f2c7da3c4235d7b08a18e",
+          "size": 2118
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-49-browser-download-rules-file-type-interception.py",
+          "action": "add",
+          "sha256": "15a58f2712cd9e244c0add56903d3825b6c7e22e826526c701104dad8043fb96",
+          "size": 1991
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-45-browser-visual-polish-adaptive-layout.py",
+          "action": "modify",
+          "sha256": "f8eca690577c2eb5332b658fb44c62190e1c663b1d816ab9fa686cf6355a26b8",
+          "size": 3319,
+          "source_sha256": "7e0a26e49cea83f35f9460d72d46aca2f540da4b318922ccf3b477308fae3f43"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-38-browser-reliability-foundation.py",
+          "action": "modify",
+          "sha256": "aa7ee789673bf1146a8a57d883db2222651a6997cc3b65e63422e62ad5dc4967",
+          "size": 8217,
+          "source_sha256": "3696594879f011ba7aabfeb2bbeaf36183a9c6270d5d9a45f7085f0fa5e8e721"
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "passed",
+        "tests": "passed",
+        "diagnostics": "passed"
+      }
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "message": "XDM Android Phase 49/50 browser download rules and UX polish seal"
+      }
+    }
+  },
+  "history_id": "aa77b0d4927c4c2384df16aa5f09a9b6"
+}

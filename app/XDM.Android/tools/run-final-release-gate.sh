@@ -59,6 +59,8 @@ validators=(
   tools/validate-phase-45-browser-visual-polish-adaptive-layout.py
   tools/validate-phase-46-browser-private-mode-data-isolation.py
   tools/validate-phase-48-browser-resource-inspector.py
+  validate-phase-50-browser-downloader-ux-polish-seal.py
+  validate-phase-49-browser-download-rules-file-type-interception.py
   tools/validate-phase-47-browser-permission-ux-settings-polish.py
 )
 

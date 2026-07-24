@@ -17,7 +17,7 @@ def require(condition: bool, message: str) -> None:
         raise SystemExit(message)
 
 phase = manifest.get("phase46_browser_private_mode_data_isolation", {})
-require(manifest.get("current_overlay") in {'xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip', 'xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip', 'xdm_android_phase48_browser_resource_inspector_overlay.zip'}, "current_overlay must point at Phase 46 or approved later browser overlay")
+require(manifest.get("current_overlay") in {'xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip', 'xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip', 'xdm_android_phase48_browser_resource_inspector_overlay.zip', 'xdm_android_phase49_50_download_rules_ux_polish_overlay.zip'}, "current_overlay must point at Phase 46 or approved later browser overlay")
 require(phase.get("phase45_landed") is True, "Phase 46 must depend on Phase 45")
 require(phase.get("no_new_route") is True, "Phase 46 must not add a new route")
 require(phase.get("no_room_migration") is True, "Phase 46 must not add a Room migration")

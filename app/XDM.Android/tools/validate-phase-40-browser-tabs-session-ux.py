@@ -16,7 +16,7 @@ def read(path: str) -> str:
 
 manifest = json.loads(read("PROJECT_MANIFEST.json") or "{}")
 if manifest.get("current_overlay") not in {"xdm_android_phase40_browser_tabs_session_ux_overlay.zip", "xdm_android_phase41_browser_download_bridge_overlay.zip", "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip",
-    "xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip", "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip", "xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip", "xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip", "xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase48_browser_resource_inspector_overlay.zip"}:
+    "xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip", "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip", "xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip", "xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip", "xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase48_browser_resource_inspector_overlay.zip", "xdm_android_phase49_50_download_rules_ux_polish_overlay.zip"}:
     errors.append("current_overlay must point at the Phase 40 browser tabs/session UX overlay or approved later Phase 41 browser download bridge overlay")
 
 phase = manifest.get("phase40_browser_tabs_session_ux", {})

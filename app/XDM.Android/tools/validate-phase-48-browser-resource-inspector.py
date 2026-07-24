@@ -14,7 +14,7 @@ def require(cond, msg):
     if not cond:
         raise SystemExit(msg)
 phase = manifest.get("phase48_browser_resource_inspector", {})
-require(manifest.get("current_overlay") == "xdm_android_phase48_browser_resource_inspector_overlay.zip", "current_overlay must point at Phase 48 overlay")
+require(manifest.get("current_overlay") in {"xdm_android_phase48_browser_resource_inspector_overlay.zip", "xdm_android_phase49_50_download_rules_ux_polish_overlay.zip"}, "current_overlay must point at Phase 48 overlay")
 for key in ["phase47_landed", "resource_inspector_panel", "resource_filters", "open_add_inspect_actions", "source_page_context", "no_new_route", "no_room_migration", "no_transfer_engine_changes", "no_media_execution_changes"]:
     require(phase.get(key) is True, f"Phase 48 manifest key {key} missing/false")
 require("BrowserResourceInspectorPanel" in browser and "Resource inspector" in browser, "resource inspector panel missing")

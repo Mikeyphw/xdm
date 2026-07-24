@@ -77,6 +77,8 @@ jobs:
           python3 tools/validate-phase-45-browser-visual-polish-adaptive-layout.py
           python3 tools/validate-phase-46-browser-private-mode-data-isolation.py
           python3 tools/validate-phase-48-browser-resource-inspector.py
+          python3 tools/validate-phase-50-browser-downloader-ux-polish-seal.py
+          python3 tools/validate-phase-49-browser-download-rules-file-type-interception.py
           python3 tools/validate-phase-47-browser-permission-ux-settings-polish.py
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official

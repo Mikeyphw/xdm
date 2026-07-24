@@ -103,7 +103,9 @@ fun BrowserScreen(
     var importedLinks by remember { mutableStateOf<List<BrowserImportedLink>>(emptyList()) }
     var cookieProfile by remember { mutableStateOf(sessionStore.loadCookieProfile()) }
     var browserPrivacySettings by remember { mutableStateOf(sessionStore.loadPrivacySettings()) }
+    var browserDownloadRules by remember { mutableStateOf(sessionStore.loadDownloadRules()) }
     var showPrivacySettings by remember { mutableStateOf(false) }
+    var showDownloadRules by remember { mutableStateOf(false) }
     val activeTab = tabs.firstOrNull { it.id == activeTabId } ?: tabs.first()
     val activeTabIsPrivate = activeTab.isPrivate
     val privateTabCount = tabs.count { it.isPrivate }
@@ -274,6 +276,11 @@ fun BrowserScreen(
         updateBrowserPrivacySettings(BrowserPrivacySettings())
     }
 
+    fun updateBrowserDownloadRules(rules: BrowserDownloadRules) {
+        browserDownloadRules = rules
+        sessionStore.saveDownloadRules(rules)
+    }
+
     fun rememberPermissionDecision(prompt: BrowserPermissionPrompt, decision: String) {
         browserPermissionEvents = (listOf(BrowserPermissionEvent(prompt.origin, prompt.summaryLabel, decision, System.currentTimeMillis())) + browserPermissionEvents).take(MaxVisiblePermissionEvents)
         browserPermissionPrompt = null
@@ -355,6 +362,15 @@ fun BrowserScreen(
             isPrivateProfile = activeTabIsPrivate || effectiveCookieProfile.privateMode,
             desktopMode = browserPrivacySettings.desktopModeDefault,
         )
+        BrowserDownloaderFlowPanel(
+            currentUrl = browserChromeState.url ?: currentPageUrl,
+            mediaCount = pageCaptures.size,
+            resourceCount = pageResources.size,
+            rules = browserDownloadRules,
+            onAddCurrentPage = { target -> onOpenAddForUrl(target, currentTitleState) },
+            onOpenResources = { showResourceInspector = true },
+            onOpenMedia = onOpenMediaInbox,
+        )
         BrowserSessionPanel(
             sessionState = browserTabSessionState,
             tabs = tabs,
@@ -425,6 +441,12 @@ fun BrowserScreen(
             },
             onDismiss = { prompt -> rememberPermissionDecision(prompt, "Dismissed") },
         )
+        BrowserDownloadRulesPanel(
+            rules = browserDownloadRules,
+            showRules = showDownloadRules,
+            onToggleRules = { showDownloadRules = !showDownloadRules },
+            onRulesChanged = ::updateBrowserDownloadRules,
+        )
         BrowserLibraryPanel(
             currentUrl = browserChromeState.url ?: currentPageUrl,
             currentTitle = browserChromeState.title ?: currentPageTitle,
@@ -471,6 +493,7 @@ fun BrowserScreen(
                     browserNavigator = browserNavigator,
                     cookieProfile = effectiveCookieProfile,
                     browserSettings = browserPrivacySettings,
+                    downloadRules = browserDownloadRules,
                     onPageChanged = { url, title -> updateActiveTab(url, title) },
                     onLoadStateChanged = { browserLoadState = it },
                     onNavigationChanged = { browserChromeState = it },
@@ -790,6 +813,87 @@ private fun BrowserTabSwitcher(
     }
 }
 
+
+
+@Composable
+private fun BrowserDownloaderFlowPanel(
+    currentUrl: String?,
+    mediaCount: Int,
+    resourceCount: Int,
+    rules: BrowserDownloadRules,
+    onAddCurrentPage: (String) -> Unit,
+    onOpenResources: () -> Unit,
+    onOpenMedia: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    XdmListCard(compact = true, modifier = modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText("Browser → Downloader flow")
+                XdmSupportingText("Direct files follow download rules, media stays in the capture cockpit, and every handoff remains review-first.", maxLines = 2)
+            }
+            XdmMetadataText(rules.defaultSummary, maxLines = 1)
+        }
+        XdmActionFlowRow {
+            TextButton(onClick = { currentUrl?.let(onAddCurrentPage) }, enabled = !currentUrl.isNullOrBlank()) { Text("Add page") }
+            TextButton(onClick = onOpenResources, enabled = resourceCount > 0) { Text("Resources ($resourceCount)") }
+            TextButton(onClick = onOpenMedia, enabled = mediaCount > 0) { Text("Media ($mediaCount)") }
+        }
+    }
+}
+
+@Composable
+private fun BrowserDownloadRulesPanel(
+    rules: BrowserDownloadRules,
+    showRules: Boolean,
+    onToggleRules: () -> Unit,
+    onRulesChanged: (BrowserDownloadRules) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    XdmListCard(compact = true, modifier = modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText("Download rules")
+                XdmSupportingText("File-type interception is review-first: XDM may recommend Add Download or media inspection, but it never queues silently.", maxLines = 2)
+            }
+            XdmMetadataText(rules.defaultSummary, maxLines = 1)
+        }
+        XdmActionFlowRow {
+            TextButton(onClick = onToggleRules) { Text(if (showRules) "Hide rules" else "Download rules") }
+        }
+        if (showRules) {
+            BrowserDownloadCategory.entries.forEach { category ->
+                BrowserDownloadRuleRow(
+                    category = category,
+                    selected = rules.ruleFor(category),
+                    onDecision = { decision -> onRulesChanged(rules.withRule(category, decision)) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrowserDownloadRuleRow(
+    category: BrowserDownloadCategory,
+    selected: BrowserDownloadRuleDecision,
+    onDecision: (BrowserDownloadRuleDecision) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText(category.label, maxLines = 1)
+                XdmSupportingText(category.description, maxLines = 1)
+            }
+            XdmMetadataText(selected.label, maxLines = 1)
+        }
+        XdmActionFlowRow {
+            BrowserDownloadRuleDecision.entries.forEach { decision ->
+                FilterChip(selected = selected == decision, onClick = { onDecision(decision) }, label = { Text(decision.shortLabel) })
+            }
+        }
+    }
+}
 
 @Composable
 private fun BrowserPermissionStatusPanel(
@@ -1141,6 +1245,7 @@ private fun EmbeddedBrowser(
     browserNavigator: BrowserNavigator,
     cookieProfile: BrowserCookieProfile,
     browserSettings: BrowserPrivacySettings,
+    downloadRules: BrowserDownloadRules,
     onPageChanged: (String?, String?) -> Unit,
     onLoadStateChanged: (BrowserLoadState) -> Unit,
     onNavigationChanged: (BrowserChromeState) -> Unit,
@@ -1271,6 +1376,8 @@ private fun EmbeddedBrowser(
                 setDownloadListener { url, _, contentDisposition, mimeType, contentLength ->
                     val safeUrl = url?.takeIf { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) } ?: return@setDownloadListener
                     val fileName = URLUtil.guessFileName(safeUrl, contentDisposition, mimeType).takeIf { it.isNotBlank() } ?: "downloadfile"
+                    val category = classifyBrowserDownload(safeUrl, mimeType, fileName)
+                    val decision = downloadRules.ruleFor(category)
                     val pageUrl = this.url?.takeIf { !it.equals(safeUrl, ignoreCase = true) }
                     val pageTitle = this.title?.takeIf { it.isNotBlank() }
                     onPageChanged(pageUrl ?: safeUrl, pageTitle ?: fileName)
@@ -1282,6 +1389,8 @@ private fun EmbeddedBrowser(
                             contentLength = contentLength,
                             sourcePageUrl = pageUrl,
                             sourcePageTitle = pageTitle,
+                            category = category,
+                            decision = decision,
                         ),
                     )
                 }
@@ -1344,6 +1453,8 @@ private fun BrowserDownloadBridgeCard(
         }
         XdmMetadataText(draft.fileName, maxLines = 1)
         XdmSupportingText(draft.detailLine, maxLines = 2)
+        XdmMetadataText("Rule: ${draft.category.label} · ${draft.decision.label}", maxLines = 1)
+        XdmSupportingText(draft.decision.description, maxLines = 2)
         draft.sourcePageLabel?.let { XdmSupportingText(it, maxLines = 1) }
         XdmSupportingText("Cookies, tokens, and authorization headers are not shown here and are not persisted as raw browser handoff data.", maxLines = 2)
         XdmActionFlowRow {
@@ -1529,6 +1640,8 @@ private data class BrowserDownloadBridgeDraft(
     val contentLength: Long,
     val sourcePageUrl: String?,
     val sourcePageTitle: String?,
+    val category: BrowserDownloadCategory = BrowserDownloadCategory.Other,
+    val decision: BrowserDownloadRuleDecision = BrowserDownloadRuleDecision.AlwaysAsk,
 ) {
     val detailLine: String
         get() = listOfNotNull(
@@ -1700,6 +1813,51 @@ private data class BrowserImportedLink(
     val label: String,
 )
 
+private data class BrowserDownloadRules(
+    val archive: BrowserDownloadRuleDecision = BrowserDownloadRuleDecision.AlwaysAsk,
+    val apk: BrowserDownloadRuleDecision = BrowserDownloadRuleDecision.PreferAddPrompt,
+    val document: BrowserDownloadRuleDecision = BrowserDownloadRuleDecision.AlwaysAsk,
+    val media: BrowserDownloadRuleDecision = BrowserDownloadRuleDecision.PreferMediaInspect,
+    val torrent: BrowserDownloadRuleDecision = BrowserDownloadRuleDecision.PreferAddPrompt,
+    val other: BrowserDownloadRuleDecision = BrowserDownloadRuleDecision.AlwaysAsk,
+) {
+    fun ruleFor(category: BrowserDownloadCategory): BrowserDownloadRuleDecision = when (category) {
+        BrowserDownloadCategory.Archive -> archive
+        BrowserDownloadCategory.Apk -> apk
+        BrowserDownloadCategory.Document -> document
+        BrowserDownloadCategory.Media -> media
+        BrowserDownloadCategory.Torrent -> torrent
+        BrowserDownloadCategory.Other -> other
+    }
+
+    fun withRule(category: BrowserDownloadCategory, decision: BrowserDownloadRuleDecision): BrowserDownloadRules = when (category) {
+        BrowserDownloadCategory.Archive -> copy(archive = decision)
+        BrowserDownloadCategory.Apk -> copy(apk = decision)
+        BrowserDownloadCategory.Document -> copy(document = decision)
+        BrowserDownloadCategory.Media -> copy(media = decision)
+        BrowserDownloadCategory.Torrent -> copy(torrent = decision)
+        BrowserDownloadCategory.Other -> copy(other = decision)
+    }
+
+    val defaultSummary: String
+        get() = "Ask-first rules"
+}
+
+private enum class BrowserDownloadRuleDecision(val label: String, val shortLabel: String, val description: String) {
+    AlwaysAsk("Always ask", "Ask", "Show the review card and let the user choose Add Download or media inspection."),
+    PreferAddPrompt("Prefer Add Download", "Add", "Keep the prompt visible and highlight the downloader handoff for direct files."),
+    PreferMediaInspect("Prefer media inspection", "Media", "Keep the prompt visible and point media-like files toward the capture cockpit first."),
+}
+
+private enum class BrowserDownloadCategory(val label: String, val description: String) {
+    Archive("Archives", "zip, 7z, rar, tar, and compressed packages"),
+    Apk("APK", "Android packages stay explicit and review-first"),
+    Document("Documents", "pdf, epub, office, and text downloads"),
+    Media("Media", "video, audio, playlists, and adaptive stream hints"),
+    Torrent("Torrents", "torrent files are recognized but not auto-queued"),
+    Other("Other", "unknown files stay ask-first"),
+}
+
 private data class BrowserPrivacySettings(
     val homePage: BrowserHomePage = BrowserHomePage.StartPage,
     val searchEngine: BrowserSearchEngine = BrowserSearchEngine.DuckDuckGo,
@@ -1748,6 +1906,30 @@ private class BrowserSessionStore(context: Context) {
     fun saveCookieProfile(profile: BrowserCookieProfile) {
         prefs.edit().putString(KeyCookieProfile, profile.name).apply()
     }
+
+    fun loadDownloadRules(): BrowserDownloadRules = BrowserDownloadRules(
+        archive = loadRule(KeyDownloadRuleArchive, BrowserDownloadRuleDecision.AlwaysAsk),
+        apk = loadRule(KeyDownloadRuleApk, BrowserDownloadRuleDecision.PreferAddPrompt),
+        document = loadRule(KeyDownloadRuleDocument, BrowserDownloadRuleDecision.AlwaysAsk),
+        media = loadRule(KeyDownloadRuleMedia, BrowserDownloadRuleDecision.PreferMediaInspect),
+        torrent = loadRule(KeyDownloadRuleTorrent, BrowserDownloadRuleDecision.PreferAddPrompt),
+        other = loadRule(KeyDownloadRuleOther, BrowserDownloadRuleDecision.AlwaysAsk),
+    )
+
+    fun saveDownloadRules(rules: BrowserDownloadRules) {
+        prefs.edit()
+            .putString(KeyDownloadRuleArchive, rules.archive.name)
+            .putString(KeyDownloadRuleApk, rules.apk.name)
+            .putString(KeyDownloadRuleDocument, rules.document.name)
+            .putString(KeyDownloadRuleMedia, rules.media.name)
+            .putString(KeyDownloadRuleTorrent, rules.torrent.name)
+            .putString(KeyDownloadRuleOther, rules.other.name)
+            .apply()
+    }
+
+    private fun loadRule(key: String, fallback: BrowserDownloadRuleDecision): BrowserDownloadRuleDecision = prefs.getString(key, fallback.name)
+        ?.let { value -> BrowserDownloadRuleDecision.entries.firstOrNull { it.name == value } }
+        ?: fallback
 
     fun loadPrivacySettings(): BrowserPrivacySettings = BrowserPrivacySettings(
         homePage = prefs.getString(KeyHomePage, BrowserHomePage.StartPage.name)
@@ -1888,6 +2070,12 @@ private class BrowserSessionStore(context: Context) {
         private const val KeyDesktopModeDefault = "desktop_mode_default"
         private const val KeyCookiesEnabled = "cookies_enabled"
         private const val KeyThirdPartyCookiesEnabled = "third_party_cookies_enabled"
+        private const val KeyDownloadRuleArchive = "download_rule_archive"
+        private const val KeyDownloadRuleApk = "download_rule_apk"
+        private const val KeyDownloadRuleDocument = "download_rule_document"
+        private const val KeyDownloadRuleMedia = "download_rule_media"
+        private const val KeyDownloadRuleTorrent = "download_rule_torrent"
+        private const val KeyDownloadRuleOther = "download_rule_other"
     }
 }
 
@@ -1924,6 +2112,19 @@ private fun extractBrowserImportLinks(text: String): List<BrowserImportedLink> =
     .take(MaxImportedLinks)
     .map { url -> BrowserImportedLink(url, hostFromUrl(url)) }
     .toList()
+
+private fun classifyBrowserDownload(url: String, mimeType: String?, fileName: String): BrowserDownloadCategory {
+    val probe = listOf(url, fileName).joinToString(" ").lowercase(Locale.US)
+    val mime = mimeType.orEmpty().lowercase(Locale.US)
+    return when {
+        probe.endsWith(".apk") || mime == "application/vnd.android.package-archive" -> BrowserDownloadCategory.Apk
+        probe.endsWith(".torrent") || mime == "application/x-bittorrent" -> BrowserDownloadCategory.Torrent
+        listOf(".zip", ".7z", ".rar", ".tar", ".gz", ".xz", ".bz2").any { probe.contains(it) } || mime in setOf("application/zip", "application/x-7z-compressed", "application/vnd.rar") -> BrowserDownloadCategory.Archive
+        listOf(".pdf", ".epub", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt").any { probe.contains(it) } || mime.startsWith("application/pdf") || mime.startsWith("text/") -> BrowserDownloadCategory.Document
+        listOf(".mp4", ".mkv", ".webm", ".mp3", ".flac", ".m3u8", ".mpd").any { probe.contains(it) } || mime.startsWith("video/") || mime.startsWith("audio/") || mime.contains("mpegurl") || mime.contains("dash") -> BrowserDownloadCategory.Media
+        else -> BrowserDownloadCategory.Other
+    }
+}
 
 private fun hostFromUrl(url: String): String = runCatching { Uri.parse(url).host?.removePrefix("www.") }.getOrNull()?.takeIf(String::isNotBlank) ?: "Browser page"
 
