@@ -9,6 +9,8 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.webkit.CookieManager
+import android.webkit.GeolocationPermissions
+import android.webkit.PermissionRequest
 import android.webkit.SslErrorHandler
 import android.webkit.URLUtil
 import android.webkit.WebChromeClient
@@ -124,6 +126,8 @@ fun BrowserScreen(
     var browserLoadState by remember { mutableStateOf<BrowserLoadState>(BrowserLoadState.StartPage) }
     var browserChromeState by remember { mutableStateOf(BrowserChromeState.StartPage) }
     var browserDownloadDraft by remember { mutableStateOf<BrowserDownloadBridgeDraft?>(null) }
+    var browserPermissionPrompt by remember { mutableStateOf<BrowserPermissionPrompt?>(null) }
+    var browserPermissionEvents by remember { mutableStateOf<List<BrowserPermissionEvent>>(emptyList()) }
     val browserNavigator = remember { BrowserNavigator() }
     val currentTitleState by rememberUpdatedState(currentPageTitle)
     val currentUrlState by rememberUpdatedState(currentPageUrl)
@@ -264,6 +268,15 @@ fun BrowserScreen(
         showTabSwitcher = remaining.size > 1
     }
 
+    fun resetBrowserPrivacySettings() {
+        updateBrowserPrivacySettings(BrowserPrivacySettings())
+    }
+
+    fun rememberPermissionDecision(prompt: BrowserPermissionPrompt, decision: String) {
+        browserPermissionEvents = (listOf(BrowserPermissionEvent(prompt.origin, prompt.summaryLabel, decision, System.currentTimeMillis())) + browserPermissionEvents).take(MaxVisiblePermissionEvents)
+        browserPermissionPrompt = null
+    }
+
     LaunchedEffect(activeTabId) {
         tabs.firstOrNull { it.id == activeTabId }?.let { tab ->
             addressBar = tab.url
@@ -394,6 +407,21 @@ fun BrowserScreen(
             },
             onPrivacySettingsChanged = ::updateBrowserPrivacySettings,
             onClearBrowsingData = ::clearBrowserData,
+            onResetBrowserSettings = ::resetBrowserPrivacySettings,
+        )
+        BrowserPermissionStatusPanel(
+            prompt = browserPermissionPrompt,
+            events = browserPermissionEvents,
+            activeTabIsPrivate = activeTabIsPrivate,
+            onGrant = { prompt ->
+                prompt.onGrant()
+                rememberPermissionDecision(prompt, "Granted once")
+            },
+            onDeny = { prompt ->
+                prompt.onDeny()
+                rememberPermissionDecision(prompt, "Denied")
+            },
+            onDismiss = { prompt -> rememberPermissionDecision(prompt, "Dismissed") },
         )
         BrowserLibraryPanel(
             currentUrl = browserChromeState.url ?: currentPageUrl,
@@ -442,6 +470,10 @@ fun BrowserScreen(
                         browserDownloadDraft = draft
                         browserLoadState = BrowserLoadState.Loaded(draft.url)
                         browserChromeState = browserChromeState.copy(url = draft.sourcePageUrl ?: draft.url, title = draft.sourcePageTitle ?: browserChromeState.title, isLoading = false, progress = 100)
+                    },
+                    onPermissionRequested = { prompt -> browserPermissionPrompt = prompt },
+                    onPermissionCanceled = { origin ->
+                        if (browserPermissionPrompt?.origin == origin) browserPermissionPrompt = null
                     },
                 )
                 BrowserLoadOverlay(
@@ -592,6 +624,7 @@ private fun BrowserSessionPanel(
     onCookieProfileChanged: (BrowserCookieProfile) -> Unit,
     onPrivacySettingsChanged: (BrowserPrivacySettings) -> Unit,
     onClearBrowsingData: () -> Unit,
+    onResetBrowserSettings: () -> Unit,
 ) {
     XdmListCard(compact = true) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -641,6 +674,7 @@ private fun BrowserSessionPanel(
             onToggleSettings = onTogglePrivacySettings,
             onSettingsChanged = onPrivacySettingsChanged,
             onClearBrowsingData = onClearBrowsingData,
+            onResetBrowserSettings = onResetBrowserSettings,
         )
         XdmActionFlowRow {
             TextButton(onClick = onToggleHistory) { Text(if (showHistory) "Hide history" else "History") }
@@ -669,12 +703,14 @@ private fun BrowserPrivacySettingsPanel(
     onToggleSettings: () -> Unit,
     onSettingsChanged: (BrowserPrivacySettings) -> Unit,
     onClearBrowsingData: () -> Unit,
+    onResetBrowserSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         XdmActionFlowRow {
             TextButton(onClick = onToggleSettings) { Text(if (showSettings) "Hide privacy" else "Privacy settings") }
             TextButton(onClick = onClearBrowsingData) { Text("Clear browser data") }
+            TextButton(onClick = onResetBrowserSettings) { Text("Reset browser settings") }
         }
         if (showSettings) {
             XdmMetadataText("Browser settings")
@@ -700,6 +736,7 @@ private fun BrowserPrivacySettingsPanel(
                 }
             }
             XdmMetadataText("Site capabilities")
+            XdmSupportingText("Camera, microphone, and location requests are review-first. Private tabs warn before granting and never persist permission state.", maxLines = 2)
             XdmActionFlowRow {
                 FilterChip(selected = settings.javaScriptEnabled, onClick = { onSettingsChanged(settings.copy(javaScriptEnabled = !settings.javaScriptEnabled)) }, label = { Text("JavaScript") })
                 FilterChip(selected = settings.domStorageEnabled, onClick = { onSettingsChanged(settings.copy(domStorageEnabled = !settings.domStorageEnabled)) }, label = { Text("DOM storage") })
@@ -735,6 +772,46 @@ private fun BrowserTabSwitcher(
         }
         if (tabs.size > MaxVisibleTabs) {
             XdmSupportingText("${tabs.size - MaxVisibleTabs} more tab${if (tabs.size - MaxVisibleTabs == 1) "" else "s"} are retained in the restored session.", maxLines = 1)
+        }
+    }
+}
+
+
+@Composable
+private fun BrowserPermissionStatusPanel(
+    prompt: BrowserPermissionPrompt?,
+    events: List<BrowserPermissionEvent>,
+    activeTabIsPrivate: Boolean,
+    onGrant: (BrowserPermissionPrompt) -> Unit,
+    onDeny: (BrowserPermissionPrompt) -> Unit,
+    onDismiss: (BrowserPermissionPrompt) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    XdmListCard(compact = true, modifier = modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText("Site permissions")
+                XdmSupportingText("Camera, microphone, and location prompts are review-first and never stored as durable grants by XDM.", maxLines = 2)
+            }
+            XdmMetadataText(if (activeTabIsPrivate) "Private guarded" else "Ask first", maxLines = 1)
+        }
+        prompt?.let { request ->
+            XdmCardTitle("Permission request")
+            XdmSupportingText("${request.origin} wants ${request.summaryLabel}.", maxLines = 2)
+            if (activeTabIsPrivate) XdmSupportingText("Private tabs reject persistence; granting is one-shot and session-scoped.", maxLines = 2)
+            XdmActionFlowRow {
+                Button(onClick = { onGrant(request) }) { Text("Grant once") }
+                OutlinedButton(onClick = { onDeny(request) }) { Text("Deny") }
+                TextButton(onClick = { onDismiss(request) }) { Text("Dismiss") }
+            }
+        } ?: run {
+            XdmMetadataText("No pending site permission request.")
+        }
+        if (events.isNotEmpty()) {
+            XdmMetadataText("Recent permission decisions")
+            events.take(MaxVisiblePermissionEvents).forEach { event ->
+                XdmSupportingText("${event.decision}: ${event.label} · ${event.origin}", maxLines = 1)
+            }
         }
     }
 }
@@ -981,6 +1058,8 @@ private fun EmbeddedBrowser(
     onNavigationChanged: (BrowserChromeState) -> Unit,
     onMediaDiscovered: (String, String?) -> Unit,
     onDownloadRequested: (BrowserDownloadBridgeDraft) -> Unit,
+    onPermissionRequested: (BrowserPermissionPrompt) -> Unit,
+    onPermissionCanceled: (String) -> Unit,
 ) {
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     var lastLoaded by remember { mutableStateOf<String?>(null) }
@@ -1003,6 +1082,39 @@ private fun EmbeddedBrowser(
                     override fun onReceivedTitle(view: WebView?, title: String?) {
                         onPageChanged(view?.url, title)
                         onNavigationChanged(browserNavigator.snapshot(isLoading = false, progress = 100))
+                    }
+
+                    override fun onPermissionRequest(request: PermissionRequest?) {
+                        val permissionRequest = request ?: return
+                        val resources = permissionRequest.resources?.toList().orEmpty()
+                        mainHandler.post {
+                            onPermissionRequested(
+                                BrowserPermissionPrompt(
+                                    origin = permissionRequest.origin?.toString().orEmpty().ifBlank { "Unknown site" },
+                                    resources = resources,
+                                    onGrant = { permissionRequest.grant(resources.toTypedArray()) },
+                                    onDeny = { permissionRequest.deny() },
+                                ),
+                            )
+                        }
+                    }
+
+                    override fun onPermissionRequestCanceled(request: PermissionRequest?) {
+                        mainHandler.post { onPermissionCanceled(request?.origin?.toString().orEmpty().ifBlank { "Unknown site" }) }
+                    }
+
+                    override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
+                        val safeOrigin = origin.orEmpty().ifBlank { "Unknown site" }
+                        mainHandler.post {
+                            onPermissionRequested(
+                                BrowserPermissionPrompt(
+                                    origin = safeOrigin,
+                                    resources = listOf(BrowserPermissionResourceLocation),
+                                    onGrant = { callback?.invoke(origin, true, false) },
+                                    onDeny = { callback?.invoke(origin, false, false) },
+                                ),
+                            )
+                        }
                     }
                 }
                 webViewClient = object : WebViewClient() {
@@ -1293,6 +1405,32 @@ private fun sniffBrowserUrl(
 ) {
     val safeUrl = url?.takeIf { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) } ?: return
     if (classifier.isCandidate(MediaRequestFacts(safeUrl, mimeType))) onMediaDiscovered(safeUrl, mimeType)
+}
+
+
+private data class BrowserPermissionPrompt(
+    val origin: String,
+    val resources: List<String>,
+    val onGrant: () -> Unit,
+    val onDeny: () -> Unit,
+) {
+    val summaryLabel: String
+        get() = resources.map(::browserPermissionResourceLabel).distinct().joinToString(" + ").ifBlank { "site capability" }
+}
+
+private data class BrowserPermissionEvent(
+    val origin: String,
+    val label: String,
+    val decision: String,
+    val decidedAtEpochMs: Long,
+)
+
+private fun browserPermissionResourceLabel(resource: String): String = when (resource) {
+    PermissionRequest.RESOURCE_AUDIO_CAPTURE -> "microphone"
+    PermissionRequest.RESOURCE_VIDEO_CAPTURE -> "camera"
+    PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> "protected media ID"
+    BrowserPermissionResourceLocation -> "location"
+    else -> resource.substringAfterLast('.').replace('_', ' ').lowercase(Locale.US).ifBlank { "site capability" }
 }
 
 
@@ -1694,6 +1832,8 @@ private const val MaxVisibleBookmarks = 8
 private const val MaxVisiblePageResources = 8
 private const val MaxVisibleImportLinks = 8
 private const val MaxVisibleMediaGroups = 4
+private const val MaxVisiblePermissionEvents = 4
+private const val BrowserPermissionResourceLocation = "android.webkit.resource.LOCATION"
 private const val MaxStoredTabs = 12
 private const val MaxStoredHistory = 80
 private const val MaxStoredBookmarks = 80

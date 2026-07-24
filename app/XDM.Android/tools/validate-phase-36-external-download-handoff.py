@@ -28,7 +28,7 @@ if 36 not in manifest_json.get("implemented_phases", []):
 if manifest_json.get("next_phase") != "complete":
     errors.append("next_phase must remain complete")
 if manifest_json.get("current_overlay") not in {"xdm_android_phase36_external_download_handoff_overlay.zip", "xdm_android_phase37a_browser_downloader_roadmap_overlay.zip", "xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip", "xdm_android_phase38_browser_reliability_foundation_overlay.zip", "xdm_android_phase39_browser_chrome_navigation_overlay.zip", "xdm_android_phase40_browser_tabs_session_ux_overlay.zip", "xdm_android_phase41_browser_download_bridge_overlay.zip", "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip",
-    "xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip", "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip", "xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip", "xdm_android_phase43_browser_library_surfaces_overlay.zip"}:
+    "xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip", "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip", "xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip", "xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip", "xdm_android_phase43_browser_library_surfaces_overlay.zip"}:
     errors.append("current_overlay must point at Phase 36 external download handoff overlay or a later Phase 37A/37B/38/39/40 browser roadmap/topology overlay")
 phase = manifest_json.get("phase36_external_download_handoff", {})
 for key in [
