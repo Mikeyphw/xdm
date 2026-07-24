@@ -14,7 +14,7 @@ def require(condition: bool, message: str) -> None:
 manifest = json.loads((ROOT / "PROJECT_MANIFEST.json").read_text())
 phase = manifest.get("phase41_browser_download_bridge", {})
 allowed_current = {"xdm_android_phase41_browser_download_bridge_overlay.zip", "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip",
-    "xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip", "xdm_android_phase43_browser_library_surfaces_overlay.zip"}
+    "xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip", "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip", "xdm_android_phase43_browser_library_surfaces_overlay.zip"}
 require(manifest.get("current_overlay") in allowed_current, "current_overlay must point at the Phase 41 browser download bridge overlay")
 for key in [
     "phase40_landed",

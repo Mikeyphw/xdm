@@ -34,7 +34,7 @@ for phase in range(26, 35):
 if manifest.get("next_phase") != "complete":
     errors.append("PROJECT_MANIFEST next_phase must remain complete after the release handoff")
 if manifest.get("current_overlay") not in {"xdm_android_phase34_stabilization_release_handoff_overlay.zip", "xdm_android_phase35_release_candidate_polish_overlay.zip", "xdm_android_phase36_external_download_handoff_overlay.zip", "xdm_android_phase37a_browser_downloader_roadmap_overlay.zip", "xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip", "xdm_android_phase38_browser_reliability_foundation_overlay.zip", "xdm_android_phase39_browser_chrome_navigation_overlay.zip", "xdm_android_phase40_browser_tabs_session_ux_overlay.zip", "xdm_android_phase41_browser_download_bridge_overlay.zip", "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip",
-    "xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip", "xdm_android_phase43_browser_library_surfaces_overlay.zip"}:
+    "xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip", "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip", "xdm_android_phase43_browser_library_surfaces_overlay.zip"}:
     errors.append("current_overlay must point at the Phase 34 handoff overlay or a later approved Phase 35/36 overlay")
 
 handoff = manifest.get("phase34_release_handoff", {})

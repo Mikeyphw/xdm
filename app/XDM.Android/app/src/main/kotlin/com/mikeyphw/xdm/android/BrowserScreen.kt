@@ -258,7 +258,15 @@ fun BrowserScreen(
         browserNavigator.goBack()
     }
 
-    Column(modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Box(modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxSize()
+                .sizeIn(maxWidth = BrowserMaxContentWidthDp.dp)
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
         BrowserAddressBar(
             value = addressBar,
             pageTitle = browserChromeState.title ?: currentPageTitle,
@@ -284,6 +292,14 @@ fun BrowserScreen(
                 val target = (browserChromeState.url ?: currentUrlState ?: loadRequest).orEmpty()
                 if (target.isNotBlank()) onOpenAddForUrl(target, currentTitleState)
             },
+        )
+        BrowserVisualStatusBar(
+            tabCount = tabs.size,
+            mediaCount = pageCaptures.size,
+            resourceCount = pageResources.size,
+            bookmarkCount = bookmarks.size,
+            isPrivateProfile = cookieProfile.privateMode,
+            desktopMode = browserPrivacySettings.desktopModeDefault,
         )
         BrowserSessionPanel(
             sessionState = browserTabSessionState,
@@ -430,6 +446,35 @@ fun BrowserScreen(
             onDownloadSelected = onDownloadMediaCapture,
             onResolveSelected = onResolveMediaCapture,
         )
+        }
+    }
+}
+
+@Composable
+private fun BrowserVisualStatusBar(
+    tabCount: Int,
+    mediaCount: Int,
+    resourceCount: Int,
+    bookmarkCount: Int,
+    isPrivateProfile: Boolean,
+    desktopMode: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    XdmListCard(compact = true, modifier = modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText("Adaptive browser cockpit")
+                XdmSupportingText("Flat, compact hierarchy keeps navigation, library, downloads, and media capture visible without turning Browser into another hidden tray.", maxLines = 2)
+            }
+            XdmMetadataText(if (desktopMode) "Desktop" else "Mobile", maxLines = 1)
+        }
+        XdmActionFlowRow {
+            XdmMetadataText("$tabCount tab${if (tabCount == 1) "" else "s"}", maxLines = 1)
+            XdmMetadataText("$mediaCount media", maxLines = 1)
+            XdmMetadataText("$resourceCount resources", maxLines = 1)
+            XdmMetadataText("$bookmarkCount bookmarks", maxLines = 1)
+            XdmMetadataText(if (isPrivateProfile) "Private profile" else "Normal profile", maxLines = 1)
+        }
     }
 }
 
@@ -466,7 +511,7 @@ private fun BrowserAddressBar(
             TextButton(onClick = onAddPage, enabled = pageUrl?.isNotBlank() == true) { Text("Add URL") }
         }
         XdmMetadataText(title, maxLines = 1)
-        XdmSupportingText(if (isLoading) "Loading $progress% · $location" else location, maxLines = 1)
+        XdmSupportingText(if (isLoading) "Loading $progress% · $location" else "Ready · $location", maxLines = 1)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = value,
@@ -771,15 +816,21 @@ private fun BrowserStartPage(
 ) {
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         XdmListCard(compact = false) {
-            XdmCardTitle("XDM Browser")
-            XdmSupportingText(
-                "Start with a URL or search above. Default search: ${settings.searchEngine.label}. Homepage: ${settings.homePage.label}.",
-                maxLines = 3,
-            )
-            XdmActionFlowRow {
-                Button(onClick = { onOpen(settings.searchEngine.startPageUrl) }) { Text("Search the web") }
-                OutlinedButton(onClick = { onOpen(settings.homePage.url ?: "https://example.com") }) { Text("Open homepage") }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    XdmCardTitle("XDM Browser")
+                    XdmSupportingText(
+                        "Clean start page for URL entry, search, downloads, media capture, and library recall. Default search: ${settings.searchEngine.label}.",
+                        maxLines = 3,
+                    )
+                }
+                XdmMetadataText(settings.homePage.label, maxLines = 1)
             }
+            XdmActionFlowRow {
+                Button(onClick = { onOpen(settings.searchEngine.startPageUrl) }) { Text("Search") }
+                OutlinedButton(onClick = { onOpen(settings.homePage.url ?: "https://example.com") }) { Text("Homepage") }
+            }
+            XdmSupportingText("Adaptive layout centers the browser cockpit on wide screens and keeps phone actions compact and thumb-reachable.", maxLines = 2)
         }
         XdmListCard(compact = true) {
             XdmMetadataText("Recent pages")
@@ -1034,7 +1085,7 @@ private fun BrowserDownloadBridgeCard(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 XdmCardTitle("Download detected")
-                XdmSupportingText("XDM will always ask before sending browser downloads to the downloader.", maxLines = 2)
+                XdmSupportingText("Review-first bridge keeps browser downloads separate from the downloader queue until you tap Add download.", maxLines = 2)
             }
             Icon(Icons.Rounded.Download, contentDescription = "Download detected")
         }
@@ -1073,7 +1124,7 @@ private fun BrowserMediaCockpit(
                 XdmCardTitle(if (captures.isEmpty()) "Media cockpit" else "Media found")
                 XdmSupportingText(
                     if (captures.isEmpty()) "Browser media tray upgraded: open a page and XDM will surface HLS, DASH, MP4, audio, and direct media candidates here before anything is queued."
-                    else "Review detected media, choose the best candidate, or open the full Media inbox for variant diagnostics.",
+                    else "Review detected media in a compact cockpit, choose the best candidate, or open the full Media inbox for variant diagnostics.",
                     maxLines = 3,
                 )
             }
@@ -1554,6 +1605,7 @@ private fun hostFromUrl(url: String): String = runCatching { Uri.parse(url).host
 
 private val BrowserImportUrlRegex = Regex("""https?://[^\s<>'"]+""")
 
+private const val BrowserMaxContentWidthDp = 1180
 private const val NewTabTitle = "New tab"
 private const val MaxVisibleTabs = 8
 private const val MaxVisibleHistory = 6

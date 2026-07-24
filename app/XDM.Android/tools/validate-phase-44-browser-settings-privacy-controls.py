@@ -24,9 +24,12 @@ run_gate = read("tools/run-final-release-gate.sh")
 workflow = read(".github/workflows/android.yml")
 doc = ROOT / "docs/browser/PHASE-44-BROWSER-SETTINGS-PRIVACY-CONTROLS.md"
 
-overlay = "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip"
+allowed_overlays = {
+    "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip",
+    "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip",
+}
 require(doc.is_file(), "Phase 44 browser settings/privacy doc is missing")
-require(manifest.get("current_overlay") == overlay, "current_overlay must point at the Phase 44 browser settings/privacy overlay")
+require(manifest.get("current_overlay") in allowed_overlays, "current_overlay must point at the Phase 44 browser settings/privacy overlay or approved Phase 45 visual polish overlay")
 for key in [
     "phase43_landed",
     "homepage_setting",
@@ -72,7 +75,7 @@ require("remove(KeyHistory)" in clear_body and "remove(KeyTabs)" in clear_body a
 require("validate-phase-44-browser-settings-privacy-controls.py" in run_gate, "Final release gate must run Phase 44 validator")
 require("validate-phase-44-browser-settings-privacy-controls.py" in workflow, "Android CI must run Phase 44 validator")
 require("phaseFortyFourBrowserSettingsPrivacyControlsContractsArePresent" in contract, "ArchitectureContractTest must cover Phase 44")
-require(overlay in contract, "ArchitectureContractTest must allow Phase 44 current_overlay")
+require(all(overlay in contract for overlay in allowed_overlays), "ArchitectureContractTest must allow Phase 44 and Phase 45 current_overlay")
 
 if errors:
     for error in errors:

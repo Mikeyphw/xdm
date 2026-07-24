@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -55,6 +56,7 @@ validators=(
   tools/validate-phase-42-browser-media-capture-cockpit.py
   tools/validate-phase-43-browser-library-surfaces.py
   tools/validate-phase-44-browser-settings-privacy-controls.py
+  tools/validate-phase-45-browser-visual-polish-adaptive-layout.py
 )
 
 for validator in "${validators[@]}"; do
@@ -75,7 +77,7 @@ Run the full build/test/lint gate in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Then apply the Phase 43 browser library surfaces overlay with validation enabled if this overlay has not been applied yet:
+Then apply the Phase 45 browser visual polish adaptive layout overlay with validation enabled if this overlay has not been applied yet:
 
 devtool --copy --auto-hud --hud-mode desktop-window --yes -r "\$HOME/Code/xdm" --target xdm_android apply-overlay "\$HOME/Downloads/xdm_android_phase43_browser_library_surfaces_overlay.zip" --validate
 EOF2
