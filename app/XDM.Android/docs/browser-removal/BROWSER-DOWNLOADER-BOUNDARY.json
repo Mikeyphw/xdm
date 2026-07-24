@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "program": "xdm_android_builtin_browser_removal",
+  "phase": "0_and_1_baseline_and_downloader_preservation",
+  "source_snapshot": {
+    "archive": "xdm-20260724-202445.tar.gz",
+    "git_commit": null,
+    "git_commit_note": "The supplied source archive did not contain .git metadata; inventory is bound to file content through the Devtool overlay source hashes.",
+    "android_version_name": "0.20.0-rc08",
+    "android_version_code": 21,
+    "room_schema": 14
+  },
+  "phase_scope": {
+    "runtime_removal_started": false,
+    "production_kotlin_modified": false,
+    "android_manifest_modified": false,
+    "database_modified": false,
+    "version_bumped": false,
+    "purpose": [
+      "Record the current browser/downloader boundary.",
+      "Install tests that prevent downloader regressions during later browser removal.",
+      "Keep external browser handoff distinct from XDM acting as a browser."
+    ]
+  },
+  "ownership": {
+    "remove_later_browser_runtime": [
+      "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserActivity.kt",
+      "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+      "AppRoute.Browser",
+      "Browser launcher and generic browser VIEW filters",
+      "WebView, WebViewClient, WebChromeClient and Android WebKit adapters",
+      "tabs, browser history, bookmarks, private browsing, site permissions, browser settings, resource inspector and browser download-rules UI"
+    ],
+    "mixed_extract_before_delete": [
+      "app/src/main/AndroidManifest.xml",
+      "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt",
+      "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+      "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+      "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+      "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBrowserCaptureQuality.kt"
+    ],
+    "preserve_external_handoff_despite_browser_naming": [
+      "browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/SharedLinkParser.kt",
+      "com.mikeyphw.xdm.android.browser.BrowserHandoffContract",
+      "com.mikeyphw.xdm.android.model.BrowserHandoffPolicy",
+      "app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAddDownloadActivity.kt",
+      "share-sheet, ACTION_VIEW and browser download-manager action intake"
+    ],
+    "preserve_downloader_runtime": [
+      "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt",
+      "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionDispatcher.kt",
+      "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionLibrary.kt",
+      "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaNativeDirectDownloadEngine.kt",
+      "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaOfflineLibraryV2.kt",
+      "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaPlayerDiagnostics.kt",
+      "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaQueueActions.kt",
+      "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaQueueTelemetry.kt",
+      "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSessionPrivacyAudit.kt",
+      "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaTermuxRuntimeAdapter.kt",
+      "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaWorkerBridge.kt",
+      "app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt",
+      "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt",
+      "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt",
+      "transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt"
+    ]
+  },
+  "manifest_intent_classification": [
+    {
+      "owner": ".BrowserActivity",
+      "classification": "remove_later_general_browser",
+      "contracts": [
+        "MAIN/LAUNCHER",
+        "generic HTTP/HTTPS ACTION_VIEW"
+      ]
+    },
+    {
+      "owner": ".ExternalAddDownloadActivity",
+      "classification": "preserve_downloader_handoff",
+      "contracts": [
+        "ACTION_SEND",
+        "ACTION_SEND_MULTIPLE",
+        "download-oriented ACTION_VIEW",
+        "HTTP/HTTPS/FTP",
+        "downloadable MIME and path patterns"
+      ]
+    },
+    {
+      "owner": ".MainActivity",
+      "classification": "preserve_downloader_shell_and_typed_actions",
+      "contracts": [
+        "MAIN/LAUNCHER",
+        "ADD_URL",
+        "CAPTURE_MEDIA",
+        "PAUSE_ALL",
+        "RESUME_ALL"
+      ]
+    }
+  ],
+  "known_baseline_findings": [
+    {
+      "id": "legacy_static_gate_pre_phase37_assumption",
+      "severity": "blocking_for_run_final_release_gate",
+      "detail": "tools/validate-browser-media-downloader.py still requires the browser to live under Media before Phase 37B, while current source has AppRoute.Browser. Browser-era validators must be reconciled during the later documentation/validator cleanup phase."
+    },
+    {
+      "id": "phase49_50_gate_path_typo",
+      "severity": "repaired_in_this_phase",
+      "detail": "tools/run-final-release-gate.sh referenced Phase 49 and 50 validators without the tools/ prefix."
+    },
+    {
+      "id": "browser_required_architecture_tests",
+      "severity": "expected_future_edit",
+      "detail": "ArchitectureContractTest contains historical Phase 37-50 assertions requiring BrowserActivity, AppRoute.Browser and BrowserScreen. Those tests are intentionally not removed in Phase 0/1 and must be retired when runtime removal begins."
+    }
+  ],
+  "phase1_preservation_contracts": [
+    "ExternalAddDownloadActivity remains a dedicated review-first receiver.",
+    "Shared text, subject text and ClipData URI/text candidates remain inspected.",
+    "External handoff never directly starts or silently queues a transfer from MainActivity.",
+    "HTTP, HTTPS and FTP download URLs remain normalized; unsafe schemes remain rejected.",
+    "Sensitive headers and already-redacted placeholders remain safe.",
+    "Native, aria2, scheduler, media resolver, queue, worker, offline library and Media3 player source contracts remain present.",
+    "The browser-integration module remains free of Android WebKit runtime dependencies."
+  ]
+}

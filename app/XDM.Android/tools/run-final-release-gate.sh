@@ -47,6 +47,7 @@ validators=(
   tools/validate-phase-34-release-handoff.py
   tools/validate-phase-35-release-candidate-polish.py
   tools/validate-phase-36-external-download-handoff.py
+  tools/validate-browser-removal-phase-0-1.py
   tools/validate-phase-37a-browser-downloader-roadmap.py
   tools/validate-phase-37b-dual-launcher-navigation-split.py
   tools/validate-phase-38-browser-reliability-foundation.py
@@ -59,8 +60,8 @@ validators=(
   tools/validate-phase-45-browser-visual-polish-adaptive-layout.py
   tools/validate-phase-46-browser-private-mode-data-isolation.py
   tools/validate-phase-48-browser-resource-inspector.py
-  validate-phase-50-browser-downloader-ux-polish-seal.py
-  validate-phase-49-browser-download-rules-file-type-interception.py
+  tools/validate-phase-50-browser-downloader-ux-polish-seal.py
+  tools/validate-phase-49-browser-download-rules-file-type-interception.py
   tools/validate-phase-47-browser-permission-ux-settings-polish.py
 )
 

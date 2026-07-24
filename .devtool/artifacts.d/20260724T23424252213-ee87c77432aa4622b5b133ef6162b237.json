@@ -1,0 +1,132 @@
+{
+  "applied_at": "2026-07-24T23:42:42.522131Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_browser_removal_phase0_1_baseline_preservation_overlay.zip",
+  "artifact_name": "xdm_android_browser_removal_phase0_1_baseline_preservation_overlay.zip",
+  "type": "overlay",
+  "sha256": "0f59eaae912fc073f7d40d957ad7e797312f500e8cd29eaf722a266b66ccc6fb",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Add browser removal baseline and downloader preservation contracts",
+  "commit_hash": "",
+  "file_count": 10,
+  "change_counts": {
+    "add": 5,
+    "modify": 5
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android built-in browser removal Phase 0 and Phase 1",
+    "description": "Records the current browser/downloader boundary and adds non-destructive preservation contracts for external handoff, transfer engines, media resolution, queue/runtime services, playback, and privacy before any built-in browser code is removed.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "1225bcc33fe69272c98009f15a6cc393d785aceb7732ebaae6b19c0df664d55d",
+          "size": 7467,
+          "source_sha256": "03b29e191fcab2c0f667726d46cdf9614a70447da975e39a9a078cb64940d958"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "784250314b0062d6d168a96766b71c870d9512396086bfbd09ac2e4c6ff7a425",
+          "size": 42416,
+          "source_sha256": "0b46cd7b5b47cf7c4ae63664589aab6c5cc05f167d3bd69888da8e340b2b362c"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-0-1.py",
+          "action": "add",
+          "sha256": "ab1848aa7b434e252f4474f1cfcaf99cb5d10fb695f2ffa705ab0fc9eda53078",
+          "size": 7657
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "efa98040907f33baeb3d10a099bfb3ae66131ba22ec6723f31a6e06b94d6c69f",
+          "size": 3605,
+          "source_sha256": "9e9b5ba1fa96871321ab43fb3b1d3b2f14c915033aecd04837a6a00970fd301e"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "e3c50432adba868cbb363c6a6f7ad8dad94fcdee1e5c8f42b5c02672c1350da6",
+          "size": 5037,
+          "source_sha256": "8a871ded4d57007a3fdd74685c294da08c2897507c80484614a9954cc4f6d95a"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPreservationContractTest.kt",
+          "action": "add",
+          "sha256": "166ecb1671350ec766cfaae14a3a1cb4e39cc5b11484805c43ab0b7c29609d9f",
+          "size": 8399
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloaderHandoffPreservationTest.kt",
+          "action": "add",
+          "sha256": "859862575b17143659d5fb88364490e5b4e9946f6a8ce392ef222579d48903bf",
+          "size": 2708
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/test/kotlin/com/mikeyphw/xdm/android/browser/SharedLinkParserTest.kt",
+          "action": "modify",
+          "sha256": "efaaf4d53fe4e441e27479a7b6d87fff3c43b82dd69ed5bcef511eedece21451",
+          "size": 1571,
+          "source_sha256": "cb24f9953758205dea107d9737ef13f015816602009595a4d280578a80506069"
+        },
+        {
+          "path": "app/XDM.Android/docs/browser-removal/BROWSER-DOWNLOADER-BOUNDARY.json",
+          "action": "add",
+          "sha256": "26381e529e6f3a5ad10e2269b84a9cc6feb0153284f9daf7218382e40bcddba4",
+          "size": 6258
+        },
+        {
+          "path": "app/XDM.Android/docs/browser-removal/PHASE-0-1-BASELINE-PRESERVATION.md",
+          "action": "add",
+          "sha256": "0ebdd59957d53b6fd8162f096e40767b480477df579ee73d9d81235d2b021569",
+          "size": 5815
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Add browser removal baseline and downloader preservation contracts"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Phase 0/1 is non-destructive: no production Kotlin, AndroidManifest, route, activity, Room schema, or version metadata changes.",
+      "Adds 17 focused preservation tests plus a static validator.",
+      "Protects ExternalAddDownloadActivity, share/VIEW/ClipData intake, review-first prompting, native/aria2/scheduler execution, media planning, queue/worker/Termux layers, offline library, Media3 playback, and redaction behavior.",
+      "Records that the historical final release gate currently contains pre-Phase-37 browser assumptions; browser-era validator reconciliation is deferred until runtime removal.",
+      "Repairs the Phase 49/50 validator paths in tools/run-final-release-gate.sh."
+    ]
+  },
+  "history_id": "ee87c77432aa4622b5b133ef6162b237"
+}

@@ -1,3 +1,13 @@
+# Unreleased
+
+## XDM Android built-in browser removal: Phase 0 and Phase 1
+
+- Added a machine-readable browser/downloader ownership inventory without removing runtime code.
+- Added preservation contracts for external share/view handoff, ClipData intake, review-first download prompts, URL normalization, and secret redaction.
+- Locked native, aria2, scheduler, media resolver, queue, worker, Termux, offline-library, diagnostics, and Media3 playback source contracts before browser extraction.
+- Recorded the stale pre-Phase-37 browser validator mismatch and repaired Phase 49/50 validator paths in the final-gate script.
+- Kept Android version metadata, Room schema, production Kotlin, routes, activities, and manifest behavior unchanged.
+
 ## 0.11.0-alpha01
 
 - Added Phase 11 media manifest resolution for HLS and DASH captures.

@@ -21,4 +21,21 @@ class SharedLinkParserTest {
         val links = SharedLinkParser.parse("Download this build: https://example.test/releases/app.apk?token=abc. Thanks!")
         assertEquals(listOf("https://example.test/releases/app.apk?token=abc"), links)
     }
+
+
+    @Test
+    fun ignoresUnsafeAndNonShareSchemes() {
+        val links = SharedLinkParser.parse(
+            "javascript:alert(1) file:///sdcard/private ftp://example.test/file.zip https://example.test/safe.zip",
+        )
+        assertEquals(listOf("https://example.test/safe.zip"), links)
+    }
+
+    @Test
+    fun acceptsNewlinesAndAngleBracketWrappedLinks() {
+        val links = SharedLinkParser.parse(
+            "First:\n<https://example.test/a.mp4>\nSecond: https://example.test/b.m3u8;",
+        )
+        assertEquals(listOf("https://example.test/a.mp4", "https://example.test/b.m3u8"), links)
+    }
 }
