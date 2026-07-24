@@ -6,4 +6,6 @@ class BrowserActivity : MainActivity() {
     override fun initialRoute(intent: Intent?): AppRoute? = AppRoute.Browser
 
     override fun shouldHandleExternalIntent(intent: Intent): Boolean = false
+
+    override fun shouldOpenBrowserUrl(intent: Intent): Boolean = intent.action == Intent.ACTION_VIEW
 }

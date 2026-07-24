@@ -36,19 +36,37 @@ open class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = scheme, typography = XdmTypography) { XdmApp(viewModel, requestNotifications = ::requestNotificationPermissionIfNeeded) }
         }
         initialRoute(intent)?.let(viewModel::navigate)
-        if (shouldHandleExternalIntent(intent)) handleExternalIntent(intent)
+        if (shouldOpenBrowserUrl(intent)) {
+            openBrowserUrlFromIntent(intent)
+        } else if (shouldHandleExternalIntent(intent)) {
+            handleExternalIntent(intent)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         initialRoute(intent)?.let(viewModel::navigate)
-        if (shouldHandleExternalIntent(intent)) handleExternalIntent(intent)
+        if (shouldOpenBrowserUrl(intent)) {
+            openBrowserUrlFromIntent(intent)
+        } else if (shouldHandleExternalIntent(intent)) {
+            handleExternalIntent(intent)
+        }
     }
 
     protected open fun initialRoute(intent: Intent?): AppRoute? = null
 
     protected open fun shouldHandleExternalIntent(intent: Intent): Boolean = true
+
+    protected open fun shouldOpenBrowserUrl(intent: Intent): Boolean = false
+
+    private fun openBrowserUrlFromIntent(intent: Intent?) {
+        val incoming = intent ?: return
+        val sharedUrl = sharedText(incoming)
+        val normalized = urlCandidates(incoming, sharedUrl).firstNotNullOfOrNull(BrowserHandoffPolicy::normalizedUrl) ?: return
+        val scheme = android.net.Uri.parse(normalized).scheme.orEmpty().lowercase()
+        if (scheme == "http" || scheme == "https") viewModel.openBrowserUrl(normalized)
+    }
 
     private fun handleExternalIntent(intent: Intent?) {
         val incoming = intent ?: return
