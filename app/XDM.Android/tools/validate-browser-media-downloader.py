@@ -29,6 +29,7 @@ approved_browser_route_overlays = {
     'xdm_android_phase41_browser_download_bridge_overlay.zip',
     'xdm_android_phase42_browser_media_capture_cockpit_overlay.zip',
     'xdm_android_phase43_browser_library_surfaces_overlay.zip',
+    'xdm_android_phase44_browser_settings_privacy_controls_overlay.zip',
 }
 if manifest.get('current_overlay') not in approved_browser_route_overlays and ('Browser("Browser"' in route_text or 'Icons.Rounded.Search' in route_text):
     raise SystemExit('Browser media downloader must live under Media before the Phase 37B explicit Browser route')

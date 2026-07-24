@@ -472,7 +472,7 @@
     "yt_dlp_page_url_probe": true,
     "offline_library_groundwork": true
   },
-  "current_overlay": "xdm_android_phase43_browser_library_surfaces_overlay.zip",
+  "current_overlay": "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1169,5 +1169,32 @@
     "no_version_bump": true,
     "no_transfer_engine_changes": true,
     "no_media_execution_changes": true
+  },
+  "phase44_browser_settings_privacy_controls": {
+    "phase43_landed": true,
+    "browser_settings_document": "docs/browser/PHASE-44-BROWSER-SETTINGS-PRIVACY-CONTROLS.md",
+    "final_gate_validator": "tools/validate-phase-44-browser-settings-privacy-controls.py",
+    "homepage_setting": true,
+    "default_search_engine_setting": true,
+    "javascript_toggle": true,
+    "dom_storage_toggle": true,
+    "desktop_mode_default_toggle": true,
+    "cookie_controls": true,
+    "third_party_cookie_control": true,
+    "clear_browser_data": true,
+    "private_profile_groundwork": true,
+    "shared_preferences_only": true,
+    "bookmarks_preserved_on_clear_data": true,
+    "raw_header_cookie_token_persistence": false,
+    "no_new_route": true,
+    "no_room_migration": true,
+    "no_version_bump": true,
+    "no_transfer_engine_changes": true,
+    "no_media_execution_changes": true,
+    "docs_research_reviewed": [
+      "android-webview-websettings",
+      "android-webview-cookie-manager",
+      "android-webview-clear-cache-history"
+    ]
   }
 }

@@ -1,29 +1,28 @@
-# XDM Android Phase 43 Browser Library Surfaces
+# XDM Android Phase 44 Browser Settings + Privacy Controls
 
-Phase 43 adds browser-scoped library surfaces on top of the landed Phase 42 browser media capture cockpit.
+Phase 44 adds browser-scoped settings and privacy controls after Phase 43 library surfaces.
 
-## Scope
+## Changes
 
-- Adds a Browser library card inside the first-class Browser surface.
-- Adds browser bookmarks backed by the existing `xdm_browser_sessions` SharedPreferences store.
-- Keeps recent browser history visible and browser-scoped.
-- Adds page resources derived from observed browser requests and persisted media captures.
-- Adds import links from pasted text.
-- Adds clipboard paste import using Android `ClipboardManager`.
-- Updates Phase 34 through Phase 42 validators for the new Phase 43 `current_overlay`.
-- Adds Phase 43 static validator and ArchitectureContractTest coverage.
+- Adds a Browser settings/privacy panel in the Browser session surface.
+- Adds `BrowserPrivacySettings` persisted in `xdm_browser_sessions` SharedPreferences.
+- Adds homepage selection and default search engine selection.
+- Adds JavaScript, DOM storage, desktop-mode default, cookies, and third-party-cookie controls.
+- Wires WebView settings through `BrowserPrivacySettings`.
+- Adds clear browser data action for tabs, history, cache, DOM storage, and cookies while preserving bookmarks.
+- Updates Phase 44 docs, manifest, validator, final release gate, Android CI, and ArchitectureContractTest coverage.
 
-## Safety posture
+## Safety
 
 - No new top-level route.
 - No Room migration.
-- No app version bump.
+- No version bump.
 - No transfer-engine changes.
 - No media execution changes.
+- No raw cookie/token/sensitive-header persistence.
 - No silent auto-queue.
-- Imported links and page resources remain review-first: Open in Browser or Add to downloader.
-- Browser history remains separate from downloader history.
 
-## Deferred
+## Repair note
 
-Private-tab full isolation, bookmark folders, full history management, import-from-file, encrypted browser library storage, and richer page-resource details are deferred to later phases.
+- Declares the local `openBrowserEntry` helper before `openHome` in `BrowserScreen.kt` so Kotlin can resolve the homepage shortcut at compile time.
+- Strengthens the Phase 44 validator to guard that local-function ordering.

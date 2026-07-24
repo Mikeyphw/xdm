@@ -1,0 +1,191 @@
+{
+  "applied_at": "2026-07-24T16:49:27.287349Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase44_browser_settings_privacy_controls_overlay.zip",
+  "artifact_name": "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip",
+  "type": "overlay",
+  "sha256": "18ff47658ea8c057b93d577393b0da403d83100e2e9b0cbf4091c77927f9e9d2",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "XDM Android Phase 44 browser settings privacy controls",
+  "commit_hash": "",
+  "file_count": 20,
+  "change_counts": {
+    "add": 2,
+    "modify": 18
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 44 Browser Settings Privacy Controls",
+    "description": "Adds browser-scoped settings and privacy controls: homepage, search engine, JavaScript, DOM storage, desktop default, cookie and third-party-cookie toggles, plus clear browser data, while preserving review-first downloader safety.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "8bcc50c15702d6fb528aef92e48c6abe3a8c969ac28e6df970b6057df1b5004c",
+          "size": 1226,
+          "source_sha256": "7926bfe7526e64d6aca6520b4279a58b56f6398cab5feaa7b418a76994b8b037"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "83bc72f4615cad2433a9c763f7917b7560edfaa9018c8a5b905bd2b8ad9d4cdd",
+          "size": 37502,
+          "source_sha256": "901d07bb8e41ef32a5004acca83aa404cb413f199436c83858218595cb1a63ad"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+          "action": "modify",
+          "sha256": "369a1846eba17446247dd7e5f0efacb9fc559c039ad90b74a33fc493ebe7e6cc",
+          "size": 74207,
+          "source_sha256": "059cfac41218159f71d6494ecad489d7cd59110dd1ca2a79fd2e1d5a4e8ebe93"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "093cca058fa2707ce5085ab35513256f064d0d4c17f8d1e86e78c7339ffa0f4f",
+          "size": 119095,
+          "source_sha256": "b33983de01bac9c6756fcae72d1e3f44714da78004d6b71cd8c944c5cc52bc0a"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "f154ab026731de5bd76884b9a624622eaf64b16bec890942ecf41f95ee4f48e1",
+          "size": 4486,
+          "source_sha256": "6ff957a46f1c857ee72d9800a5530931e9efb4d091fbf15ab984444106c1fe13"
+        },
+        {
+          "path": "app/XDM.Android/docs/browser/PHASE-44-BROWSER-SETTINGS-PRIVACY-CONTROLS.md",
+          "action": "add",
+          "sha256": "0f1fef9c955e5e5da2f1772a65a8599dde9d24e5cb2369b3c3bdf5ee2f512960",
+          "size": 2284
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "3cc8e8765838dbae011203cfd46391784ad074ee6993ebb139c524dadd8b0b45",
+          "size": 3109,
+          "source_sha256": "d328c55e3a497bb3e1cad082a77c3da0ce2f291c9f5d30203e950ffc8d396d6e"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-media-downloader.py",
+          "action": "modify",
+          "sha256": "1b08e666d9f8cfc5d2a3e6b194046c82826b8fb9d15d17dcc2a5bca2d6509cd9",
+          "size": 3090,
+          "source_sha256": "ee161359a2c411a0fb321ca353abd3bcd1ba8dd4e05d3585c5646d21c6670b14"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+          "action": "modify",
+          "sha256": "847aadc230a048f9a02507e6cc0454121744d7f7cb29aa5f5020457d7e2c5b98",
+          "size": 7487,
+          "source_sha256": "cd16c439a8191c285897a1effafbc271aeab75180cf98bfbfc6d40f9e86f8616"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+          "action": "modify",
+          "sha256": "0bfe4a26925297251d905cb5900e78f0351131f83843a5537b7ab986b531d1f3",
+          "size": 10557,
+          "source_sha256": "0e867590de2f0f207a6c89708f58d12d46abf842ae06d462596457be5602360c"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+          "action": "modify",
+          "sha256": "44aa0c243455618c40e71238eed9047a22cd299e2c41f83a547a759353ca2280",
+          "size": 8961,
+          "source_sha256": "054405d93dca0776bc12b80e38853f9d612ad6141f78632da6429f54af2f3458"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37a-browser-downloader-roadmap.py",
+          "action": "modify",
+          "sha256": "3b6abead641c9e11002ec72a418113c93aa8ed10955f892048626ad68671f633",
+          "size": 3583,
+          "source_sha256": "72d836d26b77c84fa0c6bbf792a294097c610b8f5b2ffd2bd1a6f6e382e671b2"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37b-dual-launcher-navigation-split.py",
+          "action": "modify",
+          "sha256": "4dd73a3be2dc15e8103147c19e1b376f3d260dfa8c1f5898ab790149d8ed93cc",
+          "size": 6634,
+          "source_sha256": "3624b52a0757353117ff776ca44392a527ded9bd2f3a8f16cfbef083fc39e8be"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-38-browser-reliability-foundation.py",
+          "action": "modify",
+          "sha256": "21bc5e29c6352be5665b4ef1aa734b65a311325b31294184f8bc845afafb178e",
+          "size": 7875,
+          "source_sha256": "5a39e44eba8909bfa7e8cd93ac478b542e7df20ef3b62d6a459b610f1555f8e2"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-39-browser-chrome-navigation.py",
+          "action": "modify",
+          "sha256": "86f055fdcdac26dff51be3b27e5676d5f424db650860e0d6bb51f515236e0e6a",
+          "size": 4661,
+          "source_sha256": "87b4f2ef5f2acf40b972ea8832276ea9b8be3bebce8bc5affea791be6553bb63"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-40-browser-tabs-session-ux.py",
+          "action": "modify",
+          "sha256": "656b9854cce1e561daa14eb968edb3de0dad3d718d235e5708b98640dbf214dc",
+          "size": 4530,
+          "source_sha256": "9cb165eaef18550d4a0c8ed2f7732642a1d026699cd5704e0beb668a815eaa0f"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-41-browser-download-bridge.py",
+          "action": "modify",
+          "sha256": "521b9b7d5868898252d8af7635cf372b7d376cd4f9664655b6899e6b085fea7b",
+          "size": 4727,
+          "source_sha256": "42722b9c4f670d5401b43902fd3fbdd3b0f227e280c65933ad904a45c4cac7ea"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-42-browser-media-capture-cockpit.py",
+          "action": "modify",
+          "sha256": "bcac0cbfaa7a98d60219990134a3dd068b3d89615a26b821edf768654fe5bd87",
+          "size": 5173,
+          "source_sha256": "edda8037bd7ede0ebc926c0f615639005185cc66cbf313c22638ec8c8938276b"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-43-browser-library-surfaces.py",
+          "action": "modify",
+          "sha256": "42f71f315877560fdc59e19252e4fb2e8bc7ad37a99bb93a9ee262e773578d9e",
+          "size": 4159,
+          "source_sha256": "b7e26cf2564d37b221a0b4caa55a26ecb2263d8efa0e65a9ca851828f256c55c"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-44-browser-settings-privacy-controls.py",
+          "action": "add",
+          "sha256": "8f9b24bd8a7cc15002d1013af1a9b47f00ab36669be3d7e2235cce3ab1ea1ebe",
+          "size": 5393
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "passed",
+        "tests": "passed",
+        "diagnostics": "passed"
+      },
+      "commit": {
+        "enabled": true,
+        "message": "XDM Android Phase 44 browser settings privacy controls"
+      }
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "message": "XDM Android Phase 44 browser settings privacy controls"
+      }
+    }
+  },
+  "history_id": "19d876542f27446c842e4c502ae1a633"
+}

@@ -16,6 +16,7 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
+import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
@@ -97,6 +98,8 @@ fun BrowserScreen(
     var importText by remember { mutableStateOf("") }
     var importedLinks by remember { mutableStateOf<List<BrowserImportedLink>>(emptyList()) }
     var cookieProfile by remember { mutableStateOf(sessionStore.loadCookieProfile()) }
+    var browserPrivacySettings by remember { mutableStateOf(sessionStore.loadPrivacySettings()) }
+    var showPrivacySettings by remember { mutableStateOf(false) }
     val activeTab = tabs.firstOrNull { it.id == activeTabId } ?: tabs.first()
     val browserTabSessionState = BrowserTabSessionState(
         activeTabId = activeTab.id,
@@ -147,7 +150,7 @@ fun BrowserScreen(
     }
 
     fun openBrowserInput(raw: String) {
-        val normalized = normalizeBrowserInput(raw)
+        val normalized = normalizeBrowserInput(raw, browserPrivacySettings.searchEngine)
         addressBar = normalized
         browserLoadState = BrowserLoadState.Loading(normalized, 0)
         browserChromeState = BrowserChromeState(url = normalized, title = currentPageTitle, isLoading = true, progress = 0)
@@ -155,7 +158,20 @@ fun BrowserScreen(
         loadRequest = normalized
     }
 
+    fun openBrowserEntry(url: String, title: String? = null) {
+        addressBar = url
+        browserLoadState = BrowserLoadState.Loading(url, 0)
+        browserChromeState = BrowserChromeState(url = url, title = title ?: currentPageTitle, isLoading = true, progress = 0)
+        browserDownloadDraft = null
+        loadRequest = url
+    }
+
     fun openHome() {
+        val homeUrl = browserPrivacySettings.homePage.url
+        if (!homeUrl.isNullOrBlank()) {
+            openBrowserEntry(homeUrl, browserPrivacySettings.homePage.label)
+            return
+        }
         addressBar = ""
         loadRequest = null
         currentPageUrl = null
@@ -172,14 +188,6 @@ fun BrowserScreen(
         sessionStore.saveTabs(updated, activeTabId)
     }
 
-    fun openBrowserEntry(url: String, title: String? = null) {
-        addressBar = url
-        browserLoadState = BrowserLoadState.Loading(url, 0)
-        browserChromeState = BrowserChromeState(url = url, title = title ?: currentPageTitle, isLoading = true, progress = 0)
-        browserDownloadDraft = null
-        loadRequest = url
-    }
-
     fun toggleCurrentBookmark() {
         val url = (browserChromeState.url ?: currentPageUrl).orEmpty().takeIf(String::isNotBlank) ?: return
         val title = (browserChromeState.title ?: currentPageTitle ?: hostFromUrl(url)).takeIf { it.isNotBlank() } ?: hostFromUrl(url)
@@ -191,6 +199,30 @@ fun BrowserScreen(
         val text = clipboard?.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
         importText = text
         importedLinks = extractBrowserImportLinks(text)
+    }
+
+    fun updateBrowserPrivacySettings(settings: BrowserPrivacySettings) {
+        browserPrivacySettings = settings
+        sessionStore.savePrivacySettings(settings)
+    }
+
+    fun clearBrowserData() {
+        browserNavigator.clearBrowsingData(context.applicationContext)
+        sessionStore.clearBrowsingData()
+        val blank = BrowserTab.blank()
+        tabs = listOf(blank)
+        activeTabId = blank.id
+        history = emptyList()
+        addressBar = ""
+        loadRequest = null
+        currentPageUrl = null
+        currentPageTitle = null
+        sniffedUrls.clear()
+        importedLinks = emptyList()
+        importText = ""
+        browserDownloadDraft = null
+        browserLoadState = BrowserLoadState.StartPage
+        browserChromeState = BrowserChromeState.StartPage
     }
 
     LaunchedEffect(activeTabId) {
@@ -213,7 +245,7 @@ fun BrowserScreen(
 
     LaunchedEffect(initialUrl) {
         val incoming = initialUrl?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
-        val normalized = normalizeBrowserInput(incoming)
+        val normalized = normalizeBrowserInput(incoming, browserPrivacySettings.searchEngine)
         addressBar = normalized
         browserLoadState = BrowserLoadState.Loading(normalized, 0)
         browserChromeState = BrowserChromeState(url = normalized, title = currentPageTitle, isLoading = true, progress = 0)
@@ -261,8 +293,11 @@ fun BrowserScreen(
             showHistory = showHistory,
             showTabSwitcher = showTabSwitcher,
             cookieProfile = cookieProfile,
+            privacySettings = browserPrivacySettings,
+            showPrivacySettings = showPrivacySettings,
             onToggleHistory = { showHistory = !showHistory },
             onToggleTabSwitcher = { showTabSwitcher = !showTabSwitcher },
+            onTogglePrivacySettings = { showPrivacySettings = !showPrivacySettings },
             onSelectTab = { tab ->
                 activeTabId = tab.id
                 showTabSwitcher = false
@@ -299,6 +334,8 @@ fun BrowserScreen(
                 cookieProfile = profile
                 sessionStore.saveCookieProfile(profile)
             },
+            onPrivacySettingsChanged = ::updateBrowserPrivacySettings,
+            onClearBrowsingData = ::clearBrowserData,
         )
         BrowserLibraryPanel(
             currentUrl = browserChromeState.url ?: currentPageUrl,
@@ -324,6 +361,7 @@ fun BrowserScreen(
             if (loadRequest.isNullOrBlank()) {
                 BrowserStartPage(
                     history = history,
+                    settings = browserPrivacySettings,
                     onOpen = { raw -> openBrowserInput(raw) },
                 )
             } else {
@@ -332,6 +370,7 @@ fun BrowserScreen(
                     classifier = classifier,
                     browserNavigator = browserNavigator,
                     cookieProfile = cookieProfile,
+                    browserSettings = browserPrivacySettings,
                     onPageChanged = { url, title -> updateActiveTab(url, title) },
                     onLoadStateChanged = { browserLoadState = it },
                     onNavigationChanged = { browserChromeState = it },
@@ -450,13 +489,18 @@ private fun BrowserSessionPanel(
     showHistory: Boolean,
     showTabSwitcher: Boolean,
     cookieProfile: BrowserCookieProfile,
+    privacySettings: BrowserPrivacySettings,
+    showPrivacySettings: Boolean,
     onToggleHistory: () -> Unit,
     onToggleTabSwitcher: () -> Unit,
+    onTogglePrivacySettings: () -> Unit,
     onSelectTab: (BrowserTab) -> Unit,
     onNewTab: () -> Unit,
     onCloseActiveTab: () -> Unit,
     onSelectHistory: (BrowserHistoryEntry) -> Unit,
     onCookieProfileChanged: (BrowserCookieProfile) -> Unit,
+    onPrivacySettingsChanged: (BrowserPrivacySettings) -> Unit,
+    onClearBrowsingData: () -> Unit,
 ) {
     XdmListCard(compact = true) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -493,6 +537,13 @@ private fun BrowserSessionPanel(
         }
         XdmSupportingText(cookieProfile.description, maxLines = 2)
         XdmSupportingText("Private tab isolation remains reserved for the privacy phase; use the Private cookie profile for temporary browsing until that model lands.", maxLines = 2)
+        BrowserPrivacySettingsPanel(
+            settings = privacySettings,
+            showSettings = showPrivacySettings,
+            onToggleSettings = onTogglePrivacySettings,
+            onSettingsChanged = onPrivacySettingsChanged,
+            onClearBrowsingData = onClearBrowsingData,
+        )
         XdmActionFlowRow {
             TextButton(onClick = onToggleHistory) { Text(if (showHistory) "Hide history" else "History") }
         }
@@ -509,6 +560,59 @@ private fun BrowserSessionPanel(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BrowserPrivacySettingsPanel(
+    settings: BrowserPrivacySettings,
+    showSettings: Boolean,
+    onToggleSettings: () -> Unit,
+    onSettingsChanged: (BrowserPrivacySettings) -> Unit,
+    onClearBrowsingData: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        XdmActionFlowRow {
+            TextButton(onClick = onToggleSettings) { Text(if (showSettings) "Hide privacy" else "Privacy settings") }
+            TextButton(onClick = onClearBrowsingData) { Text("Clear browser data") }
+        }
+        if (showSettings) {
+            XdmMetadataText("Browser settings")
+            XdmSupportingText("Settings stay browser-scoped in SharedPreferences. Clearing browser data removes tabs, history, cache, DOM storage, and cookies while keeping bookmarks.", maxLines = 3)
+            XdmMetadataText("Homepage")
+            XdmActionFlowRow {
+                BrowserHomePage.entries.forEach { home ->
+                    FilterChip(
+                        selected = settings.homePage == home,
+                        onClick = { onSettingsChanged(settings.copy(homePage = home)) },
+                        label = { Text(home.label) },
+                    )
+                }
+            }
+            XdmMetadataText("Search engine")
+            XdmActionFlowRow {
+                BrowserSearchEngine.entries.forEach { engine ->
+                    FilterChip(
+                        selected = settings.searchEngine == engine,
+                        onClick = { onSettingsChanged(settings.copy(searchEngine = engine)) },
+                        label = { Text(engine.label) },
+                    )
+                }
+            }
+            XdmMetadataText("Site capabilities")
+            XdmActionFlowRow {
+                FilterChip(selected = settings.javaScriptEnabled, onClick = { onSettingsChanged(settings.copy(javaScriptEnabled = !settings.javaScriptEnabled)) }, label = { Text("JavaScript") })
+                FilterChip(selected = settings.domStorageEnabled, onClick = { onSettingsChanged(settings.copy(domStorageEnabled = !settings.domStorageEnabled)) }, label = { Text("DOM storage") })
+                FilterChip(selected = settings.desktopModeDefault, onClick = { onSettingsChanged(settings.copy(desktopModeDefault = !settings.desktopModeDefault)) }, label = { Text("Desktop default") })
+            }
+            XdmMetadataText("Cookies")
+            XdmActionFlowRow {
+                FilterChip(selected = settings.cookiesEnabled, onClick = { onSettingsChanged(settings.copy(cookiesEnabled = !settings.cookiesEnabled)) }, label = { Text("Cookies") })
+                FilterChip(selected = settings.thirdPartyCookiesEnabled, enabled = settings.cookiesEnabled, onClick = { onSettingsChanged(settings.copy(thirdPartyCookiesEnabled = !settings.thirdPartyCookiesEnabled)) }, label = { Text("Third-party cookies") })
+            }
+            XdmSupportingText("Private profile overrides these toggles by rejecting cookies, disabling DOM storage, and clearing session cookies. XDM still does not persist raw cookie, token, or sensitive header handoff data.", maxLines = 3)
         }
     }
 }
@@ -662,18 +766,19 @@ private fun BrowserLibraryRow(
 @Composable
 private fun BrowserStartPage(
     history: List<BrowserHistoryEntry>,
+    settings: BrowserPrivacySettings,
     onOpen: (String) -> Unit,
 ) {
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         XdmListCard(compact = false) {
             XdmCardTitle("XDM Browser")
             XdmSupportingText(
-                "Start with a URL or search above. The browser now opens on a visible start page instead of an empty WebView.",
+                "Start with a URL or search above. Default search: ${settings.searchEngine.label}. Homepage: ${settings.homePage.label}.",
                 maxLines = 3,
             )
             XdmActionFlowRow {
-                Button(onClick = { onOpen("duckduckgo.com") }) { Text("Search the web") }
-                OutlinedButton(onClick = { onOpen("https://example.com") }) { Text("Test page") }
+                Button(onClick = { onOpen(settings.searchEngine.startPageUrl) }) { Text("Search the web") }
+                OutlinedButton(onClick = { onOpen(settings.homePage.url ?: "https://example.com") }) { Text("Open homepage") }
             }
         }
         XdmListCard(compact = true) {
@@ -766,6 +871,7 @@ private fun EmbeddedBrowser(
     classifier: MediaCandidateClassifier,
     browserNavigator: BrowserNavigator,
     cookieProfile: BrowserCookieProfile,
+    browserSettings: BrowserPrivacySettings,
     onPageChanged: (String?, String?) -> Unit,
     onLoadStateChanged: (BrowserLoadState) -> Unit,
     onNavigationChanged: (BrowserChromeState) -> Unit,
@@ -779,7 +885,7 @@ private fun EmbeddedBrowser(
         factory = { context ->
             WebView(context).apply {
                 browserNavigator.attach(this)
-                applyBrowserSettings(context, cookieProfile)
+                applyBrowserSettings(context, cookieProfile, browserSettings)
                 webChromeClient = object : WebChromeClient() {
                     override fun onProgressChanged(view: WebView?, newProgress: Int) {
                         val progress = newProgress.coerceIn(0, 100)
@@ -879,7 +985,7 @@ private fun EmbeddedBrowser(
         },
         update = { webView ->
             browserNavigator.attach(webView)
-            webView.applyBrowserSettings(webView.context, cookieProfile)
+            webView.applyBrowserSettings(webView.context, cookieProfile, browserSettings)
             val target = loadRequest
             if (!target.isNullOrBlank() && target != lastLoaded) {
                 lastLoaded = target
@@ -897,19 +1003,22 @@ private fun EmbeddedBrowser(
 }
 
 @SuppressLint("SetJavaScriptEnabled")
-private fun WebView.applyBrowserSettings(context: Context, profile: BrowserCookieProfile) {
-    // The embedded browser intentionally enables JavaScript so modern video pages can reveal
-    // media manifests. XDM still keeps downloads review-first, blocks direct protected-media
-    // queueing, and does not expose a JavaScript interface to page content.
-    settings.javaScriptEnabled = true
-    settings.domStorageEnabled = !profile.privateMode
+private fun WebView.applyBrowserSettings(context: Context, profile: BrowserCookieProfile, browserSettings: BrowserPrivacySettings) {
+    // JavaScript is user-controlled. It defaults on so modern video pages can reveal media manifests,
+    // but the browser still exposes no JavaScript interface to page content and keeps downloads review-first.
+    val desktopMode = profile.desktopMode || browserSettings.desktopModeDefault
+    val acceptCookies = profile.acceptCookies && browserSettings.cookiesEnabled
+    settings.javaScriptEnabled = browserSettings.javaScriptEnabled
+    settings.domStorageEnabled = browserSettings.domStorageEnabled && !profile.privateMode
     settings.cacheMode = if (profile.privateMode) WebSettings.LOAD_NO_CACHE else WebSettings.LOAD_DEFAULT
     settings.mediaPlaybackRequiresUserGesture = true
-    settings.useWideViewPort = profile.desktopMode
-    settings.loadWithOverviewMode = profile.desktopMode
-    settings.userAgentString = if (profile.desktopMode) DesktopUserAgent else WebSettings.getDefaultUserAgent(context)
-    CookieManager.getInstance().setAcceptCookie(profile.acceptCookies)
-    if (profile.privateMode) CookieManager.getInstance().removeSessionCookies(null)
+    settings.useWideViewPort = desktopMode
+    settings.loadWithOverviewMode = desktopMode
+    settings.userAgentString = if (desktopMode) DesktopUserAgent else WebSettings.getDefaultUserAgent(context)
+    CookieManager.getInstance().setAcceptCookie(acceptCookies)
+    CookieManager.getInstance().setAcceptThirdPartyCookies(this, acceptCookies && browserSettings.thirdPartyCookiesEnabled)
+    if (profile.privateMode || !acceptCookies) CookieManager.getInstance().removeSessionCookies(null)
+    CookieManager.getInstance().flush()
 }
 
 
@@ -1138,11 +1247,11 @@ private sealed interface BrowserLoadState {
     data class Blank(override val url: String, val message: String) : BrowserLoadState
 }
 
-private fun normalizeBrowserInput(input: String): String {
+private fun normalizeBrowserInput(input: String, searchEngine: BrowserSearchEngine): String {
     val trimmed = input.trim()
     if (trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true)) return trimmed
     if (trimmed.contains('.') && !trimmed.contains(' ')) return "https://$trimmed"
-    return "https://duckduckgo.com/?q=" + URLEncoder.encode(trimmed, "UTF-8")
+    return searchEngine.searchUrl(URLEncoder.encode(trimmed, "UTF-8"))
 }
 
 private class BrowserNavigator {
@@ -1170,6 +1279,19 @@ private class BrowserNavigator {
 
     fun stopLoading() {
         current?.get()?.stopLoading()
+    }
+
+    fun clearBrowsingData(context: Context) {
+        current?.get()?.apply {
+            stopLoading()
+            clearHistory()
+            clearCache(true)
+            loadUrl("about:blank")
+        }
+        CookieManager.getInstance().removeAllCookies(null)
+        CookieManager.getInstance().flush()
+        WebStorage.getInstance().deleteAllData()
+        context.cacheDir.deleteRecursively()
     }
 
     fun snapshot(isLoading: Boolean = false, progress: Int = 100): BrowserChromeState {
@@ -1222,6 +1344,30 @@ private data class BrowserImportedLink(
     val label: String,
 )
 
+private data class BrowserPrivacySettings(
+    val homePage: BrowserHomePage = BrowserHomePage.StartPage,
+    val searchEngine: BrowserSearchEngine = BrowserSearchEngine.DuckDuckGo,
+    val javaScriptEnabled: Boolean = true,
+    val domStorageEnabled: Boolean = true,
+    val desktopModeDefault: Boolean = false,
+    val cookiesEnabled: Boolean = true,
+    val thirdPartyCookiesEnabled: Boolean = false,
+)
+
+private enum class BrowserHomePage(val label: String, val url: String?) {
+    StartPage("Start page", null),
+    DuckDuckGo("DuckDuckGo", "https://duckduckgo.com"),
+    Example("Test page", "https://example.com"),
+}
+
+private enum class BrowserSearchEngine(val label: String, val startPageUrl: String, private val queryBase: String) {
+    DuckDuckGo("DuckDuckGo", "https://duckduckgo.com", "https://duckduckgo.com/?q="),
+    Brave("Brave", "https://search.brave.com", "https://search.brave.com/search?q="),
+    Google("Google", "https://www.google.com", "https://www.google.com/search?q=");
+
+    fun searchUrl(encodedQuery: String): String = queryBase + encodedQuery
+}
+
 private enum class BrowserCookieProfile(
     val label: String,
     val description: String,
@@ -1245,6 +1391,40 @@ private class BrowserSessionStore(context: Context) {
 
     fun saveCookieProfile(profile: BrowserCookieProfile) {
         prefs.edit().putString(KeyCookieProfile, profile.name).apply()
+    }
+
+    fun loadPrivacySettings(): BrowserPrivacySettings = BrowserPrivacySettings(
+        homePage = prefs.getString(KeyHomePage, BrowserHomePage.StartPage.name)
+            ?.let { value -> BrowserHomePage.entries.firstOrNull { it.name == value } }
+            ?: BrowserHomePage.StartPage,
+        searchEngine = prefs.getString(KeySearchEngine, BrowserSearchEngine.DuckDuckGo.name)
+            ?.let { value -> BrowserSearchEngine.entries.firstOrNull { it.name == value } }
+            ?: BrowserSearchEngine.DuckDuckGo,
+        javaScriptEnabled = prefs.getBoolean(KeyJavaScriptEnabled, true),
+        domStorageEnabled = prefs.getBoolean(KeyDomStorageEnabled, true),
+        desktopModeDefault = prefs.getBoolean(KeyDesktopModeDefault, false),
+        cookiesEnabled = prefs.getBoolean(KeyCookiesEnabled, true),
+        thirdPartyCookiesEnabled = prefs.getBoolean(KeyThirdPartyCookiesEnabled, false),
+    )
+
+    fun savePrivacySettings(settings: BrowserPrivacySettings) {
+        prefs.edit()
+            .putString(KeyHomePage, settings.homePage.name)
+            .putString(KeySearchEngine, settings.searchEngine.name)
+            .putBoolean(KeyJavaScriptEnabled, settings.javaScriptEnabled)
+            .putBoolean(KeyDomStorageEnabled, settings.domStorageEnabled)
+            .putBoolean(KeyDesktopModeDefault, settings.desktopModeDefault)
+            .putBoolean(KeyCookiesEnabled, settings.cookiesEnabled)
+            .putBoolean(KeyThirdPartyCookiesEnabled, settings.thirdPartyCookiesEnabled)
+            .apply()
+    }
+
+    fun clearBrowsingData() {
+        prefs.edit()
+            .remove(KeyTabs)
+            .remove(KeyHistory)
+            .remove(KeyActiveTab)
+            .apply()
     }
 
     fun loadTabs(): List<BrowserTab> = prefs.getString(KeyTabs, null)
@@ -1343,6 +1523,13 @@ private class BrowserSessionStore(context: Context) {
         private const val KeyBookmarks = "bookmarks"
         private const val KeyActiveTab = "active_tab"
         private const val KeyCookieProfile = "cookie_profile"
+        private const val KeyHomePage = "home_page"
+        private const val KeySearchEngine = "search_engine"
+        private const val KeyJavaScriptEnabled = "javascript_enabled"
+        private const val KeyDomStorageEnabled = "dom_storage_enabled"
+        private const val KeyDesktopModeDefault = "desktop_mode_default"
+        private const val KeyCookiesEnabled = "cookies_enabled"
+        private const val KeyThirdPartyCookiesEnabled = "third_party_cookies_enabled"
     }
 }
 

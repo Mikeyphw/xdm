@@ -54,6 +54,7 @@ validators=(
   tools/validate-phase-41-browser-download-bridge.py
   tools/validate-phase-42-browser-media-capture-cockpit.py
   tools/validate-phase-43-browser-library-surfaces.py
+  tools/validate-phase-44-browser-settings-privacy-controls.py
 )
 
 for validator in "${validators[@]}"; do

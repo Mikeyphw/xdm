@@ -25,7 +25,7 @@ workflow = read(".github/workflows/android.yml")
 doc = ROOT / "docs/browser/PHASE-43-BROWSER-LIBRARY-SURFACES.md"
 
 require(doc.is_file(), "Phase 43 browser library doc is missing")
-require(manifest.get("current_overlay") == "xdm_android_phase43_browser_library_surfaces_overlay.zip", "current_overlay must point at the Phase 43 browser library overlay")
+require(manifest.get("current_overlay") in {"xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip"}, "current_overlay must point at the Phase 43 browser library overlay or approved Phase 44 settings/privacy overlay")
 for key in [
     "phase42_landed",
     "bookmarks_surface",
@@ -61,7 +61,7 @@ for forbidden in ["Bookmarks(\"Bookmarks\"", "History(\"History\"", "PageResourc
 require("validate-phase-43-browser-library-surfaces.py" in run_gate, "Final release gate must run Phase 43 validator")
 require("validate-phase-43-browser-library-surfaces.py" in workflow, "Android CI must run Phase 43 validator")
 require("phaseFortyThreeBrowserLibrarySurfacesContractsArePresent" in contract, "ArchitectureContractTest must cover Phase 43")
-require("xdm_android_phase43_browser_library_surfaces_overlay.zip" in contract, "ArchitectureContractTest must allow Phase 43 current_overlay")
+require("xdm_android_phase43_browser_library_surfaces_overlay.zip" in contract and "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip" in contract, "ArchitectureContractTest must allow Phase 43 and Phase 44 current_overlay")
 
 if errors:
     for error in errors:
