@@ -26,7 +26,7 @@ doc = ROOT / "docs/browser/PHASE-44-BROWSER-SETTINGS-PRIVACY-CONTROLS.md"
 
 allowed_overlays = {
     "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip",
-    "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip",
+    "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip", "xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip",
 }
 require(doc.is_file(), "Phase 44 browser settings/privacy doc is missing")
 require(manifest.get("current_overlay") in allowed_overlays, "current_overlay must point at the Phase 44 browser settings/privacy overlay or approved Phase 45 visual polish overlay")
@@ -62,7 +62,7 @@ require("cookiesEnabled" in browser and "thirdPartyCookiesEnabled" in browser an
 require("Clear browser data" in browser and "clearBrowsingData" in browser and "removeAllCookies" in browser and "WebStorage.getInstance().deleteAllData" in browser, "Browser must expose clear browser data and clear cookies/DOM storage")
 require("savePrivacySettings" in browser and "loadPrivacySettings" in browser and "xdm_browser_sessions" in browser, "Browser privacy settings must persist in the browser session store")
 require(browser.find("fun openBrowserEntry(") != -1 and browser.find("fun openHome()") != -1 and browser.find("fun openBrowserEntry(") < browser.find("fun openHome()"), "openBrowserEntry must be declared before openHome so Kotlin local function resolution can compile")
-require("Private profile overrides" in browser and "Full private-tab isolation" in doc.read_text(), "Phase 44 must document private-profile groundwork and defer full private tabs")
+require(("Private profile overrides" in browser or "Private profile and private tabs override" in browser) and ("Full private-tab isolation" in doc.read_text() or "phase46_browser_private_mode_data_isolation" in manifest), "Phase 44 must document private-profile groundwork or be superseded by Phase 46 private tabs")
 require("raw cookie, token, or sensitive header" in doc.read_text(), "Phase 44 doc must preserve raw secret persistence guardrail")
 
 for forbidden in ["BrowserSettings(\"BrowserSettings\"", "Privacy(\"Privacy\"", "Cookies(\"Cookies\""]:

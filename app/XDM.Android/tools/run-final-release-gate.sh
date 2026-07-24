@@ -57,6 +57,7 @@ validators=(
   tools/validate-phase-43-browser-library-surfaces.py
   tools/validate-phase-44-browser-settings-privacy-controls.py
   tools/validate-phase-45-browser-visual-polish-adaptive-layout.py
+  tools/validate-phase-46-browser-private-mode-data-isolation.py
 )
 
 for validator in "${validators[@]}"; do
@@ -79,5 +80,5 @@ $FULL_GRADLE_GATE
 
 Then apply the Phase 45 browser visual polish adaptive layout overlay with validation enabled if this overlay has not been applied yet:
 
-devtool --copy --auto-hud --hud-mode desktop-window --yes -r "\$HOME/Code/xdm" --target xdm_android apply-overlay "\$HOME/Downloads/xdm_android_phase43_browser_library_surfaces_overlay.zip" --validate
+devtool --copy --auto-hud --hud-mode desktop-window --yes -r "\$HOME/Code/xdm" --target xdm_android apply-overlay "\$HOME/Downloads/xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip" --validate
 EOF2

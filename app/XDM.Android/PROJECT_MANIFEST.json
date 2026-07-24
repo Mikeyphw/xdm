@@ -472,7 +472,7 @@
     "yt_dlp_page_url_probe": true,
     "offline_library_groundwork": true
   },
-  "current_overlay": "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip",
+  "current_overlay": "xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1214,5 +1214,33 @@
     "no_transfer_engine_changes": true,
     "no_media_execution_changes": true,
     "no_adblock_proxy_dns_changes": true
+  },
+  "phase46_browser_private_mode_data_isolation": {
+    "phase45_landed": true,
+    "browser_private_mode_document": "docs/browser/PHASE-46-BROWSER-PRIVATE-MODE-DATA-ISOLATION.md",
+    "final_gate_validator": "tools/validate-phase-46-browser-private-mode-data-isolation.py",
+    "private_tab_model": true,
+    "private_mode_visual_indicator": true,
+    "private_tabs_excluded_from_browser_history": true,
+    "private_tabs_excluded_from_session_restore": true,
+    "passive_media_capture_suppressed_in_private_tabs": true,
+    "clear_private_tabs_action": true,
+    "private_webview_cookie_controls": true,
+    "session_cookie_cleanup": true,
+    "dom_storage_disabled_for_private_tabs": true,
+    "bookmarks_preserved": true,
+    "shared_preferences_only": true,
+    "raw_header_cookie_token_persistence": false,
+    "no_new_route": true,
+    "no_room_migration": true,
+    "no_version_bump": true,
+    "no_transfer_engine_changes": true,
+    "no_media_execution_changes": true,
+    "no_adblock_proxy_dns_changes": true,
+    "docs_research_reviewed": [
+      "android-cookie-manager-remove-session-cookies",
+      "android-webstorage-delete-all-data",
+      "android-webview-clear-cache-history"
+    ]
   }
 }

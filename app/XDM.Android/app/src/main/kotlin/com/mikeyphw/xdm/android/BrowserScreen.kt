@@ -101,6 +101,9 @@ fun BrowserScreen(
     var browserPrivacySettings by remember { mutableStateOf(sessionStore.loadPrivacySettings()) }
     var showPrivacySettings by remember { mutableStateOf(false) }
     val activeTab = tabs.firstOrNull { it.id == activeTabId } ?: tabs.first()
+    val activeTabIsPrivate = activeTab.isPrivate
+    val privateTabCount = tabs.count { it.isPrivate }
+    val effectiveCookieProfile = if (activeTabIsPrivate) BrowserCookieProfile.Private else cookieProfile
     val browserTabSessionState = BrowserTabSessionState(
         activeTabId = activeTab.id,
         activeTabTitle = activeTab.title,
@@ -109,6 +112,8 @@ fun BrowserScreen(
         restoredTabCount = restoredTabs.size,
         showRestoredSession = restoredTabs.isNotEmpty(),
         canCloseActiveTab = tabs.size > 1 || activeTab.url.isNotBlank(),
+        activeTabIsPrivate = activeTabIsPrivate,
+        privateTabCount = privateTabCount,
     )
     var addressBar by remember(activeTab.id) { mutableStateOf(activeTab.url) }
     var loadRequest by remember { mutableStateOf(activeTab.url.takeIf(String::isNotBlank)) }
@@ -146,7 +151,9 @@ fun BrowserScreen(
         }
         tabs = updated
         sessionStore.saveTabs(updated, activeTabId)
-        history = sessionStore.recordHistory(BrowserHistoryEntry(normalizedUrl, safeTitle, now))
+        if (!activeTabIsPrivate) {
+            history = sessionStore.recordHistory(BrowserHistoryEntry(normalizedUrl, safeTitle, now))
+        }
     }
 
     fun openBrowserInput(raw: String) {
@@ -225,6 +232,38 @@ fun BrowserScreen(
         browserChromeState = BrowserChromeState.StartPage
     }
 
+    fun openNewPrivateTab() {
+        browserNavigator.clearPrivateBrowsingData()
+        val tab = BrowserTab.blank(isPrivate = true)
+        persistTabs(listOf(tab) + tabs, tab.id)
+        addressBar = ""
+        loadRequest = null
+        currentPageUrl = null
+        currentPageTitle = null
+        sniffedUrls.clear()
+        browserDownloadDraft = null
+        browserLoadState = BrowserLoadState.StartPage
+        browserChromeState = BrowserChromeState.StartPage
+        showTabSwitcher = false
+    }
+
+    fun closePrivateTabs() {
+        if (tabs.none { it.isPrivate }) return
+        browserNavigator.clearPrivateBrowsingData()
+        val remaining = tabs.filterNot { it.isPrivate }.ifEmpty { listOf(BrowserTab.blank()) }
+        val next = remaining.first()
+        persistTabs(remaining, next.id)
+        addressBar = next.url
+        loadRequest = next.url.takeIf(String::isNotBlank)
+        currentPageUrl = next.url.takeIf(String::isNotBlank)
+        currentPageTitle = next.title.takeIf { it != NewTabTitle }
+        sniffedUrls.clear()
+        browserDownloadDraft = null
+        browserLoadState = if (next.url.isBlank()) BrowserLoadState.StartPage else BrowserLoadState.Loading(next.url, 0)
+        browserChromeState = if (next.url.isBlank()) BrowserChromeState.StartPage else BrowserChromeState(url = next.url, title = next.title.takeIf { it != NewTabTitle }, isLoading = next.url.isNotBlank(), progress = 0)
+        showTabSwitcher = remaining.size > 1
+    }
+
     LaunchedEffect(activeTabId) {
         tabs.firstOrNull { it.id == activeTabId }?.let { tab ->
             addressBar = tab.url
@@ -298,7 +337,7 @@ fun BrowserScreen(
             mediaCount = pageCaptures.size,
             resourceCount = pageResources.size,
             bookmarkCount = bookmarks.size,
-            isPrivateProfile = cookieProfile.privateMode,
+            isPrivateProfile = activeTabIsPrivate || effectiveCookieProfile.privateMode,
             desktopMode = browserPrivacySettings.desktopModeDefault,
         )
         BrowserSessionPanel(
@@ -308,12 +347,14 @@ fun BrowserScreen(
             history = history,
             showHistory = showHistory,
             showTabSwitcher = showTabSwitcher,
-            cookieProfile = cookieProfile,
+            cookieProfile = effectiveCookieProfile,
             privacySettings = browserPrivacySettings,
             showPrivacySettings = showPrivacySettings,
             onToggleHistory = { showHistory = !showHistory },
             onToggleTabSwitcher = { showTabSwitcher = !showTabSwitcher },
             onTogglePrivacySettings = { showPrivacySettings = !showPrivacySettings },
+            onNewPrivateTab = ::openNewPrivateTab,
+            onClosePrivateTabs = ::closePrivateTabs,
             onSelectTab = { tab ->
                 activeTabId = tab.id
                 showTabSwitcher = false
@@ -331,6 +372,7 @@ fun BrowserScreen(
                 showTabSwitcher = false
             },
             onCloseActiveTab = {
+                if (activeTabIsPrivate) browserNavigator.clearPrivateBrowsingData()
                 val remaining = tabs.filterNot { it.id == activeTabId }.ifEmpty { listOf(BrowserTab.blank()) }
                 val nextActive = remaining.first().id
                 persistTabs(remaining, nextActive)
@@ -385,14 +427,16 @@ fun BrowserScreen(
                     loadRequest = loadRequest,
                     classifier = classifier,
                     browserNavigator = browserNavigator,
-                    cookieProfile = cookieProfile,
+                    cookieProfile = effectiveCookieProfile,
                     browserSettings = browserPrivacySettings,
                     onPageChanged = { url, title -> updateActiveTab(url, title) },
                     onLoadStateChanged = { browserLoadState = it },
                     onNavigationChanged = { browserChromeState = it },
                     onMediaDiscovered = { url, mimeType ->
-                        if (sniffedUrls.none { it.equals(url, ignoreCase = true) }) sniffedUrls += url
-                        onMediaRequestState(url, currentTitleState, currentUrlState, mimeType)
+                        if (!activeTabIsPrivate) {
+                            if (sniffedUrls.none { it.equals(url, ignoreCase = true) }) sniffedUrls += url
+                            onMediaRequestState(url, currentTitleState, currentUrlState, mimeType)
+                        }
                     },
                     onDownloadRequested = { draft ->
                         browserDownloadDraft = draft
@@ -539,6 +583,8 @@ private fun BrowserSessionPanel(
     onToggleHistory: () -> Unit,
     onToggleTabSwitcher: () -> Unit,
     onTogglePrivacySettings: () -> Unit,
+    onNewPrivateTab: () -> Unit,
+    onClosePrivateTabs: () -> Unit,
     onSelectTab: (BrowserTab) -> Unit,
     onNewTab: () -> Unit,
     onCloseActiveTab: () -> Unit,
@@ -558,10 +604,17 @@ private fun BrowserSessionPanel(
         if (sessionState.showRestoredSession) {
             XdmSupportingText("Restored ${sessionState.restoredTabCount} tab${if (sessionState.restoredTabCount == 1) "" else "s"} from the last browser session.", maxLines = 2)
         }
+        if (sessionState.activeTabIsPrivate) {
+            XdmSupportingText("Private tab active: XDM skips browser history and session restore, suppresses passive media capture, rejects cookies, disables DOM storage, and clears session cookies when private tabs close.", maxLines = 3)
+        } else if (sessionState.privateTabCount > 0) {
+            XdmSupportingText("${sessionState.privateTabCount} private tab${if (sessionState.privateTabCount == 1) "" else "s"} open; they are not saved into the restored browser session.", maxLines = 2)
+        }
         XdmActionFlowRow {
             TextButton(onClick = onToggleTabSwitcher) { Text(if (showTabSwitcher) "Hide tabs" else "Show tabs") }
             TextButton(onClick = onNewTab) { Text("New tab") }
+            TextButton(onClick = onNewPrivateTab) { Text("New private tab") }
             TextButton(onClick = onCloseActiveTab, enabled = sessionState.canCloseActiveTab) { Text(if (tabs.size <= 1) "Clear tab" else "Close tab") }
+            TextButton(onClick = onClosePrivateTabs, enabled = sessionState.privateTabCount > 0) { Text("Clear private") }
         }
         if (showTabSwitcher) {
             BrowserTabSwitcher(
@@ -657,7 +710,7 @@ private fun BrowserPrivacySettingsPanel(
                 FilterChip(selected = settings.cookiesEnabled, onClick = { onSettingsChanged(settings.copy(cookiesEnabled = !settings.cookiesEnabled)) }, label = { Text("Cookies") })
                 FilterChip(selected = settings.thirdPartyCookiesEnabled, enabled = settings.cookiesEnabled, onClick = { onSettingsChanged(settings.copy(thirdPartyCookiesEnabled = !settings.thirdPartyCookiesEnabled)) }, label = { Text("Third-party cookies") })
             }
-            XdmSupportingText("Private profile overrides these toggles by rejecting cookies, disabling DOM storage, and clearing session cookies. XDM still does not persist raw cookie, token, or sensitive header handoff data.", maxLines = 3)
+            XdmSupportingText("Private profile and private tabs override these toggles by rejecting cookies, disabling DOM storage, skipping browser history, suppressing passive media capture, and clearing session cookies. XDM still does not persist raw cookie, token, or sensitive header handoff data.", maxLines = 3)
         }
     }
 }
@@ -1270,9 +1323,15 @@ private data class BrowserTabSessionState(
     val restoredTabCount: Int,
     val showRestoredSession: Boolean,
     val canCloseActiveTab: Boolean,
+    val activeTabIsPrivate: Boolean,
+    val privateTabCount: Int,
 ) {
     val summary: String
-        get() = "${activeTabTitle.ifBlank { NewTabTitle }} · ${activeTabUrl.ifBlank { "New tab" }}"
+        get() = listOf(
+            if (activeTabIsPrivate) "Private" else "Normal",
+            activeTabTitle.ifBlank { NewTabTitle },
+            activeTabUrl.ifBlank { "New tab" },
+        ).joinToString(" · ")
 }
 
 private data class BrowserChromeState(
@@ -1345,6 +1404,16 @@ private class BrowserNavigator {
         context.cacheDir.deleteRecursively()
     }
 
+    fun clearPrivateBrowsingData() {
+        current?.get()?.apply {
+            stopLoading()
+            clearHistory()
+            clearCache(false)
+        }
+        CookieManager.getInstance().removeSessionCookies(null)
+        CookieManager.getInstance().flush()
+    }
+
     fun snapshot(isLoading: Boolean = false, progress: Int = 100): BrowserChromeState {
         val webView = current?.get()
         return BrowserChromeState(
@@ -1363,12 +1432,22 @@ private data class BrowserTab(
     val url: String,
     val title: String,
     val updatedAtEpochMs: Long,
+    val isPrivate: Boolean = false,
 ) {
     val displayLabel: String
-        get() = title.takeIf { it.isNotBlank() }?.take(28) ?: hostFromUrl(url).take(28)
+        get() {
+            val base = title.takeIf { it.isNotBlank() }?.take(28) ?: hostFromUrl(url).take(28)
+            return if (isPrivate) "Private · $base" else base
+        }
 
     companion object {
-        fun blank(): BrowserTab = BrowserTab("tab-${System.currentTimeMillis()}", "", NewTabTitle, System.currentTimeMillis())
+        fun blank(isPrivate: Boolean = false): BrowserTab = BrowserTab(
+            id = "tab-${System.currentTimeMillis()}",
+            url = "",
+            title = NewTabTitle,
+            updatedAtEpochMs = System.currentTimeMillis(),
+            isPrivate = isPrivate,
+        )
     }
 }
 
@@ -1486,9 +1565,10 @@ private class BrowserSessionStore(context: Context) {
         .orEmpty()
 
     fun saveTabs(tabs: List<BrowserTab>, activeTabId: String) {
+        val persistentTabs = tabs.filterNot { it.isPrivate }.take(MaxStoredTabs)
         prefs.edit()
-            .putString(KeyTabs, tabs.take(MaxStoredTabs).joinToString("\n", transform = ::encodeTab))
-            .putString(KeyActiveTab, activeTabId)
+            .putString(KeyTabs, persistentTabs.joinToString("\n", transform = ::encodeTab))
+            .putString(KeyActiveTab, activeTabId.takeIf { id -> persistentTabs.any { it.id == id } } ?: persistentTabs.firstOrNull()?.id)
             .apply()
     }
 
@@ -1528,16 +1608,17 @@ private class BrowserSessionStore(context: Context) {
         return updated
     }
 
-    private fun encodeTab(tab: BrowserTab): String = listOf(tab.id, tab.url, tab.title, tab.updatedAtEpochMs.toString()).joinToString("\t") { encode(it) }
+    private fun encodeTab(tab: BrowserTab): String = listOf(tab.id, tab.url, tab.title, tab.updatedAtEpochMs.toString(), tab.isPrivate.toString()).joinToString("	") { encode(it) }
 
     private fun decodeTab(line: String): BrowserTab? {
-        val parts = line.split('\t')
+        val parts = line.split('	')
         if (parts.size < 4) return null
         return BrowserTab(
             id = decode(parts[0]).takeIf(String::isNotBlank) ?: return null,
             url = decode(parts[1]),
             title = decode(parts[2]).ifBlank { NewTabTitle },
             updatedAtEpochMs = decode(parts[3]).toLongOrNull() ?: 0L,
+            isPrivate = parts.getOrNull(4)?.let { decode(it).toBooleanStrictOrNull() } ?: false,
         )
     }
 
