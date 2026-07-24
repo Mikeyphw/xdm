@@ -27,7 +27,7 @@ run_gate = text("tools/run-final-release-gate.sh")
 workflow = text(".github/workflows/android.yml")
 doc = text("docs/browser/PHASE-38-BROWSER-RELIABILITY-FOUNDATION.md")
 
-if manifest.get("current_overlay") not in {"xdm_android_phase38_browser_reliability_foundation_overlay.zip", "xdm_android_phase39_browser_chrome_navigation_overlay.zip", "xdm_android_phase40_browser_tabs_session_ux_overlay.zip", "xdm_android_phase41_browser_download_bridge_overlay.zip"}:
+if manifest.get("current_overlay") not in {"xdm_android_phase38_browser_reliability_foundation_overlay.zip", "xdm_android_phase39_browser_chrome_navigation_overlay.zip", "xdm_android_phase40_browser_tabs_session_ux_overlay.zip", "xdm_android_phase41_browser_download_bridge_overlay.zip", "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip"}:
     errors.append("current_overlay must point at the Phase 38 browser reliability overlay or approved later Phase 39 browser chrome/navigation overlay or approved later Phase 40 tabs/session overlay")
 if 38 not in manifest.get("project", {}).get("implemented_phases", []):
     errors.append("implemented_phases must include 38")

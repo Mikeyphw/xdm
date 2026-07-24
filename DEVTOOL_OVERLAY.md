@@ -45,3 +45,12 @@ Phase 41 builds on the landed Phase 40 browser tabs/session UX by turning WebVie
 - New files use inventory action `add`, not `create`.
 - Archive excludes `__pycache__` and `.pyc` files.
 - No new top-level route is added.
+
+
+## Phase 42 Browser Media Capture Cockpit
+
+- Adds a SuperX-style browser media cockpit on top of the Phase 41 Browser download bridge.
+- Groups HLS, DASH, progressive, direct-file, audio, video, and unknown captures in the Browser surface.
+- Shows a prominent Media found panel, selected capture summary, variant-count card, source diagnostics, and explicit Download selected / Resolve variants / Review media actions.
+- Keeps direct file downloads in the Phase 41 Add Download bridge and keeps media execution review-first.
+- Does not add routes, Room migrations, version bumps, transfer engine changes, or media execution changes.

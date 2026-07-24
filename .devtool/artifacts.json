@@ -34675,6 +34675,187 @@
         }
       },
       "history_id": "f4b528353e4e488293397cdf87743883"
+    },
+    {
+      "applied_at": "2026-07-24T16:07:09.350482Z",
+      "artifact": "/home/mike/Downloads/xdm_android_phase42_browser_media_capture_cockpit_overlay.zip",
+      "artifact_name": "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip",
+      "type": "overlay",
+      "sha256": "c1395cc8d2f675f64f91869729a8c1c21de2b2e3adbadebe2a7725c83b1ff4a3",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "XDM Android Phase 42 browser media capture cockpit",
+      "commit_hash": "",
+      "file_count": 19,
+      "change_counts": {
+        "add": 2,
+        "modify": 17
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 42 Browser Media Capture Cockpit",
+        "description": "Adds a SuperX-style Browser media capture cockpit with grouped media candidates, variant summary cards, explicit Download selected and Resolve variants actions, while preserving the Phase 41 direct download bridge and review-first safety.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "DEVTOOL_OVERLAY.md",
+              "action": "modify",
+              "sha256": "46d3b0026d584efd1a2431a0530b18701a2bad574cdaf942ecf854518462bbe0",
+              "size": 2686,
+              "source_sha256": "e27c8803e17b0bf4ceb3cdb8531cc707bb24950a4db8929ea1f045ccd39a6e17"
+            },
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "98608268bbb94e8cc3c2cedad9015d582999ecdfda6e2edf697724bc90f148bd",
+              "size": 4337,
+              "source_sha256": "3798c4a1a443ee9bff6f339d4a49cc6ca34ff696749be625df4dde8edfb042ba"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "5f6340c42b2bd812af8d16bbb7ccaadb2375736cc695e8159d79424c76ab202b",
+              "size": 35701,
+              "source_sha256": "8de7355baffe6a8e72c577e4e1836cb1681e3353a2e6d5f740bbd36abf12f1ab"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+              "action": "modify",
+              "sha256": "242f93cf482e8fba302c76134aecc589322cc22ec56d824c45f1c4330576bbf6",
+              "size": 53660,
+              "source_sha256": "9508ad02eb9ced21075b30b35872f0ac596b2b26b937fe83729ad5774913b2e6"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "f62a5eac3fbddca146d910d0d54f21d193bef908260c83a045a703d9d1bd6747",
+              "size": 15171,
+              "source_sha256": "371b67956955b380f7e01677368aa48a5eb54eff905c8591b7ec82569cfe5375"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "91cab92f7957a57ae49736bea82703936e5876b04adcb0b56f9aa09d22e61000",
+              "size": 111426,
+              "source_sha256": "6ee9b8be5cc4565e493c7e9efd027f954650254fdcaf983c06e26bb18ddf2301"
+            },
+            {
+              "path": "app/XDM.Android/docs/browser/PHASE-42-BROWSER-MEDIA-CAPTURE-COCKPIT.md",
+              "action": "add",
+              "sha256": "9a5db24271d2cfb1711bcea3ce0b2c01534b05093cfbba248f0695abc3424753",
+              "size": 1554
+            },
+            {
+              "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+              "action": "modify",
+              "sha256": "f3d922fefd8713ce401666befa9117b542120e763a30090852b193d882a37f64",
+              "size": 3002,
+              "source_sha256": "8c88fc44ced0c4df371e98e5becdbbb9b5a7f58db0f7dc72286ef9852b39f426"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-browser-media-downloader.py",
+              "action": "modify",
+              "sha256": "1b09bc5c6bee43389605f984b094eb17449dbc69d52024119b7b8bc5fa61438f",
+              "size": 2953,
+              "source_sha256": "47bba9694331a7dc7db09bb2f076a0e93e6ad1c463aa6a3bcffb72d2337dd471"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+              "action": "modify",
+              "sha256": "cdac2e1a1fa379beefbc83669ac5ed246bc45117fbb9b7cda243293291bcc379",
+              "size": 7294,
+              "source_sha256": "2b8c290735d76aea359e389f0027ed087cb35e941e7909c3f522e78c6f233e70"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+              "action": "modify",
+              "sha256": "19943b0645e9b34a20e9958ae3cbf39f1270988a6958215340f80257145a0563",
+              "size": 10304,
+              "source_sha256": "3118c89c385eb72a03e67d29f4820ad47c754ea6425756f91eebf48ce306dc6d"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+              "action": "modify",
+              "sha256": "bedcb480a8f740e5f8e8ada405c4dccad98ed4e9bdde6f6d1a964540c70515cc",
+              "size": 8768,
+              "source_sha256": "4976b20c3c01000de14421451acd2b87633a238b4af143c5bec740eddf516a72"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-37a-browser-downloader-roadmap.py",
+              "action": "modify",
+              "sha256": "869eb760cf5c062ca6a374fd3d5155178a2fd0d91306622593710fc7026f7da9",
+              "size": 3386,
+              "source_sha256": "8d10e9ba1e5da77adf8c2b2db6b00373401efba636090346da1385514527e6b9"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-37b-dual-launcher-navigation-split.py",
+              "action": "modify",
+              "sha256": "a9077e8779618b209018eacf9b9d724a11c91eda7bf4589df0c74c15388408cf",
+              "size": 6441,
+              "source_sha256": "88e9b4be751b727a2bb0ad01c51b643ebfe2871846320b53fe2d1660f1cdec59"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-38-browser-reliability-foundation.py",
+              "action": "modify",
+              "sha256": "d1e126465bf97e68e490c6f7929f779d65fdcbfb646d10ec55ac06c4fdd30d8a",
+              "size": 7682,
+              "source_sha256": "a342c8d351eec45f9f8319d5121c72a0c1047339ee0100ff8fe5096cd44800f7"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-39-browser-chrome-navigation.py",
+              "action": "modify",
+              "sha256": "602d6dbc6a0348604274dee5a634a599220af1464157c3283bad6b7397b560a4",
+              "size": 4468,
+              "source_sha256": "1accdfec34d59b3db5ec90b620b36c137cd798b6791cbd8adb793f14e8738949"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-40-browser-tabs-session-ux.py",
+              "action": "modify",
+              "sha256": "17d69f362e59c0e84b5f672f21716dd03ee8967a6d8a965ce4e9c80dc29301d1",
+              "size": 4337,
+              "source_sha256": "849c5f0484597053a7983697ae51d3cc452335385126f1f04d911ca4f0d4a65c"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-41-browser-download-bridge.py",
+              "action": "modify",
+              "sha256": "a97d72f5a9b26a70f1e897b52280ff971ff1b7b8d44e52eb1b942c291e30525c",
+              "size": 4534,
+              "source_sha256": "9b989aba5e674c94cf6dac6e8e1f1d530f1717177edc44e67194b93f6db69d34"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-42-browser-media-capture-cockpit.py",
+              "action": "add",
+              "sha256": "53e93d4ed060bb32433f173b769fa49f0de4cc969af6011d346e30137ec95213",
+              "size": 5042
+            }
+          ]
+        },
+        "validation": {
+          "expected": {
+            "build": "pass",
+            "tests": "pass",
+            "diagnostics": "pass"
+          },
+          "notes": "Run targeted app contract/lint gate first, then full Android validation."
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "message": "XDM Android Phase 42 browser media capture cockpit"
+          }
+        }
+      },
+      "history_id": "6d0333a8f2344b56b68c820236df3f42"
     }
   ]
 }

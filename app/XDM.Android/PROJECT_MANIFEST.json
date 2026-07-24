@@ -470,7 +470,7 @@
     "yt_dlp_page_url_probe": true,
     "offline_library_groundwork": true
   },
-  "current_overlay": "xdm_android_phase41_browser_download_bridge_overlay.zip",
+  "current_overlay": "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -671,7 +671,8 @@
     35,
     36,
     40,
-    41
+    41,
+    42
   ],
   "media_termux_runtime_adapter": {
     "schema_version_unchanged": 14,
@@ -1126,5 +1127,27 @@
       "android-urlutil-guessfilename",
       "androidx-webkit-urlutilcompat"
     ]
+  },
+  "phase42_browser_media_capture_cockpit": {
+    "phase41_landed": true,
+    "browser_media_cockpit_document": "docs/browser/PHASE-42-BROWSER-MEDIA-CAPTURE-COCKPIT.md",
+    "final_gate_validator": "tools/validate-phase-42-browser-media-capture-cockpit.py",
+    "media_found_cockpit": true,
+    "grouped_hls_dash_progressive_audio_video_direct_unknown": true,
+    "variant_summary_cards": true,
+    "source_title_host_display": true,
+    "download_selected_explicit_action": true,
+    "resolve_variants_action": true,
+    "review_media_action": true,
+    "direct_file_download_bridge_preserved": true,
+    "protected_live_unknown_diagnostics": true,
+    "no_silent_auto_queue": true,
+    "raw_header_cookie_token_persistence": false,
+    "no_new_route": true,
+    "no_room_migration": true,
+    "no_version_bump": true,
+    "no_transfer_engine_changes": true,
+    "no_media_execution_changes": true,
+    "reference_study": "SuperX browser media capture cockpit; 1DM dual app topology remains product reference only"
   }
 }

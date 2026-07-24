@@ -28,7 +28,7 @@ run_gate = text("tools/run-final-release-gate.sh")
 workflow = text(".github/workflows/android.yml")
 doc = text("docs/browser/PHASE-37B-DUAL-LAUNCHER-NAVIGATION-SPLIT.md")
 
-if manifest_json.get("current_overlay") not in {"xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip", "xdm_android_phase38_browser_reliability_foundation_overlay.zip", "xdm_android_phase39_browser_chrome_navigation_overlay.zip", "xdm_android_phase40_browser_tabs_session_ux_overlay.zip", "xdm_android_phase41_browser_download_bridge_overlay.zip"}:
+if manifest_json.get("current_overlay") not in {"xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip", "xdm_android_phase38_browser_reliability_foundation_overlay.zip", "xdm_android_phase39_browser_chrome_navigation_overlay.zip", "xdm_android_phase40_browser_tabs_session_ux_overlay.zip", "xdm_android_phase41_browser_download_bridge_overlay.zip", "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip"}:
     errors.append("current_overlay must point at Phase 37B dual launcher/navigation split overlay or approved later Phase 38/39/40/40 browser overlay")
 if 37 not in manifest_json.get("project", {}).get("implemented_phases", []):
     errors.append("implemented_phases must include 37")

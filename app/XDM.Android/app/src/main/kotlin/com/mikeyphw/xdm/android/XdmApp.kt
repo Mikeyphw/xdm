@@ -188,6 +188,8 @@ private fun AppScaffold(
                     onOpenMediaInbox = { viewModel.navigate(AppRoute.Media) },
                     onOpenAddForUrl = viewModel::openAddFromBrowser,
                     onBrowserDownloadRequest = viewModel::openBrowserDownload,
+                    onDownloadMediaCapture = viewModel::downloadMediaCapture,
+                    onResolveMediaCapture = viewModel::resolveMediaCapture,
                 )
                 AppRoute.Add -> AddDownloadScreen(
                     destinationUri = state.destinationUri,

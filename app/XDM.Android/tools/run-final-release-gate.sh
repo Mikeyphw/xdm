@@ -52,6 +52,7 @@ validators=(
   tools/validate-phase-39-browser-chrome-navigation.py
   tools/validate-phase-40-browser-tabs-session-ux.py
   tools/validate-phase-41-browser-download-bridge.py
+  tools/validate-phase-42-browser-media-capture-cockpit.py
 )
 
 for validator in "${validators[@]}"; do
@@ -72,7 +73,7 @@ Run the full build/test/lint gate in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Then apply the Phase 41 browser download bridge overlay with validation enabled if this overlay has not been applied yet:
+Then apply the Phase 42 browser media capture cockpit overlay with validation enabled if this overlay has not been applied yet:
 
-devtool --copy --auto-hud --hud-mode desktop-window --yes -r "\$HOME/Code/xdm" --target xdm_android apply-overlay "\$HOME/Downloads/xdm_android_phase41_browser_download_bridge_overlay.zip" --validate
+devtool --copy --auto-hud --hud-mode desktop-window --yes -r "\$HOME/Code/xdm" --target xdm_android apply-overlay "\$HOME/Downloads/xdm_android_phase42_browser_media_capture_cockpit_overlay.zip" --validate
 EOF2

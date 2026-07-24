@@ -62,6 +62,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.mikeyphw.xdm.android.media.MediaCandidateClassifier
 import com.mikeyphw.xdm.android.media.MediaRequestFacts
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaCaptureStatus
+import com.mikeyphw.xdm.android.model.MediaResolutionStatus
+import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.util.formatBytes
 import java.lang.ref.WeakReference
 import java.net.URLDecoder
@@ -78,6 +81,8 @@ fun BrowserScreen(
     onOpenMediaInbox: () -> Unit,
     onOpenAddForUrl: (url: String, pageTitle: String?) -> Unit,
     onBrowserDownloadRequest: (url: String, pageTitle: String?, fileName: String?) -> Unit,
+    onDownloadMediaCapture: (MediaCaptureRecord) -> Unit,
+    onResolveMediaCapture: (MediaCaptureRecord) -> Unit,
 ) {
     val context = LocalContext.current
     val sessionStore = remember { BrowserSessionStore(context.applicationContext) }
@@ -333,13 +338,15 @@ fun BrowserScreen(
                 onDismiss = { browserDownloadDraft = null },
             )
         }
-        BrowserMediaTray(
+        BrowserMediaCockpit(
             currentUrl = currentPageUrl,
             currentTitle = currentPageTitle,
             captures = pageCaptures,
             sniffedCount = sniffedUrls.size,
             onOpenMediaInbox = onOpenMediaInbox,
             onOpenAddForUrl = onOpenAddForUrl,
+            onDownloadSelected = onDownloadMediaCapture,
+            onResolveSelected = onResolveMediaCapture,
         )
     }
 }
@@ -770,44 +777,135 @@ private fun BrowserDownloadBridgeCard(
 }
 
 @Composable
-private fun BrowserMediaTray(
+private fun BrowserMediaCockpit(
     currentUrl: String?,
     currentTitle: String?,
     captures: List<MediaCaptureRecord>,
     sniffedCount: Int,
     onOpenMediaInbox: () -> Unit,
     onOpenAddForUrl: (url: String, pageTitle: String?) -> Unit,
+    onDownloadSelected: (MediaCaptureRecord) -> Unit,
+    onResolveSelected: (MediaCaptureRecord) -> Unit,
 ) {
+    val featured = captures.maxWithOrNull(
+        compareBy<MediaCaptureRecord> { it.variantCount }
+            .thenBy { it.updatedAtEpochMs }
+            .thenBy { it.title },
+    )
+    val groups = remember(captures) { captures.toBrowserMediaCockpitGroups() }
     XdmListCard(compact = true) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
-                XdmCardTitle(if (captures.isEmpty()) "Browser media tray" else "${captures.size} media item${if (captures.size == 1) "" else "s"} found")
+                XdmCardTitle(if (captures.isEmpty()) "Media cockpit" else "Media found")
                 XdmSupportingText(
-                    if (captures.isEmpty()) "Open a page and XDM will sniff video, audio, HLS, DASH, and direct downloads without auto-queueing."
-                    else "Review captured variants in the Media inbox before downloading.",
-                    maxLines = 2,
+                    if (captures.isEmpty()) "Browser media tray upgraded: open a page and XDM will surface HLS, DASH, MP4, audio, and direct media candidates here before anything is queued."
+                    else "Review detected media, choose the best candidate, or open the full Media inbox for variant diagnostics.",
+                    maxLines = 3,
                 )
             }
-            Icon(Icons.Rounded.Download, null, tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Rounded.Download, contentDescription = "Media cockpit", tint = MaterialTheme.colorScheme.primary)
         }
-        if (captures.isNotEmpty()) {
-            captures.take(3).forEach { capture ->
-                Text(
-                    text = capture.title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        } else if (sniffedCount > 0) {
+        if (captures.isEmpty() && sniffedCount > 0) {
             XdmMetadataText("$sniffedCount candidate request${if (sniffedCount == 1) "" else "s"} observed while waiting for metadata persistence.")
         }
-        XdmActionFlowRow {
+        if (groups.isNotEmpty()) {
+            XdmMetadataText("Grouped captures")
+            groups.forEach { group ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(group.label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        XdmSupportingText(group.summary, maxLines = 1)
+                    }
+                    XdmMetadataText(group.countLabel, maxLines = 1)
+                }
+            }
+        }
+        featured?.let { capture ->
+            BrowserMediaVariantCard(capture = capture)
+            XdmActionFlowRow {
+                Button(onClick = { onDownloadSelected(capture) }) { Text("Download selected") }
+                TextButton(onClick = { onResolveSelected(capture) }) { Text("Resolve variants") }
+                TextButton(onClick = onOpenMediaInbox) { Text("Review media") }
+            }
+        } ?: XdmActionFlowRow {
             Button(onClick = onOpenMediaInbox, enabled = captures.isNotEmpty()) { Text("Review media") }
+        }
+        XdmSupportingText(
+            "Live, expiring, unknown, or protected-media signals stay review-first. XDM shows diagnostics and never bypasses protected media.",
+            maxLines = 3,
+        )
+        XdmActionFlowRow {
             TextButton(onClick = { currentUrl?.let { onOpenAddForUrl(it, currentTitle) } }, enabled = !currentUrl.isNullOrBlank()) { Text("Add page URL") }
         }
     }
 }
+
+@Composable
+private fun BrowserMediaVariantCard(
+    capture: MediaCaptureRecord,
+    modifier: Modifier = Modifier,
+) {
+    XdmListCard(compact = true, modifier = modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText(capture.title, maxLines = 1)
+                XdmSupportingText(capture.variantSummary, maxLines = 2)
+            }
+            XdmMetadataText(capture.mediaKindLabel, maxLines = 1)
+        }
+        XdmSupportingText(capture.mediaCockpitDiagnostics, maxLines = 2)
+    }
+}
+
+private data class BrowserMediaCockpitGroup(
+    val label: String,
+    val count: Int,
+    val summary: String,
+) {
+    val countLabel: String get() = "$count item${if (count == 1) "" else "s"}"
+}
+
+private fun List<MediaCaptureRecord>.toBrowserMediaCockpitGroups(): List<BrowserMediaCockpitGroup> = groupBy { it.mediaKindLabel }
+    .map { (label, captures) ->
+        BrowserMediaCockpitGroup(
+            label = label,
+            count = captures.size,
+            summary = captures.maxByOrNull { it.variantCount }?.variantSummary ?: "Review capture",
+        )
+    }
+    .sortedWith(compareByDescending<BrowserMediaCockpitGroup> { it.count }.thenBy { it.label })
+    .take(MaxVisibleMediaGroups)
+
+private val MediaCaptureRecord.mediaKindLabel: String
+    get() = when (kind) {
+        MediaSourceKind.HlsPlaylist -> "HLS"
+        MediaSourceKind.DashManifest -> "DASH"
+        MediaSourceKind.ProgressiveMedia -> "Progressive"
+        MediaSourceKind.AudioStream -> "Audio"
+        MediaSourceKind.VideoStream -> "Video"
+        MediaSourceKind.DirectFile -> "Direct file"
+        MediaSourceKind.Unknown -> "Unknown"
+    }
+
+private val MediaCaptureRecord.variantSummary: String
+    get() = listOfNotNull(
+        variantCount.takeIf { it > 0 }?.let { "$it variant${if (it == 1) "" else "s"}" },
+        selectedVariantId?.takeIf { it.isNotBlank() }?.let { "selected" },
+        mimeType?.takeIf { it.isNotBlank() },
+        container?.takeIf { it.isNotBlank() },
+        codecs?.takeIf { it.isNotBlank() },
+    ).joinToString(" · ").ifBlank { "Candidate awaiting metadata" }
+
+private val MediaCaptureRecord.mediaCockpitDiagnostics: String
+    get() = when {
+        resolutionStatus == MediaResolutionStatus.RequiresRefresh -> "Manifest may be expired; resolve variants before downloading."
+        resolutionStatus == MediaResolutionStatus.Failed -> "Resolution failed; open Media diagnostics before retrying."
+        status == MediaCaptureStatus.MetadataMissing -> "Metadata is incomplete; inspect media before queueing."
+        kind == MediaSourceKind.HlsPlaylist || kind == MediaSourceKind.DashManifest -> "Adaptive stream detected; choose a variant before download."
+        sourceUrl.contains("drm", ignoreCase = true) || sourceUrl.contains("widevine", ignoreCase = true) -> "Protected-media hint detected; diagnostics only, no bypass."
+        sourceUrl.contains("live", ignoreCase = true) || sourceUrl.contains("m3u8", ignoreCase = true) -> "Possible live/expiring stream; review before queueing."
+        else -> "Ready for review-first download handoff."
+    }
 
 private fun sniffBrowserUrl(
     url: String?,
@@ -1035,6 +1133,7 @@ private fun hostFromUrl(url: String): String = runCatching { Uri.parse(url).host
 private const val NewTabTitle = "New tab"
 private const val MaxVisibleTabs = 8
 private const val MaxVisibleHistory = 6
+private const val MaxVisibleMediaGroups = 4
 private const val MaxStoredTabs = 12
 private const val MaxStoredHistory = 80
 private const val DesktopUserAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
