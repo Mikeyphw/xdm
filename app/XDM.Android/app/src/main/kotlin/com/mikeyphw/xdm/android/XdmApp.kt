@@ -38,7 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-private val primaryRoutes = listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Queues)
+private val primaryRoutes = listOf(AppRoute.Downloads, AppRoute.Browser, AppRoute.Media, AppRoute.Queues)
 private val overflowRoutes = listOf(AppRoute.Add, AppRoute.Scheduler, AppRoute.Recovery, AppRoute.Diagnostics, AppRoute.Settings)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -179,6 +179,12 @@ private fun AppScaffold(
                     viewModel::resumeAll,
                     viewModel::previewPostProcessingForDownload,
                     viewModel::runPostProcessingForDownload,
+                )
+                AppRoute.Browser -> BrowserScreen(
+                    captures = state.mediaCaptures,
+                    onMediaRequest = viewModel::captureBrowserMediaUrl,
+                    onOpenMediaInbox = { viewModel.navigate(AppRoute.Media) },
+                    onOpenAddForUrl = viewModel::openAddFromBrowser,
                 )
                 AppRoute.Add -> AddDownloadScreen(
                     destinationUri = state.destinationUri,

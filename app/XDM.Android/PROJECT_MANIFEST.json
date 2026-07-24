@@ -40,7 +40,8 @@
       33,
       34,
       35,
-      36
+      36,
+      37
     ]
   },
   "database": {
@@ -465,7 +466,7 @@
     "yt_dlp_page_url_probe": true,
     "offline_library_groundwork": true
   },
-  "current_overlay": "xdm_android_phase36_external_download_handoff_overlay.zip",
+  "current_overlay": "xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -981,5 +982,41 @@
     "top_level_route_added": false,
     "version_name_unchanged": "0.20.0-rc08",
     "version_code_unchanged": 21
+  },
+  "phase37a_browser_downloader_roadmap": {
+    "dual_surface_direction": true,
+    "browser_first_class_required": true,
+    "downloader_surface_preserved": true,
+    "roadmap_docs_added": true,
+    "reference_study_recorded": true,
+    "runtime_start_phase": "37B",
+    "white_screen_reliability_phase": 38,
+    "no_runtime_changes": true,
+    "no_new_top_level_route_yet": true,
+    "no_room_migration": true,
+    "no_version_bump": true,
+    "no_proprietary_1dm_code": true,
+    "superx_reference_only": true,
+    "no_silent_auto_queue_default": true,
+    "privacy_redaction_required": true
+  },
+  "phase37b_dual_launcher_navigation_split": {
+    "browser_top_level_route": true,
+    "browser_launcher_activity": true,
+    "downloader_launcher_preserved": true,
+    "external_add_receiver_preserved": true,
+    "compact_primary_routes": [
+      "Downloads",
+      "Browser",
+      "Media",
+      "Queues"
+    ],
+    "media_browser_chip_removed": true,
+    "white_screen_fix_deferred_to_phase38": true,
+    "browser_activity_link_handling_deferred_to_phase38": true,
+    "no_room_migration": true,
+    "no_version_bump": true,
+    "no_transfer_engine_changes": true,
+    "no_media_execution_changes": true
   }
 }

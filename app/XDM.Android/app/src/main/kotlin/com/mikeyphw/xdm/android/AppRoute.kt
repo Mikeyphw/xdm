@@ -7,12 +7,14 @@ import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.HealthAndSafety
 import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Queue
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class AppRoute(val label: String, val icon: ImageVector) {
     Downloads("Downloads", Icons.Rounded.Download),
+    Browser("Browser", Icons.Rounded.Public),
     Add("Add", Icons.Rounded.AddCircle),
     Queues("Queues", Icons.Rounded.Queue),
     Scheduler("Scheduler", Icons.Rounded.CalendarMonth),

@@ -1285,8 +1285,7 @@ fun MediaInboxScreen(
             cleanupLedger = executionJobs.associate { it.captureId to (it.stage == MediaExecutionStage.Completed || it.stage == MediaExecutionStage.Failed || it.stage == MediaExecutionStage.Blocked) },
         )
     }
-    var showBrowser by remember { mutableStateOf(false) }
-    val mediaMobilePolish = remember(captures, queueTelemetry, queueActions, libraryV2, playerDiagnostics, browserCaptureQuality, sessionPrivacyAudit, showBrowser) {
+    val mediaMobilePolish = remember(captures, queueTelemetry, queueActions, libraryV2, playerDiagnostics, browserCaptureQuality, sessionPrivacyAudit) {
         MediaMobilePolishPlanner().dashboard(
             captures = captures,
             queueTelemetry = queueTelemetry,
@@ -1296,7 +1295,7 @@ fun MediaInboxScreen(
             captureQuality = browserCaptureQuality,
             privacyAudit = sessionPrivacyAudit,
             compactPreferred = true,
-            browserVisible = showBrowser,
+            browserVisible = false,
             widthClassLabel = "phone",
         )
     }
@@ -1323,26 +1322,14 @@ fun MediaInboxScreen(
                 Column(Modifier.weight(1f)) {
                     XdmCardTitle("Media")
                     XdmSupportingText(
-                        "Use the built-in browser to capture video, audio, HLS, and DASH links, or review saved media from browser/share handoffs.",
+                        "Use Browser to capture video, audio, HLS, and DASH links, then review saved captures here before downloading.",
                         maxLines = 3,
                     )
                 }
             }
-            XdmActionFlowRow {
-                FilterChip(selected = !showBrowser, onClick = { showBrowser = false }, label = { Text("Inbox") })
-                FilterChip(selected = showBrowser, onClick = { showBrowser = true }, label = { Text("Browser") })
-            }
         }
 
-        if (showBrowser) {
-            BrowserScreen(
-                captures = captures,
-                onMediaRequest = onBrowserMediaRequest,
-                onOpenMediaInbox = { showBrowser = false },
-                onOpenAddForUrl = onOpenAddForBrowserUrl,
-                modifier = Modifier.weight(1f),
-            )
-        } else if (captures.isEmpty()) {
+        if (captures.isEmpty()) {
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(16.dp),
@@ -1364,7 +1351,7 @@ fun MediaInboxScreen(
                 item { SessionPrivacyAuditCard(sessionPrivacyAudit) }
                 item { OfflineMediaLibraryCard(librarySummary, libraryItems, downloads, onResumeOrRetryDownload) }
                 item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
-                item { EmptyFeatureScreen("Media inbox", "Share a video, audio, HLS, or DASH URL to capture metadata and queue it safely, or switch to Browser to discover media inside pages.") }
+                item { EmptyFeatureScreen("Media inbox", "Use Browser to discover video, audio, HLS, or DASH links, then review captured media here before queueing it safely.") }
             }
         } else {
             LazyColumn(

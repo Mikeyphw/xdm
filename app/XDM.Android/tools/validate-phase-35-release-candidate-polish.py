@@ -33,8 +33,8 @@ for phase in range(26, 36):
 
 if manifest.get("next_phase") != "complete":
     errors.append("PROJECT_MANIFEST next_phase must remain complete for release-candidate polish")
-if manifest.get("current_overlay") not in {"xdm_android_phase35_release_candidate_polish_overlay.zip", "xdm_android_phase36_external_download_handoff_overlay.zip"}:
-    errors.append("current_overlay must point at Phase 35 or a later Phase 36 overlay")
+if manifest.get("current_overlay") not in {"xdm_android_phase35_release_candidate_polish_overlay.zip", "xdm_android_phase36_external_download_handoff_overlay.zip", "xdm_android_phase37a_browser_downloader_roadmap_overlay.zip", "xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip"}:
+    errors.append("current_overlay must point at Phase 35 or an approved later Phase 36/37A/37B overlay")
 
 phase34 = manifest.get("phase34_release_handoff", {})
 if phase34.get("phase33_landed") is not True:
@@ -141,8 +141,8 @@ for token in ["validate-phase-35-release-candidate-polish.py", "install-aria2-ru
 run_gate = text("tools/run-final-release-gate.sh")
 if "validate-phase-35-release-candidate-polish.py" not in run_gate:
     errors.append("final release gate must include Phase 35 validator")
-if "xdm_android_phase35_release_candidate_polish_overlay.zip" not in run_gate and "xdm_android_phase36_external_download_handoff_overlay.zip" not in run_gate:
-    errors.append("final release gate must point at Phase 35 or later Phase 36 overlay")
+if not any(name in run_gate for name in ["xdm_android_phase35_release_candidate_polish_overlay.zip", "xdm_android_phase36_external_download_handoff_overlay.zip", "xdm_android_phase37a_browser_downloader_roadmap_overlay.zip", "xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip"]):
+    errors.append("final release gate must point at Phase 35 or an approved later Phase 36/37A/37B overlay")
 
 screens = text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt")
 for forbidden in ['label = "Release Candidate"', 'label = "Ship"', 'label = "No Ship"', 'label = "Checklist"']:
@@ -153,7 +153,7 @@ architecture_contract = text("app/src/test/kotlin/com/mikeyphw/xdm/android/Archi
 if "phaseThirtyFourReleaseHandoffContractsArePresent" not in architecture_contract:
     errors.append("Phase 34 architecture contract must stay present")
 if "xdm_android_phase35_release_candidate_polish_overlay.zip" not in architecture_contract or "xdm_android_phase36_external_download_handoff_overlay.zip" not in architecture_contract:
-    errors.append("ArchitectureContractTest must allow Phase 35 and later Phase 36 current_overlay literals")
+    errors.append("ArchitectureContractTest must allow Phase 35 and later Phase 36/37A/37B current_overlay literals")
 for bad_literal in ['contains(""current_overlay"', 'contains(""phase35_release_candidate_polish"']:
     if bad_literal in architecture_contract:
         errors.append(f"ArchitectureContractTest contains unescaped JSON assertion literal: {bad_literal}")

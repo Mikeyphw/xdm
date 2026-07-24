@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">XDM Android</string>
+    <string name="downloader_activity_label">XDM Downloader</string>
+    <string name="browser_activity_label">XDM Browser</string>
     <string name="external_add_download_label">Add to XDM</string>
 </resources>

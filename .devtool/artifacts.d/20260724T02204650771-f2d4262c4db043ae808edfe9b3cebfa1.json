@@ -1,0 +1,124 @@
+{
+  "applied_at": "2026-07-24T02:20:46.507715Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_phase37a_browser_downloader_roadmap_overlay.zip",
+  "artifact_name": "xdm_android_phase37a_browser_downloader_roadmap_overlay.zip",
+  "type": "overlay",
+  "sha256": "7d27836593a5673cbfa1d9afe653e8346bbe90bec25a26ced79e0e3b3101db32",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 11,
+  "change_counts": {
+    "add": 3,
+    "modify": 8
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 37A Browser/Downloader Roadmap",
+    "description": "Docs/contracts overlay that seals the dual Browser + Downloader roadmap before runtime topology changes begin.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "91ebe407a201983d2969debcff6c96bc0eb5b8a947a0330397f8dd58f52bcb12",
+          "size": 757,
+          "source_sha256": "139ef8d7759640e147a66ae87c6d3432c6b90f885c43646184967e5176dc60b2"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "14daabf00144ea7f301792d752129bec701e192ae0543e679cb8b85adeb82c1f",
+          "size": 3900,
+          "source_sha256": "9757ebeeecc952d5c04b311e66c1a753995f70ad06f2d914a39fa72477aafa5f"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "22fea6d2ffcc79ca34d3186864e815a52fb25280975860d9327dce9a6d89d5e9",
+          "size": 30034,
+          "source_sha256": "2718dfe432a53b338ccfa70cf59a89fc5e0ae5b1c0da8f59ddd4a59ed2ce24d0"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "68dcc7e6616f011a009a82a3f7b2b87362f3954d41aec0ac2dc004ed3a9f4522",
+          "size": 89324,
+          "source_sha256": "e378fa4c622131dad4fbba0a41ed22e5e32c37680430136e7a525fa2e85ef497"
+        },
+        {
+          "path": "app/XDM.Android/docs/browser/DUAL_BROWSER_DOWNLOADER_ROADMAP.md",
+          "action": "add",
+          "sha256": "619f43ed6dd5f14ad879cdf4b6e27b30dadf6d2931730cc774906cee920c609f",
+          "size": 2106
+        },
+        {
+          "path": "app/XDM.Android/docs/browser/REFERENCE_STUDY_1DM_SUPERX.md",
+          "action": "add",
+          "sha256": "ba79d32f385c8534406232ddf8a1a542000b008c71e4204474652679e4acaf98",
+          "size": 1411
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "6be15d5282b0b6b8be45d7705d04d606e5fc4de5930bd1f1fc6ab584e04c400e",
+          "size": 2657,
+          "source_sha256": "8061e68ecbe94ff33a00b77389767d487dfeecd3b7a33642fc067ed154ae5e37"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+          "action": "modify",
+          "sha256": "3457e16da50617472eb49c3ae37a53e28a7cd2acbecb8eaecab32f50465ec44b",
+          "size": 6917,
+          "source_sha256": "84d03a87c996c138abd7695addcfa1e7599c7c30887b8ff05f684b8299ec2a40"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+          "action": "modify",
+          "sha256": "562ecee65d343904a4025484dff798f34c659cfb41cf82e11fd60dffaf7174d7",
+          "size": 9502,
+          "source_sha256": "96042609ea37c9fb9f5d178cdffeacbedc256d5590fdf82f40b641124a8dbf22"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+          "action": "modify",
+          "sha256": "4c8032dcd858a505d55e84f67db2fc44beae00b966c6f30c0926202b09b18946",
+          "size": 8361,
+          "source_sha256": "39c84e10df00607afc49166dbdc01218790e18c8cb0b473831c02ca79c6be32c"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37a-browser-downloader-roadmap.py",
+          "action": "add",
+          "sha256": "aad22de17eb49a21cd97409fd55373aa2c83ca485329e96e303691d819215b24",
+          "size": 3060
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "tests": "pass",
+        "diagnostics": "pass"
+      },
+      "maximum_warnings": 0
+    },
+    "notes": [
+      "Phase 37A is docs/manifest/validator/test-contract only.",
+      "Uses add inventory actions for new docs and validator.",
+      "No runtime code changes, no Room migration, no version bump.",
+      "Records 1DM as topology reference and SuperX as open-source media-capture architecture reference."
+    ]
+  },
+  "history_id": "f2d4262c4db043ae808edfe9b3cebfa1"
+}

@@ -35,14 +35,20 @@ open class MainActivity : ComponentActivity() {
             val scheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
             MaterialTheme(colorScheme = scheme, typography = XdmTypography) { XdmApp(viewModel, requestNotifications = ::requestNotificationPermissionIfNeeded) }
         }
-        handleExternalIntent(intent)
+        initialRoute(intent)?.let(viewModel::navigate)
+        if (shouldHandleExternalIntent(intent)) handleExternalIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleExternalIntent(intent)
+        initialRoute(intent)?.let(viewModel::navigate)
+        if (shouldHandleExternalIntent(intent)) handleExternalIntent(intent)
     }
+
+    protected open fun initialRoute(intent: Intent?): AppRoute? = null
+
+    protected open fun shouldHandleExternalIntent(intent: Intent): Boolean = true
 
     private fun handleExternalIntent(intent: Intent?) {
         val incoming = intent ?: return

@@ -18,7 +18,8 @@
         android:theme="@style/Theme.XDMAndroid">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/downloader_activity_label">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -29,6 +30,16 @@
                 <action android:name="com.mikeyphw.xdm.android.PAUSE_ALL" />
                 <action android:name="com.mikeyphw.xdm.android.RESUME_ALL" />
                 <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".BrowserActivity"
+            android:exported="true"
+            android:label="@string/browser_activity_label">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 

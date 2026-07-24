@@ -870,7 +870,7 @@ class ArchitectureContractTest {
         val runGate = File(root, "tools/run-final-release-gate.sh").readText()
         val workflow = File(root, ".github/workflows/android.yml").readText()
         assertTrue("Phase 35 doc must define the ship/no-ship gate", polish.contains("Phase 35: Release Candidate Polish") && polish.contains("Ship/no-ship gate") && polish.contains("No-ship is required"))
-        assertTrue("Manifest must record Phase 35", manifest.contains("phase35_release_candidate_polish") && (manifest.contains("\"current_overlay\": \"xdm_android_phase35_release_candidate_polish_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase36_external_download_handoff_overlay.zip\"")))
+        assertTrue("Manifest must record Phase 35", manifest.contains("phase35_release_candidate_polish") && (manifest.contains("\"current_overlay\": \"xdm_android_phase35_release_candidate_polish_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase36_external_download_handoff_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase37a_browser_downloader_roadmap_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip\"")))
         assertTrue("Phase 35 must keep version metadata stable", buildGradle.contains("versionName = \"0.20.0-rc08\"") && buildGradle.contains("versionCode = 21"))
         assertTrue("Release helper must keep artifact checksums", releaseHelper.contains("sha256sum") && releaseHelper.contains("assembleBeta") && releaseHelper.contains("assembleRelease"))
         assertTrue("Final release gate must include the Phase 35 validator", runGate.contains("validate-phase-35-release-candidate-polish.py"))
@@ -906,11 +906,58 @@ class ArchitectureContractTest {
         assertTrue("URL normalization must support ftp for download-manager handoff", models.contains("(?:https?|ftp)://") && models.contains("scheme != \"http\" && scheme != \"https\" && scheme != \"ftp\""))
         assertTrue("Add screen must show external source and no-auto-queue safety copy", screens.contains("externalSourceLabel") && screens.contains("XDM never auto-queues external handoffs"))
         assertTrue("App shell must pass the external source label", appShell.contains("externalSourceLabel = state.externalAddDraft?.sourceLabel"))
-        assertTrue("Manifest must record Phase 36", manifest.contains("phase36_external_download_handoff") && manifest.contains("\"current_overlay\": \"xdm_android_phase36_external_download_handoff_overlay.zip\""))
+        assertTrue("Manifest must record Phase 36", manifest.contains("phase36_external_download_handoff") && (manifest.contains("\"current_overlay\": \"xdm_android_phase36_external_download_handoff_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase37a_browser_downloader_roadmap_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip\"")))
         assertTrue("Final release gate must include the Phase 36 validator", runGate.contains("validate-phase-36-external-download-handoff.py"))
         assertTrue("CI must include the Phase 36 validator", workflow.contains("validate-phase-36-external-download-handoff.py"))
         assertFalse("Phase 36 must not add top-level routes", AppRoute.entries.any { it.label == "External" || it.label == "Handoff" || it.label == "IronFox" || it.label == "Browser Download" })
     }
+
+    @Test
+    fun phaseThirtySevenABrowserDownloaderRoadmapContractsArePresent() {
+        val root = androidRoot()
+        assertTrue("Phase 37A roadmap doc is missing", File(root, "docs/browser/DUAL_BROWSER_DOWNLOADER_ROADMAP.md").isFile)
+        assertTrue("Phase 37A reference study is missing", File(root, "docs/browser/REFERENCE_STUDY_1DM_SUPERX.md").isFile)
+        assertTrue("Phase 37A validator is missing", File(root, "tools/validate-phase-37a-browser-downloader-roadmap.py").isFile)
+        val roadmap = File(root, "docs/browser/DUAL_BROWSER_DOWNLOADER_ROADMAP.md").readText()
+        val study = File(root, "docs/browser/REFERENCE_STUDY_1DM_SUPERX.md").readText()
+        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
+        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
+        val workflow = File(root, ".github/workflows/android.yml").readText()
+        assertTrue("Roadmap must define dual Browser and Downloader surfaces", roadmap.contains("XDM Downloader") && roadmap.contains("XDM Browser") && roadmap.contains("Phase 37B") && roadmap.contains("Phase 38"))
+        assertTrue("Reference study must separate 1DM topology from SuperX architecture", study.contains("1DM") && study.contains("SuperX") && study.contains("topology reference") && study.contains("open-source media-capture reference"))
+        assertTrue("Manifest must record Phase 37A", manifest.contains("phase37a_browser_downloader_roadmap") && (manifest.contains("\"current_overlay\": \"xdm_android_phase37a_browser_downloader_roadmap_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip\"")))
+        assertTrue("Final release gate must include the Phase 37A validator", runGate.contains("validate-phase-37a-browser-downloader-roadmap.py"))
+        assertTrue("CI must include the Phase 37A validator", workflow.contains("validate-phase-37a-browser-downloader-roadmap.py"))
+    }
+
+
+    @Test
+    fun phaseThirtySevenBDualLauncherNavigationSplitContractsArePresent() {
+        val root = androidRoot()
+        assertTrue("Phase 37B doc is missing", File(root, "docs/browser/PHASE-37B-DUAL-LAUNCHER-NAVIGATION-SPLIT.md").isFile)
+        assertTrue("Phase 37B validator is missing", File(root, "tools/validate-phase-37b-dual-launcher-navigation-split.py").isFile)
+        val manifestXml = File(root, "app/src/main/AndroidManifest.xml").readText()
+        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
+        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
+        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val mainActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
+        val browserActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserActivity.kt").readText()
+        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
+        val workflow = File(root, ".github/workflows/android.yml").readText()
+        assertTrue("Browser must be a top-level AppRoute", AppRoute.entries.any { it.label == "Browser" } && routes.contains("Browser(\"Browser\", Icons.Rounded.Public)"))
+        assertTrue("Compact navigation must promote Browser", appShell.contains("listOf(AppRoute.Downloads, AppRoute.Browser, AppRoute.Media, AppRoute.Queues)"))
+        assertTrue("Browser route must render BrowserScreen directly", appShell.contains("AppRoute.Browser -> BrowserScreen("))
+        assertTrue("Manifest must expose separate downloader and browser launchers", manifestXml.contains("@string/downloader_activity_label") && manifestXml.contains(".BrowserActivity") && manifestXml.contains("@string/browser_activity_label") && manifestXml.split("android.intent.category.LAUNCHER").size >= 3)
+        assertTrue("BrowserActivity must start on Browser without downloader external intake", browserActivity.contains("class BrowserActivity : MainActivity()") && browserActivity.contains("AppRoute.Browser") && browserActivity.contains("shouldHandleExternalIntent(intent: Intent): Boolean = false"))
+        assertTrue("MainActivity must expose startup hooks", mainActivity.contains("protected open fun initialRoute") && mainActivity.contains("protected open fun shouldHandleExternalIntent"))
+        assertFalse("Media must not hide Browser behind a local chip", screens.contains("showBrowser") || screens.contains("FilterChip(selected = showBrowser"))
+        assertTrue("Media copy must point to the first-class Browser route", screens.contains("Use Browser to capture"))
+        assertTrue("Manifest must record Phase 37B", manifest.contains("phase37b_dual_launcher_navigation_split") && manifest.contains("\"current_overlay\": \"xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip\""))
+        assertTrue("Final release gate must include Phase 37B", runGate.contains("validate-phase-37b-dual-launcher-navigation-split.py"))
+        assertTrue("CI must include Phase 37B", workflow.contains("validate-phase-37b-dual-launcher-navigation-split.py"))
+    }
+
 
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }

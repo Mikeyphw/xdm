@@ -1,0 +1,167 @@
+{
+  "applied_at": "2026-07-24T02:25:29.244781Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip",
+  "artifact_name": "xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip",
+  "type": "overlay",
+  "sha256": "1fbf8eb6fa6fbcc962591dfbe5796e22274a090f5eadd22dc3907fa38f3bf55f",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 17,
+  "change_counts": {
+    "add": 3,
+    "modify": 14
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 37B Dual Launcher Navigation Split",
+    "description": "Runtime topology overlay that promotes Browser to a first-class route and adds a separate XDM Browser launcher while preserving XDM Downloader and Add to XDM surfaces.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "49f393f3a7d6e81b31aa80ecdec7bc233a6e730f7b3ed396a24f5f296a99d1cc",
+          "size": 1006,
+          "source_sha256": "91ebe407a201983d2969debcff6c96bc0eb5b8a947a0330397f8dd58f52bcb12"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "487ba16df1dc41d820587acd92803e6bf9889ebffcc9cc56287e13ba4d92c62b",
+          "size": 3977,
+          "source_sha256": "14daabf00144ea7f301792d752129bec701e192ae0543e679cb8b85adeb82c1f"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "b0857d9daad3d2b0bf7b1bd01b97b10df69fb39f902bbcd5156d16425bd5f727",
+          "size": 30652,
+          "source_sha256": "22fea6d2ffcc79ca34d3186864e815a52fb25280975860d9327dce9a6d89d5e9"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+          "action": "modify",
+          "sha256": "b78ae7e8b5286d343c9d692dee994a95d6a3cf58ddcdecbfdd0f857428729c55",
+          "size": 15457,
+          "source_sha256": "86a2e59eb6e462481440285750899e99a9587fd225228022a733b8b46ce0d322"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt",
+          "action": "modify",
+          "sha256": "60a51895d8b2a59fa83981c84090a9585c83b52e655140550ce0e2e12c3d4d24",
+          "size": 1147,
+          "source_sha256": "37e71b780f4d8e1468a34da6c84471f01db865f381cf1e3b7ba3f03b7704ab63"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserActivity.kt",
+          "action": "add",
+          "sha256": "5494bcc47175fd9930c3dc21496ef2e2b6286e917e822833e7b8732ab27c6b66",
+          "size": 263
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+          "action": "modify",
+          "sha256": "1a760b3a4a0e7691a2e441f1fc5dd0f4eac8c2d9ec930d1dbc70a680aee6a889",
+          "size": 10182,
+          "source_sha256": "806e9525f73ec1c4821a8b0b709f020b3be1270c10135c8b9fa194a74192f1ed"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "sha256": "0cf35e7259e172902dcdd696e6940d4fd63f75f1d3f9ad0f6c5ef4f5ab987e56",
+          "size": 194070,
+          "source_sha256": "6ce69fd68734bdf7bebfdcc4cc81142d995280b9980fd0d23843376d2bf420b2"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "5c299d941b624fb82904492dca773dae9bd9fd876acce52fdc193c30b044afa1",
+          "size": 14804,
+          "source_sha256": "34c16d6b040a8bbda89cbaf42a52603e8c4ac310154f6b30c51dcef2fc83f72f"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/values/strings.xml",
+          "action": "modify",
+          "sha256": "d22a7435582c4fe31290a227d31d6d594aa17058c766682a2ea1c3bf05c3c953",
+          "size": 273,
+          "source_sha256": "5cd1b6f3a08b0a9857b0df25fbd594e1e028680f75ded619bb4c0a2b10e69c2b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "d9d71139440c906decefe34d0843949652c13fee2d2d078e9c98de747dc52609",
+          "size": 92830,
+          "source_sha256": "68dcc7e6616f011a009a82a3f7b2b87362f3954d41aec0ac2dc004ed3a9f4522"
+        },
+        {
+          "path": "app/XDM.Android/docs/browser/PHASE-37B-DUAL-LAUNCHER-NAVIGATION-SPLIT.md",
+          "action": "add",
+          "sha256": "7cbeaef8ac3b384087c887bb5e38bf81e1089fe247c45f0973d21d0d3a0e1c7f",
+          "size": 1533
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "9194df10fbded3807909d65b05555a30e678f9999cd576b67390a28c3da06113",
+          "size": 2726,
+          "source_sha256": "6be15d5282b0b6b8be45d7705d04d606e5fc4de5930bd1f1fc6ab584e04c400e"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+          "action": "modify",
+          "sha256": "b30f0b557cc00a4a6a78bcdcfaa005af203d31f3d6bb87d529fced05ca74b8a8",
+          "size": 6984,
+          "source_sha256": "3457e16da50617472eb49c3ae37a53e28a7cd2acbecb8eaecab32f50465ec44b"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+          "action": "modify",
+          "sha256": "1f74c52279da09181c6f876f3ca3052dafbdc97b36a6f99e24e6501ce62ce3c7",
+          "size": 9648,
+          "source_sha256": "562ecee65d343904a4025484dff798f34c659cfb41cf82e11fd60dffaf7174d7"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+          "action": "modify",
+          "sha256": "4adfae77881509f7aac1919c7fc80c9592e2fd668864cad05d076eac20f4ec09",
+          "size": 8449,
+          "source_sha256": "4c8032dcd858a505d55e84f67db2fc44beae00b966c6f30c0926202b09b18946"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37b-dual-launcher-navigation-split.py",
+          "action": "add",
+          "sha256": "fda9a6057de49a18f607c8f7227a81f8c00c2b6979c77f277f64649f2c1e121a",
+          "size": 6053
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "tests": "pass",
+        "diagnostics": "pass"
+      },
+      "maximum_warnings": 0
+    },
+    "notes": [
+      "Phase 37B is the first runtime browser/downloader split.",
+      "Adds Browser top-level AppRoute and BrowserActivity launcher.",
+      "Removes hidden Browser chip from Media.",
+      "Defers white-screen reliability and generic URL loading to Phase 38.",
+      "No Room migration, no version bump, no transfer engine or media execution changes."
+    ]
+  },
+  "history_id": "1a08c06da2804d048d7da2018813247a"
+}
