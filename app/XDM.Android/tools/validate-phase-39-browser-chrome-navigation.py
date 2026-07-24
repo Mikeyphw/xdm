@@ -15,7 +15,8 @@ def read(path: str) -> str:
     return p.read_text()
 
 manifest = json.loads(read("PROJECT_MANIFEST.json") or "{}")
-if manifest.get("current_overlay") not in {"xdm_android_phase39_browser_chrome_navigation_overlay.zip", "xdm_android_phase40_browser_tabs_session_ux_overlay.zip", "xdm_android_phase41_browser_download_bridge_overlay.zip", "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip"}:
+if manifest.get("current_overlay") not in {"xdm_android_phase39_browser_chrome_navigation_overlay.zip", "xdm_android_phase40_browser_tabs_session_ux_overlay.zip", "xdm_android_phase41_browser_download_bridge_overlay.zip", "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip",
+    "xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase43_browser_library_surfaces_overlay.zip"}:
     errors.append("current_overlay must point at the Phase 39 browser chrome/navigation overlay or approved later Phase 40 tabs/session overlay")
 
 phase = manifest.get("phase39_browser_chrome_navigation", {})

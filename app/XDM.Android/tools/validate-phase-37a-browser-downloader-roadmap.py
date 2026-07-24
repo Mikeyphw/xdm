@@ -20,6 +20,8 @@ allowed_current = {
     "xdm_android_phase37a_browser_downloader_roadmap_overlay.zip",
     "xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip",
     "xdm_android_phase38_browser_reliability_foundation_overlay.zip", "xdm_android_phase39_browser_chrome_navigation_overlay.zip", "xdm_android_phase40_browser_tabs_session_ux_overlay.zip", "xdm_android_phase41_browser_download_bridge_overlay.zip", "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip",
+    "xdm_android_phase43_browser_library_surfaces_overlay.zip",
+    "xdm_android_phase43_browser_library_surfaces_overlay.zip",
 }
 if manifest.get("current_overlay") not in allowed_current:
     errors.append("current_overlay must point at Phase 37A or an approved later Phase 37B/38/39/40/40 overlay")

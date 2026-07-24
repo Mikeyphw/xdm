@@ -2,6 +2,7 @@ package com.mikeyphw.xdm.android
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.http.SslError
 import android.net.Uri
@@ -91,6 +92,10 @@ fun BrowserScreen(
     var tabs by remember { mutableStateOf(restoredTabs.ifEmpty { listOf(BrowserTab.blank()) }) }
     var activeTabId by remember { mutableStateOf(restoredActiveTabId.takeIf { saved -> tabs.any { it.id == saved } } ?: tabs.first().id) }
     var history by remember { mutableStateOf(sessionStore.loadHistory()) }
+    var bookmarks by remember { mutableStateOf(sessionStore.loadBookmarks()) }
+    var showLibrary by remember { mutableStateOf(false) }
+    var importText by remember { mutableStateOf("") }
+    var importedLinks by remember { mutableStateOf<List<BrowserImportedLink>>(emptyList()) }
     var cookieProfile by remember { mutableStateOf(sessionStore.loadCookieProfile()) }
     val activeTab = tabs.firstOrNull { it.id == activeTabId } ?: tabs.first()
     val browserTabSessionState = BrowserTabSessionState(
@@ -118,6 +123,7 @@ fun BrowserScreen(
     val classifier = remember { MediaCandidateClassifier() }
     val sniffedUrls = remember { mutableStateListOf<String>() }
     val pageCaptures = captures.filter { it.pageUrl == currentPageUrl || it.sourceUrl in sniffedUrls }.distinctBy { it.id }
+    val pageResources = remember(sniffedUrls.toList(), pageCaptures) { toBrowserPageResources(sniffedUrls, pageCaptures) }
 
     fun persistTabs(updated: List<BrowserTab>, nextActiveTabId: String = activeTabId) {
         tabs = updated.ifEmpty { listOf(BrowserTab.blank()) }
@@ -164,6 +170,27 @@ fun BrowserScreen(
         }
         tabs = updated
         sessionStore.saveTabs(updated, activeTabId)
+    }
+
+    fun openBrowserEntry(url: String, title: String? = null) {
+        addressBar = url
+        browserLoadState = BrowserLoadState.Loading(url, 0)
+        browserChromeState = BrowserChromeState(url = url, title = title ?: currentPageTitle, isLoading = true, progress = 0)
+        browserDownloadDraft = null
+        loadRequest = url
+    }
+
+    fun toggleCurrentBookmark() {
+        val url = (browserChromeState.url ?: currentPageUrl).orEmpty().takeIf(String::isNotBlank) ?: return
+        val title = (browserChromeState.title ?: currentPageTitle ?: hostFromUrl(url)).takeIf { it.isNotBlank() } ?: hostFromUrl(url)
+        bookmarks = sessionStore.toggleBookmark(BrowserBookmarkEntry(url, title, System.currentTimeMillis()))
+    }
+
+    fun pasteClipboardIntoImport() {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        val text = clipboard?.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+        importText = text
+        importedLinks = extractBrowserImportLinks(text)
     }
 
     LaunchedEffect(activeTabId) {
@@ -265,17 +292,33 @@ fun BrowserScreen(
                 showTabSwitcher = remaining.size > 1
             },
             onSelectHistory = { entry ->
-                addressBar = entry.url
-                browserLoadState = BrowserLoadState.Loading(entry.url, 0)
-                browserChromeState = BrowserChromeState(url = entry.url, title = entry.title, isLoading = true, progress = 0)
-                browserDownloadDraft = null
-                loadRequest = entry.url
+                openBrowserEntry(entry.url, entry.title)
                 showHistory = false
             },
             onCookieProfileChanged = { profile ->
                 cookieProfile = profile
                 sessionStore.saveCookieProfile(profile)
             },
+        )
+        BrowserLibraryPanel(
+            currentUrl = browserChromeState.url ?: currentPageUrl,
+            currentTitle = browserChromeState.title ?: currentPageTitle,
+            bookmarks = bookmarks,
+            history = history,
+            pageResources = pageResources,
+            importedLinks = importedLinks,
+            importText = importText,
+            showLibrary = showLibrary,
+            onToggleLibrary = { showLibrary = !showLibrary },
+            onToggleBookmark = { toggleCurrentBookmark() },
+            onRemoveBookmark = { bookmark ->
+                bookmarks = sessionStore.saveBookmarks(bookmarks.filterNot { it.url.equals(bookmark.url, ignoreCase = true) })
+            },
+            onOpenUrl = { url, title -> openBrowserEntry(url, title) },
+            onAddUrl = onOpenAddForUrl,
+            onImportTextChanged = { value -> importText = value },
+            onParseImportLinks = { importedLinks = extractBrowserImportLinks(importText) },
+            onPasteClipboard = { pasteClipboardIntoImport() },
         )
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (loadRequest.isNullOrBlank()) {
@@ -490,6 +533,128 @@ private fun BrowserTabSwitcher(
         }
         if (tabs.size > MaxVisibleTabs) {
             XdmSupportingText("${tabs.size - MaxVisibleTabs} more tab${if (tabs.size - MaxVisibleTabs == 1) "" else "s"} are retained in the restored session.", maxLines = 1)
+        }
+    }
+}
+
+
+@Composable
+private fun BrowserLibraryPanel(
+    currentUrl: String?,
+    currentTitle: String?,
+    bookmarks: List<BrowserBookmarkEntry>,
+    history: List<BrowserHistoryEntry>,
+    pageResources: List<BrowserPageResourceEntry>,
+    importedLinks: List<BrowserImportedLink>,
+    importText: String,
+    showLibrary: Boolean,
+    onToggleLibrary: () -> Unit,
+    onToggleBookmark: () -> Unit,
+    onRemoveBookmark: (BrowserBookmarkEntry) -> Unit,
+    onOpenUrl: (String, String?) -> Unit,
+    onAddUrl: (String, String?) -> Unit,
+    onImportTextChanged: (String) -> Unit,
+    onParseImportLinks: () -> Unit,
+    onPasteClipboard: () -> Unit,
+) {
+    XdmListCard(compact = true) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText("Browser library")
+                XdmSupportingText("Bookmarks, page resources, history, and imported links stay browser-scoped and separate from downloader history.", maxLines = 2)
+            }
+            XdmMetadataText("${bookmarks.size} saved")
+        }
+        XdmActionFlowRow {
+            TextButton(onClick = onToggleLibrary) { Text(if (showLibrary) "Hide library" else "Library") }
+            TextButton(onClick = onToggleBookmark, enabled = !currentUrl.isNullOrBlank()) { Text("Bookmark page") }
+            TextButton(onClick = onPasteClipboard) { Text("Paste links") }
+        }
+        if (showLibrary) {
+            XdmMetadataText("Bookmarks")
+            if (bookmarks.isEmpty()) {
+                XdmSupportingText("No bookmarks yet. Open a page and use Bookmark page to keep it here.", maxLines = 2)
+            } else {
+                bookmarks.take(MaxVisibleBookmarks).forEach { bookmark ->
+                    BrowserLibraryRow(
+                        title = bookmark.title,
+                        url = bookmark.url,
+                        onOpen = { onOpenUrl(bookmark.url, bookmark.title) },
+                        onAdd = { onAddUrl(bookmark.url, bookmark.title) },
+                        onRemove = { onRemoveBookmark(bookmark) },
+                    )
+                }
+            }
+            XdmMetadataText("Page resources")
+            if (pageResources.isEmpty()) {
+                XdmSupportingText("Open a page with media or downloadable resources and XDM will list review-first candidates here.", maxLines = 2)
+            } else {
+                pageResources.take(MaxVisiblePageResources).forEach { resource ->
+                    BrowserLibraryRow(
+                        title = resource.label,
+                        url = resource.url,
+                        onOpen = { onOpenUrl(resource.url, resource.label) },
+                        onAdd = { onAddUrl(resource.url, resource.label) },
+                    )
+                }
+            }
+            XdmMetadataText("Import links")
+            OutlinedTextField(
+                value = importText,
+                onValueChange = onImportTextChanged,
+                label = { Text("Paste text with links") },
+                minLines = 2,
+                maxLines = 4,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            XdmActionFlowRow {
+                Button(onClick = onParseImportLinks, enabled = importText.isNotBlank()) { Text("Find links") }
+            }
+            if (importedLinks.isNotEmpty()) {
+                importedLinks.take(MaxVisibleImportLinks).forEach { link ->
+                    BrowserLibraryRow(
+                        title = link.label,
+                        url = link.url,
+                        onOpen = { onOpenUrl(link.url, link.label) },
+                        onAdd = { onAddUrl(link.url, link.label) },
+                    )
+                }
+            }
+            XdmMetadataText("Recent history")
+            if (history.isEmpty()) {
+                XdmSupportingText("No browser history yet.", maxLines = 1)
+            } else {
+                history.take(MaxVisibleHistory).forEach { entry ->
+                    BrowserLibraryRow(
+                        title = entry.title,
+                        url = entry.url,
+                        onOpen = { onOpenUrl(entry.url, entry.title) },
+                        onAdd = { onAddUrl(entry.url, entry.title) },
+                    )
+                }
+            }
+            currentUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                XdmSupportingText("Current page: ${currentTitle?.takeIf { it.isNotBlank() } ?: hostFromUrl(url)}", maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrowserLibraryRow(
+    title: String,
+    url: String,
+    onOpen: () -> Unit,
+    onAdd: () -> Unit,
+    onRemove: (() -> Unit)? = null,
+) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        XdmMetadataText(title.ifBlank { hostFromUrl(url) }, maxLines = 1)
+        XdmSupportingText(url, maxLines = 1)
+        XdmActionFlowRow {
+            TextButton(onClick = onOpen) { Text("Open") }
+            TextButton(onClick = onAdd) { Text("Add") }
+            onRemove?.let { remove -> TextButton(onClick = remove) { Text("Remove") } }
         }
     }
 }
@@ -1040,6 +1205,23 @@ private data class BrowserHistoryEntry(
     val visitedAtEpochMs: Long,
 )
 
+private data class BrowserBookmarkEntry(
+    val url: String,
+    val title: String,
+    val savedAtEpochMs: Long,
+)
+
+private data class BrowserPageResourceEntry(
+    val url: String,
+    val label: String,
+    val kind: String,
+)
+
+private data class BrowserImportedLink(
+    val url: String,
+    val label: String,
+)
+
 private enum class BrowserCookieProfile(
     val label: String,
     val description: String,
@@ -1086,6 +1268,29 @@ private class BrowserSessionStore(context: Context) {
         ?.toList()
         .orEmpty()
 
+    fun loadBookmarks(): List<BrowserBookmarkEntry> = prefs.getString(KeyBookmarks, null)
+        ?.lineSequence()
+        ?.mapNotNull(::decodeBookmark)
+        ?.take(MaxStoredBookmarks)
+        ?.toList()
+        .orEmpty()
+
+    fun saveBookmarks(bookmarks: List<BrowserBookmarkEntry>): List<BrowserBookmarkEntry> {
+        val trimmed = bookmarks.distinctBy { it.url.lowercase(Locale.US) }.take(MaxStoredBookmarks)
+        prefs.edit().putString(KeyBookmarks, trimmed.joinToString("\n", transform = ::encodeBookmark)).apply()
+        return trimmed
+    }
+
+    fun toggleBookmark(entry: BrowserBookmarkEntry): List<BrowserBookmarkEntry> {
+        val existing = loadBookmarks()
+        val updated = if (existing.any { it.url.equals(entry.url, ignoreCase = true) }) {
+            existing.filterNot { it.url.equals(entry.url, ignoreCase = true) }
+        } else {
+            listOf(entry) + existing
+        }
+        return saveBookmarks(updated)
+    }
+
     fun recordHistory(entry: BrowserHistoryEntry): List<BrowserHistoryEntry> {
         val updated = (listOf(entry) + loadHistory().filterNot { it.url == entry.url }).take(MaxStoredHistory)
         prefs.edit().putString(KeyHistory, updated.joinToString("\n", transform = ::encodeHistory)).apply()
@@ -1106,6 +1311,18 @@ private class BrowserSessionStore(context: Context) {
     }
 
     private fun encodeHistory(entry: BrowserHistoryEntry): String = listOf(entry.url, entry.title, entry.visitedAtEpochMs.toString()).joinToString("\t") { encode(it) }
+    private fun encodeBookmark(entry: BrowserBookmarkEntry): String = listOf(entry.url, entry.title, entry.savedAtEpochMs.toString()).joinToString("\t") { encode(it) }
+
+    private fun decodeBookmark(line: String): BrowserBookmarkEntry? {
+        val parts = line.split('\t')
+        if (parts.size < 3) return null
+        return BrowserBookmarkEntry(
+            url = decode(parts[0]).takeIf(String::isNotBlank) ?: return null,
+            title = decode(parts[1]).ifBlank { hostFromUrl(decode(parts[0])) },
+            savedAtEpochMs = decode(parts[2]).toLongOrNull() ?: 0L,
+        )
+    }
+
 
     private fun decodeHistory(line: String): BrowserHistoryEntry? {
         val parts = line.split('\t')
@@ -1123,19 +1340,45 @@ private class BrowserSessionStore(context: Context) {
     companion object {
         private const val KeyTabs = "tabs"
         private const val KeyHistory = "history"
+        private const val KeyBookmarks = "bookmarks"
         private const val KeyActiveTab = "active_tab"
         private const val KeyCookieProfile = "cookie_profile"
     }
 }
 
+private fun toBrowserPageResources(sniffedUrls: List<String>, captures: List<MediaCaptureRecord>): List<BrowserPageResourceEntry> {
+    val sniffed = sniffedUrls.map { url -> BrowserPageResourceEntry(url, hostFromUrl(url), "Observed request") }
+    val captured = captures.map { capture -> BrowserPageResourceEntry(capture.sourceUrl, capture.title, capture.mediaKindLabel) }
+    return (captured + sniffed)
+        .filter { it.url.startsWith("http://", ignoreCase = true) || it.url.startsWith("https://", ignoreCase = true) }
+        .distinctBy { it.url.lowercase(Locale.US) }
+        .take(MaxStoredPageResources)
+}
+
+private fun extractBrowserImportLinks(text: String): List<BrowserImportedLink> = BrowserImportUrlRegex.findAll(text)
+    .map { it.value.trimEnd('.', ',', ';', ')', ']', '}') }
+    .filter { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) }
+    .distinctBy { it.lowercase(Locale.US) }
+    .take(MaxImportedLinks)
+    .map { url -> BrowserImportedLink(url, hostFromUrl(url)) }
+    .toList()
+
 private fun hostFromUrl(url: String): String = runCatching { Uri.parse(url).host?.removePrefix("www.") }.getOrNull()?.takeIf(String::isNotBlank) ?: "Browser page"
+
+private val BrowserImportUrlRegex = Regex("""https?://[^\s<>'"]+""")
 
 private const val NewTabTitle = "New tab"
 private const val MaxVisibleTabs = 8
 private const val MaxVisibleHistory = 6
+private const val MaxVisibleBookmarks = 8
+private const val MaxVisiblePageResources = 8
+private const val MaxVisibleImportLinks = 8
 private const val MaxVisibleMediaGroups = 4
 private const val MaxStoredTabs = 12
 private const val MaxStoredHistory = 80
+private const val MaxStoredBookmarks = 80
+private const val MaxStoredPageResources = 80
+private const val MaxImportedLinks = 40
 private const val DesktopUserAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 private const val BlankPageProbeDelayMs = 1200L
 private const val BlankPageProbeScript = """

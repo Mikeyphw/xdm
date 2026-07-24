@@ -26,7 +26,7 @@ workflow = read(".github/workflows/android.yml")
 doc = ROOT / "docs/browser/PHASE-42-BROWSER-MEDIA-CAPTURE-COCKPIT.md"
 
 require(doc.is_file(), "Phase 42 browser media cockpit doc is missing")
-require(manifest.get("current_overlay") == "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip", "current_overlay must point at the Phase 42 browser media capture cockpit overlay")
+require(manifest.get("current_overlay") in {"xdm_android_phase42_browser_media_capture_cockpit_overlay.zip", "xdm_android_phase43_browser_library_surfaces_overlay.zip"}, "current_overlay must point at the Phase 42 browser media capture cockpit overlay")
 for key in [
     "phase41_landed",
     "media_found_cockpit",

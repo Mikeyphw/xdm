@@ -34856,6 +34856,190 @@
         }
       },
       "history_id": "6d0333a8f2344b56b68c820236df3f42"
+    },
+    {
+      "applied_at": "2026-07-24T16:23:54.119163Z",
+      "artifact": "/home/mike/Downloads/xdm_android_phase43_browser_library_surfaces_overlay.zip",
+      "artifact_name": "xdm_android_phase43_browser_library_surfaces_overlay.zip",
+      "type": "overlay",
+      "sha256": "a49a9a7c59ba38cc7d05e8a645764823099956c88adca19196589c9f6ecd7939",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "XDM Android Phase 43 browser library surfaces",
+      "commit_hash": "",
+      "file_count": 19,
+      "change_counts": {
+        "add": 2,
+        "modify": 17
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 43 Browser Library Surfaces",
+        "description": "Adds browser-scoped library surfaces: bookmarks, history, page resources, import links, and clipboard paste import, while keeping downloader history separate and preserving review-first safety.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "DEVTOOL_OVERLAY.md",
+              "action": "modify",
+              "sha256": "7926bfe7526e64d6aca6520b4279a58b56f6398cab5feaa7b418a76994b8b037",
+              "size": 1274,
+              "source_sha256": "46d3b0026d584efd1a2431a0530b18701a2bad574cdaf942ecf854518462bbe0"
+            },
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "6ff957a46f1c857ee72d9800a5530931e9efb4d091fbf15ab984444106c1fe13",
+              "size": 4407,
+              "source_sha256": "98608268bbb94e8cc3c2cedad9015d582999ecdfda6e2edf697724bc90f148bd"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "901d07bb8e41ef32a5004acca83aa404cb413f199436c83858218595cb1a63ad",
+              "size": 36447,
+              "source_sha256": "5f6340c42b2bd812af8d16bbb7ccaadb2375736cc695e8159d79424c76ab202b"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+              "action": "modify",
+              "sha256": "059cfac41218159f71d6494ecad489d7cd59110dd1ca2a79fd2e1d5a4e8ebe93",
+              "size": 64505,
+              "source_sha256": "242f93cf482e8fba302c76134aecc589322cc22ec56d824c45f1c4330576bbf6"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "b33983de01bac9c6756fcae72d1e3f44714da78004d6b71cd8c944c5cc52bc0a",
+              "size": 114867,
+              "source_sha256": "91cab92f7957a57ae49736bea82703936e5876b04adcb0b56f9aa09d22e61000"
+            },
+            {
+              "path": "app/XDM.Android/docs/browser/PHASE-43-BROWSER-LIBRARY-SURFACES.md",
+              "action": "add",
+              "sha256": "e81a10f7faa98b30d42d89a9ea46e030c9b57bcf31d7fc07691d65f622501b03",
+              "size": 1387
+            },
+            {
+              "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+              "action": "modify",
+              "sha256": "d328c55e3a497bb3e1cad082a77c3da0ce2f291c9f5d30203e950ffc8d396d6e",
+              "size": 3046,
+              "source_sha256": "f3d922fefd8713ce401666befa9117b542120e763a30090852b193d882a37f64"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-browser-media-downloader.py",
+              "action": "modify",
+              "sha256": "ee161359a2c411a0fb321ca353abd3bcd1ba8dd4e05d3585c5646d21c6670b14",
+              "size": 3017,
+              "source_sha256": "1b09bc5c6bee43389605f984b094eb17449dbc69d52024119b7b8bc5fa61438f"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+              "action": "modify",
+              "sha256": "cd16c439a8191c285897a1effafbc271aeab75180cf98bfbfc6d40f9e86f8616",
+              "size": 7418,
+              "source_sha256": "cdac2e1a1fa379beefbc83669ac5ed246bc45117fbb9b7cda243293291bcc379"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+              "action": "modify",
+              "sha256": "0e867590de2f0f207a6c89708f58d12d46abf842ae06d462596457be5602360c",
+              "size": 10488,
+              "source_sha256": "19943b0645e9b34a20e9958ae3cbf39f1270988a6958215340f80257145a0563"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+              "action": "modify",
+              "sha256": "054405d93dca0776bc12b80e38853f9d612ad6141f78632da6429f54af2f3458",
+              "size": 8892,
+              "source_sha256": "bedcb480a8f740e5f8e8ada405c4dccad98ed4e9bdde6f6d1a964540c70515cc"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-37a-browser-downloader-roadmap.py",
+              "action": "modify",
+              "sha256": "72d836d26b77c84fa0c6bbf792a294097c610b8f5b2ffd2bd1a6f6e382e671b2",
+              "size": 3514,
+              "source_sha256": "869eb760cf5c062ca6a374fd3d5155178a2fd0d91306622593710fc7026f7da9"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-37b-dual-launcher-navigation-split.py",
+              "action": "modify",
+              "sha256": "3624b52a0757353117ff776ca44392a527ded9bd2f3a8f16cfbef083fc39e8be",
+              "size": 6565,
+              "source_sha256": "a9077e8779618b209018eacf9b9d724a11c91eda7bf4589df0c74c15388408cf"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-38-browser-reliability-foundation.py",
+              "action": "modify",
+              "sha256": "5a39e44eba8909bfa7e8cd93ac478b542e7df20ef3b62d6a459b610f1555f8e2",
+              "size": 7806,
+              "source_sha256": "d1e126465bf97e68e490c6f7929f779d65fdcbfb646d10ec55ac06c4fdd30d8a"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-39-browser-chrome-navigation.py",
+              "action": "modify",
+              "sha256": "87b4f2ef5f2acf40b972ea8832276ea9b8be3bebce8bc5affea791be6553bb63",
+              "size": 4592,
+              "source_sha256": "602d6dbc6a0348604274dee5a634a599220af1464157c3283bad6b7397b560a4"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-40-browser-tabs-session-ux.py",
+              "action": "modify",
+              "sha256": "9cb165eaef18550d4a0c8ed2f7732642a1d026699cd5704e0beb668a815eaa0f",
+              "size": 4461,
+              "source_sha256": "17d69f362e59c0e84b5f672f21716dd03ee8967a6d8a965ce4e9c80dc29301d1"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-41-browser-download-bridge.py",
+              "action": "modify",
+              "sha256": "42722b9c4f670d5401b43902fd3fbdd3b0f227e280c65933ad904a45c4cac7ea",
+              "size": 4658,
+              "source_sha256": "a97d72f5a9b26a70f1e897b52280ff971ff1b7b8d44e52eb1b942c291e30525c"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-42-browser-media-capture-cockpit.py",
+              "action": "modify",
+              "sha256": "edda8037bd7ede0ebc926c0f615639005185cc66cbf313c22638ec8c8938276b",
+              "size": 5104,
+              "source_sha256": "53e93d4ed060bb32433f173b769fa49f0de4cc969af6011d346e30137ec95213"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-43-browser-library-surfaces.py",
+              "action": "add",
+              "sha256": "b7e26cf2564d37b221a0b4caa55a26ecb2263d8efa0e65a9ca851828f256c55c",
+              "size": 3945
+            }
+          ]
+        },
+        "validation": {
+          "expected": {
+            "build": "passed",
+            "tests": "passed",
+            "diagnostics": "passed"
+          },
+          "commit": {
+            "enabled": true,
+            "message": "XDM Android Phase 43 browser library surfaces"
+          }
+        },
+        "apply": {
+          "commit": {
+            "enabled": true,
+            "message": "XDM Android Phase 43 browser library surfaces"
+          }
+        }
+      },
+      "history_id": "7a5c6b8795624b0da6554d3343bb2fd8"
     }
   ]
 }

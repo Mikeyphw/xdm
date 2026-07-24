@@ -45,7 +45,9 @@
       38,
       39,
       40,
-      41
+      41,
+      42,
+      43
     ]
   },
   "database": {
@@ -470,7 +472,7 @@
     "yt_dlp_page_url_probe": true,
     "offline_library_groundwork": true
   },
-  "current_overlay": "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip",
+  "current_overlay": "xdm_android_phase43_browser_library_surfaces_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1149,5 +1151,23 @@
     "no_transfer_engine_changes": true,
     "no_media_execution_changes": true,
     "reference_study": "SuperX browser media capture cockpit; 1DM dual app topology remains product reference only"
+  },
+  "phase43_browser_library_surfaces": {
+    "phase42_landed": true,
+    "browser_library_document": "docs/browser/PHASE-43-BROWSER-LIBRARY-SURFACES.md",
+    "final_gate_validator": "tools/validate-phase-43-browser-library-surfaces.py",
+    "bookmarks_surface": true,
+    "browser_history_surface": true,
+    "page_resources_surface": true,
+    "import_links_from_text": true,
+    "clipboard_paste_import": true,
+    "browser_history_separate_from_downloader_history": true,
+    "shared_preferences_only": true,
+    "private_tabs_full_isolation_deferred": true,
+    "no_new_route": true,
+    "no_room_migration": true,
+    "no_version_bump": true,
+    "no_transfer_engine_changes": true,
+    "no_media_execution_changes": true
   }
 }
