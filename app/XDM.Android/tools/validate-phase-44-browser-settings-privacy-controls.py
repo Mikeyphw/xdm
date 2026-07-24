@@ -27,6 +27,7 @@ doc = ROOT / "docs/browser/PHASE-44-BROWSER-SETTINGS-PRIVACY-CONTROLS.md"
 allowed_overlays = {
     "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip",
     "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip", "xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip", "xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip",
+    "xdm_android_phase48_browser_resource_inspector_overlay.zip",
 }
 require(doc.is_file(), "Phase 44 browser settings/privacy doc is missing")
 require(manifest.get("current_overlay") in allowed_overlays, "current_overlay must point at the Phase 44 browser settings/privacy overlay or approved Phase 45 visual polish overlay")

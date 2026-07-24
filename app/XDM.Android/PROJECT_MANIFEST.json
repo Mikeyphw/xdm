@@ -48,7 +48,8 @@
       41,
       42,
       43,
-      47
+      47,
+      48
     ]
   },
   "database": {
@@ -473,7 +474,7 @@
     "yt_dlp_page_url_probe": true,
     "offline_library_groundwork": true
   },
-  "current_overlay": "xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip",
+  "current_overlay": "xdm_android_phase48_browser_resource_inspector_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1255,5 +1256,17 @@
     "no_transfer_engine_changes": true,
     "no_media_execution_changes": true,
     "no_adblock_proxy_dns_changes": true
+  },
+  "phase48_browser_resource_inspector": {
+    "phase47_landed": true,
+    "resource_inspector_panel": true,
+    "resource_filters": true,
+    "open_add_inspect_actions": true,
+    "source_page_context": true,
+    "review_first": true,
+    "no_new_route": true,
+    "no_room_migration": true,
+    "no_transfer_engine_changes": true,
+    "no_media_execution_changes": true
   }
 }

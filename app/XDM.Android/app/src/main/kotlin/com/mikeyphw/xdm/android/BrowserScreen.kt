@@ -97,6 +97,8 @@ fun BrowserScreen(
     var history by remember { mutableStateOf(sessionStore.loadHistory()) }
     var bookmarks by remember { mutableStateOf(sessionStore.loadBookmarks()) }
     var showLibrary by remember { mutableStateOf(false) }
+    var showResourceInspector by remember { mutableStateOf(false) }
+    var resourceFilter by remember { mutableStateOf(BrowserResourceFilter.All) }
     var importText by remember { mutableStateOf("") }
     var importedLinks by remember { mutableStateOf<List<BrowserImportedLink>>(emptyList()) }
     var cookieProfile by remember { mutableStateOf(sessionStore.loadCookieProfile()) }
@@ -442,6 +444,18 @@ fun BrowserScreen(
             onImportTextChanged = { value -> importText = value },
             onParseImportLinks = { importedLinks = extractBrowserImportLinks(importText) },
             onPasteClipboard = { pasteClipboardIntoImport() },
+        )
+        BrowserResourceInspectorPanel(
+            currentUrl = currentPageUrl,
+            currentTitle = currentPageTitle,
+            resources = pageResources,
+            filter = resourceFilter,
+            showInspector = showResourceInspector,
+            onToggleInspector = { showResourceInspector = !showResourceInspector },
+            onFilterChanged = { resourceFilter = it },
+            onOpenResource = { url, title -> openBrowserEntry(url, title) },
+            onAddResource = onOpenAddForUrl,
+            onInspectResource = { url, title -> onMediaRequestState(url, title, currentUrlState, null) },
         )
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (loadRequest.isNullOrBlank()) {
@@ -918,6 +932,80 @@ private fun BrowserLibraryPanel(
         }
     }
 }
+
+@Composable
+private fun BrowserResourceInspectorPanel(
+    currentUrl: String?,
+    currentTitle: String?,
+    resources: List<BrowserPageResourceEntry>,
+    filter: BrowserResourceFilter,
+    showInspector: Boolean,
+    onToggleInspector: () -> Unit,
+    onFilterChanged: (BrowserResourceFilter) -> Unit,
+    onOpenResource: (String, String?) -> Unit,
+    onAddResource: (String, String?) -> Unit,
+    onInspectResource: (String, String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val filtered = remember(resources, filter) { resources.filter { filter.matches(it) }.take(MaxVisibleInspectorResources) }
+    XdmListCard(compact = true, modifier = modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText("Resource inspector")
+                XdmSupportingText("Review page resources before sending direct files to Add Download or media candidates to the capture cockpit.", maxLines = 2)
+            }
+            XdmMetadataText("${resources.size} seen", maxLines = 1)
+        }
+        XdmActionFlowRow {
+            TextButton(onClick = onToggleInspector) { Text(if (showInspector) "Hide resources" else "Inspect resources") }
+            BrowserResourceFilter.entries.forEach { option ->
+                FilterChip(selected = filter == option, onClick = { onFilterChanged(option) }, label = { Text(option.label) })
+            }
+        }
+        if (showInspector) {
+            if (filtered.isEmpty()) {
+                XdmSupportingText("No resources match ${filter.label.lowercase(Locale.US)} yet. Open a page and XDM will list observed requests and captured media here.", maxLines = 2)
+            } else {
+                filtered.forEach { resource ->
+                    BrowserResourceInspectorRow(
+                        resource = resource,
+                        onOpen = { onOpenResource(resource.url, resource.label) },
+                        onAdd = { onAddResource(resource.url, resource.label) },
+                        onInspect = { onInspectResource(resource.url, resource.label) },
+                    )
+                }
+            }
+            currentUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                XdmSupportingText("Source page: ${currentTitle?.takeIf { it.isNotBlank() } ?: hostFromUrl(url)}", maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrowserResourceInspectorRow(
+    resource: BrowserPageResourceEntry,
+    onOpen: () -> Unit,
+    onAdd: () -> Unit,
+    onInspect: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText(resource.label.ifBlank { hostFromUrl(resource.url) }, maxLines = 1)
+                XdmSupportingText(resource.url, maxLines = 1)
+            }
+            XdmMetadataText(resource.kind, maxLines = 1)
+        }
+        XdmActionFlowRow {
+            TextButton(onClick = onOpen) { Text("Open") }
+            TextButton(onClick = onAdd) { Text("Add") }
+            TextButton(onClick = onInspect) { Text("Inspect media") }
+        }
+    }
+}
+
 
 @Composable
 private fun BrowserLibraryRow(
@@ -1803,6 +1891,23 @@ private class BrowserSessionStore(context: Context) {
     }
 }
 
+private enum class BrowserResourceFilter(val label: String) {
+    All("All"),
+    Media("Media"),
+    Direct("Direct"),
+    Observed("Observed"),
+    Unknown("Unknown");
+
+    fun matches(resource: BrowserPageResourceEntry): Boolean = when (this) {
+        All -> true
+        Media -> resource.kind in setOf("HLS", "DASH", "Progressive", "Audio", "Video")
+        Direct -> resource.kind == "Direct file"
+        Observed -> resource.kind == "Observed request"
+        Unknown -> resource.kind == "Unknown"
+    }
+}
+
+
 private fun toBrowserPageResources(sniffedUrls: List<String>, captures: List<MediaCaptureRecord>): List<BrowserPageResourceEntry> {
     val sniffed = sniffedUrls.map { url -> BrowserPageResourceEntry(url, hostFromUrl(url), "Observed request") }
     val captured = captures.map { capture -> BrowserPageResourceEntry(capture.sourceUrl, capture.title, capture.mediaKindLabel) }
@@ -1830,6 +1935,7 @@ private const val MaxVisibleTabs = 8
 private const val MaxVisibleHistory = 6
 private const val MaxVisibleBookmarks = 8
 private const val MaxVisiblePageResources = 8
+private const val MaxVisibleInspectorResources = 12
 private const val MaxVisibleImportLinks = 8
 private const val MaxVisibleMediaGroups = 4
 private const val MaxVisiblePermissionEvents = 4

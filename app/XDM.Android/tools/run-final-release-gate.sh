@@ -58,7 +58,8 @@ validators=(
   tools/validate-phase-44-browser-settings-privacy-controls.py
   tools/validate-phase-45-browser-visual-polish-adaptive-layout.py
   tools/validate-phase-46-browser-private-mode-data-isolation.py
-  validate-phase-47-browser-permission-ux-settings-polish.py
+  tools/validate-phase-48-browser-resource-inspector.py
+  tools/validate-phase-47-browser-permission-ux-settings-polish.py
 )
 
 for validator in "${validators[@]}"; do

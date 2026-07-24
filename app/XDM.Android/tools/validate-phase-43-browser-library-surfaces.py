@@ -25,7 +25,7 @@ workflow = read(".github/workflows/android.yml")
 doc = ROOT / "docs/browser/PHASE-43-BROWSER-LIBRARY-SURFACES.md"
 
 require(doc.is_file(), "Phase 43 browser library doc is missing")
-require(manifest.get("current_overlay") in {"xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip", "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip", "xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip", "xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip"}, "current_overlay must point at the Phase 43 browser library overlay or approved Phase 44 settings/privacy overlay")
+require(manifest.get("current_overlay") in {"xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip", "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip", "xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip", "xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip", "xdm_android_phase48_browser_resource_inspector_overlay.zip"}, "current_overlay must point at the Phase 43 browser library overlay or approved Phase 44 settings/privacy overlay")
 for key in [
     "phase42_landed",
     "bookmarks_surface",

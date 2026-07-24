@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-07-24T18:10:31.039857Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase48_browser_resource_inspector_overlay.zip",
+  "artifact_name": "xdm_android_phase48_browser_resource_inspector_overlay.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "63d780eb1546406cbd18b2da2463d551"
+}

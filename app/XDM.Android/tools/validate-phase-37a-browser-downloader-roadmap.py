@@ -22,6 +22,7 @@ allowed_current = {
     "xdm_android_phase38_browser_reliability_foundation_overlay.zip", "xdm_android_phase39_browser_chrome_navigation_overlay.zip", "xdm_android_phase40_browser_tabs_session_ux_overlay.zip", "xdm_android_phase41_browser_download_bridge_overlay.zip", "xdm_android_phase42_browser_media_capture_cockpit_overlay.zip",
     "xdm_android_phase43_browser_library_surfaces_overlay.zip", "xdm_android_phase44_browser_settings_privacy_controls_overlay.zip", "xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip", "xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip", "xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip",
     "xdm_android_phase43_browser_library_surfaces_overlay.zip",
+    "xdm_android_phase48_browser_resource_inspector_overlay.zip",
 }
 if manifest.get("current_overlay") not in allowed_current:
     errors.append("current_overlay must point at Phase 37A or an approved later Phase 37B/38/39/40/40 overlay")
