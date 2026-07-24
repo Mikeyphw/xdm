@@ -1,0 +1,162 @@
+{
+  "applied_at": "2026-07-24T14:57:16.373987Z",
+  "artifact": "/home/mike/Downloads/devtool_desktop_page_composition_scrollability_overlay.zip",
+  "artifact_name": "devtool_desktop_page_composition_scrollability_overlay.zip",
+  "type": "overlay",
+  "sha256": "985352de90b8ab1c8b42f80cb34eba2b7e4031a85d2e4d2598f28942ce47debf",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 12,
+  "change_counts": {
+    "add": 12
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "target": "devtool",
+    "name": "devtool_desktop_page_composition_scrollability_overlay",
+    "description": "Merge desktop page scrollability with screenshot-driven Control Center composition fixes.",
+    "release": "1.1.0",
+    "devtool_version": "1.1.0",
+    "desktop_version": "0.4.0",
+    "android_version": "1.14.0",
+    "android_version_code": 27,
+    "artifact_type": "overlay",
+    "slice": 26,
+    "features": [
+      "Merge previous desktop page scrollability overlay into the composition polish slice.",
+      "Make Overview, History, Settings, Artifacts, and Run workflow vertical overflow scroll correctly.",
+      "Wrap desktop pipeline steps instead of clipping horizontally.",
+      "Align Logs navigation and page title, with a better success empty state.",
+      "Make clipboard command execution review-first and warn on repository mismatch.",
+      "Improve Run disclosure affordance and first-step context.",
+      "Make Artifacts and Repositories empty states action-first.",
+      "Reduce History row alert weight and remove hardcoded Kitty Settings copy.",
+      "Clarify selected repository in the desktop header and latest-run context."
+    ],
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "overwrite",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false
+    },
+    "validation": {
+      "required": true,
+      "restore": false,
+      "build": false,
+      "test": false,
+      "script": {
+        "path": ".devtool-artifact/validate_phase19_desktop_composition_scrollability.sh",
+        "runner": "bash",
+        "sha256": "cd71116009d34a95663d1ee238dad878708777f0a66b12f243a44684db2d7ffb",
+        "timeout_seconds": 180
+      },
+      "expected": {
+        "restore": "skip",
+        "build": "skip",
+        "tests": "skip"
+      },
+      "focused_tests": 5,
+      "notes": "Runs focused desktop composition/scrollability QML contract tests plus source-audit."
+    },
+    "key_files": [
+      "desktop/devtool-control-center/qml/pages/RunPage.qml",
+      "desktop/devtool-control-center/qml/components/PipelineView.qml",
+      "desktop/devtool-control-center/qml/pages/DiagnosticsPage.qml",
+      "desktop/devtool-control-center/qml/pages/ArtifactsPage.qml",
+      "desktop/devtool-control-center/qml/pages/RepositoriesPage.qml",
+      "tests/test_desktop_page_composition_scrollability.py",
+      "PHASE_19_DESKTOP_PAGE_COMPOSITION_SCROLLABILITY.md"
+    ],
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "PHASE_19_DESKTOP_PAGE_COMPOSITION_SCROLLABILITY.md",
+          "action": "add",
+          "sha256": "b2b882f993f74329545849a54e679df137f922067b69b94560a0ab63b561e307",
+          "size": 1217
+        },
+        {
+          "path": "desktop/devtool-control-center/qml/Main.qml",
+          "action": "modify",
+          "sha256": "ab3b8cc45c8389ac8582ba899cc48a28822c74b9ced4f5f8d59608ea0476fc96",
+          "size": 9170,
+          "source_sha256": "453ad1798fd127fead434925522e8612d26a3244ab38c4493348b21ad95198c1"
+        },
+        {
+          "path": "desktop/devtool-control-center/qml/components/AppScrollView.qml",
+          "action": "modify",
+          "sha256": "a20c71f0b639daa56974dd88b21166211280518f5dff62922973b2404ca8615f",
+          "size": 400,
+          "source_sha256": "a49172dca854e4d0898047d4ef77a86a6aa4573fce0b2b755fea9693945fc3d8"
+        },
+        {
+          "path": "desktop/devtool-control-center/qml/components/PipelineView.qml",
+          "action": "modify",
+          "sha256": "f126dbec7e4ad3c26c9466adefd57098949fc9be886341d489b5647f692ee59e",
+          "size": 6109,
+          "source_sha256": "9ebdaf87919896c2616b02c05728d54bf9de2d07c12cccb228a058a40478a9d4"
+        },
+        {
+          "path": "desktop/devtool-control-center/qml/pages/ArtifactsPage.qml",
+          "action": "modify",
+          "sha256": "c729fef6f557742f98ef5828f2189115c40a417acc8c49afcd4d64a394cc2904",
+          "size": 19447,
+          "source_sha256": "fb990998e8cfcc0d95cf6311edd43158e0cabddb5f5bb3f8a8d9ee4ca018ce3e"
+        },
+        {
+          "path": "desktop/devtool-control-center/qml/pages/DiagnosticsPage.qml",
+          "action": "modify",
+          "sha256": "549961faabc45c54fea57e59fb89348b31a5bb19022ee2c99967f2b4e33ffcc1",
+          "size": 9786,
+          "source_sha256": "2529e51f3ff815dc2219479b8aa5f5e845775504b5f1450aebfad8f9ffc14ee4"
+        },
+        {
+          "path": "desktop/devtool-control-center/qml/pages/HistoryPage.qml",
+          "action": "modify",
+          "sha256": "40a7b6f648521cb734eeb7ed69e68319797b356019ce8626de7b952ff24cc111",
+          "size": 12546,
+          "source_sha256": "7b0f5d887670709b3b40deb7d5319eb6ebcc09c8964a59a65a7e9603aa78e73c"
+        },
+        {
+          "path": "desktop/devtool-control-center/qml/pages/OverviewPage.qml",
+          "action": "modify",
+          "sha256": "a17c9df28f5ee7bff4e8615f00a2bb14a8ae839c9bbe544ba71030bdc8fd9a67",
+          "size": 9293,
+          "source_sha256": "b67ec304ead8d3659c14e17ea035084828d4f258bdc227945bf586376de8f280"
+        },
+        {
+          "path": "desktop/devtool-control-center/qml/pages/RepositoriesPage.qml",
+          "action": "modify",
+          "sha256": "ad175eb6e400d3189f01c2de047d44bb927155b2c4e1fbd83d884cd068c04d1c",
+          "size": 26739,
+          "source_sha256": "0ae3e87c205ea80fc08397ea856ece91bdae464cf6653565680fcd48d7ebc971"
+        },
+        {
+          "path": "desktop/devtool-control-center/qml/pages/RunPage.qml",
+          "action": "modify",
+          "sha256": "192afd5486b95ceb2cce3306473e19f6cb9030276dbd79e04954229b27a9d6d1",
+          "size": 37626,
+          "source_sha256": "f29e6231fefbae7159fa9cbb85b4b64e06bbd4dd2f896455a1c6d46d6da0db20"
+        },
+        {
+          "path": "desktop/devtool-control-center/qml/pages/SettingsPage.qml",
+          "action": "modify",
+          "sha256": "9f13e685f450b2de42d1976c761002026990a31e7c5ba7a6a3de7ccb3c3aaaf0",
+          "size": 14413,
+          "source_sha256": "b22045c626b585b5a4d1008a8b223ebcb25ae61db588f61482f96bf298a48cd7"
+        },
+        {
+          "path": "tests/test_desktop_page_composition_scrollability.py",
+          "action": "add",
+          "sha256": "ee6dd4473a27f4ff80c4d726ab165bfe8c6cfea7fc744a4302eeab84415c1c03",
+          "size": 2524
+        }
+      ]
+    }
+  },
+  "history_id": "531964bc82104d88bf9f81f05ab3f317"
+}

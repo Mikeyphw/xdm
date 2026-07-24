@@ -2,17 +2,22 @@ package com.mikeyphw.xdm.android
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
+import android.net.http.SslError
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.webkit.CookieManager
+import android.webkit.SslErrorHandler
 import android.webkit.URLUtil
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,8 +30,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,6 +62,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.mikeyphw.xdm.android.media.MediaCandidateClassifier
 import com.mikeyphw.xdm.android.media.MediaRequestFacts
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.util.formatBytes
 import java.lang.ref.WeakReference
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -62,23 +71,41 @@ import java.util.Locale
 @Composable
 fun BrowserScreen(
     captures: List<MediaCaptureRecord>,
+    modifier: Modifier = Modifier,
+    initialUrl: String? = null,
+    onInitialUrlConsumed: (String) -> Unit = {},
     onMediaRequest: (url: String, pageTitle: String?, pageUrl: String?, mimeType: String?) -> Unit,
     onOpenMediaInbox: () -> Unit,
     onOpenAddForUrl: (url: String, pageTitle: String?) -> Unit,
-    modifier: Modifier = Modifier,
+    onBrowserDownloadRequest: (url: String, pageTitle: String?, fileName: String?) -> Unit,
 ) {
     val context = LocalContext.current
     val sessionStore = remember { BrowserSessionStore(context.applicationContext) }
-    var tabs by remember { mutableStateOf(sessionStore.loadTabs().ifEmpty { listOf(BrowserTab.blank()) }) }
-    var activeTabId by remember { mutableStateOf(sessionStore.loadActiveTabId().takeIf { saved -> tabs.any { it.id == saved } } ?: tabs.first().id) }
+    val restoredTabs = remember { sessionStore.loadTabs() }
+    val restoredActiveTabId = remember { sessionStore.loadActiveTabId() }
+    var tabs by remember { mutableStateOf(restoredTabs.ifEmpty { listOf(BrowserTab.blank()) }) }
+    var activeTabId by remember { mutableStateOf(restoredActiveTabId.takeIf { saved -> tabs.any { it.id == saved } } ?: tabs.first().id) }
     var history by remember { mutableStateOf(sessionStore.loadHistory()) }
     var cookieProfile by remember { mutableStateOf(sessionStore.loadCookieProfile()) }
     val activeTab = tabs.firstOrNull { it.id == activeTabId } ?: tabs.first()
+    val browserTabSessionState = BrowserTabSessionState(
+        activeTabId = activeTab.id,
+        activeTabTitle = activeTab.title,
+        activeTabUrl = activeTab.url,
+        tabCount = tabs.size,
+        restoredTabCount = restoredTabs.size,
+        showRestoredSession = restoredTabs.isNotEmpty(),
+        canCloseActiveTab = tabs.size > 1 || activeTab.url.isNotBlank(),
+    )
     var addressBar by remember(activeTab.id) { mutableStateOf(activeTab.url) }
     var loadRequest by remember { mutableStateOf(activeTab.url.takeIf(String::isNotBlank)) }
     var currentPageUrl by remember { mutableStateOf(activeTab.url.takeIf(String::isNotBlank)) }
     var currentPageTitle by remember { mutableStateOf(activeTab.title.takeIf { it != NewTabTitle }) }
     var showHistory by remember { mutableStateOf(false) }
+    var showTabSwitcher by remember { mutableStateOf(restoredTabs.size > 1) }
+    var browserLoadState by remember { mutableStateOf<BrowserLoadState>(BrowserLoadState.StartPage) }
+    var browserChromeState by remember { mutableStateOf(BrowserChromeState.StartPage) }
+    var browserDownloadDraft by remember { mutableStateOf<BrowserDownloadBridgeDraft?>(null) }
     val browserNavigator = remember { BrowserNavigator() }
     val currentTitleState by rememberUpdatedState(currentPageTitle)
     val currentUrlState by rememberUpdatedState(currentPageUrl)
@@ -108,36 +135,106 @@ fun BrowserScreen(
         history = sessionStore.recordHistory(BrowserHistoryEntry(normalizedUrl, safeTitle, now))
     }
 
+    fun openBrowserInput(raw: String) {
+        val normalized = normalizeBrowserInput(raw)
+        addressBar = normalized
+        browserLoadState = BrowserLoadState.Loading(normalized, 0)
+        browserChromeState = BrowserChromeState(url = normalized, title = currentPageTitle, isLoading = true, progress = 0)
+        browserDownloadDraft = null
+        loadRequest = normalized
+    }
+
+    fun openHome() {
+        addressBar = ""
+        loadRequest = null
+        currentPageUrl = null
+        currentPageTitle = null
+        sniffedUrls.clear()
+        browserDownloadDraft = null
+        browserLoadState = BrowserLoadState.StartPage
+        browserChromeState = BrowserChromeState.StartPage
+        val now = System.currentTimeMillis()
+        val updated = tabs.map { tab ->
+            if (tab.id == activeTabId) tab.copy(url = "", title = NewTabTitle, updatedAtEpochMs = now) else tab
+        }
+        tabs = updated
+        sessionStore.saveTabs(updated, activeTabId)
+    }
+
     LaunchedEffect(activeTabId) {
         tabs.firstOrNull { it.id == activeTabId }?.let { tab ->
             addressBar = tab.url
             currentPageUrl = tab.url.takeIf(String::isNotBlank)
             currentPageTitle = tab.title.takeIf { it != NewTabTitle }
-            if (tab.url.isNotBlank()) loadRequest = tab.url
+            browserDownloadDraft = null
+            if (tab.url.isNotBlank()) {
+                browserLoadState = BrowserLoadState.Loading(tab.url, 0)
+                browserChromeState = BrowserChromeState(url = tab.url, title = tab.title.takeIf { it != NewTabTitle }, isLoading = true, progress = 0)
+                loadRequest = tab.url
+            } else {
+                browserLoadState = BrowserLoadState.StartPage
+                browserChromeState = BrowserChromeState.StartPage
+                loadRequest = null
+            }
         }
+    }
+
+    LaunchedEffect(initialUrl) {
+        val incoming = initialUrl?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        val normalized = normalizeBrowserInput(incoming)
+        addressBar = normalized
+        browserLoadState = BrowserLoadState.Loading(normalized, 0)
+        browserChromeState = BrowserChromeState(url = normalized, title = currentPageTitle, isLoading = true, progress = 0)
+        browserDownloadDraft = null
+        loadRequest = normalized
+        onInitialUrlConsumed(incoming)
+    }
+
+    BackHandler(enabled = browserChromeState.canGoBack && !loadRequest.isNullOrBlank()) {
+        browserNavigator.goBack()
     }
 
     Column(modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         BrowserAddressBar(
             value = addressBar,
+            pageTitle = browserChromeState.title ?: currentPageTitle,
+            pageUrl = browserChromeState.url ?: currentPageUrl,
+            canGoBack = browserChromeState.canGoBack,
+            canGoForward = browserChromeState.canGoForward,
+            isLoading = browserChromeState.isLoading,
+            progress = browserChromeState.progress,
             onValueChanged = { addressBar = it },
-            onGo = {
-                val normalized = normalizeBrowserInput(addressBar)
-                addressBar = normalized
-                loadRequest = normalized
-            },
+            onGo = { openBrowserInput(addressBar) },
             onBack = { browserNavigator.goBack() },
             onForward = { browserNavigator.goForward() },
-            onReload = { browserNavigator.reload() },
+            onHome = { openHome() },
+            onReload = {
+                browserChromeState = browserChromeState.copy(isLoading = true, progress = 0)
+                browserNavigator.reload()
+            },
+            onStop = {
+                browserNavigator.stopLoading()
+                browserChromeState = browserChromeState.copy(isLoading = false)
+            },
+            onAddPage = {
+                val target = (browserChromeState.url ?: currentUrlState ?: loadRequest).orEmpty()
+                if (target.isNotBlank()) onOpenAddForUrl(target, currentTitleState)
+            },
         )
         BrowserSessionPanel(
+            sessionState = browserTabSessionState,
             tabs = tabs,
             activeTabId = activeTabId,
             history = history,
             showHistory = showHistory,
+            showTabSwitcher = showTabSwitcher,
             cookieProfile = cookieProfile,
             onToggleHistory = { showHistory = !showHistory },
-            onSelectTab = { tab -> activeTabId = tab.id },
+            onToggleTabSwitcher = { showTabSwitcher = !showTabSwitcher },
+            onSelectTab = { tab ->
+                activeTabId = tab.id
+                showTabSwitcher = false
+            },
             onNewTab = {
                 val tab = BrowserTab.blank()
                 persistTabs(listOf(tab) + tabs, tab.id)
@@ -145,6 +242,10 @@ fun BrowserScreen(
                 loadRequest = null
                 currentPageUrl = null
                 currentPageTitle = null
+                browserLoadState = BrowserLoadState.StartPage
+                browserChromeState = BrowserChromeState.StartPage
+                browserDownloadDraft = null
+                showTabSwitcher = false
             },
             onCloseActiveTab = {
                 val remaining = tabs.filterNot { it.id == activeTabId }.ifEmpty { listOf(BrowserTab.blank()) }
@@ -153,9 +254,16 @@ fun BrowserScreen(
                 val next = remaining.first()
                 addressBar = next.url
                 loadRequest = next.url.takeIf(String::isNotBlank)
+                browserLoadState = if (next.url.isBlank()) BrowserLoadState.StartPage else BrowserLoadState.Loading(next.url, 0)
+                browserChromeState = if (next.url.isBlank()) BrowserChromeState.StartPage else BrowserChromeState(url = next.url, title = next.title.takeIf { it != NewTabTitle }, isLoading = true, progress = 0)
+                browserDownloadDraft = null
+                showTabSwitcher = remaining.size > 1
             },
             onSelectHistory = { entry ->
                 addressBar = entry.url
+                browserLoadState = BrowserLoadState.Loading(entry.url, 0)
+                browserChromeState = BrowserChromeState(url = entry.url, title = entry.title, isLoading = true, progress = 0)
+                browserDownloadDraft = null
                 loadRequest = entry.url
                 showHistory = false
             },
@@ -165,16 +273,64 @@ fun BrowserScreen(
             },
         )
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            EmbeddedBrowser(
-                loadRequest = loadRequest,
-                classifier = classifier,
-                browserNavigator = browserNavigator,
-                cookieProfile = cookieProfile,
-                onPageChanged = { url, title -> updateActiveTab(url, title) },
-                onMediaDiscovered = { url, mimeType ->
-                    if (sniffedUrls.none { it.equals(url, ignoreCase = true) }) sniffedUrls += url
-                    onMediaRequestState(url, currentTitleState, currentUrlState, mimeType)
+            if (loadRequest.isNullOrBlank()) {
+                BrowserStartPage(
+                    history = history,
+                    onOpen = { raw -> openBrowserInput(raw) },
+                )
+            } else {
+                EmbeddedBrowser(
+                    loadRequest = loadRequest,
+                    classifier = classifier,
+                    browserNavigator = browserNavigator,
+                    cookieProfile = cookieProfile,
+                    onPageChanged = { url, title -> updateActiveTab(url, title) },
+                    onLoadStateChanged = { browserLoadState = it },
+                    onNavigationChanged = { browserChromeState = it },
+                    onMediaDiscovered = { url, mimeType ->
+                        if (sniffedUrls.none { it.equals(url, ignoreCase = true) }) sniffedUrls += url
+                        onMediaRequestState(url, currentTitleState, currentUrlState, mimeType)
+                    },
+                    onDownloadRequested = { draft ->
+                        browserDownloadDraft = draft
+                        browserLoadState = BrowserLoadState.Loaded(draft.url)
+                        browserChromeState = browserChromeState.copy(url = draft.sourcePageUrl ?: draft.url, title = draft.sourcePageTitle ?: browserChromeState.title, isLoading = false, progress = 100)
+                    },
+                )
+                BrowserLoadOverlay(
+                    state = browserLoadState,
+                    onRetry = {
+                        val target = (browserLoadState.url ?: loadRequest).orEmpty()
+                        if (target.isNotBlank()) {
+                            browserLoadState = BrowserLoadState.Loading(target, 0)
+                            browserChromeState = browserChromeState.copy(url = target, isLoading = true, progress = 0)
+                        }
+                        browserNavigator.reload()
+                    },
+                    onOpenExternal = {
+                        val target = (browserLoadState.url ?: currentUrlState ?: loadRequest).orEmpty()
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target))) }
+                    },
+                    onAddPage = {
+                        val target = (browserLoadState.url ?: currentUrlState ?: loadRequest).orEmpty()
+                        if (target.isNotBlank()) onOpenAddForUrl(target, currentTitleState)
+                    },
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
+            }
+        }
+        browserDownloadDraft?.let { draft ->
+            BrowserDownloadBridgeCard(
+                draft = draft,
+                onAddDownload = {
+                    onBrowserDownloadRequest(draft.url, draft.sourcePageTitle, draft.fileName)
+                    browserDownloadDraft = null
                 },
+                onInspectMedia = {
+                    if (sniffedUrls.none { it.equals(draft.url, ignoreCase = true) }) sniffedUrls += draft.url
+                    onMediaRequestState(draft.url, draft.sourcePageTitle, draft.sourcePageUrl, draft.mimeType)
+                },
+                onDismiss = { browserDownloadDraft = null },
             )
         }
         BrowserMediaTray(
@@ -191,18 +347,37 @@ fun BrowserScreen(
 @Composable
 private fun BrowserAddressBar(
     value: String,
+    pageTitle: String?,
+    pageUrl: String?,
+    canGoBack: Boolean,
+    canGoForward: Boolean,
+    isLoading: Boolean,
+    progress: Int,
     onValueChanged: (String) -> Unit,
     onGo: () -> Unit,
     onBack: () -> Unit,
     onForward: () -> Unit,
+    onHome: () -> Unit,
     onReload: () -> Unit,
+    onStop: () -> Unit,
+    onAddPage: () -> Unit,
 ) {
+    val title = pageTitle?.takeIf { it.isNotBlank() } ?: "XDM Browser"
+    val location = pageUrl?.takeIf { it.isNotBlank() } ?: "New tab"
     XdmListCard(compact = true) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Browser back" }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Browser back") }
-            IconButton(onClick = onForward, modifier = Modifier.semantics { contentDescription = "Browser forward" }) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Browser forward") }
-            IconButton(onClick = onReload, modifier = Modifier.semantics { contentDescription = "Reload page" }) { Icon(Icons.Rounded.Refresh, "Reload page") }
+            IconButton(onClick = onBack, enabled = canGoBack, modifier = Modifier.semantics { contentDescription = "Browser back" }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Browser back") }
+            IconButton(onClick = onForward, enabled = canGoForward, modifier = Modifier.semantics { contentDescription = "Browser forward" }) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Browser forward") }
+            IconButton(onClick = onHome, modifier = Modifier.semantics { contentDescription = "Browser home" }) { Icon(Icons.Rounded.Home, "Browser home") }
+            if (isLoading) {
+                TextButton(onClick = onStop, modifier = Modifier.semantics { contentDescription = "Stop loading" }) { Text("Stop") }
+            } else {
+                IconButton(onClick = onReload, enabled = pageUrl?.isNotBlank() == true, modifier = Modifier.semantics { contentDescription = "Reload page" }) { Icon(Icons.Rounded.Refresh, "Reload page") }
+            }
+            TextButton(onClick = onAddPage, enabled = pageUrl?.isNotBlank() == true) { Text("Add URL") }
         }
+        XdmMetadataText(title, maxLines = 1)
+        XdmSupportingText(if (isLoading) "Loading $progress% · $location" else location, maxLines = 1)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = value,
@@ -218,12 +393,15 @@ private fun BrowserAddressBar(
 
 @Composable
 private fun BrowserSessionPanel(
+    sessionState: BrowserTabSessionState,
     tabs: List<BrowserTab>,
     activeTabId: String,
     history: List<BrowserHistoryEntry>,
     showHistory: Boolean,
+    showTabSwitcher: Boolean,
     cookieProfile: BrowserCookieProfile,
     onToggleHistory: () -> Unit,
+    onToggleTabSwitcher: () -> Unit,
     onSelectTab: (BrowserTab) -> Unit,
     onNewTab: () -> Unit,
     onCloseActiveTab: () -> Unit,
@@ -231,17 +409,27 @@ private fun BrowserSessionPanel(
     onCookieProfileChanged: (BrowserCookieProfile) -> Unit,
 ) {
     XdmListCard(compact = true) {
-        XdmMetadataText("Tabs")
-        XdmActionFlowRow {
-            tabs.take(MaxVisibleTabs).forEach { tab ->
-                FilterChip(
-                    selected = tab.id == activeTabId,
-                    onClick = { onSelectTab(tab) },
-                    label = { Text(tab.title.take(22), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText("Browser session")
+                XdmSupportingText(sessionState.summary, maxLines = 2)
             }
+            XdmMetadataText("${sessionState.tabCount} tab${if (sessionState.tabCount == 1) "" else "s"}")
+        }
+        if (sessionState.showRestoredSession) {
+            XdmSupportingText("Restored ${sessionState.restoredTabCount} tab${if (sessionState.restoredTabCount == 1) "" else "s"} from the last browser session.", maxLines = 2)
+        }
+        XdmActionFlowRow {
+            TextButton(onClick = onToggleTabSwitcher) { Text(if (showTabSwitcher) "Hide tabs" else "Show tabs") }
             TextButton(onClick = onNewTab) { Text("New tab") }
-            TextButton(onClick = onCloseActiveTab) { Text(if (tabs.size <= 1) "Clear tab" else "Close tab") }
+            TextButton(onClick = onCloseActiveTab, enabled = sessionState.canCloseActiveTab) { Text(if (tabs.size <= 1) "Clear tab" else "Close tab") }
+        }
+        if (showTabSwitcher) {
+            BrowserTabSwitcher(
+                tabs = tabs,
+                activeTabId = activeTabId,
+                onSelectTab = onSelectTab,
+            )
         }
         XdmMetadataText("Cookie profile")
         XdmActionFlowRow {
@@ -254,6 +442,7 @@ private fun BrowserSessionPanel(
             }
         }
         XdmSupportingText(cookieProfile.description, maxLines = 2)
+        XdmSupportingText("Private tab isolation remains reserved for the privacy phase; use the Private cookie profile for temporary browsing until that model lands.", maxLines = 2)
         XdmActionFlowRow {
             TextButton(onClick = onToggleHistory) { Text(if (showHistory) "Hide history" else "History") }
         }
@@ -274,6 +463,130 @@ private fun BrowserSessionPanel(
     }
 }
 
+@Composable
+private fun BrowserTabSwitcher(
+    tabs: List<BrowserTab>,
+    activeTabId: String,
+    onSelectTab: (BrowserTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        XdmSupportingText("Open tabs", maxLines = 1)
+        XdmActionFlowRow {
+            tabs.take(MaxVisibleTabs).forEach { tab ->
+                FilterChip(
+                    selected = tab.id == activeTabId,
+                    onClick = { onSelectTab(tab) },
+                    label = { Text(tab.displayLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                )
+            }
+        }
+        if (tabs.size > MaxVisibleTabs) {
+            XdmSupportingText("${tabs.size - MaxVisibleTabs} more tab${if (tabs.size - MaxVisibleTabs == 1) "" else "s"} are retained in the restored session.", maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun BrowserStartPage(
+    history: List<BrowserHistoryEntry>,
+    onOpen: (String) -> Unit,
+) {
+    Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        XdmListCard(compact = false) {
+            XdmCardTitle("XDM Browser")
+            XdmSupportingText(
+                "Start with a URL or search above. The browser now opens on a visible start page instead of an empty WebView.",
+                maxLines = 3,
+            )
+            XdmActionFlowRow {
+                Button(onClick = { onOpen("duckduckgo.com") }) { Text("Search the web") }
+                OutlinedButton(onClick = { onOpen("https://example.com") }) { Text("Test page") }
+            }
+        }
+        XdmListCard(compact = true) {
+            XdmMetadataText("Recent pages")
+            if (history.isEmpty()) {
+                XdmSupportingText("No history yet. Pages you open will appear here for quick relaunch.", maxLines = 2)
+            } else {
+                history.take(MaxVisibleHistory).forEach { entry ->
+                    TextButton(onClick = { onOpen(entry.url) }, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
+                            XdmMetadataText(entry.title, maxLines = 1)
+                            XdmSupportingText(entry.url, maxLines = 1)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrowserLoadOverlay(
+    state: BrowserLoadState,
+    onRetry: () -> Unit,
+    onOpenExternal: () -> Unit,
+    onAddPage: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (state) {
+        BrowserLoadState.StartPage,
+        is BrowserLoadState.Loaded -> Unit
+        is BrowserLoadState.Loading -> {
+            XdmListCard(compact = true, modifier = modifier.fillMaxWidth().padding(8.dp)) {
+                XdmMetadataText("Loading ${state.progress}%")
+                LinearProgressIndicator(progress = { state.progress / 100f }, modifier = Modifier.fillMaxWidth())
+                XdmSupportingText(state.url, maxLines = 1)
+            }
+        }
+        is BrowserLoadState.Error -> {
+            BrowserReliabilityCard(
+                title = "Page did not load",
+                detail = state.message,
+                url = state.url,
+                onRetry = onRetry,
+                onOpenExternal = onOpenExternal,
+                onAddPage = onAddPage,
+                modifier = modifier.fillMaxWidth().padding(8.dp),
+            )
+        }
+        is BrowserLoadState.Blank -> {
+            BrowserReliabilityCard(
+                title = "Blank page detected",
+                detail = state.message,
+                url = state.url,
+                onRetry = onRetry,
+                onOpenExternal = onOpenExternal,
+                onAddPage = onAddPage,
+                modifier = modifier.fillMaxWidth().padding(8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun BrowserReliabilityCard(
+    title: String,
+    detail: String,
+    url: String?,
+    onRetry: () -> Unit,
+    onOpenExternal: () -> Unit,
+    onAddPage: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    XdmListCard(compact = false, modifier = modifier) {
+        XdmCardTitle(title)
+        XdmSupportingText(detail, maxLines = 3)
+        if (!url.isNullOrBlank()) XdmMetadataText(url, maxLines = 1)
+        XdmActionFlowRow {
+            Button(onClick = onRetry) { Text("Retry") }
+            OutlinedButton(onClick = onOpenExternal) { Text("Open externally") }
+            TextButton(onClick = onAddPage, enabled = !url.isNullOrBlank()) { Text("Add URL") }
+        }
+    }
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun EmbeddedBrowser(
@@ -282,7 +595,10 @@ private fun EmbeddedBrowser(
     browserNavigator: BrowserNavigator,
     cookieProfile: BrowserCookieProfile,
     onPageChanged: (String?, String?) -> Unit,
+    onLoadStateChanged: (BrowserLoadState) -> Unit,
+    onNavigationChanged: (BrowserChromeState) -> Unit,
     onMediaDiscovered: (String, String?) -> Unit,
+    onDownloadRequested: (BrowserDownloadBridgeDraft) -> Unit,
 ) {
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     var lastLoaded by remember { mutableStateOf<String?>(null) }
@@ -293,19 +609,66 @@ private fun EmbeddedBrowser(
                 browserNavigator.attach(this)
                 applyBrowserSettings(context, cookieProfile)
                 webChromeClient = object : WebChromeClient() {
+                    override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                        val progress = newProgress.coerceIn(0, 100)
+                        val url = view?.url ?: loadRequest
+                        onNavigationChanged(browserNavigator.snapshot(isLoading = progress < 100, progress = progress))
+                        if (!url.isNullOrBlank() && progress < 100) {
+                            onLoadStateChanged(BrowserLoadState.Loading(url, progress))
+                        }
+                    }
+
                     override fun onReceivedTitle(view: WebView?, title: String?) {
                         onPageChanged(view?.url, title)
+                        onNavigationChanged(browserNavigator.snapshot(isLoading = false, progress = 100))
                     }
                 }
                 webViewClient = object : WebViewClient() {
                     override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                        if (!url.isNullOrBlank()) onLoadStateChanged(BrowserLoadState.Loading(url, 0))
+                        onNavigationChanged(browserNavigator.snapshot(isLoading = true, progress = 0).copy(url = url ?: view?.url, title = view?.title))
                         onPageChanged(url, view?.title)
                         sniffBrowserUrl(url, null, classifier, onMediaDiscovered)
                     }
 
                     override fun onPageFinished(view: WebView?, url: String?) {
                         onPageChanged(url, view?.title)
+                        onNavigationChanged(browserNavigator.snapshot(isLoading = false, progress = 100).copy(url = url ?: view?.url, title = view?.title))
+                        if (!url.isNullOrBlank()) onLoadStateChanged(BrowserLoadState.Loaded(url))
                         sniffBrowserUrl(url, null, classifier, onMediaDiscovered)
+                        val finishedUrl = url
+                        view?.postDelayed({
+                            val currentUrl = view.url
+                            if (!finishedUrl.isNullOrBlank() && currentUrl == finishedUrl) {
+                                view.evaluateJavascript(BlankPageProbeScript) { result ->
+                                    if (result != "true" && view.url == finishedUrl) {
+                                        onLoadStateChanged(BrowserLoadState.Blank(finishedUrl, "The page finished loading but did not expose visible content. Retry, open externally, or add the URL directly."))
+                                    }
+                                }
+                            }
+                        }, BlankPageProbeDelayMs)
+                    }
+
+                    override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                        if (request?.isForMainFrame == true) {
+                            val url = request.url?.toString() ?: view?.url
+                            onNavigationChanged(browserNavigator.snapshot(isLoading = false, progress = 0).copy(url = url))
+                            onLoadStateChanged(BrowserLoadState.Error(url, "WebView load error ${error?.errorCode ?: 0}: ${error?.description ?: "unknown error"}"))
+                        }
+                    }
+
+                    override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
+                        if (request?.isForMainFrame == true) {
+                            val url = request.url?.toString() ?: view?.url
+                            onNavigationChanged(browserNavigator.snapshot(isLoading = false, progress = 0).copy(url = url))
+                            onLoadStateChanged(BrowserLoadState.Error(url, "HTTP ${errorResponse?.statusCode ?: 0} ${errorResponse?.reasonPhrase.orEmpty()}".trim()))
+                        }
+                    }
+
+                    override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
+                        handler?.cancel()
+                        onNavigationChanged(browserNavigator.snapshot(isLoading = false, progress = 0).copy(url = error?.url ?: view?.url))
+                        onLoadStateChanged(BrowserLoadState.Error(error?.url ?: view?.url, "SSL error blocked. XDM will not proceed through certificate failures."))
                     }
 
                     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -323,10 +686,22 @@ private fun EmbeddedBrowser(
                         return super.shouldInterceptRequest(view, request)
                     }
                 }
-                setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
-                    val title = URLUtil.guessFileName(url, contentDisposition, mimeType)
-                    onPageChanged(this.url, this.title ?: title)
-                    onMediaDiscovered(url, mimeType)
+                setDownloadListener { url, _, contentDisposition, mimeType, contentLength ->
+                    val safeUrl = url?.takeIf { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) } ?: return@setDownloadListener
+                    val fileName = URLUtil.guessFileName(safeUrl, contentDisposition, mimeType).takeIf { it.isNotBlank() } ?: "downloadfile"
+                    val pageUrl = this.url?.takeIf { !it.equals(safeUrl, ignoreCase = true) }
+                    val pageTitle = this.title?.takeIf { it.isNotBlank() }
+                    onPageChanged(pageUrl ?: safeUrl, pageTitle ?: fileName)
+                    onDownloadRequested(
+                        BrowserDownloadBridgeDraft(
+                            url = safeUrl,
+                            fileName = fileName,
+                            mimeType = mimeType?.takeIf { it.isNotBlank() },
+                            contentLength = contentLength,
+                            sourcePageUrl = pageUrl,
+                            sourcePageTitle = pageTitle,
+                        ),
+                    )
                 }
             }
         },
@@ -336,6 +711,8 @@ private fun EmbeddedBrowser(
             val target = loadRequest
             if (!target.isNullOrBlank() && target != lastLoaded) {
                 lastLoaded = target
+                onLoadStateChanged(BrowserLoadState.Loading(target, 0))
+                onNavigationChanged(browserNavigator.snapshot(isLoading = true, progress = 0).copy(url = target))
                 webView.loadUrl(target)
             }
         },
@@ -361,6 +738,35 @@ private fun WebView.applyBrowserSettings(context: Context, profile: BrowserCooki
     settings.userAgentString = if (profile.desktopMode) DesktopUserAgent else WebSettings.getDefaultUserAgent(context)
     CookieManager.getInstance().setAcceptCookie(profile.acceptCookies)
     if (profile.privateMode) CookieManager.getInstance().removeSessionCookies(null)
+}
+
+
+@Composable
+private fun BrowserDownloadBridgeCard(
+    draft: BrowserDownloadBridgeDraft,
+    onAddDownload: () -> Unit,
+    onInspectMedia: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    XdmListCard(modifier = modifier.fillMaxWidth(), compact = true) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmCardTitle("Download detected")
+                XdmSupportingText("XDM will always ask before sending browser downloads to the downloader.", maxLines = 2)
+            }
+            Icon(Icons.Rounded.Download, contentDescription = "Download detected")
+        }
+        XdmMetadataText(draft.fileName, maxLines = 1)
+        XdmSupportingText(draft.detailLine, maxLines = 2)
+        draft.sourcePageLabel?.let { XdmSupportingText(it, maxLines = 1) }
+        XdmSupportingText("Cookies, tokens, and authorization headers are not shown here and are not persisted as raw browser handoff data.", maxLines = 2)
+        XdmActionFlowRow {
+            Button(onClick = onAddDownload) { Text("Add download") }
+            TextButton(onClick = onInspectMedia) { Text("Inspect media") }
+            TextButton(onClick = onDismiss) { Text("Dismiss") }
+        }
+    }
 }
 
 @Composable
@@ -413,6 +819,62 @@ private fun sniffBrowserUrl(
     if (classifier.isCandidate(MediaRequestFacts(safeUrl, mimeType))) onMediaDiscovered(safeUrl, mimeType)
 }
 
+
+private data class BrowserDownloadBridgeDraft(
+    val url: String,
+    val fileName: String,
+    val mimeType: String?,
+    val contentLength: Long,
+    val sourcePageUrl: String?,
+    val sourcePageTitle: String?,
+) {
+    val detailLine: String
+        get() = listOfNotNull(
+            mimeType?.takeIf { it.isNotBlank() } ?: "unknown type",
+            contentLength.takeIf { it > 0L }?.formatBytes() ?: "size unknown",
+            hostFromUrl(url),
+        ).joinToString(" · ")
+
+    val sourcePageLabel: String?
+        get() = sourcePageUrl?.let { page -> "From ${sourcePageTitle?.takeIf { it.isNotBlank() } ?: hostFromUrl(page)}" }
+}
+
+private data class BrowserTabSessionState(
+    val activeTabId: String,
+    val activeTabTitle: String,
+    val activeTabUrl: String,
+    val tabCount: Int,
+    val restoredTabCount: Int,
+    val showRestoredSession: Boolean,
+    val canCloseActiveTab: Boolean,
+) {
+    val summary: String
+        get() = "${activeTabTitle.ifBlank { NewTabTitle }} · ${activeTabUrl.ifBlank { "New tab" }}"
+}
+
+private data class BrowserChromeState(
+    val url: String? = null,
+    val title: String? = null,
+    val canGoBack: Boolean = false,
+    val canGoForward: Boolean = false,
+    val isLoading: Boolean = false,
+    val progress: Int = 0,
+) {
+    companion object {
+        val StartPage = BrowserChromeState(title = NewTabTitle)
+    }
+}
+
+private sealed interface BrowserLoadState {
+    val url: String?
+
+    data object StartPage : BrowserLoadState { override val url: String? = null }
+    data class Loading(override val url: String, val progress: Int) : BrowserLoadState
+    data class Loaded(override val url: String) : BrowserLoadState
+    data class Error(override val url: String?, val message: String) : BrowserLoadState
+    data class Blank(override val url: String, val message: String) : BrowserLoadState
+}
+
 private fun normalizeBrowserInput(input: String): String {
     val trimmed = input.trim()
     if (trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true)) return trimmed
@@ -442,6 +904,22 @@ private class BrowserNavigator {
     fun reload() {
         current?.get()?.reload()
     }
+
+    fun stopLoading() {
+        current?.get()?.stopLoading()
+    }
+
+    fun snapshot(isLoading: Boolean = false, progress: Int = 100): BrowserChromeState {
+        val webView = current?.get()
+        return BrowserChromeState(
+            url = webView?.url,
+            title = webView?.title?.takeIf(String::isNotBlank),
+            canGoBack = webView?.canGoBack() == true,
+            canGoForward = webView?.canGoForward() == true,
+            isLoading = isLoading,
+            progress = progress.coerceIn(0, 100),
+        )
+    }
 }
 
 private data class BrowserTab(
@@ -450,6 +928,9 @@ private data class BrowserTab(
     val title: String,
     val updatedAtEpochMs: Long,
 ) {
+    val displayLabel: String
+        get() = title.takeIf { it.isNotBlank() }?.take(28) ?: hostFromUrl(url).take(28)
+
     companion object {
         fun blank(): BrowserTab = BrowserTab("tab-${System.currentTimeMillis()}", "", NewTabTitle, System.currentTimeMillis())
     }
@@ -552,8 +1033,19 @@ private class BrowserSessionStore(context: Context) {
 private fun hostFromUrl(url: String): String = runCatching { Uri.parse(url).host?.removePrefix("www.") }.getOrNull()?.takeIf(String::isNotBlank) ?: "Browser page"
 
 private const val NewTabTitle = "New tab"
-private const val MaxVisibleTabs = 5
+private const val MaxVisibleTabs = 8
 private const val MaxVisibleHistory = 6
 private const val MaxStoredTabs = 12
 private const val MaxStoredHistory = 80
 private const val DesktopUserAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+private const val BlankPageProbeDelayMs = 1200L
+private const val BlankPageProbeScript = """
+(() => {
+  const body = document.body;
+  if (!body) return false;
+  const visibleText = (body.innerText || '').trim().length > 0;
+  const visibleMedia = document.images.length > 0 || document.querySelectorAll('video,audio,canvas,iframe').length > 0;
+  const visibleBox = body.getBoundingClientRect && body.getBoundingClientRect().height > 24;
+  return Boolean(visibleText || visibleMedia || visibleBox);
+})()
+"""

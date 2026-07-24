@@ -1,0 +1,157 @@
+{
+  "applied_at": "2026-07-24T15:33:45.668419Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase40_browser_tabs_session_ux_overlay.zip",
+  "artifact_name": "xdm_android_phase40_browser_tabs_session_ux_overlay.zip",
+  "type": "overlay",
+  "sha256": "b60bb7c7c3608f956cc03f06e1c1e5ddd7113c0ae9017b73f7c657d7caf67649",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 15,
+  "change_counts": {
+    "add": 2,
+    "modify": 13
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 40 Browser Tabs Session UX",
+    "description": "Browser tabs/session UX overlay that adds explicit tab session state, restored-session copy, a bounded tab switcher, and safer new/close tab actions on top of Phase 39 browser chrome/navigation.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "ec86288d8b33c4cdc23d043b3d081e9e201a085fe6501b24e5476a9c712b2374",
+          "size": 1648,
+          "source_sha256": "b9f52b45fbc7f613edfb1365c11a38d56398efa5f931309efeb94e439042e1a6"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "7fd936e8619a0d0e15f53f672f94ee8063afc1785665384cc9d2e0ec30cd9481",
+          "size": 33491,
+          "source_sha256": "539bdee67b585a6299943347dd46fed355adbe744920e384c48ba2289f4168d9"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+          "action": "modify",
+          "sha256": "402b694af66d14fbe31f1b74044dcd91e02a509b0993eba72601a3f3579ab39f",
+          "size": 44089,
+          "source_sha256": "58cea6b53caaa0be127b65e3507289b5424aabda0105e550c0988bf739a579cc"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "2c4819b98ad07d209b4a2d34e10cdfa7a05b5f6125d1ee1c63c57559d680754e",
+          "size": 103477,
+          "source_sha256": "b94598b8261eb1cb950e43aa2b236021681342955dd0005d0dec02511e46a6d3"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "17970bd8e5a8b9e9a1e8f52517f66281b7a754f070fca0c98cab09037af05b33",
+          "size": 2878,
+          "source_sha256": "ef2bdb6c210b1cb69064c87d7c286c5268e40e8d8754e02b6dab98b1b7a4663c"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "738b3e2a2c4ec13ed830054d9b96018caa6bc3ba73fb8286c08e8cac9b161fd8",
+          "size": 4193,
+          "source_sha256": "ab586dc260a9f6d4d91953944c5c0391053e4bf41c9e0f8aac05d49cb7df0e73"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+          "action": "modify",
+          "sha256": "aeead5a65b1c2f233a04119341cbf167b7ca3131e1ad41cdbcb8e10728303d89",
+          "size": 7170,
+          "source_sha256": "3fa979488abc577d1d3559fea5e318248ca10aff5c0b4851c85932d93607c140"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+          "action": "modify",
+          "sha256": "fca199726c76219aa0cad347da6202207a5d55159866bccaf239741e60da80f6",
+          "size": 10056,
+          "source_sha256": "13066c2ab54baa28e1a4dad3e561398cb79a59aab083f6d2edf8af5874aed20f"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+          "action": "modify",
+          "sha256": "295fc919c0462f39dbc95a367a3891583d49950ae58d1af9ca1ca1da5943a31e",
+          "size": 8644,
+          "source_sha256": "56fefef447658a0094efe4707350cb00a14ca0fcabbd8baddce81750dcff860b"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37a-browser-downloader-roadmap.py",
+          "action": "modify",
+          "sha256": "8b0ae09312e7b9e75e394b63e3e6f829203c061e76e90ec932c371616baebe28",
+          "size": 3262,
+          "source_sha256": "2f9d2e60278bdf8129cba79f46b371371b7e98f12f4044e3614ea2bfffc0aa9e"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37b-dual-launcher-navigation-split.py",
+          "action": "modify",
+          "sha256": "1fd24dfe5bcf2d0a570450277bae5d04a2e3d211246ef6e70c36f23a922e10b1",
+          "size": 6317,
+          "source_sha256": "a9bc788ec0b382f4766ccaad64f07b845555995d40bd98d5ba63cd5b961e1c1c"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-38-browser-reliability-foundation.py",
+          "action": "modify",
+          "sha256": "501907228a65107431b5172547e3e4751a17c136e63465442e9348e54233bbbc",
+          "size": 7558,
+          "source_sha256": "24533327a1d4f7eff5f79694bcba4d954ab0858aaee328ae3430a8207945bf15"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-39-browser-chrome-navigation.py",
+          "action": "modify",
+          "sha256": "f8bbd8f14cc96e3bf59301b8c17ab7cab1f68f3d43ee841175e1d9fdd1048f69",
+          "size": 4344,
+          "source_sha256": "bfd058cdb0635495ded83aa2ff2886702d1967bd204864e72666e8238ff5e92c"
+        },
+        {
+          "path": "app/XDM.Android/docs/browser/PHASE-40-BROWSER-TABS-SESSION-UX.md",
+          "action": "add",
+          "sha256": "353a35c9caea77e47fd4bbc8a8b655a62b85aa8118138271eb3c7d1e813c55bb",
+          "size": 3151
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-40-browser-tabs-session-ux.py",
+          "action": "add",
+          "sha256": "3501eb6b135b6546dd8a1c6ac8b9b70060ae6746849f1c1dd6ba2bb3df85dc5a",
+          "size": 4148
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "passed",
+        "tests": "passed",
+        "diagnostics": "clean"
+      },
+      "commands": [
+        "python3 tools/validate-phase-40-browser-tabs-session-ux.py",
+        "bash tools/run-final-release-gate.sh --ci",
+        "./gradlew :app:testDebugUnitTest :app:lintDebug"
+      ]
+    },
+    "notes": [
+      "Depends on Phase 39 browser chrome/navigation.",
+      "No new top-level route, no Room migration, no version bump, no transfer engine changes, no media execution changes.",
+      "New files use inventory action add, not create.",
+      "Packed payload excludes __pycache__ and .pyc files."
+    ]
+  },
+  "history_id": "4d80e1d07fdf4677ad01ac082240601e"
+}

@@ -13,6 +13,7 @@ import com.mikeyphw.xdm.android.model.AutomationCommandSource
 import com.mikeyphw.xdm.android.model.AutomationRejectionReason
 import com.mikeyphw.xdm.android.model.BackupRestorePolicy
 import com.mikeyphw.xdm.android.model.BackupRestoreReport
+import com.mikeyphw.xdm.android.model.BrowserHandoffPolicy
 import com.mikeyphw.xdm.android.model.BrowserIntegrationStatus
 import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
 import com.mikeyphw.xdm.android.model.ClipboardInboxItem
@@ -126,6 +127,7 @@ data class MainUiState(
     val destinationUri: String = DestinationUris.PUBLIC_DOWNLOADS,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val externalAddDraft: ExternalAddDraft? = null,
+    val browserStartUrl: String? = null,
     val destinationPermissions: List<DestinationPermission> = emptyList(),
     val aria2Diagnostics: Aria2DiagnosticsUi = Aria2DiagnosticsUi(),
     val termuxBridge: TermuxBridgeStatus = TermuxBridgeStatus(),
@@ -215,6 +217,7 @@ class MainViewModel(
     private val aria2SmokeRunning = MutableStateFlow(false)
     private val capabilitySnapshot = MutableStateFlow<Map<BackendType, BackendCapabilities>>(emptyMap())
     private val externalAddDraft = MutableStateFlow<ExternalAddDraft?>(null)
+    private val browserStartUrl = MutableStateFlow<String?>(null)
     private val mediaCaptureService = MediaCaptureService()
     private val mediaExecutionPlanner = MediaExecutionLibraryPlanner()
 
@@ -394,13 +397,17 @@ class MainViewModel(
         RuntimeUiSnapshot(active, aria2, backendSelectionPolicy.capabilityRows(capabilities), termux.bridge, termux.aria2, termux.mediaPipeline, termux.postProcessingAutomation)
     }
 
+    private val browserStartup = combine(externalAddDraft, browserStartUrl) { addDraft, startUrl -> addDraft to startUrl }
+
     val uiState: StateFlow<MainUiState> = combine(
         repositorySnapshot,
         preferences.values,
         routeOverride,
         runtimeUi,
-        externalAddDraft,
-    ) { snapshot, prefs, override, runtime, addDraft ->
+        browserStartup,
+    ) { snapshot, prefs, override, runtime, browserStartupState ->
+        val addDraft = browserStartupState.first
+        val startUrl = browserStartupState.second
         val settingsSnapshot = SettingsExchangeSnapshot(
             compactDensity = prefs.compactDensity,
             destinationUri = prefs.destinationUri,
@@ -423,6 +430,7 @@ class MainViewModel(
             destinationUri = prefs.destinationUri,
             conflictPolicy = prefs.conflictPolicy,
             externalAddDraft = addDraft,
+            browserStartUrl = startUrl,
             destinationPermissions = snapshot.destinationPermissions,
             aria2Diagnostics = runtime.aria2,
             termuxBridge = runtime.termuxBridge,
@@ -525,6 +533,18 @@ class MainViewModel(
     fun navigate(route: AppRoute) {
         routeOverride.value = route
         viewModelScope.launch { preferences.setRoute(route) }
+    }
+
+    fun openBrowserUrl(url: String) {
+        val normalized = BrowserHandoffPolicy.normalizedUrl(url) ?: return
+        val scheme = Uri.parse(normalized).scheme.orEmpty().lowercase()
+        if (scheme != "http" && scheme != "https") return
+        browserStartUrl.value = normalized
+        navigate(AppRoute.Browser)
+    }
+
+    fun consumeBrowserStartUrl(url: String) {
+        if (browserStartUrl.value == url) browserStartUrl.value = null
     }
 
 
@@ -1217,6 +1237,17 @@ class MainViewModel(
             url = normalized,
             fileName = "",
             sourceLabel = pageTitle?.takeIf { it.isNotBlank() }?.let { "Browser: ${it.take(48)}" } ?: "Built-in browser",
+        )
+        navigate(AppRoute.Add)
+    }
+
+    fun openBrowserDownload(url: String, pageTitle: String? = null, fileName: String? = null) {
+        val normalized = url.trim().takeIf { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) } ?: return
+        externalAddDraft.value = ExternalAddDraft(
+            id = "browser-download-${UUID.randomUUID()}",
+            url = normalized,
+            fileName = fileName?.trim().orEmpty(),
+            sourceLabel = pageTitle?.takeIf { it.isNotBlank() }?.let { "Browser download: ${it.take(48)}" } ?: "Built-in browser download",
         )
         navigate(AppRoute.Add)
     }

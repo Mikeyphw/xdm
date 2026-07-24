@@ -67,6 +67,10 @@ jobs:
           python3 tools/validate-phase-36-external-download-handoff.py
           python3 tools/validate-phase-37a-browser-downloader-roadmap.py
           python3 tools/validate-phase-37b-dual-launcher-navigation-split.py
+          python3 tools/validate-phase-38-browser-reliability-foundation.py
+          python3 tools/validate-phase-39-browser-chrome-navigation.py
+          python3 tools/validate-phase-40-browser-tabs-session-ux.py
+          python3 tools/validate-phase-41-browser-download-bridge.py
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
       - run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta

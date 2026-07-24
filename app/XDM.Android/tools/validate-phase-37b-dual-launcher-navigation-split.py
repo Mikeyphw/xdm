@@ -28,8 +28,8 @@ run_gate = text("tools/run-final-release-gate.sh")
 workflow = text(".github/workflows/android.yml")
 doc = text("docs/browser/PHASE-37B-DUAL-LAUNCHER-NAVIGATION-SPLIT.md")
 
-if manifest_json.get("current_overlay") != "xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip":
-    errors.append("current_overlay must point at Phase 37B dual launcher/navigation split overlay")
+if manifest_json.get("current_overlay") not in {"xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip", "xdm_android_phase38_browser_reliability_foundation_overlay.zip", "xdm_android_phase39_browser_chrome_navigation_overlay.zip", "xdm_android_phase40_browser_tabs_session_ux_overlay.zip", "xdm_android_phase41_browser_download_bridge_overlay.zip"}:
+    errors.append("current_overlay must point at Phase 37B dual launcher/navigation split overlay or approved later Phase 38/39/40/40 browser overlay")
 if 37 not in manifest_json.get("project", {}).get("implemented_phases", []):
     errors.append("implemented_phases must include 37")
 phase = manifest_json.get("phase37b_dual_launcher_navigation_split", {})
@@ -70,11 +70,10 @@ if '@string/downloader_activity_label' not in manifest_xml:
     errors.append("manifest must label MainActivity as Downloader")
 if manifest_xml.count('android.intent.category.LAUNCHER') < 2:
     errors.append("manifest must expose both downloader and browser launchers")
-# Keep BrowserActivity launcher-only until Phase 38 reliability wires explicit URL loading.
 match = re.search(r'<activity\s+[^>]*android:name="\.BrowserActivity"[\s\S]*?</activity>', manifest_xml)
 if not match:
     errors.append("BrowserActivity manifest block missing")
-elif "android.intent.action.VIEW" in match.group(0) or 'android:scheme="http"' in match.group(0) or 'android:scheme="https"' in match.group(0):
+elif manifest_json.get("current_overlay") == "xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip" and ("android.intent.action.VIEW" in match.group(0) or 'android:scheme="http"' in match.group(0) or 'android:scheme="https"' in match.group(0)):
     errors.append("Phase 37B BrowserActivity must stay launcher-only; generic VIEW link handling belongs to Phase 38")
 
 if "showBrowser" in screens or "switch to Browser" in screens or "FilterChip(selected = showBrowser" in screens:

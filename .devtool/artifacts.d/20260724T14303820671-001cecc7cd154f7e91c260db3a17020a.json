@@ -1,0 +1,174 @@
+{
+  "applied_at": "2026-07-24T14:30:38.206717Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase38_browser_reliability_foundation_overlay.zip",
+  "artifact_name": "xdm_android_phase38_browser_reliability_foundation_overlay.zip",
+  "type": "overlay",
+  "sha256": "d9ef689879b6b453adb5cbfc85ad80faf210a89f9a1e09e56a0092f151fe3697",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 18,
+  "change_counts": {
+    "add": 2,
+    "modify": 16
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 38 Browser Reliability Foundation",
+    "description": "Browser reliability foundation overlay that replaces the white-screen Browser cold start with a visible start page, loading/error/blank states, SSL cancellation, recovery actions, and BrowserActivity http/https link startup.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "cabc9c9183de52f05cf1ee66715c05702328715182884326ab2c743d543a870c",
+          "size": 1056,
+          "source_sha256": "49f393f3a7d6e81b31aa80ecdec7bc233a6e730f7b3ed396a24f5f296a99d1cc"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "ade4396b3db7b38833e0699d12616dea237719354a3a86dce18e00840f82006c",
+          "size": 4053,
+          "source_sha256": "487ba16df1dc41d820587acd92803e6bf9889ebffcc9cc56287e13ba4d92c62b"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "34ffc6a76c26113619fb66030e90a802c9c906af508887a8140b870da9929f2a",
+          "size": 31661,
+          "source_sha256": "b0857d9daad3d2b0bf7b1bd01b97b10df69fb39f902bbcd5156d16425bd5f727"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+          "action": "modify",
+          "sha256": "3b8dd3a70e27d5f00f2b699be1296fe04a292b5520c0b01011f42441af363bf6",
+          "size": 15859,
+          "source_sha256": "b78ae7e8b5286d343c9d692dee994a95d6a3cf58ddcdecbfdd0f857428729c55"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserActivity.kt",
+          "action": "modify",
+          "sha256": "3f0408c67d92175d11b8843aab24890fcb57520bfae32e821fa5844ea3730040",
+          "size": 365,
+          "source_sha256": "5494bcc47175fd9930c3dc21496ef2e2b6286e917e822833e7b8732ab27c6b66"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+          "action": "modify",
+          "sha256": "7f92aa4625f04448cb5382cb29454b6136242919a081b7038b52c6468ef4ce72",
+          "size": 35072,
+          "source_sha256": "14aa90eddf02412233ab00a0df2f9e29cda643fa276ea05cb7f462f248098383"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+          "action": "modify",
+          "sha256": "5645c65c97890f3043c95ad979808dcc0295161221c2d1c9b276e083830b0396",
+          "size": 10952,
+          "source_sha256": "1a760b3a4a0e7691a2e441f1fc5dd0f4eac8c2d9ec930d1dbc70a680aee6a889"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "324d463316f7da9fcdb78e279859c4ed43b4e5a50889cdc17933e032ed39e510",
+          "size": 69707,
+          "source_sha256": "e1ba713a512bd15a59ffd8954d36407de944462dad26195a92a5dedd34d9351b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "9fb4a56de38c999e5198a3c26aa0abd1221c520c1097dd8af248488a4e3b29ba",
+          "size": 14938,
+          "source_sha256": "5c299d941b624fb82904492dca773dae9bd9fd876acce52fdc193c30b044afa1"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "b919f44d78d89c902766be698e141957fcdd042dee9963db94024931496672a1",
+          "size": 97225,
+          "source_sha256": "d9d71139440c906decefe34d0843949652c13fee2d2d078e9c98de747dc52609"
+        },
+        {
+          "path": "app/XDM.Android/docs/browser/PHASE-38-BROWSER-RELIABILITY-FOUNDATION.md",
+          "action": "add",
+          "sha256": "8f4d463e566c2dab4d731a3925864f7ab9dcafec48dd98c486a53514c3898aaf",
+          "size": 1785
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "fe059353f81e9e10dbb36a571f9c7055cd907529ed1ae710d53b2fe2d42c8888",
+          "size": 2784,
+          "source_sha256": "9194df10fbded3807909d65b05555a30e678f9999cd576b67390a28c3da06113"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+          "action": "modify",
+          "sha256": "865516980b0bff19e8763611e6b9fea78804ecb489cd33ef896012e9f32a1f9e",
+          "size": 7050,
+          "source_sha256": "b30f0b557cc00a4a6a78bcdcfaa005af203d31f3d6bb87d529fced05ca74b8a8"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+          "action": "modify",
+          "sha256": "834d6365d234af025798f8a524c6166869fdb34c5d00f2b4e27b7d84d8ff2c7d",
+          "size": 9789,
+          "source_sha256": "1f74c52279da09181c6f876f3ca3052dafbdc97b36a6f99e24e6501ce62ce3c7"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+          "action": "modify",
+          "sha256": "243bc824ae4c90725109defea0ac6f28a6ca3b13984bcb8e2e40bcc8c9649be9",
+          "size": 8518,
+          "source_sha256": "4adfae77881509f7aac1919c7fc80c9592e2fd668864cad05d076eac20f4ec09"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37a-browser-downloader-roadmap.py",
+          "action": "modify",
+          "sha256": "517db44a2c4e3944bd0b7205ffe7179789174b4fabecb61991fb41af06d6f181",
+          "size": 3133,
+          "source_sha256": "aad22de17eb49a21cd97409fd55373aa2c83ca485329e96e303691d819215b24"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37b-dual-launcher-navigation-split.py",
+          "action": "modify",
+          "sha256": "56d092f063ab17780c9f6219bc66d116710c8418e2213977f846f20096e2e1c9",
+          "size": 6192,
+          "source_sha256": "fda9a6057de49a18f607c8f7227a81f8c00c2b6979c77f277f64649f2c1e121a"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-38-browser-reliability-foundation.py",
+          "action": "add",
+          "sha256": "5f234e7ec8de033fd2a1382ec038f63e51edc202c0ab9c891d713c46f2873163",
+          "size": 5863
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "tests": "pass",
+        "diagnostics": "pass"
+      },
+      "maximum_warnings": 0
+    },
+    "notes": [
+      "Phase 38 depends on Phase 37B.",
+      "Fixes browser white-screen reliability with visible start/error/blank states.",
+      "BrowserActivity now handles http/https VIEW links as non-verified generic browser links.",
+      "No Room migration, version bump, transfer engine changes, or media execution changes."
+    ]
+  },
+  "history_id": "001cecc7cd154f7e91c260db3a17020a"
+}

@@ -41,7 +41,11 @@
       34,
       35,
       36,
-      37
+      37,
+      38,
+      39,
+      40,
+      41
     ]
   },
   "database": {
@@ -466,7 +470,7 @@
     "yt_dlp_page_url_probe": true,
     "offline_library_groundwork": true
   },
-  "current_overlay": "xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip",
+  "current_overlay": "xdm_android_phase41_browser_download_bridge_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -665,7 +669,9 @@
     33,
     34,
     35,
-    36
+    36,
+    40,
+    41
   ],
   "media_termux_runtime_adapter": {
     "schema_version_unchanged": 14,
@@ -1018,5 +1024,107 @@
     "no_version_bump": true,
     "no_transfer_engine_changes": true,
     "no_media_execution_changes": true
+  },
+  "phase38_browser_reliability_foundation": {
+    "phase37b_landed": true,
+    "browser_reliability_document": "docs/browser/PHASE-38-BROWSER-RELIABILITY-FOUNDATION.md",
+    "final_gate_validator": "tools/validate-phase-38-browser-reliability-foundation.py",
+    "browser_start_page": true,
+    "white_webview_void_removed": true,
+    "loading_progress_state": true,
+    "http_error_state": true,
+    "webview_error_state": true,
+    "ssl_error_cancelled_and_visible": true,
+    "blank_page_detector": true,
+    "retry_open_external_add_url_actions": true,
+    "browser_activity_view_link_handling": true,
+    "browser_start_url_state": true,
+    "generic_browser_links_auto_verify_false": true,
+    "no_room_migration": true,
+    "no_version_bump": true,
+    "no_transfer_engine_changes": true,
+    "no_media_execution_changes": true,
+    "docs_research_reviewed": [
+      "android-webviewclient-errors",
+      "android-webchromeclient-progress",
+      "android-webview-downloadlistener"
+    ]
+  },
+  "phase39_browser_chrome_navigation": {
+    "phase38_landed": true,
+    "browser_chrome_document": "docs/browser/PHASE-39-BROWSER-CHROME-NAVIGATION.md",
+    "final_gate_validator": "tools/validate-phase-39-browser-chrome-navigation.py",
+    "address_search_bar_polish": true,
+    "back_forward_state": true,
+    "reload_stop_home_controls": true,
+    "current_page_title_and_location": true,
+    "webview_back_handler": true,
+    "navigation_snapshot_model": true,
+    "add_current_page_url_action": true,
+    "tab_groundwork_preserved": true,
+    "bookmarks_history_redesign_deferred": true,
+    "no_new_route": true,
+    "no_room_migration": true,
+    "no_version_bump": true,
+    "no_transfer_engine_changes": true,
+    "no_media_execution_changes": true,
+    "docs_research_reviewed": [
+      "android-webview-navigation",
+      "android-compose-backhandler",
+      "android-adaptive-navigation"
+    ]
+  },
+  "phase40_browser_tabs_session_ux": {
+    "phase39_landed": true,
+    "browser_tabs_session_document": "docs/browser/PHASE-40-BROWSER-TABS-SESSION-UX.md",
+    "final_gate_validator": "tools/validate-phase-40-browser-tabs-session-ux.py",
+    "explicit_tab_session_state": true,
+    "tab_switcher_toggle": true,
+    "restored_session_banner": true,
+    "current_tab_summary": true,
+    "new_and_close_tab_actions": true,
+    "bounded_compact_tab_list": true,
+    "private_tab_placeholder_deferred": true,
+    "webview_state_bundle_deferred": true,
+    "bookmarks_history_redesign_deferred": true,
+    "no_new_route": true,
+    "no_room_migration": true,
+    "no_version_bump": true,
+    "no_transfer_engine_changes": true,
+    "no_media_execution_changes": true,
+    "docs_research_reviewed": [
+      "android-compose-tabs",
+      "android-webview-save-restore-state",
+      "android-compose-backhandler"
+    ]
+  },
+  "phase41_browser_download_bridge": {
+    "phase40_landed": true,
+    "browser_download_bridge_document": "docs/browser/PHASE-41-BROWSER-DOWNLOAD-BRIDGE.md",
+    "final_gate_validator": "tools/validate-phase-41-browser-download-bridge.py",
+    "webview_download_listener_bridge": true,
+    "download_detected_card": true,
+    "content_disposition_filename_guess": true,
+    "mime_type_and_size_display": true,
+    "source_page_display": true,
+    "add_download_primary_action": true,
+    "inspect_media_secondary_action": true,
+    "always_ask_default": true,
+    "no_silent_auto_queue": true,
+    "filename_suggestion_preserved": true,
+    "raw_header_cookie_token_persistence": false,
+    "bookmarks_history_redesign_deferred": true,
+    "page_resources_deferred": true,
+    "file_type_rules_deferred": true,
+    "no_new_route": true,
+    "no_room_migration": true,
+    "no_version_bump": true,
+    "no_transfer_engine_changes": true,
+    "no_media_execution_changes": true,
+    "docs_research_reviewed": [
+      "android-webview-downloadlistener",
+      "android-urlutil-guessfilename",
+      "androidx-webkit-urlutilcompat"
+    ]
   }
 }

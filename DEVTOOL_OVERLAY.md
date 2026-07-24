@@ -1,28 +1,47 @@
-# XDM Android Phase 37B Dual Launcher and Navigation Split Overlay
+# XDM Android Phase 41 Browser Download Bridge Overlay
 
-This overlay starts the runtime Browser + Downloader split after the Phase 37A roadmap seal.
+## Summary
 
-## Scope
+Phase 41 builds on the landed Phase 40 browser tabs/session UX by turning WebView download events into a review-first Browser → Downloader handoff.
 
-- Adds Browser as a first-class top-level route.
-- Adds XDM Browser as a separate launcher activity.
-- Labels MainActivity as XDM Downloader.
-- Keeps Add to XDM external receiver from Phase 36.
-- Promotes Browser into compact primary navigation.
-- Removes the hidden Browser chip from the Media screen.
-- Adds Phase 37B docs, validator, release-gate wiring, CI wiring, and ArchitectureContractTest coverage.
+## Runtime changes
 
-## Deferred to Phase 38+
+- Converts `WebView.setDownloadListener` events into a visible Browser download bridge draft.
+- Uses `URLUtil.guessFileName(url, contentDisposition, mimeType)` to suggest a filename.
+- Adds a `Download detected` Browser card with filename, MIME/type, size when known, source host, and source page.
+- Adds primary `Add download` action that opens the existing Add Download flow with the detected URL and filename suggestion.
+- Adds secondary `Inspect media` action for media-like direct files that should be reviewed in Media.
+- Keeps dismiss local to Browser without queueing or starting transfers.
 
-- White-screen WebView reliability fix.
-- URL/search startup loading for BrowserActivity VIEW links.
-- Browser error pages, start page, loading diagnostics, SSL/network failure UI.
-- Full chrome/tabs/bookmarks/history/resource list.
+## Safety posture
 
-## Non-goals
+- Browser downloads remain review-first and never auto-queue.
+- The Browser UI does not call `addDownload` or start transfer execution directly.
+- The WebView download listener no longer treats every direct file as a media capture.
+- Cookies, tokens, and authorization headers are not displayed in the bridge card and are not persisted as raw browser handoff data.
 
-- No Room migration.
-- No version bump.
+## Deferred intentionally
+
+- No file-type rule settings.
+- No page-resource list.
+- No browser download history/library screen.
+- No bookmarks/history redesign.
+- No full private-tab isolation.
 - No transfer-engine changes.
 - No media execution changes.
-- No copied proprietary 1DM code/assets/resources.
+- No Room migration.
+- No version bump.
+
+## Validation
+
+- Adds `tools/validate-phase-41-browser-download-bridge.py`.
+- Wires Phase 41 into `tools/run-final-release-gate.sh`.
+- Wires Phase 41 into Android CI static validators.
+- Adds `ArchitectureContractTest.phaseFortyOneBrowserDownloadBridgeContractsArePresent`.
+- Updates Phase 34 through Phase 40 validators/contracts to accept the Phase 41 current overlay.
+
+## Packaging notes
+
+- New files use inventory action `add`, not `create`.
+- Archive excludes `__pycache__` and `.pyc` files.
+- No new top-level route is added.

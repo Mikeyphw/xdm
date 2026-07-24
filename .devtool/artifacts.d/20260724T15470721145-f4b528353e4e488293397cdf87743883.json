@@ -1,0 +1,174 @@
+{
+  "applied_at": "2026-07-24T15:47:07.211455Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase41_browser_download_bridge_overlay.zip",
+  "artifact_name": "xdm_android_phase41_browser_download_bridge_overlay.zip",
+  "type": "overlay",
+  "sha256": "9e826105df25d2c9b3854b93846470ef0b230c385a61173e8d07c775220f45cd",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "XDM Android Phase 41 browser download bridge",
+  "commit_hash": "",
+  "file_count": 18,
+  "change_counts": {
+    "add": 2,
+    "modify": 16
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 41 Browser Download Bridge",
+    "description": "Browser download bridge overlay that routes WebView download events into a review-first Add Download prompt with filename/MIME/size/source context, without silent auto-queueing.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "e27c8803e17b0bf4ceb3cdb8531cc707bb24950a4db8929ea1f045ccd39a6e17",
+          "size": 2051,
+          "source_sha256": "ec86288d8b33c4cdc23d043b3d081e9e201a085fe6501b24e5476a9c712b2374"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "8de7355baffe6a8e72c577e4e1836cb1681e3353a2e6d5f740bbd36abf12f1ab",
+          "size": 34667,
+          "source_sha256": "7fd936e8619a0d0e15f53f672f94ee8063afc1785665384cc9d2e0ec30cd9481"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+          "action": "modify",
+          "sha256": "9508ad02eb9ced21075b30b35872f0ac596b2b26b937fe83729ad5774913b2e6",
+          "size": 48553,
+          "source_sha256": "402b694af66d14fbe31f1b74044dcd91e02a509b0993eba72601a3f3579ab39f"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "65f42118fc002971d240a1c11c768d7c3a7fc6d4b01449feb4d244af3d604389",
+          "size": 70330,
+          "source_sha256": "324d463316f7da9fcdb78e279859c4ed43b4e5a50889cdc17933e032ed39e510"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "371b67956955b380f7e01677368aa48a5eb54eff905c8591b7ec82569cfe5375",
+          "size": 15017,
+          "source_sha256": "9fb4a56de38c999e5198a3c26aa0abd1221c520c1097dd8af248488a4e3b29ba"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "6ee9b8be5cc4565e493c7e9efd027f954650254fdcaf983c06e26bb18ddf2301",
+          "size": 107131,
+          "source_sha256": "2c4819b98ad07d209b4a2d34e10cdfa7a05b5f6125d1ee1c63c57559d680754e"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "8c88fc44ced0c4df371e98e5becdbbb9b5a7f58db0f7dc72286ef9852b39f426",
+          "size": 2931,
+          "source_sha256": "17970bd8e5a8b9e9a1e8f52517f66281b7a754f070fca0c98cab09037af05b33"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "3798c4a1a443ee9bff6f339d4a49cc6ca34ff696749be625df4dde8edfb042ba",
+          "size": 4262,
+          "source_sha256": "738b3e2a2c4ec13ed830054d9b96018caa6bc3ba73fb8286c08e8cac9b161fd8"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+          "action": "modify",
+          "sha256": "2b8c290735d76aea359e389f0027ed087cb35e941e7909c3f522e78c6f233e70",
+          "size": 7229,
+          "source_sha256": "aeead5a65b1c2f233a04119341cbf167b7ca3131e1ad41cdbcb8e10728303d89"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+          "action": "modify",
+          "sha256": "3118c89c385eb72a03e67d29f4820ad47c754ea6425756f91eebf48ce306dc6d",
+          "size": 10174,
+          "source_sha256": "fca199726c76219aa0cad347da6202207a5d55159866bccaf239741e60da80f6"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+          "action": "modify",
+          "sha256": "4976b20c3c01000de14421451acd2b87633a238b4af143c5bec740eddf516a72",
+          "size": 8703,
+          "source_sha256": "295fc919c0462f39dbc95a367a3891583d49950ae58d1af9ca1ca1da5943a31e"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37a-browser-downloader-roadmap.py",
+          "action": "modify",
+          "sha256": "8d10e9ba1e5da77adf8c2b2db6b00373401efba636090346da1385514527e6b9",
+          "size": 3321,
+          "source_sha256": "8b0ae09312e7b9e75e394b63e3e6f829203c061e76e90ec932c371616baebe28"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37b-dual-launcher-navigation-split.py",
+          "action": "modify",
+          "sha256": "88e9b4be751b727a2bb0ad01c51b643ebfe2871846320b53fe2d1660f1cdec59",
+          "size": 6376,
+          "source_sha256": "1fd24dfe5bcf2d0a570450277bae5d04a2e3d211246ef6e70c36f23a922e10b1"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-38-browser-reliability-foundation.py",
+          "action": "modify",
+          "sha256": "a342c8d351eec45f9f8319d5121c72a0c1047339ee0100ff8fe5096cd44800f7",
+          "size": 7617,
+          "source_sha256": "501907228a65107431b5172547e3e4751a17c136e63465442e9348e54233bbbc"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-39-browser-chrome-navigation.py",
+          "action": "modify",
+          "sha256": "1accdfec34d59b3db5ec90b620b36c137cd798b6791cbd8adb793f14e8738949",
+          "size": 4403,
+          "source_sha256": "f8bbd8f14cc96e3bf59301b8c17ab7cab1f68f3d43ee841175e1d9fdd1048f69"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-40-browser-tabs-session-ux.py",
+          "action": "modify",
+          "sha256": "849c5f0484597053a7983697ae51d3cc452335385126f1f04d911ca4f0d4a65c",
+          "size": 4272,
+          "source_sha256": "3501eb6b135b6546dd8a1c6ac8b9b70060ae6746849f1c1dd6ba2bb3df85dc5a"
+        },
+        {
+          "path": "app/XDM.Android/docs/browser/PHASE-41-BROWSER-DOWNLOAD-BRIDGE.md",
+          "action": "add",
+          "sha256": "dd498ecac12c623c72fb0f6759ea31b697937463e4d3d256a373b951a6a48026",
+          "size": 1854
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-41-browser-download-bridge.py",
+          "action": "add",
+          "sha256": "9b989aba5e674c94cf6dac6e8e1f1d530f1717177edc44e67194b93f6db69d34",
+          "size": 4469
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "tests": "pass",
+        "diagnostics": "pass"
+      },
+      "notes": "Run targeted app contract/lint gate first, then full Android validation."
+    },
+    "apply": {
+      "commit": {
+        "enabled": true,
+        "message": "XDM Android Phase 41 browser download bridge"
+      }
+    }
+  },
+  "history_id": "f4b528353e4e488293397cdf87743883"
+}

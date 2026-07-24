@@ -48,6 +48,10 @@ validators=(
   tools/validate-phase-36-external-download-handoff.py
   tools/validate-phase-37a-browser-downloader-roadmap.py
   tools/validate-phase-37b-dual-launcher-navigation-split.py
+  tools/validate-phase-38-browser-reliability-foundation.py
+  tools/validate-phase-39-browser-chrome-navigation.py
+  tools/validate-phase-40-browser-tabs-session-ux.py
+  tools/validate-phase-41-browser-download-bridge.py
 )
 
 for validator in "${validators[@]}"; do
@@ -68,7 +72,7 @@ Run the full build/test/lint gate in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Then apply the Phase 37B dual launcher/navigation split overlay with validation enabled if this overlay has not been applied yet:
+Then apply the Phase 41 browser download bridge overlay with validation enabled if this overlay has not been applied yet:
 
-devtool --copy --auto-hud --hud-mode desktop-window --yes -r "\$HOME/Code/xdm" --target xdm_android apply-overlay "\$HOME/Downloads/xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip" --validate
+devtool --copy --auto-hud --hud-mode desktop-window --yes -r "\$HOME/Code/xdm" --target xdm_android apply-overlay "\$HOME/Downloads/xdm_android_phase41_browser_download_bridge_overlay.zip" --validate
 EOF2
