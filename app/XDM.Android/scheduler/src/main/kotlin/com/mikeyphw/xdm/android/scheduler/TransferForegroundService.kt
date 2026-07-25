@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 class TransferForegroundService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var runtime: TransferExecutionRuntime
+    private lateinit var queueIntelligence: QueueIntelligenceCoordinator
     private lateinit var notifications: TransferNotifications
     private var summaryJob: Job? = null
     private var terminalJob: Job? = null
@@ -27,6 +28,7 @@ class TransferForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         runtime = (application as TransferRuntimeProvider).transferRuntime
+        queueIntelligence = (application as QueueIntelligenceProvider).queueIntelligenceCoordinator
         notifications = TransferNotifications(this)
         startForeground()
         terminalJob = scope.launch {
@@ -54,10 +56,10 @@ class TransferForegroundService : Service() {
         when (intent?.action) {
             ACTION_START -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let(runtime::launch)
             TransferNotifications.ACTION_PAUSE_ALL -> scope.launch { runtime.pauseAll() }
-            TransferNotifications.ACTION_RESUME_ALL -> scope.launch { runtime.resumeAll() }
+            TransferNotifications.ACTION_RESUME_ALL -> scope.launch { queueIntelligence.resumeAllManual() }
             TransferNotifications.ACTION_CANCEL -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id -> scope.launch { runtime.cancel(id) } }
             TransferNotifications.ACTION_PAUSE -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id -> scope.launch { runtime.pause(id) } }
-            TransferNotifications.ACTION_RESUME, TransferNotifications.ACTION_RETRY -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id -> scope.launch { runtime.resume(id) } }
+            TransferNotifications.ACTION_RESUME, TransferNotifications.ACTION_RETRY -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id -> scope.launch { queueIntelligence.requestStart(id, userVisible = true, manual = true) } }
         }
         scope.launch {
             delay(1_500)

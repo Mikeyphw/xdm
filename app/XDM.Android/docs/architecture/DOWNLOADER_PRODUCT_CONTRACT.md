@@ -73,3 +73,11 @@ Manual URL entry, clipboard extraction, external shares, typed download intents,
 
 Downloads is the transfer control center. It groups records into Needs attention, Active, Queued, Completed, and History; provides stable smart ordering; and translates failures into actionable, secret-safe guidance. Grouping must not replace the existing queue, scheduler, recovery, backend migration, verification, or diagnostics machinery.
 
+
+## Queue intelligence and automatic execution
+
+Queued downloads must pass an explainable, browser-neutral policy decision before automatic execution. Policy may consider validated connectivity, metering or Wi-Fi, charging, battery, storage reserve, schedule window, per-queue concurrency, persisted priority, and classified retry backoff. Every hold must have a user-facing reason and safe suggested action.
+
+Automatic condition-driven work must be owned by a foreground WorkManager worker for its full execution lifetime. A background evaluator must not spawn an unrelated foreground service and then finish. Unique immediate work uses keep semantics so condition changes cannot cancel transfers already owned by the foreground worker.
+
+An explicit user override may bypass soft policy but must not pretend an unvalidated network is usable. Automatic retry is restricted to classified transient failures. Authentication, permission, verification, unsupported/DRM, permanent HTTP, and unknown failures require review. Queue decisions are recorded in a bounded private ledger without URLs, request headers, cookies, tokens, or other secret-bearing payloads.

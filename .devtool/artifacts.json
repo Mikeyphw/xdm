@@ -39861,6 +39861,264 @@
         ]
       },
       "history_id": "2243c1f19c6e4396ab36fc82016a4e71"
+    },
+    {
+      "applied_at": "2026-07-25T04:26:04.073897Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_browser_removal_phase8c_queue_intelligence_execution_policy_overlay.zip",
+      "artifact_name": "xdm_android_browser_removal_phase8c_queue_intelligence_execution_policy_overlay.zip",
+      "type": "overlay",
+      "sha256": "321cd2b4dca8a1d764cfd45c26d0ea29afc3e7caca54fa86e443167869993a78",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Add XDM Android queue intelligence and execution policy",
+      "commit_hash": "",
+      "file_count": 29,
+      "change_counts": {
+        "add": 12,
+        "modify": 17
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 8C queue intelligence and execution policy",
+        "description": "Adds an explainable queue policy engine with validated-network, schedule, concurrency, power, battery, storage, retry, priority, foreground WorkManager execution, explicit user override, and persistent decision history while preserving the browser-free downloader architecture.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "source_sha256": "7e9816c5d90bf2d3e04444cb41e14c488f3216b3aef45520f674732fb24b8576",
+              "sha256": "70156693e72f228ab1a905b073b786020307d81f6d7a46d2fd201049fc9b333b",
+              "size": 12732
+            },
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "source_sha256": "c7e0cf5ad9b5413a53fd5b31de18aaccba3467e966ee65e50ee42e8785004432",
+              "sha256": "bdcf8f7d652f5671263135d65e60c40f98306cd134e0ef08286c9d5c9d7c6164",
+              "size": 4284
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "source_sha256": "e80f8c1e5992e0088457c7b9134c02920035ab462e140b393b09465bc90a188a",
+              "sha256": "6ab9caa1dc042419609fbb327222430803501a0f8b3ec129e533ee0a4855cccb",
+              "size": 39143
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "source_sha256": "88ba2286c15af7eff25f6460d701932e1e2824ce20bfd1a6fd90f61cfd3aa930",
+              "sha256": "9992bc3f737079409076c9120eb1f35aa87ade7619e12dcf82c4d7285c24b9cf",
+              "size": 16818
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "source_sha256": "707816fc83059412e0fae7c3e6546dff6354d2fe75c20f4ed7eaefda39fc3899",
+              "sha256": "f2b3e1d5981b4b168c1295b2e940d4ae967b8ad505ab87947b515fb942402e6f",
+              "size": 73559
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "source_sha256": "75b265b73505a486d52266b01a8cda8b824cd9a717c1921865a07c78617b18c1",
+              "sha256": "d16c1c587a77aaf500fdeacecaa5bd1b660e8ac4f46a5dd6bed1ca9d0a6278eb",
+              "size": 221565
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "source_sha256": "ae38b98341cb810dc1cbe4aa6a49b8516c598ad44aab7d826a0297749cbbe55c",
+              "sha256": "eedf768a9489607293173358aca4fea818ddfea03a210cbfe22418648d5d4b29",
+              "size": 15347
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "source_sha256": "ab6f0b2aa769bc9a349f3ad509fd7c10b92ceb93690f732d93ca533dd9ebb5d9",
+              "sha256": "10ddb78f448ceab6e62c2c4e29397ba418e44a2067b18c1264fd03d0411ce49a",
+              "size": 8587
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8CContractTest.kt",
+              "action": "add",
+              "sha256": "9b092023881830b022a371cbe6069267171fbccd6335aecad615a8130c7c9c0c",
+              "size": 5430
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/QueueIntelligence.kt",
+              "action": "add",
+              "sha256": "53a3c2d1b418e92fe2cdedf814c5b0ca9eca51c19f1c7924b464b50c3c3a9acf",
+              "size": 16697
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueIntelligenceTest.kt",
+              "action": "add",
+              "sha256": "9a12b915e53e4c11eeb11da38556e9c8c04732d968d30c8e945ac0dc65cce932",
+              "size": 6060
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md",
+              "action": "modify",
+              "source_sha256": "93784932704e6943f25766fadc68dbd89540e914831b47d7a6c57c1ec766a499",
+              "sha256": "ceb98d567c29de559fc603a9329edd4f388404983e5a0a1ac008463e7bfcb526",
+              "size": 5772
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+              "action": "modify",
+              "source_sha256": "470cf8b79a78e10d5283552fa5edfa4a2873bfc5193e92a20eba4a4fe1996cdc",
+              "sha256": "2cdc1a4589721b169baafab7b093d2d8975df6c6ca78bfdd44364de3d528fc9e",
+              "size": 12102
+            },
+            {
+              "path": "app/XDM.Android/docs/downloader/PHASE-8C-QUEUE-INTELLIGENCE.md",
+              "action": "add",
+              "sha256": "1bd22d77009ec17f6aaf40ee74940bb5aa99a868527e06b178c079cabd1334f4",
+              "size": 3464
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "source_sha256": "61dc01824e3a09e0a60edcd07dc0a96980ed8c216e8c4da5fd7435dc71b195e4",
+              "sha256": "2431f398aa7e7932f35175cdc3148126a5e426f4c20c4727d73048616f1df0cb",
+              "size": 1448
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/AndroidQueueConditionsReader.kt",
+              "action": "add",
+              "sha256": "11f1e83673775203068aaf676305b30e1bb753616dc06840ca701b8c3a3f65b4",
+              "size": 2102
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueConditionMonitor.kt",
+              "action": "add",
+              "sha256": "3b2437ad704a88027bbd4d63ae3a1f2f55a367dbce2e4fffb7eb1fda78468d86",
+              "size": 2200
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueDecisionLedger.kt",
+              "action": "add",
+              "sha256": "447c7a60b2337c03df0340affd3d85612e622edac0835e20d835ce9d1b784157",
+              "size": 4210
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt",
+              "action": "add",
+              "sha256": "9a9ad8d3e87b55c02c26d67fb7d8e18b9276b5893386608054d3f2ac74f7c796",
+              "size": 13524
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt",
+              "action": "add",
+              "sha256": "2a3486aa49e3c1a63fd3c25f2c488cd93b04dffb49554778b6d10b3cf2214877",
+              "size": 4119
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueuePolicyCodec.kt",
+              "action": "add",
+              "sha256": "ac38472882af60d668ddf52abe64299e336f8d6f0ee15267c29a39c7b64feabf",
+              "size": 4104
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueRetryLedger.kt",
+              "action": "add",
+              "sha256": "7acefb019bf3ff5036f1565f695aa1b9e9de317389795c0143b347da3d5b0878",
+              "size": 2100
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferBootReceiver.kt",
+              "action": "modify",
+              "source_sha256": "17476159b13a3e148e7cfe63c771d3f056185b2fb86605d213fe975f3258b960",
+              "sha256": "ecb10ce13126a567fb4d749ff30ec08c3cb9d8d67191f60013491e0b187cb2f8",
+              "size": 1122
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt",
+              "action": "modify",
+              "source_sha256": "8a4183be276640301aaf1f73c0b4a5a8001bfdbd29a880eb6094bb915a989c22",
+              "sha256": "9686d44ed05ad4cb41fa54175639a75598f8f239955ce1b683fe4c1b74a82c8e",
+              "size": 4415
+            },
+            {
+              "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+              "action": "modify",
+              "source_sha256": "277637082b70af5e2724bf4344c2bc8ae69662c28d72e0486ae151f9f50a7387",
+              "sha256": "2106930e935dde278d88296c759eabd72597f9de68b516ae880a2064b8dea43f",
+              "size": 2951
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-browser-removal-phase-6.py",
+              "action": "modify",
+              "source_sha256": "4bc82a036f4ea1bf50b582e2cf6f7497df5b231eb2a50984cd56de2ab0db6743",
+              "sha256": "65da78cf8d8ab204b6f7b37de65e2049436f21ea3b2fe35b9ff9e5dcb7b0c2bf",
+              "size": 6905
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8ab.py",
+              "action": "modify",
+              "source_sha256": "dd3f65b275472402f75e109f7b2ff2a171b4b8166526d67aa32767232e19171b",
+              "sha256": "7f486bd475ece66e752994095c72fb24bbf8d014bb8ca56390c0738516c43472",
+              "size": 7460
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8c.py",
+              "action": "add",
+              "sha256": "30ff55efb0da4daf551238ca234fc7bbfcd172ff95ccd1c5b9693877aa875bdf",
+              "size": 9116
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-4.py",
+              "action": "modify",
+              "source_sha256": "72456b4c8951f8c8656c8eefee04c782dc58d01156e28dcb4e2f1f106c7406cb",
+              "sha256": "28e3f0dd38a712785d9c1457b49e1844ae8d8db00f617a24a54e24bc14ec2e88",
+              "size": 3227
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add XDM Android queue intelligence and execution policy"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "expected": {
+            "restore": "pass",
+            "build": "pass",
+            "tests": "pass",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Apply only after xdm_android_browser_removal_phase8ab_downloader_intake_dashboard_overlay.zip.",
+          "Automatic queued transfers are claimed by an explainable policy coordinator and executed inside a foreground CoroutineWorker; the worker does not launch a second foreground service from the background.",
+          "Validated internet remains mandatory. Explicit Start anyway bypasses queue timing, network-type, power, battery, storage, concurrency, and retry policy only for the selected user-visible start.",
+          "Adds per-queue schedule/network/power/battery/storage/concurrency policy, priority and age-fair ranking, classified retry backoff, condition-change reevaluation, and a bounded secret-free decision ledger.",
+          "Does not restore the built-in browser or change native, aria2, Termux, media resolver, offline library, Media3, Room schema 14, versionCode 21, or versionName 0.20.0-rc08."
+        ]
+      },
+      "history_id": "e93a6a56f0b34010b52241b6fc6431ab"
     }
   ]
 }

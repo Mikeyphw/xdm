@@ -139,3 +139,9 @@ Add Download must show a review-first path for both manual entry and external ha
 
 Downloads must group visible records into Needs attention, Active, Queued, Completed, and History in that order. Smart ordering should surface recovery work first, then active priority and throughput, queued priority, and recent completed/history records. Authentication, storage, permission, verification, network, recovery, and retry guidance should explain the next safe action without exposing secrets.
 
+
+## Phase 8C queue policy UX
+
+The Activity workspace owns queue policy status, schedules, recent decision history, and explicit evaluation. Downloads may show policy holds and a **Start anyway** action, but the action must explain that only soft constraints are bypassed and a validated internet connection is still required.
+
+Schedule editing exposes network type, charging, minimum battery, storage reserve, retry strategy, and retry limit without creating another top-level destination. Queue policy status is supplemental to the existing Downloads dashboard, not a replacement for transfer state, recovery, or diagnostics.

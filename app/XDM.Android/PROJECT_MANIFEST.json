@@ -442,7 +442,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_browser_removal_phase8ab_downloader_intake_dashboard_overlay.zip",
+  "current_overlay": "xdm_android_browser_removal_phase8c_queue_intelligence_execution_policy_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1168,6 +1168,41 @@
     "room_schema_unchanged": 14,
     "version_name_unchanged": "0.20.0-rc08",
     "version_code_unchanged": 21,
-    "next_phase": "phase8c_queue_intelligence"
+    "next_phase": "phase8c_queue_intelligence_landed"
+  },
+  "downloader_experience_phase8c": {
+    "program": "downloader_product_polish",
+    "contract_document": "docs/downloader/PHASE-8C-QUEUE-INTELLIGENCE.md",
+    "static_validator": "tools/validate-downloader-experience-phase-8c.py",
+    "model_contract": "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/QueueIntelligence.kt",
+    "jvm_model_contract": "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueIntelligenceTest.kt",
+    "app_contract": "app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8CContractTest.kt",
+    "explainable_execution_policy": true,
+    "validated_network_gate": true,
+    "network_power_battery_storage_constraints": true,
+    "schedule_window_enforcement": true,
+    "overnight_schedule_start_day_semantics": true,
+    "per_queue_concurrency": true,
+    "priority_fairness_ranking": true,
+    "classified_retry_backoff": true,
+    "explicit_policy_override": true,
+    "persistent_decision_ledger": true,
+    "condition_change_monitoring": true,
+    "foreground_workmanager_ownership": true,
+    "external_handoff_preserved": true,
+    "all_download_engines_preserved": true,
+    "browser_runtime_remains_absent": true,
+    "stable_routes": [
+      "Downloads",
+      "Add",
+      "Media",
+      "Library",
+      "Activity",
+      "Settings"
+    ],
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "next_phase": "phase8d_resolver_media_polish"
   }
 }

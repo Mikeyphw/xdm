@@ -10,7 +10,7 @@ checks = {
     "foreground service": (root / "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt", "FOREGROUND_SERVICE_TYPE_DATA_SYNC"),
     "timeout pause": (root / "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt", "runtime.pauseAll()"),
     "notification actions": (root / "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotifications.kt", "ACTION_PAUSE_ALL"),
-    "boot restore worker": (root / "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferBootReceiver.kt", "enqueueUniqueWork"),
+    "boot restore worker": (root / "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferBootReceiver.kt", "beginUniqueWork"),
     "interrupted state restore": (root / "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt", "INTERRUPTED_STATES"),
     "Room runtime adapter": (root / "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferDownloadStore.kt", "RepositoryTransferDownloadStore"),
     "runtime recovery test": (root / "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt", "restorePausesOnlyInterruptedStates"),

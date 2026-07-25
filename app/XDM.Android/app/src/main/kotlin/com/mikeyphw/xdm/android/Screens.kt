@@ -150,6 +150,9 @@ import com.mikeyphw.xdm.android.media.MediaFinalValidationDashboard
 import com.mikeyphw.xdm.android.media.MediaFinalValidationSeverity
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
 import com.mikeyphw.xdm.android.model.QueueDefinition
+import com.mikeyphw.xdm.android.model.QueueIntelligenceSummary
+import com.mikeyphw.xdm.android.model.QueueNetworkRequirement
+import com.mikeyphw.xdm.android.model.QueueRetryStrategy
 import com.mikeyphw.xdm.android.model.RecoveryAction
 import com.mikeyphw.xdm.android.model.RecoveryClassification
 import com.mikeyphw.xdm.android.model.RecoveryRecord
@@ -183,6 +186,7 @@ fun DownloadsScreen(
     downloads: List<Download>,
     compact: Boolean,
     active: ActiveTransferSummary,
+    queueIntelligence: QueueIntelligenceSummary,
     capabilities: List<BackendCapabilityRow>,
     checksumResults: List<ChecksumResult>,
     verificationRecords: List<VerificationRecord>,
@@ -206,6 +210,8 @@ fun DownloadsScreen(
     onResumeAll: () -> Unit,
     onPreviewPostProcessing: (Download) -> Unit,
     onRunPostProcessing: (Download) -> Unit,
+    onEvaluateQueueIntelligence: () -> Unit,
+    onStartIgnoringQueuePolicy: (Download) -> Unit,
 ) {
     val context = LocalContext.current
     var filter by remember { mutableStateOf<DownloadState?>(null) }
@@ -226,6 +232,7 @@ fun DownloadsScreen(
         DownloadListSummary(
             downloads = downloads,
             active = active,
+            queueIntelligence = queueIntelligence,
             historyReport = historyReport,
             dashboard = overviewDashboard,
             showHistoryTools = showHistoryTools,
@@ -234,6 +241,7 @@ fun DownloadsScreen(
             onClearFinished = onClearFinishedHistory,
             onPauseAll = onPauseAll,
             onResumeAll = onResumeAll,
+            onEvaluateQueueIntelligence = onEvaluateQueueIntelligence,
         )
         OrganizationPowerToolsCard(
             report = organizationReport,
@@ -290,7 +298,19 @@ fun DownloadsScreen(
                                 label = { Text(if (download.id in selectedIds) "Selected" else "Select") },
                             )
                         }
-                        DownloadCard(download, compact, capabilities, checksumResults, verificationRecords, onTogglePause, onMigrateBackend, onRemoveHistory, onPreviewPostProcessing, onRunPostProcessing)
+                        DownloadCard(
+                            download,
+                            compact,
+                            capabilities,
+                            checksumResults,
+                            verificationRecords,
+                            onTogglePause,
+                            onMigrateBackend,
+                            onRemoveHistory,
+                            onPreviewPostProcessing,
+                            onRunPostProcessing,
+                            onStartIgnoringQueuePolicy,
+                        )
                     }
                 }
             }
@@ -303,6 +323,7 @@ fun DownloadsScreen(
 private fun DownloadListSummary(
     downloads: List<Download>,
     active: ActiveTransferSummary,
+    queueIntelligence: QueueIntelligenceSummary,
     historyReport: HistoryManagementReport,
     dashboard: DownloadDashboard,
     showHistoryTools: Boolean,
@@ -311,6 +332,7 @@ private fun DownloadListSummary(
     onClearFinished: () -> Unit,
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
+    onEvaluateQueueIntelligence: () -> Unit,
 ) {
     val failed = dashboard.summary.needsAttention
     val completed = dashboard.summary.completed
@@ -341,6 +363,25 @@ private fun DownloadListSummary(
                 if (failed > 0) XdmStatusBadge("$failed need attention", tone = XdmStatusTone.Error)
                 if (dashboard.summary.aggregateSpeedBytesPerSecond > 0) XdmMetricText(dashboard.summary.aggregateSpeedBytesPerSecond.formatSpeed())
                 TextButton(onClick = onToggleHistoryTools) { Text(if (showHistoryTools) "Hide history tools" else "History tools") }
+            }
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            XdmCardTitle("Queue intelligence")
+                            XdmSupportingText(queueIntelligence.message, maxLines = 2)
+                        }
+                        TextButton(onClick = onEvaluateQueueIntelligence) { Text("Evaluate now") }
+                    }
+                    XdmActionFlowRow {
+                        if (queueIntelligence.started > 0) XdmStatusBadge("${queueIntelligence.started} started", XdmStatusTone.Success)
+                        if (queueIntelligence.heldForNetwork > 0) XdmStatusBadge("${queueIntelligence.heldForNetwork} network", XdmStatusTone.Info)
+                        if (queueIntelligence.heldForPower > 0) XdmStatusBadge("${queueIntelligence.heldForPower} power", XdmStatusTone.Neutral)
+                        if (queueIntelligence.heldForStorage > 0) XdmStatusBadge("${queueIntelligence.heldForStorage} storage", XdmStatusTone.Error)
+                        if (queueIntelligence.heldForSchedule > 0) XdmStatusBadge("${queueIntelligence.heldForSchedule} schedule", XdmStatusTone.Neutral)
+                        if (queueIntelligence.waitingForRetry > 0) XdmStatusBadge("${queueIntelligence.waitingForRetry} retry", XdmStatusTone.Neutral)
+                    }
+                }
             }
             if (showHistoryTools) {
                 XdmSupportingText(historyReport.summary)
@@ -546,6 +587,7 @@ private fun DownloadCard(
     onRemoveHistory: (Download) -> Unit,
     onPreviewPostProcessing: (Download) -> Unit,
     onRunPostProcessing: (Download) -> Unit,
+    onStartIgnoringQueuePolicy: (Download) -> Unit,
 ) {
     val context = LocalContext.current
     var expanded by remember(download.id) { mutableStateOf(false) }
@@ -567,12 +609,26 @@ private fun DownloadCard(
                         XdmMetadataText(download.backend.uiLabel(), maxLines = 1)
                     }
                 }
-                if (download.state in setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Paused, DownloadState.Failed)) {
+                if (download.state in setOf(
+                        DownloadState.Queued,
+                        DownloadState.Downloading,
+                        DownloadState.Connecting,
+                        DownloadState.Paused,
+                        DownloadState.WaitingForNetwork,
+                        DownloadState.WaitingForPower,
+                        DownloadState.Failed,
+                    )
+                ) {
                     IconButton(
                         onClick = { onTogglePause(download) },
                         modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
                     ) {
-                        val paused = download.state == DownloadState.Paused || download.state == DownloadState.Failed
+                        val paused = download.state in setOf(
+                            DownloadState.Paused,
+                            DownloadState.WaitingForNetwork,
+                            DownloadState.WaitingForPower,
+                            DownloadState.Failed,
+                        )
                         val action = if (paused) "Resume" else "Pause"
                         Icon(if (paused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause, "$action ${download.fileName}")
                     }
@@ -594,6 +650,15 @@ private fun DownloadCard(
                 XdmMetadataText(download.destinationUri, maxLines = 1)
             }
             download.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, maxLines = if (expanded) Int.MAX_VALUE else 2) }
+            val queuePolicyHeld = download.errorMessage.orEmpty().startsWith("Queue policy:") &&
+                download.state !in setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Completed, DownloadState.Cancelled)
+            if (queuePolicyHeld) {
+                Button(
+                    onClick = { onStartIgnoringQueuePolicy(download) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Start anyway") }
+                XdmMetadataText("Explicit override bypasses soft queue policy, but XDM still requires a validated internet connection.")
+            }
             DownloadDashboardPlanner.attentionSignal(download)?.let { signal ->
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -1122,22 +1187,43 @@ private fun QueueManagementCard(
 fun SchedulerScreen(
     rules: List<ScheduleRule>,
     queues: List<QueueDefinition>,
+    queueIntelligence: QueueIntelligenceSummary,
     onCreateSchedule: (String, String?, String) -> Unit,
     onUpdateSchedule: (ScheduleRule, String, String?, Boolean, String) -> Unit,
     onToggleSchedule: (ScheduleRule, Boolean) -> Unit,
     onDeleteSchedule: (ScheduleRule) -> Unit,
+    onEvaluateNow: () -> Unit,
 ) {
     var newScheduleName by remember { mutableStateOf("") }
     var selectedQueueId by remember { mutableStateOf<String?>(queues.firstOrNull()?.id) }
-    var unmeteredOnly by remember { mutableStateOf(true) }
+    var networkRequirement by remember { mutableStateOf(QueueNetworkRequirement.Unmetered) }
     var chargingRequired by remember { mutableStateOf(false) }
     var minimumBattery by remember { mutableStateOf("30") }
+    var retryStrategy by remember { mutableStateOf(QueueRetryStrategy.Balanced) }
+    var maxAutoRetries by remember { mutableStateOf("4") }
+    var stopOnStoragePressure by remember { mutableStateOf(true) }
+    var minimumFreeStorageMb by remember { mutableStateOf("512") }
     var startTime by remember { mutableStateOf("01:00") }
     var endTime by remember { mutableStateOf("06:00") }
     var days by remember { mutableStateOf("Weekdays") }
-    val createConstraints = buildScheduleConstraintsJson(days, startTime, endTime, unmeteredOnly, chargingRequired, minimumBattery)
+    val createConstraints = buildScheduleConstraintsJson(
+        days, startTime, endTime, networkRequirement, chargingRequired, minimumBattery,
+        retryStrategy, maxAutoRetries, stopOnStoragePressure, minimumFreeStorageMb,
+    )
 
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            XdmListCard(compact = true) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        XdmCardTitle("Queue intelligence")
+                        XdmSupportingText(queueIntelligence.message, maxLines = 3)
+                    }
+                    Button(onClick = onEvaluateNow) { Text("Evaluate now") }
+                }
+                XdmMetadataText("Automatic evaluation also runs after queue or schedule changes, app startup, reboot, and periodic background checks.")
+            }
+        }
         item {
             XdmListCard {
                 XdmCardTitle("Create schedule")
@@ -1157,12 +1243,20 @@ fun SchedulerScreen(
                     onStartTimeChanged = { startTime = it.take(5) },
                     endTime = endTime,
                     onEndTimeChanged = { endTime = it.take(5) },
-                    unmeteredOnly = unmeteredOnly,
-                    onUnmeteredOnlyChanged = { unmeteredOnly = it },
+                    networkRequirement = networkRequirement,
+                    onNetworkRequirementChanged = { networkRequirement = it },
                     chargingRequired = chargingRequired,
                     onChargingRequiredChanged = { chargingRequired = it },
                     minimumBattery = minimumBattery,
                     onMinimumBatteryChanged = { minimumBattery = it.filter { char -> char.isDigit() }.take(3) },
+                    retryStrategy = retryStrategy,
+                    onRetryStrategyChanged = { retryStrategy = it },
+                    maxAutoRetries = maxAutoRetries,
+                    onMaxAutoRetriesChanged = { maxAutoRetries = it.filter(Char::isDigit).take(2) },
+                    stopOnStoragePressure = stopOnStoragePressure,
+                    onStopOnStoragePressureChanged = { stopOnStoragePressure = it },
+                    minimumFreeStorageMb = minimumFreeStorageMb,
+                    onMinimumFreeStorageMbChanged = { minimumFreeStorageMb = it.filter(Char::isDigit).take(5) },
                 )
                 Button(
                     onClick = {
@@ -1214,12 +1308,20 @@ private fun ScheduleConditionEditor(
     onStartTimeChanged: (String) -> Unit,
     endTime: String,
     onEndTimeChanged: (String) -> Unit,
-    unmeteredOnly: Boolean,
-    onUnmeteredOnlyChanged: (Boolean) -> Unit,
+    networkRequirement: QueueNetworkRequirement,
+    onNetworkRequirementChanged: (QueueNetworkRequirement) -> Unit,
     chargingRequired: Boolean,
     onChargingRequiredChanged: (Boolean) -> Unit,
     minimumBattery: String,
     onMinimumBatteryChanged: (String) -> Unit,
+    retryStrategy: QueueRetryStrategy,
+    onRetryStrategyChanged: (QueueRetryStrategy) -> Unit,
+    maxAutoRetries: String,
+    onMaxAutoRetriesChanged: (String) -> Unit,
+    stopOnStoragePressure: Boolean,
+    onStopOnStoragePressureChanged: (Boolean) -> Unit,
+    minimumFreeStorageMb: String,
+    onMinimumFreeStorageMbChanged: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(days, onDaysChanged, label = { Text("Days") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
@@ -1241,9 +1343,15 @@ private fun ScheduleConditionEditor(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
         }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            XdmSupportingText("Unmetered network only", modifier = Modifier.weight(1f))
-            Switch(checked = unmeteredOnly, onCheckedChange = onUnmeteredOnlyChanged)
+        XdmMetadataText("Network")
+        XdmActionFlowRow {
+            QueueNetworkRequirement.entries.forEach { requirement ->
+                FilterChip(
+                    selected = networkRequirement == requirement,
+                    onClick = { onNetworkRequirementChanged(requirement) },
+                    label = { Text(requirement.label) },
+                )
+            }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             XdmSupportingText("Charging required", modifier = Modifier.weight(1f))
@@ -1257,6 +1365,39 @@ private fun ScheduleConditionEditor(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             supportingText = { Text("Leave blank to ignore battery level.") },
+        )
+        XdmMetadataText("Automatic retry")
+        XdmActionFlowRow {
+            QueueRetryStrategy.entries.forEach { strategy ->
+                FilterChip(
+                    selected = retryStrategy == strategy,
+                    onClick = { onRetryStrategyChanged(strategy) },
+                    label = { Text(strategy.label) },
+                )
+            }
+        }
+        OutlinedTextField(
+            maxAutoRetries,
+            onMaxAutoRetriesChanged,
+            label = { Text("Maximum automatic retries") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            supportingText = { Text("Use 0–12. Authentication, permission, checksum, unsupported, and DRM failures still require review.") },
+        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            XdmSupportingText("Pause under storage pressure", modifier = Modifier.weight(1f))
+            Switch(checked = stopOnStoragePressure, onCheckedChange = onStopOnStoragePressureChanged)
+        }
+        OutlinedTextField(
+            minimumFreeStorageMb,
+            onMinimumFreeStorageMbChanged,
+            label = { Text("Storage reserve (MB)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            enabled = stopOnStoragePressure,
+            supportingText = { Text("Queued transfers pause when app storage falls below this reserve.") },
         )
     }
 }
@@ -1276,10 +1417,17 @@ private fun ScheduleManagementCard(
     var draftDays by remember(rule.id, editing) { mutableStateOf(scheduleString(rule.constraintsJson, "days", "Every day")) }
     var draftStart by remember(rule.id, editing) { mutableStateOf(scheduleString(rule.constraintsJson, "startTime", "")) }
     var draftEnd by remember(rule.id, editing) { mutableStateOf(scheduleString(rule.constraintsJson, "endTime", "")) }
-    var draftUnmetered by remember(rule.id, editing) { mutableStateOf(scheduleBoolean(rule.constraintsJson, "unmetered", false)) }
+    var draftNetworkRequirement by remember(rule.id, editing) { mutableStateOf(scheduleNetworkRequirement(rule.constraintsJson)) }
     var draftCharging by remember(rule.id, editing) { mutableStateOf(scheduleBoolean(rule.constraintsJson, "charging", false)) }
     var draftBattery by remember(rule.id, editing) { mutableStateOf(scheduleInt(rule.constraintsJson, "minimumBatteryPercent")?.toString().orEmpty()) }
-    val draftConstraints = buildScheduleConstraintsJson(draftDays, draftStart, draftEnd, draftUnmetered, draftCharging, draftBattery)
+    var draftRetryStrategy by remember(rule.id, editing) { mutableStateOf(scheduleRetryStrategy(rule.constraintsJson)) }
+    var draftMaxAutoRetries by remember(rule.id, editing) { mutableStateOf(scheduleInt(rule.constraintsJson, "maxAutoRetries")?.toString() ?: "4") }
+    var draftStopOnStoragePressure by remember(rule.id, editing) { mutableStateOf(scheduleBoolean(rule.constraintsJson, "stopOnStoragePressure", true)) }
+    var draftMinimumFreeStorageMb by remember(rule.id, editing) { mutableStateOf(scheduleInt(rule.constraintsJson, "minimumFreeStorageMb")?.toString() ?: "512") }
+    val draftConstraints = buildScheduleConstraintsJson(
+        draftDays, draftStart, draftEnd, draftNetworkRequirement, draftCharging, draftBattery,
+        draftRetryStrategy, draftMaxAutoRetries, draftStopOnStoragePressure, draftMinimumFreeStorageMb,
+    )
 
     XdmListCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -1312,12 +1460,20 @@ private fun ScheduleManagementCard(
                 onStartTimeChanged = { draftStart = it.take(5) },
                 endTime = draftEnd,
                 onEndTimeChanged = { draftEnd = it.take(5) },
-                unmeteredOnly = draftUnmetered,
-                onUnmeteredOnlyChanged = { draftUnmetered = it },
+                networkRequirement = draftNetworkRequirement,
+                onNetworkRequirementChanged = { draftNetworkRequirement = it },
                 chargingRequired = draftCharging,
                 onChargingRequiredChanged = { draftCharging = it },
                 minimumBattery = draftBattery,
                 onMinimumBatteryChanged = { draftBattery = it.filter { char -> char.isDigit() }.take(3) },
+                retryStrategy = draftRetryStrategy,
+                onRetryStrategyChanged = { draftRetryStrategy = it },
+                maxAutoRetries = draftMaxAutoRetries,
+                onMaxAutoRetriesChanged = { draftMaxAutoRetries = it.filter(Char::isDigit).take(2) },
+                stopOnStoragePressure = draftStopOnStoragePressure,
+                onStopOnStoragePressureChanged = { draftStopOnStoragePressure = it },
+                minimumFreeStorageMb = draftMinimumFreeStorageMb,
+                onMinimumFreeStorageMbChanged = { draftMinimumFreeStorageMb = it.filter(Char::isDigit).take(5) },
             )
             XdmActionFlowRow {
                 Button(
@@ -1340,7 +1496,7 @@ private fun ScheduleManagementCard(
 }
 
 @Composable
-fun ActivityOverviewScreen(state: MainUiState) {
+fun ActivityOverviewScreen(state: MainUiState, onEvaluateQueueIntelligence: () -> Unit) {
     val activeStates = setOf(
         DownloadState.Connecting,
         DownloadState.Downloading,
@@ -1369,6 +1525,28 @@ fun ActivityOverviewScreen(state: MainUiState) {
                     StatusPill("$waiting waiting", XdmStatusTone.Neutral)
                     StatusPill("$completed completed", if (completed > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
                     attention.takeIf { it > 0 }?.let { StatusPill("$it need attention", XdmStatusTone.Warning) }
+                }
+            }
+        }
+        item {
+            XdmListCard(compact = true) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        XdmCardTitle("Queue policy status")
+                        XdmSupportingText(state.queueIntelligence.message, maxLines = 3)
+                    }
+                    TextButton(onClick = onEvaluateQueueIntelligence) { Text("Evaluate now") }
+                }
+                XdmActionFlowRow {
+                    if (state.queueIntelligence.heldForNetwork > 0) StatusPill("${state.queueIntelligence.heldForNetwork} network", XdmStatusTone.Info)
+                    if (state.queueIntelligence.heldForPower > 0) StatusPill("${state.queueIntelligence.heldForPower} power", XdmStatusTone.Neutral)
+                    if (state.queueIntelligence.heldForStorage > 0) StatusPill("${state.queueIntelligence.heldForStorage} storage", XdmStatusTone.Warning)
+                    if (state.queueIntelligence.heldForConcurrency > 0) StatusPill("${state.queueIntelligence.heldForConcurrency} queue limit", XdmStatusTone.Neutral)
+                    if (state.queueIntelligence.waitingForRetry > 0) StatusPill("${state.queueIntelligence.waitingForRetry} backoff", XdmStatusTone.Neutral)
+                    if (state.queueIntelligence.manualReviewRequired > 0) StatusPill("${state.queueIntelligence.manualReviewRequired} review", XdmStatusTone.Warning)
+                }
+                state.queueIntelligence.recentDecisions.take(4).forEach { event ->
+                    XdmMetadataText("${event.title} • ${event.fileName}: ${event.detail}", maxLines = 2)
                 }
             }
         }
@@ -3553,17 +3731,27 @@ private fun buildScheduleConstraintsJson(
     days: String,
     startTime: String,
     endTime: String,
-    unmeteredOnly: Boolean,
+    networkRequirement: QueueNetworkRequirement,
     chargingRequired: Boolean,
     minimumBattery: String,
+    retryStrategy: QueueRetryStrategy,
+    maxAutoRetries: String,
+    stopOnStoragePressure: Boolean,
+    minimumFreeStorageMb: String,
 ): String {
     val json = JSONObject()
     days.trim().takeIf(String::isNotBlank)?.let { json.put("days", it) }
     startTime.trim().takeIf(String::isNotBlank)?.let { json.put("startTime", it) }
     endTime.trim().takeIf(String::isNotBlank)?.let { json.put("endTime", it) }
-    if (unmeteredOnly) json.put("unmetered", true)
+    json.put("networkRequirement", networkRequirement.name.lowercase())
+    if (networkRequirement == QueueNetworkRequirement.Unmetered) json.put("unmetered", true)
+    if (networkRequirement == QueueNetworkRequirement.Wifi) json.put("wifiOnly", true)
     if (chargingRequired) json.put("charging", true)
-    minimumBattery.toIntOrNull()?.coerceIn(0, 100)?.let { json.put("minimumBatteryPercent", it) }
+    minimumBattery.toIntOrNull()?.coerceIn(1, 100)?.let { json.put("minimumBatteryPercent", it) }
+    json.put("retryStrategy", retryStrategy.name.lowercase())
+    json.put("maxAutoRetries", maxAutoRetries.toIntOrNull()?.coerceIn(0, 12) ?: 4)
+    json.put("stopOnStoragePressure", stopOnStoragePressure)
+    minimumFreeStorageMb.toIntOrNull()?.coerceIn(128, 16_384)?.let { json.put("minimumFreeStorageMb", it) }
     return json.toString()
 }
 
@@ -3578,6 +3766,21 @@ private fun scheduleString(rawJson: String, key: String, default: String): Strin
 private fun scheduleInt(rawJson: String, key: String): Int? = runCatching {
     JSONObject(rawJson).takeIf { it.has(key) }?.optInt(key)
 }.getOrNull()
+
+private fun scheduleNetworkRequirement(rawJson: String): QueueNetworkRequirement = runCatching {
+    val json = JSONObject(rawJson)
+    when {
+        json.optBoolean("wifiOnly", false) -> QueueNetworkRequirement.Wifi
+        json.optBoolean("unmetered", false) || json.optBoolean("unmeteredOnly", false) -> QueueNetworkRequirement.Unmetered
+        else -> QueueNetworkRequirement.entries.firstOrNull { it.name.equals(json.optString("networkRequirement"), ignoreCase = true) }
+            ?: QueueNetworkRequirement.Any
+    }
+}.getOrDefault(QueueNetworkRequirement.Any)
+
+private fun scheduleRetryStrategy(rawJson: String): QueueRetryStrategy = runCatching {
+    val value = JSONObject(rawJson).optString("retryStrategy", "balanced")
+    QueueRetryStrategy.entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: QueueRetryStrategy.Balanced
+}.getOrDefault(QueueRetryStrategy.Balanced)
 
 private fun nextRunSummary(enabled: Boolean, rawJson: String): String {
     if (!enabled) return "Disabled; it will not run until enabled."
@@ -3658,10 +3861,19 @@ private fun scheduleConstraintSummary(rawJson: String): List<String> {
                 val end = json.optString("endTime").takeIf { it.isNotBlank() }
                 add(if (end == null) "Starts at $start" else "Time: $start–$end")
             }
-            if (json.optBoolean("unmetered", false) || json.optBoolean("unmeteredOnly", false)) add("Network: Unmetered only")
+            when {
+                json.optBoolean("wifiOnly", false) -> add("Network: Wi-Fi only")
+                json.optBoolean("unmetered", false) || json.optBoolean("unmeteredOnly", false) -> add("Network: Unmetered only")
+                json.optString("networkRequirement").isNotBlank() -> add("Network: ${humanizeValue(json.optString("networkRequirement"))}")
+            }
             if (json.optBoolean("charging", false) || json.optBoolean("requiresCharging", false)) add("Power: Charging required")
             json.optInt("minimumBatteryPercent", -1).takeIf { it >= 0 }?.let { add("Battery: At least $it%") }
-            json.optString("networkType").takeIf { it.isNotBlank() }?.let { add("Network: ${humanizeValue(it)}") }
+            json.optString("retryStrategy").takeIf { it.isNotBlank() }?.let { retry ->
+                add("Retry: ${humanizeValue(retry)} • ${json.optInt("maxAutoRetries", 4)} max")
+            }
+            if (json.optBoolean("stopOnStoragePressure", false)) {
+                add("Storage reserve: ${json.optInt("minimumFreeStorageMb", 512)} MB")
+            }
             if (isEmpty()) {
                 json.keys().asSequence().forEach { key ->
                     val value = json.opt(key)

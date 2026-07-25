@@ -51,6 +51,7 @@ import com.mikeyphw.xdm.android.media.MediaTrackSelection
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.QueueDefinition
+import com.mikeyphw.xdm.android.model.QueueIntelligenceSummary
 import com.mikeyphw.xdm.android.model.RecoveryRecord
 import com.mikeyphw.xdm.android.model.InstallUpdateReadinessReport
 import com.mikeyphw.xdm.android.model.FinalPublicReleaseGate
@@ -77,7 +78,7 @@ import com.mikeyphw.xdm.android.model.SavedSearch
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
-import com.mikeyphw.xdm.android.scheduler.TransferExecutionStarter
+import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceCoordinator
 import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
 import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
 import com.mikeyphw.xdm.android.storage.DestinationUris
@@ -123,6 +124,7 @@ data class MainUiState(
     val schedules: List<ScheduleRule> = emptyList(),
     val recovery: List<RecoveryRecord> = emptyList(),
     val activeTransfers: ActiveTransferSummary = ActiveTransferSummary(),
+    val queueIntelligence: QueueIntelligenceSummary = QueueIntelligenceSummary(),
     val destinationUri: String = DestinationUris.PUBLIC_DOWNLOADS,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val externalAddDraft: DownloadIntakeDraft? = null,
@@ -201,7 +203,7 @@ class MainViewModel(
     private val preferences: UserPreferencesStore,
     private val backendSelectionPolicy: BackendSelectionPolicy,
     private val transferRuntime: TransferExecutionRuntime,
-    private val executionStarter: TransferExecutionStarter,
+    private val queueIntelligenceCoordinator: QueueIntelligenceCoordinator,
     private val destinationWriter: AndroidDestinationWriter,
     private val aria2ProcessManager: Aria2ProcessManager,
     private val termuxBridgeManager: TermuxBridgeManager,
@@ -374,6 +376,7 @@ class MainViewModel(
 
     private data class RuntimeUiSnapshot(
         val activeTransfers: ActiveTransferSummary,
+        val queueIntelligence: QueueIntelligenceSummary,
         val aria2: Aria2DiagnosticsUi,
         val capabilities: List<BackendCapabilityRow>,
         val termuxBridge: TermuxBridgeStatus,
@@ -393,8 +396,8 @@ class MainViewModel(
         TermuxUiSnapshot(bridge, aria2, mediaPipeline, postAutomation)
     }
 
-    private val runtimeUi = combine(transferRuntime.summary, aria2Diagnostics, capabilitySnapshot, termuxUi) { active, aria2, capabilities, termux ->
-        RuntimeUiSnapshot(active, aria2, backendSelectionPolicy.capabilityRows(capabilities), termux.bridge, termux.aria2, termux.mediaPipeline, termux.postProcessingAutomation)
+    private val runtimeUi = combine(transferRuntime.summary, queueIntelligenceCoordinator.status, aria2Diagnostics, capabilitySnapshot, termuxUi) { active, queueIntelligence, aria2, capabilities, termux ->
+        RuntimeUiSnapshot(active, queueIntelligence, aria2, backendSelectionPolicy.capabilityRows(capabilities), termux.bridge, termux.aria2, termux.mediaPipeline, termux.postProcessingAutomation)
     }
 
     val uiState: StateFlow<MainUiState> = combine(
@@ -423,6 +426,7 @@ class MainViewModel(
             schedules = snapshot.schedules,
             recovery = snapshot.recovery,
             activeTransfers = runtime.activeTransfers,
+            queueIntelligence = runtime.queueIntelligence,
             destinationUri = prefs.destinationUri,
             conflictPolicy = prefs.conflictPolicy,
             externalAddDraft = addDraft,
@@ -541,7 +545,7 @@ class MainViewModel(
             maxConcurrent = maxConcurrent.coerceIn(1, 16),
             createdAtEpochMs = System.currentTimeMillis(),
         )
-        viewModelScope.launch(Dispatchers.IO) { repository.saveQueue(queue) }
+        viewModelScope.launch(Dispatchers.IO) { repository.saveQueue(queue); queueIntelligenceCoordinator.reconcile() }
     }
 
     fun updateQueue(queue: QueueDefinition, name: String, maxConcurrent: Int, enabled: Boolean) {
@@ -550,16 +554,16 @@ class MainViewModel(
             maxConcurrent = maxConcurrent.coerceIn(1, 16),
             isEnabled = enabled,
         )
-        viewModelScope.launch(Dispatchers.IO) { repository.saveQueue(updated) }
+        viewModelScope.launch(Dispatchers.IO) { repository.saveQueue(updated); queueIntelligenceCoordinator.reconcile() }
     }
 
     fun setQueueEnabled(queue: QueueDefinition, enabled: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) { repository.saveQueue(queue.copy(isEnabled = enabled)) }
+        viewModelScope.launch(Dispatchers.IO) { repository.saveQueue(queue.copy(isEnabled = enabled)); queueIntelligenceCoordinator.reconcile() }
     }
 
     fun deleteQueue(queue: QueueDefinition) {
         if (queue.id == "default") return
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteQueue(queue.id) }
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteQueue(queue.id); queueIntelligenceCoordinator.reconcile() }
     }
 
     fun createSchedule(name: String, queueId: String?, constraintsJson: String) {
@@ -571,7 +575,7 @@ class MainViewModel(
             enabled = true,
             constraintsJson = constraintsJson.ifBlank { "{}" },
         )
-        viewModelScope.launch(Dispatchers.IO) { repository.saveSchedule(rule) }
+        viewModelScope.launch(Dispatchers.IO) { repository.saveSchedule(rule); queueIntelligenceCoordinator.reconcile() }
     }
 
     fun updateSchedule(rule: ScheduleRule, name: String, queueId: String?, enabled: Boolean, constraintsJson: String) {
@@ -581,15 +585,31 @@ class MainViewModel(
             enabled = enabled,
             constraintsJson = constraintsJson.ifBlank { "{}" },
         )
-        viewModelScope.launch(Dispatchers.IO) { repository.saveSchedule(updated) }
+        viewModelScope.launch(Dispatchers.IO) { repository.saveSchedule(updated); queueIntelligenceCoordinator.reconcile() }
     }
 
     fun setScheduleEnabled(rule: ScheduleRule, enabled: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) { repository.saveSchedule(rule.copy(enabled = enabled)) }
+        viewModelScope.launch(Dispatchers.IO) { repository.saveSchedule(rule.copy(enabled = enabled)); queueIntelligenceCoordinator.reconcile() }
     }
 
     fun deleteSchedule(rule: ScheduleRule) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteSchedule(rule.id) }
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteSchedule(rule.id); queueIntelligenceCoordinator.reconcile() }
+    }
+
+
+    fun runQueueIntelligenceNow() {
+        viewModelScope.launch(Dispatchers.IO) { queueIntelligenceCoordinator.reconcile() }
+    }
+
+    fun startIgnoringQueuePolicy(download: Download) {
+        viewModelScope.launch(Dispatchers.IO) {
+            queueIntelligenceCoordinator.requestStart(
+                downloadId = download.id,
+                userVisible = true,
+                manual = true,
+                policyOverride = true,
+            )
+        }
     }
 
     fun runAria2SmokeTest() {
@@ -818,7 +838,7 @@ class MainViewModel(
         val candidates = downloads.filter { it.state in setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower) }
         if (candidates.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            candidates.forEach { executionStarter.start(it.id, it.totalBytes, userVisible = true) }
+            candidates.forEach { queueIntelligenceCoordinator.requestStart(it.id, userVisible = true, manual = true) }
         }
     }
 
@@ -939,7 +959,7 @@ class MainViewModel(
                     ),
                 )
             }
-            executionStarter.start(download.id, userVisible = true)
+            queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
             externalAddDraft.value = null
             navigate(AppRoute.Downloads)
         }
@@ -987,7 +1007,7 @@ class MainViewModel(
             val downloadId = record.downloadId ?: return@launch
             val current = repository.findDownload(downloadId) ?: return@launch
             repository.save(current.copy(state = DownloadState.Queued, errorMessage = null, updatedAtEpochMs = System.currentTimeMillis()))
-            executionStarter.start(downloadId, current.totalBytes, userVisible = true)
+            queueIntelligenceCoordinator.requestStart(downloadId, userVisible = true, manual = true)
         }
     }
 
@@ -1062,7 +1082,7 @@ class MainViewModel(
             }
             AutomationCommandAction.ResumeAll -> {
                 val paused = repository.findDownloadsByStates(setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower))
-                paused.forEach { executionStarter.start(it.id, it.totalBytes, userVisible = true) }
+                paused.forEach { queueIntelligenceCoordinator.requestStart(it.id, userVisible = true, manual = true) }
                 repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Executed, resultMessage = "Resume requested for ${paused.size} download(s)", updatedAtEpochMs = System.currentTimeMillis()))
             }
             AutomationCommandAction.Unknown -> repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Unsupported automation action", rejectionReason = AutomationRejectionReason.UnsupportedAction, updatedAtEpochMs = System.currentTimeMillis()))
@@ -1189,7 +1209,7 @@ class MainViewModel(
         )
         repository.save(download)
         repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Executed, resultMessage = "Queued download", downloadId = download.id, updatedAtEpochMs = System.currentTimeMillis()))
-        executionStarter.start(download.id, userVisible = true)
+        queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
         navigate(AppRoute.Downloads)
     }
 
@@ -1345,7 +1365,7 @@ class MainViewModel(
             )
             repository.save(download)
             repository.markMediaDownloadCreated(record.id, download.id, now)
-            executionStarter.start(download.id, userVisible = true)
+            queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
             navigate(AppRoute.Downloads)
         }
     }
@@ -1422,7 +1442,7 @@ class MainViewModel(
     fun resumeAll() {
         viewModelScope.launch {
             val paused = repository.findDownloadsByStates(setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower))
-            paused.forEach { executionStarter.start(it.id, it.totalBytes, userVisible = true) }
+            paused.forEach { queueIntelligenceCoordinator.requestStart(it.id, userVisible = true, manual = true) }
         }
     }
 
@@ -1432,7 +1452,7 @@ class MainViewModel(
                 DownloadState.Downloading, DownloadState.Connecting, DownloadState.Queued, DownloadState.Finalizing -> transferRuntime.pause(download.id)
                 DownloadState.Paused, DownloadState.Failed, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower -> {
                     repository.save(download.copy(state = DownloadState.Queued, errorMessage = null, updatedAtEpochMs = System.currentTimeMillis()))
-                    executionStarter.start(download.id, download.totalBytes, userVisible = true)
+                    queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
                 }
                 else -> Unit
             }
@@ -1487,7 +1507,7 @@ class MainViewModel(
             container.preferences,
             container.backendSelectionPolicy,
             container.transferRuntime,
-            container.executionStarter,
+            container.queueIntelligenceCoordinator,
             container.destinationWriter,
             container.aria2ProcessManager,
             container.termuxBridgeManager,

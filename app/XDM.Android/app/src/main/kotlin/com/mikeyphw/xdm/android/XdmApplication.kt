@@ -12,6 +12,10 @@ import com.mikeyphw.xdm.android.persistence.RoomChecksumWorkflowStore
 import com.mikeyphw.xdm.android.persistence.RoomRecoveryWorkflowStore
 import com.mikeyphw.xdm.android.persistence.RoomFinalizationJournalStore
 import com.mikeyphw.xdm.android.scheduler.RepositoryTransferDownloadStore
+import com.mikeyphw.xdm.android.scheduler.QueueConditionMonitor
+import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceCoordinator
+import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceProvider
+import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceWorker
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionStarter
 import com.mikeyphw.xdm.android.scheduler.TransferNotifications
@@ -34,13 +38,19 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
 
-class XdmApplication : Application(), TransferRuntimeProvider {
+class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider {
     lateinit var container: AppContainer
         private set
 
     override lateinit var transferRuntime: TransferExecutionRuntime
         private set
+
+    override lateinit var queueIntelligenceCoordinator: QueueIntelligenceCoordinator
+        private set
+
+    private lateinit var queueConditionMonitor: QueueConditionMonitor
 
     override fun onCreate() {
         super.onCreate()
@@ -103,18 +113,20 @@ class XdmApplication : Application(), TransferRuntimeProvider {
             ),
         )
         TransferNotifications(this).ensureChannels()
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            transferRuntime.scanStartupRecovery()
-            transferRuntime.restoreInterruptedTransfers()
-            transferRuntime.reconcilePersistedOwnership()
-        }
+        val executionStarter = TransferExecutionStarter(this)
+        queueIntelligenceCoordinator = QueueIntelligenceCoordinator(
+            context = this,
+            repository = repository,
+            executionStarter = executionStarter,
+        )
         container = AppContainer(
             repository = repository,
             preferences = UserPreferencesStore(this),
             ownershipStore = ownershipStore,
             backendSelectionPolicy = BackendSelectionPolicy(),
             transferRuntime = transferRuntime,
-            executionStarter = TransferExecutionStarter(this),
+            executionStarter = executionStarter,
+            queueIntelligenceCoordinator = queueIntelligenceCoordinator,
             destinationWriter = destinationWriter,
             aria2ProcessManager = aria2ProcessManager,
             termuxBridgeManager = termuxBridgeManager,
@@ -122,6 +134,23 @@ class XdmApplication : Application(), TransferRuntimeProvider {
             termuxMediaPipelineManager = termuxMediaPipelineManager,
             postProcessingAutomationManager = postProcessingAutomationManager,
         )
+        queueConditionMonitor = QueueConditionMonitor(this) {
+            QueueIntelligenceWorker.enqueueImmediate(this)
+        }
+        QueueIntelligenceWorker.schedule(this)
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            transferRuntime.scanStartupRecovery()
+            transferRuntime.restoreInterruptedTransfers()
+            transferRuntime.reconcilePersistedOwnership()
+            queueConditionMonitor.start()
+            QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)
+        }
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            transferRuntime.terminalEvents.collectLatest { event ->
+                queueIntelligenceCoordinator.recordTerminalEvent(event)
+                QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)
+            }
+        }
     }
 }
 
@@ -132,6 +161,7 @@ data class AppContainer(
     val backendSelectionPolicy: BackendSelectionPolicy,
     val transferRuntime: TransferExecutionRuntime,
     val executionStarter: TransferExecutionStarter,
+    val queueIntelligenceCoordinator: QueueIntelligenceCoordinator,
     val destinationWriter: AndroidDestinationWriter,
     val aria2ProcessManager: Aria2ProcessManager,
     val termuxBridgeManager: TermuxBridgeManager,

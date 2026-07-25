@@ -127,6 +127,7 @@ private fun AppScaffold(
                     state.downloads,
                     state.compactDensity,
                     state.activeTransfers,
+                    state.queueIntelligence,
                     state.backendCapabilities,
                     state.checksumResults,
                     state.verificationRecords,
@@ -150,6 +151,8 @@ private fun AppScaffold(
                     viewModel::resumeAll,
                     viewModel::previewPostProcessingForDownload,
                     viewModel::runPostProcessingForDownload,
+                    viewModel::runQueueIntelligenceNow,
+                    viewModel::startIgnoringQueuePolicy,
                 )
                 AppRoute.Add -> AddDownloadScreen(
                     destinationUri = state.destinationUri,
@@ -274,7 +277,7 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
         }
         Box(Modifier.fillMaxWidth().weight(1f)) {
             when (panel) {
-                ActivityPanel.Overview -> ActivityOverviewScreen(state)
+                ActivityPanel.Overview -> ActivityOverviewScreen(state, viewModel::runQueueIntelligenceNow)
                 ActivityPanel.Queues -> QueuesScreen(
                     queues = state.queues,
                     onCreateQueue = viewModel::createQueue,
@@ -285,10 +288,12 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
                 ActivityPanel.Schedule -> SchedulerScreen(
                     rules = state.schedules,
                     queues = state.queues,
+                    queueIntelligence = state.queueIntelligence,
                     onCreateSchedule = viewModel::createSchedule,
                     onUpdateSchedule = viewModel::updateSchedule,
                     onToggleSchedule = viewModel::setScheduleEnabled,
                     onDeleteSchedule = viewModel::deleteSchedule,
+                    onEvaluateNow = viewModel::runQueueIntelligenceNow,
                 )
                 ActivityPanel.Recovery -> RecoveryScreen(
                     state.recovery,

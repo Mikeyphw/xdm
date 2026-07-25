@@ -1,3 +1,10 @@
+## XDM Android downloader experience: Phase 8C
+
+- Added an explainable queue policy gate for validated network, network type, charging, battery, storage reserve, schedules, per-queue concurrency, priority fairness, and classified retry backoff.
+- Moved automatic condition-driven execution into a foreground WorkManager worker so background evaluation does not spawn a second foreground service.
+- Added condition-change monitoring, persistent secret-free decision history, and an explicit Start anyway action for soft policy overrides.
+- Preserved native, aria2, Termux, resolver, recovery, library, Media3, six-route navigation, Room schema 14, `versionCode 21`, and `versionName 0.20.0-rc08`.
+
 ## XDM Android downloader experience: Phase 8A + 8B
 
 - Added a pure review planner for manual and external Add Download intake with URL normalization, semantic classification, readiness steps, and explicit direct-versus-media choice.

@@ -74,7 +74,7 @@ for marker in ("AppRoute.Queues ->", "AppRoute.Scheduler ->", "AppRoute.Recovery
 screens = read("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt")
 for marker in (
     "fun MediaLibraryScreen(",
-    "fun ActivityOverviewScreen(state: MainUiState)",
+    "fun ActivityOverviewScreen(",
     "Completed media, playback readiness, sidecar health",
     "A single operational workspace for queue control",
 ):
