@@ -26,8 +26,8 @@ def require(text: str, marker: str, owner: str) -> None:
 manifest = json.loads(read("PROJECT_MANIFEST.json") or "{}")
 expected_overlay = "xdm_android_browser_removal_phase8c_queue_intelligence_execution_policy_overlay.zip"
 current_overlay = str(manifest.get("current_overlay", ""))
-if current_overlay != expected_overlay and not current_overlay.startswith("xdm_android_browser_removal_phase8d_"):
-    errors.append("current_overlay must identify Phase 8C or its approved Phase 8D successor")
+if current_overlay != expected_overlay and not current_overlay.startswith(("xdm_android_browser_removal_phase8d_", "xdm_android_browser_removal_phase8e_")):
+    errors.append("current_overlay must identify Phase 8C or its approved Phase 8D/8E successor")
 phase = manifest.get("downloader_experience_phase8c", {})
 for key in (
     "explainable_execution_policy",
@@ -104,7 +104,7 @@ if "executionStarter.start" in worker:
 for path, markers in {
     "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueDecisionLedger.kt": (
         "class QueueDecisionLedger",
-        "MAX_EVENTS = 60",
+        "MAX_EVENTS = 240",
         "xdm_queue_decision_ledger",
     ),
     "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueConditionMonitor.kt": (

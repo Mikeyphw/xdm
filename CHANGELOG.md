@@ -1,3 +1,10 @@
+## XDM Android downloader experience: Phase 8E
+
+- Turned Activity into a unified operational timeline for transfers, queue decisions, handoffs, verification, finalization, and recovery.
+- Added searchable Timeline, unresolved Attention, explainable Decisions, bounded transfer-transition retention, and privacy-safe diagnostics export.
+- Added Downloads health links for attention and policy holds while preserving queues, schedules, recovery, diagnostics, all engines, the Phase 8D resolver, Room schema 14, `versionCode 21`, and `versionName 0.20.0-rc08`.
+- Kept the built-in browser absent and external browser handoff intact.
+
 ## XDM Android downloader experience: Phase 8D
 
 - Promoted the Media destination into a first-class resolver workspace with explicit source, probe, stream, selection, review, ready, failed, and protected states.

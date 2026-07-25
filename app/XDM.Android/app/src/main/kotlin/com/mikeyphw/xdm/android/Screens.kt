@@ -78,6 +78,7 @@ import com.mikeyphw.xdm.android.model.DuplicateUrlRule
 import com.mikeyphw.xdm.android.model.HistoryManagementPolicy
 import com.mikeyphw.xdm.android.model.HistoryManagementReport
 import com.mikeyphw.xdm.android.model.OrganizationPowerToolsReport
+import com.mikeyphw.xdm.android.model.OperationalActivitySummary
 import com.mikeyphw.xdm.android.model.PostProcessingSettings
 import com.mikeyphw.xdm.android.model.ProtocolExpansionReport
 import com.mikeyphw.xdm.android.model.ProxyCredentialSettings
@@ -193,6 +194,7 @@ fun DownloadsScreen(
     compact: Boolean,
     active: ActiveTransferSummary,
     queueIntelligence: QueueIntelligenceSummary,
+    activitySummary: OperationalActivitySummary,
     capabilities: List<BackendCapabilityRow>,
     checksumResults: List<ChecksumResult>,
     verificationRecords: List<VerificationRecord>,
@@ -218,6 +220,8 @@ fun DownloadsScreen(
     onRunPostProcessing: (Download) -> Unit,
     onEvaluateQueueIntelligence: () -> Unit,
     onStartIgnoringQueuePolicy: (Download) -> Unit,
+    onOpenActivityAttention: () -> Unit,
+    onOpenActivityDecisions: () -> Unit,
 ) {
     val context = LocalContext.current
     var filter by remember { mutableStateOf<DownloadState?>(null) }
@@ -239,6 +243,7 @@ fun DownloadsScreen(
             downloads = downloads,
             active = active,
             queueIntelligence = queueIntelligence,
+            activitySummary = activitySummary,
             historyReport = historyReport,
             dashboard = overviewDashboard,
             showHistoryTools = showHistoryTools,
@@ -248,6 +253,8 @@ fun DownloadsScreen(
             onPauseAll = onPauseAll,
             onResumeAll = onResumeAll,
             onEvaluateQueueIntelligence = onEvaluateQueueIntelligence,
+            onOpenActivityAttention = onOpenActivityAttention,
+            onOpenActivityDecisions = onOpenActivityDecisions,
         )
         OrganizationPowerToolsCard(
             report = organizationReport,
@@ -330,6 +337,7 @@ private fun DownloadListSummary(
     downloads: List<Download>,
     active: ActiveTransferSummary,
     queueIntelligence: QueueIntelligenceSummary,
+    activitySummary: OperationalActivitySummary,
     historyReport: HistoryManagementReport,
     dashboard: DownloadDashboard,
     showHistoryTools: Boolean,
@@ -339,6 +347,8 @@ private fun DownloadListSummary(
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
     onEvaluateQueueIntelligence: () -> Unit,
+    onOpenActivityAttention: () -> Unit,
+    onOpenActivityDecisions: () -> Unit,
 ) {
     val failed = dashboard.summary.needsAttention
     val completed = dashboard.summary.completed
@@ -380,12 +390,28 @@ private fun DownloadListSummary(
                         TextButton(onClick = onEvaluateQueueIntelligence) { Text("Evaluate now") }
                     }
                     XdmActionFlowRow {
-                        if (queueIntelligence.started > 0) XdmStatusBadge("${queueIntelligence.started} started", XdmStatusTone.Success)
-                        if (queueIntelligence.heldForNetwork > 0) XdmStatusBadge("${queueIntelligence.heldForNetwork} network", XdmStatusTone.Info)
-                        if (queueIntelligence.heldForPower > 0) XdmStatusBadge("${queueIntelligence.heldForPower} power", XdmStatusTone.Neutral)
-                        if (queueIntelligence.heldForStorage > 0) XdmStatusBadge("${queueIntelligence.heldForStorage} storage", XdmStatusTone.Error)
-                        if (queueIntelligence.heldForSchedule > 0) XdmStatusBadge("${queueIntelligence.heldForSchedule} schedule", XdmStatusTone.Neutral)
-                        if (queueIntelligence.waitingForRetry > 0) XdmStatusBadge("${queueIntelligence.waitingForRetry} retry", XdmStatusTone.Neutral)
+                        if (queueIntelligence.started > 0) XdmStatusBadge("${queueIntelligence.started} started", tone = XdmStatusTone.Success)
+                        if (queueIntelligence.heldForNetwork > 0) XdmStatusBadge("${queueIntelligence.heldForNetwork} network", tone = XdmStatusTone.Info)
+                        if (queueIntelligence.heldForPower > 0) XdmStatusBadge("${queueIntelligence.heldForPower} power", tone = XdmStatusTone.Neutral)
+                        if (queueIntelligence.heldForStorage > 0) XdmStatusBadge("${queueIntelligence.heldForStorage} storage", tone = XdmStatusTone.Error)
+                        if (queueIntelligence.heldForSchedule > 0) XdmStatusBadge("${queueIntelligence.heldForSchedule} schedule", tone = XdmStatusTone.Neutral)
+                        if (queueIntelligence.waitingForRetry > 0) XdmStatusBadge("${queueIntelligence.waitingForRetry} retry", tone = XdmStatusTone.Neutral)
+                    }
+                }
+            }
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    XdmCardTitle("Operational health")
+                    XdmSupportingText("Activity keeps transfer failures and queue decisions searchable without crowding the download list.", maxLines = 2)
+                    XdmActionFlowRow {
+                        if (activitySummary.unresolved > 0) XdmStatusBadge("${activitySummary.unresolved} need attention", tone = XdmStatusTone.Error)
+                        if (activitySummary.policyHolds > 0) XdmStatusBadge("${activitySummary.policyHolds} policy holds", tone = XdmStatusTone.Warning)
+                        if (activitySummary.networkHolds > 0) XdmStatusBadge("${activitySummary.networkHolds} network", tone = XdmStatusTone.Info)
+                        if (activitySummary.storageHolds > 0) XdmStatusBadge("${activitySummary.storageHolds} storage", tone = XdmStatusTone.Warning)
+                    }
+                    XdmActionFlowRow {
+                        TextButton(onClick = onOpenActivityAttention, enabled = activitySummary.unresolved > 0) { Text("Open attention") }
+                        TextButton(onClick = onOpenActivityDecisions, enabled = activitySummary.policyHolds > 0) { Text("Queue decisions") }
                     }
                 }
             }
@@ -840,7 +866,7 @@ fun AddDownloadScreen(
                                     XdmCardTitle("Link received")
                                     XdmSupportingText(externalIntakeGuidance(externalKind))
                                 }
-                                externalKind?.let { kind -> XdmStatusBadge(kind.externalLabel(), XdmStatusTone.Info) }
+                                externalKind?.let { kind -> XdmStatusBadge(kind.externalLabel(), tone = XdmStatusTone.Info) }
                             }
                             XdmMetadataText("Source: ${externalSourceLabel ?: "External app"}")
                             externalPageTitle?.takeIf(String::isNotBlank)?.let { XdmMetadataText("Page: ${it.take(120)}") }
@@ -1502,7 +1528,13 @@ private fun ScheduleManagementCard(
 }
 
 @Composable
-fun ActivityOverviewScreen(state: MainUiState, onEvaluateQueueIntelligence: () -> Unit) {
+fun ActivityOverviewScreen(
+    state: MainUiState,
+    onEvaluateQueueIntelligence: () -> Unit,
+    onOpenTimeline: () -> Unit,
+    onOpenAttention: () -> Unit,
+    onOpenDecisions: () -> Unit,
+) {
     val activeStates = setOf(
         DownloadState.Connecting,
         DownloadState.Downloading,
@@ -1528,11 +1560,20 @@ fun ActivityOverviewScreen(state: MainUiState, onEvaluateQueueIntelligence: () -
                 XdmSupportingText("A single operational workspace for queue control, schedules, recovery, diagnostics, and external handoff history.", maxLines = 3)
                 XdmActionFlowRow {
                     StatusPill("$active active", if (active > 0) XdmStatusTone.Info else XdmStatusTone.Neutral)
-                    StatusPill("$waiting waiting", XdmStatusTone.Neutral)
+                    StatusPill("$waiting waiting", tone = XdmStatusTone.Neutral)
                     StatusPill("$completed completed", if (completed > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
-                    attention.takeIf { it > 0 }?.let { StatusPill("$it need attention", XdmStatusTone.Warning) }
+                    attention.takeIf { it > 0 }?.let { StatusPill("$it need attention", tone = XdmStatusTone.Warning) }
                 }
             }
+        }
+        item {
+            OperationalActivityOverviewCard(
+                summary = state.activitySummary,
+                events = state.activityEvents,
+                onOpenTimeline = onOpenTimeline,
+                onOpenAttention = onOpenAttention,
+                onOpenDecisions = onOpenDecisions,
+            )
         }
         item {
             XdmListCard(compact = true) {
@@ -1544,12 +1585,12 @@ fun ActivityOverviewScreen(state: MainUiState, onEvaluateQueueIntelligence: () -
                     TextButton(onClick = onEvaluateQueueIntelligence) { Text("Evaluate now") }
                 }
                 XdmActionFlowRow {
-                    if (state.queueIntelligence.heldForNetwork > 0) StatusPill("${state.queueIntelligence.heldForNetwork} network", XdmStatusTone.Info)
-                    if (state.queueIntelligence.heldForPower > 0) StatusPill("${state.queueIntelligence.heldForPower} power", XdmStatusTone.Neutral)
-                    if (state.queueIntelligence.heldForStorage > 0) StatusPill("${state.queueIntelligence.heldForStorage} storage", XdmStatusTone.Warning)
-                    if (state.queueIntelligence.heldForConcurrency > 0) StatusPill("${state.queueIntelligence.heldForConcurrency} queue limit", XdmStatusTone.Neutral)
-                    if (state.queueIntelligence.waitingForRetry > 0) StatusPill("${state.queueIntelligence.waitingForRetry} backoff", XdmStatusTone.Neutral)
-                    if (state.queueIntelligence.manualReviewRequired > 0) StatusPill("${state.queueIntelligence.manualReviewRequired} review", XdmStatusTone.Warning)
+                    if (state.queueIntelligence.heldForNetwork > 0) StatusPill("${state.queueIntelligence.heldForNetwork} network", tone = XdmStatusTone.Info)
+                    if (state.queueIntelligence.heldForPower > 0) StatusPill("${state.queueIntelligence.heldForPower} power", tone = XdmStatusTone.Neutral)
+                    if (state.queueIntelligence.heldForStorage > 0) StatusPill("${state.queueIntelligence.heldForStorage} storage", tone = XdmStatusTone.Warning)
+                    if (state.queueIntelligence.heldForConcurrency > 0) StatusPill("${state.queueIntelligence.heldForConcurrency} queue limit", tone = XdmStatusTone.Neutral)
+                    if (state.queueIntelligence.waitingForRetry > 0) StatusPill("${state.queueIntelligence.waitingForRetry} backoff", tone = XdmStatusTone.Neutral)
+                    if (state.queueIntelligence.manualReviewRequired > 0) StatusPill("${state.queueIntelligence.manualReviewRequired} review", tone = XdmStatusTone.Warning)
                 }
                 state.queueIntelligence.recentDecisions.take(4).forEach { event ->
                     XdmMetadataText("${event.title} • ${event.fileName}: ${event.detail}", maxLines = 2)
@@ -1560,8 +1601,8 @@ fun ActivityOverviewScreen(state: MainUiState, onEvaluateQueueIntelligence: () -
             XdmListCard(compact = true) {
                 XdmCardTitle("Automation and recovery")
                 XdmActionFlowRow {
-                    StatusPill("${state.queues.size} queues", XdmStatusTone.Info)
-                    StatusPill("${state.schedules.count { it.enabled }} schedules enabled", XdmStatusTone.Neutral)
+                    StatusPill("${state.queues.size} queues", tone = XdmStatusTone.Info)
+                    StatusPill("${state.schedules.count { it.enabled }} schedules enabled", tone = XdmStatusTone.Neutral)
                     StatusPill("${state.recovery.size} recovery records", if (state.recovery.isEmpty()) XdmStatusTone.Success else XdmStatusTone.Warning)
                     StatusPill(state.postProcessingAutomation.readinessLabel, if (state.postProcessingAutomation.failedEvents.isEmpty()) XdmStatusTone.Success else XdmStatusTone.Warning)
                 }
@@ -1572,10 +1613,10 @@ fun ActivityOverviewScreen(state: MainUiState, onEvaluateQueueIntelligence: () -
             XdmListCard(compact = true) {
                 XdmCardTitle("External handoffs")
                 XdmActionFlowRow {
-                    StatusPill("${state.automationCommands.size} recorded", XdmStatusTone.Neutral)
+                    StatusPill("${state.automationCommands.size} recorded", tone = XdmStatusTone.Neutral)
                     val rejected = state.automationCommands.count { it.status == AutomationCommandStatus.Rejected }
                     StatusPill("$rejected rejected", if (rejected > 0) XdmStatusTone.Warning else XdmStatusTone.Success)
-                    StatusPill("${state.clipboardInbox.size} clipboard items", XdmStatusTone.Info)
+                    StatusPill("${state.clipboardInbox.size} clipboard items", tone = XdmStatusTone.Info)
                 }
                 state.automationCommands.take(4).forEach { command ->
                     XdmMetadataText(command.redactedDiagnosticLine(), maxLines = 2)
@@ -1610,10 +1651,10 @@ fun MediaLibraryScreen(
             XdmCardTitle("Library")
             XdmSupportingText("Completed media, playback readiness, sidecar health, and safe retry actions live here instead of competing with the media intake workbench.", maxLines = 3)
             XdmActionFlowRow {
-                StatusPill("${library.visibleCount} items", XdmStatusTone.Neutral)
+                StatusPill("${library.visibleCount} items", tone = XdmStatusTone.Neutral)
                 StatusPill("${library.playableCount} playable", if (library.playableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
-                library.failedCount.takeIf { it > 0 }?.let { StatusPill("$it failed", XdmStatusTone.Warning) }
-                library.missingCount.takeIf { it > 0 }?.let { StatusPill("$it missing", XdmStatusTone.Warning) }
+                library.failedCount.takeIf { it > 0 }?.let { StatusPill("$it failed", tone = XdmStatusTone.Warning) }
+                library.missingCount.takeIf { it > 0 }?.let { StatusPill("$it missing", tone = XdmStatusTone.Warning) }
             }
         }
         LazyColumn(
@@ -1869,9 +1910,9 @@ private fun MediaFinalValidationGateCard(dashboard: MediaFinalValidationDashboar
             )
             XdmActionFlowRow {
                 StatusPill(if (dashboard.readyForFullValidation) "ready for full validation" else "validation blockers", if (dashboard.readyForFullValidation) XdmStatusTone.Success else XdmStatusTone.Warning)
-                dashboard.blockerCount.takeIf { it > 0 }?.let { StatusPill("$it blocker", XdmStatusTone.Error) }
-                dashboard.reviewCount.takeIf { it > 0 }?.let { StatusPill("$it review", XdmStatusTone.Warning) }
-                StatusPill("${dashboard.commandCount} commands", XdmStatusTone.Info)
+                dashboard.blockerCount.takeIf { it > 0 }?.let { StatusPill("$it blocker", tone = XdmStatusTone.Error) }
+                dashboard.reviewCount.takeIf { it > 0 }?.let { StatusPill("$it review", tone = XdmStatusTone.Warning) }
+                StatusPill("${dashboard.commandCount} commands", tone = XdmStatusTone.Info)
                 StatusPill(if (dashboard.warningGate) "warning-zero" else "warning review", if (dashboard.warningGate) XdmStatusTone.Success else XdmStatusTone.Warning)
                 StatusPill(if (dashboard.noNewTopLevelRoutes) "no new routes" else "route review", if (dashboard.noNewTopLevelRoutes) XdmStatusTone.Success else XdmStatusTone.Error)
                 StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
@@ -1917,10 +1958,10 @@ private fun MediaMobilePolishCard(dashboard: MediaMobilePolishDashboard) {
                 maxLines = 4,
             )
             XdmActionFlowRow {
-                StatusPill(dashboard.mode.label, XdmStatusTone.Info)
-                StatusPill("${dashboard.visiblePrimarySectionCount} primary", XdmStatusTone.Neutral)
-                dashboard.collapsedDiagnosticsCount.takeIf { it > 0 }?.let { StatusPill("$it collapsed", XdmStatusTone.Info) }
-                dashboard.attentionCount.takeIf { it > 0 }?.let { StatusPill("$it attention", XdmStatusTone.Warning) }
+                StatusPill(dashboard.mode.label, tone = XdmStatusTone.Info)
+                StatusPill("${dashboard.visiblePrimarySectionCount} primary", tone = XdmStatusTone.Neutral)
+                dashboard.collapsedDiagnosticsCount.takeIf { it > 0 }?.let { StatusPill("$it collapsed", tone = XdmStatusTone.Info) }
+                dashboard.attentionCount.takeIf { it > 0 }?.let { StatusPill("$it attention", tone = XdmStatusTone.Warning) }
                 StatusPill(if (dashboard.noTinyScrollIslands) "no tiny scroll islands" else "scroll review", if (dashboard.noTinyScrollIslands) XdmStatusTone.Success else XdmStatusTone.Warning)
                 StatusPill(if (dashboard.accessibilityReady) "accessibility-ready" else "accessibility review", if (dashboard.accessibilityReady) XdmStatusTone.Success else XdmStatusTone.Warning)
                 StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
@@ -1947,8 +1988,8 @@ private fun MediaMobilePolishCard(dashboard: MediaMobilePolishDashboard) {
                         StatusPill(section.priority.label, toneForMobilePriority(section.priority))
                     }
                     XdmActionFlowRow {
-                        StatusPill("max ${section.recommendedMaxRows}", XdmStatusTone.Neutral)
-                        if (section.collapsedByDefault) StatusPill("collapsed", XdmStatusTone.Info)
+                        StatusPill("max ${section.recommendedMaxRows}", tone = XdmStatusTone.Neutral)
+                        if (section.collapsedByDefault) StatusPill("collapsed", tone = XdmStatusTone.Info)
                     }
                 }
             }
@@ -1978,11 +2019,11 @@ private fun MediaCaptureQualityCard(dashboard: MediaCaptureQualityDashboard) {
             )
             XdmActionFlowRow {
                 StatusPill("${dashboard.treasureCount} treasure", if (dashboard.treasureCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
-                dashboard.noiseCount.takeIf { it > 0 }?.let { StatusPill("$it noise", XdmStatusTone.Warning) }
-                dashboard.duplicateCount.takeIf { it > 0 }?.let { StatusPill("$it grouped", XdmStatusTone.Info) }
-                dashboard.refreshCount.takeIf { it > 0 }?.let { StatusPill("$it refresh", XdmStatusTone.Warning) }
-                dashboard.protectedCount.takeIf { it > 0 }?.let { StatusPill("$it protected", XdmStatusTone.Warning) }
-                dashboard.liveCount.takeIf { it > 0 }?.let { StatusPill("$it live", XdmStatusTone.Info) }
+                dashboard.noiseCount.takeIf { it > 0 }?.let { StatusPill("$it noise", tone = XdmStatusTone.Warning) }
+                dashboard.duplicateCount.takeIf { it > 0 }?.let { StatusPill("$it grouped", tone = XdmStatusTone.Info) }
+                dashboard.refreshCount.takeIf { it > 0 }?.let { StatusPill("$it refresh", tone = XdmStatusTone.Warning) }
+                dashboard.protectedCount.takeIf { it > 0 }?.let { StatusPill("$it protected", tone = XdmStatusTone.Warning) }
+                dashboard.liveCount.takeIf { it > 0 }?.let { StatusPill("$it live", tone = XdmStatusTone.Info) }
                 StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
@@ -2000,11 +2041,11 @@ private fun MediaCaptureQualityCard(dashboard: MediaCaptureQualityDashboard) {
                             StatusPill(row.disposition.label, toneForCaptureQuality(row.disposition))
                         }
                         XdmActionFlowRow {
-                            StatusPill("confidence ${row.confidenceScore}", XdmStatusTone.Info)
-                            StatusPill(row.sourceHost.ifBlank { "unknown host" }, XdmStatusTone.Neutral)
-                            if (row.ignoredByDefault) StatusPill("ignored by default", XdmStatusTone.Warning)
-                            if (row.refreshMetadataAvailable) StatusPill("refresh metadata", XdmStatusTone.Warning)
-                            row.duplicateOfCaptureId?.let { StatusPill("grouped", XdmStatusTone.Info) }
+                            StatusPill("confidence ${row.confidenceScore}", tone = XdmStatusTone.Info)
+                            StatusPill(row.sourceHost.ifBlank { "unknown host" }, tone = XdmStatusTone.Neutral)
+                            if (row.ignoredByDefault) StatusPill("ignored by default", tone = XdmStatusTone.Warning)
+                            if (row.refreshMetadataAvailable) StatusPill("refresh metadata", tone = XdmStatusTone.Warning)
+                            row.duplicateOfCaptureId?.let { StatusPill("grouped", tone = XdmStatusTone.Info) }
                         }
                     }
                 }
@@ -2032,10 +2073,10 @@ private fun SessionPrivacyAuditCard(dashboard: MediaSessionPrivacyAuditDashboard
                 maxLines = 3,
             )
             XdmActionFlowRow {
-                dashboard.blockerCount.takeIf { it > 0 }?.let { StatusPill("$it blocker", XdmStatusTone.Error) }
-                dashboard.reviewCount.takeIf { it > 0 }?.let { StatusPill("$it review", XdmStatusTone.Warning) }
-                dashboard.cleanupDueCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup due", XdmStatusTone.Warning) }
-                dashboard.cleanupVerifiedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup verified", XdmStatusTone.Success) }
+                dashboard.blockerCount.takeIf { it > 0 }?.let { StatusPill("$it blocker", tone = XdmStatusTone.Error) }
+                dashboard.reviewCount.takeIf { it > 0 }?.let { StatusPill("$it review", tone = XdmStatusTone.Warning) }
+                dashboard.cleanupDueCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup due", tone = XdmStatusTone.Warning) }
+                dashboard.cleanupVerifiedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup verified", tone = XdmStatusTone.Success) }
                 StatusPill(if (dashboard.durableSecretSafe) "durable secret-safe" else "durable leak blocked", if (dashboard.durableSecretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
                 StatusPill(if (dashboard.transientCleanupHealthy) "cleanup healthy" else "cleanup review", if (dashboard.transientCleanupHealthy) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
@@ -2054,8 +2095,8 @@ private fun SessionPrivacyAuditCard(dashboard: MediaSessionPrivacyAuditDashboard
                             StatusPill(finding.severity.label, toneForPrivacySeverity(finding.severity))
                         }
                         XdmActionFlowRow {
-                            StatusPill(finding.cleanupState.label, XdmStatusTone.Neutral)
-                            finding.captureId?.let { StatusPill(it.take(18), XdmStatusTone.Info) }
+                            StatusPill(finding.cleanupState.label, tone = XdmStatusTone.Neutral)
+                            finding.captureId?.let { StatusPill(it.take(18), tone = XdmStatusTone.Info) }
                         }
                     }
                 }
@@ -2079,9 +2120,9 @@ private fun MediaDispatchDashboardCard(dashboard: MediaDispatchDashboard, plans:
             XdmSupportingText("Phase 22 dispatch runbook maps each resolver choice to a safe lane, background policy, retry policy, progress signals, and terminal cleanup before the job leaves the Media inbox.", maxLines = 3)
             XdmActionFlowRow {
                 StatusPill("${dashboard.readyCount} ready", if (dashboard.readyCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
-                dashboard.blockedCount.takeIf { it > 0 }?.let { StatusPill("$it blocked", XdmStatusTone.Warning) }
-                dashboard.refreshCount.takeIf { it > 0 }?.let { StatusPill("$it refresh", XdmStatusTone.Warning) }
-                dashboard.termuxSetupCount.takeIf { it > 0 }?.let { StatusPill("$it Termux setup", XdmStatusTone.Info) }
+                dashboard.blockedCount.takeIf { it > 0 }?.let { StatusPill("$it blocked", tone = XdmStatusTone.Warning) }
+                dashboard.refreshCount.takeIf { it > 0 }?.let { StatusPill("$it refresh", tone = XdmStatusTone.Warning) }
+                dashboard.termuxSetupCount.takeIf { it > 0 }?.let { StatusPill("$it Termux setup", tone = XdmStatusTone.Info) }
                 StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
@@ -2099,10 +2140,10 @@ private fun MediaDispatchDashboardCard(dashboard: MediaDispatchDashboard, plans:
                             StatusPill(plan.readiness.label, toneForDispatchReadiness(plan.readiness))
                         }
                         XdmActionFlowRow {
-                            StatusPill(plan.lane.label, XdmStatusTone.Info)
+                            StatusPill(plan.lane.label, tone = XdmStatusTone.Info)
                             StatusPill(plan.primaryActionLabel, if (plan.queueButtonEnabled) XdmStatusTone.Success else XdmStatusTone.Neutral)
-                            StatusPill("${plan.steps.size} steps", XdmStatusTone.Neutral)
-                            plan.progressSignals.firstOrNull()?.let { StatusPill(it.label, XdmStatusTone.Info) }
+                            StatusPill("${plan.steps.size} steps", tone = XdmStatusTone.Neutral)
+                            plan.progressSignals.firstOrNull()?.let { StatusPill(it.label, tone = XdmStatusTone.Info) }
                         }
                         plan.warnings.takeIf { it.isNotEmpty() }?.let { warnings ->
                             XdmMetadataText("Warnings: ${warnings.joinToString(" • ")}", maxLines = 2)
@@ -2126,10 +2167,10 @@ private fun MediaQueueTelemetryCard(deck: MediaQueueTelemetryDeck) {
             )
             XdmActionFlowRow {
                 StatusPill("${deck.readyToLaunchCount} ready", if (deck.readyToLaunchCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
-                deck.activeCount.takeIf { it > 0 }?.let { StatusPill("$it active", XdmStatusTone.Info) }
-                deck.needsAttentionCount.takeIf { it > 0 }?.let { StatusPill("$it attention", XdmStatusTone.Warning) }
-                deck.cleanupArmedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup armed", XdmStatusTone.Neutral) }
-                deck.terminalCount.takeIf { it > 0 }?.let { StatusPill("$it terminal", XdmStatusTone.Neutral) }
+                deck.activeCount.takeIf { it > 0 }?.let { StatusPill("$it active", tone = XdmStatusTone.Info) }
+                deck.needsAttentionCount.takeIf { it > 0 }?.let { StatusPill("$it attention", tone = XdmStatusTone.Warning) }
+                deck.cleanupArmedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup armed", tone = XdmStatusTone.Neutral) }
+                deck.terminalCount.takeIf { it > 0 }?.let { StatusPill("$it terminal", tone = XdmStatusTone.Neutral) }
                 StatusPill(if (deck.secretSafe) "secret-safe telemetry" else "redaction review", if (deck.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(deck.summary, maxLines = 3)
@@ -2147,9 +2188,9 @@ private fun MediaQueueTelemetryCard(deck: MediaQueueTelemetryDeck) {
                             StatusPill(row.tone.label, toneForQueueTelemetry(row.tone))
                         }
                         XdmActionFlowRow {
-                            StatusPill(row.progressLabel, XdmStatusTone.Info)
+                            StatusPill(row.progressLabel, tone = XdmStatusTone.Info)
                             StatusPill(row.nextActionLabel, if (row.stalled) XdmStatusTone.Warning else XdmStatusTone.Neutral)
-                            if (row.cleanupArmed) StatusPill("Terminal cleanup", XdmStatusTone.Success)
+                            if (row.cleanupArmed) StatusPill("Terminal cleanup", tone = XdmStatusTone.Success)
                             StatusPill(if (row.secretSafe) "No leak" else "Leak blocked", if (row.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
                         }
                     }
@@ -2172,13 +2213,13 @@ private fun OfflineLibraryV2Card(dashboard: OfflineLibraryV2Dashboard) {
                 maxLines = 3,
             )
             XdmActionFlowRow {
-                StatusPill("${dashboard.visibleCount} visible", XdmStatusTone.Neutral)
-                dashboard.playableCount.takeIf { it > 0 }?.let { StatusPill("$it playable", XdmStatusTone.Success) }
-                dashboard.videoCount.takeIf { it > 0 }?.let { StatusPill("$it video", XdmStatusTone.Info) }
-                dashboard.audioCount.takeIf { it > 0 }?.let { StatusPill("$it audio", XdmStatusTone.Info) }
-                dashboard.failedCount.takeIf { it > 0 }?.let { StatusPill("$it failed", XdmStatusTone.Warning) }
-                dashboard.missingCount.takeIf { it > 0 }?.let { StatusPill("$it missing", XdmStatusTone.Warning) }
-                dashboard.cleanupCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup", XdmStatusTone.Neutral) }
+                StatusPill("${dashboard.visibleCount} visible", tone = XdmStatusTone.Neutral)
+                dashboard.playableCount.takeIf { it > 0 }?.let { StatusPill("$it playable", tone = XdmStatusTone.Success) }
+                dashboard.videoCount.takeIf { it > 0 }?.let { StatusPill("$it video", tone = XdmStatusTone.Info) }
+                dashboard.audioCount.takeIf { it > 0 }?.let { StatusPill("$it audio", tone = XdmStatusTone.Info) }
+                dashboard.failedCount.takeIf { it > 0 }?.let { StatusPill("$it failed", tone = XdmStatusTone.Warning) }
+                dashboard.missingCount.takeIf { it > 0 }?.let { StatusPill("$it missing", tone = XdmStatusTone.Warning) }
+                dashboard.cleanupCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup", tone = XdmStatusTone.Neutral) }
                 StatusPill(if (dashboard.secretSafe) "safe export" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText("Filters: ${OfflineLibraryV2Filter.entries.joinToString { it.label }}", maxLines = 2)
@@ -2231,9 +2272,9 @@ private fun PlayerDiagnosticsDeckCard(reports: List<MediaPlayerDiagnosticReport>
                 maxLines = 3,
             )
             XdmActionFlowRow {
-                StatusPill("${reports.size} reports", XdmStatusTone.Neutral)
-                reports.count { it.retryPrepareAvailable }.takeIf { it > 0 }?.let { StatusPill("$it retry", XdmStatusTone.Info) }
-                reports.count { it.protectedDiagnosticOnly }.takeIf { it > 0 }?.let { StatusPill("$it protected", XdmStatusTone.Warning) }
+                StatusPill("${reports.size} reports", tone = XdmStatusTone.Neutral)
+                reports.count { it.retryPrepareAvailable }.takeIf { it > 0 }?.let { StatusPill("$it retry", tone = XdmStatusTone.Info) }
+                reports.count { it.protectedDiagnosticOnly }.takeIf { it > 0 }?.let { StatusPill("$it protected", tone = XdmStatusTone.Warning) }
                 StatusPill(if (reports.all { it.sourceSafe }) "source-safe" else "redaction review", if (reports.all { it.sourceSafe }) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             reports.take(3).forEach { report -> PlayerDiagnosticsReportCard(report) }
@@ -2285,9 +2326,9 @@ private fun MediaNativeDirectDownloadEngineCard(dashboard: NativeDirectDashboard
             )
             XdmActionFlowRow {
                 StatusPill("${dashboard.readyCount} ready", if (dashboard.readyCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
-                dashboard.resumeCount.takeIf { it > 0 }?.let { StatusPill("$it resumable", XdmStatusTone.Info) }
-                dashboard.permissionCount.takeIf { it > 0 }?.let { StatusPill("$it permission", XdmStatusTone.Warning) }
-                dashboard.unsupportedCount.takeIf { it > 0 }?.let { StatusPill("$it adaptive", XdmStatusTone.Neutral) }
+                dashboard.resumeCount.takeIf { it > 0 }?.let { StatusPill("$it resumable", tone = XdmStatusTone.Info) }
+                dashboard.permissionCount.takeIf { it > 0 }?.let { StatusPill("$it permission", tone = XdmStatusTone.Warning) }
+                dashboard.unsupportedCount.takeIf { it > 0 }?.let { StatusPill("$it adaptive", tone = XdmStatusTone.Neutral) }
                 StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             dashboard.plans.take(3).forEach { plan -> NativeDirectDownloadPlanRow(plan) }
@@ -2317,8 +2358,8 @@ private fun MediaTermuxRuntimeAdapterCard(dashboard: TermuxRuntimeDashboard) {
             )
             XdmActionFlowRow {
                 StatusPill("${dashboard.launchableCount} launchable", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
-                dashboard.missingToolCount.takeIf { it > 0 }?.let { StatusPill("$it missing tools", XdmStatusTone.Warning) }
-                dashboard.cleanupArmedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup armed", XdmStatusTone.Info) }
+                dashboard.missingToolCount.takeIf { it > 0 }?.let { StatusPill("$it missing tools", tone = XdmStatusTone.Warning) }
+                dashboard.cleanupArmedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup armed", tone = XdmStatusTone.Info) }
                 StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             dashboard.plans.take(3).forEach { plan -> TermuxRuntimeLaunchPlanRow(plan) }
@@ -2351,10 +2392,10 @@ private fun MediaWorkerBridgeCard(dashboard: MediaWorkerBridgeDashboard) {
             )
             XdmActionFlowRow {
                 StatusPill("${dashboard.launchableCount} launchable", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
-                dashboard.androidWorkerCount.takeIf { it > 0 }?.let { StatusPill("$it Android", XdmStatusTone.Info) }
-                dashboard.termuxWorkerCount.takeIf { it > 0 }?.let { StatusPill("$it Termux", XdmStatusTone.Info) }
-                dashboard.blockedCount.takeIf { it > 0 }?.let { StatusPill("$it blocked", XdmStatusTone.Warning) }
-                dashboard.confirmationCount.takeIf { it > 0 }?.let { StatusPill("$it confirm", XdmStatusTone.Warning) }
+                dashboard.androidWorkerCount.takeIf { it > 0 }?.let { StatusPill("$it Android", tone = XdmStatusTone.Info) }
+                dashboard.termuxWorkerCount.takeIf { it > 0 }?.let { StatusPill("$it Termux", tone = XdmStatusTone.Info) }
+                dashboard.blockedCount.takeIf { it > 0 }?.let { StatusPill("$it blocked", tone = XdmStatusTone.Warning) }
+                dashboard.confirmationCount.takeIf { it > 0 }?.let { StatusPill("$it confirm", tone = XdmStatusTone.Warning) }
                 StatusPill(if (dashboard.secretSafe) "secret-safe bridge" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
@@ -2381,9 +2422,9 @@ private fun MediaWorkerBridgePlanCard(request: MediaWorkerBridgeRequest) {
         }
         XdmActionFlowRow {
             StatusPill(request.kind.label, toneForWorkerBridge(request.readiness, request.kind))
-            StatusPill(request.backgroundPolicy.workKind.label, XdmStatusTone.Neutral)
+            StatusPill(request.backgroundPolicy.workKind.label, tone = XdmStatusTone.Neutral)
             StatusPill(if (request.adapter.rawShellExposed) "raw shell" else "typed adapter", if (request.adapter.rawShellExposed) XdmStatusTone.Warning else XdmStatusTone.Success)
-            if (request.cleanupAfterTerminal.isNotEmpty()) StatusPill("cleanup owned", XdmStatusTone.Success)
+            if (request.cleanupAfterTerminal.isNotEmpty()) StatusPill("cleanup owned", tone = XdmStatusTone.Success)
             StatusPill(if (request.secretSafe) "No leak" else "Leak blocked", if (request.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
         }
     }
@@ -2408,10 +2449,10 @@ private fun MediaQueueActionsCard(dashboard: MediaQueueActionDashboard) {
             )
             XdmActionFlowRow {
                 StatusPill("${dashboard.launchableCount} launch", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
-                dashboard.pausableCount.takeIf { it > 0 }?.let { StatusPill("$it pause", XdmStatusTone.Info) }
-                dashboard.retryableCount.takeIf { it > 0 }?.let { StatusPill("$it retry/resume", XdmStatusTone.Warning) }
-                dashboard.cancellableCount.takeIf { it > 0 }?.let { StatusPill("$it cancel", XdmStatusTone.Warning) }
-                dashboard.cleanupCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup", XdmStatusTone.Neutral) }
+                dashboard.pausableCount.takeIf { it > 0 }?.let { StatusPill("$it pause", tone = XdmStatusTone.Info) }
+                dashboard.retryableCount.takeIf { it > 0 }?.let { StatusPill("$it retry/resume", tone = XdmStatusTone.Warning) }
+                dashboard.cancellableCount.takeIf { it > 0 }?.let { StatusPill("$it cancel", tone = XdmStatusTone.Warning) }
+                dashboard.cleanupCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup", tone = XdmStatusTone.Neutral) }
                 StatusPill(if (dashboard.secretSafe) "secret-safe actions" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
@@ -2486,9 +2527,9 @@ private fun OfflineMediaLibraryCard(summary: OfflineMediaLibrarySummary, items: 
             XdmSupportingText(summary.message, maxLines = 3)
             XdmActionFlowRow {
                 StatusPill("${summary.playableCount} playable", if (summary.playableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
-                summary.adaptiveCount.takeIf { it > 0 }?.let { StatusPill("$it adaptive", XdmStatusTone.Info) }
-                summary.audioOnlyCount.takeIf { it > 0 }?.let { StatusPill("$it audio", XdmStatusTone.Neutral) }
-                summary.subtitleTrackCount.takeIf { it > 0 }?.let { StatusPill("$it subtitles", XdmStatusTone.Neutral) }
+                summary.adaptiveCount.takeIf { it > 0 }?.let { StatusPill("$it adaptive", tone = XdmStatusTone.Info) }
+                summary.audioOnlyCount.takeIf { it > 0 }?.let { StatusPill("$it audio", tone = XdmStatusTone.Neutral) }
+                summary.subtitleTrackCount.takeIf { it > 0 }?.let { StatusPill("$it subtitles", tone = XdmStatusTone.Neutral) }
             }
             XdmMetadataText("Offline media library persists redacted sidecar metadata beside completed files: title, thumbnail, duration, source host, selected track IDs, and safe playback state.", maxLines = 3)
             if (items.isEmpty()) {
@@ -2505,9 +2546,9 @@ private fun OfflineMediaLibraryCard(summary: OfflineMediaLibrarySummary, items: 
                             StatusPill(item.state?.name ?: "Captured", if (item.isCompleted) XdmStatusTone.Success else XdmStatusTone.Neutral)
                         }
                         XdmActionFlowRow {
-                            item.pageHost?.takeIf { it.isNotBlank() }?.let { StatusPill("Page $it", XdmStatusTone.Info) }
-                            item.thumbnailUrl?.takeIf { it.isNotBlank() }?.let { StatusPill("Thumbnail", XdmStatusTone.Info) }
-                            item.downloadId?.let { StatusPill("Job", XdmStatusTone.Neutral) }
+                            item.pageHost?.takeIf { it.isNotBlank() }?.let { StatusPill("Page $it", tone = XdmStatusTone.Info) }
+                            item.thumbnailUrl?.takeIf { it.isNotBlank() }?.let { StatusPill("Thumbnail", tone = XdmStatusTone.Info) }
+                            item.downloadId?.let { StatusPill("Job", tone = XdmStatusTone.Neutral) }
                         }
                         XdmMetadataText("Sidecar: ${item.sidecar.toRedactedJson()}", maxLines = 2)
                         val playbackCandidate = item.toPlaybackCandidate()
@@ -2621,7 +2662,7 @@ private fun MediaCaptureCard(
                 XdmCardTitle(capture.title, maxLines = 1)
                 XdmMetadataText(mediaOriginLabel(capture), maxLines = 1)
             }
-            StatusPill(capture.kind.uiLabel(), XdmStatusTone.Info)
+            StatusPill(capture.kind.uiLabel(), tone = XdmStatusTone.Info)
         }
         XdmSupportingText(
             listOfNotNull(
@@ -2635,7 +2676,7 @@ private fun MediaCaptureCard(
             StatusPill(capture.status.uiLabel(), if (capture.status == MediaCaptureStatus.DownloadCreated) XdmStatusTone.Success else XdmStatusTone.Neutral)
             StatusPill(capture.resolutionStatus.uiLabel(), if (capture.resolutionStatus == MediaResolutionStatus.Failed || capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh) XdmStatusTone.Warning else XdmStatusTone.Neutral)
             StatusPill(mediaPlan.displayName, if (mediaPlan.strategy == MediaDownloadStrategy.UnsupportedProtected) XdmStatusTone.Warning else XdmStatusTone.Info)
-            capture.downloadId?.let { StatusPill("Queued", XdmStatusTone.Success) }
+            capture.downloadId?.let { StatusPill("Queued", tone = XdmStatusTone.Success) }
         }
         XdmMetadataText(mediaPlan.explanation, maxLines = 3)
         MediaResolverWorkspaceCard(resolverWorkspace)
@@ -2723,7 +2764,7 @@ private fun MediaResolverHistoryCard(rows: List<MediaResolverHistoryRow>) {
                 XdmCardTitle("Recent resolutions")
                 XdmSupportingText("Resolver history is derived from downloader media captures. No browser history, page archive, cookie value, or authorization value is stored.", maxLines = 3)
             }
-            StatusPill("${rows.size} recent", XdmStatusTone.Neutral)
+            StatusPill("${rows.size} recent", tone = XdmStatusTone.Neutral)
         }
         if (rows.isEmpty()) {
             XdmMetadataText("Share a media or page URL to create the first review-first resolver entry.", maxLines = 2)
@@ -2770,10 +2811,10 @@ private fun MediaResolverWorkspaceCard(workspace: MediaResolverWorkspace) {
                 StatusPill(workspace.probe.statusLabel, if (workspace.probe.warnings.isEmpty()) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmActionFlowRow {
-                StatusPill("${workspace.probe.formatCount} formats", XdmStatusTone.Info)
-                StatusPill(if (workspace.session.cookiesAvailable) "Cookies available / redacted" else "No cookies", XdmStatusTone.Neutral)
-                if (workspace.session.authorizationAvailable) StatusPill("Authorization present / redacted", XdmStatusTone.Warning)
-                if (workspace.session.referrerHost != null) StatusPill("Referrer ${workspace.session.referrerHost}", XdmStatusTone.Neutral)
+                StatusPill("${workspace.probe.formatCount} formats", tone = XdmStatusTone.Info)
+                StatusPill(if (workspace.session.cookiesAvailable) "Cookies available / redacted" else "No cookies", tone = XdmStatusTone.Neutral)
+                if (workspace.session.authorizationAvailable) StatusPill("Authorization present / redacted", tone = XdmStatusTone.Warning)
+                if (workspace.session.referrerHost != null) StatusPill("Referrer ${workspace.session.referrerHost}", tone = XdmStatusTone.Neutral)
             }
             workspace.probe.warnings.take(3).forEach { warning -> XdmMetadataText(warning, maxLines = 2) }
             XdmMetadataText(workspace.session.redactedSummary, maxLines = 3)
@@ -2812,7 +2853,7 @@ private fun MediaFormatComparisonCard(rows: List<MediaResolverFormatRow>, notes:
                         XdmSupportingText(row.detail, maxLines = 2)
                         XdmMetadataText(listOfNotNull(row.bitrateLabel, row.estimatedSizeLabel, row.containerLabel).joinToString(" • "), maxLines = 2)
                     }
-                    if (row.selected) StatusPill("Selected", XdmStatusTone.Success)
+                    if (row.selected) StatusPill("Selected", tone = XdmStatusTone.Success)
                 }
                 XdmActionFlowRow {
                     row.recommendations.forEach { recommendation ->
@@ -2841,7 +2882,7 @@ private fun MediaTrackSelectionSummaryCard(audio: List<MediaResolverTrackRow>, s
                         XdmMetadataText("Audio • ${row.languageLabel}", maxLines = 1)
                         XdmSupportingText(row.detail, maxLines = 2)
                     }
-                    if (row.selected) StatusPill("Selected", XdmStatusTone.Success)
+                    if (row.selected) StatusPill("Selected", tone = XdmStatusTone.Success)
                 }
             }
         }
@@ -2852,12 +2893,12 @@ private fun MediaTrackSelectionSummaryCard(audio: List<MediaResolverTrackRow>, s
                         XdmMetadataText("Subtitles • ${row.languageLabel}", maxLines = 1)
                         XdmSupportingText(row.detail, maxLines = 2)
                     }
-                    if (row.selected) StatusPill("Selected", XdmStatusTone.Success)
+                    if (row.selected) StatusPill("Selected", tone = XdmStatusTone.Success)
                 }
                 XdmActionFlowRow {
-                    if (row.forced) StatusPill("Forced", XdmStatusTone.Warning)
-                    if (row.autoGenerated) StatusPill("Auto-generated", XdmStatusTone.Neutral)
-                    if (!row.forced && !row.autoGenerated) StatusPill("External track", XdmStatusTone.Info)
+                    if (row.forced) StatusPill("Forced", tone = XdmStatusTone.Warning)
+                    if (row.autoGenerated) StatusPill("Auto-generated", tone = XdmStatusTone.Neutral)
+                    if (!row.forced && !row.autoGenerated) StatusPill("External track", tone = XdmStatusTone.Info)
                 }
             }
         }
@@ -2877,10 +2918,10 @@ private fun MetadataProbePreviewCard(preview: YtDlpMetadataProbeResult, plan: Me
         XdmMetadataText("yt-dlp metadata preview")
         XdmSupportingText(preview.summary, maxLines = 2)
         XdmActionFlowRow {
-            preview.thumbnailUrl?.takeIf { it.isNotBlank() }?.let { StatusPill("Thumbnail", XdmStatusTone.Info) }
-            preview.durationMs?.let { StatusPill(preview.durationLabel, XdmStatusTone.Neutral) }
-            StatusPill("Probe ${if (preview.webpageUrl != null) "page" else "stream"}", XdmStatusTone.Info)
-            plan.ytDlpFormatSelector?.let { StatusPill("Format selector", XdmStatusTone.Neutral) }
+            preview.thumbnailUrl?.takeIf { it.isNotBlank() }?.let { StatusPill("Thumbnail", tone = XdmStatusTone.Info) }
+            preview.durationMs?.let { StatusPill(preview.durationLabel, tone = XdmStatusTone.Neutral) }
+            StatusPill("Probe ${if (preview.webpageUrl != null) "page" else "stream"}", tone = XdmStatusTone.Info)
+            plan.ytDlpFormatSelector?.let { StatusPill("Format selector", tone = XdmStatusTone.Neutral) }
         }
         plan.ytDlpFormatSelector?.let { XdmMetadataText("yt-dlp format: $it", maxLines = 2) }
     }
@@ -2907,8 +2948,8 @@ private fun MediaDispatchRunbookCard(plan: MediaDispatchPlan) {
         XdmActionFlowRow {
             StatusPill(plan.readiness.label, toneForDispatchReadiness(plan.readiness))
             StatusPill(plan.primaryActionLabel, if (plan.queueButtonEnabled) XdmStatusTone.Success else XdmStatusTone.Neutral)
-            StatusPill("${plan.steps.size} steps", XdmStatusTone.Neutral)
-            StatusPill("retry ${plan.retryPolicy.maxAttempts}", XdmStatusTone.Info)
+            StatusPill("${plan.steps.size} steps", tone = XdmStatusTone.Neutral)
+            StatusPill("retry ${plan.retryPolicy.maxAttempts}", tone = XdmStatusTone.Info)
         }
         XdmMetadataText(plan.safeDiagnostics, maxLines = 4)
         plan.steps.take(3).forEach { step ->
@@ -2926,10 +2967,10 @@ private fun MediaEngineHardeningCard(plan: MediaExecutionEnginePlan) {
             maxLines = 3,
         )
         XdmActionFlowRow {
-            StatusPill(plan.lane.label, XdmStatusTone.Info)
-            StatusPill(plan.backgroundPolicy.workKind.label, XdmStatusTone.Neutral)
-            plan.tempCookieFile?.let { StatusPill("Netscape cookie temp file", XdmStatusTone.Warning) }
-            plan.aria2Input?.let { StatusPill("aria2 transient input/session", XdmStatusTone.Info) }
+            StatusPill(plan.lane.label, tone = XdmStatusTone.Info)
+            StatusPill(plan.backgroundPolicy.workKind.label, tone = XdmStatusTone.Neutral)
+            plan.tempCookieFile?.let { StatusPill("Netscape cookie temp file", tone = XdmStatusTone.Warning) }
+            plan.aria2Input?.let { StatusPill("aria2 transient input/session", tone = XdmStatusTone.Info) }
             StatusPill(if (plan.leakReport.safe) "No cookie leaks" else "Review leaks", if (plan.leakReport.safe) XdmStatusTone.Success else XdmStatusTone.Warning)
         }
         XdmMetadataText("Cleanup verified: ${plan.cleanupActions.joinToString()}", maxLines = 2)
@@ -2943,7 +2984,7 @@ private fun ProtectedMediaDiagnosticsCard(plan: MediaDownloadPlan) {
         XdmSupportingText(plan.protectedDiagnostic.reason, maxLines = 3)
         XdmActionFlowRow {
             StatusPill(plan.protectedDiagnostic.label, if (plan.protectedDiagnostic.protected) XdmStatusTone.Warning else XdmStatusTone.Neutral)
-            plan.protectedDiagnostic.scheme?.let { StatusPill(it, XdmStatusTone.Warning) }
+            plan.protectedDiagnostic.scheme?.let { StatusPill(it, tone = XdmStatusTone.Warning) }
         }
         XdmMetadataText(plan.protectedDiagnostic.allowedAction, maxLines = 2)
     }

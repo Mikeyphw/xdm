@@ -16,6 +16,8 @@ Phase 8C adds explainable queue policy, classified retry backoff, condition-driv
 
 Phase 8D promotes Media into a first-class resolver workspace with rich format comparison, persistent video/audio/subtitle choices outside Room, redacted request-context review, protected-media diagnostics, and recent resolution history derived from downloader captures. The contract is documented in `docs/downloader/PHASE-8D-MEDIA-RESOLVER-POLISH.md`, and its validator is `tools/validate-downloader-experience-phase-8d.py`.
 
+Phase 8E turns Activity into a unified operational flight recorder with searchable Timeline, unresolved Attention, explainable queue Decisions, bounded transfer-transition retention, and privacy-safe diagnostics export. The contract is documented in `docs/downloader/PHASE-8E-ACTIVITY-DIAGNOSTICS.md`, and its validator is `tools/validate-downloader-experience-phase-8e.py`.
+
 Standalone Android download manager implemented through Phase 7: modular Kotlin/Compose architecture, Room persistence, reconciled physical-artifact ownership, native HTTP/HTTPS transfers, Android long-running execution, public/SAF storage, and a supervised authenticated loopback aria2 process boundary.
 
 
@@ -128,7 +130,7 @@ XDM Android now exposes settings import/export, history/file management, proxy/c
 
 The browser-free shell now uses six stable destinations: Downloads, Add, Media, Library, Activity, and Settings. Compact layouts keep Downloads, Media, Library, Activity, and Settings in the bottom bar, while Add remains globally available through the floating action button. Expanded layouts expose all six destinations in the navigation rail.
 
-Library owns completed media, playback readiness, sidecar health, resume, and retry. Activity keeps queue management, schedules, recovery, diagnostics, and privacy-safe external handoff history in one operational workspace. Persisted Queues, Scheduler, Recovery, and Diagnostics routes migrate to Activity automatically.
+Library owns completed media, playback readiness, sidecar health, resume, and retry. Activity keeps a searchable operational timeline, unresolved attention, explainable queue decisions, queue management, schedules, recovery, diagnostics, and privacy-safe external handoff history in one workspace. Persisted Queues, Scheduler, Recovery, and Diagnostics routes migrate to Activity automatically.
 
 ### External browser handoff and media discovery
 

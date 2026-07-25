@@ -219,6 +219,11 @@ class QueueIntelligenceCoordinator(
         }
     }
 
+    fun clearDecisionHistory() {
+        decisionLedger.clear()
+        _status.value = _status.value.copy(recentDecisions = emptyList(), message = "Queue decision history cleared; transfer records were not removed.")
+    }
+
     private suspend fun claimForLaunch(download: Download, decision: QueueLaunchDecision, manual: Boolean) {
         if (manual) retryLedger.clear(download.id)
         val current = repository.findDownload(download.id) ?: download

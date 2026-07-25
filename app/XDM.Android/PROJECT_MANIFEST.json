@@ -442,7 +442,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_browser_removal_phase8d_media_resolver_format_selection_overlay.zip",
+  "current_overlay": "xdm_android_browser_removal_phase8e_activity_diagnostics_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1238,6 +1238,43 @@
     "room_schema_unchanged": 14,
     "version_name_unchanged": "0.20.0-rc08",
     "version_code_unchanged": 21,
-    "next_phase": "phase8e_activity_diagnostics_polish"
+    "next_phase": "phase8e_activity_diagnostics_landed"
+  },
+  "downloader_experience_phase8e": {
+    "program": "downloader_product_polish",
+    "contract_document": "docs/downloader/PHASE-8E-ACTIVITY-DIAGNOSTICS.md",
+    "static_validator": "tools/validate-downloader-experience-phase-8e.py",
+    "model_contract": "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/OperationalActivity.kt",
+    "activity_store": "app/src/main/kotlin/com/mikeyphw/xdm/android/OperationalActivityStore.kt",
+    "activity_ui": "app/src/main/kotlin/com/mikeyphw/xdm/android/OperationalActivityScreens.kt",
+    "jvm_model_contract": "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/OperationalActivityTest.kt",
+    "app_contract": "app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8EContractTest.kt",
+    "unified_operational_timeline": true,
+    "search_category_severity_time_filters": true,
+    "unresolved_attention_workspace": true,
+    "explainable_queue_decisions": true,
+    "transfer_state_transition_ledger": true,
+    "bounded_retention_outside_room": true,
+    "privacy_safe_diagnostics_export": true,
+    "clear_history_preserves_transfers": true,
+    "downloads_health_deep_links": true,
+    "queue_schedule_recovery_diagnostics_preserved": true,
+    "phase8c_queue_policy_preserved": true,
+    "phase8d_media_resolver_preserved": true,
+    "external_handoff_preserved": true,
+    "all_download_engines_preserved": true,
+    "browser_runtime_remains_absent": true,
+    "stable_routes": [
+      "Downloads",
+      "Add",
+      "Media",
+      "Library",
+      "Activity",
+      "Settings"
+    ],
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "next_phase": "phase8f_downloader_release_preparation"
   }
 }

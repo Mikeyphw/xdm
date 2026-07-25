@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
@@ -21,7 +22,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
@@ -29,9 +29,6 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -128,6 +125,7 @@ private fun AppScaffold(
                     state.compactDensity,
                     state.activeTransfers,
                     state.queueIntelligence,
+                    state.activitySummary,
                     state.backendCapabilities,
                     state.checksumResults,
                     state.verificationRecords,
@@ -153,6 +151,8 @@ private fun AppScaffold(
                     viewModel::runPostProcessingForDownload,
                     viewModel::runQueueIntelligenceNow,
                     viewModel::startIgnoringQueuePolicy,
+                    { viewModel.navigateActivity(ActivityPanel.Attention) },
+                    { viewModel.navigateActivity(ActivityPanel.Decisions) },
                 )
                 AppRoute.Add -> AddDownloadScreen(
                     destinationUri = state.destinationUri,
@@ -250,17 +250,19 @@ private fun AppScaffold(
     }
 }
 
-private enum class ActivityPanel(val label: String) {
-    Overview("Overview"),
-    Queues("Queues"),
-    Schedule("Schedule"),
-    Recovery("Recovery"),
-    Diagnostics("Diagnostics"),
-}
-
 @Composable
 private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
-    var panel by remember { mutableStateOf(ActivityPanel.Overview) }
+    val panel = state.activityPanel
+    val onActivityAction: (com.mikeyphw.xdm.android.model.OperationalActivityEvent) -> Unit = { event ->
+        val download = event.downloadId?.let { id -> state.downloads.firstOrNull { it.id == id } }
+        when (event.actionLabel) {
+            "Start anyway" -> download?.let(viewModel::startIgnoringQueuePolicy)
+            "Retry now", "Review transfer", "Verify or redownload" -> download?.let(viewModel::togglePause)
+            "Open recovery", "Validate", "Verify and repair", "Resume", "Restart", "Adopt file", "Locate file", "Remove record" -> viewModel.selectActivityPanel(ActivityPanel.Recovery)
+            "Review request context", "Review intake", "Change destination", "Repair permission" -> viewModel.navigate(AppRoute.Add)
+            "Open resolver diagnostics" -> viewModel.navigate(AppRoute.Media)
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -269,7 +271,7 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
             items(ActivityPanel.entries) { item ->
                 FilterChip(
                     selected = panel == item,
-                    onClick = { panel = item },
+                    onClick = { viewModel.selectActivityPanel(item) },
                     label = { Text(item.label) },
                     modifier = Modifier.semantics {
                         stateDescription = if (panel == item) "${item.label} selected" else "${item.label} not selected"
@@ -279,7 +281,29 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
         }
         Box(Modifier.fillMaxWidth().weight(1f)) {
             when (panel) {
-                ActivityPanel.Overview -> ActivityOverviewScreen(state, viewModel::runQueueIntelligenceNow)
+                ActivityPanel.Overview -> ActivityOverviewScreen(
+                    state = state,
+                    onEvaluateQueueIntelligence = viewModel::runQueueIntelligenceNow,
+                    onOpenTimeline = { viewModel.selectActivityPanel(ActivityPanel.Timeline) },
+                    onOpenAttention = { viewModel.selectActivityPanel(ActivityPanel.Attention) },
+                    onOpenDecisions = { viewModel.selectActivityPanel(ActivityPanel.Decisions) },
+                )
+                ActivityPanel.Timeline -> ActivityTimelineScreen(
+                    events = state.activityEvents,
+                    onAction = onActivityAction,
+                    onDismiss = viewModel::dismissActivityEvent,
+                )
+                ActivityPanel.Attention -> ActivityAttentionScreen(
+                    events = state.activityEvents,
+                    onAction = onActivityAction,
+                    onDismiss = viewModel::dismissActivityEvent,
+                )
+                ActivityPanel.Decisions -> ActivityDecisionsScreen(
+                    events = state.activityEvents,
+                    onEvaluateNow = viewModel::runQueueIntelligenceNow,
+                    onAction = onActivityAction,
+                    onDismiss = viewModel::dismissActivityEvent,
+                )
                 ActivityPanel.Queues -> QueuesScreen(
                     queues = state.queues,
                     onCreateQueue = viewModel::createQueue,
@@ -302,28 +326,38 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
                     viewModel::validateRecoveryRecord,
                     viewModel::removeRecoveryRecord,
                 )
-                ActivityPanel.Diagnostics -> DiagnosticsScreen(
-                    state,
-                    state.browserIntegrationStatus,
-                    state.clipboardInbox,
-                    viewModel::runAria2SmokeTest,
-                    viewModel::runTermuxToolProbe,
-                    viewModel::runTermuxRootProbe,
-                    viewModel::collectTermuxRootProcessDiagnostics,
-                    viewModel::killStuckTermuxAria2WithRoot,
-                    viewModel::startTermuxAria2Daemon,
-                    viewModel::stopTermuxAria2Daemon,
-                    viewModel::probeTermuxAria2Daemon,
-                    viewModel::refreshTermuxAria2Tasks,
-                    viewModel::pauseAllTermuxAria2Tasks,
-                    viewModel::resumeAllTermuxAria2Tasks,
-                    viewModel::saveTermuxAria2Session,
-                    viewModel::retryFailedPostProcessing,
-                    viewModel::clearPostProcessingEvents,
-                    viewModel::scanClipboardText,
-                    viewModel::acceptClipboardItem,
-                    viewModel::dismissClipboardItem,
-                )
+                ActivityPanel.Diagnostics -> Column(Modifier.fillMaxSize()) {
+                    OperationalDiagnosticsHeader(
+                        summary = state.activitySummary,
+                        diagnosticsExport = state.activityDiagnosticsExport,
+                        onOpenTimeline = { viewModel.selectActivityPanel(ActivityPanel.Timeline) },
+                        onClearHistory = viewModel::clearActivityHistory,
+                    )
+                    Box(Modifier.fillMaxWidth().weight(1f)) {
+                        DiagnosticsScreen(
+                            state,
+                            state.browserIntegrationStatus,
+                            state.clipboardInbox,
+                            viewModel::runAria2SmokeTest,
+                            viewModel::runTermuxToolProbe,
+                            viewModel::runTermuxRootProbe,
+                            viewModel::collectTermuxRootProcessDiagnostics,
+                            viewModel::killStuckTermuxAria2WithRoot,
+                            viewModel::startTermuxAria2Daemon,
+                            viewModel::stopTermuxAria2Daemon,
+                            viewModel::probeTermuxAria2Daemon,
+                            viewModel::refreshTermuxAria2Tasks,
+                            viewModel::pauseAllTermuxAria2Tasks,
+                            viewModel::resumeAllTermuxAria2Tasks,
+                            viewModel::saveTermuxAria2Session,
+                            viewModel::retryFailedPostProcessing,
+                            viewModel::clearPostProcessingEvents,
+                            viewModel::scanClipboardText,
+                            viewModel::acceptClipboardItem,
+                            viewModel::dismissClipboardItem,
+                        )
+                    }
+                }
             }
         }
     }

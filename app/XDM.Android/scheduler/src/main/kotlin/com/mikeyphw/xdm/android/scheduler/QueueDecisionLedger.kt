@@ -36,12 +36,17 @@ class QueueDecisionLedger(context: Context) {
         }
         if (duplicate != null) return duplicate
         existing.add(0, event)
-        writeAll(existing.take(MAX_EVENTS))
+        writeAll(existing.filter { it.createdAtEpochMs >= createdAtEpochMs - RETENTION_MS }.take(MAX_EVENTS))
         return event
     }
 
     @Synchronized
-    fun recent(limit: Int = 12): List<QueueDecisionEvent> = readAll().take(limit.coerceIn(0, MAX_EVENTS))
+    fun recent(limit: Int = DEFAULT_VISIBLE_EVENTS): List<QueueDecisionEvent> = readAll().take(limit.coerceIn(0, MAX_EVENTS))
+
+    @Synchronized
+    fun clear() {
+        writeAll(emptyList())
+    }
 
     @Synchronized
     fun clearDownload(downloadId: String) {
@@ -97,6 +102,8 @@ class QueueDecisionLedger(context: Context) {
     companion object {
         private const val PREFERENCES = "xdm_queue_decision_ledger"
         private const val KEY_EVENTS = "events"
-        private const val MAX_EVENTS = 60
+        private const val DEFAULT_VISIBLE_EVENTS = 120
+        private const val MAX_EVENTS = 240
+        private const val RETENTION_MS = 30L * 24L * 60L * 60L * 1_000L
     }
 }

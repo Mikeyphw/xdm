@@ -25,8 +25,9 @@ def require(text: str, marker: str, owner: str) -> None:
 
 manifest = json.loads(read("PROJECT_MANIFEST.json") or "{}")
 expected_overlay = "xdm_android_browser_removal_phase8d_media_resolver_format_selection_overlay.zip"
-if manifest.get("current_overlay") != expected_overlay:
-    errors.append("current_overlay must identify Phase 8D media resolver polish overlay")
+current_overlay = str(manifest.get("current_overlay", ""))
+if current_overlay != expected_overlay and not current_overlay.startswith("xdm_android_browser_removal_phase8e_"):
+    errors.append("current_overlay must identify Phase 8D or its approved Phase 8E successor")
 phase = manifest.get("downloader_experience_phase8d", {})
 for key in (
     "first_class_resolver_workspace",

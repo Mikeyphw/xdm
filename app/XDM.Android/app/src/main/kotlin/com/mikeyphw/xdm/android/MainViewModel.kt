@@ -1,6 +1,7 @@
 package com.mikeyphw.xdm.android
 
 import android.net.Uri
+import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -66,6 +67,10 @@ import com.mikeyphw.xdm.android.model.HistoryManagementPolicy
 import com.mikeyphw.xdm.android.model.HistoryManagementReport
 import com.mikeyphw.xdm.android.model.OrganizationPowerTools
 import com.mikeyphw.xdm.android.model.OrganizationPowerToolsReport
+import com.mikeyphw.xdm.android.model.OperationalActivityEvent
+import com.mikeyphw.xdm.android.model.OperationalActivityPlanner
+import com.mikeyphw.xdm.android.model.OperationalActivitySummary
+import com.mikeyphw.xdm.android.model.OperationalDiagnosticsContext
 import com.mikeyphw.xdm.android.model.PostProcessingSettings
 import com.mikeyphw.xdm.android.model.ProtocolExpansionPolish
 import com.mikeyphw.xdm.android.model.ProtocolExpansionReport
@@ -106,6 +111,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -125,6 +131,10 @@ data class MainUiState(
     val recovery: List<RecoveryRecord> = emptyList(),
     val activeTransfers: ActiveTransferSummary = ActiveTransferSummary(),
     val queueIntelligence: QueueIntelligenceSummary = QueueIntelligenceSummary(),
+    val activityPanel: ActivityPanel = ActivityPanel.Overview,
+    val activityEvents: List<OperationalActivityEvent> = emptyList(),
+    val activitySummary: OperationalActivitySummary = OperationalActivitySummary(),
+    val activityDiagnosticsExport: String = "",
     val destinationUri: String = DestinationUris.PUBLIC_DOWNLOADS,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val externalAddDraft: DownloadIntakeDraft? = null,
@@ -212,8 +222,14 @@ class MainViewModel(
     private val termuxMediaPipelineManager: TermuxMediaPipelineManager,
     private val postProcessingAutomationManager: PostProcessingAutomationManager,
     private val mediaResolverSelectionStore: MediaResolverSelectionStore,
+    private val operationalActivityStore: OperationalActivityStore,
 ) : ViewModel() {
-    private val routeOverride = MutableStateFlow<AppRoute?>(null)
+    private data class NavigationOverride(
+        val route: AppRoute? = null,
+        val activityPanel: ActivityPanel = ActivityPanel.Overview,
+    )
+
+    private val navigationOverride = MutableStateFlow(NavigationOverride())
     private val aria2Capability = MutableStateFlow<Aria2CapabilityReport?>(null)
     private val aria2SmokeMessage = MutableStateFlow<String?>(null)
     private val aria2SmokeRunning = MutableStateFlow(false)
@@ -390,10 +406,11 @@ class MainViewModel(
     private data class ReviewUiSnapshot(
         val externalAddDraft: DownloadIntakeDraft?,
         val mediaSelections: Map<String, MediaTrackSelection>,
+        val activity: OperationalActivityStoreSnapshot,
     )
 
-    private val reviewUi = combine(externalAddDraft, mediaResolverSelectionStore.selections) { draft, selections ->
-        ReviewUiSnapshot(draft, selections)
+    private val reviewUi = combine(externalAddDraft, mediaResolverSelectionStore.selections, operationalActivityStore.snapshot) { draft, selections, activity ->
+        ReviewUiSnapshot(draft, selections, activity)
     }
 
     private data class TermuxUiSnapshot(
@@ -414,10 +431,10 @@ class MainViewModel(
     val uiState: StateFlow<MainUiState> = combine(
         repositorySnapshot,
         preferences.values,
-        routeOverride,
+        navigationOverride,
         runtimeUi,
         reviewUi,
-    ) { snapshot, prefs, override, runtime, review ->
+    ) { snapshot, prefs, navigation, runtime, review ->
         val settingsSnapshot = SettingsExchangeSnapshot(
             compactDensity = prefs.compactDensity,
             destinationUri = prefs.destinationUri,
@@ -429,8 +446,33 @@ class MainViewModel(
             duplicateRules = snapshot.duplicateRules,
         )
         val settingsExportText = settingsSnapshot.toPortableText()
+        val activityEvents = OperationalActivityPlanner.timeline(
+            storedEvents = review.activity.events,
+            queueDecisions = runtime.queueIntelligence.recentDecisions,
+            downloads = snapshot.downloads,
+            recoveryRecords = snapshot.recovery,
+            verificationRecords = snapshot.verificationRecords,
+            finalizationJournals = snapshot.finalizationJournals,
+            automationCommands = snapshot.automationCommands,
+            dismissedEventIds = review.activity.dismissedEventIds,
+        )
+        val activitySummary = OperationalActivityPlanner.summarize(activityEvents)
+        val activityDiagnosticsExport = OperationalActivityPlanner.diagnosticsExport(
+            context = OperationalDiagnosticsContext(
+                appVersion = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+                versionCode = BuildConfig.VERSION_CODE,
+                androidVersion = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
+                schemaVersion = 14,
+                enabledEngines = listOf("Native", "aria2", "Termux", "yt-dlp").filter { engine ->
+                    engine == "Native" || engine == "aria2" || snapshot.downloads.isNotEmpty() || snapshot.mediaCaptures.isNotEmpty()
+                },
+                generatedAtEpochMs = System.currentTimeMillis(),
+            ),
+            events = activityEvents,
+            summary = activitySummary,
+        )
         MainUiState(
-            route = override ?: prefs.lastRoute,
+            route = navigation.route ?: prefs.lastRoute,
             compactDensity = prefs.compactDensity,
             downloads = snapshot.downloads,
             queues = snapshot.queues,
@@ -438,6 +480,10 @@ class MainViewModel(
             recovery = snapshot.recovery,
             activeTransfers = runtime.activeTransfers,
             queueIntelligence = runtime.queueIntelligence,
+            activityPanel = navigation.activityPanel,
+            activityEvents = activityEvents,
+            activitySummary = activitySummary,
+            activityDiagnosticsExport = activityDiagnosticsExport,
             destinationUri = prefs.destinationUri,
             conflictPolicy = prefs.conflictPolicy,
             externalAddDraft = review.externalAddDraft,
@@ -534,6 +580,9 @@ class MainViewModel(
         viewModelScope.launch {
             if (repository.countQueues() == 0) FakeDataSeeder(repository).seedQueuesOnly()
         }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.downloads.collectLatest { downloads -> operationalActivityStore.observeDownloads(downloads) }
+        }
         refreshAria2Probe()
         refreshBackendCapabilities()
         termuxBridgeManager.refreshStatus()
@@ -542,8 +591,26 @@ class MainViewModel(
     }
 
     fun navigate(route: AppRoute) {
-        routeOverride.value = route
+        navigationOverride.value = navigationOverride.value.copy(route = route)
         viewModelScope.launch { preferences.setRoute(route) }
+    }
+
+    fun navigateActivity(panel: ActivityPanel) {
+        navigationOverride.value = NavigationOverride(route = AppRoute.Activity, activityPanel = panel)
+        viewModelScope.launch { preferences.setRoute(AppRoute.Activity) }
+    }
+
+    fun selectActivityPanel(panel: ActivityPanel) {
+        navigationOverride.value = navigationOverride.value.copy(activityPanel = panel)
+    }
+
+    fun dismissActivityEvent(eventId: String) {
+        operationalActivityStore.dismiss(eventId)
+    }
+
+    fun clearActivityHistory() {
+        operationalActivityStore.clearHistory(preserveUnresolved = true)
+        queueIntelligenceCoordinator.clearDecisionHistory()
     }
 
 
@@ -1535,6 +1602,7 @@ class MainViewModel(
             container.termuxMediaPipelineManager,
             container.postProcessingAutomationManager,
             container.mediaResolverSelectionStore,
+            container.operationalActivityStore,
         ) as T
     }
 }
