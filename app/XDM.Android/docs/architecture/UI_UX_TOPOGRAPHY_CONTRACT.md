@@ -8,22 +8,24 @@ The stable top-level routes are:
 
 - Downloads
 - Add
-- Queues
-- Scheduler
 - Media
-- Recovery
-- Diagnostics
+- Library
+- Activity
 - Settings
 
-Mobile layouts must keep primary work areas in the bottom bar: Downloads, Media, and Queues. Add, Scheduler, Recovery, Diagnostics, and Settings belong in the overflow menu unless a future contract revision promotes them. External media review lives inside Media so the stable route surface does not sprawl. When an overflow route is selected, the overflow affordance must expose selected state through visible styling and accessibility text.
+Compact layouts keep Downloads, Media, Library, Activity, and Settings in the bottom bar. Add remains a first-class route and is always reachable through the global floating action button. Expanded layouts expose all six routes in a navigation rail.
 
-Expanded layouts may expose all top-level routes in a navigation rail. Future features must extend one of the existing routes by default. Adding a new top-level route requires updating this contract and the route contract tests.
+Library owns completed media, playback readiness, sidecar health, resume, and retry. Media remains the external media intake, resolver, track-selection, and execution-planning workbench.
+
+Activity consolidates the previous Queues, Scheduler, Recovery, and Diagnostics destinations through visible sub-navigation. Those capabilities remain operational but no longer compete as separate top-level routes. Persisted legacy route names must restore to Activity, while unknown or removed route names fall back to Downloads.
+
+Future features must extend one of these routes by default. Adding or removing a top-level route requires updating this contract and the route contract tests in the same change.
 
 ## Interaction Rules
 
 All visible interactive controls must perform a real action. Do not ship placeholder buttons, clickable chips, or menu items with empty handlers. If an operation is not implemented yet, render it as a non-clickable status label or omit it.
 
-Android back from secondary routes must return to Downloads. It must not exit the app from Add, Recovery, Diagnostics, Settings, Queues, Scheduler, or Media.
+Android back from secondary routes must return to Downloads. It must not exit the app from Add, Media, Library, Activity, or Settings.
 
 Permission prompts must be contextual. Notification permission is requested when the user starts a transfer, not on cold launch.
 
@@ -69,15 +71,17 @@ The Add route must present the common path first: URL, optional filename, destin
 
 Settings must make deferred-save sections explicit. Proxy and post-processing drafts must show saved versus unsaved state, expose real save actions, and provide a reset path. Import/export must remain user-facing, secret-safe, and clear about what is ready to import.
 
-## Secondary Route Operational Rules
+## Activity and Library Operational Rules
 
-Queues and Scheduler are management surfaces, not read-only dashboards. Queues must expose create, edit, enable or disable, and delete controls inside the Queues route. The default queue may be protected from deletion, but the UI must explain the disabled action through its enabled state rather than shipping a placeholder.
+Activity is an operational workspace, not a read-only dashboard. Its sub-navigation must expose Overview, Queues, Schedule, Recovery, and Diagnostics with visible selected state.
 
-Scheduler must expose create, edit, enable or disable, delete, queue selection, human-readable condition editing, and a next eligible window summary. It must continue to store scheduler conditions through the existing model while never rendering raw JSON as the primary UI.
+Queues must expose create, edit, enable or disable, and delete controls. The default queue may be protected from deletion, but the UI must explain the disabled action through its enabled state rather than shipping a placeholder.
 
-Media cards must emphasize origin, selected quality, and download readiness before technical URLs. Variant selection belongs in an explicit selector area with clear selected state and variant details.
+Schedule must expose create, edit, enable or disable, delete, queue selection, human-readable condition editing, and a next eligible window summary. It must continue to store scheduler conditions through the existing model while never rendering raw JSON as the primary UI.
 
 Recovery cards must lead with the user consequence and safe recommendation. Artifact paths and IDs belong behind technical details, and destructive-looking actions must clarify whether they only remove a recovery record or also affect files.
+
+Library must prioritize completed-media scanability, playback readiness, missing-file and sidecar health, safe retry/resume actions, and Media3 handoff. Media cards must emphasize origin, selected quality, and download readiness before technical URLs. Variant selection belongs in an explicit selector area with clear selected state and variant details.
 
 ## Browser and Share Handoff Rules
 

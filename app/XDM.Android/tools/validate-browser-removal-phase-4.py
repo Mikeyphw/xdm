@@ -43,7 +43,7 @@ for key in (
     if phase.get(key) is not True:
         errors.append(f"browser_removal_phase4.{key} must be true")
 current_overlay = str(manifest_json.get("current_overlay", ""))
-if current_overlay != "xdm_android_browser_removal_phase4_runtime_excision_overlay.zip" and not current_overlay.startswith("xdm_android_browser_removal_phase5_"):
+if current_overlay != "xdm_android_browser_removal_phase4_runtime_excision_overlay.zip" and not current_overlay.startswith(("xdm_android_browser_removal_phase5_", "xdm_android_browser_removal_phase6_")):
     errors.append("current_overlay must identify Phase 4 or an approved later browser-removal overlay")
 
 for path in (
@@ -72,7 +72,7 @@ for marker, text, context in (
 ):
     if marker in text:
         errors.append(f"{context} still contains removed browser marker: {marker}")
-require(shell, "listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Queues)", "Primary navigation")
+require(shell, "listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Library, AppRoute.Activity, AppRoute.Settings)", "Primary navigation")
 require(activity, "handleExternalIntent(intent)", "MainActivity external intake")
 
 manifest = read("app/src/main/AndroidManifest.xml")
@@ -103,8 +103,7 @@ for forbidden in ("android.webkit", "WebView(", "WebViewClient", "WebChromeClien
         errors.append(f"Application runtime still contains Android WebKit marker: {forbidden}")
 
 preferences = read("app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferencesStore.kt")
-require(preferences, "runCatching { AppRoute.valueOf(it) }.getOrNull()", "Persisted-route fallback")
-require(preferences, "?: AppRoute.Downloads", "Persisted-route fallback")
+require(preferences, "AppRoute.restore(preferences[Keys.LastRoute])", "Persisted-route migration")
 
 for path, marker in {
     "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadIntake.kt": "data class DownloadIntakeDraft",

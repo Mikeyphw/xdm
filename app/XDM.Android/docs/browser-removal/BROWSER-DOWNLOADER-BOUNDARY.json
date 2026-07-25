@@ -189,6 +189,32 @@
     "room_schema_modified": false,
     "transfer_engines_modified": false,
     "version_bumped": false,
-    "next_phase": "downloader_ui_consolidation"
+    "next_phase": "phase6_downloader_ui_consolidation_landed"
+  },
+  "phase6_downloader_ui_consolidation": {
+    "status": "landed_in_overlay",
+    "stable_routes": [
+      "Downloads",
+      "Add",
+      "Media",
+      "Library",
+      "Activity",
+      "Settings"
+    ],
+    "global_add_action": true,
+    "library_promoted": true,
+    "activity_workspace_consolidated": true,
+    "legacy_routes_migrate_to_activity": [
+      "Queues",
+      "Scheduler",
+      "Recovery",
+      "Diagnostics"
+    ],
+    "external_browser_handoff_preserved": true,
+    "browser_runtime_absent": true,
+    "room_schema_modified": false,
+    "transfer_engines_modified": false,
+    "version_bumped": false,
+    "next_phase": "final_regression_release_seal"
   }
 }

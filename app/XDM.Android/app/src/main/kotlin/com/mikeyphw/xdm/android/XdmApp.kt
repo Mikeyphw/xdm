@@ -2,23 +2,25 @@ package com.mikeyphw.xdm.android
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -38,8 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-private val primaryRoutes = listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Queues)
-private val overflowRoutes = listOf(AppRoute.Add, AppRoute.Scheduler, AppRoute.Recovery, AppRoute.Diagnostics, AppRoute.Settings)
+private val primaryRoutes = listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Library, AppRoute.Activity, AppRoute.Settings)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,40 +88,10 @@ private fun AppScaffold(
     modifier: Modifier,
     showBottomBar: Boolean,
 ) {
-    var showMoreMenu by remember { mutableStateOf(false) }
-    val overflowRouteSelected = state.route in overflowRoutes
     Scaffold(
         modifier = modifier,
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(state.route.label) },
-                actions = {
-                    if (showBottomBar) {
-                        IconButton(
-                            onClick = { showMoreMenu = true },
-                            modifier = Modifier.semantics { contentDescription = if (overflowRouteSelected) "More sections, ${state.route.label} selected" else "More sections" },
-                        ) {
-                            Icon(
-                                Icons.Rounded.MoreVert,
-                                if (overflowRouteSelected) "More sections, ${state.route.label} selected" else "More sections",
-                                tint = if (overflowRouteSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
-                            overflowRoutes.forEach { route ->
-                                DropdownMenuItem(
-                                    text = { Text(if (state.route == route) "${route.label} selected" else route.label) },
-                                    leadingIcon = { Icon(route.icon, null) },
-                                    onClick = {
-                                        showMoreMenu = false
-                                        viewModel.navigate(route)
-                                    },
-                                )
-                            }
-                        }
-                    }
-                },
-            )
+            CenterAlignedTopAppBar(title = { Text(state.route.label) })
         },
         bottomBar = {
             if (showBottomBar) {
@@ -138,7 +109,7 @@ private fun AppScaffold(
             }
         },
         floatingActionButton = {
-            if (state.route == AppRoute.Downloads) {
+            if (state.route != AppRoute.Add) {
                 FloatingActionButton(
                     onClick = { viewModel.navigate(AppRoute.Add) },
                     modifier = Modifier
@@ -204,21 +175,6 @@ private fun AppScaffold(
                     },
                     recommend = viewModel::backendRecommendation,
                 )
-                AppRoute.Queues -> QueuesScreen(
-                    queues = state.queues,
-                    onCreateQueue = viewModel::createQueue,
-                    onUpdateQueue = viewModel::updateQueue,
-                    onToggleQueue = viewModel::setQueueEnabled,
-                    onDeleteQueue = viewModel::deleteQueue,
-                )
-                AppRoute.Scheduler -> SchedulerScreen(
-                    rules = state.schedules,
-                    queues = state.queues,
-                    onCreateSchedule = viewModel::createSchedule,
-                    onUpdateSchedule = viewModel::updateSchedule,
-                    onToggleSchedule = viewModel::setScheduleEnabled,
-                    onDeleteSchedule = viewModel::deleteSchedule,
-                )
                 AppRoute.Media -> MediaInboxScreen(
                     state.mediaCaptures,
                     state.mediaVariants,
@@ -238,29 +194,13 @@ private fun AppScaffold(
                     viewModel::previewPostProcessingForMedia,
                     viewModel::runPostProcessingForMedia,
                 )
-                AppRoute.Recovery -> RecoveryScreen(state.recovery, viewModel::validateRecoveryRecord, viewModel::removeRecoveryRecord)
-                AppRoute.Diagnostics -> DiagnosticsScreen(
-                    state,
-                    state.browserIntegrationStatus,
-                    state.clipboardInbox,
-                    viewModel::runAria2SmokeTest,
-                    viewModel::runTermuxToolProbe,
-                    viewModel::runTermuxRootProbe,
-                    viewModel::collectTermuxRootProcessDiagnostics,
-                    viewModel::killStuckTermuxAria2WithRoot,
-                    viewModel::startTermuxAria2Daemon,
-                    viewModel::stopTermuxAria2Daemon,
-                    viewModel::probeTermuxAria2Daemon,
-                    viewModel::refreshTermuxAria2Tasks,
-                    viewModel::pauseAllTermuxAria2Tasks,
-                    viewModel::resumeAllTermuxAria2Tasks,
-                    viewModel::saveTermuxAria2Session,
-                    viewModel::retryFailedPostProcessing,
-                    viewModel::clearPostProcessingEvents,
-                    viewModel::scanClipboardText,
-                    viewModel::acceptClipboardItem,
-                    viewModel::dismissClipboardItem,
+                AppRoute.Library -> MediaLibraryScreen(
+                    captures = state.mediaCaptures,
+                    variants = state.mediaVariants,
+                    downloads = state.downloads,
+                    onResumeOrRetryDownload = viewModel::togglePause,
                 )
+                AppRoute.Activity -> ActivityHub(state, viewModel)
                 AppRoute.Settings -> SettingsScreen(
                     state.compactDensity,
                     state.backendCapabilities,
@@ -301,3 +241,81 @@ private fun AppScaffold(
         }
     }
 }
+
+private enum class ActivityPanel(val label: String) {
+    Overview("Overview"),
+    Queues("Queues"),
+    Schedule("Schedule"),
+    Recovery("Recovery"),
+    Diagnostics("Diagnostics"),
+}
+
+@Composable
+private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
+    var panel by remember { mutableStateOf(ActivityPanel.Overview) }
+    Column(Modifier.fillMaxSize()) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+        ) {
+            items(ActivityPanel.entries) { item ->
+                FilterChip(
+                    selected = panel == item,
+                    onClick = { panel = item },
+                    label = { Text(item.label) },
+                    modifier = Modifier.semantics {
+                        stateDescription = if (panel == item) "${item.label} selected" else "${item.label} not selected"
+                    },
+                )
+            }
+        }
+        Box(Modifier.fillMaxWidth().weight(1f)) {
+            when (panel) {
+                ActivityPanel.Overview -> ActivityOverviewScreen(state)
+                ActivityPanel.Queues -> QueuesScreen(
+                    queues = state.queues,
+                    onCreateQueue = viewModel::createQueue,
+                    onUpdateQueue = viewModel::updateQueue,
+                    onToggleQueue = viewModel::setQueueEnabled,
+                    onDeleteQueue = viewModel::deleteQueue,
+                )
+                ActivityPanel.Schedule -> SchedulerScreen(
+                    rules = state.schedules,
+                    queues = state.queues,
+                    onCreateSchedule = viewModel::createSchedule,
+                    onUpdateSchedule = viewModel::updateSchedule,
+                    onToggleSchedule = viewModel::setScheduleEnabled,
+                    onDeleteSchedule = viewModel::deleteSchedule,
+                )
+                ActivityPanel.Recovery -> RecoveryScreen(
+                    state.recovery,
+                    viewModel::validateRecoveryRecord,
+                    viewModel::removeRecoveryRecord,
+                )
+                ActivityPanel.Diagnostics -> DiagnosticsScreen(
+                    state,
+                    state.browserIntegrationStatus,
+                    state.clipboardInbox,
+                    viewModel::runAria2SmokeTest,
+                    viewModel::runTermuxToolProbe,
+                    viewModel::runTermuxRootProbe,
+                    viewModel::collectTermuxRootProcessDiagnostics,
+                    viewModel::killStuckTermuxAria2WithRoot,
+                    viewModel::startTermuxAria2Daemon,
+                    viewModel::stopTermuxAria2Daemon,
+                    viewModel::probeTermuxAria2Daemon,
+                    viewModel::refreshTermuxAria2Tasks,
+                    viewModel::pauseAllTermuxAria2Tasks,
+                    viewModel::resumeAllTermuxAria2Tasks,
+                    viewModel::saveTermuxAria2Session,
+                    viewModel::retryFailedPostProcessing,
+                    viewModel::clearPostProcessingEvents,
+                    viewModel::scanClipboardText,
+                    viewModel::acceptClipboardItem,
+                    viewModel::dismissClipboardItem,
+                )
+            }
+        }
+    }
+}
+

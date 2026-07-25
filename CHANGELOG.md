@@ -1,5 +1,13 @@
 # Unreleased
 
+## XDM Android built-in browser removal: Phase 6
+
+- Consolidated the Android shell into Downloads, Add, Media, Library, Activity, and Settings.
+- Promoted the offline media library and playback diagnostics into a focused Library destination.
+- Folded Queues, Scheduler, Recovery, and Diagnostics into an Activity workspace without removing their actions.
+- Made Add Download globally reachable through the floating action button and migrated persisted legacy route names safely.
+- Preserved external handoff, Room schema 14, version 0.20.0-rc08, and every native, aria2, Termux, worker, resolver, queue, library, and playback component.
+
 ## XDM Android built-in browser removal: Phase 5
 
 - Removed browser-only persistence terminology, dormant mobile browser state, active Phase 18 and Phase 37-50 browser contracts, and their obsolete validators.

@@ -44,7 +44,7 @@ class UserPreferencesStore(private val context: Context) {
 
     val values: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
         UserPreferences(
-            lastRoute = preferences[Keys.LastRoute]?.let { runCatching { AppRoute.valueOf(it) }.getOrNull() } ?: AppRoute.Downloads,
+            lastRoute = AppRoute.restore(preferences[Keys.LastRoute]),
             compactDensity = preferences[Keys.CompactDensity] ?: false,
             destinationUri = preferences[Keys.DestinationUri] ?: defaultDestinationUri(),
             conflictPolicy = preferences[Keys.ConflictPolicy]?.let { runCatching { FilenameConflictPolicy.valueOf(it) }.getOrNull() } ?: FilenameConflictPolicy.Rename,

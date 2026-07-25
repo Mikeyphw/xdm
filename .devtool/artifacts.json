@@ -39266,6 +39266,212 @@
         ]
       },
       "history_id": "19dd481315ec4ce28d40c6edabf25daa"
+    },
+    {
+      "applied_at": "2026-07-25T02:12:19.992115Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_browser_removal_phase6_downloader_ui_consolidation_overlay.zip",
+      "artifact_name": "xdm_android_browser_removal_phase6_downloader_ui_consolidation_overlay.zip",
+      "type": "overlay",
+      "sha256": "3c416b45108d2e84772f1ae1bd4f4832aea6e7110000947deabf4418b021e595",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Consolidate XDM Android downloader navigation",
+      "commit_hash": "",
+      "file_count": 20,
+      "change_counts": {
+        "add": 3,
+        "modify": 17
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android built-in browser removal Phase 6 downloader UI consolidation",
+        "description": "Consolidates the browser-free Android shell around Downloads, Add, Media, Library, Activity, and Settings while preserving external browser handoff, queue and scheduler operations, recovery, diagnostics, every downloader engine, media resolution, offline library, and Media3 playback.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "source_sha256": "86b785f2e7d84d9895e1967cffa9484d3d93f604caea72095bea9923a6c225cb",
+              "sha256": "fcb68636ee0528fc77056cebf746626a6868a78e942c741f6e33bca13a60acd7",
+              "size": 10617
+            },
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "source_sha256": "9ee7e1043198eaece0e442419c16248bc00bae042572922935329d36c37be34d",
+              "sha256": "bdb1af32aaa632bbdaff98cdd05e95fbb756896836db9491837c26d27459bf54",
+              "size": 4059
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "source_sha256": "691f0860f38b5727a21c69686718377922fda26209b786123c03f380ad7b1d88",
+              "sha256": "fd486544bc8537c35b4a643f74288d37cb2af97bad1132a84315c8dd2dd451c3",
+              "size": 34921
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "source_sha256": "2e0cae86bbf83fc38603702bbcca44f624eb9f0d386738dff25466db8dffafb2",
+              "sha256": "3f1f8f985020df36195715658528eaf1ae60836c69d88e237a805cee467fe9e1",
+              "size": 15607
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt",
+              "action": "modify",
+              "source_sha256": "37e71b780f4d8e1468a34da6c84471f01db865f381cf1e3b7ba3f03b7704ab63",
+              "sha256": "b6f41bbdf116c52ac5ee83455a3753a5e82a174aa68a0dd88f50b949008aceff",
+              "size": 1094
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+              "action": "modify",
+              "source_sha256": "2ea8a2e1182e75947395d158ec082af4ee689152bf7fc9e62f62625d4cdaa52c",
+              "sha256": "dfc4fa6429369be64b0e2128fc04fc93594fa60f9ba8359ce3fb86b1037bab57",
+              "size": 202333
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferencesStore.kt",
+              "action": "modify",
+              "source_sha256": "8a681f1ffb047e9d6a8faa8eb8092160e316a82e448abf0858d432843603ecfa",
+              "sha256": "0b41ad1d4657925d1f6fc7c970e01cdc7bcca5f3c2732cc8d67ca00c0516d963",
+              "size": 5952
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "source_sha256": "e95dd26ed02efc00c1522504c3949d380d68546c442764a2421f6419b06b2dfb",
+              "sha256": "a3e9a863d369cb8454d3ea73c57ce42f912fc57fe54a880e3832bf491864b08e",
+              "size": 14880
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "source_sha256": "c1023f60ea9a16e6a8bf6bc97f8243aaa97d539493ec2c19dccf397026d696b1",
+              "sha256": "5acd13ba0755c77286fee07c21e64707229298493601d75e8c5a605c56260b6c",
+              "size": 89238
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPhase6ContractTest.kt",
+              "action": "add",
+              "sha256": "35bb792a5610b2a2b2e3dd6e41b0b2f2cd959560ffc82eaf13229181ec7afc57",
+              "size": 4210
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+              "action": "modify",
+              "source_sha256": "64cc423c090821f6411fecb751b3966f718b26848dec6322445a57ffe3b33558",
+              "sha256": "fd4429092ec8972a1e56131d1e754bafeb651c9eb857e0f1a9483a573dff0d5b",
+              "size": 10596
+            },
+            {
+              "path": "app/XDM.Android/docs/browser-removal/BROWSER-DOWNLOADER-BOUNDARY.json",
+              "action": "modify",
+              "source_sha256": "a64cb8d0a100c8589526341eccb81a26e6c6073850df9277dc4df483544793b1",
+              "sha256": "800df6cd404be24d2dd543ae5a6b48511a35f14cfd0fc08b02996b6c16efd545",
+              "size": 8962
+            },
+            {
+              "path": "app/XDM.Android/docs/browser-removal/PHASE-6-DOWNLOADER-UI-CONSOLIDATION.md",
+              "action": "add",
+              "sha256": "b80b3a7db7b9e0ee1312dc4c03766c25c2c2310336acb30061aae8c04ddd049e",
+              "size": 1561
+            },
+            {
+              "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+              "action": "modify",
+              "source_sha256": "5f09db0e138a0a602b1eb39f553ddec211e9e93ca6934f41392e46447266b52b",
+              "sha256": "899ab68e5bc8bc91919e959a0b6361193a35cfe3af90b6398dd1df6c8ff405cf",
+              "size": 2749
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-browser-removal-phase-4.py",
+              "action": "modify",
+              "source_sha256": "9bb2ec4e3909fbd18b68872036284c7a90a57f88b9c752e1c1afbe1959d66294",
+              "sha256": "47b5b7b1d2010b562ef1c753c82943c7d9c2da345b28702312f3b7aa6f356551",
+              "size": 8279
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-browser-removal-phase-5.py",
+              "action": "modify",
+              "source_sha256": "5bed9658348d04cde57b11b45f08521944ec732f28e11f381783fb8281efba44",
+              "sha256": "f03e617e374f57927452c68f832185585f806d316adfd1fd942678bc6584d158",
+              "size": 10152
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-browser-removal-phase-6.py",
+              "action": "add",
+              "sha256": "5096e6461723c74f3ab864a1c7caf652f1d2f9b3082cf0c94d787c3a2b0d516f",
+              "size": 6775
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-foundation.py",
+              "action": "modify",
+              "source_sha256": "de22e8830fb42dad29ad6426ed9b2adaa44ce227859d7675bd9eb79c6c6e25c0",
+              "sha256": "8f94da83c2311211ae5931442dcfa810b3bd09c55c18e07a555afb780ef275bc",
+              "size": 2737
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-media-final-validation-gate.py",
+              "action": "modify",
+              "source_sha256": "f0d2ecd478b08f71ec41453012237373840a40a6e8d1eb06167ffcca559b3f96",
+              "sha256": "093ab007e2c46d37ce66920542241ea95d804df4d180aec8e072858253779cdc",
+              "size": 10924
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-media-offline-library-v2.py",
+              "action": "modify",
+              "source_sha256": "da1dd6aa2c2f33fe58e4097ca28fc91912cc712307601a4fdc5dfbf8965c3933",
+              "sha256": "6d9bbe0bb498be23bdad8cbef7ff0a3941adacb840579aa9b326decca87e2a05",
+              "size": 1299
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Consolidate XDM Android downloader navigation"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "expected": {
+            "restore": "pass",
+            "build": "pass",
+            "tests": "pass",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Apply only after xdm_android_browser_removal_phase5_persistence_contract_cleanup_overlay.zip.",
+          "Replaces the eight-route shell with Downloads, Add, Media, Library, Activity, and Settings.",
+          "Keeps Add as a first-class route and exposes it globally through the floating action button.",
+          "Promotes offline media and player diagnostics into Library.",
+          "Consolidates Queues, Scheduler, Recovery, and Diagnostics under Activity without deleting their actions.",
+          "Migrates persisted legacy route names to Activity and unknown routes to Downloads.",
+          "Does not change Room schema, versionCode, versionName, manifest handoff filters, transfer engines, queue workers, media resolver, or Media3 playback."
+        ]
+      },
+      "history_id": "3568d668ba374e97b3047d44fb7da4a8"
     }
   ]
 }

@@ -112,6 +112,12 @@ Phase 15 keeps the existing route topography while tightening the Android surfac
 
 XDM Android now exposes settings import/export, history/file management, proxy/credential profile metadata, conversion/post-processing policy, protocol coverage polish, and release/non-debug packaging helpers without adding a new top-level route or migrating Room past schema v14.
 
+### Downloader-focused navigation
+
+The browser-free shell now uses six stable destinations: Downloads, Add, Media, Library, Activity, and Settings. Compact layouts keep Downloads, Media, Library, Activity, and Settings in the bottom bar, while Add remains globally available through the floating action button. Expanded layouts expose all six destinations in the navigation rail.
+
+Library owns completed media, playback readiness, sidecar health, resume, and retry. Activity keeps queue management, schedules, recovery, diagnostics, and privacy-safe external handoff history in one operational workspace. Persisted Queues, Scheduler, Recovery, and Diagnostics routes migrate to Activity automatically.
+
 ### External browser handoff and media discovery
 
 XDM Android is a focused download manager and no longer contains a built-in browser or WebView runtime. External browsers and applications can share or open reviewed HTTP, HTTPS, FTP, file, and media links through `ExternalAddDownloadActivity`. Add Download classifies the incoming link, preserves safe MIME and page context, and never starts a transfer silently.

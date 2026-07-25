@@ -1224,6 +1224,114 @@ private fun ScheduleManagementCard(
 }
 
 @Composable
+fun ActivityOverviewScreen(state: MainUiState) {
+    val activeStates = setOf(
+        DownloadState.Connecting,
+        DownloadState.Downloading,
+        DownloadState.Verifying,
+        DownloadState.Repairing,
+        DownloadState.Finalizing,
+    )
+    val active = state.downloads.count { it.state in activeStates }
+    val waiting = state.downloads.count {
+        it.state in setOf(DownloadState.Created, DownloadState.Queued, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)
+    }
+    val completed = state.downloads.count { it.state == DownloadState.Completed }
+    val attention = state.downloads.count { it.state in setOf(DownloadState.Failed, DownloadState.RecoveryRequired) }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            XdmListCard(compact = true) {
+                XdmCardTitle("Transfer activity")
+                XdmSupportingText("A single operational workspace for queue control, schedules, recovery, diagnostics, and external handoff history.", maxLines = 3)
+                XdmActionFlowRow {
+                    StatusPill("$active active", if (active > 0) XdmStatusTone.Info else XdmStatusTone.Neutral)
+                    StatusPill("$waiting waiting", XdmStatusTone.Neutral)
+                    StatusPill("$completed completed", if (completed > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                    attention.takeIf { it > 0 }?.let { StatusPill("$it need attention", XdmStatusTone.Warning) }
+                }
+            }
+        }
+        item {
+            XdmListCard(compact = true) {
+                XdmCardTitle("Automation and recovery")
+                XdmActionFlowRow {
+                    StatusPill("${state.queues.size} queues", XdmStatusTone.Info)
+                    StatusPill("${state.schedules.count { it.enabled }} schedules enabled", XdmStatusTone.Neutral)
+                    StatusPill("${state.recovery.size} recovery records", if (state.recovery.isEmpty()) XdmStatusTone.Success else XdmStatusTone.Warning)
+                    StatusPill(state.postProcessingAutomation.readinessLabel, if (state.postProcessingAutomation.failedEvents.isEmpty()) XdmStatusTone.Success else XdmStatusTone.Warning)
+                }
+                XdmSupportingText("Use the section chips above to manage queue policy, timing constraints, interrupted transfers, and runtime health.", maxLines = 3)
+            }
+        }
+        item {
+            XdmListCard(compact = true) {
+                XdmCardTitle("External handoffs")
+                XdmActionFlowRow {
+                    StatusPill("${state.automationCommands.size} recorded", XdmStatusTone.Neutral)
+                    val rejected = state.automationCommands.count { it.status == AutomationCommandStatus.Rejected }
+                    StatusPill("$rejected rejected", if (rejected > 0) XdmStatusTone.Warning else XdmStatusTone.Success)
+                    StatusPill("${state.clipboardInbox.size} clipboard items", XdmStatusTone.Info)
+                }
+                state.automationCommands.take(4).forEach { command ->
+                    XdmMetadataText(command.redactedDiagnosticLine(), maxLines = 2)
+                }
+                if (state.automationCommands.isEmpty()) {
+                    XdmSupportingText("Share or open a downloadable link from another app and its privacy-safe intake trail will appear here.", maxLines = 3)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MediaLibraryScreen(
+    captures: List<MediaCaptureRecord>,
+    variants: List<MediaVariant>,
+    downloads: List<Download>,
+    onResumeOrRetryDownload: (Download) -> Unit,
+) {
+    val mediaPlanner = remember { MediaDownloadPlanner() }
+    val executionPlanner = remember { MediaExecutionLibraryPlanner(mediaPlanner) }
+    val summary = remember(captures, variants) { mediaPlanner.summarizeOfflineLibrary(captures, variants) }
+    val items = remember(captures, downloads, variants) { executionPlanner.offlineLibraryItems(captures, downloads, variants) }
+    val library = remember(items) { MediaOfflineLibraryV2Planner().dashboard(items) }
+    val diagnostics = remember(items) {
+        val planner = MediaPlayerDiagnosticsPlanner()
+        items.mapNotNull { item -> item.toPlaybackCandidate()?.let(planner::report) }
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        XdmListCard(compact = true) {
+            XdmCardTitle("Library")
+            XdmSupportingText("Completed media, playback readiness, sidecar health, and safe retry actions live here instead of competing with the media intake workbench.", maxLines = 3)
+            XdmActionFlowRow {
+                StatusPill("${library.visibleCount} items", XdmStatusTone.Neutral)
+                StatusPill("${library.playableCount} playable", if (library.playableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                library.failedCount.takeIf { it > 0 }?.let { StatusPill("$it failed", XdmStatusTone.Warning) }
+                library.missingCount.takeIf { it > 0 }?.let { StatusPill("$it missing", XdmStatusTone.Warning) }
+            }
+        }
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item { OfflineLibraryV2Card(library) }
+            item { PlayerDiagnosticsDeckCard(diagnostics) }
+            item { OfflineMediaLibraryCard(summary, items, downloads, onResumeOrRetryDownload) }
+            if (items.isEmpty()) {
+                item { EmptyFeatureScreen("Offline library", "Completed direct media will appear here after a download finishes. Media intake and resolver work remains in the Media destination.") }
+            }
+        }
+    }
+}
+
+@Composable
 fun MediaInboxScreen(
     captures: List<MediaCaptureRecord>,
     variants: List<MediaVariant>,
@@ -1385,11 +1493,8 @@ fun MediaInboxScreen(
                 item { MediaWorkerBridgeCard(workerBridge) }
                 item { MediaTermuxRuntimeAdapterCard(termuxRuntime) }
                 item { MediaNativeDirectDownloadEngineCard(nativeDirect) }
-                item { OfflineLibraryV2Card(libraryV2) }
-                item { PlayerDiagnosticsDeckCard(playerDiagnostics) }
                 item { MediaCaptureQualityCard(mediaCaptureQuality) }
                 item { SessionPrivacyAuditCard(sessionPrivacyAudit) }
-                item { OfflineMediaLibraryCard(librarySummary, libraryItems, downloads, onResumeOrRetryDownload) }
                 item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
                 item { EmptyFeatureScreen("Media inbox", "Share video, audio, HLS, DASH, or page links from another app, then review captured media here before queueing it safely.") }
             }
@@ -1409,11 +1514,8 @@ fun MediaInboxScreen(
                 item { MediaWorkerBridgeCard(workerBridge) }
                 item { MediaTermuxRuntimeAdapterCard(termuxRuntime) }
                 item { MediaNativeDirectDownloadEngineCard(nativeDirect) }
-                item { OfflineLibraryV2Card(libraryV2) }
-                item { PlayerDiagnosticsDeckCard(playerDiagnostics) }
                 item { MediaCaptureQualityCard(mediaCaptureQuality) }
                 item { SessionPrivacyAuditCard(sessionPrivacyAudit) }
-                item { OfflineMediaLibraryCard(librarySummary, libraryItems, downloads, onResumeOrRetryDownload) }
                 item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
                 item {
                     TextButton(

@@ -72,6 +72,7 @@ for validator in [
     "validate-browser-removal-phase-3.py",
     "validate-browser-removal-phase-4.py",
     "validate-browser-removal-phase-5.py",
+    "validate-browser-removal-phase-6.py",
     "validate-media-resolver-player.py",
     "validate-media-execution-library.py",
     "validate-media-download-engine-hardening.py",

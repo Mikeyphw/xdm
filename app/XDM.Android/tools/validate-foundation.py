@@ -21,7 +21,7 @@ required_tables = {
 missing_tables = sorted(t for t in required_tables if f'tableName = "{t}"' not in entities)
 
 routes = (root / "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").read_text(encoding="utf-8")
-required_routes = {"Downloads", "Add", "Queues", "Scheduler", "Media", "Recovery", "Diagnostics", "Settings"}
+required_routes = {"Downloads", "Add", "Media", "Library", "Activity", "Settings"}
 missing_routes = sorted(r for r in required_routes if f'{r}("{r}"' not in routes)
 
 errors = []

@@ -50,6 +50,7 @@ validators=(
   tools/validate-browser-removal-phase-3.py
   tools/validate-browser-removal-phase-4.py
   tools/validate-browser-removal-phase-5.py
+  tools/validate-browser-removal-phase-6.py
 )
 
 for validator in "${validators[@]}"; do
@@ -70,6 +71,6 @@ Run the full build/test/lint gate in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Phase 5 removes browser-only persistence/contracts and preserves explicit external-browser handoff into Add Download and Media review.
-Proceed to downloader-focused UI consolidation only after the full target-environment Gradle gate passes.
+Phase 6 consolidates the browser-free product around Downloads, Add, Media, Library, Activity, and Settings while preserving external handoff and every downloader engine.
+Proceed to the final regression and release seal only after the full target-environment Gradle gate passes.
 EOF2

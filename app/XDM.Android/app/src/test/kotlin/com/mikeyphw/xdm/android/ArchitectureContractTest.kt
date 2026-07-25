@@ -22,7 +22,7 @@ class ArchitectureContractTest {
     @Test
     fun allPlannedRoutesArePresent() {
         val labels = AppRoute.entries.map(AppRoute::label)
-        assertEquals(listOf("Downloads", "Add", "Queues", "Scheduler", "Media", "Recovery", "Diagnostics", "Settings"), labels)
+        assertEquals(listOf("Downloads", "Add", "Media", "Library", "Activity", "Settings"), labels)
     }
 
     @Test
@@ -39,11 +39,9 @@ class ArchitectureContractTest {
             "Future Phase Rules",
             "Downloads",
             "Add",
-            "Queues",
-            "Scheduler",
             "Media",
-            "Recovery",
-            "Diagnostics",
+            "Library",
+            "Activity",
             "Settings",
         ).forEach { required -> assertTrue("Contract missing '$required'", text.contains(required)) }
     }
@@ -589,7 +587,7 @@ class ArchitectureContractTest {
         assertTrue("Runtime must consume short-lived media handoff headers", runtime.contains("MediaRequestHandoffStore.forDownload") && runtime.contains("headers = mediaHandoff?.headers.orEmpty()") && runtime.contains("MediaRequestHandoffStore.forget(downloadId)"))
         assertTrue("Handoff store must not persist raw cookies to Room", handoff.contains("process-local handoff") && !handoff.contains("Room"))
         assertTrue("Project manifest must record media execution library", manifestJson.contains("media_execution_library") && manifestJson.contains("raw_shell_exposed"))
-        assertFalse("Media execution library must not add top-level routes", AppRoute.entries.any { it.label == "Library" || it.label == "Player" || it.label == "Execution" })
+        assertFalse("Media execution library must not expose engine-detail routes", AppRoute.entries.any { it.label == "Player" || it.label == "Execution" })
     }
 
 
@@ -615,7 +613,7 @@ class ArchitectureContractTest {
         assertTrue("Runtime must keep process-local handoff cleanup", runtime.contains("MediaRequestHandoffStore.forget(downloadId)"))
         assertTrue("Player must expose Media3 error diagnostics and retry prepare", player.contains("onPlayerError") && player.contains("Retry player prepare"))
         assertTrue("Project manifest must record media download engine hardening", manifestJson.contains("media_download_engine_hardening") && manifestJson.contains("no_validation_until_final_phase"))
-        assertFalse("Media engine hardening must not add top-level routes", AppRoute.entries.any { it.label == "Engine" || it.label == "Hardening" || it.label == "Library" })
+        assertFalse("Media engine hardening must not expose engine-detail routes", AppRoute.entries.any { it.label == "Engine" || it.label == "Hardening" })
     }
 
 
@@ -753,7 +751,7 @@ class ArchitectureContractTest {
         assertTrue("Offline Library 2.0 must keep safe exports and sidecar actions", planner.contains("safeExportJson") && planner.contains("RemoveSidecar") && planner.contains("RenameSidecar"))
         assertTrue("Screens must expose Offline Library 2.0 inside Media", screens.contains("Offline Library 2.0") && screens.contains("Phase 28 makes completed media filterable"))
         assertTrue("Manifest must record Phase 28", manifest.contains("media_offline_library_v2"))
-        assertFalse("Offline Library 2.0 must not add top-level routes", AppRoute.entries.any { it.label == "Library" || it.label == "Offline" || it.label == "Player" })
+        assertFalse("Offline Library 2.0 must not expose implementation-detail routes", AppRoute.entries.any { it.label == "Offline" || it.label == "Player" })
     }
 
     @Test
