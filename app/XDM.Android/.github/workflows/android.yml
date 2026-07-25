@@ -66,6 +66,8 @@ jobs:
           python3 tools/validate-phase-35-release-candidate-polish.py
           python3 tools/validate-phase-36-external-download-handoff.py
           python3 tools/validate-browser-removal-phase-0-1.py
+          python3 tools/validate-browser-removal-phase-2.py
+          python3 tools/validate-browser-removal-phase-3.py
           python3 tools/validate-phase-37a-browser-downloader-roadmap.py
           python3 tools/validate-phase-37b-dual-launcher-navigation-split.py
           python3 tools/validate-phase-38-browser-reliability-foundation.py

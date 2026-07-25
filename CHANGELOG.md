@@ -1,5 +1,19 @@
 # Unreleased
 
+## XDM Android built-in browser removal: Phase 3
+
+- Classified external handoffs as direct files, direct media, HLS/DASH, torrents, or page/unknown links without starting transfers.
+- Preserved MIME type, content length, page context, and safe source labels through the review-first Add Download flow.
+- Added an explicit Inspect as media action that seeds the existing resolver and yt-dlp workbench without auto-probing or auto-queueing.
+- Added page-probe records for reviewed HTTP/HTTPS pages while keeping raw headers redacted.
+- Kept BrowserActivity, WebView, routes, manifest filters, Room schema, transfer engines, and app version unchanged.
+
+## XDM Android built-in browser removal: Phase 2
+
+- Extracted browser-neutral download intake drafts, URL policy, and media request facts.
+- Rewired the temporary browser to emit neutral review and media contracts instead of browser-shaped ViewModel methods.
+- Kept all download execution review-first and left browser runtime removal deferred.
+
 ## XDM Android built-in browser removal: Phase 0 and Phase 1
 
 - Added a machine-readable browser/downloader ownership inventory without removing runtime code.

@@ -168,12 +168,12 @@ object OrganizationPowerTools {
         OrganizationPowerToolsReport(tags.size, searches.size, destinations.count { it.enabled }, duplicates.count { it.enabled }, downloads.count { it.archived })
 
     fun duplicateFor(url: String, downloads: List<Download>): Download? {
-        val normalized = BrowserHandoffPolicy.normalizedUrl(url) ?: return null
-        return downloads.firstOrNull { BrowserHandoffPolicy.normalizedUrl(it.sourceUrl) == normalized }
+        val normalized = ExternalUrlPolicy.normalizedUrl(url) ?: return null
+        return downloads.firstOrNull { ExternalUrlPolicy.normalizedUrl(it.sourceUrl) == normalized }
     }
 
     fun destinationFor(url: String, fileName: String, mimeType: String?, rules: List<DestinationRule>, fallback: String): String {
-        val host = BrowserHandoffPolicy.originHost(url).orEmpty()
+        val host = ExternalUrlPolicy.originHost(url).orEmpty()
         val extension = fileName.substringAfterLast('.', "").lowercase(Locale.US)
         return rules.filter { it.enabled }.sortedByDescending { it.priority }.firstOrNull { rule ->
             val pattern = rule.pattern.lowercase(Locale.US)
@@ -200,14 +200,14 @@ data class BrowserIntegrationStatus(
 
 object ClipboardInboxPolicy {
     fun itemsFromText(text: String, existing: List<ClipboardInboxItem>, now: Long): List<ClipboardInboxItem> {
-        val seen = existing.map { BrowserHandoffPolicy.normalizedUrl(it.url) }.toSet()
-        return BrowserHandoffPolicy.urlsInText(text)
+        val seen = existing.map { ExternalUrlPolicy.normalizedUrl(it.url) }.toSet()
+        return ExternalUrlPolicy.urlsInText(text)
             .filter { it !in seen }
             .map { url ->
                 ClipboardInboxItem(
                     id = "clip-" + url.hashCode().toUInt().toString(16),
                     url = url,
-                    title = BrowserHandoffPolicy.originHost(url),
+                    title = ExternalUrlPolicy.originHost(url),
                     sourceTextHash = text.hashCode().toUInt().toString(16),
                     status = "New",
                     createdAtEpochMs = now,

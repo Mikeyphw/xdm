@@ -1,12 +1,15 @@
 package com.mikeyphw.xdm.android.browser
 
-import com.mikeyphw.xdm.android.model.BrowserHandoffPolicy
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 
 object BrowserHandoffContract {
     const val ExtraOriginPackage = "com.mikeyphw.xdm.android.extra.ORIGIN_PACKAGE"
     const val ExtraDownloadUrl = "com.mikeyphw.xdm.android.extra.DOWNLOAD_URL"
     const val ExtraFileName = "com.mikeyphw.xdm.android.extra.FILE_NAME"
     const val ExtraMimeType = "com.mikeyphw.xdm.android.extra.MIME_TYPE"
+    const val ExtraContentLength = "com.mikeyphw.xdm.android.extra.CONTENT_LENGTH"
+    const val ExtraPageUrl = "com.mikeyphw.xdm.android.extra.PAGE_URL"
+    const val ExtraPageTitle = "com.mikeyphw.xdm.android.extra.PAGE_TITLE"
     const val ExtraRequestHeaders = "com.mikeyphw.xdm.android.extra.REQUEST_HEADERS"
     const val ExtraCookieHeader = "com.mikeyphw.xdm.android.extra.COOKIE_HEADER"
 
@@ -24,5 +27,5 @@ object BrowserHandoffContract {
 }
 
 object SharedLinkParser {
-    fun parse(text: String): List<String> = BrowserHandoffPolicy.urlsInText(text)
+    fun parse(text: String): List<String> = ExternalUrlPolicy.urlsInText(text)
 }

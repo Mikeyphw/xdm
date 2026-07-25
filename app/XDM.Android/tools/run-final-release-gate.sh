@@ -48,6 +48,8 @@ validators=(
   tools/validate-phase-35-release-candidate-polish.py
   tools/validate-phase-36-external-download-handoff.py
   tools/validate-browser-removal-phase-0-1.py
+  tools/validate-browser-removal-phase-2.py
+  tools/validate-browser-removal-phase-3.py
   tools/validate-phase-37a-browser-downloader-roadmap.py
   tools/validate-phase-37b-dual-launcher-navigation-split.py
   tools/validate-phase-38-browser-reliability-foundation.py
@@ -83,7 +85,6 @@ Run the full build/test/lint gate in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Then apply the Phase 45 browser visual polish adaptive layout overlay with validation enabled if this overlay has not been applied yet:
-
-devtool --copy --auto-hud --hud-mode desktop-window --yes -r "\$HOME/Code/xdm" --target xdm_android apply-overlay "\$HOME/Downloads/xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip" --validate
+Phase 3 keeps the built-in browser runtime in place while external handoffs become the reviewed replacement path.
+Proceed to browser UI/navigation removal only after the full target-environment Gradle gate passes.
 EOF2

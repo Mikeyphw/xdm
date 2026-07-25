@@ -59,6 +59,7 @@ import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.model.VerificationStatus
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.DownloadIntakeKind
 import com.mikeyphw.xdm.android.model.ConversionPreset
 import com.mikeyphw.xdm.android.model.DestinationRule
 import com.mikeyphw.xdm.android.model.DestinationRuleMatch
@@ -655,6 +656,13 @@ fun AddDownloadScreen(
     initialUrl: String? = null,
     initialFileName: String? = null,
     externalSourceLabel: String? = null,
+    externalKind: DownloadIntakeKind? = null,
+    externalPageTitle: String? = null,
+    externalPageUrl: String? = null,
+    externalMimeType: String? = null,
+    externalContentLength: Long? = null,
+    externalCanInspectMedia: Boolean = false,
+    onInspectMedia: () -> Unit = {},
     onDestinationChanged: (String) -> Unit,
     onSafDestinationSelected: (String) -> Unit,
     onConflictPolicyChanged: (FilenameConflictPolicy) -> Unit,
@@ -691,11 +699,29 @@ fun AddDownloadScreen(
             if (externalDraftId != null) {
                 item {
                     Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            XdmCardTitle("Link received")
-                            XdmSupportingText("Review the shared or browser-provided link, then start the download when ready.")
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                                Column(Modifier.weight(1f)) {
+                                    XdmCardTitle("Link received")
+                                    XdmSupportingText(externalIntakeGuidance(externalKind))
+                                }
+                                externalKind?.let { kind -> XdmStatusBadge(kind.externalLabel(), XdmStatusTone.Info) }
+                            }
                             XdmMetadataText("Source: ${externalSourceLabel ?: "External app"}")
+                            externalPageTitle?.takeIf(String::isNotBlank)?.let { XdmMetadataText("Page: ${it.take(120)}") }
                             if (!initialFileName.isNullOrBlank()) XdmMetadataText("Filename suggestion: ${initialFileName.take(96)}")
+                            val metadata = listOfNotNull(
+                                externalMimeType?.takeIf(String::isNotBlank),
+                                externalContentLength?.takeIf { it > 0L }?.formatBytes(),
+                                externalPageUrl?.takeIf { it.isNotBlank() && it != initialUrl }?.let { "page context" },
+                            )
+                            if (metadata.isNotEmpty()) XdmMetadataText(metadata.joinToString(" • "))
+                            if (externalCanInspectMedia) {
+                                XdmActionFlowRow {
+                                    TextButton(onClick = onInspectMedia) { Text("Inspect as media") }
+                                    XdmMetadataText("Opens the media resolver; it does not queue a download.")
+                                }
+                            }
                             XdmMetadataText("Cookies, tokens, and request headers stay redacted; XDM never auto-queues external handoffs.")
                         }
                     }
@@ -815,10 +841,27 @@ fun AddDownloadScreen(
                     onClick = { onAdd(url, name, backend, destinationUri, conflictPolicy, allowFallback, expectedChecksum, checksumAlgorithm) },
                     enabled = canSubmit,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Start download") }
+                ) { Text(if (externalKind == DownloadIntakeKind.PageOrUnknown) "Start direct download" else "Start download") }
             }
         }
     }
+}
+
+private fun DownloadIntakeKind.externalLabel(): String = when (this) {
+    DownloadIntakeKind.DirectFile -> "Direct file"
+    DownloadIntakeKind.DirectMedia -> "Direct media"
+    DownloadIntakeKind.AdaptiveMedia -> "HLS / DASH"
+    DownloadIntakeKind.Torrent -> "Torrent"
+    DownloadIntakeKind.PageOrUnknown -> "Page or unknown"
+}
+
+private fun externalIntakeGuidance(kind: DownloadIntakeKind?): String = when (kind) {
+    DownloadIntakeKind.DirectFile -> "A downloadable file was shared with XDM. Confirm its name, destination, and backend before starting."
+    DownloadIntakeKind.DirectMedia -> "A direct audio or video URL was shared. Download it directly or inspect it in the media workbench."
+    DownloadIntakeKind.AdaptiveMedia -> "An HLS or DASH manifest was shared. Inspect it as media to resolve variants, audio, and subtitles before queueing."
+    DownloadIntakeKind.Torrent -> "A torrent handoff was detected. Review the destination and compatible backend before starting."
+    DownloadIntakeKind.PageOrUnknown -> "This may be a webpage or an endpoint without file metadata. Inspect it as media for a yt-dlp probe, or start a direct download only when the URL itself is downloadable."
+    null -> "Review the shared or browser-provided link, then start the download when ready."
 }
 
 @Composable
@@ -1187,8 +1230,6 @@ fun MediaInboxScreen(
     downloads: List<Download>,
     termuxMediaPipeline: TermuxMediaPipelineStatus,
     postProcessingAutomation: PostProcessingAutomationStatus,
-    onBrowserMediaRequest: (url: String, pageTitle: String?, pageUrl: String?, mimeType: String?) -> Unit,
-    onOpenAddForBrowserUrl: (url: String, pageTitle: String?) -> Unit,
     onDownload: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onResumeOrRetryDownload: (Download) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,

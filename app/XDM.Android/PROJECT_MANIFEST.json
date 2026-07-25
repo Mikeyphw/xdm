@@ -476,7 +476,7 @@
     "yt_dlp_page_url_probe": true,
     "offline_library_groundwork": true
   },
-  "current_overlay": "xdm_android_browser_removal_phase0_1_baseline_preservation_overlay.zip",
+  "current_overlay": "xdm_android_browser_removal_phase3_external_handoff_add_download_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1323,6 +1323,51 @@
     "redaction_and_placeholder_safety_locked": true,
     "browser_integration_webkit_free": true,
     "known_legacy_browser_validator_mismatch_recorded": true,
-    "next_phase": "extract_browser_neutral_intake_and_media_submission_logic"
+    "next_phase": "phase2_and_phase3_landed_prepare_browser_ui_navigation_removal"
+  },
+  "browser_removal_phase2": {
+    "program": "remove_builtin_browser_preserve_downloader",
+    "contract_document": "docs/browser-removal/PHASE-2-NEUTRAL-INTAKE-EXTRACTION.md",
+    "static_validator": "tools/validate-browser-removal-phase-2.py",
+    "neutral_url_policy": true,
+    "neutral_download_intake_draft": true,
+    "neutral_download_intake_planner": true,
+    "neutral_media_capture_intake": true,
+    "browser_emits_neutral_contracts": true,
+    "view_model_browser_neutral_entrypoints": true,
+    "review_first_preserved": true,
+    "browser_runtime_still_present": true,
+    "android_manifest_unchanged": true,
+    "room_schema_unchanged": true,
+    "transfer_engines_unchanged": true,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "removed_browser_shaped_view_model_methods": [
+      "captureBrowserMediaUrl",
+      "openAddFromBrowser",
+      "openBrowserDownload"
+    ],
+    "next_phase": "phase3_landed_prepare_browser_ui_navigation_removal"
+  },
+  "browser_removal_phase3": {
+    "program": "remove_builtin_browser_preserve_downloader",
+    "contract_document": "docs/browser-removal/PHASE-3-EXTERNAL-HANDOFF-ADD-DOWNLOAD.md",
+    "static_validator": "tools/validate-browser-removal-phase-3.py",
+    "external_handoff_classification": true,
+    "mime_content_length_page_context_preserved": true,
+    "safe_source_label_preserved": true,
+    "add_download_type_guidance": true,
+    "explicit_inspect_as_media": true,
+    "external_media_review_planner": true,
+    "page_probe_review_first": true,
+    "auto_probe": false,
+    "auto_queue": false,
+    "browser_runtime_still_present": true,
+    "android_manifest_unchanged": true,
+    "room_schema_unchanged": true,
+    "transfer_engines_unchanged": true,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "next_phase": "remove_browser_ui_navigation_and_launcher_runtime"
   }
 }

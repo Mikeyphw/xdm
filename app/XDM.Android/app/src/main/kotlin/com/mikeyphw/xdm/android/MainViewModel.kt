@@ -13,7 +13,10 @@ import com.mikeyphw.xdm.android.model.AutomationCommandSource
 import com.mikeyphw.xdm.android.model.AutomationRejectionReason
 import com.mikeyphw.xdm.android.model.BackupRestorePolicy
 import com.mikeyphw.xdm.android.model.BackupRestoreReport
-import com.mikeyphw.xdm.android.model.BrowserHandoffPolicy
+import com.mikeyphw.xdm.android.model.DownloadIntakeDraft
+import com.mikeyphw.xdm.android.model.DownloadIntakeOrigin
+import com.mikeyphw.xdm.android.model.DownloadIntakePlanner
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.model.BrowserIntegrationStatus
 import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
 import com.mikeyphw.xdm.android.model.ClipboardInboxItem
@@ -40,6 +43,9 @@ import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.media.MediaCaptureService
+import com.mikeyphw.xdm.android.media.MediaCaptureIntakePlanner
+import com.mikeyphw.xdm.android.media.ExternalMediaReviewPlanner
+import com.mikeyphw.xdm.android.media.MediaRequestFacts
 import com.mikeyphw.xdm.android.media.MediaExecutionLibraryPlanner
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
 import com.mikeyphw.xdm.android.model.MediaVariant
@@ -109,13 +115,6 @@ data class Aria2DiagnosticsUi(
     val smokeTestRunning: Boolean = false,
 )
 
-data class ExternalAddDraft(
-    val id: String,
-    val url: String,
-    val fileName: String = "",
-    val sourceLabel: String = "External app",
-)
-
 data class MainUiState(
     val route: AppRoute = AppRoute.Downloads,
     val compactDensity: Boolean = false,
@@ -126,7 +125,7 @@ data class MainUiState(
     val activeTransfers: ActiveTransferSummary = ActiveTransferSummary(),
     val destinationUri: String = DestinationUris.PUBLIC_DOWNLOADS,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
-    val externalAddDraft: ExternalAddDraft? = null,
+    val externalAddDraft: DownloadIntakeDraft? = null,
     val browserStartUrl: String? = null,
     val destinationPermissions: List<DestinationPermission> = emptyList(),
     val aria2Diagnostics: Aria2DiagnosticsUi = Aria2DiagnosticsUi(),
@@ -216,9 +215,12 @@ class MainViewModel(
     private val aria2SmokeMessage = MutableStateFlow<String?>(null)
     private val aria2SmokeRunning = MutableStateFlow(false)
     private val capabilitySnapshot = MutableStateFlow<Map<BackendType, BackendCapabilities>>(emptyMap())
-    private val externalAddDraft = MutableStateFlow<ExternalAddDraft?>(null)
+    private val externalAddDraft = MutableStateFlow<DownloadIntakeDraft?>(null)
     private val browserStartUrl = MutableStateFlow<String?>(null)
     private val mediaCaptureService = MediaCaptureService()
+    private val mediaCaptureIntakePlanner = MediaCaptureIntakePlanner(mediaCaptureService)
+    private val externalMediaReviewPlanner = ExternalMediaReviewPlanner(mediaCaptureService)
+    private val downloadIntakePlanner = DownloadIntakePlanner()
     private val mediaExecutionPlanner = MediaExecutionLibraryPlanner()
 
     private data class RepositorySnapshot(
@@ -536,7 +538,7 @@ class MainViewModel(
     }
 
     fun openBrowserUrl(url: String) {
-        val normalized = BrowserHandoffPolicy.normalizedUrl(url) ?: return
+        val normalized = ExternalUrlPolicy.normalizedUrl(url) ?: return
         val scheme = Uri.parse(normalized).scheme.orEmpty().lowercase()
         if (scheme != "http" && scheme != "https") return
         browserStartUrl.value = normalized
@@ -1033,11 +1035,14 @@ class MainViewModel(
             }
             val url = existing.url
             if (!url.isNullOrBlank()) {
-                externalAddDraft.value = ExternalAddDraft(
+                externalAddDraft.value = downloadIntakePlanner.fromExternal(
                     id = existing.id,
                     url = url,
-                    fileName = existing.fileName.orEmpty(),
-                    sourceLabel = sourceLabelFor(existing.source),
+                    fileName = existing.fileName,
+                    sourceLabel = sourceLabelFor(existing.source, existing.originPackage),
+                    origin = intakeOriginFor(existing.source),
+                    pageTitle = existing.pageTitle,
+                    pageUrl = existing.pageUrl,
                 )
                 repository.saveAutomationCommand(existing.copy(status = AutomationCommandStatus.Duplicate, resultMessage = "Duplicate link reopened in Add Download", rejectionReason = AutomationRejectionReason.Duplicate, updatedAtEpochMs = now))
                 navigate(AppRoute.Add)
@@ -1117,17 +1122,24 @@ class MainViewModel(
         val url = draft.normalizedUrl ?: return repository.saveAutomationCommand(
             command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing download URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = System.currentTimeMillis()),
         )
-        externalAddDraft.value = ExternalAddDraft(
+        externalAddDraft.value = downloadIntakePlanner.fromExternal(
             id = command.id,
             url = url,
-            fileName = draft.fileName?.trim()?.takeIf { it.isNotBlank() }.orEmpty(),
-            sourceLabel = sourceLabelFor(draft.source),
+            fileName = draft.fileName,
+            sourceLabel = sourceLabelFor(draft.source, draft.originPackage),
+            origin = intakeOriginFor(draft.source),
+            pageTitle = draft.pageTitle,
+            pageUrl = draft.pageUrl,
+            mimeType = draft.mimeType,
+            contentLength = draft.contentLength,
+        ) ?: return repository.saveAutomationCommand(
+            command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Unsupported download URL", rejectionReason = AutomationRejectionReason.UnsupportedUrl, updatedAtEpochMs = System.currentTimeMillis()),
         )
         repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Executed, resultMessage = message, updatedAtEpochMs = System.currentTimeMillis()))
         navigate(AppRoute.Add)
     }
 
-    private suspend fun markExternalDraftDownloadCreated(draft: ExternalAddDraft, downloadId: String) {
+    private suspend fun markExternalDraftDownloadCreated(draft: DownloadIntakeDraft, downloadId: String) {
         val command = repository.findAutomationCommand(draft.id) ?: return
         repository.saveAutomationCommand(
             command.copy(
@@ -1140,10 +1152,23 @@ class MainViewModel(
         )
     }
 
-    private fun sourceLabelFor(source: AutomationCommandSource): String = when (source) {
-        AutomationCommandSource.ShareSheet -> "Shared link"
-        AutomationCommandSource.ViewIntent -> "Browser handoff"
-        else -> "External app"
+    private fun sourceLabelFor(source: AutomationCommandSource, originPackage: String? = null): String {
+        val safePackage = originPackage
+            ?.trim()
+            ?.takeIf { it.isNotBlank() && it.length <= 96 }
+        return when (source) {
+            AutomationCommandSource.ShareSheet -> safePackage?.let { "Shared from $it" } ?: "Shared link"
+            AutomationCommandSource.ViewIntent, AutomationCommandSource.BrowserExtension -> safePackage?.let { "Download from $it" } ?: "External browser"
+            AutomationCommandSource.Tasker -> "Tasker"
+            AutomationCommandSource.DeepLink -> "XDM link"
+            AutomationCommandSource.Internal -> "External app"
+        }
+    }
+
+    private fun intakeOriginFor(source: AutomationCommandSource): DownloadIntakeOrigin = when (source) {
+        AutomationCommandSource.ShareSheet -> DownloadIntakeOrigin.ExternalShare
+        AutomationCommandSource.ViewIntent, AutomationCommandSource.BrowserExtension -> DownloadIntakeOrigin.ExternalView
+        AutomationCommandSource.Tasker, AutomationCommandSource.DeepLink, AutomationCommandSource.Internal -> DownloadIntakeOrigin.Automation
     }
 
     private suspend fun executeEnqueueCommand(command: AutomationCommandRecord, draft: AutomationCommandDraft, now: Long) {
@@ -1210,46 +1235,60 @@ class MainViewModel(
         }
     }
 
-    fun captureBrowserMediaUrl(url: String, pageTitle: String? = null, pageUrl: String? = null, mimeType: String? = null) {
-        val candidate = mediaCaptureService.candidateFor(url, pageTitle, pageUrl, mimeTypeHint = mimeType) ?: return
-        val record = mediaCaptureService.recordFor(candidate)
+    fun captureMediaRequest(facts: MediaRequestFacts) {
+        val intake = mediaCaptureIntakePlanner.plan(facts) ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            val existing = repository.findMediaCapture(record.id)
+            val existing = repository.findMediaCapture(intake.record.id)
             val merged = if (existing?.downloadId != null) {
-                record.copy(
+                intake.record.copy(
                     status = existing.status,
                     downloadId = existing.downloadId,
                     createdAtEpochMs = existing.createdAtEpochMs,
                     updatedAtEpochMs = System.currentTimeMillis(),
                 )
             } else {
-                record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs)
+                intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
             }
             repository.saveMediaCapture(merged)
-            repository.saveMediaVariants(candidate.variants)
+            repository.saveMediaVariants(intake.candidate.variants)
         }
     }
 
-    fun openAddFromBrowser(url: String, pageTitle: String? = null) {
-        val normalized = url.trim().takeIf { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) } ?: return
-        externalAddDraft.value = ExternalAddDraft(
-            id = "browser-${UUID.randomUUID()}",
-            url = normalized,
-            fileName = "",
-            sourceLabel = pageTitle?.takeIf { it.isNotBlank() }?.let { "Browser: ${it.take(48)}" } ?: "Built-in browser",
-        )
+    fun openDownloadReview(draft: DownloadIntakeDraft) {
+        externalAddDraft.value = draft
         navigate(AppRoute.Add)
     }
 
-    fun openBrowserDownload(url: String, pageTitle: String? = null, fileName: String? = null) {
-        val normalized = url.trim().takeIf { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) } ?: return
-        externalAddDraft.value = ExternalAddDraft(
-            id = "browser-download-${UUID.randomUUID()}",
-            url = normalized,
-            fileName = fileName?.trim().orEmpty(),
-            sourceLabel = pageTitle?.takeIf { it.isNotBlank() }?.let { "Browser download: ${it.take(48)}" } ?: "Built-in browser download",
-        )
-        navigate(AppRoute.Add)
+    fun inspectExternalMedia(draft: DownloadIntakeDraft) {
+        val intake = externalMediaReviewPlanner.plan(draft) ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            val existing = repository.findMediaCapture(intake.record.id)
+            val merged = if (existing?.downloadId != null) {
+                intake.record.copy(
+                    status = existing.status,
+                    downloadId = existing.downloadId,
+                    createdAtEpochMs = existing.createdAtEpochMs,
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                )
+            } else {
+                intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
+            }
+            repository.saveMediaCapture(merged)
+            if (intake.variants.isNotEmpty()) repository.saveMediaVariants(intake.variants)
+            repository.findAutomationCommand(draft.id)?.let { command ->
+                repository.saveAutomationCommand(
+                    command.copy(
+                        status = AutomationCommandStatus.Executed,
+                        resultMessage = if (intake.isPageProbe) "External page opened in media resolver" else "External media opened in media resolver",
+                        mediaCaptureId = merged.id,
+                        rejectionReason = AutomationRejectionReason.None,
+                        updatedAtEpochMs = System.currentTimeMillis(),
+                    ),
+                )
+            }
+            externalAddDraft.value = null
+            navigate(AppRoute.Media)
+        }
     }
 
     fun downloadMediaCapture(record: MediaCaptureRecord, selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = record.selectedVariantId)) {

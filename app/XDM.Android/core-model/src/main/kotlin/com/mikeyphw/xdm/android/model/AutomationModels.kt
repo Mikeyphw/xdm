@@ -21,11 +21,13 @@ data class AutomationCommandDraft(
     val explicitIdempotencyKey: String? = null,
     val originPackage: String? = null,
     val rawHeaders: String? = null,
+    val mimeType: String? = null,
+    val contentLength: Long? = null,
 ) {
-    val normalizedUrl: String? get() = BrowserHandoffPolicy.normalizedUrl(url)
-    val normalizedPageUrl: String? get() = BrowserHandoffPolicy.normalizedUrl(pageUrl)
-    val originHost: String? get() = BrowserHandoffPolicy.originHost(normalizedPageUrl ?: normalizedUrl)
-    val sanitizedHeaders: String? get() = BrowserHandoffPolicy.sanitizeHeaders(rawHeaders)
+    val normalizedUrl: String? get() = ExternalUrlPolicy.normalizedUrl(url)
+    val normalizedPageUrl: String? get() = ExternalUrlPolicy.normalizedUrl(pageUrl)
+    val originHost: String? get() = ExternalUrlPolicy.originHost(normalizedPageUrl ?: normalizedUrl)
+    val sanitizedHeaders: String? get() = ExternalUrlPolicy.sanitizeHeaders(rawHeaders)
     val stableIdempotencyKey: String get() = AutomationCommandIds.stableKey(this)
 }
 
@@ -50,15 +52,16 @@ data class AutomationCommandRecord(
     val rejectionReason: AutomationRejectionReason = AutomationRejectionReason.None,
 )
 
-object BrowserHandoffPolicy {
+object ExternalUrlPolicy {
     private val externalUrlPattern = Regex("""(?:https?|ftp)://[^\s<>()\[\]{}\"']+""", RegexOption.IGNORE_CASE)
     private val clipboardUrlPattern = Regex("""https?://[^\s<>()\[\]{}\"']+""", RegexOption.IGNORE_CASE)
     private val trailingNoise = Regex("""[),.;:!?]+$""")
+
     fun normalizedUrl(raw: String?): String? {
         val candidate = raw?.trim()?.takeIf { it.isNotBlank() } ?: return null
         val extracted = externalUrlPattern.find(candidate)?.value ?: candidate
         val cleaned = extracted.trim().replace(trailingNoise, "")
-        return normalizeHttpUrl(cleaned)
+        return normalizeDownloadUrl(cleaned)
     }
 
     fun urlsInText(text: String): List<String> = clipboardUrlPattern.findAll(text)
@@ -72,7 +75,7 @@ object BrowserHandoffPolicy {
 
     fun sanitizeHeaders(raw: String?): String? = PrivacyDiagnosticsRedactor.redactHeaders(raw)
 
-    private fun normalizeHttpUrl(raw: String): String? {
+    private fun normalizeDownloadUrl(raw: String): String? {
         val uri = runCatching { URI(raw) }.getOrNull() ?: return null
         val scheme = uri.scheme?.lowercase(Locale.US) ?: return null
         if (scheme != "http" && scheme != "https" && scheme != "ftp") return null
@@ -88,6 +91,15 @@ object BrowserHandoffPolicy {
         val query = uri.rawQuery?.let { "?$it" }.orEmpty()
         return "$scheme://$host$port$rawPath$query"
     }
+}
+
+/** Compatibility facade retained while older integrations migrate to the browser-neutral name. */
+@Deprecated("Use ExternalUrlPolicy", ReplaceWith("ExternalUrlPolicy"))
+object BrowserHandoffPolicy {
+    fun normalizedUrl(raw: String?): String? = ExternalUrlPolicy.normalizedUrl(raw)
+    fun urlsInText(text: String): List<String> = ExternalUrlPolicy.urlsInText(text)
+    fun originHost(raw: String?): String? = ExternalUrlPolicy.originHost(raw)
+    fun sanitizeHeaders(raw: String?): String? = ExternalUrlPolicy.sanitizeHeaders(raw)
 }
 
 object AutomationCommandIds {
@@ -110,8 +122,8 @@ object AutomationCommandIds {
         fileName: String? = null,
         pageUrl: String? = null,
     ): String {
-        val normalizedUrl = BrowserHandoffPolicy.normalizedUrl(url)
-        val normalizedPage = BrowserHandoffPolicy.normalizedUrl(pageUrl)
+        val normalizedUrl = ExternalUrlPolicy.normalizedUrl(url)
+        val normalizedPage = ExternalUrlPolicy.normalizedUrl(pageUrl)
         val sourcePart = if (normalizedUrl != null || normalizedPage != null) "external-handoff" else source.name
         val raw = listOf(
             sourcePart,

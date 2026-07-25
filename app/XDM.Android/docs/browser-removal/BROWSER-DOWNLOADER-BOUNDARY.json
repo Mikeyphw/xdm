@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "program": "xdm_android_builtin_browser_removal",
-  "phase": "0_and_1_baseline_and_downloader_preservation",
+  "phase": "phase3_external_handoff_and_add_download_replacement",
   "source_snapshot": {
     "archive": "xdm-20260724-202445.tar.gz",
     "git_commit": null,
@@ -12,14 +12,14 @@
   },
   "phase_scope": {
     "runtime_removal_started": false,
-    "production_kotlin_modified": false,
+    "production_kotlin_modified": true,
     "android_manifest_modified": false,
     "database_modified": false,
     "version_bumped": false,
     "purpose": [
-      "Record the current browser/downloader boundary.",
-      "Install tests that prevent downloader regressions during later browser removal.",
-      "Keep external browser handoff distinct from XDM acting as a browser."
+      "Classify external handoffs before download review.",
+      "Carry safe MIME, content-length, page, and source metadata into Add Download.",
+      "Provide an explicit media-resolver path that does not auto-probe or auto-queue."
     ]
   },
   "ownership": {
@@ -121,5 +121,53 @@
     "Sensitive headers and already-redacted placeholders remain safe.",
     "Native, aria2, scheduler, media resolver, queue, worker, offline library and Media3 player source contracts remain present.",
     "The browser-integration module remains free of Android WebKit runtime dependencies."
-  ]
+  ],
+  "phase2_extraction": {
+    "status": "landed_in_overlay",
+    "runtime_removal_started": false,
+    "neutral_contracts": [
+      "ExternalUrlPolicy",
+      "DownloadIntakeDraft",
+      "DownloadIntakePlanner",
+      "MediaCaptureIntake",
+      "MediaCaptureIntakePlanner",
+      "MediaRequestFacts"
+    ],
+    "browser_shaped_view_model_methods_removed": [
+      "captureBrowserMediaUrl",
+      "openAddFromBrowser",
+      "openBrowserDownload"
+    ],
+    "browser_runtime_deferred_to_later_phase": true,
+    "downloader_execution_modified": false,
+    "android_manifest_modified": false,
+    "room_schema_modified": false
+  },
+  "phase3_external_handoff": {
+    "status": "landed_in_overlay",
+    "runtime_removal_started": false,
+    "classification_kinds": [
+      "DirectFile",
+      "DirectMedia",
+      "AdaptiveMedia",
+      "Torrent",
+      "PageOrUnknown"
+    ],
+    "metadata_preserved": [
+      "mimeType",
+      "contentLength",
+      "pageTitle",
+      "pageUrl",
+      "originPackage"
+    ],
+    "add_download_type_guidance": true,
+    "explicit_inspect_as_media": true,
+    "page_probe_records": true,
+    "auto_probe": false,
+    "auto_queue": false,
+    "browser_runtime_still_present": true,
+    "android_manifest_modified": false,
+    "room_schema_modified": false,
+    "transfer_engines_modified": false
+  }
 }

@@ -10,7 +10,7 @@ browser = (root / "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt
 routes = (root / "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").read_text()
 run_gate = (root / "tools/run-final-release-gate.sh").read_text()
 workflow = (root / ".github/workflows/android.yml").read_text()
-require(manifest.get("current_overlay") == "xdm_android_phase49_50_download_rules_ux_polish_overlay.zip", "current_overlay must point at combined Phase 49/50 overlay")
+require(manifest.get("current_overlay") == "xdm_android_phase49_50_download_rules_ux_polish_overlay.zip" or str(manifest.get("current_overlay", "")).startswith("xdm_android_browser_removal_phase"), "current_overlay must point at combined Phase 49/50 overlay")
 require("phase50_browser_downloader_ux_polish_seal" in manifest, "manifest must record Phase 50")
 require("BrowserDownloaderFlowPanel" in browser and "Browser → Downloader flow" in browser, "flow panel must be present")
 require("Direct files follow download rules" in browser and "media stays in the capture cockpit" in browser, "dual path polish copy must be present")

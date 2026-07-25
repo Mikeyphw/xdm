@@ -30,12 +30,22 @@ except Exception as exc:
     inventory = {}
 
 scope = inventory.get("phase_scope", {})
+project_manifest_path = ROOT / "PROJECT_MANIFEST.json"
+try:
+    project_manifest_json = json.loads(project_manifest_path.read_text(encoding="utf-8"))
+except Exception as exc:
+    errors.append(f"Project manifest is missing or invalid JSON: {exc}")
+    project_manifest_json = {}
+current_overlay = str(project_manifest_json.get("current_overlay", ""))
+is_phase_0_1 = current_overlay == "xdm_android_browser_removal_phase0_1_baseline_preservation_overlay.zip"
+is_browser_removal_successor = current_overlay.startswith("xdm_android_browser_removal_phase")
+
 if scope.get("runtime_removal_started") is not False:
-    errors.append("Phase 0/1 must record runtime_removal_started=false")
-if scope.get("production_kotlin_modified") is not False:
-    errors.append("Phase 0/1 must remain production-Kotlin neutral")
-if scope.get("android_manifest_modified") is not False:
-    errors.append("Phase 0/1 must remain AndroidManifest neutral")
+    errors.append("Phase 0/1 preservation baseline must remain recorded before runtime removal")
+if is_phase_0_1 and scope.get("production_kotlin_modified") is not False:
+    errors.append("The Phase 0/1 overlay itself must remain production-Kotlin neutral")
+if is_phase_0_1 and scope.get("android_manifest_modified") is not False:
+    errors.append("The Phase 0/1 overlay itself must remain AndroidManifest neutral")
 
 ownership = inventory.get("ownership", {})
 for category in (
@@ -139,7 +149,8 @@ for marker in ("ignoresUnsafeAndNonShareSchemes", "acceptsNewlinesAndAngleBracke
 
 project_manifest = read("PROJECT_MANIFEST.json")
 require(project_manifest, '"browser_removal_phase0_1"', "Project manifest")
-require(project_manifest, '"current_overlay": "xdm_android_browser_removal_phase0_1_baseline_preservation_overlay.zip"', "Project manifest")
+if not is_browser_removal_successor:
+    errors.append("Project manifest current_overlay must be a declared browser-removal phase")
 
 workflow = read(".github/workflows/android.yml")
 final_gate = read("tools/run-final-release-gate.sh")

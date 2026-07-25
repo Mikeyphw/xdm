@@ -17,7 +17,7 @@ def require(condition: bool, message: str) -> None:
         raise SystemExit(message)
 
 phase = manifest.get("phase46_browser_private_mode_data_isolation", {})
-require(manifest.get("current_overlay") in {'xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip', 'xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip', 'xdm_android_phase48_browser_resource_inspector_overlay.zip', 'xdm_android_phase49_50_download_rules_ux_polish_overlay.zip'}, "current_overlay must point at Phase 46 or approved later browser overlay")
+require(manifest.get("current_overlay") in {'xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip', 'xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip', 'xdm_android_phase48_browser_resource_inspector_overlay.zip', 'xdm_android_phase49_50_download_rules_ux_polish_overlay.zip'} or str(manifest.get("current_overlay", "")).startswith("xdm_android_browser_removal_phase"), "current_overlay must point at Phase 46 or approved later browser overlay")
 require(phase.get("phase45_landed") is True, "Phase 46 must depend on Phase 45")
 require(phase.get("no_new_route") is True, "Phase 46 must not add a new route")
 require(phase.get("no_room_migration") is True, "Phase 46 must not add a Room migration")
@@ -31,7 +31,7 @@ require("effectiveCookieProfile = if (activeTabIsPrivate) BrowserCookieProfile.P
 require("fun openNewPrivateTab()" in browser and "BrowserTab.blank(isPrivate = true)" in browser, "New private tab action is missing")
 require("fun closePrivateTabs()" in browser and "tabs.filterNot { it.isPrivate }" in browser, "Clear private tabs action is missing")
 require("if (!activeTabIsPrivate)" in browser and "recordHistory" in browser, "Private tabs must be excluded from browser history")
-require("onMediaDiscovered = { url, mimeType ->" in browser and "if (!activeTabIsPrivate)" in browser and "onMediaRequestState" in browser, "Private tabs must suppress passive media capture persistence")
+require("onMediaDiscovered = { facts ->" in browser and "if (!activeTabIsPrivate)" in browser and "onMediaRequestState" in browser, "Private tabs must suppress passive media capture persistence")
 require("tabs.filterNot { it.isPrivate }.take(MaxStoredTabs)" in browser, "Private tabs must be excluded from session restore persistence")
 require("clearPrivateBrowsingData" in browser and "removeSessionCookies" in browser, "Private close must clear session cookies")
 require("settings.domStorageEnabled = browserSettings.domStorageEnabled && !profile.privateMode" in browser, "Private WebView settings must disable DOM storage")

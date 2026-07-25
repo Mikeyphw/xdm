@@ -65,6 +65,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.mikeyphw.xdm.android.media.MediaCandidateClassifier
 import com.mikeyphw.xdm.android.media.MediaRequestFacts
+import com.mikeyphw.xdm.android.model.DownloadIntakeDraft
+import com.mikeyphw.xdm.android.model.DownloadIntakePlanner
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
@@ -81,10 +83,9 @@ fun BrowserScreen(
     modifier: Modifier = Modifier,
     initialUrl: String? = null,
     onInitialUrlConsumed: (String) -> Unit = {},
-    onMediaRequest: (url: String, pageTitle: String?, pageUrl: String?, mimeType: String?) -> Unit,
+    onMediaRequest: (MediaRequestFacts) -> Unit,
     onOpenMediaInbox: () -> Unit,
-    onOpenAddForUrl: (url: String, pageTitle: String?) -> Unit,
-    onBrowserDownloadRequest: (url: String, pageTitle: String?, fileName: String?) -> Unit,
+    onOpenDownloadReview: (DownloadIntakeDraft) -> Unit,
     onDownloadMediaCapture: (MediaCaptureRecord) -> Unit,
     onResolveMediaCapture: (MediaCaptureRecord) -> Unit,
 ) {
@@ -137,9 +138,14 @@ fun BrowserScreen(
     val currentUrlState by rememberUpdatedState(currentPageUrl)
     val onMediaRequestState by rememberUpdatedState(onMediaRequest)
     val classifier = remember { MediaCandidateClassifier() }
+    val downloadIntakePlanner = remember { DownloadIntakePlanner() }
     val sniffedUrls = remember { mutableStateListOf<String>() }
     val pageCaptures = captures.filter { it.pageUrl == currentPageUrl || it.sourceUrl in sniffedUrls }.distinctBy { it.id }
     val pageResources = remember(sniffedUrls.toList(), pageCaptures) { toBrowserPageResources(sniffedUrls, pageCaptures) }
+
+    fun openDownloadReview(url: String, pageTitle: String? = null) {
+        downloadIntakePlanner.fromBuiltInBrowserPage(url, pageTitle)?.let(onOpenDownloadReview)
+    }
 
     fun persistTabs(updated: List<BrowserTab>, nextActiveTabId: String = activeTabId) {
         tabs = updated.ifEmpty { listOf(BrowserTab.blank()) }
@@ -351,7 +357,7 @@ fun BrowserScreen(
             },
             onAddPage = {
                 val target = (browserChromeState.url ?: currentUrlState ?: loadRequest).orEmpty()
-                if (target.isNotBlank()) onOpenAddForUrl(target, currentTitleState)
+                if (target.isNotBlank()) openDownloadReview(target, currentTitleState)
             },
         )
         BrowserVisualStatusBar(
@@ -367,7 +373,7 @@ fun BrowserScreen(
             mediaCount = pageCaptures.size,
             resourceCount = pageResources.size,
             rules = browserDownloadRules,
-            onAddCurrentPage = { target -> onOpenAddForUrl(target, currentTitleState) },
+            onAddCurrentPage = { target -> openDownloadReview(target, currentTitleState) },
             onOpenResources = { showResourceInspector = true },
             onOpenMedia = onOpenMediaInbox,
         )
@@ -462,7 +468,7 @@ fun BrowserScreen(
                 bookmarks = sessionStore.saveBookmarks(bookmarks.filterNot { it.url.equals(bookmark.url, ignoreCase = true) })
             },
             onOpenUrl = { url, title -> openBrowserEntry(url, title) },
-            onAddUrl = onOpenAddForUrl,
+            onAddUrl = ::openDownloadReview,
             onImportTextChanged = { value -> importText = value },
             onParseImportLinks = { importedLinks = extractBrowserImportLinks(importText) },
             onPasteClipboard = { pasteClipboardIntoImport() },
@@ -476,8 +482,8 @@ fun BrowserScreen(
             onToggleInspector = { showResourceInspector = !showResourceInspector },
             onFilterChanged = { resourceFilter = it },
             onOpenResource = { url, title -> openBrowserEntry(url, title) },
-            onAddResource = onOpenAddForUrl,
-            onInspectResource = { url, title -> onMediaRequestState(url, title, currentUrlState, null) },
+            onAddResource = ::openDownloadReview,
+            onInspectResource = { url, title -> onMediaRequestState(MediaRequestFacts(url = url, pageUrl = currentUrlState, pageTitle = title)) },
         )
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (loadRequest.isNullOrBlank()) {
@@ -490,6 +496,7 @@ fun BrowserScreen(
                 EmbeddedBrowser(
                     loadRequest = loadRequest,
                     classifier = classifier,
+                    downloadIntakePlanner = downloadIntakePlanner,
                     browserNavigator = browserNavigator,
                     cookieProfile = effectiveCookieProfile,
                     browserSettings = browserPrivacySettings,
@@ -497,10 +504,15 @@ fun BrowserScreen(
                     onPageChanged = { url, title -> updateActiveTab(url, title) },
                     onLoadStateChanged = { browserLoadState = it },
                     onNavigationChanged = { browserChromeState = it },
-                    onMediaDiscovered = { url, mimeType ->
+                    onMediaDiscovered = { facts ->
                         if (!activeTabIsPrivate) {
-                            if (sniffedUrls.none { it.equals(url, ignoreCase = true) }) sniffedUrls += url
-                            onMediaRequestState(url, currentTitleState, currentUrlState, mimeType)
+                            if (sniffedUrls.none { it.equals(facts.url, ignoreCase = true) }) sniffedUrls += facts.url
+                            onMediaRequestState(
+                                facts.copy(
+                                    pageTitle = facts.pageTitle ?: currentTitleState,
+                                    pageUrl = facts.pageUrl ?: currentUrlState,
+                                ),
+                            )
                         }
                     },
                     onDownloadRequested = { draft ->
@@ -529,7 +541,7 @@ fun BrowserScreen(
                     },
                     onAddPage = {
                         val target = (browserLoadState.url ?: currentUrlState ?: loadRequest).orEmpty()
-                        if (target.isNotBlank()) onOpenAddForUrl(target, currentTitleState)
+                        if (target.isNotBlank()) openDownloadReview(target, currentTitleState)
                     },
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
@@ -539,12 +551,12 @@ fun BrowserScreen(
             BrowserDownloadBridgeCard(
                 draft = draft,
                 onAddDownload = {
-                    onBrowserDownloadRequest(draft.url, draft.sourcePageTitle, draft.fileName)
+                    onOpenDownloadReview(draft.intake)
                     browserDownloadDraft = null
                 },
                 onInspectMedia = {
                     if (sniffedUrls.none { it.equals(draft.url, ignoreCase = true) }) sniffedUrls += draft.url
-                    onMediaRequestState(draft.url, draft.sourcePageTitle, draft.sourcePageUrl, draft.mimeType)
+                    onMediaRequestState(MediaRequestFacts(url = draft.url, mimeType = draft.mimeType, contentLength = draft.contentLength, pageUrl = draft.sourcePageUrl, pageTitle = draft.sourcePageTitle))
                 },
                 onDismiss = { browserDownloadDraft = null },
             )
@@ -555,7 +567,7 @@ fun BrowserScreen(
             captures = pageCaptures,
             sniffedCount = sniffedUrls.size,
             onOpenMediaInbox = onOpenMediaInbox,
-            onOpenAddForUrl = onOpenAddForUrl,
+            onOpenAddForUrl = ::openDownloadReview,
             onDownloadSelected = onDownloadMediaCapture,
             onResolveSelected = onResolveMediaCapture,
         )
@@ -1242,6 +1254,7 @@ private fun BrowserReliabilityCard(
 private fun EmbeddedBrowser(
     loadRequest: String?,
     classifier: MediaCandidateClassifier,
+    downloadIntakePlanner: DownloadIntakePlanner,
     browserNavigator: BrowserNavigator,
     cookieProfile: BrowserCookieProfile,
     browserSettings: BrowserPrivacySettings,
@@ -1249,7 +1262,7 @@ private fun EmbeddedBrowser(
     onPageChanged: (String?, String?) -> Unit,
     onLoadStateChanged: (BrowserLoadState) -> Unit,
     onNavigationChanged: (BrowserChromeState) -> Unit,
-    onMediaDiscovered: (String, String?) -> Unit,
+    onMediaDiscovered: (MediaRequestFacts) -> Unit,
     onDownloadRequested: (BrowserDownloadBridgeDraft) -> Unit,
     onPermissionRequested: (BrowserPermissionPrompt) -> Unit,
     onPermissionCanceled: (String) -> Unit,
@@ -1315,14 +1328,14 @@ private fun EmbeddedBrowser(
                         if (!url.isNullOrBlank()) onLoadStateChanged(BrowserLoadState.Loading(url, 0))
                         onNavigationChanged(browserNavigator.snapshot(isLoading = true, progress = 0).copy(url = url ?: view?.url, title = view?.title))
                         onPageChanged(url, view?.title)
-                        sniffBrowserUrl(url, null, classifier, onMediaDiscovered)
+                        sniffBrowserUrl(url, null, view?.url, view?.title, classifier, onMediaDiscovered)
                     }
 
                     override fun onPageFinished(view: WebView?, url: String?) {
                         onPageChanged(url, view?.title)
                         onNavigationChanged(browserNavigator.snapshot(isLoading = false, progress = 100).copy(url = url ?: view?.url, title = view?.title))
                         if (!url.isNullOrBlank()) onLoadStateChanged(BrowserLoadState.Loaded(url))
-                        sniffBrowserUrl(url, null, classifier, onMediaDiscovered)
+                        sniffBrowserUrl(url, null, view?.url, view?.title, classifier, onMediaDiscovered)
                         val finishedUrl = url
                         view?.postDelayed({
                             val currentUrl = view.url
@@ -1360,15 +1373,23 @@ private fun EmbeddedBrowser(
 
                     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                         val url = request?.url?.toString()
-                        sniffBrowserUrl(url, null, classifier, onMediaDiscovered)
+                        sniffBrowserUrl(url, null, view?.url, view?.title, classifier, onMediaDiscovered)
                         return false
                     }
 
                     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                         val url = request?.url?.toString()
-                        val accept = request?.requestHeaders?.entries?.firstOrNull { it.key.equals("Accept", ignoreCase = true) }?.value
-                        if (url != null && classifier.isCandidate(MediaRequestFacts(url, accept))) {
-                            mainHandler.post { onMediaDiscovered(url, accept) }
+                        val headers = request?.requestHeaders.orEmpty()
+                        val accept = headers.entries.firstOrNull { it.key.equals("Accept", ignoreCase = true) }?.value
+                        val facts = url?.let {
+                            MediaRequestFacts(
+                                url = it,
+                                mimeType = accept,
+                                headers = headers,
+                            )
+                        }
+                        if (facts != null && classifier.isCandidate(facts)) {
+                            mainHandler.post { onMediaDiscovered(facts) }
                         }
                         return super.shouldInterceptRequest(view, request)
                     }
@@ -1381,14 +1402,17 @@ private fun EmbeddedBrowser(
                     val pageUrl = this.url?.takeIf { !it.equals(safeUrl, ignoreCase = true) }
                     val pageTitle = this.title?.takeIf { it.isNotBlank() }
                     onPageChanged(pageUrl ?: safeUrl, pageTitle ?: fileName)
+                    val intake = downloadIntakePlanner.fromBuiltInBrowserDownload(
+                        url = safeUrl,
+                        fileName = fileName,
+                        pageTitle = pageTitle,
+                        pageUrl = pageUrl,
+                        mimeType = mimeType,
+                        contentLength = contentLength,
+                    ) ?: return@setDownloadListener
                     onDownloadRequested(
                         BrowserDownloadBridgeDraft(
-                            url = safeUrl,
-                            fileName = fileName,
-                            mimeType = mimeType?.takeIf { it.isNotBlank() },
-                            contentLength = contentLength,
-                            sourcePageUrl = pageUrl,
-                            sourcePageTitle = pageTitle,
+                            intake = intake,
                             category = category,
                             decision = decision,
                         ),
@@ -1524,7 +1548,7 @@ private fun BrowserMediaCockpit(
             maxLines = 3,
         )
         XdmActionFlowRow {
-            TextButton(onClick = { currentUrl?.let { onOpenAddForUrl(it, currentTitle) } }, enabled = !currentUrl.isNullOrBlank()) { Text("Add page URL") }
+            TextButton(onClick = { currentUrl?.let { openDownloadReview(it, currentTitle) } }, enabled = !currentUrl.isNullOrBlank()) { Text("Add page URL") }
         }
     }
 }
@@ -1599,11 +1623,14 @@ private val MediaCaptureRecord.mediaCockpitDiagnostics: String
 private fun sniffBrowserUrl(
     url: String?,
     mimeType: String?,
+    pageUrl: String?,
+    pageTitle: String?,
     classifier: MediaCandidateClassifier,
-    onMediaDiscovered: (String, String?) -> Unit,
+    onMediaDiscovered: (MediaRequestFacts) -> Unit,
 ) {
     val safeUrl = url?.takeIf { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) } ?: return
-    if (classifier.isCandidate(MediaRequestFacts(safeUrl, mimeType))) onMediaDiscovered(safeUrl, mimeType)
+    val facts = MediaRequestFacts(url = safeUrl, mimeType = mimeType, pageUrl = pageUrl, pageTitle = pageTitle)
+    if (classifier.isCandidate(facts)) onMediaDiscovered(facts)
 }
 
 
@@ -1634,15 +1661,17 @@ private fun browserPermissionResourceLabel(resource: String): String = when (res
 
 
 private data class BrowserDownloadBridgeDraft(
-    val url: String,
-    val fileName: String,
-    val mimeType: String?,
-    val contentLength: Long,
-    val sourcePageUrl: String?,
-    val sourcePageTitle: String?,
+    val intake: DownloadIntakeDraft,
     val category: BrowserDownloadCategory = BrowserDownloadCategory.Other,
     val decision: BrowserDownloadRuleDecision = BrowserDownloadRuleDecision.AlwaysAsk,
 ) {
+    val url: String get() = intake.url
+    val fileName: String get() = intake.fileName
+    val mimeType: String? get() = intake.mimeType
+    val contentLength: Long get() = intake.contentLength ?: -1L
+    val sourcePageUrl: String? get() = intake.pageUrl
+    val sourcePageTitle: String? get() = intake.pageTitle
+
     val detailLine: String
         get() = listOfNotNull(
             mimeType?.takeIf { it.isNotBlank() } ?: "unknown type",
@@ -1653,6 +1682,7 @@ private data class BrowserDownloadBridgeDraft(
     val sourcePageLabel: String?
         get() = sourcePageUrl?.let { page -> "From ${sourcePageTitle?.takeIf { it.isNotBlank() } ?: hostFromUrl(page)}" }
 }
+
 
 private data class BrowserTabSessionState(
     val activeTabId: String,

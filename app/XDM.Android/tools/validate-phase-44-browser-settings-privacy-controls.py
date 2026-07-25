@@ -30,7 +30,7 @@ allowed_overlays = {
     "xdm_android_phase48_browser_resource_inspector_overlay.zip", "xdm_android_phase49_50_download_rules_ux_polish_overlay.zip",
 }
 require(doc.is_file(), "Phase 44 browser settings/privacy doc is missing")
-require(manifest.get("current_overlay") in allowed_overlays, "current_overlay must point at the Phase 44 browser settings/privacy overlay or approved Phase 45 visual polish overlay")
+require(manifest.get("current_overlay") in allowed_overlays or str(manifest.get("current_overlay", "")).startswith("xdm_android_browser_removal_phase"), "current_overlay must point at the Phase 44 browser settings/privacy overlay or approved Phase 45 visual polish overlay")
 for key in [
     "phase43_landed",
     "homepage_setting",

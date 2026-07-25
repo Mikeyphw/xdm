@@ -14,13 +14,14 @@ import android.content.pm.PackageManager
 import com.mikeyphw.xdm.android.model.AutomationCommandAction
 import com.mikeyphw.xdm.android.model.AutomationCommandDraft
 import com.mikeyphw.xdm.android.model.AutomationCommandSource
-import com.mikeyphw.xdm.android.model.BrowserHandoffPolicy
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.tasker.TaskerContract
 import com.mikeyphw.xdm.android.browser.BrowserHandoffContract
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import java.util.Locale
 
 open class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
@@ -63,7 +64,7 @@ open class MainActivity : ComponentActivity() {
     private fun openBrowserUrlFromIntent(intent: Intent?) {
         val incoming = intent ?: return
         val sharedUrl = sharedText(incoming)
-        val normalized = urlCandidates(incoming, sharedUrl).firstNotNullOfOrNull(BrowserHandoffPolicy::normalizedUrl) ?: return
+        val normalized = urlCandidates(incoming, sharedUrl).firstNotNullOfOrNull(ExternalUrlPolicy::normalizedUrl) ?: return
         val scheme = android.net.Uri.parse(normalized).scheme.orEmpty().lowercase()
         if (scheme == "http" || scheme == "https") viewModel.openBrowserUrl(normalized)
     }
@@ -73,12 +74,16 @@ open class MainActivity : ComponentActivity() {
         val sharedUrl = sharedText(incoming)
         val url = handoffUrl(incoming, sharedUrl)
         val fileName = handoffFileName(incoming)
+        val mimeType = handoffMimeType(incoming)
+        val contentLength = handoffContentLength(incoming)
+        val pageUrl = handoffPageUrl(incoming, url)
+        val pageTitle = handoffTitle(incoming)
         val taskerDraft = TaskerContract.draftFor(
             actionName = incoming.action,
             url = incoming.getStringExtra(TaskerContract.ExtraUrl) ?: url,
             fileName = incoming.getStringExtra(TaskerContract.ExtraFileName) ?: fileName,
-            pageTitle = incoming.getStringExtra(TaskerContract.ExtraPageTitle) ?: handoffTitle(incoming),
-            pageUrl = incoming.getStringExtra(TaskerContract.ExtraPageUrl) ?: incoming.dataString,
+            pageTitle = incoming.getStringExtra(TaskerContract.ExtraPageTitle) ?: pageTitle,
+            pageUrl = incoming.getStringExtra(TaskerContract.ExtraPageUrl) ?: pageUrl,
             idempotencyKey = incoming.getStringExtra(TaskerContract.ExtraIdempotencyKey),
             originPackage = browserOriginPackage(incoming),
             rawHeaders = browserHeaders(incoming),
@@ -96,32 +101,39 @@ open class MainActivity : ComponentActivity() {
                 action = handoffAction,
                 url = url,
                 fileName = fileName,
-                pageTitle = handoffTitle(incoming),
+                pageTitle = pageTitle,
+                pageUrl = pageUrl,
                 explicitIdempotencyKey = incoming.getStringExtra(TaskerContract.ExtraIdempotencyKey),
                 originPackage = browserOriginPackage(incoming),
                 rawHeaders = browserHeaders(incoming),
+                mimeType = mimeType,
+                contentLength = contentLength,
             )
             action == Intent.ACTION_VIEW -> AutomationCommandDraft(
                 source = AutomationCommandSource.ViewIntent,
                 action = handoffAction,
                 url = url,
                 fileName = fileName,
-                pageTitle = handoffTitle(incoming),
-                pageUrl = incoming.dataString,
+                pageTitle = pageTitle,
+                pageUrl = pageUrl,
                 explicitIdempotencyKey = incoming.getStringExtra(TaskerContract.ExtraIdempotencyKey),
                 originPackage = browserOriginPackage(incoming),
                 rawHeaders = browserHeaders(incoming),
+                mimeType = mimeType,
+                contentLength = contentLength,
             )
             action in BrowserHandoffContract.DownloadManagerActions -> AutomationCommandDraft(
                 source = AutomationCommandSource.ViewIntent,
                 action = AutomationCommandAction.PromptAddDownload,
                 url = url,
                 fileName = fileName,
-                pageTitle = handoffTitle(incoming),
-                pageUrl = incoming.dataString,
+                pageTitle = pageTitle,
+                pageUrl = pageUrl,
                 explicitIdempotencyKey = incoming.getStringExtra(TaskerContract.ExtraIdempotencyKey),
                 originPackage = browserOriginPackage(incoming),
                 rawHeaders = browserHeaders(incoming),
+                mimeType = mimeType,
+                contentLength = contentLength,
             )
             else -> null
         }
@@ -134,7 +146,7 @@ open class MainActivity : ComponentActivity() {
     }
 
     private fun handoffUrl(intent: Intent, sharedText: String? = null): String? =
-        urlCandidates(intent, sharedText).firstNotNullOfOrNull(BrowserHandoffPolicy::normalizedUrl)
+        urlCandidates(intent, sharedText).firstNotNullOfOrNull(ExternalUrlPolicy::normalizedUrl)
 
     private fun sharedText(intent: Intent): String? = sharedTextCandidates(intent)
         .firstNotNullOfOrNull { value -> value?.trim()?.takeIf { it.isNotBlank() } }
@@ -203,6 +215,36 @@ open class MainActivity : ComponentActivity() {
             ?: referrer?.host
             ?: callingPackage
             ?: intent.component?.packageName
+
+
+    private fun handoffMimeType(intent: Intent): String? = listOfNotNull(
+        intent.getStringExtra(BrowserHandoffContract.ExtraMimeType),
+        intent.type,
+        intent.getStringExtra("mimeType"),
+        intent.getStringExtra("mime_type"),
+        intent.getStringExtra("com.android.browser.extra.MIME_TYPE"),
+    ).firstNotNullOfOrNull { value ->
+        value.substringBefore(';').trim().lowercase(Locale.US).takeIf { '/' in it && it.length <= 120 }
+    }
+
+    private fun handoffContentLength(intent: Intent): Long? = listOf(
+        BrowserHandoffContract.ExtraContentLength,
+        "contentLength",
+        "content_length",
+        "android.intent.extra.SIZE",
+        "com.android.browser.extra.CONTENT_LENGTH",
+    ).firstNotNullOfOrNull { key -> intent.getLongExtra(key, -1L).takeIf { it > 0L } }
+
+    private fun handoffPageUrl(intent: Intent, fallbackUrl: String?): String? = listOfNotNull(
+        intent.getStringExtra(BrowserHandoffContract.ExtraPageUrl),
+        intent.getStringExtra(TaskerContract.ExtraPageUrl),
+        intent.getStringExtra("pageUrl"),
+        intent.getStringExtra("page_url"),
+        intent.getStringExtra("com.android.browser.extra.REFERRER"),
+        intent.getStringExtra("android.intent.extra.REFERRER_NAME"),
+        intent.dataString,
+        fallbackUrl,
+    ).firstNotNullOfOrNull(ExternalUrlPolicy::normalizedUrl)
 
     private fun browserHeaders(intent: Intent): String? = listOfNotNull(
         intent.getStringExtra(BrowserHandoffContract.ExtraRequestHeaders),

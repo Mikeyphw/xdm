@@ -4,9 +4,9 @@ import json
 root = Path(__file__).resolve().parents[1]
 checks = [
     (root / 'app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt', ['Downloads("Downloads"', 'Media("Media"']),
-    (root / 'app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt', ['MediaInboxScreen', 'viewModel::captureBrowserMediaUrl', 'viewModel::openAddFromBrowser']),
+    (root / 'app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt', ['MediaInboxScreen', 'viewModel::captureMediaRequest', 'viewModel::openDownloadReview']),
     (root / 'app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt', ['WebView', 'shouldInterceptRequest', 'setDownloadListener', 'Browser media tray', 'Review media']),
-    (root / 'app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt', ['fun captureBrowserMediaUrl', 'fun openAddFromBrowser', 'repository.saveMediaCapture']),
+    (root / 'app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt', ['fun captureMediaRequest', 'fun openDownloadReview', 'repository.saveMediaCapture']),
     (root / 'media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaInboxContract.kt', ['MediaCandidateClassifier', 'mimeTypeHint', 'candidatesFromHtml', 'application/dash+xml']),
     (root / 'media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt', ['MediaDownloadStrategy', 'YtDlp', 'FfmpegLive', 'UnsupportedProtected']),
     (root / 'docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md', ['Browser', 'media tray', 'explicit review']),
@@ -32,8 +32,11 @@ approved_browser_route_overlays = {
     'xdm_android_phase44_browser_settings_privacy_controls_overlay.zip', 'xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip', 'xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip',
     'xdm_android_phase48_browser_resource_inspector_overlay.zip',
     'xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip',
+    'xdm_android_phase49_50_download_rules_ux_polish_overlay.zip',
+    'xdm_android_browser_removal_phase0_1_baseline_preservation_overlay.zip',
+    'xdm_android_browser_removal_phase2_neutral_intake_extraction_overlay.zip',
 }
-if manifest.get('current_overlay') not in approved_browser_route_overlays and ('Browser("Browser"' in route_text or 'Icons.Rounded.Search' in route_text):
+if manifest.get('current_overlay') not in approved_browser_route_overlays and not str(manifest.get('current_overlay', '')).startswith('xdm_android_browser_removal_phase') and ('Browser("Browser"' in route_text or 'Icons.Rounded.Search' in route_text):
     raise SystemExit('Browser media downloader must live under Media before the Phase 37B explicit Browser route')
 
 browser_text = (root / 'app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt').read_text()

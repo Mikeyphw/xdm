@@ -8,16 +8,16 @@ import org.junit.Test
 class DownloaderHandoffPreservationTest {
     @Test
     fun externalDownloadUrlsNormalizeSupportedSchemes() {
-        assertEquals("https://example.test/file.apk", BrowserHandoffPolicy.normalizedUrl(" HTTPS://Example.TEST:443/file.apk. "))
-        assertEquals("http://example.test/file.zip", BrowserHandoffPolicy.normalizedUrl("http://Example.TEST:80/file.zip"))
-        assertEquals("ftp://example.test/file.iso", BrowserHandoffPolicy.normalizedUrl("ftp://Example.TEST:21/file.iso"))
-        assertNull(BrowserHandoffPolicy.normalizedUrl("javascript:alert(1)"))
-        assertNull(BrowserHandoffPolicy.normalizedUrl("file:///sdcard/secret"))
+        assertEquals("https://example.test/file.apk", ExternalUrlPolicy.normalizedUrl(" HTTPS://Example.TEST:443/file.apk. "))
+        assertEquals("http://example.test/file.zip", ExternalUrlPolicy.normalizedUrl("http://Example.TEST:80/file.zip"))
+        assertEquals("ftp://example.test/file.iso", ExternalUrlPolicy.normalizedUrl("ftp://Example.TEST:21/file.iso"))
+        assertNull(ExternalUrlPolicy.normalizedUrl("javascript:alert(1)"))
+        assertNull(ExternalUrlPolicy.normalizedUrl("file:///sdcard/secret"))
     }
 
     @Test
     fun sharedTextExtractionStaysDistinctAndHttpOnly() {
-        val urls = BrowserHandoffPolicy.urlsInText(
+        val urls = ExternalUrlPolicy.urlsInText(
             "Get https://example.test/a, http://example.test/b, https://example.test/a and ignore ftp://example.test/c",
         )
         assertEquals(listOf("https://example.test/a", "http://example.test/b"), urls)
@@ -25,7 +25,7 @@ class DownloaderHandoffPreservationTest {
 
     @Test
     fun sensitiveHeadersRemainRedactedWhileSafeHeadersSurvive() {
-        val headers = BrowserHandoffPolicy.sanitizeHeaders(
+        val headers = ExternalUrlPolicy.sanitizeHeaders(
             "Authorization: Bearer abcdefghijklmnop\nCookie: SID=secret\nReferer: https://example.test/watch?token=secret\nUser-Agent: XDM",
         )
         assertEquals(
@@ -36,7 +36,7 @@ class DownloaderHandoffPreservationTest {
 
     @Test
     fun alreadyRedactedPlaceholdersRemainSafeAndStable() {
-        val headers = BrowserHandoffPolicy.sanitizeHeaders(
+        val headers = ExternalUrlPolicy.sanitizeHeaders(
             "Cookie: <redacted>\nAuthorization: Bearer <redacted>\nX-Trace: session=<redacted>",
         )
         assertEquals(
@@ -62,4 +62,14 @@ class DownloaderHandoffPreservationTest {
 
         assertEquals(share.stableIdempotencyKey, view.stableIdempotencyKey)
     }
+
+    @Suppress("DEPRECATION")
+    @Test
+    fun legacyBrowserNamedFacadeDelegatesToNeutralUrlPolicy() {
+        assertEquals(
+            ExternalUrlPolicy.normalizedUrl("https://example.test/file.zip"),
+            BrowserHandoffPolicy.normalizedUrl("https://example.test/file.zip"),
+        )
+    }
+
 }

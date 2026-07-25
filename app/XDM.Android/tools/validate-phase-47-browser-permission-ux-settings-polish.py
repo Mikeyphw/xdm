@@ -15,7 +15,7 @@ def require(cond, msg):
         raise SystemExit(msg)
 phase = manifest.get("phase47_browser_permission_ux_settings_polish", {})
 allowed = {"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip", "xdm_android_phase48_browser_resource_inspector_overlay.zip", "xdm_android_phase49_50_download_rules_ux_polish_overlay.zip"}
-require(manifest.get("current_overlay") in allowed, "current_overlay must point at Phase 47 or approved later Phase 48 overlay")
+require(manifest.get("current_overlay") in allowed or str(manifest.get("current_overlay", "")).startswith("xdm_android_browser_removal_phase"), "current_overlay must point at Phase 47 or approved later Phase 48 overlay")
 for key in ["phase46_landed", "site_permission_prompt", "permission_decision_status", "reset_browser_settings", "no_new_route", "no_room_migration", "no_transfer_engine_changes", "no_media_execution_changes", "no_adblock_proxy_dns_changes"]:
     require(phase.get(key) is True, f"Phase 47 manifest key {key} missing/false")
 require("BrowserPermissionStatusPanel" in browser and "Site permissions" in browser, "permission status panel missing")

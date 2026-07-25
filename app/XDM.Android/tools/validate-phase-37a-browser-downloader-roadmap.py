@@ -24,7 +24,7 @@ allowed_current = {
     "xdm_android_phase43_browser_library_surfaces_overlay.zip",
     "xdm_android_phase48_browser_resource_inspector_overlay.zip", "xdm_android_phase49_50_download_rules_ux_polish_overlay.zip",
 }
-if manifest.get("current_overlay") not in allowed_current:
+if manifest.get("current_overlay") not in allowed_current and not str(manifest.get("current_overlay", "")).startswith("xdm_android_browser_removal_phase"):
     errors.append("current_overlay must point at Phase 37A or an approved later Phase 37B/38/39/40/40 overlay")
 
 if 37 not in manifest.get("project", {}).get("implemented_phases", []):

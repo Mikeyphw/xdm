@@ -50,6 +50,22 @@ class AutomationModelsTest {
     }
 
     @Test
+    fun externalMetadataRemainsReviewOnlyAndDoesNotChangeDeduplication() {
+        val base = AutomationCommandDraft(
+            source = AutomationCommandSource.ShareSheet,
+            action = AutomationCommandAction.PromptAddDownload,
+            url = "https://example.test/asset",
+            mimeType = "video/mp4",
+            contentLength = 2048L,
+        )
+        val withoutMetadata = base.copy(mimeType = null, contentLength = null)
+
+        assertEquals("video/mp4", base.mimeType)
+        assertEquals(2048L, base.contentLength)
+        assertEquals(base.stableIdempotencyKey, withoutMetadata.stableIdempotencyKey)
+    }
+
+    @Test
     fun sensitiveBrowserHeadersAreRedacted() {
         val draft = AutomationCommandDraft(
             source = AutomationCommandSource.BrowserExtension,
