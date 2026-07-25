@@ -80,7 +80,7 @@ class MediaFinalValidationGatePlanner {
         implementedPhases: List<Int>,
         mediaMobilePolish: MediaMobilePolishDashboard,
         privacyAudit: MediaSessionPrivacyAuditDashboard,
-        captureQuality: BrowserCaptureQualityDashboard,
+        captureQuality: MediaCaptureQualityDashboard,
         playerReports: List<MediaPlayerDiagnosticReport>,
         library: OfflineLibraryV2Dashboard,
         termuxRuntime: TermuxRuntimeDashboard,
@@ -199,7 +199,7 @@ class MediaFinalValidationGatePlanner {
         command.contains("validate-media-final-validation-gate.py") -> "Final media gate"
         command.contains("validate-media-session-privacy-audit.py") -> "Privacy audit"
         command.contains("validate-media-mobile-polish.py") -> "Mobile polish"
-        command.contains("validate-media-browser-capture-quality.py") -> "Capture quality"
+        command.contains("validate-media-capture-quality.py") -> "Capture quality"
         command.contains("validate-media-player-diagnostics.py") -> "Player diagnostics"
         command.contains("validate-media-offline-library-v2.py") -> "Offline library"
         command.contains("validate-media-native-direct-download-engine.py") -> "Native direct engine"
@@ -211,6 +211,7 @@ class MediaFinalValidationGatePlanner {
         command.contains("validate-media-download-engine-hardening.py") -> "Engine hardening"
         command.contains("validate-media-execution-library.py") -> "Execution library"
         command.contains("validate-media-resolver-player.py") -> "Resolver player"
+        command.contains("validate-browser-removal-phase-5.py") -> "Browser persistence cleanup"
         command.contains("validate-browser-removal-phase-4.py") -> "Browser runtime removal"
         command.contains("validate-browser-removal-phase-3.py") -> "External handoff replacement"
         command.contains("validate-browser-removal-phase-2.py") -> "Neutral intake extraction"
@@ -226,6 +227,7 @@ class MediaFinalValidationGatePlanner {
             "python3 tools/validate-browser-removal-phase-2.py",
             "python3 tools/validate-browser-removal-phase-3.py",
             "python3 tools/validate-browser-removal-phase-4.py",
+            "python3 tools/validate-browser-removal-phase-5.py",
             "python3 tools/validate-media-resolver-player.py",
             "python3 tools/validate-media-execution-library.py",
             "python3 tools/validate-media-download-engine-hardening.py",
@@ -237,7 +239,7 @@ class MediaFinalValidationGatePlanner {
             "python3 tools/validate-media-native-direct-download-engine.py",
             "python3 tools/validate-media-offline-library-v2.py",
             "python3 tools/validate-media-player-diagnostics.py",
-            "python3 tools/validate-media-browser-capture-quality.py",
+            "python3 tools/validate-media-capture-quality.py",
             "python3 tools/validate-media-session-privacy-audit.py",
             "python3 tools/validate-media-mobile-polish.py",
             "python3 tools/validate-media-final-validation-gate.py",

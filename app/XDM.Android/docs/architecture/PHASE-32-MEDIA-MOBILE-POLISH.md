@@ -1,6 +1,6 @@
 # Phase 32: Media Mobile Polish
 
-Phase 32 turns the dense Media stack into a phone-first experience while keeping Browser inside Media and without adding routes, database migrations, workers, or new execution side effects.
+Phase 32 turns the dense Media stack into a phone-first experience without adding routes, database migrations, workers, or new execution side effects.
 
 ## Scope
 

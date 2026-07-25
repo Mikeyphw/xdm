@@ -9,7 +9,7 @@ data class MediaCaptureIntake(
     val record: MediaCaptureRecord,
 )
 
-/** Pure media intake seam shared by browser interception, shares, clipboard intake, and future
+/** Pure media intake seam shared by external handoff, shares, clipboard intake, and future
  * external integrations. Repository merging remains in the application layer. */
 class MediaCaptureIntakePlanner(
     private val captureService: MediaCaptureService = MediaCaptureService(),

@@ -16,7 +16,7 @@ Download Navi uses a dedicated add-download entry point: an exported add activit
 - External browser/share/download-manager handoffs are converted to `PromptAddDownload`.
 - `PromptAddDownload` opens the existing Add Download screen with a prefilled draft.
 - External browser/share handoffs never auto-queue.
-- Explicit media capture remains available through `CAPTURE_MEDIA`, Tasker, and internal browser sniffing flows.
+- Explicit media capture remains available through `CAPTURE_MEDIA`, Tasker, external shares, and reviewed media inspection.
 - `ACTION_SEND` receives `text/plain`, `text/*`, and `*/*`.
 - `ACTION_VIEW` receives `http`, `https`, and `ftp` URLs plus common downloadable path patterns.
 - Browser download actions are accepted for `http`, `https`, and `ftp`.

@@ -45,7 +45,7 @@ The final Phase 33 apply succeeded only after these defects were fixed. Future o
    - `token=<redacted>` is not a leak.
    - `session=referer=...` and aria2 `save-session=...` are not raw session-token persistence.
 
-3. Browser capture quality grouping happens before live-review disposition.
+3. Media capture quality grouping happens before live-review disposition.
    - Duplicate live captures must group with the existing capture instead of being sent to live review first.
 
 4. Direct execution lanes stay discoverable.

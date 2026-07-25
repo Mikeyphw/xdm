@@ -1,6 +1,6 @@
-# Phase 30: Browser Capture Quality Pass
+# Phase 30: Media Capture Quality Pass
 
-Phase 30 improves the browser/media sniffer decision layer without adding new WebView hooks, Room migrations, or top-level routes.
+Phase 30 improves the media intake classifier decision layer without adding new external handoff hooks, Room migrations, or top-level routes.
 
 ## Goals
 

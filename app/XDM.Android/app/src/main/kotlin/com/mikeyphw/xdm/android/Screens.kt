@@ -128,8 +128,8 @@ import com.mikeyphw.xdm.android.media.OfflineLibraryV2Health
 import com.mikeyphw.xdm.android.media.MediaPlayerDiagnosticsPlanner
 import com.mikeyphw.xdm.android.media.MediaPlayerDiagnosticBucket
 import com.mikeyphw.xdm.android.media.MediaPlayerDiagnosticReport
-import com.mikeyphw.xdm.android.media.MediaBrowserCaptureQualityPlanner
-import com.mikeyphw.xdm.android.media.BrowserCaptureQualityDashboard
+import com.mikeyphw.xdm.android.media.MediaCaptureQualityPlanner
+import com.mikeyphw.xdm.android.media.MediaCaptureQualityDashboard
 import com.mikeyphw.xdm.android.media.CaptureQualityDisposition
 import com.mikeyphw.xdm.android.media.MediaSessionPrivacyAuditPlanner
 import com.mikeyphw.xdm.android.media.MediaSessionPrivacyAuditDashboard
@@ -1313,39 +1313,38 @@ fun MediaInboxScreen(
         val planner = MediaPlayerDiagnosticsPlanner()
         libraryItems.mapNotNull { item -> item.toPlaybackCandidate()?.let { planner.report(it) } }
     }
-    val browserCaptureQuality = remember(captures, variants) {
-        MediaBrowserCaptureQualityPlanner().dashboard(captures, variants)
+    val mediaCaptureQuality = remember(captures, variants) {
+        MediaCaptureQualityPlanner().dashboard(captures, variants)
     }
-    val sessionPrivacyAudit = remember(captures, variants, libraryItems, executionJobs, termuxRuntime, nativeDirect, browserCaptureQuality) {
+    val sessionPrivacyAudit = remember(captures, variants, libraryItems, executionJobs, termuxRuntime, nativeDirect, mediaCaptureQuality) {
         MediaSessionPrivacyAuditPlanner().audit(
             captures = captures,
             variants = variants,
             libraryItems = libraryItems,
             executionJobs = executionJobs,
-            diagnostics = listOf(termuxRuntime.summary, nativeDirect.summary, browserCaptureQuality.summary),
+            diagnostics = listOf(termuxRuntime.summary, nativeDirect.summary, mediaCaptureQuality.summary),
             cleanupLedger = executionJobs.associate { it.captureId to (it.stage == MediaExecutionStage.Completed || it.stage == MediaExecutionStage.Failed || it.stage == MediaExecutionStage.Blocked) },
         )
     }
-    val mediaMobilePolish = remember(captures, queueTelemetry, queueActions, libraryV2, playerDiagnostics, browserCaptureQuality, sessionPrivacyAudit) {
+    val mediaMobilePolish = remember(captures, queueTelemetry, queueActions, libraryV2, playerDiagnostics, mediaCaptureQuality, sessionPrivacyAudit) {
         MediaMobilePolishPlanner().dashboard(
             captures = captures,
             queueTelemetry = queueTelemetry,
             queueActions = queueActions,
             library = libraryV2,
             playerReports = playerDiagnostics,
-            captureQuality = browserCaptureQuality,
+            captureQuality = mediaCaptureQuality,
             privacyAudit = sessionPrivacyAudit,
             compactPreferred = true,
-            browserVisible = false,
             widthClassLabel = "phone",
         )
     }
-    val mediaFinalValidation = remember(mediaMobilePolish, sessionPrivacyAudit, browserCaptureQuality, playerDiagnostics, libraryV2, termuxRuntime, nativeDirect) {
+    val mediaFinalValidation = remember(mediaMobilePolish, sessionPrivacyAudit, mediaCaptureQuality, playerDiagnostics, libraryV2, termuxRuntime, nativeDirect) {
         MediaFinalValidationGatePlanner().dashboard(
             implementedPhases = (18..33).toList(),
             mediaMobilePolish = mediaMobilePolish,
             privacyAudit = sessionPrivacyAudit,
-            captureQuality = browserCaptureQuality,
+            captureQuality = mediaCaptureQuality,
             playerReports = playerDiagnostics,
             library = libraryV2,
             termuxRuntime = termuxRuntime,
@@ -1363,7 +1362,7 @@ fun MediaInboxScreen(
                 Column(Modifier.weight(1f)) {
                     XdmCardTitle("Media")
                     XdmSupportingText(
-                        "Use Browser to capture video, audio, HLS, and DASH links, then review saved captures here before downloading.",
+                        "Share video, audio, HLS, DASH, or page links from another app, then review saved captures here before downloading.",
                         maxLines = 3,
                     )
                 }
@@ -1388,11 +1387,11 @@ fun MediaInboxScreen(
                 item { MediaNativeDirectDownloadEngineCard(nativeDirect) }
                 item { OfflineLibraryV2Card(libraryV2) }
                 item { PlayerDiagnosticsDeckCard(playerDiagnostics) }
-                item { BrowserCaptureQualityCard(browserCaptureQuality) }
+                item { MediaCaptureQualityCard(mediaCaptureQuality) }
                 item { SessionPrivacyAuditCard(sessionPrivacyAudit) }
                 item { OfflineMediaLibraryCard(librarySummary, libraryItems, downloads, onResumeOrRetryDownload) }
                 item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
-                item { EmptyFeatureScreen("Media inbox", "Use Browser to discover video, audio, HLS, or DASH links, then review captured media here before queueing it safely.") }
+                item { EmptyFeatureScreen("Media inbox", "Share video, audio, HLS, DASH, or page links from another app, then review captured media here before queueing it safely.") }
             }
         } else {
             LazyColumn(
@@ -1412,7 +1411,7 @@ fun MediaInboxScreen(
                 item { MediaNativeDirectDownloadEngineCard(nativeDirect) }
                 item { OfflineLibraryV2Card(libraryV2) }
                 item { PlayerDiagnosticsDeckCard(playerDiagnostics) }
-                item { BrowserCaptureQualityCard(browserCaptureQuality) }
+                item { MediaCaptureQualityCard(mediaCaptureQuality) }
                 item { SessionPrivacyAuditCard(sessionPrivacyAudit) }
                 item { OfflineMediaLibraryCard(librarySummary, libraryItems, downloads, onResumeOrRetryDownload) }
                 item { PostProcessingAutomationCard(postProcessingAutomation, null, null, null) }
@@ -1556,10 +1555,10 @@ private fun toneForMobilePriority(priority: MediaMobileSectionPriority): XdmStat
 }
 
 @Composable
-private fun BrowserCaptureQualityCard(dashboard: BrowserCaptureQualityDashboard) {
-    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Browser capture quality ${dashboard.summary}" }) {
+private fun MediaCaptureQualityCard(dashboard: MediaCaptureQualityDashboard) {
+    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media capture quality ${dashboard.summary}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            XdmCardTitle("Browser capture quality")
+            XdmCardTitle("Media capture quality")
             XdmSupportingText(
                 "Phase 30 improves sniffing quality by grouping duplicates, suppressing analytics noise, flagging stale sessions, and scoring captured media without storing secret query strings.",
                 maxLines = 3,
@@ -1575,7 +1574,7 @@ private fun BrowserCaptureQualityCard(dashboard: BrowserCaptureQualityDashboard)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
             if (dashboard.empty) {
-                XdmMetadataText("No browser capture quality rows yet. Browse or share media to let the sniffer rank captures.", maxLines = 2)
+                XdmMetadataText("No media capture quality rows yet. Browse or share media to let the sniffer rank captures.", maxLines = 2)
             } else {
                 dashboard.rows.take(5).forEach { row ->
                     XdmListCard(compact = true) {
@@ -1616,7 +1615,7 @@ private fun SessionPrivacyAuditCard(dashboard: MediaSessionPrivacyAuditDashboard
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Session privacy audit")
             XdmSupportingText(
-                "Phase 31 audits browser sessions, resolver handoffs, queue specs, sidecars, logs, notifications, temp files, and Termux previews for secret leaks and cleanup gaps.",
+                "Phase 31 audits external page context, resolver handoffs, queue specs, sidecars, logs, notifications, temp files, and Termux previews for secret leaks and cleanup gaps.",
                 maxLines = 3,
             )
             XdmActionFlowRow {
@@ -1674,7 +1673,7 @@ private fun MediaDispatchDashboardCard(dashboard: MediaDispatchDashboard, plans:
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
             if (plans.isEmpty()) {
-                XdmMetadataText("No dispatch plans yet. Capture media from ShareSheet, IronFox, or the built-in browser to generate a runbook.", maxLines = 2)
+                XdmMetadataText("No dispatch plans yet. Share media from IronFox or another app, or inspect a reviewed link, to generate a runbook.", maxLines = 2)
             } else {
                 plans.take(4).forEach { plan ->
                     XdmListCard(compact = true) {

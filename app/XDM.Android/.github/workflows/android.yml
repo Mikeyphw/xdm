@@ -56,7 +56,7 @@ jobs:
           python3 tools/validate-media-native-direct-download-engine.py
           python3 tools/validate-media-offline-library-v2.py
           python3 tools/validate-media-player-diagnostics.py
-          python3 tools/validate-media-browser-capture-quality.py
+          python3 tools/validate-media-capture-quality.py
           python3 tools/validate-media-session-privacy-audit.py
           python3 tools/validate-media-mobile-polish.py
           python3 tools/validate-media-final-validation-gate.py
@@ -67,6 +67,7 @@ jobs:
           python3 tools/validate-browser-removal-phase-2.py
           python3 tools/validate-browser-removal-phase-3.py
           python3 tools/validate-browser-removal-phase-4.py
+          python3 tools/validate-browser-removal-phase-5.py
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
       - run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta

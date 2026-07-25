@@ -1,6 +1,6 @@
 # Phase 20: Media Download Execution and Offline Library
 
-Phase 20 turns the Phase 19 resolver cockpit into an execution surface. It keeps Browser, Resolver, Player, and Library inside the existing Media route and adds no new top-level navigation.
+Phase 20 turns the Phase 19 resolver cockpit into an execution surface. It keeps Resolver, Player, and Library inside the existing Media route and adds no new top-level navigation.
 
 ## Goals
 
@@ -19,7 +19,7 @@ Phase 20 turns the Phase 19 resolver cockpit into an execution surface. It keeps
 - No DRM bypass.
 - No raw shell commands in the UI.
 - No long-lived cookie/header persistence.
-- No new top-level Library, Player, Browser, or Resolver routes.
+- No new top-level Library, Player, or Resolver routes.
 
 ## Safety model
 

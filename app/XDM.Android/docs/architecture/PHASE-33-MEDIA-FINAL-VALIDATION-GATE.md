@@ -5,7 +5,7 @@ Phase 33 closes the XDM Android media stack after the `--no-validate` build runw
 ## Scope
 
 - Reconcile the media phase ledger through Phase 33.
-- Keep the browser, resolver, queue, library, player, capture quality, privacy audit, and mobile polish surfaces inside the existing Media route.
+- Keep the resolver, queue, library, player, capture quality, privacy audit, and mobile polish surfaces inside the existing Media route.
 - Run every static validator from the original release gate plus the media validators added in Phases 18-33.
 - Restore full Gradle build/test/lint expectations for the final phase.
 - Keep warning count at zero. Warnings are patch-worthy, not acceptable residue.
@@ -49,5 +49,5 @@ The final gate verifies that status labels such as `secret-safe` remain allowed 
 The repaired overlay preserves existing media behavior while fixing final-gate regressions found during `:media:testDebugUnitTest`:
 
 - aria2/direct dashboard summaries include a Direct native compatible family label so direct progressive transfers remain visible in the dispatch dashboard.
-- duplicate browser captures are grouped before live-review classification, preventing repeated live manifest rows from bypassing duplicate counts.
+- duplicate media captures are grouped before live-review classification, preventing repeated live manifest rows from bypassing duplicate counts.
 - mobile polish uses value-sensitive secret detection so safe documentation copy like `authorization headers` does not disable `secretSafe`.

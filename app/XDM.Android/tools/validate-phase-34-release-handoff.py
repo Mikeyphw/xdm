@@ -94,7 +94,7 @@ for bad_literal in ['contains(""next_phase"', 'contains(""tests_passed"', 'conta
     if bad_literal in architecture_contract:
         errors.append(f"ArchitectureContractTest contains unescaped JSON assertion literal: {bad_literal}")
 
-capture_quality = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBrowserCaptureQuality.kt")
+capture_quality = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureQuality.kt")
 duplicate_marker = "duplicateOf != null -> CaptureQualityDisposition.GroupWithExisting"
 live_marker = "signals.contains(CaptureQualitySignal.Live) -> CaptureQualityDisposition.LiveReview"
 if duplicate_marker not in capture_quality or live_marker not in capture_quality or capture_quality.index(duplicate_marker) > capture_quality.index(live_marker):

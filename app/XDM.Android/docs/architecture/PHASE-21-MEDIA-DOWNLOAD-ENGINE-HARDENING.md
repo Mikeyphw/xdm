@@ -1,6 +1,6 @@
 # Phase 21: Media Download Engine Hardening
 
-This phase hardens the media execution layer landed in Phase 20 without adding a new top-level route. It keeps the built-in browser, resolver, execution queue, offline library, and player inside the existing Media surface.
+This phase hardens the media execution layer landed in Phase 20 without adding a new top-level route. It keeps the resolver, execution queue, offline library, and player inside the existing Media surface.
 
 ## Scope
 

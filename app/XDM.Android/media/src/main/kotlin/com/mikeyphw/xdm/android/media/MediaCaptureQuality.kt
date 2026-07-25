@@ -10,12 +10,12 @@ import java.net.URI
 import java.util.Locale
 
 /**
- * Phase 30 Browser Capture Quality.
+ * Phase 30 Media Capture Quality.
  *
- * This planner makes the browser/media sniffer less confetti-shaped: it groups related captures,
+ * This planner makes media intake classification less confetti-shaped: it groups related captures,
  * flags analytics noise, scores confidence, surfaces stale metadata, and keeps every diagnostic
  * redacted. It is intentionally pure Kotlin so the UI can preview quality decisions before any
- * worker, WebView hook, or Room migration changes are introduced.
+ * worker, transfer engine, or Room migration changes are introduced.
  */
 enum class CaptureQualitySignal(val label: String) {
     StrongManifest("strong manifest"),
@@ -42,7 +42,7 @@ enum class CaptureQualityDisposition(val label: String) {
     LiveReview("Live review"),
 }
 
-data class BrowserCaptureQualityRow(
+data class MediaCaptureQualityRow(
     val captureId: String,
     val title: String,
     val sourceHost: String,
@@ -63,8 +63,8 @@ data class BrowserCaptureQualityRow(
     ).joinToString(" • ")
 }
 
-data class BrowserCaptureQualityDashboard(
-    val rows: List<BrowserCaptureQualityRow>,
+data class MediaCaptureQualityDashboard(
+    val rows: List<MediaCaptureQualityRow>,
     val treasureCount: Int,
     val noiseCount: Int,
     val duplicateCount: Int,
@@ -86,15 +86,15 @@ data class BrowserCaptureQualityDashboard(
     ).joinToString(" • ")
 }
 
-class MediaBrowserCaptureQualityPlanner {
+class MediaCaptureQualityPlanner {
     fun dashboard(
         captures: List<MediaCaptureRecord>,
         variants: List<MediaVariant>,
         nowEpochMs: Long = System.currentTimeMillis(),
-    ): BrowserCaptureQualityDashboard {
+    ): MediaCaptureQualityDashboard {
         val variantsByCapture = variants.groupBy { it.captureId }
         val seenGroups = mutableMapOf<String, String>()
-        val rows = mutableListOf<BrowserCaptureQualityRow>()
+        val rows = mutableListOf<MediaCaptureQualityRow>()
         captures.sortedWith(compareBy<MediaCaptureRecord> { it.createdAtEpochMs }.thenBy { it.id }).forEach { capture ->
             val captureVariants = variantsByCapture[capture.id].orEmpty()
             val group = groupKeyFor(capture)
@@ -102,8 +102,8 @@ class MediaBrowserCaptureQualityPlanner {
             if (duplicateOf == null) seenGroups[group] = capture.id
             rows += rowFor(capture, captureVariants, group, duplicateOf, nowEpochMs)
         }
-        return BrowserCaptureQualityDashboard(
-            rows = rows.sortedWith(compareByDescending<BrowserCaptureQualityRow> { it.confidenceScore }.thenBy { it.title.lowercase(Locale.US) }),
+        return MediaCaptureQualityDashboard(
+            rows = rows.sortedWith(compareByDescending<MediaCaptureQualityRow> { it.confidenceScore }.thenBy { it.title.lowercase(Locale.US) }),
             treasureCount = rows.count { it.disposition == CaptureQualityDisposition.Treasure },
             noiseCount = rows.count { it.disposition == CaptureQualityDisposition.IgnoreNoise },
             duplicateCount = rows.count { it.disposition == CaptureQualityDisposition.GroupWithExisting },
@@ -121,7 +121,7 @@ class MediaBrowserCaptureQualityPlanner {
         groupKey: String,
         duplicateOf: String?,
         nowEpochMs: Long,
-    ): BrowserCaptureQualityRow {
+    ): MediaCaptureQualityRow {
         val signals = signalsFor(capture, variants, duplicateOf, nowEpochMs)
         val disposition = dispositionFor(capture, signals, duplicateOf)
         val score = confidenceFor(capture, variants, signals, disposition)
@@ -129,7 +129,7 @@ class MediaBrowserCaptureQualityPlanner {
         val title = capture.title.ifBlank { capture.fileName.ifBlank { host.ifBlank { "Captured media" } } }
         val diagnostics = redactKnownSecrets(
             listOf(
-                "Browser capture quality",
+                "Media capture quality",
                 "host=$host",
                 "kind=${capture.kind.name}",
                 "group=$groupKey",
@@ -139,7 +139,7 @@ class MediaBrowserCaptureQualityPlanner {
                 if (capture.needsManifestRefresh(nowEpochMs)) "manifest refresh required" else "manifest fresh or finite",
             ).filter { it.isNotBlank() }.joinToString(" • "),
         )
-        return BrowserCaptureQualityRow(
+        return MediaCaptureQualityRow(
             captureId = capture.id,
             title = title,
             sourceHost = host,

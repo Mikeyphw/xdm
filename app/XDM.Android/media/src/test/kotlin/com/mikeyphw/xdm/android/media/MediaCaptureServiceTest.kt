@@ -255,7 +255,9 @@ class MediaCaptureServiceTest {
         assertFalse(diagnostics.contains("secret-csrf"))
         assertFalse(diagnostics.contains("secret-token"))
         assertTrue(diagnostics.contains("<redacted"))
-        assertTrue(plan.sessionHandoff.ytdlpArguments().contains("--cookies-from-browser=android-webview"))
+        assertTrue(plan.sessionHandoff.cookieHeaderAvailable)
+        assertTrue(plan.sessionHandoff.ytdlpArguments().windowed(2).any { it == listOf("--add-header", "Cookie: SID=secret-cookie") })
+        assertFalse(plan.sessionHandoff.ytdlpArguments().any { it.startsWith("--cookies-from-browser") })
     }
 
     @Test
@@ -970,7 +972,7 @@ class MediaCaptureServiceTest {
 
 
     @Test
-    fun browserCaptureQualityGroupsDuplicatesAndSuppressesNoise() {
+    fun mediaCaptureQualityGroupsDuplicatesAndSuppressesNoise() {
         val service = MediaCaptureService(clock = { 21_000L })
         val first = service.detect("https://video.example.test/live/master.m3u8?token=secret-token", pageTitle = "Live event", pageUrl = "https://video.example.test/watch").single()
         val duplicate = service.detect("https://video.example.test/live/master.m3u8?token=secret-token", pageTitle = "Live event", pageUrl = "https://video.example.test/watch").single().copy(id = "duplicate-capture", createdAtEpochMs = 21_100L)
@@ -986,7 +988,7 @@ class MediaCaptureServiceTest {
                 video.m3u8
             """.trimIndent(),
         )
-        val dashboard = MediaBrowserCaptureQualityPlanner().dashboard(listOf(first, duplicate, noise), variants, nowEpochMs = 21_500L)
+        val dashboard = MediaCaptureQualityPlanner().dashboard(listOf(first, duplicate, noise), variants, nowEpochMs = 21_500L)
 
         assertEquals(1, dashboard.noiseCount)
         assertEquals(1, dashboard.duplicateCount)
@@ -998,13 +1000,13 @@ class MediaCaptureServiceTest {
     }
 
     @Test
-    fun browserCaptureQualityFlagsRefreshWithoutLeakingTokenizedUrls() {
+    fun mediaCaptureQualityFlagsRefreshWithoutLeakingTokenizedUrls() {
         val service = MediaCaptureService(clock = { 22_000L })
         val capture = service.detect("https://cdn.example.test/movie.mpd?sig=secret-session", pageTitle = "Refresh me").single().copy(
             manifestExpiresAtEpochMs = 21_000L,
             resolutionStatus = com.mikeyphw.xdm.android.model.MediaResolutionStatus.RequiresRefresh,
         )
-        val dashboard = MediaBrowserCaptureQualityPlanner().dashboard(listOf(capture), emptyList(), nowEpochMs = 22_500L)
+        val dashboard = MediaCaptureQualityPlanner().dashboard(listOf(capture), emptyList(), nowEpochMs = 22_500L)
         val row = dashboard.rows.single()
 
         assertEquals(CaptureQualityDisposition.NeedsMetadataRefresh, row.disposition)
@@ -1135,7 +1137,7 @@ class MediaCaptureServiceTest {
             secretSafe = true,
         )
         val library = MediaOfflineLibraryV2Planner().dashboard(emptyList())
-        val captureQuality = MediaBrowserCaptureQualityPlanner().dashboard(listOf(capture), variants, nowEpochMs = 3_200L)
+        val captureQuality = MediaCaptureQualityPlanner().dashboard(listOf(capture), variants, nowEpochMs = 3_200L)
         val privacy = MediaSessionPrivacyAuditPlanner().audit(
             captures = listOf(capture),
             variants = variants,

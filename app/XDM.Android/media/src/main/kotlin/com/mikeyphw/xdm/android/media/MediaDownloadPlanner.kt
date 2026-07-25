@@ -47,13 +47,13 @@ data class MediaSessionHandoff(
     val sourceUrl: String,
     val selectedVariantUrl: String?,
     val headers: List<MediaSessionHeader> = emptyList(),
-    val cookieJarAvailable: Boolean = false,
 ) {
     val referer: String? get() = pageUrl?.takeIf { it.isNotBlank() }
-    val needsSession: Boolean get() = referer != null || cookieJarAvailable || headers.isNotEmpty()
+    val cookieHeaderAvailable: Boolean get() = headers.any { it.name.equals("Cookie", ignoreCase = true) }
+    val needsSession: Boolean get() = referer != null || headers.isNotEmpty()
     val redactedSummary: String get() = buildString {
         append("referer=").append(referer?.let(::redactUrl) ?: "none")
-        if (cookieJarAvailable) append("; cookies=available/redacted")
+        if (cookieHeaderAvailable) append("; cookies=available/redacted")
         if (headers.isNotEmpty()) append("; headers=").append(headers.joinToString { it.redactedLine })
     }
 
@@ -61,7 +61,6 @@ data class MediaSessionHandoff(
         val arguments = mutableListOf<String>()
         referer?.let { arguments += listOf("--referer", it) }
         headers.forEach { header -> arguments += listOf("--add-header", "${header.name}: ${header.value}") }
-        if (cookieJarAvailable) arguments += "--cookies-from-browser=android-webview"
         return arguments
     }
 
@@ -176,7 +175,6 @@ class MediaDownloadPlanner {
             sourceUrl = capture.sourceUrl,
             selectedVariantUrl = primaryUrl,
             headers = sessionHeaders,
-            cookieJarAvailable = capture.pageUrl != null,
         )
         return MediaDownloadPlan(
             strategy = strategy,

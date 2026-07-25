@@ -22,7 +22,7 @@ class ArchitectureContractTest {
     @Test
     fun allPlannedRoutesArePresent() {
         val labels = AppRoute.entries.map(AppRoute::label)
-        assertEquals(listOf("Downloads", "Browser", "Add", "Queues", "Scheduler", "Media", "Recovery", "Diagnostics", "Settings"), labels)
+        assertEquals(listOf("Downloads", "Add", "Queues", "Scheduler", "Media", "Recovery", "Diagnostics", "Settings"), labels)
     }
 
     @Test
@@ -774,18 +774,18 @@ class ArchitectureContractTest {
 
 
     @Test
-    fun mediaBrowserCaptureQualityContractsArePresent() {
+    fun mediaCaptureQualityContractsArePresent() {
         val root = androidRoot()
-        assertTrue("Phase 30 contract doc is missing", File(root, "docs/architecture/PHASE-30-BROWSER-CAPTURE-QUALITY.md").isFile)
-        assertTrue("Phase 30 validator is missing", File(root, "tools/validate-media-browser-capture-quality.py").isFile)
+        assertTrue("Phase 30 contract doc is missing", File(root, "docs/architecture/PHASE-30-MEDIA-CAPTURE-QUALITY.md").isFile)
+        assertTrue("Phase 30 validator is missing", File(root, "tools/validate-media-capture-quality.py").isFile)
         val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
-        val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBrowserCaptureQuality.kt").readText()
+        val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureQuality.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Capture quality must expose dispositions and signals", planner.contains("CaptureQualityDisposition") && planner.contains("AnalyticsBeacon") && planner.contains("GroupWithExisting"))
         assertTrue("Capture quality must score and redact diagnostics", planner.contains("confidenceScore") && planner.contains("secret-safe capture quality") && planner.contains("redactKnownSecrets"))
-        assertTrue("Screens must expose Browser capture quality inside Media", screens.contains("Browser capture quality") && screens.contains("Phase 30 improves sniffing quality"))
-        assertTrue("Manifest must record Phase 30", manifest.contains("media_browser_capture_quality"))
-        assertFalse("Browser capture quality must not add top-level routes", AppRoute.entries.any { it.label == "Capture" || it.label == "Quality" || it.label == "Sniffer" })
+        assertTrue("Screens must expose Media capture quality inside Media", screens.contains("Media capture quality") && screens.contains("Phase 30 improves sniffing quality"))
+        assertTrue("Manifest must record Phase 30", manifest.contains("media_capture_quality"))
+        assertFalse("Media capture quality must not add top-level routes", AppRoute.entries.any { it.label == "Capture" || it.label == "Quality" || it.label == "Sniffer" })
     }
 
     @Test
@@ -798,7 +798,7 @@ class ArchitectureContractTest {
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Privacy audit must scan expected surfaces", planner.contains("MediaPrivacySurface") && planner.contains("TermuxCommandPreview") && planner.contains("TempFiles"))
         assertTrue("Privacy audit must classify cleanup and blockers", planner.contains("MediaCleanupState") && planner.contains("durable secret-safe") && planner.contains("transientCleanupHealthy"))
-        assertTrue("Screens must expose Session privacy audit inside Media", screens.contains("Session privacy audit") && screens.contains("Phase 31 audits browser sessions"))
+        assertTrue("Screens must expose Session privacy audit inside Media", screens.contains("Session privacy audit") && screens.contains("Phase 31 audits external page context"))
         assertTrue("Manifest must record Phase 31", manifest.contains("media_session_privacy_audit"))
         assertFalse("Session privacy audit must not add top-level routes", AppRoute.entries.any { it.label == "Privacy" || it.label == "Audit" || it.label == "Cleanup" })
     }
@@ -870,7 +870,7 @@ class ArchitectureContractTest {
         val runGate = File(root, "tools/run-final-release-gate.sh").readText()
         val workflow = File(root, ".github/workflows/android.yml").readText()
         assertTrue("Phase 35 doc must define the ship/no-ship gate", polish.contains("Phase 35: Release Candidate Polish") && polish.contains("Ship/no-ship gate") && polish.contains("No-ship is required"))
-        assertTrue("Manifest must record Phase 35", (manifest.contains("phase35_release_candidate_polish") && (manifest.contains("\"current_overlay\": \"xdm_android_phase35_release_candidate_polish_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase36_external_download_handoff_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase37a_browser_downloader_roadmap_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase38_browser_reliability_foundation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase39_browser_chrome_navigation_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase40_browser_tabs_session_ux_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase41_browser_download_bridge_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase42_browser_media_capture_cockpit_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase43_browser_library_surfaces_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase44_browser_settings_privacy_controls_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")))))))))) || isCurrentBrowserRemovalOverlay(manifest))
+        assertTrue("Manifest must record Phase 35", manifest.contains("phase35_release_candidate_polish") && isCurrentBrowserRemovalOverlay(manifest))
         assertTrue("Phase 35 must keep version metadata stable", buildGradle.contains("versionName = \"0.20.0-rc08\"") && buildGradle.contains("versionCode = 21"))
         assertTrue("Release helper must keep artifact checksums", releaseHelper.contains("sha256sum") && releaseHelper.contains("assembleBeta") && releaseHelper.contains("assembleRelease"))
         assertTrue("Final release gate must include the Phase 35 validator", runGate.contains("validate-phase-35-release-candidate-polish.py"))
@@ -906,22 +906,19 @@ class ArchitectureContractTest {
         assertTrue("URL normalization must support ftp for download-manager handoff", models.contains("(?:https?|ftp)://") && models.contains("scheme != \"http\" && scheme != \"https\" && scheme != \"ftp\""))
         assertTrue("Add screen must show external source and no-auto-queue safety copy", screens.contains("externalSourceLabel") && screens.contains("XDM never auto-queues external handoffs"))
         assertTrue("App shell must pass the external source label", appShell.contains("externalSourceLabel = state.externalAddDraft?.sourceLabel"))
-        assertTrue("Manifest must record Phase 36", (manifest.contains("phase36_external_download_handoff") && (manifest.contains("\"current_overlay\": \"xdm_android_phase36_external_download_handoff_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase37a_browser_downloader_roadmap_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase38_browser_reliability_foundation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase39_browser_chrome_navigation_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase40_browser_tabs_session_ux_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase41_browser_download_bridge_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase42_browser_media_capture_cockpit_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase43_browser_library_surfaces_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase44_browser_settings_privacy_controls_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")))))))))) || isCurrentBrowserRemovalOverlay(manifest))
+        assertTrue("Manifest must record Phase 36", manifest.contains("phase36_external_download_handoff") && isCurrentBrowserRemovalOverlay(manifest))
         assertTrue("Final release gate must include the Phase 36 validator", runGate.contains("validate-phase-36-external-download-handoff.py"))
         assertTrue("CI must include the Phase 36 validator", workflow.contains("validate-phase-36-external-download-handoff.py"))
         assertFalse("Phase 36 must not add top-level routes", AppRoute.entries.any { it.label == "External" || it.label == "Handoff" || it.label == "IronFox" || it.label == "Browser Download" })
     }
 
     @Test
-    fun retiredBrowserEraDocumentsRemainAvailableAsHistoricalRecords() {
+    fun retiredBuiltInBrowserHistoryIsArchivedOutsideActiveContracts() {
         val root = androidRoot()
-        listOf(
-            "docs/browser/DUAL_BROWSER_DOWNLOADER_ROADMAP.md",
-            "docs/browser/PHASE-37B-DUAL-LAUNCHER-NAVIGATION-SPLIT.md",
-            "docs/browser/PHASE-38-BROWSER-RELIABILITY-FOUNDATION.md",
-            "docs/browser/PHASE-41-BROWSER-DOWNLOAD-BRIDGE.md",
-            "docs/browser/PHASE-50-BROWSER-DOWNLOADER-UX-POLISH-SEAL.md",
-        ).forEach { path -> assertTrue("Historical browser document is missing: $path", File(root, path).isFile) }
+        assertTrue(File(root, "docs/archive/BUILT-IN-BROWSER-HISTORY.md").isFile)
+        assertFalse(File(root, "docs/browser").exists())
+        assertFalse(File(root, "docs/architecture/PHASE-18-BUILT-IN-BROWSER-MEDIA-DOWNLOADER.md").exists())
+        assertFalse(File(root, "tools/validate-phase-50-browser-downloader-ux-polish-seal.py").exists())
     }
 
     @Test
@@ -951,6 +948,9 @@ class ArchitectureContractTest {
         assertTrue(runGate.contains("validate-browser-removal-phase-4.py"))
         assertTrue(workflow.contains("validate-browser-removal-phase-4.py"))
     }
+
+    private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
+        .first { File(it, "settings.gradle.kts").isFile && File(it, "app").isDirectory }
 
     private fun isCurrentBrowserRemovalOverlay(manifest: String): Boolean =
         manifest.contains("\"current_overlay\": \"xdm_android_browser_removal_phase")

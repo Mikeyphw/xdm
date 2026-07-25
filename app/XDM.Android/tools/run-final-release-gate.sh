@@ -38,7 +38,7 @@ validators=(
   tools/validate-media-native-direct-download-engine.py
   tools/validate-media-offline-library-v2.py
   tools/validate-media-player-diagnostics.py
-  tools/validate-media-browser-capture-quality.py
+  tools/validate-media-capture-quality.py
   tools/validate-media-session-privacy-audit.py
   tools/validate-media-mobile-polish.py
   tools/validate-media-final-validation-gate.py
@@ -49,6 +49,7 @@ validators=(
   tools/validate-browser-removal-phase-2.py
   tools/validate-browser-removal-phase-3.py
   tools/validate-browser-removal-phase-4.py
+  tools/validate-browser-removal-phase-5.py
 )
 
 for validator in "${validators[@]}"; do
@@ -69,6 +70,6 @@ Run the full build/test/lint gate in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Phase 4 removes the built-in browser runtime and preserves explicit external-browser handoff into Add Download and Media review.
-Proceed to persistence/dependency cleanup only after the full target-environment Gradle gate passes.
+Phase 5 removes browser-only persistence/contracts and preserves explicit external-browser handoff into Add Download and Media review.
+Proceed to downloader-focused UI consolidation only after the full target-environment Gradle gate passes.
 EOF2

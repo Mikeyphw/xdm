@@ -5,7 +5,7 @@ import java.util.Locale
 import java.util.UUID
 
 /** Origin of a review-first download draft. The intake model is deliberately independent of
- * activities, browser engines, Compose, persistence, and transfer execution. */
+ * external activities, Compose, persistence, and transfer execution. */
 enum class DownloadIntakeOrigin {
     ExternalShare,
     ExternalView,

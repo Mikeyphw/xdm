@@ -16,7 +16,6 @@ enum class MediaMobileSurfaceMode(val label: String) {
     CompactPhone("Compact phone"),
     ExpandedPhone("Expanded phone"),
     FoldableTwoPane("Foldable two-pane"),
-    BrowserFocused("Browser focused"),
 }
 
 enum class MediaMobileSectionPriority(val label: String) {
@@ -114,13 +113,12 @@ class MediaMobilePolishPlanner {
         queueActions: MediaQueueActionDashboard,
         library: OfflineLibraryV2Dashboard,
         playerReports: List<MediaPlayerDiagnosticReport>,
-        captureQuality: BrowserCaptureQualityDashboard,
+        captureQuality: MediaCaptureQualityDashboard,
         privacyAudit: MediaSessionPrivacyAuditDashboard,
         compactPreferred: Boolean = true,
-        browserVisible: Boolean = false,
         widthClassLabel: String = "phone",
     ): MediaMobilePolishDashboard {
-        val mode = modeFor(compactPreferred, browserVisible, widthClassLabel)
+        val mode = modeFor(compactPreferred, widthClassLabel)
         val currentJob = currentJobFor(queueTelemetry, queueActions)
         val sections = sectionsFor(
             captures = captures,
@@ -162,8 +160,7 @@ class MediaMobilePolishPlanner {
         )
     }
 
-    private fun modeFor(compactPreferred: Boolean, browserVisible: Boolean, widthClassLabel: String): MediaMobileSurfaceMode {
-        if (browserVisible) return MediaMobileSurfaceMode.BrowserFocused
+    private fun modeFor(compactPreferred: Boolean, widthClassLabel: String): MediaMobileSurfaceMode {
         val normalized = widthClassLabel.lowercase(Locale.US)
         return when {
             normalized.contains("expanded") || normalized.contains("tablet") || normalized.contains("fold") -> MediaMobileSurfaceMode.FoldableTwoPane
@@ -185,7 +182,7 @@ class MediaMobilePolishPlanner {
                 title = "No active media job",
                 statusLabel = "Idle",
                 progressLabel = "0 active",
-                primaryActionLabel = if (queueActions.launchableCount > 0) "Launch ready media" else "Browse or share media",
+                primaryActionLabel = if (queueActions.launchableCount > 0) "Launch ready media" else "Share or inspect media",
                 attentionRequired = queueActions.attentionCount > 0,
                 safeDiagnostic = "Sticky current job summary is idle and secret-safe.",
             )
@@ -207,7 +204,7 @@ class MediaMobilePolishPlanner {
         queueActions: MediaQueueActionDashboard,
         library: OfflineLibraryV2Dashboard,
         playerReports: List<MediaPlayerDiagnosticReport>,
-        captureQuality: BrowserCaptureQualityDashboard,
+        captureQuality: MediaCaptureQualityDashboard,
         privacyAudit: MediaSessionPrivacyAuditDashboard,
         mode: MediaMobileSurfaceMode,
     ): List<MediaMobileSection> {
@@ -276,7 +273,7 @@ class MediaMobilePolishPlanner {
         queueTelemetry: MediaQueueTelemetryDeck,
         library: OfflineLibraryV2Dashboard,
         playerReports: List<MediaPlayerDiagnosticReport>,
-        captureQuality: BrowserCaptureQualityDashboard,
+        captureQuality: MediaCaptureQualityDashboard,
         privacyAudit: MediaSessionPrivacyAuditDashboard,
         captures: List<MediaCaptureRecord>,
     ): List<MediaMobileRecommendation> {

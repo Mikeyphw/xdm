@@ -105,7 +105,7 @@ class MediaFinalValidationGateTest {
         transientCleanupHealthy = secretSafe,
     )
 
-    private fun captureQuality(secretSafe: Boolean): BrowserCaptureQualityDashboard = BrowserCaptureQualityDashboard(
+    private fun captureQuality(secretSafe: Boolean): MediaCaptureQualityDashboard = MediaCaptureQualityDashboard(
         rows = emptyList(),
         treasureCount = 0,
         noiseCount = 0,

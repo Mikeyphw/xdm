@@ -118,9 +118,11 @@ XDM Android is a focused download manager and no longer contains a built-in brow
 
 The Media route remains the review and resolver workbench for direct media, HLS, DASH, and page-level yt-dlp probes. Captures can still expose audio/subtitle variants, live/protected classification, engine recommendations, offline-library state, and Media3 playback without an internal browsing surface.
 
+Browser-era tabs, history, bookmarks, private sessions, permissions, WebView resources, and active browser-product validators are gone. Capture quality remains as a browser-neutral media intake service, and privacy auditing treats external page context as transient data. The `browser-integration` module remains intentionally because it handles external browser and download-manager intents without embedding a browser engine.
+
 ### Media resolver and player
 
-The Media route now resolves captured HLS/DASH manifests through a real picker surface: video quality, audio tracks, and subtitle tracks are selected before download planning. yt-dlp metadata previews show title, thumbnail availability, duration, extractor, and format count before the download action runs. Session handoff is review-first: referer, Origin, and cookie jar hints are passed only to typed yt-dlp/aria2/native planning paths, while diagnostics keep cookies, authorization, tokens, and signed query values redacted.
+The Media route now resolves captured HLS/DASH manifests through a real picker surface: video quality, audio tracks, and subtitle tracks are selected before download planning. yt-dlp metadata previews show title, thumbnail availability, duration, extractor, and format count before the download action runs. Session handoff is review-first: referer, Origin, and short-lived cookie/header hints are passed only to typed yt-dlp/aria2/native planning paths, while diagnostics keep cookies, authorization, tokens, and signed query values redacted.
 
 Completed direct media can open in the embedded Media3 player card. Adaptive or protected streams remain resolver-first, and protected media is diagnostic-only: XDM reports the protection marker but does not bypass DRM or queue protected media.
 

@@ -12,7 +12,7 @@ import java.util.Locale
  * sidecars, diagnostics, or final gate logs.
  */
 enum class MediaPrivacySurface(val label: String) {
-    BrowserProfile("browser profile"),
+    ExternalPageContext("external page context"),
     ResolverSessionHandoff("resolver session handoff"),
     QueueSpec("queue spec"),
     RoomMetadata("Room metadata"),
@@ -122,7 +122,7 @@ class MediaSessionPrivacyAuditPlanner {
 
     private fun inspectCapture(capture: MediaCaptureRecord): List<MediaPrivacyAuditFinding> {
         val rows = mutableListOf<MediaPrivacyAuditFinding>()
-        rows += findingForText(MediaPrivacySurface.BrowserProfile, capture.id, capture.pageUrl.orEmpty(), "keep private profile/page context process-local")
+        rows += findingForText(MediaPrivacySurface.ExternalPageContext, capture.id, capture.pageUrl.orEmpty(), "keep external page context transient and secret-safe")
         rows += findingForText(MediaPrivacySurface.ResolverSessionHandoff, capture.id, capture.sourceUrl, "use short-lived resolver handoff and redact diagnostics")
         val statusPreview = listOf(capture.status.name, capture.resolutionStatus.name, capture.kind.name).joinToString("/")
         rows += MediaPrivacyAuditFinding(MediaPrivacySurface.RoomMetadata, MediaPrivacySeverity.Pass, MediaCleanupState.NotRequired, capture.id, statusPreview, "stable capture metadata scanned")
@@ -183,7 +183,7 @@ class MediaSessionPrivacyAuditPlanner {
         MediaPrivacySurface.Sidecar,
         MediaPrivacySurface.Logs,
         MediaPrivacySurface.Notification -> true
-        MediaPrivacySurface.BrowserProfile,
+        MediaPrivacySurface.ExternalPageContext,
         MediaPrivacySurface.ResolverSessionHandoff,
         MediaPrivacySurface.TempFiles,
         MediaPrivacySurface.TermuxCommandPreview -> false

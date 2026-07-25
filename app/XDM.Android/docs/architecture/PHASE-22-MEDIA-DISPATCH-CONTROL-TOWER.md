@@ -1,6 +1,6 @@
 # Phase 22: Media Dispatch Control Tower
 
-Phase 22 turns the Phase 21 execution-hardening model into a review-first dispatch runbook. It does not add a top-level route, does not migrate Room, and does not start background work directly from the planner. The Media route remains the single cockpit for browser/share handoff media.
+Phase 22 turns the Phase 21 execution-hardening model into a review-first dispatch runbook. It does not add a top-level route, does not migrate Room, and does not start background work directly from the planner. The Media route remains the single cockpit for externally shared and reviewed media.
 
 ## Goals
 

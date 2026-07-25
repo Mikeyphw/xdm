@@ -1,11 +1,18 @@
 # Unreleased
 
+## XDM Android built-in browser removal: Phase 5
+
+- Removed browser-only persistence terminology, dormant mobile browser state, active Phase 18 and Phase 37-50 browser contracts, and their obsolete validators.
+- Preserved capture quality as browser-neutral `MediaCaptureQuality` with grouping, confidence scoring, noise suppression, refresh labels, and redacted diagnostics.
+- Replaced browser-profile privacy auditing with transient external page-context auditing.
+- Kept the WebKit-free `browser-integration` module because it receives external browser shares and Android download actions.
+- Archived a concise non-contractual browser history while keeping Room schema 14, version 0.20.0-rc08, and every downloader engine unchanged.
 ## XDM Android built-in browser removal: Phase 4
 
 - Removed `BrowserScreen`, `BrowserActivity`, `AppRoute.Browser`, the browser launcher, and generic browser-owned HTTP/HTTPS VIEW handling.
 - Removed browser startup URL state and Android WebKit runtime wiring from the app shell.
 - Preserved `ExternalAddDownloadActivity`, share-sheet/ClipData intake, download-manager actions, Add Download classification, and explicit media inspection.
-- Retired Phase 18 and Phase 37-50 browser-runtime validators from the active Android CI and final release gate while keeping their documents as historical records.
+- Retired Phase 18 and Phase 37-50 browser-runtime validators from the active Android CI and final release gate; Phase 5 later consolidates their history into one non-contractual archive.
 - Kept Room schema 14, version 0.20.0-rc08, native/aria2/Termux execution, queue workers, media resolver, offline library, and Media3 playback unchanged.
 
 ## XDM Android built-in browser removal: Phase 3

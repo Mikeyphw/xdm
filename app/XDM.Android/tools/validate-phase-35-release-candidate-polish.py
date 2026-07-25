@@ -153,8 +153,8 @@ for forbidden in ['label = "Release Candidate"', 'label = "Ship"', 'label = "No 
 architecture_contract = text("app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt")
 if "phaseThirtyFourReleaseHandoffContractsArePresent" not in architecture_contract:
     errors.append("Phase 34 architecture contract must stay present")
-if "xdm_android_phase35_release_candidate_polish_overlay.zip" not in architecture_contract or "xdm_android_phase36_external_download_handoff_overlay.zip" not in architecture_contract:
-    errors.append("ArchitectureContractTest must allow Phase 35 and later Phase 36/37A/37B/38/39/40/40 current_overlay literals")
+if "isCurrentBrowserRemovalOverlay" not in architecture_contract:
+    errors.append("ArchitectureContractTest must accept the current browser-removal overlay family")
 for bad_literal in ['contains(""current_overlay"', 'contains(""phase35_release_candidate_polish"']:
     if bad_literal in architecture_contract:
         errors.append(f"ArchitectureContractTest contains unescaped JSON assertion literal: {bad_literal}")
@@ -167,7 +167,7 @@ if 'buildGradle.contains("versionName = \\\"0.20.0-rc08\\\"")' not in architectu
 # Preserve the Phase 33/34 regression locks while polishing the release candidate.
 for rel, token in [
     ("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaMobilePolish.kt", "secret-(?!(?:safe|bearing|free)"),
-    ("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBrowserCaptureQuality.kt", "duplicateOf != null -> CaptureQualityDisposition.GroupWithExisting"),
+    ("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureQuality.kt", "duplicateOf != null -> CaptureQualityDisposition.GroupWithExisting"),
     ("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionDispatcher.kt", "Direct native compatible"),
     ("docs/architecture/PHASE-34-STABILIZATION-RELEASE-HANDOFF.md", "Phase 33 is landed and must not be treated as pending"),
 ]:

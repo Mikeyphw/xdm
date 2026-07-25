@@ -71,6 +71,7 @@ for validator in [
     "validate-browser-removal-phase-2.py",
     "validate-browser-removal-phase-3.py",
     "validate-browser-removal-phase-4.py",
+    "validate-browser-removal-phase-5.py",
     "validate-media-resolver-player.py",
     "validate-media-execution-library.py",
     "validate-media-download-engine-hardening.py",
@@ -82,7 +83,7 @@ for validator in [
     "validate-media-native-direct-download-engine.py",
     "validate-media-offline-library-v2.py",
     "validate-media-player-diagnostics.py",
-    "validate-media-browser-capture-quality.py",
+    "validate-media-capture-quality.py",
     "validate-media-session-privacy-audit.py",
     "validate-media-mobile-polish.py",
     "validate-media-final-validation-gate.py",
@@ -101,7 +102,7 @@ dispatcher = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExe
 if "Direct native compatible" not in dispatcher or "MediaExecutionLane.Aria2Segmented.label" not in dispatcher:
     errors.append("dispatch dashboard summary must keep aria2/direct transfers discoverable as Direct native compatible")
 
-capture_quality = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBrowserCaptureQuality.kt")
+capture_quality = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureQuality.kt")
 duplicate_marker = "duplicateOf != null -> CaptureQualityDisposition.GroupWithExisting"
 live_marker = "signals.contains(CaptureQualitySignal.Live) -> CaptureQualityDisposition.LiveReview"
 if duplicate_marker not in capture_quality or live_marker not in capture_quality or capture_quality.index(duplicate_marker) > capture_quality.index(live_marker):
@@ -154,7 +155,7 @@ redaction_files = [
     "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaNativeDirectDownloadEngine.kt",
     "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaOfflineLibraryV2.kt",
     "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaPlayerDiagnostics.kt",
-    "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBrowserCaptureQuality.kt",
+    "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureQuality.kt",
     "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSessionPrivacyAudit.kt",
 ]
 for rel in redaction_files:
