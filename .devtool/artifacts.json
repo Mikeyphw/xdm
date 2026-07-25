@@ -39472,6 +39472,187 @@
         ]
       },
       "history_id": "3568d668ba374e97b3047d44fb7da4a8"
+    },
+    {
+      "applied_at": "2026-07-25T02:25:21.445268Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_browser_removal_phase7_final_downloader_release_seal_overlay.zip",
+      "artifact_name": "xdm_android_browser_removal_phase7_final_downloader_release_seal_overlay.zip",
+      "type": "overlay",
+      "sha256": "b2580a7c575e9e031fddf35bf33804a98bb90e9a03cef0a6a5f12125fb5b1509",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Seal XDM Android downloader-only architecture",
+      "commit_hash": "",
+      "file_count": 17,
+      "change_counts": {
+        "add": 5,
+        "modify": 12
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android built-in browser removal Phase 7 final downloader release seal",
+        "description": "Seals XDM Android as a downloader-only product by removing the remaining generic web-navigation intent claim, adding authoritative product and release contracts, preserving explicit external handoff and all downloader engines, and installing permanent static, JVM, Android PackageManager, persistence, and CI regression gates.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": ".github/workflows/android.yml",
+              "action": "modify",
+              "source_sha256": "1fea9e10d6d4cab24fd721224e0879d249ab244780a2d4ce46163aed33dc8566",
+              "sha256": "469d050f22545d7013da05358c3883c9970350d026e22dc78d54f3b3346035b0",
+              "size": 2527
+            },
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "source_sha256": "fcb68636ee0528fc77056cebf746626a6868a78e942c741f6e33bca13a60acd7",
+              "sha256": "47b7f73aba4457fff02b095bdf8701e955dd5ff327dee1eb109d3cf6f20891c8",
+              "size": 11326
+            },
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "source_sha256": "bdb1af32aaa632bbdaff98cdd05e95fbb756896836db9491837c26d27459bf54",
+              "sha256": "c6610520950476f1ecbfc184d81fa34d525978eb72f6020e66f7207679f71f32",
+              "size": 4149
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "source_sha256": "fd486544bc8537c35b4a643f74288d37cb2af97bad1132a84315c8dd2dd451c3",
+              "sha256": "e7951f11574999b1ff4a5da06116934d0bc5cd308bf2647a0b43fa86425c000b",
+              "size": 36236
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "source_sha256": "3f1f8f985020df36195715658528eaf1ae60836c69d88e237a805cee467fe9e1",
+              "sha256": "fbeea276a1e4dec98d405210e35183ecd28ab100b0053b7bb551d6f8994e4741",
+              "size": 16183
+            },
+            {
+              "path": "app/XDM.Android/app/src/androidTest/kotlin/com/mikeyphw/xdm/android/BrowserRemovalFinalManifestTest.kt",
+              "action": "add",
+              "sha256": "8c9a34afe662447c53dde9a11ab5f33757a35c284410c5f0e71b6e09de4a4842",
+              "size": 1696
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "source_sha256": "b8474210ed6a734888ec5bc92060fa9fdffb23c98ddd4e8879ef38d2fc770c12",
+              "sha256": "6978b2429688d91d595e90a3b4cd7ef67d011259a16f6e5621761f21702687d4",
+              "size": 14628
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPhase7ContractTest.kt",
+              "action": "add",
+              "sha256": "d484e4318674656a8cd5d8df295bb61a0a6faae7d06d4ee9de300928ddf74676",
+              "size": 6330
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md",
+              "action": "add",
+              "sha256": "028214f12fd4b58cd89a73987e193b512bedc55a99c7bcabbf47ff392971bc99",
+              "size": 3815
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+              "action": "modify",
+              "source_sha256": "fd4429092ec8972a1e56131d1e754bafeb651c9eb857e0f1a9483a573dff0d5b",
+              "sha256": "4dc2722134fc2f8ca6da0e112df8840e8af1e8789d1093a85bd7ba7aa88e9617",
+              "size": 10623
+            },
+            {
+              "path": "app/XDM.Android/docs/browser-removal/BROWSER-DOWNLOADER-BOUNDARY.json",
+              "action": "modify",
+              "source_sha256": "800df6cd404be24d2dd543ae5a6b48511a35f14cfd0fc08b02996b6c16efd545",
+              "sha256": "cd0cdf73f837a09e8f424461a03dfae48b6ebb9ffd47f7b2fd2623d7bd5f38d9",
+              "size": 9760
+            },
+            {
+              "path": "app/XDM.Android/docs/browser-removal/PHASE-7-FINAL-DOWNLOADER-RELEASE-SEAL.md",
+              "action": "add",
+              "sha256": "940df39295f6d8773d448b7e054e19263d46c7352373e66bde7bfbbfc867d003",
+              "size": 2730
+            },
+            {
+              "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+              "action": "modify",
+              "source_sha256": "899ab68e5bc8bc91919e959a0b6361193a35cfe3af90b6398dd1df6c8ff405cf",
+              "sha256": "440f8bfd418b9bb8a711626795bd5317253309624a18984228edc27f4f40399a",
+              "size": 2775
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-browser-removal-phase-4.py",
+              "action": "modify",
+              "source_sha256": "47b5b7b1d2010b562ef1c753c82943c7d9c2da345b28702312f3b7aa6f356551",
+              "sha256": "a6fdf48c8f1ccdfd5de455c25ba1cfd99b8ddc5bb66fc38edc7d2b27ec1fb322",
+              "size": 8318
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-browser-removal-phase-5.py",
+              "action": "modify",
+              "source_sha256": "f03e617e374f57927452c68f832185585f806d316adfd1fd942678bc6584d158",
+              "sha256": "4b25a289cac35e035b1c88e66bf68e177ab59c3288e3beb9871721a4e84162ee",
+              "size": 10226
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-browser-removal-phase-6.py",
+              "action": "modify",
+              "source_sha256": "5096e6461723c74f3ab864a1c7caf652f1d2f9b3082cf0c94d787c3a2b0d516f",
+              "sha256": "1064552a8c0df7b653109e8319b127db02968c82e7425334dad2c38a6948bb36",
+              "size": 6886
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-browser-removal-phase-7.py",
+              "action": "add",
+              "sha256": "94dc40099d5c6b799395d2bb07706146e230696b9d1567ffd8e468dfa0e82553",
+              "size": 11251
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Seal XDM Android downloader-only architecture"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "expected": {
+            "restore": "pass",
+            "build": "pass",
+            "tests": "pass",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Apply only after xdm_android_browser_removal_phase6_downloader_ui_consolidation_overlay.zip.",
+          "Removes the remaining scheme-only HTTP, HTTPS, and FTP ACTION_VIEW filter while retaining typed MIME, file-extension, share-sheet, and Android browser download-manager handoff.",
+          "Adds the authoritative downloader product contract and permanent Phase 7 static, JVM, and PackageManager regression contracts.",
+          "Adds :app:assembleDebugAndroidTest to CI and the final Gradle gate so the instrumentation contract remains compile-checked.",
+          "Does not change downloader engines, queue workers, media resolution, offline library, Media3 playback, Room schema 14, versionCode 21, or versionName 0.20.0-rc08."
+        ]
+      },
+      "history_id": "165ef63fa21e48bc9893413f938a8c26"
     }
   ]
 }

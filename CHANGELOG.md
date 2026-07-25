@@ -1,3 +1,11 @@
+## XDM Android built-in browser removal: Phase 7 final seal
+
+- Sealed XDM Android as a downloader-only product with an authoritative architecture contract.
+- Removed the remaining generic HTTP/HTTPS/FTP navigation intent filter so XDM is not offered as a normal browser.
+- Preserved share-sheet, typed MIME, file-extension, Android browser download-manager, media resolver, and review-first intake paths.
+- Added permanent static, JVM, and PackageManager contracts for browser absence, Room schema 14, stable navigation, and downloader-engine preservation.
+- Added Android-test APK compilation to the final Gradle and CI gates without changing `versionCode 21`, `versionName 0.20.0-rc08`, or Room schema 14.
+
 # Unreleased
 
 ## XDM Android built-in browser removal: Phase 6

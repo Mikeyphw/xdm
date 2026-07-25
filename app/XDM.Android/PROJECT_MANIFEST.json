@@ -442,7 +442,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_browser_removal_phase6_downloader_ui_consolidation_overlay.zip",
+  "current_overlay": "xdm_android_browser_removal_phase7_final_downloader_release_seal_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1100,6 +1100,37 @@
     "room_schema_unchanged": 14,
     "version_name_unchanged": "0.20.0-rc08",
     "version_code_unchanged": 21,
-    "next_phase": "final_regression_release_seal"
+    "next_phase": "phase7_final_release_seal_landed"
+  },
+  "browser_removal_phase7": {
+    "program": "remove_builtin_browser_preserve_downloader",
+    "program_complete": true,
+    "contract_document": "docs/browser-removal/PHASE-7-FINAL-DOWNLOADER-RELEASE-SEAL.md",
+    "authoritative_product_contract": "docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md",
+    "static_validator": "tools/validate-browser-removal-phase-7.py",
+    "jvm_contract": "app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPhase7ContractTest.kt",
+    "package_manager_contract": "app/src/androidTest/kotlin/com/mikeyphw/xdm/android/BrowserRemovalFinalManifestTest.kt",
+    "downloader_only_product_identity": true,
+    "general_browser_intent_absent": true,
+    "package_manager_non_browser_contract": true,
+    "external_handoff_preserved": true,
+    "review_first_intake_preserved": true,
+    "all_download_engines_preserved": true,
+    "media_resolver_library_player_preserved": true,
+    "browser_runtime_and_persistence_absent": true,
+    "room_schema_14_sealed": true,
+    "release_gate_sealed": true,
+    "stable_routes": [
+      "Downloads",
+      "Add",
+      "Media",
+      "Library",
+      "Activity",
+      "Settings"
+    ],
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "next_phase": "complete"
   }
 }

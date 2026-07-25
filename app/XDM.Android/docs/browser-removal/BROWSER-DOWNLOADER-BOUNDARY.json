@@ -1,25 +1,26 @@
 {
   "schema_version": 1,
   "program": "xdm_android_builtin_browser_removal",
-  "phase": "phase4_browser_runtime_excision",
+  "phase": "phase7_final_downloader_release_seal",
   "source_snapshot": {
-    "archive": "xdm_android_browser_removal_phase2_3_cumulative_repair_overlay.zip",
+    "archive": "xdm_android_browser_removal_phase6_downloader_ui_consolidation_overlay.zip",
     "git_commit": null,
-    "git_commit_note": "Phase 4 is bound by Devtool source hashes to the cumulative Phase 2/3 output tree built from xdm-20260724-214627.tar.gz.",
+    "git_commit_note": "Phase 7 is source-locked to the exact Phase 6 output tree used to build the final release-seal overlay.",
     "android_version_name": "0.20.0-rc08",
     "android_version_code": 21,
     "room_schema": 14
   },
   "phase_scope": {
     "runtime_removal_started": true,
-    "production_kotlin_modified": true,
+    "production_kotlin_modified": false,
     "android_manifest_modified": true,
     "database_modified": false,
     "version_bumped": false,
     "purpose": [
-      "Delete the built-in browser activity and WebView runtime.",
-      "Remove Browser from routes, navigation, startup state, and launcher registration.",
-      "Preserve external browser handoff and all downloader execution paths."
+      "Seal XDM Android as a downloader-only product.",
+      "Remove the remaining generic web-navigation manifest claim.",
+      "Preserve explicit external handoff and every downloader execution path.",
+      "Install permanent static, JVM, and PackageManager regression contracts."
     ]
   },
   "ownership": {
@@ -98,6 +99,11 @@
       "id": "browser_persistence_cleanup_deferred",
       "severity": "resolved_in_phase5",
       "detail": "Browser session/persistence terminology, dormant mobile browser state, and browser-only contracts were removed or neutralized."
+    },
+    {
+      "id": "generic_scheme_only_view_filter",
+      "severity": "resolved_in_phase7",
+      "detail": "ExternalAddDownloadActivity no longer claims ordinary HTTP, HTTPS, or FTP navigation; typed MIME and file-extension download handlers remain."
     }
   ],
   "phase1_preservation_contracts": [
@@ -215,6 +221,18 @@
     "room_schema_modified": false,
     "transfer_engines_modified": false,
     "version_bumped": false,
-    "next_phase": "final_regression_release_seal"
+    "next_phase": "phase7_final_release_seal_landed"
+  },
+  "phase7_final_downloader_release_seal": {
+    "status": "complete",
+    "authoritative_product_contract": "docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md",
+    "general_browser_intent_absent": true,
+    "typed_and_path_download_intents_preserved": true,
+    "package_manager_contract": true,
+    "browser_runtime_and_persistence_absent": true,
+    "downloader_engines_preserved": true,
+    "room_schema_modified": false,
+    "version_bumped": false,
+    "roadmap_complete": true
   }
 }

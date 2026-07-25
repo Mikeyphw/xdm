@@ -51,13 +51,14 @@ validators=(
   tools/validate-browser-removal-phase-4.py
   tools/validate-browser-removal-phase-5.py
   tools/validate-browser-removal-phase-6.py
+  tools/validate-browser-removal-phase-7.py
 )
 
 for validator in "${validators[@]}"; do
   python3 "$validator"
 done
 
-FULL_GRADLE_GATE='./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :media:test :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta'
+FULL_GRADLE_GATE='./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :media:test :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug assembleBeta'
 
 if [[ "${1:-}" == "--ci" ]]; then
   echo "CI final static gate passed"
@@ -71,6 +72,6 @@ Run the full build/test/lint gate in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Phase 6 consolidates the browser-free product around Downloads, Add, Media, Library, Activity, and Settings while preserving external handoff and every downloader engine.
-Proceed to the final regression and release seal only after the full target-environment Gradle gate passes.
+Phase 7 seals the downloader-only product, narrows manifest ownership, and preserves every execution lane.
+The browser-removal roadmap is complete after the full target-environment Gradle gate and manual PackageManager check pass.
 EOF2

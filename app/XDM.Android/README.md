@@ -1,8 +1,14 @@
-## XDM Android 0.20.0-rc02
+## XDM Android 0.20.0-rc08
 
 Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
 
 # XDM Android
+
+## Downloader-only release seal
+
+XDM Android is a focused download manager with six stable destinations: Downloads, Add, Media, Library, Activity, and Settings. It integrates with external browsers through explicit sharing, typed download intents, file-extension handlers, and Android download-manager actions. It does not contain WebView or register as a general browser.
+
+The permanent product and release contract is documented in `docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md`. The final browser-removal validator is `tools/validate-browser-removal-phase-7.py`.
 
 Standalone Android download manager implemented through Phase 7: modular Kotlin/Compose architecture, Room persistence, reconciled physical-artifact ownership, native HTTP/HTTPS transfers, Android long-running execution, public/SAF storage, and a supervised authenticated loopback aria2 process boundary.
 
@@ -120,7 +126,7 @@ Library owns completed media, playback readiness, sidecar health, resume, and re
 
 ### External browser handoff and media discovery
 
-XDM Android is a focused download manager and no longer contains a built-in browser or WebView runtime. External browsers and applications can share or open reviewed HTTP, HTTPS, FTP, file, and media links through `ExternalAddDownloadActivity`. Add Download classifies the incoming link, preserves safe MIME and page context, and never starts a transfer silently.
+XDM Android is a focused download manager and no longer contains a built-in browser or WebView runtime. External browsers and applications can share links or delegate typed and file-extension-specific downloads through `ExternalAddDownloadActivity`. Add Download classifies the incoming link, preserves safe MIME and page context, and never starts a transfer silently.
 
 The Media route remains the review and resolver workbench for direct media, HLS, DASH, and page-level yt-dlp probes. Captures can still expose audio/subtitle variants, live/protected classification, engine recommendations, offline-library state, and Media3 playback without an internal browsing surface.
 

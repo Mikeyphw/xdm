@@ -85,9 +85,11 @@ Library must prioritize completed-media scanability, playback readiness, missing
 
 ## Browser and Share Handoff Rules
 
-XDM must be discoverable as an Android download target from browsers that delegate downloads through typed `ACTION_VIEW` intents. The app manifest must keep plain HTTP(S) view handling and also advertise typed HTTP(S) view handling with a MIME wildcard so browser-provided download intents can resolve to XDM.
+`docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md` is authoritative for product identity and intent ownership.
 
-XDM has no built-in browsing surface. Shared text and external browser handoffs must never fall through to a normal cold-launch experience. Media URLs may open the Media route when stream metadata is detected. Ordinary HTTP(S) URLs must open the Add route with the URL prefilled, preserving user review before the transfer starts.
+XDM must be discoverable as an Android download target when browsers delegate a typed MIME or file-extension-specific download intent. It must not claim ordinary HTTP or HTTPS navigation and must not appear as a general browser choice.
+
+XDM has no built-in browsing surface. Shared text and explicit external handoffs must never fall through to a normal cold-launch experience. Media URLs may open the Media route when stream metadata is detected. Reviewed URLs must open Add or Media with the candidate prefilled; no handoff may silently start a transfer.
 
 The ShareSheet intake path must extract URLs from `EXTRA_TEXT`, `EXTRA_SUBJECT`, or the first ClipData text item before rejecting the handoff. Rejections should be visible in Diagnostics, but supported links must navigate to the relevant user workflow. Externally shared HLS, DASH, progressive video, and audio requests must be captured into the Media route instead of starting surprise downloads.
 

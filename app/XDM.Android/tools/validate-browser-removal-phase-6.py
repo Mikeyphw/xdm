@@ -38,8 +38,9 @@ for key in (
     if phase.get(key) is not True:
         errors.append(f"browser_removal_phase6.{key} must be true")
 expected_overlay = "xdm_android_browser_removal_phase6_downloader_ui_consolidation_overlay.zip"
-if manifest.get("current_overlay") != expected_overlay:
-    errors.append("current_overlay must identify the Phase 6 downloader UI consolidation overlay")
+current_overlay = str(manifest.get("current_overlay", ""))
+if current_overlay != expected_overlay and not current_overlay.startswith("xdm_android_browser_removal_phase7_"):
+    errors.append("current_overlay must identify Phase 6 or its approved Phase 7 successor")
 
 routes = read("app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt")
 expected_routes = ("Downloads", "Add", "Media", "Library", "Activity", "Settings")
