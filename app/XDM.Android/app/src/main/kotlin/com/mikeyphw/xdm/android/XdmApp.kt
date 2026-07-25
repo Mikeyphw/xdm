@@ -165,7 +165,10 @@ private fun AppScaffold(
                     externalMimeType = state.externalAddDraft?.mimeType,
                     externalContentLength = state.externalAddDraft?.contentLength,
                     externalCanInspectMedia = state.externalAddDraft?.canInspectAsMedia == true,
-                    onInspectMedia = { state.externalAddDraft?.let(viewModel::inspectExternalMedia) },
+                    onInspectMedia = { url, fileName ->
+                        state.externalAddDraft?.let(viewModel::inspectExternalMedia)
+                            ?: viewModel.inspectManualMedia(url, fileName)
+                    },
                     onDestinationChanged = viewModel::setDestination,
                     onSafDestinationSelected = viewModel::registerSafDestination,
                     onConflictPolicyChanged = viewModel::setConflictPolicy,

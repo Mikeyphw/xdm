@@ -1240,6 +1240,11 @@ class MainViewModel(
         navigate(AppRoute.Add)
     }
 
+    fun inspectManualMedia(url: String, fileName: String) {
+        val draft = downloadIntakePlanner.fromManual(url = url, fileName = fileName) ?: return
+        inspectExternalMedia(draft)
+    }
+
     fun inspectExternalMedia(draft: DownloadIntakeDraft) {
         val intake = externalMediaReviewPlanner.plan(draft) ?: return
         viewModelScope.launch(Dispatchers.IO) {

@@ -1,3 +1,11 @@
+## XDM Android downloader experience: Phase 8A + 8B
+
+- Added a pure review planner for manual and external Add Download intake with URL normalization, semantic classification, readiness steps, and explicit direct-versus-media choice.
+- Added explicit clipboard URL detection and manual Inspect in Media without auto-probing or auto-queueing.
+- Rebuilt Downloads as a grouped control center for Needs attention, Active, Queued, Completed, and History.
+- Added smart section ordering and actionable authentication, storage, permission, verification, network, recovery, and retry guidance.
+- Preserved all downloader engines, six-route topology, Room schema 14, `versionCode 21`, and `versionName 0.20.0-rc08`.
+
 ## XDM Android built-in browser removal: Phase 7 final seal
 
 - Sealed XDM Android as a downloader-only product with an authoritative architecture contract.

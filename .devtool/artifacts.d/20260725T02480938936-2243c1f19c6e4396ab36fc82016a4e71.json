@@ -1,0 +1,208 @@
+{
+  "applied_at": "2026-07-25T02:48:09.389369Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_browser_removal_phase8ab_downloader_intake_dashboard_overlay.zip",
+  "artifact_name": "xdm_android_browser_removal_phase8ab_downloader_intake_dashboard_overlay.zip",
+  "type": "overlay",
+  "sha256": "3f1db018aca53da71bcb9affdb5a158fb0f3a70fd65c13777b77fe26e8d25722",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Refine XDM Android intake and downloads dashboard",
+  "commit_hash": "",
+  "file_count": 21,
+  "change_counts": {
+    "add": 5,
+    "modify": 16
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 8A + 8B downloader intake and dashboard",
+    "description": "Refines the browser-free downloader with a review-first manual/external Add Download workflow, explicit clipboard and media inspection, and a grouped operational Downloads dashboard with smart ordering and actionable failure guidance.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "source_sha256": "47b7f73aba4457fff02b095bdf8701e955dd5ff327dee1eb109d3cf6f20891c8",
+          "sha256": "7e9816c5d90bf2d3e04444cb41e14c488f3216b3aef45520f674732fb24b8576",
+          "size": 12035
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "source_sha256": "c6610520950476f1ecbfc184d81fa34d525978eb72f6020e66f7207679f71f32",
+          "sha256": "c7e0cf5ad9b5413a53fd5b31de18aaccba3467e966ee65e50ee42e8785004432",
+          "size": 4217
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "source_sha256": "e7951f11574999b1ff4a5da06116934d0bc5cd308bf2647a0b43fa86425c000b",
+          "sha256": "e80f8c1e5992e0088457c7b9134c02920035ab462e140b393b09465bc90a188a",
+          "size": 37643
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "source_sha256": "fbeea276a1e4dec98d405210e35183ecd28ab100b0053b7bb551d6f8994e4741",
+          "sha256": "88ba2286c15af7eff25f6460d701932e1e2824ce20bfd1a6fd90f61cfd3aa930",
+          "size": 16444
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "source_sha256": "dd2dec3729fc69049e7198f39767395cdb6aec839e70e99e68a5f8f017f74878",
+          "sha256": "707816fc83059412e0fae7c3e6546dff6354d2fe75c20f4ed7eaefda39fc3899",
+          "size": 72197
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "source_sha256": "dfc4fa6429369be64b0e2128fc04fc93594fa60f9ba8359ce3fb86b1037bab57",
+          "sha256": "75b265b73505a486d52266b01a8cda8b824cd9a717c1921865a07c78617b18c1",
+          "size": 208688
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "source_sha256": "a3e9a863d369cb8454d3ea73c57ce42f912fc57fe54a880e3832bf491864b08e",
+          "sha256": "ae38b98341cb810dc1cbe4aa6a49b8516c598ad44aab7d826a0297749cbbe55c",
+          "size": 15016
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8ABContractTest.kt",
+          "action": "add",
+          "sha256": "ead3c5c0ec1800d14e8983021c50bb0240c0c3f9989949fd4df3f01eec9dbdfc",
+          "size": 6192
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadIntake.kt",
+          "action": "modify",
+          "source_sha256": "10aeae8e8777498210914ebc1a7bed2f6207f3a8e3a67ea7eb9ac23f1e3efa89",
+          "sha256": "381b8e9dc851b393dfd6e51a85a00d1398453bc3720b96036969e287ff950610",
+          "size": 8820
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloaderExperience.kt",
+          "action": "add",
+          "sha256": "8b4c498df732de90c2e3068e5cabf05e055e4a4af8c1e6a24d76eb5b24c6fba0",
+          "size": 13592
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadIntakePlannerTest.kt",
+          "action": "modify",
+          "source_sha256": "e9b951862ee58dc38ce85e16257c62af6a9840eacbdec798e4d06fc38e177191",
+          "sha256": "123fd93024ddff26df936097497bdb6f442acba2b4fa69b4032be70302166962",
+          "size": 4371
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloaderExperienceTest.kt",
+          "action": "add",
+          "sha256": "c3df3246e8de6c1d23896eb1025f888227d078052e4470d7f01f8c7750524f04",
+          "size": 4549
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md",
+          "action": "modify",
+          "source_sha256": "028214f12fd4b58cd89a73987e193b512bedc55a99c7bcabbf47ff392971bc99",
+          "sha256": "93784932704e6943f25766fadc68dbd89540e914831b47d7a6c57c1ec766a499",
+          "size": 4614
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+          "action": "modify",
+          "source_sha256": "4dc2722134fc2f8ca6da0e112df8840e8af1e8789d1093a85bd7ba7aa88e9617",
+          "sha256": "470cf8b79a78e10d5283552fa5edfa4a2873bfc5193e92a20eba4a4fe1996cdc",
+          "size": 11475
+        },
+        {
+          "path": "app/XDM.Android/docs/downloader/PHASE-8AB-DOWNLOADER-INTAKE-DASHBOARD.md",
+          "action": "add",
+          "sha256": "dc429c40086dcbd522fe4f0039f7a86d99bc83e54534639e6f971e574c9a757a",
+          "size": 2233
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "source_sha256": "440f8bfd418b9bb8a711626795bd5317253309624a18984228edc27f4f40399a",
+          "sha256": "277637082b70af5e2724bf4344c2bc8ae69662c28d72e0486ae151f9f50a7387",
+          "size": 2848
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-4.py",
+          "action": "modify",
+          "source_sha256": "a6fdf48c8f1ccdfd5de455c25ba1cfd99b8ddc5bb66fc38edc7d2b27ec1fb322",
+          "sha256": "48899f53bdb24cf6fa8a0c38cce756a35cd79c9355efe0d619db9fce77d648cf",
+          "size": 8356
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-5.py",
+          "action": "modify",
+          "source_sha256": "4b25a289cac35e035b1c88e66bf68e177ab59c3288e3beb9871721a4e84162ee",
+          "sha256": "b6760ce183c8d03569c70724c2da1e0ced29be6318944cc31f16c8a5b778b91c",
+          "size": 10305
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-6.py",
+          "action": "modify",
+          "source_sha256": "1064552a8c0df7b653109e8319b127db02968c82e7425334dad2c38a6948bb36",
+          "sha256": "4bc82a036f4ea1bf50b582e2cf6f7497df5b231eb2a50984cd56de2ab0db6743",
+          "size": 6924
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-7.py",
+          "action": "modify",
+          "source_sha256": "94dc40099d5c6b799395d2bb07706146e230696b9d1567ffd8e468dfa0e82553",
+          "sha256": "239f2ab42dfb0909ddfe49d56faee39393125adb07a9407f0957974e40cf7b4c",
+          "size": 11389
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8ab.py",
+          "action": "add",
+          "sha256": "dd3f65b275472402f75e109f7b2ff2a171b4b8166526d67aa32767232e19171b",
+          "size": 7343
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Refine XDM Android intake and downloads dashboard"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Apply only after xdm_android_browser_removal_phase7_final_downloader_release_seal_overlay.zip.",
+      "Adds review-first manual intake, explicit clipboard URL detection, and manual/external Inspect as media without automatic probing or queueing.",
+      "Groups Downloads into Needs attention, Active, Queued, Completed, and History with smart ordering and user-facing recovery guidance.",
+      "Does not change native, aria2, Termux, scheduler, worker, media resolver, offline library, Media3, Room schema 14, versionCode 21, or versionName 0.20.0-rc08."
+    ]
+  },
+  "history_id": "2243c1f19c6e4396ab36fc82016a4e71"
+}

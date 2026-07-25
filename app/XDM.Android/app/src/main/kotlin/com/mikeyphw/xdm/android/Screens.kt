@@ -66,6 +66,13 @@ import com.mikeyphw.xdm.android.model.DestinationRuleMatch
 import com.mikeyphw.xdm.android.model.DownloadTag
 import com.mikeyphw.xdm.android.model.DownloadTagAssignment
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.DownloadDashboard
+import com.mikeyphw.xdm.android.model.DownloadDashboardOrdering
+import com.mikeyphw.xdm.android.model.DownloadDashboardPlanner
+import com.mikeyphw.xdm.android.model.DownloadDashboardSection
+import com.mikeyphw.xdm.android.model.DownloadReviewPlanner
+import com.mikeyphw.xdm.android.model.DownloadReviewReadiness
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.model.DuplicateUrlAction
 import com.mikeyphw.xdm.android.model.DuplicateUrlRule
 import com.mikeyphw.xdm.android.model.HistoryManagementPolicy
@@ -203,7 +210,7 @@ fun DownloadsScreen(
     val context = LocalContext.current
     var filter by remember { mutableStateOf<DownloadState?>(null) }
     var query by remember { mutableStateOf("") }
-    var sort by remember { mutableStateOf(DownloadSort.Attention) }
+    var ordering by remember { mutableStateOf(DownloadDashboardOrdering.Smart) }
     var showHistoryTools by remember { mutableStateOf(false) }
     var includeArchived by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(setOf<String>()) }
@@ -211,7 +218,8 @@ fun DownloadsScreen(
         .filter { includeArchived || !it.archived }
         .filter { download -> filter == null || download.state == filter }
         .filter { download -> query.isBlank() || download.matchesQuery(query) }
-        .sortForUi(sort)
+    val dashboard = DownloadDashboardPlanner.plan(visible, ordering)
+    val overviewDashboard = DownloadDashboardPlanner.plan(downloads.filter { includeArchived || !it.archived })
     val selectedDownloads = visible.filter { it.id in selectedIds }
 
     Column(Modifier.fillMaxSize()) {
@@ -219,6 +227,7 @@ fun DownloadsScreen(
             downloads = downloads,
             active = active,
             historyReport = historyReport,
+            dashboard = overviewDashboard,
             showHistoryTools = showHistoryTools,
             onToggleHistoryTools = { showHistoryTools = !showHistoryTools },
             onCopyHistory = { copyTextToClipboard(context, "XDM history index", HistoryManagementPolicy.exportIndex(downloads)) },
@@ -252,8 +261,9 @@ fun DownloadsScreen(
             onQueryChanged = { query = it },
             filter = filter,
             onFilterChanged = { filter = it },
-            sort = sort,
-            onSortChanged = { sort = it },
+            ordering = ordering,
+            onOrderingChanged = { ordering = it },
+            dashboard = overviewDashboard,
             downloads = downloads,
         )
         if (visible.isEmpty()) {
@@ -261,22 +271,27 @@ fun DownloadsScreen(
             val description = if (downloads.isEmpty()) {
                 "Add a URL to create the first download."
             } else {
-                "Change the search, sort, or state filter to widen the list."
+                "Change the search, dashboard ordering, or state filter to widen the list."
             }
             EmptyFeatureScreen(title, description)
         } else {
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 10.dp)) {
-                items(visible, key = Download::id) { download ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        FilterChip(
-                            selected = download.id in selectedIds,
-                            onClick = {
-                                selectedIds = if (download.id in selectedIds) selectedIds - download.id else selectedIds + download.id
-                            },
-                            label = { Text(if (download.id in selectedIds) "Selected" else "Select") },
-                        )
+                dashboard.sections.forEach { section ->
+                    item(key = "dashboard-${section.bucket.name}") {
+                        DownloadDashboardSectionHeader(section)
                     }
-                    DownloadCard(download, compact, capabilities, checksumResults, verificationRecords, onTogglePause, onMigrateBackend, onRemoveHistory, onPreviewPostProcessing, onRunPostProcessing)
+                    items(section.downloads, key = Download::id) { download ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            FilterChip(
+                                selected = download.id in selectedIds,
+                                onClick = {
+                                    selectedIds = if (download.id in selectedIds) selectedIds - download.id else selectedIds + download.id
+                                },
+                                label = { Text(if (download.id in selectedIds) "Selected" else "Select") },
+                            )
+                        }
+                        DownloadCard(download, compact, capabilities, checksumResults, verificationRecords, onTogglePause, onMigrateBackend, onRemoveHistory, onPreviewPostProcessing, onRunPostProcessing)
+                    }
                 }
             }
         }
@@ -289,6 +304,7 @@ private fun DownloadListSummary(
     downloads: List<Download>,
     active: ActiveTransferSummary,
     historyReport: HistoryManagementReport,
+    dashboard: DownloadDashboard,
     showHistoryTools: Boolean,
     onToggleHistoryTools: () -> Unit,
     onCopyHistory: () -> Unit,
@@ -296,8 +312,8 @@ private fun DownloadListSummary(
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
 ) {
-    val failed = downloads.count { it.state == DownloadState.Failed || it.state == DownloadState.RecoveryRequired }
-    val completed = downloads.count { it.state == DownloadState.Completed }
+    val failed = dashboard.summary.needsAttention
+    val completed = dashboard.summary.completed
     val paused = downloads.count { it.state == DownloadState.Paused }
     Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -309,7 +325,7 @@ private fun DownloadListSummary(
                 Column(Modifier.weight(1f)) {
                     XdmCardTitle("Download overview", modifier = Modifier.semantics { heading() })
                     XdmSupportingText(
-                        "${downloads.size} total • ${active.activeCount} active • $completed complete • $failed need attention",
+                        "${dashboard.summary.total} total • ${dashboard.summary.active} active • ${dashboard.summary.queued} queued • $completed complete",
                         maxLines = 2,
                     )
                 }
@@ -320,8 +336,10 @@ private fun DownloadListSummary(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (active.activeCount > 0) XdmStatusBadge("${active.activeCount} active", tone = XdmStatusTone.Info)
-                if (active.speedBytesPerSecond > 0) XdmMetricText(active.speedBytesPerSecond.formatSpeed())
+                if (dashboard.summary.active > 0) XdmStatusBadge("${dashboard.summary.active} active", tone = XdmStatusTone.Info)
+                if (dashboard.summary.queued > 0) XdmStatusBadge("${dashboard.summary.queued} queued", tone = XdmStatusTone.Neutral)
+                if (failed > 0) XdmStatusBadge("$failed need attention", tone = XdmStatusTone.Error)
+                if (dashboard.summary.aggregateSpeedBytesPerSecond > 0) XdmMetricText(dashboard.summary.aggregateSpeedBytesPerSecond.formatSpeed())
                 TextButton(onClick = onToggleHistoryTools) { Text(if (showHistoryTools) "Hide history tools" else "History tools") }
             }
             if (showHistoryTools) {
@@ -436,8 +454,9 @@ private fun DownloadListControls(
     onQueryChanged: (String) -> Unit,
     filter: DownloadState?,
     onFilterChanged: (DownloadState?) -> Unit,
-    sort: DownloadSort,
-    onSortChanged: (DownloadSort) -> Unit,
+    ordering: DownloadDashboardOrdering,
+    onOrderingChanged: (DownloadDashboardOrdering) -> Unit,
+    dashboard: DownloadDashboard,
     downloads: List<Download>,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -465,15 +484,18 @@ private fun DownloadListControls(
             }
         }
         XdmActionFlowRow {
-            DownloadSort.entries.forEach { value ->
+            DownloadDashboardOrdering.entries.forEach { value ->
                 FilterChip(
-                    selected = sort == value,
-                    onClick = { onSortChanged(value) },
+                    selected = ordering == value,
+                    onClick = { onOrderingChanged(value) },
                     label = { Text(value.label) },
-                    modifier = Modifier.semantics { stateDescription = if (sort == value) "Sorted by ${value.label}" else "Not sorted by ${value.label}" },
+                    modifier = Modifier.semantics { stateDescription = if (ordering == value) "Ordered by ${value.label}" else "Not ordered by ${value.label}" },
                 )
             }
         }
+        XdmMetadataText(
+            "${dashboard.summary.active} active • ${dashboard.summary.queued} queued • ${dashboard.summary.needsAttention} need attention • ${dashboard.summary.completed} completed",
+        )
     }
 }
 
@@ -485,6 +507,31 @@ private fun DownloadFilterChip(label: String, selected: Boolean, onClick: () -> 
         label = { Text(label) },
         modifier = Modifier.semantics { stateDescription = if (selected) "$label selected" else "$label not selected" },
     )
+}
+
+@Composable
+private fun DownloadDashboardSectionHeader(section: DownloadDashboardSection) {
+    Card(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                XdmCardTitle(section.bucket.label, modifier = Modifier.semantics { heading() })
+                XdmSupportingText(section.description, maxLines = 2)
+            }
+            XdmStatusBadge(
+                section.count.toString(),
+                tone = when (section.bucket) {
+                    com.mikeyphw.xdm.android.model.DownloadDashboardBucket.NeedsAttention -> XdmStatusTone.Error
+                    com.mikeyphw.xdm.android.model.DownloadDashboardBucket.Active -> XdmStatusTone.Info
+                    com.mikeyphw.xdm.android.model.DownloadDashboardBucket.Completed -> XdmStatusTone.Success
+                    else -> XdmStatusTone.Neutral
+                },
+            )
+        }
+    }
 }
 
 @Composable
@@ -547,6 +594,14 @@ private fun DownloadCard(
                 XdmMetadataText(download.destinationUri, maxLines = 1)
             }
             download.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, maxLines = if (expanded) Int.MAX_VALUE else 2) }
+            DownloadDashboardPlanner.attentionSignal(download)?.let { signal ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        XdmStatusBadge(signal.label, tone = XdmStatusTone.Error)
+                        XdmMetadataText(signal.guidance, maxLines = if (expanded) 4 else 2)
+                    }
+                }
+            }
             TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide details" else "Details") }
             if (expanded) {
                 DownloadDetails(
@@ -662,13 +717,14 @@ fun AddDownloadScreen(
     externalMimeType: String? = null,
     externalContentLength: Long? = null,
     externalCanInspectMedia: Boolean = false,
-    onInspectMedia: () -> Unit = {},
+    onInspectMedia: (String, String) -> Unit = { _, _ -> },
     onDestinationChanged: (String) -> Unit,
     onSafDestinationSelected: (String) -> Unit,
     onConflictPolicyChanged: (FilenameConflictPolicy) -> Unit,
     onAdd: (String, String, BackendType, String, FilenameConflictPolicy, Boolean, String, ChecksumAlgorithm) -> Unit,
     recommend: (String, String, BackendType, String, FilenameConflictPolicy, Boolean) -> BackendRecommendation,
 ) {
+    val context = LocalContext.current
     var url by remember { mutableStateOf(initialUrl.orEmpty()) }
     var name by remember { mutableStateOf(initialFileName.orEmpty()) }
     var backend by remember { mutableStateOf(BackendType.Automatic) }
@@ -676,6 +732,7 @@ fun AddDownloadScreen(
     var expectedChecksum by remember { mutableStateOf("") }
     var checksumAlgorithm by remember { mutableStateOf(ChecksumAlgorithm.Sha256) }
     var advancedExpanded by remember { mutableStateOf(false) }
+    var clipboardMessage by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(externalDraftId) {
         if (externalDraftId != null) {
             url = initialUrl.orEmpty()
@@ -688,7 +745,14 @@ fun AddDownloadScreen(
     val recommendation = url.takeIf(String::isNotBlank)?.let {
         recommend(url, name, backend, destinationUri, conflictPolicy, allowFallback)
     }
-    val canSubmit = url.isNotBlank() && destinationUri.isNotBlank() && recommendation?.compatible != false
+    val review = DownloadReviewPlanner.plan(
+        url = url,
+        fileName = name,
+        mimeType = externalMimeType.takeIf { url == initialUrl },
+        destinationUri = destinationUri,
+    )
+    val canSubmit = review.canStartDirectly && recommendation?.compatible != false
+    val canInspectMedia = review.canInspectAsMedia && (externalDraftId == null || externalCanInspectMedia || url != initialUrl)
 
     Column(Modifier.fillMaxSize().imePadding()) {
         LazyColumn(
@@ -716,19 +780,30 @@ fun AddDownloadScreen(
                                 externalPageUrl?.takeIf { it.isNotBlank() && it != initialUrl }?.let { "page context" },
                             )
                             if (metadata.isNotEmpty()) XdmMetadataText(metadata.joinToString(" • "))
-                            if (externalCanInspectMedia) {
-                                XdmActionFlowRow {
-                                    TextButton(onClick = onInspectMedia) { Text("Inspect as media") }
-                                    XdmMetadataText("Opens the media resolver; it does not queue a download.")
-                                }
-                            }
                             XdmMetadataText("Cookies, tokens, and request headers stay redacted; XDM never auto-queues external handoffs.")
                         }
                     }
                 }
             }
             item {
-                XdmSupportingText("Paste a URL, choose where it should land, then start the transfer. Advanced backend and verification controls stay folded until needed.")
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        XdmCardTitle("Review-first intake")
+                        XdmSupportingText("Enter or paste a link, confirm what XDM detected, choose a destination, then explicitly add it to the queue.")
+                        XdmActionFlowRow {
+                            TextButton(onClick = {
+                                val candidate = firstDownloadUrlFromClipboard(context)
+                                if (candidate != null) {
+                                    url = candidate
+                                    clipboardMessage = "Link pasted from clipboard"
+                                } else {
+                                    clipboardMessage = "No supported HTTP, HTTPS, or FTP URL found"
+                                }
+                            }) { Text("Paste detected URL") }
+                            clipboardMessage?.let { XdmMetadataText(it) }
+                        }
+                    }
+                }
             }
             item {
                 OutlinedTextField(url, { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
@@ -742,6 +817,41 @@ fun AddDownloadScreen(
                     singleLine = true,
                     supportingText = { Text("Optional. XDM will infer a name from the URL when this is empty.") },
                 )
+            }
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                            Column(Modifier.weight(1f)) {
+                                XdmCardTitle(review.title)
+                                XdmSupportingText(review.guidance)
+                            }
+                            review.kind?.let { XdmStatusBadge(it.externalLabel(), tone = when (review.readiness) {
+                                DownloadReviewReadiness.InvalidLink -> XdmStatusTone.Error
+                                DownloadReviewReadiness.ChoiceRecommended -> XdmStatusTone.Warning
+                                DownloadReviewReadiness.Ready -> XdmStatusTone.Success
+                                else -> XdmStatusTone.Neutral
+                            }) }
+                        }
+                        XdmActionFlowRow {
+                            review.steps.forEach { step ->
+                                XdmStatusBadge(
+                                    "${step.label}: ${if (step.complete) "Ready" else "Pending"}",
+                                    tone = if (step.complete) XdmStatusTone.Success else XdmStatusTone.Neutral,
+                                    modifier = Modifier.semantics { stateDescription = "${step.label}: ${step.detail}" },
+                                )
+                            }
+                        }
+                        if (canInspectMedia) {
+                            Button(
+                                onClick = { onInspectMedia(url, name) },
+                                enabled = review.normalizedUrl != null,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(if (review.mediaInspectionRecommended) "Inspect as media (recommended)" else "Inspect as media") }
+                            XdmMetadataText("Media inspection opens the resolver and never queues a transfer automatically.")
+                        }
+                    }
+                }
             }
             item {
                 Card(Modifier.fillMaxWidth()) {
@@ -836,12 +946,18 @@ fun AddDownloadScreen(
         }
         Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                XdmMetadataText(if (canSubmit) "Ready to add to the default queue." else "Enter a valid URL and destination.")
+                XdmMetadataText(if (canSubmit) "Ready for explicit queue submission." else review.guidance)
                 Button(
                     onClick = { onAdd(url, name, backend, destinationUri, conflictPolicy, allowFallback, expectedChecksum, checksumAlgorithm) },
                     enabled = canSubmit,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text(if (externalKind == DownloadIntakeKind.PageOrUnknown) "Start direct download" else "Start download") }
+                ) {
+                    Text(when (review.kind) {
+                        DownloadIntakeKind.PageOrUnknown -> "Start direct download"
+                        DownloadIntakeKind.Torrent -> "Add torrent handoff"
+                        else -> "Add to queue"
+                    })
+                }
             }
         }
     }
@@ -3387,29 +3503,24 @@ fun SettingsScreen(
 
 
 
-private enum class DownloadSort(val label: String) {
-    Attention("Needs attention"),
-    Recent("Newest first"),
-    Name("Name"),
-    Progress("Progress"),
-}
-
-private fun List<Download>.sortForUi(sort: DownloadSort): List<Download> = when (sort) {
-    DownloadSort.Attention -> sortedWith(
-        compareByDescending<Download> { if (it.state == DownloadState.Failed || it.state == DownloadState.RecoveryRequired) 1 else 0 }
-            .thenByDescending { if (it.state == DownloadState.Downloading || it.state == DownloadState.Connecting) 1 else 0 }
-            .thenByDescending { it.createdAtEpochMs },
-    )
-    DownloadSort.Recent -> sortedByDescending { it.createdAtEpochMs }
-    DownloadSort.Name -> sortedBy { it.fileName.lowercase() }
-    DownloadSort.Progress -> sortedByDescending { it.progressFraction }
-}
-
 private fun Download.matchesQuery(query: String): Boolean {
     val needle = query.trim().lowercase()
     if (needle.isBlank()) return true
     return listOf(fileName, sourceUrl, destinationUri, userLabel.orEmpty(), backend.uiLabel(), state.uiLabel())
         .any { it.lowercase().contains(needle) }
+}
+
+private fun firstDownloadUrlFromClipboard(context: Context): String? {
+    val clipboard = context.getSystemService(ClipboardManager::class.java) ?: return null
+    val clip = clipboard.primaryClip ?: return null
+    for (index in 0 until clip.itemCount) {
+        val item = clip.getItemAt(index)
+        ExternalUrlPolicy.normalizedUrl(item.uri?.toString())?.let { return it }
+        val text = item.coerceToText(context)?.toString().orEmpty()
+        ExternalUrlPolicy.urlsInText(text).firstOrNull()?.let { return it }
+        ExternalUrlPolicy.normalizedUrl(text)?.let { return it }
+    }
+    return null
 }
 
 private fun copyTextToClipboard(context: Context, label: String, value: String) {

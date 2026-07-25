@@ -67,3 +67,9 @@ A release candidate is qualified only after:
 8. XDM is not offered for ordinary web navigation.
 
 The permanent final contract is enforced by `tools/validate-browser-removal-phase-7.py`, `BrowserRemovalPhase7ContractTest`, and `BrowserRemovalFinalManifestTest`.
+## Review-first intake and Downloads dashboard
+
+Manual URL entry, clipboard extraction, external shares, typed download intents, and automation handoff must converge on browser-neutral review models. Classification and recommendation code may normalize and describe a request, but it must not persist a download or start execution. HLS/DASH and page-like URLs should offer explicit Media inspection while retaining an intentional direct-download choice.
+
+Downloads is the transfer control center. It groups records into Needs attention, Active, Queued, Completed, and History; provides stable smart ordering; and translates failures into actionable, secret-safe guidance. Grouping must not replace the existing queue, scheduler, recovery, backend migration, verification, or diagnostics machinery.
+

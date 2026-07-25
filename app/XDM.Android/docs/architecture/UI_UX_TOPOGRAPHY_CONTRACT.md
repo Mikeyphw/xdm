@@ -133,3 +133,9 @@ The ShareSheet intake path must extract URLs from `EXTRA_TEXT`, `EXTRA_SUBJECT`,
 - The UI must show enabled rules, recent events, and failures without exposing raw shell commands.
 - Diagnostics must include copyable post-processing automation evidence.
 - Root-backed post-processing must remain optional and typed.
+## Phase 8A + 8B Downloader Experience Rules
+
+Add Download must show a review-first path for both manual entry and external handoff: Link, Destination, and Review. Clipboard reading must be initiated by a visible user action. Classification must distinguish direct files, direct media, adaptive playlists, torrents, and page/unknown endpoints before submission. Media inspection must be explicit and must never queue a transfer automatically.
+
+Downloads must group visible records into Needs attention, Active, Queued, Completed, and History in that order. Smart ordering should surface recovery work first, then active priority and throughput, queued priority, and recent completed/history records. Authentication, storage, permission, verification, network, recovery, and retry guidance should explain the next safe action without exposing secrets.
+

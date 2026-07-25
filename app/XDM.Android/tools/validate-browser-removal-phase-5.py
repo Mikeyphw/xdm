@@ -42,11 +42,11 @@ for key in required_flags:
         errors.append(f"browser_removal_phase5.{key} must be true")
 expected_overlay = "xdm_android_browser_removal_phase5_persistence_contract_cleanup_overlay.zip"
 current_overlay = str(manifest_data.get("current_overlay", ""))
-if current_overlay != expected_overlay and not current_overlay.startswith(("xdm_android_browser_removal_phase6_", "xdm_android_browser_removal_phase7_")):
+if current_overlay != expected_overlay and not current_overlay.startswith(("xdm_android_browser_removal_phase6_", "xdm_android_browser_removal_phase7_", "xdm_android_browser_removal_phase8")):
     errors.append("current_overlay must identify Phase 5 or an approved later successor")
 if manifest_data.get("next_phase") != "complete":
     errors.append("top-level next_phase must remain complete for legacy release gates")
-if phase.get("next_phase") not in {"downloader_ui_consolidation", "phase6_downloader_ui_consolidation_landed", "phase7_final_release_seal_landed"}:
+if phase.get("next_phase") not in {"downloader_ui_consolidation", "phase6_downloader_ui_consolidation_landed", "phase7_final_release_seal_landed", "phase8ab_downloader_experience_landed"}:
     errors.append("browser_removal_phase5.next_phase must identify downloader UI consolidation or its landed successor")
 for key in ("built_in_browser_media_downloader",):
     if key in manifest_data:

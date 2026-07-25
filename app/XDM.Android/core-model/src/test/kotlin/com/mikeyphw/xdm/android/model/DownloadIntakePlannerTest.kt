@@ -93,4 +93,12 @@ class DownloadIntakePlannerTest {
             ),
         )
     }
+    @Test
+    fun manualEntryCreatesNeutralReviewDraft() {
+        val draft = planner.fromManual("https://example.com/file.zip", "file.zip")!!
+        assertEquals(DownloadIntakeOrigin.ManualEntry, draft.origin)
+        assertEquals("Add Download", draft.sourceLabel)
+        assertEquals(DownloadIntakeKind.DirectFile, draft.kind)
+    }
+
 }

@@ -12,6 +12,7 @@ enum class DownloadIntakeOrigin {
     ExternalDownloadManager,
     Automation,
     Clipboard,
+    ManualEntry,
     BuiltInBrowserPage,
     BuiltInBrowserDownload,
 }
@@ -139,6 +140,23 @@ class DownloadIntakePlanner(
         mimeType = mimeType,
         contentLength = contentLength,
         allowedSchemes = HttpSchemes,
+    )
+
+    fun fromManual(
+        url: String,
+        fileName: String? = null,
+        mimeType: String? = null,
+    ): DownloadIntakeDraft? = create(
+        prefix = "manual-review",
+        url = url,
+        fileName = fileName,
+        sourceLabel = "Add Download",
+        origin = DownloadIntakeOrigin.ManualEntry,
+        pageTitle = null,
+        pageUrl = null,
+        mimeType = mimeType,
+        contentLength = null,
+        allowedSchemes = DownloadSchemes,
     )
 
     fun fromExternal(

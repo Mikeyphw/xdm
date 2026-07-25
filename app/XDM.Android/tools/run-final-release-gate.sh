@@ -52,6 +52,7 @@ validators=(
   tools/validate-browser-removal-phase-5.py
   tools/validate-browser-removal-phase-6.py
   tools/validate-browser-removal-phase-7.py
+  tools/validate-downloader-experience-phase-8ab.py
 )
 
 for validator in "${validators[@]}"; do
@@ -72,6 +73,6 @@ Run the full build/test/lint gate in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Phase 7 seals the downloader-only product, narrows manifest ownership, and preserves every execution lane.
-The browser-removal roadmap is complete after the full target-environment Gradle gate and manual PackageManager check pass.
+Phase 7 seals the downloader-only product and Phase 8A + 8B refines review-first intake and the Downloads dashboard.
+The browser-free product boundary remains complete after the full target-environment Gradle gate and manual PackageManager check pass.
 EOF2

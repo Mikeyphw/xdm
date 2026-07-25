@@ -442,7 +442,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_browser_removal_phase7_final_downloader_release_seal_overlay.zip",
+  "current_overlay": "xdm_android_browser_removal_phase8ab_downloader_intake_dashboard_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1131,6 +1131,43 @@
     "room_schema_unchanged": 14,
     "version_name_unchanged": "0.20.0-rc08",
     "version_code_unchanged": 21,
-    "next_phase": "complete"
+    "next_phase": "phase8ab_downloader_experience_landed"
+  },
+  "downloader_experience_phase8ab": {
+    "program": "downloader_product_polish",
+    "contract_document": "docs/downloader/PHASE-8AB-DOWNLOADER-INTAKE-DASHBOARD.md",
+    "static_validator": "tools/validate-downloader-experience-phase-8ab.py",
+    "model_contract": "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloaderExperience.kt",
+    "jvm_model_contract": "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloaderExperienceTest.kt",
+    "app_contract": "app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8ABContractTest.kt",
+    "review_first_manual_intake": true,
+    "explicit_clipboard_detection": true,
+    "semantic_link_classification": true,
+    "explicit_media_inspection": true,
+    "auto_probe": false,
+    "auto_queue": false,
+    "dashboard_sections": [
+      "Needs attention",
+      "Active",
+      "Queued",
+      "Completed",
+      "History"
+    ],
+    "smart_dashboard_ordering": true,
+    "actionable_failure_guidance": true,
+    "stable_routes": [
+      "Downloads",
+      "Add",
+      "Media",
+      "Library",
+      "Activity",
+      "Settings"
+    ],
+    "all_download_engines_preserved": true,
+    "browser_runtime_remains_absent": true,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "next_phase": "phase8c_queue_intelligence"
   }
 }

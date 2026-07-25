@@ -10,6 +10,8 @@ XDM Android is a focused download manager with six stable destinations: Download
 
 The permanent product and release contract is documented in `docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md`. The final browser-removal validator is `tools/validate-browser-removal-phase-7.py`.
 
+Phase 8A + 8B adds a review-first manual intake planner and a grouped Downloads control center. The contract is documented in `docs/downloader/PHASE-8AB-DOWNLOADER-INTAKE-DASHBOARD.md`, and its validator is `tools/validate-downloader-experience-phase-8ab.py`.
+
 Standalone Android download manager implemented through Phase 7: modular Kotlin/Compose architecture, Room persistence, reconciled physical-artifact ownership, native HTTP/HTTPS transfers, Android long-running execution, public/SAF storage, and a supervised authenticated loopback aria2 process boundary.
 
 
