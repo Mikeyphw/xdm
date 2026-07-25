@@ -27,21 +27,18 @@ class BrowserRemovalPhase2ContractTest {
     }
 
     @Test
-    fun browserEmitsNeutralDraftsAndMediaFacts() {
+    fun neutralReviewAndMediaEntryPointsSurviveBrowserRemoval() {
         val root = androidRoot()
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val shell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val mediaIntake = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureIntake.kt").readText()
+        val mediaContract = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaInboxContract.kt").readText()
 
-        assertTrue(browser.contains("onOpenDownloadReview: (DownloadIntakeDraft) -> Unit"))
-        assertTrue(browser.contains("onMediaRequest: (MediaRequestFacts) -> Unit"))
-        assertTrue(browser.contains("fromBuiltInBrowserPage"))
-        assertTrue(browser.contains("fromBuiltInBrowserDownload"))
-        assertTrue(browser.contains("headers = request?.requestHeaders.orEmpty()"))
         assertTrue(viewModel.contains("fun openDownloadReview(draft: DownloadIntakeDraft)"))
         assertTrue(viewModel.contains("fun captureMediaRequest(facts: MediaRequestFacts)"))
-        assertTrue(shell.contains("onOpenDownloadReview = viewModel::openDownloadReview"))
-        assertTrue(shell.contains("onMediaRequest = viewModel::captureMediaRequest"))
+        assertTrue(mediaContract.contains("data class MediaRequestFacts"))
+        assertTrue(mediaIntake.contains("facts: MediaRequestFacts"))
+        assertTrue(shell.contains("state.externalAddDraft?.let(viewModel::inspectExternalMedia)"))
         assertFalse(viewModel.contains("fun openAddFromBrowser"))
         assertFalse(viewModel.contains("fun openBrowserDownload"))
         assertFalse(viewModel.contains("fun captureBrowserMediaUrl"))
@@ -58,18 +55,15 @@ class BrowserRemovalPhase2ContractTest {
     }
 
     @Test
-    fun phaseTwoLeavesBrowserRuntimeAndDownloaderEnginesUntouched() {
+    fun phaseTwoNeutralContractsAndDownloaderEnginesRemainAfterRuntimeRemoval() {
         val root = androidRoot()
-        val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
         val mediaInbox = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
 
-        assertTrue(manifest.contains("android:name=\".BrowserActivity\""))
-        assertTrue(browser.contains("WebView(context)"))
         assertFalse("Media screen must not retain unused browser callbacks", mediaInbox.contains("onBrowserMediaRequest") || mediaInbox.contains("onOpenAddForBrowserUrl"))
         assertTrue(File(root, "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt").isFile)
         assertTrue(File(root, "transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt").isFile)
         assertTrue(File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionLibrary.kt").isFile)
+        assertFalse(File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").exists())
     }
 
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }

@@ -112,13 +112,11 @@ Phase 15 keeps the existing route topography while tightening the Android surfac
 
 XDM Android now exposes settings import/export, history/file management, proxy/credential profile metadata, conversion/post-processing policy, protocol coverage polish, and release/non-debug packaging helpers without adding a new top-level route or migrating Room past schema v14.
 
-### Built-in browser media downloader
+### External browser handoff and media discovery
 
-XDM Android now includes a Browser workspace inside the existing Media route for review-first media discovery. The embedded WebView observes page loads, resource requests, and browser download callbacks, then captures likely HLS, DASH, progressive video, and audio streams into the Media inbox. The Media route explains the preferred engine for each capture: native direct download, aria2 segmented download, yt-dlp resolver, or live recording workflow.
+XDM Android is a focused download manager and no longer contains a built-in browser or WebView runtime. External browsers and applications can share or open reviewed HTTP, HTTPS, FTP, file, and media links through `ExternalAddDownloadActivity`. Add Download classifies the incoming link, preserves safe MIME and page context, and never starts a transfer silently.
 
-### Browser media continuity
-
-The Media route now contains a browser workspace with persisted tabs, recent history, and explicit cookie profiles. Captured HLS/DASH media is enriched with audio/subtitle variants, live/protected classification, and page-first yt-dlp probing. The offline library panel summarizes direct, adaptive, audio-only, and subtitle-ready captures without adding a new top-level route.
+The Media route remains the review and resolver workbench for direct media, HLS, DASH, and page-level yt-dlp probes. Captures can still expose audio/subtitle variants, live/protected classification, engine recommendations, offline-library state, and Media3 playback without an internal browsing surface.
 
 ### Media resolver and player
 

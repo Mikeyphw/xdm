@@ -28,116 +28,47 @@ for key in (
     "neutral_download_intake_draft",
     "neutral_download_intake_planner",
     "neutral_media_capture_intake",
-    "browser_emits_neutral_contracts",
     "view_model_browser_neutral_entrypoints",
     "review_first_preserved",
-    "browser_runtime_still_present",
-    "android_manifest_unchanged",
     "room_schema_unchanged",
     "transfer_engines_unchanged",
 ):
     if phase.get(key) is not True:
         errors.append(f"browser_removal_phase2.{key} must be true")
-
-expected_overlay = "xdm_android_browser_removal_phase2_neutral_intake_extraction_overlay.zip"
-current_overlay = str(manifest.get("current_overlay", ""))
-if current_overlay != expected_overlay and not current_overlay.startswith("xdm_android_browser_removal_phase"):
-    errors.append(f"current_overlay must be {expected_overlay} or a browser-removal successor")
+if not str(manifest.get("current_overlay", "")).startswith("xdm_android_browser_removal_phase"):
+    errors.append("current_overlay must be a browser-removal phase")
 
 intake = read("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadIntake.kt")
 for marker in (
-    "enum class DownloadIntakeOrigin",
     "data class DownloadIntakeDraft",
+    "enum class DownloadIntakeOrigin",
+    "enum class DownloadIntakeKind",
+    "object DownloadIntakeClassifier",
     "class DownloadIntakePlanner",
-    "fromBuiltInBrowserPage",
-    "fromBuiltInBrowserDownload",
-    "fromExternal",
     "ExternalUrlPolicy.normalizedUrl",
+    "fromExternal",
 ):
     require(intake, marker, "Neutral download intake")
-for forbidden in (
-    "DownloadRepository",
-    "executionStarter",
-    "TransferExecution",
-    "android.webkit",
-    "android.content",
-    "WebView",
-):
+for forbidden in ("DownloadRepository", "executionStarter", "TransferExecution", "WebView", "android.webkit", "android.content"):
     if forbidden in intake:
         errors.append(f"Neutral download intake must not depend on {forbidden}")
 
-models = read("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/AutomationModels.kt")
-require(models, "object ExternalUrlPolicy", "Neutral URL policy")
-require(models, '@Deprecated("Use ExternalUrlPolicy"', "Legacy BrowserHandoffPolicy compatibility facade")
-require(models, "object BrowserHandoffPolicy", "Legacy BrowserHandoffPolicy compatibility facade")
-
-desktop_parity = read("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DesktopParityModels.kt")
-if "BrowserHandoffPolicy." in desktop_parity:
-    errors.append("New core-model production code must use ExternalUrlPolicy instead of BrowserHandoffPolicy")
-
-parser = read("browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/SharedLinkParser.kt")
-require(parser, "ExternalUrlPolicy.urlsInText", "SharedLinkParser")
-if "android.webkit" in parser or "WebView" in parser:
-    errors.append("External browser integration must remain WebKit-free")
-
+media_contract = read("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaInboxContract.kt")
 media_intake = read("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureIntake.kt")
-for marker in (
-    "data class MediaCaptureIntake",
-    "class MediaCaptureIntakePlanner",
-    "fun plan(facts: MediaRequestFacts)",
-    "captureService.candidateFor",
-    "captureService.recordFor",
-):
-    require(media_intake, marker, "Neutral media intake")
-for forbidden in ("DownloadRepository", "executionStarter", "WebView", "android.webkit"):
-    if forbidden in media_intake:
-        errors.append(f"Neutral media intake must not depend on {forbidden}")
-
-browser = read("app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt")
-for marker in (
-    "onOpenDownloadReview: (DownloadIntakeDraft) -> Unit",
-    "onMediaRequest: (MediaRequestFacts) -> Unit",
-    "fromBuiltInBrowserPage",
-    "fromBuiltInBrowserDownload",
-    "val intake: DownloadIntakeDraft",
-    "headers = request?.requestHeaders.orEmpty()",
-):
-    require(browser, marker, "Browser neutral output seam")
-for stale in ("onBrowserDownloadRequest",):
-    if stale in browser:
-        errors.append(f"BrowserScreen still exposes stale callback: {stale}")
-if "executionStarter.start" in browser or "addDownload(" in browser:
-    errors.append("BrowserScreen must remain review-first and execution-free")
+require(media_contract, "data class MediaRequestFacts", "Neutral media request facts")
+for marker in ("class MediaCaptureIntakePlanner", "MediaCaptureService", "facts: MediaRequestFacts"):
+    require(media_intake, marker, "Neutral media capture intake")
 
 view_model = read("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
 for marker in (
-    "val externalAddDraft: DownloadIntakeDraft?",
-    "fun captureMediaRequest(facts: MediaRequestFacts)",
     "fun openDownloadReview(draft: DownloadIntakeDraft)",
-    "mediaCaptureIntakePlanner.plan(facts)",
-    "downloadIntakePlanner.fromExternal",
+    "fun captureMediaRequest(facts: MediaRequestFacts)",
+    "externalAddDraft.value = draft",
 ):
-    require(view_model, marker, "ViewModel neutral intake")
-for stale in ("fun captureBrowserMediaUrl", "fun openAddFromBrowser", "fun openBrowserDownload", "data class ExternalAddDraft"):
-    if stale in view_model:
-        errors.append(f"ViewModel retains stale browser-shaped intake: {stale}")
-review_block = view_model.split("fun openDownloadReview", 1)[1].split("fun ", 1)[0] if "fun openDownloadReview" in view_model else ""
-for forbidden in ("executionStarter.start", "repository.save(", "Download("):
-    if forbidden in review_block:
-        errors.append(f"openDownloadReview must not perform {forbidden}")
-
-shell = read("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")
-require(shell, "onOpenDownloadReview = viewModel::openDownloadReview", "App shell")
-require(shell, "onMediaRequest = viewModel::captureMediaRequest", "App shell")
-
-screens = read("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt")
-for stale in ("onBrowserMediaRequest", "onOpenAddForBrowserUrl"):
-    if stale in screens:
-        errors.append(f"MediaInboxScreen retains unused browser callback: {stale}")
-
-android_manifest = read("app/src/main/AndroidManifest.xml")
-require(android_manifest, 'android:name=".BrowserActivity"', "Phase 2 browser-runtime deferral")
-require(browser, "WebView(context)", "Phase 2 browser-runtime deferral")
+    require(view_model, marker, "MainViewModel neutral entry points")
+for forbidden in ("fun openAddFromBrowser", "fun openBrowserDownload", "fun captureBrowserMediaUrl"):
+    if forbidden in view_model:
+        errors.append(f"Browser-shaped ViewModel method remains: {forbidden}")
 
 for path in (
     "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadIntakePlannerTest.kt",
@@ -159,4 +90,4 @@ if errors:
         print(f"- {error}")
     raise SystemExit(1)
 
-print("Browser removal Phase 2 validation passed: downloader intake and media classification are browser-neutral and review-first")
+print("Browser removal Phase 2 validation passed: browser-neutral intake contracts remain intact")

@@ -211,8 +211,10 @@ class MediaFinalValidationGatePlanner {
         command.contains("validate-media-download-engine-hardening.py") -> "Engine hardening"
         command.contains("validate-media-execution-library.py") -> "Execution library"
         command.contains("validate-media-resolver-player.py") -> "Resolver player"
-        command.contains("validate-browser-media-continuity.py") -> "Browser continuity"
-        command.contains("validate-browser-media-downloader.py") -> "Browser downloader"
+        command.contains("validate-browser-removal-phase-4.py") -> "Browser runtime removal"
+        command.contains("validate-browser-removal-phase-3.py") -> "External handoff replacement"
+        command.contains("validate-browser-removal-phase-2.py") -> "Neutral intake extraction"
+        command.contains("validate-browser-removal-phase-0-1.py") -> "Downloader preservation"
         else -> command.substringAfterLast('/').ifBlank { "validator" }
     }
 
@@ -220,8 +222,10 @@ class MediaFinalValidationGatePlanner {
         const val DefaultGradleCommand: String = "./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :media:test :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta"
 
         fun defaultValidatorCommands(): List<String> = listOf(
-            "python3 tools/validate-browser-media-downloader.py",
-            "python3 tools/validate-browser-media-continuity.py",
+            "python3 tools/validate-browser-removal-phase-0-1.py",
+            "python3 tools/validate-browser-removal-phase-2.py",
+            "python3 tools/validate-browser-removal-phase-3.py",
+            "python3 tools/validate-browser-removal-phase-4.py",
             "python3 tools/validate-media-resolver-player.py",
             "python3 tools/validate-media-execution-library.py",
             "python3 tools/validate-media-download-engine-hardening.py",

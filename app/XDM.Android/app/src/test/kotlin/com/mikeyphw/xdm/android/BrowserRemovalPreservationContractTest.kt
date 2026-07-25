@@ -18,8 +18,8 @@ class BrowserRemovalPreservationContractTest {
         assertTrue("Phase 0/1 validator is missing", validator.isFile)
 
         val text = inventory.readText()
-        assertTrue(text.contains("\"runtime_removal_started\": false"))
-        assertTrue(text.contains("\"production_kotlin_modified\": false"))
+        assertTrue(text.contains("\"runtime_removal_started\": true"))
+        assertTrue(text.contains("\"phase4_runtime_excision\""))
         assertTrue(text.contains("\"preserve_downloader_runtime\""))
         assertTrue(text.contains("\"preserve_external_handoff_despite_browser_naming\""))
     }

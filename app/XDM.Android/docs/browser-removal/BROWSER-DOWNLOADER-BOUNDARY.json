@@ -1,42 +1,29 @@
 {
   "schema_version": 1,
   "program": "xdm_android_builtin_browser_removal",
-  "phase": "phase3_external_handoff_and_add_download_replacement",
+  "phase": "phase4_browser_runtime_excision",
   "source_snapshot": {
-    "archive": "xdm-20260724-202445.tar.gz",
+    "archive": "xdm_android_browser_removal_phase2_3_cumulative_repair_overlay.zip",
     "git_commit": null,
-    "git_commit_note": "The supplied source archive did not contain .git metadata; inventory is bound to file content through the Devtool overlay source hashes.",
+    "git_commit_note": "Phase 4 is bound by Devtool source hashes to the cumulative Phase 2/3 output tree built from xdm-20260724-214627.tar.gz.",
     "android_version_name": "0.20.0-rc08",
     "android_version_code": 21,
     "room_schema": 14
   },
   "phase_scope": {
-    "runtime_removal_started": false,
+    "runtime_removal_started": true,
     "production_kotlin_modified": true,
-    "android_manifest_modified": false,
+    "android_manifest_modified": true,
     "database_modified": false,
     "version_bumped": false,
     "purpose": [
-      "Classify external handoffs before download review.",
-      "Carry safe MIME, content-length, page, and source metadata into Add Download.",
-      "Provide an explicit media-resolver path that does not auto-probe or auto-queue."
+      "Delete the built-in browser activity and WebView runtime.",
+      "Remove Browser from routes, navigation, startup state, and launcher registration.",
+      "Preserve external browser handoff and all downloader execution paths."
     ]
   },
   "ownership": {
-    "remove_later_browser_runtime": [
-      "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserActivity.kt",
-      "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
-      "AppRoute.Browser",
-      "Browser launcher and generic browser VIEW filters",
-      "WebView, WebViewClient, WebChromeClient and Android WebKit adapters",
-      "tabs, browser history, bookmarks, private browsing, site permissions, browser settings, resource inspector and browser download-rules UI"
-    ],
     "mixed_extract_before_delete": [
-      "app/src/main/AndroidManifest.xml",
-      "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt",
-      "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
-      "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
-      "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
       "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBrowserCaptureQuality.kt"
     ],
     "preserve_external_handoff_despite_browser_naming": [
@@ -62,15 +49,26 @@
       "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt",
       "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt",
       "transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt"
+    ],
+    "removed_browser_runtime": [
+      "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserActivity.kt",
+      "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+      "AppRoute.Browser",
+      "Browser launcher and generic browser VIEW filters",
+      "WebView, WebViewClient, WebChromeClient and Android WebKit adapters",
+      "tabs, browser history, bookmarks, private browsing, site permissions, browser settings, resource inspector and browser download-rules UI"
     ]
   },
   "manifest_intent_classification": [
     {
-      "owner": ".BrowserActivity",
-      "classification": "remove_later_general_browser",
+      "owner": ".MainActivity",
+      "classification": "preserve_downloader_shell_and_typed_actions",
       "contracts": [
         "MAIN/LAUNCHER",
-        "generic HTTP/HTTPS ACTION_VIEW"
+        "ADD_URL",
+        "CAPTURE_MEDIA",
+        "PAUSE_ALL",
+        "RESUME_ALL"
       ]
     },
     {
@@ -83,34 +81,23 @@
         "HTTP/HTTPS/FTP",
         "downloadable MIME and path patterns"
       ]
-    },
-    {
-      "owner": ".MainActivity",
-      "classification": "preserve_downloader_shell_and_typed_actions",
-      "contracts": [
-        "MAIN/LAUNCHER",
-        "ADD_URL",
-        "CAPTURE_MEDIA",
-        "PAUSE_ALL",
-        "RESUME_ALL"
-      ]
     }
   ],
   "known_baseline_findings": [
-    {
-      "id": "legacy_static_gate_pre_phase37_assumption",
-      "severity": "blocking_for_run_final_release_gate",
-      "detail": "tools/validate-browser-media-downloader.py still requires the browser to live under Media before Phase 37B, while current source has AppRoute.Browser. Browser-era validators must be reconciled during the later documentation/validator cleanup phase."
-    },
     {
       "id": "phase49_50_gate_path_typo",
       "severity": "repaired_in_this_phase",
       "detail": "tools/run-final-release-gate.sh referenced Phase 49 and 50 validators without the tools/ prefix."
     },
     {
-      "id": "browser_required_architecture_tests",
-      "severity": "expected_future_edit",
-      "detail": "ArchitectureContractTest contains historical Phase 37-50 assertions requiring BrowserActivity, AppRoute.Browser and BrowserScreen. Those tests are intentionally not removed in Phase 0/1 and must be retired when runtime removal begins."
+      "id": "browser_era_validators_retired_from_active_gate",
+      "severity": "resolved_in_phase4",
+      "detail": "Phase 18 browser-runtime and Phase 37-50 browser-product validators remain as historical files but no longer run in the active final gate or Android CI."
+    },
+    {
+      "id": "browser_persistence_cleanup_deferred",
+      "severity": "planned_followup",
+      "detail": "Browser-only preference keys and historical documents are not active runtime and are deferred to persistence/dependency and documentation reconciliation phases."
     }
   ],
   "phase1_preservation_contracts": [
@@ -124,7 +111,7 @@
   ],
   "phase2_extraction": {
     "status": "landed_in_overlay",
-    "runtime_removal_started": false,
+    "runtime_removal_started": true,
     "neutral_contracts": [
       "ExternalUrlPolicy",
       "DownloadIntakeDraft",
@@ -138,14 +125,14 @@
       "openAddFromBrowser",
       "openBrowserDownload"
     ],
-    "browser_runtime_deferred_to_later_phase": true,
+    "browser_runtime_deferred_to_later_phase": false,
     "downloader_execution_modified": false,
     "android_manifest_modified": false,
     "room_schema_modified": false
   },
   "phase3_external_handoff": {
     "status": "landed_in_overlay",
-    "runtime_removal_started": false,
+    "runtime_removal_started": true,
     "classification_kinds": [
       "DirectFile",
       "DirectMedia",
@@ -165,9 +152,28 @@
     "page_probe_records": true,
     "auto_probe": false,
     "auto_queue": false,
-    "browser_runtime_still_present": true,
+    "browser_runtime_still_present": false,
     "android_manifest_modified": false,
     "room_schema_modified": false,
     "transfer_engines_modified": false
+  },
+  "phase4_runtime_excision": {
+    "status": "landed_in_overlay",
+    "runtime_removal_started": true,
+    "browser_screen_removed": true,
+    "browser_activity_removed": true,
+    "browser_route_removed": true,
+    "browser_launcher_removed": true,
+    "generic_browser_view_filters_removed": true,
+    "android_webkit_runtime_removed": true,
+    "browser_startup_state_removed": true,
+    "external_add_download_activity_preserved": true,
+    "sharesheet_and_download_actions_preserved": true,
+    "neutral_intake_preserved": true,
+    "media_resolver_and_execution_preserved": true,
+    "room_schema_modified": false,
+    "transfer_engines_modified": false,
+    "version_bumped": false,
+    "next_phase": "clean_browser_persistence_dependencies_and_historical_contracts"
   }
 }

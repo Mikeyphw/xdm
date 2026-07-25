@@ -45,8 +45,6 @@ jobs:
           python3 tools/validate-post17-desktop-parity.py
           python3 tools/validate-termux-bridge.py
           python3 tools/validate-termux-media-pipeline.py
-          python3 tools/validate-browser-media-downloader.py
-          python3 tools/validate-browser-media-continuity.py
           python3 tools/validate-media-resolver-player.py
           python3 tools/validate-media-execution-library.py
           python3 tools/validate-media-download-engine-hardening.py
@@ -68,21 +66,7 @@ jobs:
           python3 tools/validate-browser-removal-phase-0-1.py
           python3 tools/validate-browser-removal-phase-2.py
           python3 tools/validate-browser-removal-phase-3.py
-          python3 tools/validate-phase-37a-browser-downloader-roadmap.py
-          python3 tools/validate-phase-37b-dual-launcher-navigation-split.py
-          python3 tools/validate-phase-38-browser-reliability-foundation.py
-          python3 tools/validate-phase-39-browser-chrome-navigation.py
-          python3 tools/validate-phase-40-browser-tabs-session-ux.py
-          python3 tools/validate-phase-41-browser-download-bridge.py
-          python3 tools/validate-phase-42-browser-media-capture-cockpit.py
-          python3 tools/validate-phase-43-browser-library-surfaces.py
-          python3 tools/validate-phase-44-browser-settings-privacy-controls.py
-          python3 tools/validate-phase-45-browser-visual-polish-adaptive-layout.py
-          python3 tools/validate-phase-46-browser-private-mode-data-isolation.py
-          python3 tools/validate-phase-48-browser-resource-inspector.py
-          python3 tools/validate-phase-50-browser-downloader-ux-polish-seal.py
-          python3 tools/validate-phase-49-browser-download-rules-file-type-interception.py
-          python3 tools/validate-phase-47-browser-permission-ux-settings-polish.py
+          python3 tools/validate-browser-removal-phase-4.py
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
       - run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta

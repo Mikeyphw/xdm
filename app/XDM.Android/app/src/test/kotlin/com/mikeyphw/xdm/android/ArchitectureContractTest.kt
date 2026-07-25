@@ -913,353 +913,44 @@ class ArchitectureContractTest {
     }
 
     @Test
-    fun phaseThirtySevenABrowserDownloaderRoadmapContractsArePresent() {
+    fun retiredBrowserEraDocumentsRemainAvailableAsHistoricalRecords() {
         val root = androidRoot()
-        assertTrue("Phase 37A roadmap doc is missing", File(root, "docs/browser/DUAL_BROWSER_DOWNLOADER_ROADMAP.md").isFile)
-        assertTrue("Phase 37A reference study is missing", File(root, "docs/browser/REFERENCE_STUDY_1DM_SUPERX.md").isFile)
-        assertTrue("Phase 37A validator is missing", File(root, "tools/validate-phase-37a-browser-downloader-roadmap.py").isFile)
-        val roadmap = File(root, "docs/browser/DUAL_BROWSER_DOWNLOADER_ROADMAP.md").readText()
-        val study = File(root, "docs/browser/REFERENCE_STUDY_1DM_SUPERX.md").readText()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-        assertTrue("Roadmap must define dual Browser and Downloader surfaces", roadmap.contains("XDM Downloader") && roadmap.contains("XDM Browser") && roadmap.contains("Phase 37B") && roadmap.contains("Phase 38"))
-        assertTrue("Reference study must separate 1DM topology from SuperX architecture", study.contains("1DM") && study.contains("SuperX") && study.contains("topology reference") && study.contains("open-source media-capture reference"))
-        assertTrue("Manifest must record Phase 37A", (manifest.contains("phase37a_browser_downloader_roadmap") && (manifest.contains("\"current_overlay\": \"xdm_android_phase37a_browser_downloader_roadmap_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase38_browser_reliability_foundation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase39_browser_chrome_navigation_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase40_browser_tabs_session_ux_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase41_browser_download_bridge_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase42_browser_media_capture_cockpit_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase43_browser_library_surfaces_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase44_browser_settings_privacy_controls_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")))))))))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include the Phase 37A validator", runGate.contains("validate-phase-37a-browser-downloader-roadmap.py"))
-        assertTrue("CI must include the Phase 37A validator", workflow.contains("validate-phase-37a-browser-downloader-roadmap.py"))
+        listOf(
+            "docs/browser/DUAL_BROWSER_DOWNLOADER_ROADMAP.md",
+            "docs/browser/PHASE-37B-DUAL-LAUNCHER-NAVIGATION-SPLIT.md",
+            "docs/browser/PHASE-38-BROWSER-RELIABILITY-FOUNDATION.md",
+            "docs/browser/PHASE-41-BROWSER-DOWNLOAD-BRIDGE.md",
+            "docs/browser/PHASE-50-BROWSER-DOWNLOADER-UX-POLISH-SEAL.md",
+        ).forEach { path -> assertTrue("Historical browser document is missing: $path", File(root, path).isFile) }
     }
 
-
     @Test
-    fun phaseThirtySevenBDualLauncherNavigationSplitContractsArePresent() {
+    fun browserRemovalPhaseFourRuntimeExcisionContractsArePresent() {
         val root = androidRoot()
-        assertTrue("Phase 37B doc is missing", File(root, "docs/browser/PHASE-37B-DUAL-LAUNCHER-NAVIGATION-SPLIT.md").isFile)
-        assertTrue("Phase 37B validator is missing", File(root, "tools/validate-phase-37b-dual-launcher-navigation-split.py").isFile)
         val manifestXml = File(root, "app/src/main/AndroidManifest.xml").readText()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val mainActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
-        val browserActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserActivity.kt").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-        assertTrue("Browser must be a top-level AppRoute", AppRoute.entries.any { it.label == "Browser" } && routes.contains("Browser(\"Browser\", Icons.Rounded.Public)"))
-        assertTrue("Compact navigation must promote Browser", appShell.contains("listOf(AppRoute.Downloads, AppRoute.Browser, AppRoute.Media, AppRoute.Queues)"))
-        assertTrue("Browser route must render BrowserScreen directly", appShell.contains("AppRoute.Browser -> BrowserScreen("))
-        assertTrue("Manifest must expose separate downloader and browser launchers", manifestXml.contains("@string/downloader_activity_label") && manifestXml.contains(".BrowserActivity") && manifestXml.contains("@string/browser_activity_label") && manifestXml.split("android.intent.category.LAUNCHER").size >= 3)
-        assertTrue("BrowserActivity must start on Browser without downloader external intake", browserActivity.contains("class BrowserActivity : MainActivity()") && browserActivity.contains("AppRoute.Browser") && browserActivity.contains("shouldHandleExternalIntent(intent: Intent): Boolean = false"))
-        assertTrue("MainActivity must expose startup hooks", mainActivity.contains("protected open fun initialRoute") && mainActivity.contains("protected open fun shouldHandleExternalIntent"))
-        assertFalse("Media must not hide Browser behind a local chip", screens.contains("showBrowser") || screens.contains("FilterChip(selected = showBrowser"))
-        assertTrue("Media copy must point to the first-class Browser route", screens.contains("Use Browser to capture"))
-        assertTrue("Manifest must record Phase 37B", (manifest.contains("phase37b_dual_launcher_navigation_split") && (manifest.contains("\"current_overlay\": \"xdm_android_phase37b_dual_launcher_navigation_split_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase38_browser_reliability_foundation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase39_browser_chrome_navigation_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase40_browser_tabs_session_ux_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase41_browser_download_bridge_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase42_browser_media_capture_cockpit_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase43_browser_library_surfaces_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase44_browser_settings_privacy_controls_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")))))))))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 37B", runGate.contains("validate-phase-37b-dual-launcher-navigation-split.py"))
-        assertTrue("CI must include Phase 37B", workflow.contains("validate-phase-37b-dual-launcher-navigation-split.py"))
-    }
-
-
-    @Test
-    fun phaseThirtyEightBrowserReliabilityFoundationContractsArePresent() {
-        val root = androidRoot()
-        assertTrue("Phase 38 browser reliability doc is missing", File(root, "docs/browser/PHASE-38-BROWSER-RELIABILITY-FOUNDATION.md").isFile)
-        assertTrue("Phase 38 validator is missing", File(root, "tools/validate-phase-38-browser-reliability-foundation.py").isFile)
-        val manifestXml = File(root, "app/src/main/AndroidManifest.xml").readText()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
-        val mainActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
-        val browserActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserActivity.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
-        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val runGate = File(root, "tools/run-final-release-gate.sh").readText()
         val workflow = File(root, ".github/workflows/android.yml").readText()
 
-        assertTrue("Browser must show a visible start page instead of a white WebView", browser.contains("BrowserStartPage") && browser.contains("if (loadRequest.isNullOrBlank())"))
-        assertTrue("Browser must expose loading and reliability states", browser.contains("BrowserLoadState") && browser.contains("BrowserLoadOverlay") && browser.contains("BrowserReliabilityCard"))
-        assertTrue("Browser must report progress and main-frame failures", browser.contains("onProgressChanged") && browser.contains("onReceivedError") && browser.contains("onReceivedHttpError"))
-        assertTrue("Browser must cancel and display SSL errors", browser.contains("onReceivedSslError") && browser.contains("handler?.cancel()") && browser.contains("SSL error blocked"))
-        assertTrue("Browser must detect blank page loads", browser.contains("BlankPageProbeScript") && browser.contains("evaluateJavascript(BlankPageProbeScript)") && browser.contains("Blank page detected"))
-        assertTrue("Browser recovery UI must provide retry, external open, and Add URL", browser.contains("Retry") && browser.contains("Open externally") && browser.contains("Add URL"))
-        assertTrue("BrowserActivity must receive generic http/https VIEW links with explicit non-verified posture", manifestXml.contains(".BrowserActivity") && manifestXml.contains("<intent-filter android:autoVerify=\"false\">") && manifestXml.contains("android:scheme=\"http\"") && manifestXml.contains("android:scheme=\"https\""))
-        assertFalse("BrowserActivity must not steal ftp download handoffs", manifestXml.substringAfter("android:name=\".BrowserActivity\"").substringBefore("</activity>").contains("android:scheme=\"ftp\""))
-        assertTrue("MainActivity and ViewModel must route BrowserActivity URLs into BrowserScreen", mainActivity.contains("shouldOpenBrowserUrl") && mainActivity.contains("openBrowserUrlFromIntent") && viewModel.contains("browserStartUrl") && viewModel.contains("openBrowserUrl(url: String)"))
-        assertTrue("App shell must pass browser startup URLs", appShell.contains("initialUrl = state.browserStartUrl") && appShell.contains("onInitialUrlConsumed = viewModel::consumeBrowserStartUrl"))
-        assertTrue("Manifest must record Phase 38", (manifest.contains("phase38_browser_reliability_foundation") && (manifest.contains("\"current_overlay\": \"xdm_android_phase38_browser_reliability_foundation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase39_browser_chrome_navigation_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase40_browser_tabs_session_ux_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase41_browser_download_bridge_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase42_browser_media_capture_cockpit_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase43_browser_library_surfaces_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase44_browser_settings_privacy_controls_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")))))))))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 38", runGate.contains("validate-phase-38-browser-reliability-foundation.py"))
-        assertTrue("CI must include Phase 38", workflow.contains("validate-phase-38-browser-reliability-foundation.py"))
+        assertFalse(File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").exists())
+        assertFalse(File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserActivity.kt").exists())
+        assertFalse(routes.contains("Browser(\"Browser\""))
+        assertFalse(routes.contains("Icons.Rounded.Public"))
+        assertFalse(appShell.contains("AppRoute.Browser"))
+        assertFalse(appShell.contains("BrowserScreen("))
+        assertFalse(manifestXml.contains(".BrowserActivity"))
+        assertTrue(manifestXml.contains(".ExternalAddDownloadActivity"))
+        assertFalse(mainActivity.contains("shouldOpenBrowserUrl"))
+        assertFalse(mainActivity.contains("openBrowserUrlFromIntent"))
+        assertTrue(mainActivity.contains("handleExternalIntent(intent)"))
+        assertFalse(viewModel.contains("browserStartUrl"))
+        assertFalse(viewModel.contains("openBrowserUrl(url: String)"))
+        assertTrue(runGate.contains("validate-browser-removal-phase-4.py"))
+        assertTrue(workflow.contains("validate-browser-removal-phase-4.py"))
     }
-
-
-    @Test
-    fun phaseThirtyNineBrowserChromeNavigationContractsArePresent() {
-        val root = androidRoot()
-        assertTrue("Phase 39 browser chrome doc is missing", File(root, "docs/browser/PHASE-39-BROWSER-CHROME-NAVIGATION.md").isFile)
-        assertTrue("Phase 39 validator is missing", File(root, "tools/validate-phase-39-browser-chrome-navigation.py").isFile)
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
-        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-
-        assertTrue("Browser chrome must expose current navigation state", browser.contains("BrowserChromeState") && browser.contains("browserChromeState") && browser.contains("snapshot(isLoading"))
-        assertTrue("Browser chrome must expose Back/Forward/Home/Reload/Stop controls", browser.contains("canGoBack") && browser.contains("canGoForward") && browser.contains("Browser home") && browser.contains("Stop loading") && browser.contains("Icons.Rounded.Refresh"))
-        assertTrue("Browser chrome must support Add URL from the current page", browser.contains("onAddPage") && browser.contains("Add URL") && browser.contains("onOpenAddForUrl"))
-        assertTrue("Browser must intercept system back only when WebView can go back", browser.contains("BackHandler(enabled = browserChromeState.canGoBack") && browser.contains("browserNavigator.goBack()"))
-        assertTrue("Embedded browser must publish navigation snapshots", browser.contains("onNavigationChanged") && browser.contains("canGoForward") && browser.contains("stopLoading()"))
-        assertFalse("Phase 39 must not add chrome/library routes", routes.contains("Chrome(\"Chrome\"") || routes.contains("Tabs(\"Tabs\"") || routes.contains("Bookmarks(\"Bookmarks\"") || routes.contains("History(\"History\""))
-        assertTrue("Manifest must record Phase 39", (manifest.contains("phase39_browser_chrome_navigation") && (manifest.contains("\"current_overlay\": \"xdm_android_phase39_browser_chrome_navigation_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase40_browser_tabs_session_ux_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase41_browser_download_bridge_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase42_browser_media_capture_cockpit_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase43_browser_library_surfaces_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase44_browser_settings_privacy_controls_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")))))))))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 39", runGate.contains("validate-phase-39-browser-chrome-navigation.py"))
-        assertTrue("CI must include Phase 39", workflow.contains("validate-phase-39-browser-chrome-navigation.py"))
-    }
-
-
-    @Test
-    fun phaseFortyBrowserTabsSessionUxContractsArePresent() {
-        val root = androidRoot()
-        assertTrue("Phase 40 browser tabs/session doc is missing", File(root, "docs/browser/PHASE-40-BROWSER-TABS-SESSION-UX.md").isFile)
-        assertTrue("Phase 40 validator is missing", File(root, "tools/validate-phase-40-browser-tabs-session-ux.py").isFile)
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
-        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-
-        assertTrue("Browser tab session state must be explicit", browser.contains("BrowserTabSessionState") && browser.contains("browserTabSessionState") && browser.contains("restoredTabCount"))
-        assertTrue("Browser tabs must expose a switcher", browser.contains("BrowserTabSwitcher") && browser.contains("Show tabs") && browser.contains("Hide tabs") && browser.contains("Open tabs"))
-        assertTrue("Browser session UX must show restore state and current tab summary", browser.contains("Restored ") && browser.contains("Browser session") && browser.contains("sessionState.summary"))
-        assertTrue("Browser session must keep new/close tab actions visible", browser.contains("New tab") && browser.contains("Close tab") && browser.contains("Clear tab"))
-        assertTrue("Private tab isolation must be deferred explicitly", browser.contains("Private tab isolation remains reserved for the privacy phase"))
-        assertTrue("Browser tabs must remain bounded for compact UI", browser.contains("MaxVisibleTabs = 8") && browser.contains("MaxStoredTabs = 12"))
-        assertFalse("Phase 40 must not add tab/history/bookmark top-level routes", routes.contains("Tabs(\"Tabs\"") || routes.contains("History(\"History\"") || routes.contains("Bookmarks(\"Bookmarks\""))
-        assertTrue("Manifest must record Phase 40", (manifest.contains("phase40_browser_tabs_session_ux") && (manifest.contains("\"current_overlay\": \"xdm_android_phase40_browser_tabs_session_ux_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase41_browser_download_bridge_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase42_browser_media_capture_cockpit_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase43_browser_library_surfaces_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase44_browser_settings_privacy_controls_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\""))))))))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 40", runGate.contains("validate-phase-40-browser-tabs-session-ux.py"))
-        assertTrue("CI must include Phase 40", workflow.contains("validate-phase-40-browser-tabs-session-ux.py"))
-    }
-
-
-    @Test
-    fun phaseFortyOneBrowserDownloadBridgeContractsArePresent() {
-        val root = androidRoot()
-        assertTrue("Phase 41 browser download bridge doc is missing", File(root, "docs/browser/PHASE-41-BROWSER-DOWNLOAD-BRIDGE.md").isFile)
-        assertTrue("Phase 41 validator is missing", File(root, "tools/validate-phase-41-browser-download-bridge.py").isFile)
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
-        val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
-        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
-        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-
-        assertTrue("Browser must bridge WebView downloads through a review-first card", browser.contains("setDownloadListener") && browser.contains("BrowserDownloadBridgeCard") && browser.contains("Download detected"))
-        assertTrue("Browser download bridge must preserve filename, MIME, size, and source page", browser.contains("URLUtil.guessFileName") && browser.contains("contentLength") && browser.contains("mimeType") && browser.contains("sourcePageUrl"))
-        assertTrue("Browser download bridge must offer Add download and Inspect media actions", browser.contains("Add download") && browser.contains("Inspect media") && browser.contains("onOpenDownloadReview"))
-        assertTrue("Browser download bridge must create a neutral review draft", browser.contains("DownloadIntakePlanner") && browser.contains("fromBuiltInBrowserDownload") && browser.contains("BrowserDownloadBridgeDraft") && browser.contains("val intake: DownloadIntakeDraft"))
-        assertTrue("ViewModel must accept neutral review drafts without starting transfers", viewModel.contains("fun openDownloadReview(draft: DownloadIntakeDraft)") && !viewModel.substringAfter("fun openDownloadReview").substringBefore("fun ").contains("executionStarter.start"))
-        assertTrue("App shell must wire Browser downloads into neutral Add Download intake", appShell.contains("onOpenDownloadReview = viewModel::openDownloadReview"))
-        assertFalse("Phase 41 must not add download bridge top-level routes", routes.contains("DownloadsBridge(\"DownloadsBridge\"") || routes.contains("PageResources(\"PageResources\"") || routes.contains("BrowserDownloads(\"BrowserDownloads\""))
-        assertTrue("Manifest must record Phase 41", (manifest.contains("phase41_browser_download_bridge") && (manifest.contains("\"current_overlay\": \"xdm_android_phase41_browser_download_bridge_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase42_browser_media_capture_cockpit_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase43_browser_library_surfaces_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase44_browser_settings_privacy_controls_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")))))))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 41", runGate.contains("validate-phase-41-browser-download-bridge.py"))
-        assertTrue("CI must include Phase 41", workflow.contains("validate-phase-41-browser-download-bridge.py"))
-    }
-
-
-    @Test
-    fun phaseFortyTwoBrowserMediaCaptureCockpitContractsArePresent() {
-        val root = androidRoot()
-        assertTrue("Phase 42 browser media capture cockpit doc is missing", File(root, "docs/browser/PHASE-42-BROWSER-MEDIA-CAPTURE-COCKPIT.md").isFile)
-        assertTrue("Phase 42 validator is missing", File(root, "tools/validate-phase-42-browser-media-capture-cockpit.py").isFile)
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
-        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
-        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-
-        assertTrue("Browser must expose a visible media cockpit", browser.contains("BrowserMediaCockpit") && browser.contains("Media found") && browser.contains("Media cockpit"))
-        assertTrue("Browser media cockpit must group captures", browser.contains("BrowserMediaCockpitGroup") && browser.contains("toBrowserMediaCockpitGroups"))
-        assertTrue("Browser media cockpit must classify adaptive/direct/audio/video captures", browser.contains("MediaSourceKind.HlsPlaylist") && browser.contains("MediaSourceKind.DashManifest") && browser.contains("MediaSourceKind.DirectFile") && browser.contains("MediaSourceKind.AudioStream") && browser.contains("MediaSourceKind.VideoStream"))
-        assertTrue("Browser media cockpit must show variant cards", browser.contains("BrowserMediaVariantCard") && browser.contains("variantSummary") && browser.contains("variantCount"))
-        assertTrue("Browser media cockpit must expose explicit user actions", browser.contains("Download selected") && browser.contains("Resolve variants") && browser.contains("Review media"))
-        assertTrue("Browser media cockpit must keep protected/live review-first diagnostics", browser.contains("Protected-media hint") && browser.contains("no bypass") && browser.contains("Possible live/expiring stream"))
-        assertTrue("App shell must wire browser media cockpit actions", appShell.contains("onDownloadMediaCapture = viewModel::downloadMediaCapture") && appShell.contains("onResolveMediaCapture = viewModel::resolveMediaCapture"))
-        assertTrue("Phase 42 must preserve Phase 41 direct download bridge", browser.contains("BrowserDownloadBridgeCard") && browser.contains("setDownloadListener") && browser.contains("URLUtil.guessFileName"))
-        assertFalse("Phase 42 must not add media cockpit top-level routes", routes.contains("MediaCockpit(\"MediaCockpit\"") || routes.contains("PageResources(\"PageResources\"") || routes.contains("BrowserMedia(\"BrowserMedia\""))
-        assertTrue("Manifest must record Phase 42", (manifest.contains("phase42_browser_media_capture_cockpit") && (manifest.contains("\"current_overlay\": \"xdm_android_phase42_browser_media_capture_cockpit_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase43_browser_library_surfaces_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase44_browser_settings_privacy_controls_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\""))))))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 42", runGate.contains("validate-phase-42-browser-media-capture-cockpit.py"))
-        assertTrue("CI must include Phase 42", workflow.contains("validate-phase-42-browser-media-capture-cockpit.py"))
-    }
-
-
-    @Test
-    fun phaseFortyThreeBrowserLibrarySurfacesContractsArePresent() {
-        val root = androidRoot()
-        assertTrue("Phase 43 browser library doc is missing", File(root, "docs/browser/PHASE-43-BROWSER-LIBRARY-SURFACES.md").isFile)
-        assertTrue("Phase 43 validator is missing", File(root, "tools/validate-phase-43-browser-library-surfaces.py").isFile)
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
-        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-
-        assertTrue("Browser must expose a library surface", browser.contains("BrowserLibraryPanel") && browser.contains("Browser library"))
-        assertTrue("Browser library must include bookmarks", browser.contains("BrowserBookmarkEntry") && browser.contains("loadBookmarks") && browser.contains("saveBookmarks") && browser.contains("Bookmark page"))
-        assertTrue("Browser library must include page resources", browser.contains("BrowserPageResourceEntry") && browser.contains("toBrowserPageResources") && browser.contains("Page resources"))
-        assertTrue("Browser library must import links from text and clipboard", browser.contains("BrowserImportedLink") && browser.contains("extractBrowserImportLinks") && browser.contains("ClipboardManager") && browser.contains("Paste links"))
-        assertTrue("Browser history must stay browser-scoped", browser.contains("BrowserHistoryEntry") && browser.contains("Recent history") && browser.contains("xdm_browser_sessions"))
-        assertFalse("Phase 43 must not add library top-level routes", routes.contains("Bookmarks(\"Bookmarks\"") || routes.contains("History(\"History\"") || routes.contains("PageResources(\"PageResources\""))
-        assertTrue("Manifest must record Phase 43", (manifest.contains("phase43_browser_library_surfaces") && (manifest.contains("\"current_overlay\": \"xdm_android_phase43_browser_library_surfaces_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase44_browser_settings_privacy_controls_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")))))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 43", runGate.contains("validate-phase-43-browser-library-surfaces.py"))
-        assertTrue("CI must include Phase 43", workflow.contains("validate-phase-43-browser-library-surfaces.py"))
-    }
-
-
-    @Test
-    fun phaseFortyFourBrowserSettingsPrivacyControlsContractsArePresent() {
-        val root = androidRoot()
-        assertTrue("Phase 44 browser settings/privacy doc is missing", File(root, "docs/browser/PHASE-44-BROWSER-SETTINGS-PRIVACY-CONTROLS.md").isFile)
-        assertTrue("Phase 44 validator is missing", File(root, "tools/validate-phase-44-browser-settings-privacy-controls.py").isFile)
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
-        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-
-        assertTrue("Browser must expose browser-scoped settings", browser.contains("BrowserPrivacySettings") && browser.contains("BrowserPrivacySettingsPanel") && browser.contains("Privacy settings"))
-        assertTrue("Browser must expose homepage and search engine settings", browser.contains("BrowserHomePage") && browser.contains("Homepage") && browser.contains("BrowserSearchEngine") && browser.contains("Search engine"))
-        assertTrue("Browser must expose JavaScript, DOM storage, and desktop mode controls", browser.contains("javaScriptEnabled") && browser.contains("DOM storage") && browser.contains("desktopModeDefault") && browser.contains("Desktop default"))
-        assertTrue("Browser must expose cookie and third-party cookie controls", browser.contains("cookiesEnabled") && browser.contains("thirdPartyCookiesEnabled") && browser.contains("setAcceptThirdPartyCookies"))
-        assertTrue("Browser must clear transient browser data without clearing bookmarks", browser.contains("Clear browser data") && browser.contains("removeAllCookies") && browser.contains("WebStorage.getInstance().deleteAllData") && browser.contains("remove(KeyHistory)") && !browser.substringAfter("fun clearBrowsingData()").substringBefore("fun loadTabs").contains("remove(KeyBookmarks)"))
-        assertTrue("Browser settings must stay in the browser session store", browser.contains("loadPrivacySettings") && browser.contains("savePrivacySettings") && browser.contains("xdm_browser_sessions"))
-        assertFalse("Phase 44 must not add settings/privacy top-level routes", routes.contains("BrowserSettings(\"BrowserSettings\"") || routes.contains("Privacy(\"Privacy\"") || routes.contains("Cookies(\"Cookies\""))
-        assertTrue("Manifest must record Phase 44", (manifest.contains("phase44_browser_settings_privacy_controls") && (manifest.contains("\"current_overlay\": \"xdm_android_phase44_browser_settings_privacy_controls_overlay.zip\"") || (manifest.contains("\"current_overlay\": \"xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\""))))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 44", runGate.contains("validate-phase-44-browser-settings-privacy-controls.py"))
-        assertTrue("CI must include Phase 44", workflow.contains("validate-phase-44-browser-settings-privacy-controls.py"))
-    }
-
-
-    private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
-        .first { File(it, "settings.gradle.kts").isFile }
-
-    @Test
-    fun phaseFortyFiveBrowserVisualPolishAdaptiveLayoutContractsArePresent() {
-        val root = androidRoot()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
-        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-
-        assertTrue("Phase 45 browser visual polish doc is missing", File(root, "docs/browser/PHASE-45-BROWSER-VISUAL-POLISH-ADAPTIVE-LAYOUT.md").isFile)
-        assertTrue("Phase 45 validator is missing", File(root, "tools/validate-phase-45-browser-visual-polish-adaptive-layout.py").isFile)
-        assertTrue("Browser visual status bar must be present", browser.contains("BrowserVisualStatusBar") && browser.contains("Adaptive browser cockpit"))
-        assertTrue("Browser must be centered on wide screens", browser.contains("BrowserMaxContentWidthDp") && browser.contains("sizeIn(maxWidth = BrowserMaxContentWidthDp.dp)"))
-        assertTrue("Start page adaptive copy must be present", browser.contains("Adaptive layout centers the browser cockpit"))
-        assertTrue("Download bridge visual hierarchy must stay review-first", browser.contains("Review-first bridge keeps browser downloads separate"))
-        assertTrue("Media cockpit visual hierarchy must be compact and review-first", browser.contains("compact cockpit"))
-        assertFalse("Phase 45 must not add visual-polish top-level routes", routes.contains("VisualPolish(") || routes.contains("Layout(") || routes.contains("BrowserPolish("))
-        assertTrue("Manifest must record Phase 45", (manifest.contains("phase45_browser_visual_polish_adaptive_layout") && (manifest.contains("\"current_overlay\": \"xdm_android_phase45_browser_visual_polish_adaptive_layout_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 45", runGate.contains("validate-phase-45-browser-visual-polish-adaptive-layout.py"))
-        assertTrue("CI must include Phase 45", workflow.contains("validate-phase-45-browser-visual-polish-adaptive-layout.py"))
-    }
-
-
-
-    @Test
-    fun phaseFortySixBrowserPrivateModeDataIsolationContractsArePresent() {
-        val root = androidRoot()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
-        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-
-        assertTrue("Phase 46 browser private mode doc is missing", File(root, "docs/browser/PHASE-46-BROWSER-PRIVATE-MODE-DATA-ISOLATION.md").isFile)
-        assertTrue("Phase 46 validator is missing", File(root, "tools/validate-phase-46-browser-private-mode-data-isolation.py").isFile)
-        assertTrue("Private tab state must be explicit", browser.contains("activeTabIsPrivate") && browser.contains("privateTabCount") && browser.contains("isPrivate: Boolean = false"))
-        assertTrue("Private tabs must have visible actions", browser.contains("New private tab") && browser.contains("Clear private") && browser.contains("Private tab active"))
-        assertTrue("Private tabs must use private WebView posture", browser.contains("effectiveCookieProfile = if (activeTabIsPrivate) BrowserCookieProfile.Private else cookieProfile") && browser.contains("removeSessionCookies") && browser.contains("domStorageEnabled = browserSettings.domStorageEnabled && !profile.privateMode"))
-        assertTrue("Private tabs must not persist browser history or restored sessions", browser.contains("if (!activeTabIsPrivate)") && browser.contains("tabs.filterNot { it.isPrivate }.take(MaxStoredTabs)"))
-        assertTrue("Private tabs must suppress passive media capture persistence", browser.contains("onMediaDiscovered = { url, mimeType ->") && browser.contains("if (!activeTabIsPrivate)"))
-        assertTrue("Browser visual summary must expose private posture", browser.contains("isPrivateProfile = activeTabIsPrivate || effectiveCookieProfile.privateMode"))
-        assertFalse("Phase 46 must not add private/incognito top-level routes", routes.contains("Private(") || routes.contains("Incognito("))
-        assertTrue("Manifest must record Phase 46", (manifest.contains("phase46_browser_private_mode_data_isolation") && manifest.contains("\"current_overlay\": \"xdm_android_phase46_browser_private_mode_data_isolation_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\""))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 46", runGate.contains("validate-phase-46-browser-private-mode-data-isolation.py"))
-        assertTrue("CI must include Phase 46", workflow.contains("validate-phase-46-browser-private-mode-data-isolation.py"))
-    }
-
-
-
-    @Test
-    fun phaseFortySevenBrowserPermissionUxSettingsPolishContractsArePresent() {
-        val root = androidRoot()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
-        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-
-        assertTrue("Phase 47 permission UX doc is missing", File(root, "docs/browser/PHASE-47-BROWSER-PERMISSION-UX-SETTINGS-POLISH.md").isFile)
-        assertTrue("Phase 47 validator is missing", File(root, "tools/validate-phase-47-browser-permission-ux-settings-polish.py").isFile)
-        assertTrue("Browser must expose site permission UX", browser.contains("BrowserPermissionStatusPanel") && browser.contains("Site permissions") && browser.contains("Recent permission decisions"))
-        assertTrue("Browser must hook WebView permission requests", browser.contains("onPermissionRequest") && browser.contains("PermissionRequest") && browser.contains("onGeolocationPermissionsShowPrompt"))
-        assertTrue("Browser permission prompts must stay review-first", browser.contains("Grant once") && browser.contains("Deny") && browser.contains("Dismiss"))
-        assertTrue("Browser settings polish must expose reset settings", browser.contains("Reset browser settings") && browser.contains("resetBrowserPrivacySettings"))
-        assertFalse("Phase 47 must not add permission routes", routes.contains("Permission(") || routes.contains("SitePermissions("))
-        assertTrue("Manifest must record Phase 47", (manifest.contains("phase47_browser_permission_ux_settings_polish") && (manifest.contains("\"current_overlay\": \"xdm_android_phase47_browser_permission_ux_settings_polish_overlay.zip\"") || ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 47", runGate.contains("validate-phase-47-browser-permission-ux-settings-polish.py"))
-        assertTrue("CI must include Phase 47", workflow.contains("validate-phase-47-browser-permission-ux-settings-polish.py"))
-    }
-
-
-
-    @Test
-    fun phaseFortyEightBrowserResourceInspectorContractsArePresent() {
-        val root = androidRoot()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
-        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-
-        assertTrue("Phase 48 resource inspector doc is missing", File(root, "docs/browser/PHASE-48-BROWSER-RESOURCE-INSPECTOR.md").isFile)
-        assertTrue("Phase 48 validator is missing", File(root, "tools/validate-phase-48-browser-resource-inspector.py").isFile)
-        assertTrue("Browser must expose a resource inspector", browser.contains("BrowserResourceInspectorPanel") && browser.contains("Resource inspector"))
-        assertTrue("Resource inspector must expose filters", browser.contains("BrowserResourceFilter") && browser.contains("Inspect resources") && browser.contains("Hide resources"))
-        assertTrue("Resource inspector must stay review-first", browser.contains("Open") && browser.contains("Add") && browser.contains("Inspect media") && browser.contains("onInspectResource"))
-        assertFalse("Phase 48 must not add resource routes", routes.contains("ResourceInspector(") || routes.contains("PageResources("))
-        assertTrue("Manifest must record Phase 48", (manifest.contains("phase48_browser_resource_inspector") && ((manifest.contains("\"current_overlay\": \"xdm_android_phase48_browser_resource_inspector_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\""))) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 48", runGate.contains("validate-phase-48-browser-resource-inspector.py"))
-        assertTrue("CI must include Phase 48", workflow.contains("validate-phase-48-browser-resource-inspector.py"))
-    }
-
-
-
-
-    @Test
-    fun phaseFortyNineAndFiftyBrowserDownloadRulesUxPolishContractsArePresent() {
-        val root = androidRoot()
-        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
-        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        val runGate = File(root, "tools/run-final-release-gate.sh").readText()
-        val workflow = File(root, ".github/workflows/android.yml").readText()
-
-        assertTrue("Phase 49 doc is missing", File(root, "docs/browser/PHASE-49-BROWSER-DOWNLOAD-RULES-FILE-TYPE-INTERCEPTION.md").isFile)
-        assertTrue("Phase 50 doc is missing", File(root, "docs/browser/PHASE-50-BROWSER-DOWNLOADER-UX-POLISH-SEAL.md").isFile)
-        assertTrue("Phase 49 validator is missing", File(root, "tools/validate-phase-49-browser-download-rules-file-type-interception.py").isFile)
-        assertTrue("Phase 50 validator is missing", File(root, "tools/validate-phase-50-browser-downloader-ux-polish-seal.py").isFile)
-        assertTrue("Browser must expose download rules", browser.contains("BrowserDownloadRules") && browser.contains("BrowserDownloadRulesPanel") && browser.contains("BrowserDownloadRuleDecision"))
-        assertTrue("Browser must classify file-type categories", browser.contains("BrowserDownloadCategory") && browser.contains("classifyBrowserDownload") && browser.contains("Torrent") && browser.contains("Apk") && browser.contains("Archive"))
-        assertTrue("Browser download rules must remain review-first", browser.contains("File-type interception is review-first") && browser.contains("never queues silently"))
-        assertTrue("Browser/downloader flow polish must be visible", browser.contains("BrowserDownloaderFlowPanel") && browser.contains("Browser → Downloader flow") && browser.contains("Direct files follow download rules"))
-        assertFalse("Phase 49/50 must not add rule/polish routes", routes.contains("DownloadRules(") || routes.contains("BrowserPolish(") || routes.contains("ResourceInspector("))
-        assertFalse("BrowserScreen must not start transfers directly", browser.contains("executionStarter.start") || browser.contains("addDownload("))
-        assertTrue("Manifest must record Phase 49", manifest.contains("phase49_browser_download_rules_file_type_interception"))
-        assertTrue("Manifest must record Phase 50", (manifest.contains("phase50_browser_downloader_ux_polish_seal") && manifest.contains("\"current_overlay\": \"xdm_android_phase49_50_download_rules_ux_polish_overlay.zip\"")) || isCurrentBrowserRemovalOverlay(manifest))
-        assertTrue("Final release gate must include Phase 49/50", runGate.contains("validate-phase-49-browser-download-rules-file-type-interception.py") && runGate.contains("validate-phase-50-browser-downloader-ux-polish-seal.py"))
-        assertTrue("CI must include Phase 49/50", workflow.contains("validate-phase-49-browser-download-rules-file-type-interception.py") && workflow.contains("validate-phase-50-browser-downloader-ux-polish-seal.py"))
-    }
-
 
     private fun isCurrentBrowserRemovalOverlay(manifest: String): Boolean =
         manifest.contains("\"current_overlay\": \"xdm_android_browser_removal_phase")

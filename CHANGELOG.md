@@ -1,5 +1,13 @@
 # Unreleased
 
+## XDM Android built-in browser removal: Phase 4
+
+- Removed `BrowserScreen`, `BrowserActivity`, `AppRoute.Browser`, the browser launcher, and generic browser-owned HTTP/HTTPS VIEW handling.
+- Removed browser startup URL state and Android WebKit runtime wiring from the app shell.
+- Preserved `ExternalAddDownloadActivity`, share-sheet/ClipData intake, download-manager actions, Add Download classification, and explicit media inspection.
+- Retired Phase 18 and Phase 37-50 browser-runtime validators from the active Android CI and final release gate while keeping their documents as historical records.
+- Kept Room schema 14, version 0.20.0-rc08, native/aria2/Termux execution, queue workers, media resolver, offline library, and Media3 playback unchanged.
+
 ## XDM Android built-in browser removal: Phase 3
 
 - Classified external handoffs as direct files, direct media, HLS/DASH, torrents, or page/unknown links without starting transfers.

@@ -67,8 +67,10 @@ if 'versionName = "0.20.0-rc08"' not in build:
 
 run_gate = text("tools/run-final-release-gate.sh")
 for validator in [
-    "validate-browser-media-downloader.py",
-    "validate-browser-media-continuity.py",
+    "validate-browser-removal-phase-0-1.py",
+    "validate-browser-removal-phase-2.py",
+    "validate-browser-removal-phase-3.py",
+    "validate-browser-removal-phase-4.py",
     "validate-media-resolver-player.py",
     "validate-media-execution-library.py",
     "validate-media-download-engine-hardening.py",

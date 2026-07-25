@@ -27,8 +27,6 @@ validators=(
   tools/validate-post17-desktop-parity.py
   tools/validate-termux-bridge.py
   tools/validate-termux-media-pipeline.py
-  tools/validate-browser-media-downloader.py
-  tools/validate-browser-media-continuity.py
   tools/validate-media-resolver-player.py
   tools/validate-media-execution-library.py
   tools/validate-media-download-engine-hardening.py
@@ -50,21 +48,7 @@ validators=(
   tools/validate-browser-removal-phase-0-1.py
   tools/validate-browser-removal-phase-2.py
   tools/validate-browser-removal-phase-3.py
-  tools/validate-phase-37a-browser-downloader-roadmap.py
-  tools/validate-phase-37b-dual-launcher-navigation-split.py
-  tools/validate-phase-38-browser-reliability-foundation.py
-  tools/validate-phase-39-browser-chrome-navigation.py
-  tools/validate-phase-40-browser-tabs-session-ux.py
-  tools/validate-phase-41-browser-download-bridge.py
-  tools/validate-phase-42-browser-media-capture-cockpit.py
-  tools/validate-phase-43-browser-library-surfaces.py
-  tools/validate-phase-44-browser-settings-privacy-controls.py
-  tools/validate-phase-45-browser-visual-polish-adaptive-layout.py
-  tools/validate-phase-46-browser-private-mode-data-isolation.py
-  tools/validate-phase-48-browser-resource-inspector.py
-  tools/validate-phase-50-browser-downloader-ux-polish-seal.py
-  tools/validate-phase-49-browser-download-rules-file-type-interception.py
-  tools/validate-phase-47-browser-permission-ux-settings-polish.py
+  tools/validate-browser-removal-phase-4.py
 )
 
 for validator in "${validators[@]}"; do
@@ -85,6 +69,6 @@ Run the full build/test/lint gate in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Phase 3 keeps the built-in browser runtime in place while external handoffs become the reviewed replacement path.
-Proceed to browser UI/navigation removal only after the full target-environment Gradle gate passes.
+Phase 4 removes the built-in browser runtime and preserves explicit external-browser handoff into Add Download and Media review.
+Proceed to persistence/dependency cleanup only after the full target-environment Gradle gate passes.
 EOF2

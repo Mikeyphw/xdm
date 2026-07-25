@@ -43,13 +43,12 @@ class BrowserRemovalPhase3ContractTest {
     }
 
     @Test
-    fun phaseThreeDoesNotRemoveBrowserRuntimeOrModifyTransferEngines() {
+    fun phaseThreeReplacementPathAndTransferEnginesRemainAfterRuntimeRemoval() {
         val root = androidRoot()
         val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
-        val browser = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").readText()
 
-        assertTrue(manifest.contains("android:name=\".BrowserActivity\""))
-        assertTrue(browser.contains("WebView(context)"))
+        assertTrue(manifest.contains("android:name=\".ExternalAddDownloadActivity\""))
+        assertFalse(manifest.contains("android:name=\".BrowserActivity\""))
         assertTrue(File(root, "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt").isFile)
         assertTrue(File(root, "transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt").isFile)
         assertTrue(File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionLibrary.kt").isFile)

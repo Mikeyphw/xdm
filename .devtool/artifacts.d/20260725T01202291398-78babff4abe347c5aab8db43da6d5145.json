@@ -1,0 +1,242 @@
+{
+  "applied_at": "2026-07-25T01:20:22.913980Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_browser_removal_phase4_runtime_excision_overlay.zip",
+  "artifact_name": "xdm_android_browser_removal_phase4_runtime_excision_overlay.zip",
+  "type": "overlay",
+  "sha256": "7e70e21c83e61f0f7438bc0eb03e4ec441b7c2fcde5063e3e81fda02dffa4942",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Remove XDM Android built-in browser runtime",
+  "commit_hash": "",
+  "file_count": 24,
+  "change_counts": {
+    "add": 3,
+    "delete": 2,
+    "modify": 21
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android built-in browser removal Phase 4 runtime excision",
+    "description": "Removes the built-in browser activity, route, launcher entry, WebView runtime, and browser startup state while preserving external browser handoff, Add Download review, media inspection, queue execution, engines, library, and playback.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "source_sha256": "bde1d704b5dcb285f398336f02a6c3f7fe651d258c5f5b0f76361e5cdf65bb01",
+          "sha256": "c2e08e794990420c9a29d91cdbba585f6572fc1ca8743a030730c29ce7eb84d1",
+          "size": 9221
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "source_sha256": "f0d7eee0f83100f57ced99a3b880fc2be6d5c21e28a71bb530e03ececca9518b",
+          "sha256": "468dbaa697256e66e855eff2a31eac59dfcf9539919b40aed921015b0f8386ff",
+          "size": 3947
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "source_sha256": "27df8fba47856f066c3255a789e857f3d20f3a51f5e84d34be0a13af69e8ba16",
+          "sha256": "515e9336c9a293b19a495641af8926cef475adb668cd3a88f3f4078dee5abe7d",
+          "size": 45367
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "source_sha256": "bb38509d18878c60cb2d835de2e2d4f361bd76f14bfc061cb65781543bf829b7",
+          "sha256": "ea3e55c13d23615db0878522b15ba626a38d60e7f7964d516ce9aa7842de26c5",
+          "size": 14460
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+          "action": "modify",
+          "source_sha256": "3b8dd3a70e27d5f00f2b699be1296fe04a292b5520c0b01011f42441af363bf6",
+          "sha256": "b8474210ed6a734888ec5bc92060fa9fdffb23c98ddd4e8879ef38d2fc770c12",
+          "size": 15076
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt",
+          "action": "modify",
+          "source_sha256": "60a51895d8b2a59fa83981c84090a9585c83b52e655140550ce0e2e12c3d4d24",
+          "sha256": "37e71b780f4d8e1468a34da6c84471f01db865f381cf1e3b7ba3f03b7704ab63",
+          "size": 1047
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserActivity.kt",
+          "action": "delete",
+          "source_sha256": "3f0408c67d92175d11b8843aab24890fcb57520bfae32e821fa5844ea3730040"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+          "action": "delete",
+          "source_sha256": "9c3fd19982c5232a87e715aa3b00e5d4b2fa080ad5b1da06ef97cdb638e10992"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+          "action": "modify",
+          "source_sha256": "084ffb5622ce7811e01e4936664f6e3641576dd1df44045ca29a0b868e93ab09",
+          "sha256": "3c6285aac2c17c2a78bdbd9f56bf806b2fbcc2708ba7a9ff527049ec8720da4e",
+          "size": 11637
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "source_sha256": "e81eb2ae4de7f26858182e27bf10a269ed7db28c9470d41dc41a54d90e224f61",
+          "sha256": "dd2dec3729fc69049e7198f39767395cdb6aec839e70e99e68a5f8f017f74878",
+          "size": 71999
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "source_sha256": "35625a6f2764d604c022443ec77d68bb05883c6b37c6cc384cbc7f2585f0770d",
+          "sha256": "e95dd26ed02efc00c1522504c3949d380d68546c442764a2421f6419b06b2dfb",
+          "size": 14906
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/values/strings.xml",
+          "action": "modify",
+          "source_sha256": "d22a7435582c4fe31290a227d31d6d594aa17058c766682a2ea1c3bf05c3c953",
+          "sha256": "0cc3be81e4eed17575a086c1519937290db5bbaf52666725a5ee4c3ff76d5716",
+          "size": 210
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "source_sha256": "743c3609de0bc3af2e1a4d7c16b75a98ede18960ffac358c08c03cde6faf5845",
+          "sha256": "ebc122c445a1ae0f243454e2c5f6f28a61065538a2caf274404b74cd4377045b",
+          "size": 93000
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPhase2ContractTest.kt",
+          "action": "modify",
+          "source_sha256": "ceb26b9aef78f6d9fffa63bb175b9465e0e47f2b1d3f2a97bfbfecd51e51e9ae",
+          "sha256": "fb7bdda1cd433bc4ae0f408c75cbdca1c81253f8bd7e9bb057c63e390fd887b4",
+          "size": 4068
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPhase3ContractTest.kt",
+          "action": "modify",
+          "source_sha256": "0662e93991e2713c61c2b6ad6d29f0fd67de8bcc46012cdf5565fa0d9e213213",
+          "sha256": "b837c16e28229426feff77e4bfd87fc02ebd06f6b97261b7b1254308c9296cd0",
+          "size": 3751
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPhase4ContractTest.kt",
+          "action": "add",
+          "sha256": "afd7250f908b639f5439c9d27aa9d86e8dfa070c2c6887fce58d1fb7e9a3bbd5",
+          "size": 6214
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPreservationContractTest.kt",
+          "action": "modify",
+          "source_sha256": "166ecb1671350ec766cfaae14a3a1cb4e39cc5b11484805c43ab0b7c29609d9f",
+          "sha256": "68c5ad8a38a0a6216ef8331ab347d82609aa30717f52f86c1b1398283e5977ab",
+          "size": 8388
+        },
+        {
+          "path": "app/XDM.Android/docs/browser-removal/BROWSER-DOWNLOADER-BOUNDARY.json",
+          "action": "modify",
+          "source_sha256": "0994f3ee2a427d3a7d2f4f333352d6e0d2216533370a8a6ba62d445945ab6de1",
+          "sha256": "b52c0bcbcb9563144a601b86ff3b4166af0dd52daa594e6ea85f8cbfdf83e001",
+          "size": 7688
+        },
+        {
+          "path": "app/XDM.Android/docs/browser-removal/PHASE-4-BROWSER-RUNTIME-EXCISION.md",
+          "action": "add",
+          "sha256": "f10d09e57909acc45c4dc7104cacc83acd8fc46405c7433ee895c8b6ffc135ea",
+          "size": 2483
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaFinalValidationGate.kt",
+          "action": "modify",
+          "source_sha256": "e5e93a280af6ff2b8f2c10e8b7afc8c4bcaec23145c2fadd77950d7826694852",
+          "sha256": "8236608626742d79267717f818d86c5ecece93117e06ac09a65e84400b9dfc60",
+          "size": 14143
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "source_sha256": "74bdea95b7743b223aa59c464d5a3f6d7dd9f0846c474deafb412d552cbe6c62",
+          "sha256": "4a9fb89a30e125976cfad11f9e989237a48b63e3236e0bc6c84a7312c2393d09",
+          "size": 2620
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-0-1.py",
+          "action": "modify",
+          "source_sha256": "90899dd8fd9d8bd0a3d70184beacec26b30ade5d8768dd736e58787ce10233d5",
+          "sha256": "af7d5a91e5c8a6b1563b62ed456519d6538e46fc2addc554226fec9d1ba92b4b",
+          "size": 5669
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-2.py",
+          "action": "modify",
+          "source_sha256": "a41652ea54932f04cafff41a3040c7af9854bc683e45c341b385f0953006bb09",
+          "sha256": "d4414ffac70e9f8305a829636b4feec837178aafcd504d6b15817a821657e89a",
+          "size": 3706
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-3.py",
+          "action": "modify",
+          "source_sha256": "4619cbfec189790da0fb69bcb7128b8b069b7eaedb737b2d7db64c023e952790",
+          "sha256": "ed51907a4a178a888d12df9ffc2c203b2b86dc505a9c22870d5aa8e6ac32e997",
+          "size": 4622
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-4.py",
+          "action": "add",
+          "sha256": "8aef1a65fa2f09599c32f4e55a7055af436b9bffce20e434171476c3600be235",
+          "size": 8142
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-final-validation-gate.py",
+          "action": "modify",
+          "source_sha256": "19aa8903df1fc4ca895e4762aee7b5dddef12ea9fc7c5135f5483f37212bf912",
+          "sha256": "aaea30d4af3f5eb45e863a8b4143694dfee774599291824502db165fcfc4c82b",
+          "size": 10860
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Remove XDM Android built-in browser runtime"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Apply only after xdm_android_browser_removal_phase2_3_cumulative_repair_overlay.zip.",
+      "Deletes BrowserActivity.kt and BrowserScreen.kt using source-locked inventory entries.",
+      "Keeps ExternalAddDownloadActivity and external SEND/VIEW download intake.",
+      "Does not change Room schema, versionCode, versionName, transfer engines, queue workers, offline library, or Media3 playback."
+    ]
+  },
+  "history_id": "78babff4abe347c5aab8db43da6d5145"
+}
