@@ -184,6 +184,7 @@ private fun AppScaffold(
                 AppRoute.Media -> MediaInboxScreen(
                     state.mediaCaptures,
                     state.mediaVariants,
+                    state.mediaTrackSelections,
                     state.downloads,
                     state.termuxMediaPipeline,
                     state.postProcessingAutomation,
@@ -191,6 +192,7 @@ private fun AppScaffold(
                     viewModel::togglePause,
                     viewModel::resolveMediaCapture,
                     viewModel::selectMediaVariant,
+                    viewModel::updateMediaTrackSelection,
                     viewModel::removeMediaCapture,
                     viewModel::extractMediaMetadataWithTermux,
                     viewModel::inspectMediaWithTermuxFfprobe,

@@ -85,6 +85,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val termuxAria2CockpitManager = TermuxAria2CockpitManager(this)
         val termuxMediaPipelineManager = TermuxMediaPipelineManager(this)
         val postProcessingAutomationManager = PostProcessingAutomationManager(this, termuxMediaPipelineManager, termuxBridgeManager)
+        val mediaResolverSelectionStore = MediaResolverSelectionStore(this)
         val aria2ProcessManager = Aria2ProcessManager(
             capabilityProbe = AndroidAria2CapabilityProbe(this, aria2SessionStore),
             sessionStore = aria2SessionStore,
@@ -133,6 +134,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             termuxAria2CockpitManager = termuxAria2CockpitManager,
             termuxMediaPipelineManager = termuxMediaPipelineManager,
             postProcessingAutomationManager = postProcessingAutomationManager,
+            mediaResolverSelectionStore = mediaResolverSelectionStore,
         )
         queueConditionMonitor = QueueConditionMonitor(this) {
             QueueIntelligenceWorker.enqueueImmediate(this)
@@ -168,4 +170,5 @@ data class AppContainer(
     val termuxAria2CockpitManager: TermuxAria2CockpitManager,
     val termuxMediaPipelineManager: TermuxMediaPipelineManager,
     val postProcessingAutomationManager: PostProcessingAutomationManager,
+    val mediaResolverSelectionStore: MediaResolverSelectionStore,
 )

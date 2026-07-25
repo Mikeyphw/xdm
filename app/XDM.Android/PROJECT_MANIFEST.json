@@ -442,7 +442,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_browser_removal_phase8c_queue_intelligence_execution_policy_overlay.zip",
+  "current_overlay": "xdm_android_browser_removal_phase8d_media_resolver_format_selection_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1203,6 +1203,41 @@
     "room_schema_unchanged": 14,
     "version_name_unchanged": "0.20.0-rc08",
     "version_code_unchanged": 21,
-    "next_phase": "phase8d_resolver_media_polish"
+    "next_phase": "phase8d_resolver_media_polish_landed"
+  },
+  "downloader_experience_phase8d": {
+    "program": "downloader_product_polish",
+    "contract_document": "docs/downloader/PHASE-8D-MEDIA-RESOLVER-POLISH.md",
+    "static_validator": "tools/validate-downloader-experience-phase-8d.py",
+    "resolver_model": "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaResolverWorkspace.kt",
+    "selection_store": "app/src/main/kotlin/com/mikeyphw/xdm/android/MediaResolverSelectionStore.kt",
+    "jvm_model_contract": "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaResolverWorkspaceTest.kt",
+    "app_contract": "app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8DContractTest.kt",
+    "first_class_resolver_workspace": true,
+    "rich_format_comparison": true,
+    "duration_based_size_estimates": true,
+    "audio_subtitle_selection": true,
+    "persistent_track_choices_outside_room": true,
+    "redacted_session_review": true,
+    "yt_dlp_probe_status": true,
+    "protected_media_diagnostic_only": true,
+    "resolver_history_from_media_captures": true,
+    "review_first_queue_handoff": true,
+    "external_handoff_preserved": true,
+    "queue_intelligence_preserved": true,
+    "all_download_engines_preserved": true,
+    "browser_runtime_remains_absent": true,
+    "stable_routes": [
+      "Downloads",
+      "Add",
+      "Media",
+      "Library",
+      "Activity",
+      "Settings"
+    ],
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "next_phase": "phase8e_activity_diagnostics_polish"
   }
 }

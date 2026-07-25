@@ -14,6 +14,8 @@ Phase 8A + 8B adds a review-first manual intake planner and a grouped Downloads 
 
 Phase 8C adds explainable queue policy, classified retry backoff, condition-driven evaluation, foreground WorkManager ownership for automatic transfers, persistent decision history, and an explicit soft-policy override. The contract is documented in `docs/downloader/PHASE-8C-QUEUE-INTELLIGENCE.md`, and its validator is `tools/validate-downloader-experience-phase-8c.py`.
 
+Phase 8D promotes Media into a first-class resolver workspace with rich format comparison, persistent video/audio/subtitle choices outside Room, redacted request-context review, protected-media diagnostics, and recent resolution history derived from downloader captures. The contract is documented in `docs/downloader/PHASE-8D-MEDIA-RESOLVER-POLISH.md`, and its validator is `tools/validate-downloader-experience-phase-8d.py`.
+
 Standalone Android download manager implemented through Phase 7: modular Kotlin/Compose architecture, Room persistence, reconciled physical-artifact ownership, native HTTP/HTTPS transfers, Android long-running execution, public/SAF storage, and a supervised authenticated loopback aria2 process boundary.
 
 

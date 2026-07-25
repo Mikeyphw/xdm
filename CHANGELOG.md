@@ -1,3 +1,10 @@
+## XDM Android downloader experience: Phase 8D
+
+- Promoted the Media destination into a first-class resolver workspace with explicit source, probe, stream, selection, review, ready, failed, and protected states.
+- Added rich format comparison for resolution, codec, container, bitrate, duration-based size estimates, HDR evidence, compatibility, efficiency, quality, and compactness guidance.
+- Added persistent video, audio, and subtitle choices outside Room, plus redacted session review and recent resolution history derived from downloader media captures.
+- Preserved review-first queue handoff, Phase 8C policy, native/aria2/Termux/yt-dlp engines, browser-free routes, Room schema 14, `versionCode 21`, and `versionName 0.20.0-rc08`.
+
 ## XDM Android downloader experience: Phase 8C
 
 - Added an explainable queue policy gate for validated network, network type, charging, battery, storage reserve, schedules, per-queue concurrency, priority fairness, and classified retry backoff.

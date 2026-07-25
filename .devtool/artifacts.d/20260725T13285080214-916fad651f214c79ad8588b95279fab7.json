@@ -1,0 +1,180 @@
+{
+  "applied_at": "2026-07-25T13:28:50.802143Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_browser_removal_phase8d_media_resolver_format_selection_overlay.zip",
+  "artifact_name": "xdm_android_browser_removal_phase8d_media_resolver_format_selection_overlay.zip",
+  "type": "overlay",
+  "sha256": "aea66a13477f4536aa3c7d612d5b627a31680a81bb66c0209f706055c3cb15d6",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Polish XDM Android media resolver and format selection",
+  "commit_hash": "",
+  "file_count": 17,
+  "change_counts": {
+    "add": 6,
+    "modify": 11
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 8D media resolver and format selection polish",
+    "description": "Promotes the browser-free Media destination into a first-class review-first resolver workspace with rich format comparison, persistent video/audio/subtitle choices outside Room, redacted request-context review, protected-media diagnostics, and recent resolution history while preserving Phase 8C queue policy and every downloader engine.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Polish XDM Android media resolver and format selection"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Apply only after xdm_android_browser_removal_phase8c_queue_intelligence_execution_policy_overlay.zip.",
+      "Adds a pure resolver workspace for probe status, format comparison, estimated size, audio/subtitle metadata, protected-media diagnostics, and recent resolution history derived from media captures.",
+      "Persists only opaque local video/audio/subtitle variant IDs in a browser-neutral SharedPreferences store; no URL, cookie, authorization value, header, page content, or Room migration is introduced.",
+      "All download starts remain explicit and continue through the existing media execution planner and Phase 8C queue policy.",
+      "Does not restore the built-in browser or change routes, Android intent ownership, native/aria2/Termux/yt-dlp engines, offline library, Media3, Room schema 14, versionCode 21, or versionName 0.20.0-rc08."
+    ],
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "source_sha256": "70156693e72f228ab1a905b073b786020307d81f6d7a46d2fd201049fc9b333b",
+          "sha256": "4f9d2928cf93b8e8a85f5eda1e33ce535e0323cbfa6f77102e5e1dc60b35dca4",
+          "size": 13472
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "source_sha256": "bdcf8f7d652f5671263135d65e60c40f98306cd134e0ef08286c9d5c9d7c6164",
+          "sha256": "b67043dbc4b0215db360f779765adee97156f0b645306e9402faec3623ac7960",
+          "size": 4351
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "source_sha256": "6ab9caa1dc042419609fbb327222430803501a0f8b3ec129e533ee0a4855cccb",
+          "sha256": "2ada22a4261fc8d8659fd885ffd99caf66cceb0ccd64596fb0f3203a6c776dc1",
+          "size": 40699
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "source_sha256": "9992bc3f737079409076c9120eb1f35aa87ade7619e12dcf82c4d7285c24b9cf",
+          "sha256": "5e75ba8afe9290c76f19ffaa7f60e3b147e5c9cfdf4297a3996a02b75faa0fc9",
+          "size": 17246
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "source_sha256": "f2b3e1d5981b4b168c1295b2e940d4ae967b8ad505ab87947b515fb942402e6f",
+          "sha256": "73cc0bea7f4af364748e8e372017e320715f948590dfdadbf206690ebf79ff4c",
+          "size": 74676
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MediaResolverSelectionStore.kt",
+          "action": "add",
+          "sha256": "dc23fddc5b686a8f3dfa854c46c1637fdd7b83c85ef105f82134625f24b3cf78",
+          "size": 2699
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+          "action": "modify",
+          "source_sha256": "d16c1c587a77aaf500fdeacecaa5bd1b660e8ac4f46a5dd6bed1ca9d0a6278eb",
+          "sha256": "eda13091b41a4ddf30a0deb363a5bd13ee9ee09b11d23333ad1ef23530111591",
+          "size": 232073
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "source_sha256": "eedf768a9489607293173358aca4fea818ddfea03a210cbfe22418648d5d4b29",
+          "sha256": "d5587525f61082c5651190f7db577adff42c21aac6e5ffcb04629d3ca45a57b7",
+          "size": 15453
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+          "action": "modify",
+          "source_sha256": "10ddb78f448ceab6e62c2c4e29397ba418e44a2067b18c1264fd03d0411ce49a",
+          "sha256": "114dcfd99cb784dc745723e17a0933a92d671c9c923e3244a12e25f05925ccff",
+          "size": 8800
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8DContractTest.kt",
+          "action": "add",
+          "sha256": "87062b1049f1945baa7e710b6ad6b889467246bd6bc5d4d57346619989b3ca5a",
+          "size": 3128
+        },
+        {
+          "path": "app/XDM.Android/docs/downloader/PHASE-8D-MEDIA-RESOLVER-POLISH.md",
+          "action": "add",
+          "sha256": "e48b7e7825cd14e36fead4e638d92f3966f4932460ab9dd9f3ac70594e0f5e51",
+          "size": 2929
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaResolverWorkspace.kt",
+          "action": "add",
+          "sha256": "e19022f4ab24284c4a1fd29e6c1bf86088bf4fefd2e25cd88b82afe533b98dd2",
+          "size": 19071
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaResolverWorkspaceTest.kt",
+          "action": "add",
+          "sha256": "18db80437b74cc18db8db750e60dd7b5e607776ccc2554e165b23f720cd09ccb",
+          "size": 7614
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "source_sha256": "2106930e935dde278d88296c759eabd72597f9de68b516ae880a2064b8dea43f",
+          "sha256": "c2311cb07542cec57d0aa47f955df869f1b4cd5727cce8adca5c3c9fc7d6fcd2",
+          "size": 3031
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8ab.py",
+          "action": "modify",
+          "source_sha256": "7f486bd475ece66e752994095c72fb24bbf8d014bb8ca56390c0738516c43472",
+          "sha256": "79cdf38b8d6d8743c6868613338d4b78e17813feb2e64daaa828735c66bb762d",
+          "size": 7504
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8c.py",
+          "action": "modify",
+          "source_sha256": "30ff55efb0da4daf551238ca234fc7bbfcd172ff95ccd1c5b9693877aa875bdf",
+          "sha256": "08476faa43e7a57f9548513ffe4836e300c1bc61ca862e5b230ae33afc019cb8",
+          "size": 9242
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8d.py",
+          "action": "add",
+          "sha256": "382bc67fe00a87f35e058820b0b9544566a0763b3c15178f3eff1f38efa2ee15",
+          "size": 7562
+        }
+      ]
+    }
+  },
+  "history_id": "916fad651f214c79ad8588b95279fab7"
+}

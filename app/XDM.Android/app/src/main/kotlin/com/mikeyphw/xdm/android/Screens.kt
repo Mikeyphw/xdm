@@ -95,6 +95,12 @@ import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.media.MediaDownloadPlanner
 import com.mikeyphw.xdm.android.media.MediaDownloadPlan
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
+import com.mikeyphw.xdm.android.media.MediaResolverWorkspace
+import com.mikeyphw.xdm.android.media.MediaResolverWorkspacePlanner
+import com.mikeyphw.xdm.android.media.MediaResolverStage
+import com.mikeyphw.xdm.android.media.MediaResolverHistoryRow
+import com.mikeyphw.xdm.android.media.MediaResolverFormatRow
+import com.mikeyphw.xdm.android.media.MediaResolverTrackRow
 import com.mikeyphw.xdm.android.media.MediaVariantPickerGroup
 import com.mikeyphw.xdm.android.media.YtDlpMetadataProbeResult
 import com.mikeyphw.xdm.android.media.OfflineMediaLibrarySummary
@@ -1629,6 +1635,7 @@ fun MediaLibraryScreen(
 fun MediaInboxScreen(
     captures: List<MediaCaptureRecord>,
     variants: List<MediaVariant>,
+    mediaTrackSelections: Map<String, MediaTrackSelection>,
     downloads: List<Download>,
     termuxMediaPipeline: TermuxMediaPipelineStatus,
     postProcessingAutomation: PostProcessingAutomationStatus,
@@ -1636,6 +1643,7 @@ fun MediaInboxScreen(
     onResumeOrRetryDownload: (Download) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
+    onTrackSelectionChanged: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onRemove: (MediaCaptureRecord) -> Unit,
     onTermuxMetadata: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onTermuxInspect: (MediaCaptureRecord) -> Unit,
@@ -1649,6 +1657,10 @@ fun MediaInboxScreen(
     val mediaPlanner = remember { MediaDownloadPlanner() }
     val executionPlanner = remember { MediaExecutionLibraryPlanner(mediaPlanner) }
     val dispatchPlanner = remember { MediaExecutionDispatcher() }
+    val resolverPlanner = remember { MediaResolverWorkspacePlanner(mediaPlanner) }
+    val resolverHistory = remember(captures, variants, mediaTrackSelections) {
+        resolverPlanner.history(captures, variants, mediaTrackSelections)
+    }
     val externalJobs = remember(termuxMediaPipeline.jobs) {
         termuxMediaPipeline.jobs.map { job ->
             MediaExternalJobSnapshot(
@@ -1778,6 +1790,7 @@ fun MediaInboxScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
+                item { MediaResolverHistoryCard(resolverHistory) }
                 item { MediaMobilePolishCard(mediaMobilePolish) }
                 item { MediaFinalValidationGateCard(mediaFinalValidation) }
                 item { MediaExecutionQueueCard(executionJobs) }
@@ -1799,6 +1812,7 @@ fun MediaInboxScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item { TermuxMediaPipelineCard(termuxMediaPipeline, onClearTermuxMediaJobs) }
+                item { MediaResolverHistoryCard(resolverHistory) }
                 item { MediaMobilePolishCard(mediaMobilePolish) }
                 item { MediaFinalValidationGateCard(mediaFinalValidation) }
                 item { MediaExecutionQueueCard(executionJobs) }
@@ -1822,9 +1836,12 @@ fun MediaInboxScreen(
                     MediaCaptureCard(
                         capture,
                         captureVariants,
+                        mediaTrackSelections[capture.id] ?: MediaTrackSelection(videoVariantId = capture.selectedVariantId),
+                        resolverPlanner,
                         onDownload,
                         onResolve,
                         onSelectVariant,
+                        onTrackSelectionChanged,
                         onRemove,
                         onTermuxMetadata,
                         onTermuxInspect,
@@ -2553,9 +2570,12 @@ private fun MediaExecutionQueueCard(jobs: List<MediaExecutionJob>) {
 private fun MediaCaptureCard(
     capture: MediaCaptureRecord,
     captureVariants: List<MediaVariant>,
+    persistedSelection: MediaTrackSelection,
+    resolverPlanner: MediaResolverWorkspacePlanner,
     onDownload: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
+    onTrackSelectionChanged: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onRemove: (MediaCaptureRecord) -> Unit,
     onTermuxMetadata: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onTermuxInspect: (MediaCaptureRecord) -> Unit,
@@ -2566,13 +2586,18 @@ private fun MediaCaptureCard(
 ) {
     val context = LocalContext.current
     var variantSelectorExpanded by remember(capture.id) { mutableStateOf(false) }
-    var trackSelection by remember(capture.id) { mutableStateOf(MediaTrackSelection(videoVariantId = capture.selectedVariantId)) }
-    LaunchedEffect(capture.selectedVariantId) {
-        trackSelection = trackSelection.copy(videoVariantId = capture.selectedVariantId ?: trackSelection.videoVariantId)
+    var trackSelection by remember(capture.id) {
+        mutableStateOf(persistedSelection.copy(videoVariantId = persistedSelection.videoVariantId ?: capture.selectedVariantId))
+    }
+    LaunchedEffect(persistedSelection, capture.selectedVariantId) {
+        trackSelection = persistedSelection.copy(videoVariantId = persistedSelection.videoVariantId ?: capture.selectedVariantId)
     }
     val mediaPlanner = remember { MediaDownloadPlanner() }
     val executionPlanner = remember { MediaExecutionLibraryPlanner(mediaPlanner) }
     val mediaPlan = remember(capture, captureVariants, trackSelection) { mediaPlanner.plan(capture, captureVariants, selection = trackSelection) }
+    val resolverWorkspace = remember(capture, captureVariants, mediaPlan.trackSelection) {
+        resolverPlanner.workspace(capture, captureVariants, mediaPlan.trackSelection)
+    }
     val mediaQueueSpec = remember(capture, captureVariants, mediaPlan.trackSelection) {
         executionPlanner.queueSpec(capture, captureVariants, mediaPlan.trackSelection, "content://downloads")
     }
@@ -2613,6 +2638,7 @@ private fun MediaCaptureCard(
             capture.downloadId?.let { StatusPill("Queued", XdmStatusTone.Success) }
         }
         XdmMetadataText(mediaPlan.explanation, maxLines = 3)
+        MediaResolverWorkspaceCard(resolverWorkspace)
         MetadataProbePreviewCard(metadataPreview, mediaPlan)
         SessionHandoffCard(mediaPlan)
         MediaEngineHardeningCard(mediaEnginePlan)
@@ -2639,14 +2665,16 @@ private fun MediaCaptureCard(
                         VariantPickerGroupCard(
                             group = group,
                             onSelect = { variant ->
-                                trackSelection = when (group.kind) {
+                                val nextSelection = when (group.kind) {
                                     MediaVariantKind.Audio -> trackSelection.copy(audioVariantId = variant.id)
                                     MediaVariantKind.Subtitle -> trackSelection.copy(subtitleVariantId = variant.id)
-                                    MediaVariantKind.Primary, MediaVariantKind.Video -> {
-                                        onSelectVariant(capture, variant.id)
-                                        trackSelection.copy(videoVariantId = variant.id)
-                                    }
+                                    MediaVariantKind.Primary, MediaVariantKind.Video -> trackSelection.copy(videoVariantId = variant.id)
                                     MediaVariantKind.Thumbnail -> trackSelection
+                                }
+                                trackSelection = nextSelection
+                                onTrackSelectionChanged(capture, nextSelection)
+                                if (group.kind == MediaVariantKind.Primary || group.kind == MediaVariantKind.Video) {
+                                    onSelectVariant(capture, variant.id)
                                 }
                             },
                         )
@@ -2685,6 +2713,162 @@ private fun MediaCaptureCard(
             }
         }
     }
+}
+
+@Composable
+private fun MediaResolverHistoryCard(rows: List<MediaResolverHistoryRow>) {
+    XdmListCard(compact = true) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmCardTitle("Recent resolutions")
+                XdmSupportingText("Resolver history is derived from downloader media captures. No browser history, page archive, cookie value, or authorization value is stored.", maxLines = 3)
+            }
+            StatusPill("${rows.size} recent", XdmStatusTone.Neutral)
+        }
+        if (rows.isEmpty()) {
+            XdmMetadataText("Share a media or page URL to create the first review-first resolver entry.", maxLines = 2)
+        } else {
+            rows.take(5).forEach { row ->
+                XdmListCard(compact = true) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                        Column(Modifier.weight(1f)) {
+                            XdmMetadataText(row.title, maxLines = 1)
+                            XdmSupportingText("${row.sourceHost} • ${row.kindLabel}", maxLines = 1)
+                            XdmMetadataText(row.selectionSummary, maxLines = 2)
+                        }
+                        StatusPill(row.statusLabel, if (row.statusLabel == "Failed" || row.statusLabel == "Refresh required" || row.statusLabel == "Protected") XdmStatusTone.Warning else XdmStatusTone.Info)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaResolverWorkspaceCard(workspace: MediaResolverWorkspace) {
+    XdmListCard(compact = true) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmMetadataText("Resolver workspace")
+                XdmSupportingText(workspace.summary, maxLines = 2)
+                XdmMetadataText("Source: ${workspace.sourceLabel}", maxLines = 1)
+            }
+            StatusPill(workspace.stage.label, toneForResolverStage(workspace.stage))
+        }
+        XdmActionFlowRow {
+            workspace.stageSequence.forEach { stage ->
+                StatusPill(stage.label, if (stage == workspace.stage) toneForResolverStage(stage) else XdmStatusTone.Neutral)
+            }
+        }
+        XdmListCard(compact = true) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    XdmMetadataText("yt-dlp / manifest probe")
+                    XdmSupportingText("${workspace.probe.extractorLabel} • ${workspace.probe.probeTargetLabel}", maxLines = 2)
+                    XdmMetadataText(workspace.probe.authenticationLabel, maxLines = 1)
+                }
+                StatusPill(workspace.probe.statusLabel, if (workspace.probe.warnings.isEmpty()) XdmStatusTone.Success else XdmStatusTone.Warning)
+            }
+            XdmActionFlowRow {
+                StatusPill("${workspace.probe.formatCount} formats", XdmStatusTone.Info)
+                StatusPill(if (workspace.session.cookiesAvailable) "Cookies available / redacted" else "No cookies", XdmStatusTone.Neutral)
+                if (workspace.session.authorizationAvailable) StatusPill("Authorization present / redacted", XdmStatusTone.Warning)
+                if (workspace.session.referrerHost != null) StatusPill("Referrer ${workspace.session.referrerHost}", XdmStatusTone.Neutral)
+            }
+            workspace.probe.warnings.take(3).forEach { warning -> XdmMetadataText(warning, maxLines = 2) }
+            XdmMetadataText(workspace.session.redactedSummary, maxLines = 3)
+        }
+        if (workspace.formats.isNotEmpty()) {
+            MediaFormatComparisonCard(workspace.formats, workspace.comparisonNotes)
+        }
+        if (workspace.audioTracks.isNotEmpty() || workspace.subtitleTracks.isNotEmpty()) {
+            MediaTrackSelectionSummaryCard(workspace.audioTracks, workspace.subtitleTracks)
+        }
+        XdmListCard(compact = true) {
+            XdmMetadataText("Download review")
+            XdmMetricText(workspace.selectedSummary)
+            XdmSupportingText(
+                if (workspace.readyToQueue) "The reviewed selection is ready to hand off to the existing queue and engine planner."
+                else "Resolve or refresh the source and review the available streams before queueing.",
+                maxLines = 3,
+            )
+            XdmActionFlowRow {
+                StatusPill(if (workspace.readyToQueue) "Ready to queue" else "Review required", if (workspace.readyToQueue) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (workspace.protectedDiagnostic.protected) "Diagnostic only" else "Direct download allowed", if (workspace.protectedDiagnostic.protected) XdmStatusTone.Warning else XdmStatusTone.Info)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaFormatComparisonCard(rows: List<MediaResolverFormatRow>, notes: List<String>) {
+    XdmListCard(compact = true) {
+        XdmMetadataText("Quality comparison")
+        rows.take(6).forEach { row ->
+            XdmListCard(compact = true) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        XdmMetadataText(row.title, maxLines = 1)
+                        XdmSupportingText(row.detail, maxLines = 2)
+                        XdmMetadataText(listOfNotNull(row.bitrateLabel, row.estimatedSizeLabel, row.containerLabel).joinToString(" • "), maxLines = 2)
+                    }
+                    if (row.selected) StatusPill("Selected", XdmStatusTone.Success)
+                }
+                XdmActionFlowRow {
+                    row.recommendations.forEach { recommendation ->
+                        StatusPill(recommendation, when (recommendation) {
+                            "Best quality" -> XdmStatusTone.Info
+                            "Compatible" -> XdmStatusTone.Success
+                            "HDR" -> XdmStatusTone.Warning
+                            else -> XdmStatusTone.Neutral
+                        })
+                    }
+                }
+            }
+        }
+        notes.take(4).forEach { note -> XdmMetadataText(note, maxLines = 2) }
+    }
+}
+
+@Composable
+private fun MediaTrackSelectionSummaryCard(audio: List<MediaResolverTrackRow>, subtitles: List<MediaResolverTrackRow>) {
+    XdmListCard(compact = true) {
+        XdmMetadataText("Audio and subtitle tracks")
+        audio.take(4).forEach { row ->
+            XdmListCard(compact = true) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        XdmMetadataText("Audio • ${row.languageLabel}", maxLines = 1)
+                        XdmSupportingText(row.detail, maxLines = 2)
+                    }
+                    if (row.selected) StatusPill("Selected", XdmStatusTone.Success)
+                }
+            }
+        }
+        subtitles.take(4).forEach { row ->
+            XdmListCard(compact = true) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        XdmMetadataText("Subtitles • ${row.languageLabel}", maxLines = 1)
+                        XdmSupportingText(row.detail, maxLines = 2)
+                    }
+                    if (row.selected) StatusPill("Selected", XdmStatusTone.Success)
+                }
+                XdmActionFlowRow {
+                    if (row.forced) StatusPill("Forced", XdmStatusTone.Warning)
+                    if (row.autoGenerated) StatusPill("Auto-generated", XdmStatusTone.Neutral)
+                    if (!row.forced && !row.autoGenerated) StatusPill("External track", XdmStatusTone.Info)
+                }
+            }
+        }
+    }
+}
+
+private fun toneForResolverStage(stage: MediaResolverStage): XdmStatusTone = when (stage) {
+    MediaResolverStage.Ready -> XdmStatusTone.Success
+    MediaResolverStage.Protected, MediaResolverStage.Failed -> XdmStatusTone.Warning
+    MediaResolverStage.Probe, MediaResolverStage.Streams, MediaResolverStage.Selection, MediaResolverStage.Review -> XdmStatusTone.Info
+    MediaResolverStage.Source -> XdmStatusTone.Neutral
 }
 
 @Composable

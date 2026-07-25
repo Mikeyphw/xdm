@@ -141,6 +141,7 @@ data class MainUiState(
     val finalizationJournals: List<FinalizationJournal> = emptyList(),
     val mediaCaptures: List<MediaCaptureRecord> = emptyList(),
     val mediaVariants: List<MediaVariant> = emptyList(),
+    val mediaTrackSelections: Map<String, MediaTrackSelection> = emptyMap(),
     val automationCommands: List<AutomationCommandRecord> = emptyList(),
     val tags: List<DownloadTag> = emptyList(),
     val tagAssignments: List<DownloadTagAssignment> = emptyList(),
@@ -210,6 +211,7 @@ class MainViewModel(
     private val termuxAria2CockpitManager: TermuxAria2CockpitManager,
     private val termuxMediaPipelineManager: TermuxMediaPipelineManager,
     private val postProcessingAutomationManager: PostProcessingAutomationManager,
+    private val mediaResolverSelectionStore: MediaResolverSelectionStore,
 ) : ViewModel() {
     private val routeOverride = MutableStateFlow<AppRoute?>(null)
     private val aria2Capability = MutableStateFlow<Aria2CapabilityReport?>(null)
@@ -385,6 +387,15 @@ class MainViewModel(
         val postProcessingAutomation: PostProcessingAutomationStatus,
     )
 
+    private data class ReviewUiSnapshot(
+        val externalAddDraft: DownloadIntakeDraft?,
+        val mediaSelections: Map<String, MediaTrackSelection>,
+    )
+
+    private val reviewUi = combine(externalAddDraft, mediaResolverSelectionStore.selections) { draft, selections ->
+        ReviewUiSnapshot(draft, selections)
+    }
+
     private data class TermuxUiSnapshot(
         val bridge: TermuxBridgeStatus,
         val aria2: TermuxAria2CockpitStatus,
@@ -405,8 +416,8 @@ class MainViewModel(
         preferences.values,
         routeOverride,
         runtimeUi,
-        externalAddDraft,
-    ) { snapshot, prefs, override, runtime, addDraft ->
+        reviewUi,
+    ) { snapshot, prefs, override, runtime, review ->
         val settingsSnapshot = SettingsExchangeSnapshot(
             compactDensity = prefs.compactDensity,
             destinationUri = prefs.destinationUri,
@@ -429,7 +440,7 @@ class MainViewModel(
             queueIntelligence = runtime.queueIntelligence,
             destinationUri = prefs.destinationUri,
             conflictPolicy = prefs.conflictPolicy,
-            externalAddDraft = addDraft,
+            externalAddDraft = review.externalAddDraft,
             destinationPermissions = snapshot.destinationPermissions,
             aria2Diagnostics = runtime.aria2,
             termuxBridge = runtime.termuxBridge,
@@ -443,6 +454,7 @@ class MainViewModel(
             finalizationJournals = snapshot.finalizationJournals,
             mediaCaptures = snapshot.mediaCaptures,
             mediaVariants = snapshot.mediaVariants,
+            mediaTrackSelections = review.mediaSelections,
             automationCommands = snapshot.automationCommands,
             tags = snapshot.tags,
             tagAssignments = snapshot.tagAssignments,
@@ -1298,6 +1310,7 @@ class MainViewModel(
     }
 
     fun downloadMediaCapture(record: MediaCaptureRecord, selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = record.selectedVariantId)) {
+        mediaResolverSelectionStore.save(record.id, selection)
         viewModelScope.launch(Dispatchers.IO) {
             val now = System.currentTimeMillis()
             val variants = repository.variantsForMediaCapture(record.id)
@@ -1394,6 +1407,8 @@ class MainViewModel(
     }
 
     fun selectMediaVariant(record: MediaCaptureRecord, variantId: String) {
+        val current = mediaResolverSelectionStore.selections.value[record.id] ?: MediaTrackSelection(videoVariantId = record.selectedVariantId)
+        mediaResolverSelectionStore.save(record.id, current.copy(videoVariantId = variantId))
         viewModelScope.launch(Dispatchers.IO) {
             val variants = repository.variantsForMediaCapture(record.id)
             val selected = variants.firstOrNull { it.id == variantId } ?: return@launch
@@ -1401,7 +1416,12 @@ class MainViewModel(
         }
     }
 
+    fun updateMediaTrackSelection(record: MediaCaptureRecord, selection: MediaTrackSelection) {
+        mediaResolverSelectionStore.save(record.id, selection)
+    }
+
     fun removeMediaCapture(record: MediaCaptureRecord) {
+        mediaResolverSelectionStore.remove(record.id)
         viewModelScope.launch(Dispatchers.IO) { repository.deleteMediaCapture(record.id) }
     }
 
@@ -1514,6 +1534,7 @@ class MainViewModel(
             container.termuxAria2CockpitManager,
             container.termuxMediaPipelineManager,
             container.postProcessingAutomationManager,
+            container.mediaResolverSelectionStore,
         ) as T
     }
 }

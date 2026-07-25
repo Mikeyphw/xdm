@@ -54,6 +54,7 @@ validators=(
   tools/validate-browser-removal-phase-7.py
   tools/validate-downloader-experience-phase-8ab.py
   tools/validate-downloader-experience-phase-8c.py
+  tools/validate-downloader-experience-phase-8d.py
 )
 
 for validator in "${validators[@]}"; do
@@ -74,6 +75,6 @@ Run the full build/test/lint gate in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Phase 7 seals the downloader-only product, Phase 8A + 8B refines intake and Downloads, and Phase 8C adds explainable queue policy with foreground WorkManager ownership.
+Phase 7 seals the downloader-only product, Phase 8A + 8B refines intake and Downloads, Phase 8C adds explainable queue policy, and Phase 8D adds a first-class review-first media resolver workspace.
 The browser-free product boundary remains complete after the full target-environment Gradle gate and manual PackageManager check pass.
 EOF2
