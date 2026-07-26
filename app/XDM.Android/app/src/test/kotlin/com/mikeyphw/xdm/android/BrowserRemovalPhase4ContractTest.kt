@@ -39,12 +39,14 @@ class BrowserRemovalPhase4ContractTest {
         val mainActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val preferences = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferencesStore.kt").readText()
+        val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
 
         listOf("shouldOpenBrowserUrl", "openBrowserUrlFromIntent", "browserStartUrl", "consumeBrowserStartUrl", "openBrowserUrl(url: String)")
             .forEach { marker -> assertFalse("Browser startup marker remains: $marker", mainActivity.contains(marker) || viewModel.contains(marker)) }
         assertTrue(mainActivity.contains("handleExternalIntent(intent)"))
-        assertTrue(preferences.contains("runCatching { AppRoute.valueOf(it) }.getOrNull()"))
-        assertTrue(preferences.contains("?: AppRoute.Downloads"))
+        assertTrue(preferences.contains("lastRoute = AppRoute.restore(preferences[Keys.LastRoute])"))
+        assertTrue(routes.contains("fun restore(storedName: String?): AppRoute"))
+        assertTrue(routes.contains("?: Downloads"))
     }
 
     @Test

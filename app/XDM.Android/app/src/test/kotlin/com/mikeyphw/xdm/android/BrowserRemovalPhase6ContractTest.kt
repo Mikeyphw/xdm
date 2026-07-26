@@ -42,7 +42,7 @@ class BrowserRemovalPhase6ContractTest {
         val root = androidRoot()
         val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
         assertTrue(screens.contains("fun MediaLibraryScreen("))
-        assertTrue(screens.contains("fun ActivityOverviewScreen(state: MainUiState)"))
+        assertTrue(screens.contains("fun ActivityOverviewScreen("))
         assertTrue(screens.contains("Completed media, playback readiness, sidecar health"))
         assertTrue(screens.contains("A single operational workspace for queue control"))
         assertEquals(0, Regex("OfflineLibraryV2Card\\(libraryV2\\)").findAll(screens).count())

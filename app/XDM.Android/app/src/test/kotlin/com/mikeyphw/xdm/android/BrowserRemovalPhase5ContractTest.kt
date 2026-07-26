@@ -16,7 +16,8 @@ class BrowserRemovalPhase5ContractTest {
         val projectManifest = File(root, "PROJECT_MANIFEST.json").readText()
         val finalGate = File(root, "tools/run-final-release-gate.sh").readText()
 
-        assertFalse(File(root, "docs/browser").exists())
+        val retiredBrowserDocs = File(root, "docs/browser")
+        assertTrue(!retiredBrowserDocs.exists() || retiredBrowserDocs.walkTopDown().none { it.isFile })
         assertFalse(File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt").exists())
         assertFalse(File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBrowserCaptureQuality.kt").exists())
         assertTrue(File(root, "docs/archive/BUILT-IN-BROWSER-HISTORY.md").isFile)

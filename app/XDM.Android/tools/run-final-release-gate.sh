@@ -56,6 +56,7 @@ validators=(
   tools/validate-downloader-experience-phase-8c.py
   tools/validate-downloader-experience-phase-8d.py
   tools/validate-downloader-experience-phase-8e.py
+  tools/validate-phase-8e-compose-storage-hotfix.py
 )
 
 for validator in "${validators[@]}"; do
@@ -76,6 +77,6 @@ Run the full build/test/lint gate in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Phase 7 seals the downloader-only product, Phase 8A + 8B refines intake and Downloads, Phase 8C adds explainable queue policy, Phase 8D adds a first-class review-first media resolver workspace, and Phase 8E adds searchable operational visibility and privacy-safe diagnostics.
+Phase 7 seals the downloader-only product, Phase 8A + 8B refines intake and Downloads, Phase 8C adds explainable queue policy, Phase 8D adds a first-class review-first media resolver workspace, and Phase 8E adds searchable operational visibility and privacy-safe diagnostics. The Phase 8E repair chain preserves scoped Compose layout extensions, warning-free storage reevaluation, JUnit 4 test compilation, and downloader-first architecture contracts.
 The browser-free product boundary remains complete after the full target-environment Gradle gate and manual PackageManager check pass.
 EOF2

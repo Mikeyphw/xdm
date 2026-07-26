@@ -66,7 +66,10 @@ class ArchitectureContractTest {
         val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         assertTrue("Filename field should describe inference", screens.contains("XDM will infer a name from the URL"))
-        assertTrue("Add button should not require a nonblank filename", screens.contains("val canSubmit = url.isNotBlank() && destinationUri.isNotBlank()"))
+        assertTrue(
+            "Add button should not require a nonblank filename",
+            screens.contains("val canSubmit = review.canStartDirectly && recommendation?.compatible != false"),
+        )
         assertTrue("Add button should use the filename-independent submit state", screens.contains("enabled = canSubmit"))
         assertTrue("ViewModel should centralize inferred filename resolution", viewModel.contains("private fun resolveFileName"))
         assertFalse("ViewModel should not reject blank filename", viewModel.contains("fileName.isBlank()"))
@@ -258,11 +261,16 @@ class ArchitectureContractTest {
         assertTrue("UI contract must define form and settings workflow rules", contract.contains("Form and Settings Workflow Rules"))
         assertTrue("Downloads must keep history tools behind an affordance", screens.contains("History tools"))
         assertTrue("Downloads must support search", screens.contains("Search downloads"))
-        assertTrue("Downloads must support sort choices", screens.contains("DownloadSort"))
+        assertTrue("Downloads must support sort choices", screens.contains("DownloadDashboardOrdering"))
         assertTrue("Download rows must expose details without always rendering everything", screens.contains("Hide details") && screens.contains("Details"))
         assertTrue("Filtered empty state must explain how to recover", screens.contains("No matching downloads"))
         assertTrue("Add route must fold advanced settings", screens.contains("Advanced download options") && screens.contains("advancedExpanded"))
-        assertTrue("Add route must use a persistent bottom action", screens.contains("Ready to add to the default queue") && screens.contains("Start download"))
+        assertTrue(
+            "Add route must use a persistent bottom action",
+            screens.contains("Ready for explicit queue submission.") &&
+                screens.contains("enabled = canSubmit") &&
+                screens.contains("Start direct download"),
+        )
         assertTrue("Settings must show unsaved draft state", screens.contains("Unsaved") && screens.contains("Saved"))
         assertTrue("Settings must provide reset paths", screens.contains("Reset"))
         assertFalse("Download history must not be a permanent standalone card", screens.contains("private fun HistoryManagementCard"))
@@ -280,7 +288,7 @@ class ArchitectureContractTest {
         val repository = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt").readText()
         val dao = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadDao.kt").readText()
 
-        assertTrue("UI contract must define secondary route operational rules", contract.contains("Secondary Route Operational Rules"))
+        assertTrue("UI contract must define Activity and Library operational rules", contract.contains("Activity and Library Operational Rules"))
         assertTrue("Queues route must expose creation", screens.contains("Create queue") && appShell.contains("onCreateQueue = viewModel::createQueue"))
         assertTrue("Queues route must expose edit/save", screens.contains("Save queue") && viewModel.contains("fun updateQueue"))
         assertTrue("Queues route must expose enable toggles", screens.contains("onToggleQueue") && viewModel.contains("fun setQueueEnabled"))
@@ -290,7 +298,7 @@ class ArchitectureContractTest {
         assertTrue("Scheduler route must expose enable toggles", screens.contains("onToggleSchedule") && viewModel.contains("fun setScheduleEnabled"))
         assertTrue("Scheduler route must expose deletion", screens.contains("Delete schedule") && repository.contains("deleteSchedule") && dao.contains("DELETE FROM schedule_rules"))
         assertTrue("Scheduler must show a next-run summary", screens.contains("Next eligible window"))
-        assertTrue("Scheduler must edit human-readable conditions", screens.contains("Unmetered network only") && screens.contains("Charging required") && screens.contains("Minimum battery %"))
+        assertTrue("Scheduler must edit human-readable conditions", screens.contains("QueueNetworkRequirement.entries") && screens.contains("Charging required") && screens.contains("Minimum battery %"))
         assertTrue("Media route must expose a variant selector", screens.contains("Choose variant") && screens.contains("Selected variant") && screens.contains("VariantSelectorRow"))
         assertTrue("Media cards must emphasize origin instead of raw URL", screens.contains("mediaOriginLabel") && !screens.contains("XdmMetadataText(capture.sourceUrl"))
         assertTrue("Recovery route must clarify safe record-only removal", screens.contains("Remove record only") && screens.contains("Technical details"))
@@ -315,7 +323,11 @@ class ArchitectureContractTest {
         assertTrue("Manifest must expose typed browser download-manager VIEW intake", manifest.contains("android:mimeType=\"*/*\"") && manifest.contains("android:scheme=\"http\"") && manifest.contains("android:scheme=\"https\""))
         assertTrue("ShareSheet intake must inspect shared text and clip data", activity.contains("sharedText(incoming)") && activity.contains("Intent.EXTRA_TEXT") && activity.contains("clipData"))
         assertTrue("Browser/share non-media links must open Add instead of being rejected", viewModel.contains("openExternalAddDraft") && viewModel.contains("navigate(AppRoute.Add)"))
-        assertTrue("External Add drafts must survive into UI state", viewModel.contains("externalAddDraft = addDraft"))
+        assertTrue(
+            "External Add drafts must survive into UI state",
+            viewModel.contains("externalAddDraft.value = downloadIntakePlanner.fromExternal(") &&
+                viewModel.contains("externalAddDraft = review.externalAddDraft"),
+        )
         assertTrue("Add route must prefill external links", screens.contains("initialUrl") && screens.contains("Link received") && screens.contains("LaunchedEffect(externalDraftId)"))
         assertTrue("App shell must pass external drafts to Add", appShell.contains("initialUrl = state.externalAddDraft?.url"))
         assertFalse("Supported non-media links must not be rejected as missing media", viewModel.contains("No supported media URL detected"))
@@ -914,7 +926,8 @@ class ArchitectureContractTest {
     fun retiredBuiltInBrowserHistoryIsArchivedOutsideActiveContracts() {
         val root = androidRoot()
         assertTrue(File(root, "docs/archive/BUILT-IN-BROWSER-HISTORY.md").isFile)
-        assertFalse(File(root, "docs/browser").exists())
+        val retiredBrowserDocs = File(root, "docs/browser")
+        assertTrue(!retiredBrowserDocs.exists() || retiredBrowserDocs.walkTopDown().none { it.isFile })
         assertFalse(File(root, "docs/architecture/PHASE-18-BUILT-IN-BROWSER-MEDIA-DOWNLOADER.md").exists())
         assertFalse(File(root, "tools/validate-phase-50-browser-downloader-ux-polish-seal.py").exists())
     }

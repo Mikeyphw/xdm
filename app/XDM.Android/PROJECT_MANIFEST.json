@@ -442,7 +442,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_browser_removal_phase8e_activity_diagnostics_overlay.zip",
+  "current_overlay": "xdm_android_browser_removal_phase8e_gradle_contract_repair_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1275,6 +1275,39 @@
     "room_schema_unchanged": 14,
     "version_name_unchanged": "0.20.0-rc08",
     "version_code_unchanged": 21,
-    "next_phase": "phase8f_downloader_release_preparation"
+    "next_phase": "phase8e_compile_hotfix_landed"
+  },
+  "downloader_experience_phase8e_compile_hotfix": {
+    "program": "downloader_product_polish",
+    "contract_document": "docs/downloader/PHASE-8E-COMPOSE-STORAGE-COMPILE-HOTFIX.md",
+    "static_validator": "tools/validate-phase-8e-compose-storage-hotfix.py",
+    "app_contract": "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase8ECompileHotfixContractTest.kt",
+    "compose_weight_import_repaired": true,
+    "scoped_row_column_weight_preserved": true,
+    "deprecated_storage_intent_fields_removed": true,
+    "storage_policy_rechecks_actual_free_space": true,
+    "phase8e_activity_diagnostics_preserved": true,
+    "phase8c_queue_policy_preserved": true,
+    "browser_runtime_remains_absent": true,
+    "stable_routes": [
+      "Downloads",
+      "Add",
+      "Media",
+      "Library",
+      "Activity",
+      "Settings"
+    ],
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "next_phase": "phase8f_downloader_release_preparation",
+    "core_model_junit4_test_imports_repaired": true,
+    "gradle_architecture_contracts_rebased": true,
+    "handoff_state_flow_contract_updated": true,
+    "downloads_dashboard_ordering_contract_updated": true,
+    "activity_library_contract_updated": true,
+    "route_restore_contract_updated": true,
+    "empty_retired_browser_directory_tolerated": true,
+    "all_app_architecture_contracts_pass": true
   }
 }

@@ -1,0 +1,458 @@
+{
+  "session_id": "20260725T182513Z-41d186b51f",
+  "repo_root": "/data/data/com.termux/files/home/Code/xdm",
+  "project_root": "/data/data/com.termux/files/home/Code/xdm/app/XDM.Android",
+  "project_type": "android",
+  "target": "xdm_android",
+  "variant": "",
+  "status": "aborted",
+  "created_at": "2026-07-25T18:25:13.001390Z",
+  "updated_at": "2026-07-25T19:12:59.450208Z",
+  "phases": [
+    {
+      "key": "xdm_android:preflight:1",
+      "name": "preflight",
+      "label": "xdm_android: preflight",
+      "spec_name": "android-validation-preflight",
+      "index": 1,
+      "total": 9,
+      "status": "succeeded",
+      "attempts": 1,
+      "started_at": "2026-07-25T18:25:35.485093Z",
+      "finished_at": "2026-07-25T18:28:26.225454Z",
+      "duration_seconds": 2.5558119230008742,
+      "returncode": 0,
+      "output_tail": "No Gradle daemons are running.\n",
+      "issues": [],
+      "log_path": "/data/data/com.termux/files/home/.local/state/devtool/logs/20260725-152532-003648.log",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:dependencies:2",
+      "name": "dependencies",
+      "label": "xdm_android: dependencies",
+      "spec_name": "android-validation-dependencies",
+      "index": 2,
+      "total": 9,
+      "status": "succeeded",
+      "attempts": 1,
+      "started_at": "2026-07-25T18:29:12.169260Z",
+      "finished_at": "2026-07-25T18:31:59.951713Z",
+      "duration_seconds": 2.47387415400226,
+      "returncode": 0,
+      "output_tail": "No Gradle daemons are running.\n",
+      "issues": [],
+      "log_path": "/data/data/com.termux/files/home/.local/state/devtool/logs/20260725-152909-204710.log",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:compile:3",
+      "name": "compile",
+      "label": "xdm_android: compile",
+      "spec_name": "android-validation-compile",
+      "index": 3,
+      "total": 9,
+      "status": "succeeded",
+      "attempts": 1,
+      "started_at": "2026-07-25T18:43:24.154683Z",
+      "finished_at": "2026-07-25T18:46:16.581375Z",
+      "duration_seconds": 3.2473177700012457,
+      "returncode": 0,
+      "output_tail": "No Gradle daemons are running.\n",
+      "issues": [],
+      "log_path": "/data/data/com.termux/files/home/.local/state/devtool/logs/20260725-154319-370536.log",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:resources:4",
+      "name": "resources",
+      "label": "xdm_android: resources",
+      "spec_name": "android-validation-resources",
+      "index": 4,
+      "total": 9,
+      "status": "succeeded",
+      "attempts": 1,
+      "started_at": "2026-07-25T18:46:33.114245Z",
+      "finished_at": "2026-07-25T18:49:13.794494Z",
+      "duration_seconds": 3.1147733079997124,
+      "returncode": 0,
+      "output_tail": "No Gradle daemons are running.\n",
+      "issues": [],
+      "log_path": "/data/data/com.termux/files/home/.local/state/devtool/logs/20260725-154628-678144.log",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:unit-test:5",
+      "name": "unit-test",
+      "label": "xdm_android: unit-test",
+      "spec_name": "android-validation-unit-test",
+      "index": 5,
+      "total": 9,
+      "status": "succeeded",
+      "attempts": 1,
+      "started_at": "2026-07-25T18:49:28.311197Z",
+      "finished_at": "2026-07-25T18:53:04.349297Z",
+      "duration_seconds": 3.343359077000059,
+      "returncode": 0,
+      "output_tail": "No Gradle daemons are running.\n",
+      "issues": [],
+      "log_path": "/data/data/com.termux/files/home/.local/state/devtool/logs/20260725-154924-013354.log",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:package:6",
+      "name": "package",
+      "label": "xdm_android: package",
+      "spec_name": "android-validation-package",
+      "index": 6,
+      "total": 9,
+      "status": "cancelled",
+      "attempts": 0,
+      "started_at": "",
+      "finished_at": "2026-07-25T19:12:59.449955Z",
+      "duration_seconds": 0.0,
+      "returncode": null,
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "aborted by user",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:artifact-check:7",
+      "name": "artifact-check",
+      "label": "xdm_android: artifact-check",
+      "spec_name": "android-validation-artifact-check",
+      "index": 7,
+      "total": 9,
+      "status": "cancelled",
+      "attempts": 0,
+      "started_at": "",
+      "finished_at": "2026-07-25T19:12:59.449955Z",
+      "duration_seconds": 0.0,
+      "returncode": null,
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "aborted by user",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:lint:8",
+      "name": "lint",
+      "label": "xdm_android: lint",
+      "spec_name": "android-validation-lint",
+      "index": 8,
+      "total": 9,
+      "status": "cancelled",
+      "attempts": 0,
+      "started_at": "",
+      "finished_at": "2026-07-25T19:12:59.449955Z",
+      "duration_seconds": 0.0,
+      "returncode": null,
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "aborted by user",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:finalize:9",
+      "name": "finalize",
+      "label": "xdm_android: finalize",
+      "spec_name": "android-validation-finalize",
+      "index": 9,
+      "total": 9,
+      "status": "cancelled",
+      "attempts": 0,
+      "started_at": "",
+      "finished_at": "2026-07-25T19:12:59.449955Z",
+      "duration_seconds": 0.0,
+      "returncode": null,
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "aborted by user",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    }
+  ],
+  "fingerprints": {
+    "config": "e4e364fccd007b88f9da252aab1e37dae6e426862772f0fbf68d8f036263a830",
+    "source": "4532f94b2c5574c1d6395d06ac35744a1c34456c2aaeaf8231c423b19d090c00",
+    "resources": "02e38e78b3c9380b1388b7592a9e09cd85c3cc678f35d7f752cd3ab5eac6c7c9",
+    "tests": "4c8ed3be779d4b2cfbd901c0fdd35125ed9e15928734b30f22e359435f71f394"
+  },
+  "git_head": "f487db7d38ed9645f6611f5286faf0e7cd3d3d62",
+  "transaction_path": "",
+  "apply_context": {
+    "command": "apply-overlay",
+    "artifacts": [
+      "/data/data/com.termux/files/home/Downloads/xdm_android_browser_removal_phase8e_compile_test_repair_overlay.zip"
+    ],
+    "artifact": "/data/data/com.termux/files/home/Downloads/xdm_android_browser_removal_phase8e_compile_test_repair_overlay.zip",
+    "artifact_type": "overlay",
+    "artifact_sha": "4783f01ebeb9496e4cc1418d1480cbf16741914c2744ff469fd12cd479769d18",
+    "manifest": {
+      "schema_version": 2,
+      "type": "overlay",
+      "name": "XDM Android Phase 8E cumulative compile and test repair",
+      "description": "Supersedes the rolled-back Phase 8E Compose/storage hotfix with a cumulative repair that applies directly to the Phase 8E activity-diagnostics tree, preserves those fixes, and changes OperationalActivityTest to the core-model module's configured JUnit 4 API.",
+      "repository": {
+        "name": "xdm"
+      },
+      "workspace": {
+        "name": "XDM Android",
+        "root": "app/XDM.Android"
+      },
+      "target": "xdm_android",
+      "apply": {
+        "atomic": true,
+        "conflict_policy": "fail",
+        "path_policy": "repository-relative",
+        "requires_clean_worktree": false,
+        "commit": {
+          "enabled": true,
+          "strategy": "single",
+          "message": "Fix Phase 8E Compose, storage, and test compilation"
+        }
+      },
+      "validation": {
+        "required": true,
+        "restore": true,
+        "build": true,
+        "test": true,
+        "rollback_on_failure": true,
+        "expected": {
+          "restore": "pass",
+          "build": "pass",
+          "tests": "pass",
+          "maximum_warnings": 0
+        }
+      },
+      "notes": [
+        "Apply directly after xdm_android_browser_removal_phase8e_activity_diagnostics_overlay.zip.",
+        "This cumulative overlay supersedes xdm_android_browser_removal_phase8e_compose_storage_compile_hotfix_overlay.zip, which Devtool rolled back after test compilation failed.",
+        "Keeps the Compose scoped-weight import fix and non-deprecated storage reevaluation actions.",
+        "Uses org.junit.Test and org.junit.Assert in OperationalActivityTest because core-model declares JUnit 4 and does not declare kotlin-test.",
+        "Does not alter routes, manifest ownership, Room schema 14, versionCode 21, versionName 0.20.0-rc08, engines, queue policy, media resolver, diagnostics, or browser-free runtime."
+      ],
+      "inventory": {
+        "format": 1,
+        "entries": [
+          {
+            "path": "CHANGELOG.md",
+            "action": "modify",
+            "source_sha256": "c0c3ef35d8e225a575f8719ad37d7c3d66cb675094adfab68019c4b7919b5e9f",
+            "sha256": "75de258d408f5cf46e6e4d750e47e5053d3e70b415f5e1e1da4fbd3d6198d2e9",
+            "size": 14608
+          },
+          {
+            "path": "app/XDM.Android/.github/workflows/android.yml",
+            "action": "modify",
+            "source_sha256": "ff3b6eb744344266b645d904bd41154b2ad348a6da5396d56fcbadcff46ca51e",
+            "sha256": "021f58d9943997b0535c72faadd0bf0ad86cbc20d72143c80a938a3d14e410f5",
+            "size": 4486
+          },
+          {
+            "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+            "action": "modify",
+            "source_sha256": "d58e9509f1a24dd7994e6698dc3ecc7bd9aa99f503369d47ca523b79fbe75420",
+            "sha256": "11d1267adee94e9319632375deb691feab67344b114c506c1641f8b8d32143ff",
+            "size": 43484
+          },
+          {
+            "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/OperationalActivityScreens.kt",
+            "action": "modify",
+            "source_sha256": "ce3857ba732a1d89b1c80ead34626a40d0b85b785609b54d6ba62e3e2379d82c",
+            "sha256": "b7377efd6bd93487566ab693e3aad2426cd16108865e352a68554d516ed5f66a",
+            "size": 14408
+          },
+          {
+            "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+            "action": "modify",
+            "source_sha256": "62fdddfabf73408e966663faad26bdbd6a8fd0da797842546cc23643423b6d12",
+            "sha256": "c9d4071e1fb1b989b16bc2cbd72402a3d5a708394505cae283503aebcbaef0aa",
+            "size": 18039
+          },
+          {
+            "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase8ECompileHotfixContractTest.kt",
+            "action": "add",
+            "sha256": "efd3d57ed1dabf24db5ade02d00489bd35823a14f22ab552b704b15173370ce9",
+            "size": 2334
+          },
+          {
+            "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/OperationalActivityTest.kt",
+            "action": "modify",
+            "source_sha256": "8e42b0a853fdad7c82c8dd01bbc9b69480edf3a22ecf758d5b1aeb9d6191457f",
+            "sha256": "67c6ee0a4332a930fde8394b8d85a8981b78ef76ed44a5b7a060f4855df14c43",
+            "size": 5607
+          },
+          {
+            "path": "app/XDM.Android/docs/downloader/PHASE-8E-COMPOSE-STORAGE-COMPILE-HOTFIX.md",
+            "action": "add",
+            "sha256": "72f69c20851c28c573a918e904b29066fadda74e575bc3ef841e62d2a336aa2c",
+            "size": 1715
+          },
+          {
+            "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueConditionMonitor.kt",
+            "action": "modify",
+            "source_sha256": "3b2437ad704a88027bbd4d63ae3a1f2f55a367dbce2e4fffb7eb1fda78468d86",
+            "sha256": "1e88c2eaad77423cdcdac710f8b9cbe5f3a38e7ac0f909e32252dd77c4df006b",
+            "size": 2655
+          },
+          {
+            "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+            "action": "modify",
+            "source_sha256": "967b2cb896efa89d706555f22871667b204b2b6a6a8218d970bf252006362d0b",
+            "sha256": "9865a8541c19802a912e67e58f29b826411038e227f471eb67bb00e4b131c01b",
+            "size": 3322
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8e.py",
+            "action": "modify",
+            "source_sha256": "2a87cd843a02948299f9c88b296654dce558c2e3ce6deff1e3f67752cf455324",
+            "sha256": "993b3b44d2b536219609af8815815e031d715a67fc4fc2a80b0116c157c25126",
+            "size": 9654
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-8e-compose-storage-hotfix.py",
+            "action": "add",
+            "sha256": "90bc413b68d185a519d6da7d8a48e2025f0950e9f1480df26574b68460b01ab2",
+            "size": 3992
+          }
+        ]
+      }
+    },
+    "preview": {
+      "artifact": "/storage/emulated/0/Download/xdm_android_browser_removal_phase8e_compile_test_repair_overlay.zip",
+      "snapshot": false,
+      "files": 12,
+      "changes": [
+        {
+          "kind": "modify",
+          "path": "CHANGELOG.md"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/.github/workflows/android.yml"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/OperationalActivityScreens.kt"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt"
+        },
+        {
+          "kind": "add",
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase8ECompileHotfixContractTest.kt"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/OperationalActivityTest.kt"
+        },
+        {
+          "kind": "add",
+          "path": "app/XDM.Android/docs/downloader/PHASE-8E-COMPOSE-STORAGE-COMPILE-HOTFIX.md"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueConditionMonitor.kt"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8e.py"
+        },
+        {
+          "kind": "add",
+          "path": "app/XDM.Android/tools/validate-phase-8e-compose-storage-hotfix.py"
+        }
+      ],
+      "counts": {
+        "add": 3,
+        "modify": 9
+      }
+    },
+    "commit": "Fix Phase 8E Compose, storage, and test compilation",
+    "keep_artifact": false,
+    "delete_artifact_on_failure": false,
+    "no_artifact_script": false,
+    "no_manifest_check": false,
+    "ignore_checksum": false,
+    "validate_only": false,
+    "rollback_on_failure": true,
+    "validation_mode": "deferred",
+    "minimum_phase": "finalize",
+    "resource_profile": "android-low-power",
+    "artifact_script_in_plan": false,
+    "target": "xdm_android",
+    "solution": "",
+    "transaction_path": "/data/data/com.termux/files/home/.local/share/devtool/transactions/xdm-de6163049c2837b4/20260725T182509Z-07ce1e195a6b/transaction.json",
+    "aborted_transaction_path": "/data/data/com.termux/files/home/.local/share/devtool/transactions/xdm-de6163049c2837b4/20260725T182509Z-07ce1e195a6b/transaction.json"
+  },
+  "options": {
+    "skip_restore": false,
+    "skip_build": false,
+    "skip_test": false,
+    "max_runtime": "",
+    "stop_below_battery": 0,
+    "require_charging": false,
+    "stop_above_temperature": 0.0,
+    "require_complete": false,
+    "stop_gradle_after_phase": true,
+    "keep_gradle_daemon": false,
+    "validation_resource_profile": "android-low-power",
+    "rollback_on_failure": false,
+    "recovery_available": true
+  },
+  "last_error": "",
+  "paused_reason": "aborted by user",
+  "invalidated_from": "",
+  "finalized_at": "2026-07-25T19:12:59.450180Z",
+  "schema_version": 1,
+  "complete": false,
+  "next_phase": "",
+  "completed_phases": 5,
+  "phase_total": 9
+}

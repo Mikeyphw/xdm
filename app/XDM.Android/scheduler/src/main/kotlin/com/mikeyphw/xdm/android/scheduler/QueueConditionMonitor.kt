@@ -47,11 +47,17 @@ class QueueConditionMonitor(
     }
 
     companion object {
+        // The public Intent fields are deprecated, but these protected system broadcasts
+        // remain useful as immediate reevaluation hints. Queue policy still verifies actual free space before starting a transfer,
+        // so the broadcasts are never authoritative.
+        private const val ACTION_DEVICE_STORAGE_LOW = "android.intent.action.DEVICE_STORAGE_LOW"
+        private const val ACTION_DEVICE_STORAGE_OK = "android.intent.action.DEVICE_STORAGE_OK"
+
         private val MONITORED_ACTIONS = setOf(
             Intent.ACTION_POWER_CONNECTED,
             Intent.ACTION_POWER_DISCONNECTED,
-            Intent.ACTION_DEVICE_STORAGE_LOW,
-            Intent.ACTION_DEVICE_STORAGE_OK,
+            ACTION_DEVICE_STORAGE_LOW,
+            ACTION_DEVICE_STORAGE_OK,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
         )

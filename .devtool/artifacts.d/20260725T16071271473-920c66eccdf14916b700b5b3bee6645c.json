@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-07-25T16:07:12.714738Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_browser_removal_phase8e_activity_diagnostics_overlay.zip",
+  "artifact_name": "xdm_android_browser_removal_phase8e_activity_diagnostics_overlay.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "920c66eccdf14916b700b5b3bee6645c"
+}

@@ -1,0 +1,743 @@
+{
+  "session_id": "20260724T212644Z-6954ee94e6",
+  "repo_root": "/data/data/com.termux/files/home/Code/xdm",
+  "project_root": "/data/data/com.termux/files/home/Code/xdm/app/XDM.Android",
+  "project_type": "android",
+  "target": "xdm_android",
+  "variant": "",
+  "status": "aborted",
+  "created_at": "2026-07-24T21:26:44.418970Z",
+  "updated_at": "2026-07-24T23:42:28.149013Z",
+  "phases": [
+    {
+      "key": "artifact:static:0",
+      "name": "static",
+      "label": "static",
+      "spec_name": "artifact-validate-script",
+      "index": 1,
+      "total": 10,
+      "status": "succeeded",
+      "attempts": 1,
+      "started_at": "2026-07-24T21:27:21.137230Z",
+      "finished_at": "2026-07-24T21:27:29.645669Z",
+      "duration_seconds": 8.397364000997186,
+      "returncode": 0,
+      "output_tail": "$ bash .devtool-artifact/validate.sh\nFoundation validation passed: 14 modules, 19 tables, 8 routes; Phase 2/3 contracts present\nPhase 2/3 validation passed: backend ownership, native HTTP, durable checkpoints, strict ranges, and atomic file promotion are present\nPhase 4 validation passed: 11 execution and lifecycle invariants\nPhase 5 validation passed: MediaStore, SAF, SD-card-capable trees, staging, promotion, conflicts, permissions, and native-engine integration are present\nOwnership hardening validation passed: physical artifacts, runtime sessions, reconciliation, quarantine, and generation-safe adoption are present\nPhase 6B validation passed: ARM64 native packaging, loopback RPC, secret redaction, session persistence, lifecycle supervision, diagnostics, and task gate are present\naria2 runtime not installed; native-only source build remains valid\nPhase 6 validation passed: operational GID mapping, paused activation, authenticated RPC, reconciliation, completion handoff, and attested ARM64 packaging gate are present\nPhase 7 validation passed: explainable selection, pre-start fallback, journaled migration, ownership transfer, preserved source artifacts, and compatible UI actions are present\nPhase 8 validation passed: checksum expectations, completion verification, persisted results, trusted block manifests, and selective repair planning are present\nPhase 9 validation passed: startup recovery, recovery actions, finalization journals, deterministic staging, and schema v9 are present\nPhase 10 validation passed: media capture service, persisted metadata, share/view intents, Media route actions, schema v10, and topography constraints are present\nPhase 11 validation passed: media resolution, variant persistence, selected variant UI, schema v11 or newer, and topography constraints are present\nPhase 12 automation intake validation passed\nPhase 13 browser handoff hardening validation passed\nPhase 14 release safety validation passed\nPhase 15 UX/accessibility polish validation passed\nPhase 16 packaging/recovery/install-update readiness validation passed\nPhase 17 final public release gate validation passed\nPost-17 desktop parity validation passed\nTermux bridge validation passed\nTermux media pipeline contract OK\nBrowser media downloader validation passed\nBrowser media continuity validation passed\nmedia resolver/player validation passed\nMedia execution/library validation passed\nPhase 21 media download engine hardening validation passed\nPhase 22 media dispatch control tower validation passed\nPhase 23 media queue telemetry validation passed\nPhase 24 media queue actions validation passed\nPhase 25 media worker bridge validation passed\nPhase 26 media Termux runtime adapter validation passed\nPhase 27 media native direct download engine validation passed\nPhase 28 media offline library v2 validation passed\nPhase 29 media player diagnostics validation passed\nPhase 30 browser capture quality validation passed\nPhase 31 session privacy audit validation passed\nPhase 32 media mobile polish validation passed\nPhase 33 media final validation gate validation passed\nPhase 34 release handoff validation passed\nPhase 35 release-candidate polish validation passed\nPhase 36 external download handoff validation passed\nPhase 37A browser/downloader roadmap validation passed\nPhase 37B dual launcher/navigation split validation passed\nPhase 38 browser reliability validation passed\nPhase 39 browser chrome/navigation validation passed\nPhase 40 browser tabs/session UX validation passed\nPhase 41 browser download bridge validation passed\nPhase 42 browser media capture cockpit validation passed\nPhase 43 browser library surfaces validation passed\nPhase 44 browser settings/privacy controls validation passed\nPhase 45 browser visual polish + adaptive layout validation passed\nPhase 46 browser private mode + data isolation validation passed\nPhase 47 browser permission UX + settings polish validation passed\nPhase 48 browser resource inspector validation passed\nPhase 49 browser download rules/file-type interception validation passed\nPhase 50 browser/downloader UX polish seal validation passed\nPhase 51G GeckoView migration foundation validation passed\nCI final static gate passed",
+      "issues": [],
+      "log_path": "/data/data/com.termux/files/home/.local/state/devtool/logs/20260724-182718-601723.log",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:preflight:2",
+      "name": "preflight",
+      "label": "xdm_android: preflight",
+      "spec_name": "android-validation-preflight",
+      "index": 2,
+      "total": 10,
+      "status": "succeeded",
+      "attempts": 1,
+      "started_at": "2026-07-24T21:27:45.829210Z",
+      "finished_at": "2026-07-24T21:32:02.002542Z",
+      "duration_seconds": 2.2902610009987256,
+      "returncode": 0,
+      "output_tail": "No Gradle daemons are running.\n",
+      "issues": [],
+      "log_path": "/data/data/com.termux/files/home/.local/state/devtool/logs/20260724-182742-820697.log",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:dependencies:3",
+      "name": "dependencies",
+      "label": "xdm_android: dependencies",
+      "spec_name": "android-validation-dependencies",
+      "index": 3,
+      "total": 10,
+      "status": "pending",
+      "attempts": 1,
+      "started_at": "2026-07-24T21:33:11.158271Z",
+      "finished_at": "2026-07-24T23:42:28.041002Z",
+      "duration_seconds": 0.0,
+      "returncode": null,
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "previous validation process ended before recording a phase result",
+      "interruption_count": 1,
+      "last_interrupted_at": "2026-07-24T23:42:28.041002Z",
+      "last_interrupted_reason": "previous validation process ended before recording a phase result",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:compile:4",
+      "name": "compile",
+      "label": "xdm_android: compile",
+      "spec_name": "android-validation-compile",
+      "index": 4,
+      "total": 10,
+      "status": "pending",
+      "attempts": 0,
+      "started_at": "",
+      "finished_at": "",
+      "duration_seconds": 0.0,
+      "returncode": null,
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:resources:5",
+      "name": "resources",
+      "label": "xdm_android: resources",
+      "spec_name": "android-validation-resources",
+      "index": 5,
+      "total": 10,
+      "status": "pending",
+      "attempts": 0,
+      "started_at": "",
+      "finished_at": "",
+      "duration_seconds": 0.0,
+      "returncode": null,
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:unit-test:6",
+      "name": "unit-test",
+      "label": "xdm_android: unit-test",
+      "spec_name": "android-validation-unit-test",
+      "index": 6,
+      "total": 10,
+      "status": "pending",
+      "attempts": 0,
+      "started_at": "",
+      "finished_at": "",
+      "duration_seconds": 0.0,
+      "returncode": null,
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:package:7",
+      "name": "package",
+      "label": "xdm_android: package",
+      "spec_name": "android-validation-package",
+      "index": 7,
+      "total": 10,
+      "status": "pending",
+      "attempts": 0,
+      "started_at": "",
+      "finished_at": "",
+      "duration_seconds": 0.0,
+      "returncode": null,
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:artifact-check:8",
+      "name": "artifact-check",
+      "label": "xdm_android: artifact-check",
+      "spec_name": "android-validation-artifact-check",
+      "index": 8,
+      "total": 10,
+      "status": "pending",
+      "attempts": 0,
+      "started_at": "",
+      "finished_at": "",
+      "duration_seconds": 0.0,
+      "returncode": null,
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:lint:9",
+      "name": "lint",
+      "label": "xdm_android: lint",
+      "spec_name": "android-validation-lint",
+      "index": 9,
+      "total": 10,
+      "status": "pending",
+      "attempts": 0,
+      "started_at": "",
+      "finished_at": "",
+      "duration_seconds": 0.0,
+      "returncode": null,
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    },
+    {
+      "key": "xdm_android:finalize:10",
+      "name": "finalize",
+      "label": "xdm_android: finalize",
+      "spec_name": "android-validation-finalize",
+      "index": 10,
+      "total": 10,
+      "status": "pending",
+      "attempts": 0,
+      "started_at": "",
+      "finished_at": "",
+      "duration_seconds": 0.0,
+      "returncode": null,
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "",
+      "interruption_count": 0,
+      "last_interrupted_at": "",
+      "last_interrupted_reason": "",
+      "last_interrupted_returncode": null
+    }
+  ],
+  "fingerprints": {
+    "config": "58c093a2b8823c31c68c96af5c0009a3fe0dc50d548384a8f8b7e58ebb287f65",
+    "source": "9e39674e9c8082d4243d0c7fd58de79da9fdbc4b201f6656625aa85e3ba7e5c6",
+    "resources": "9be79ab7e5907b2e29952d72a525d9147d15222576d38662ecd5134aa7b19120",
+    "tests": "c01375143543ff470a32d3c6cf09bbe0982408d8687cb7d352e905d2201a17fe"
+  },
+  "git_head": "4d7e3fd48b8f6c28b1eea1841c99b2a4727977c4",
+  "transaction_path": "/data/data/com.termux/files/home/.local/share/devtool/transactions/xdm-de6163049c2837b4/20260724T212641Z-d07f2303e3d0/transaction.json",
+  "apply_context": {
+    "command": "apply-overlay",
+    "artifacts": [
+      "/data/data/com.termux/files/home/Downloads/xdm_android_phase51g_geckoview_migration_foundation_overlay.zip"
+    ],
+    "artifact": "/data/data/com.termux/files/home/Downloads/xdm_android_phase51g_geckoview_migration_foundation_overlay.zip",
+    "artifact_type": "overlay",
+    "artifact_sha": "87ef06ec5c3145a050b6a96592e97ccb0ae584e81f5fa14769d1a7c21c313852",
+    "manifest": {
+      "schema_version": 2,
+      "type": "overlay",
+      "name": "XDM Android Phase 51G GeckoView migration foundation",
+      "description": "Adds the official Mozilla GeckoView dependency and a staged browser-engine boundary with GeckoRuntime, GeckoSession, GeckoView surface scaffolding, and an explicitly named WebView migration fallback without changing routes, persistence, transfers, or the visible browser surface.",
+      "repository": {
+        "name": "xdm"
+      },
+      "workspace": {
+        "name": "XDM Android",
+        "root": "app/XDM.Android"
+      },
+      "target": "xdm_android",
+      "inventory": {
+        "format": 1,
+        "entries": [
+          {
+            "path": "app/XDM.Android/.github/workflows/android.yml",
+            "action": "modify",
+            "sha256": "680814fe901b3b3702b8c27b23a082059a49f2ea30f7c095ce399dd8503c2131",
+            "size": 5052,
+            "source_sha256": "8a871ded4d57007a3fdd74685c294da08c2897507c80484614a9954cc4f6d95a"
+          },
+          {
+            "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+            "action": "modify",
+            "sha256": "6ebbbc2e08f74f70368ab8a96724454802b5091affdc6417f3b23002d44811b7",
+            "size": 42444,
+            "source_sha256": "0b46cd7b5b47cf7c4ae63664589aab6c5cc05f167d3bd69888da8e340b2b362c"
+          },
+          {
+            "path": "app/XDM.Android/app/build.gradle.kts",
+            "action": "modify",
+            "sha256": "723b70a6ff4169243d4fb01272b083477282f7e1644b91649fc02def7146e6ff",
+            "size": 5544,
+            "source_sha256": "ab80a94c98f4e79bc36f1c712969aacc0496392965b54a3dbdb7b353f05aebf9"
+          },
+          {
+            "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt",
+            "action": "modify",
+            "sha256": "463d7f5aa7385c40c31ca50bea3590192cc4a3b8bbe95cde4a306556c13b3080",
+            "size": 103644,
+            "source_sha256": "427a8b7b2fd8aaa3196bae2a852046e4f01eb91e0ce8dc07a38a95d3b6a8fa2c"
+          },
+          {
+            "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/browser/BrowserEngine.kt",
+            "action": "add",
+            "sha256": "95f3c2992321b2ee105994ffe65f9662cbef18efc64710f1a48f79b9c69422a4",
+            "size": 788
+          },
+          {
+            "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/browser/gecko/GeckoBrowserEngine.kt",
+            "action": "add",
+            "sha256": "cbcf81fe26574d290cb693622f9388dd3cd573a73b40e1eb87455dccf707f2c7",
+            "size": 825
+          },
+          {
+            "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/browser/gecko/GeckoBrowserSession.kt",
+            "action": "add",
+            "sha256": "bed01abc8de804f0a5415d5fd9fda33f6156860baded05136240c16fe2e3dd42",
+            "size": 1124
+          },
+          {
+            "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/browser/gecko/GeckoBrowserSurface.kt",
+            "action": "add",
+            "sha256": "2bc9d65afafbba833a469164efecc608508daa9628be39be7a59644a96f4fe65",
+            "size": 395
+          },
+          {
+            "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/browser/gecko/GeckoRuntimeProvider.kt",
+            "action": "add",
+            "sha256": "ae993dfee4ea18596b256669f0fe4d2b4428525939ed0965d2ca261a300858f6",
+            "size": 512
+          },
+          {
+            "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/browser/webview/WebViewBrowserEngine.kt",
+            "action": "add",
+            "sha256": "c00cb4d0404dda721f93dc5555f4f181ea27c7f0e4f08f5f1749b73772c42048",
+            "size": 1069
+          },
+          {
+            "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+            "action": "modify",
+            "sha256": "47354134eea759d4703fb2ff7c35ae75d2ec032dc626d67e45c2efb3363b9e39",
+            "size": 144871,
+            "source_sha256": "bb2e63fffb6c533552f16a3ebaf08752249974760f0a1a19a419bc816a6826f7"
+          },
+          {
+            "path": "app/XDM.Android/docs/browser/GECKOVIEW_MIGRATION_PLAN.md",
+            "action": "add",
+            "sha256": "d8494a8643ff62b8501f0be1847abc86405aa39f4dfa63ae53e61abcfcac9d7d",
+            "size": 2799
+          },
+          {
+            "path": "app/XDM.Android/gradle/libs.versions.toml",
+            "action": "modify",
+            "sha256": "05966ba7cfdb1341af805fdbce9d85b866e5a6001de5458a7372ae7d7241e196",
+            "size": 3887,
+            "source_sha256": "c1d04f8a91e7aa828d8a36179b47626e8ae2524ea38b0eb6cdfaecbf7514b9c2"
+          },
+          {
+            "path": "app/XDM.Android/settings.gradle.kts",
+            "action": "modify",
+            "sha256": "472c5833973b52557da283e210e7d4a83efaa1eb719f7bf2f163b10d0fcc3533",
+            "size": 784,
+            "source_sha256": "cd3619377b957ad59c629ae5f2a6b9f3dcfa2db56d4b37133fb8c44003fbcd07"
+          },
+          {
+            "path": "app/XDM.Android/tools/phase_overlay_compat.py",
+            "action": "add",
+            "sha256": "0795aa7f6a56f83550fecaa2ea7df685b6495a93069be0deec68559576e33e7f",
+            "size": 612
+          },
+          {
+            "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+            "action": "modify",
+            "sha256": "9fc4b6987a7e4ac18f6f77cae0b1f3e62b5eb933f63f5fa3d875ce8095e75178",
+            "size": 3523,
+            "source_sha256": "9e9b5ba1fa96871321ab43fb3b1d3b2f14c915033aecd04837a6a00970fd301e"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-browser-media-downloader.py",
+            "action": "modify",
+            "sha256": "e522c9ea1f1a8f245242268d6022cc37b1015e1e69fa167d30defaef0dbc35b3",
+            "size": 3515,
+            "source_sha256": "33da66ae75559d5d02cabfe020bdced3623e85aa087ed98d3be713cce44b3510"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+            "action": "modify",
+            "sha256": "cbe11761e75e6490f13cde1baa0d692b99b0d40535bab66dc99f7ba1dbd34940",
+            "size": 7949,
+            "source_sha256": "eec72fb0be07fef0a68faf1c6a9a57d047f8cde8a899f1230d39a13637b33917"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+            "action": "modify",
+            "sha256": "7af6385558a059010f9ee35fc69e16ea582334cdbf684360bc34968ce9d81a27",
+            "size": 11090,
+            "source_sha256": "476537c11f2fc3f08e86282f399e81e7953db1a24bb353a54996f48281ec864f"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+            "action": "modify",
+            "sha256": "cc29b63d4ac8e2e5e7b0e6b926b4bdb3ddb82e077268609bce04f0b05f67de72",
+            "size": 9433,
+            "source_sha256": "1a4c734f9f76d63a6c78eda1bddf7ce3e95af2752841701d1c3faaf59b8e2fd4"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-37a-browser-downloader-roadmap.py",
+            "action": "modify",
+            "sha256": "57c28b4fe5c5d40313145630fc2b808b8f0cf096318e7c27b9f03379a0492401",
+            "size": 4049,
+            "source_sha256": "af7959f114a1880fa73fdbbd53d1cf2ad1ac7af15e3d8f0690cae582d65aa65a"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-37b-dual-launcher-navigation-split.py",
+            "action": "modify",
+            "sha256": "534c057fc66d5e60fe8fb175fe1d66d5f7087b1ae903e7ae31a55b15a6513e26",
+            "size": 7106,
+            "source_sha256": "f387798684cf4bafbed05157293002c8d9eef6e5fee684014d7c5d1cbf6f9fbc"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-38-browser-reliability-foundation.py",
+            "action": "modify",
+            "sha256": "1d196beabf466c19c95710afb754dfafb6da3a6485a903bfaec2a49c52609f72",
+            "size": 8337,
+            "source_sha256": "aa7ee789673bf1146a8a57d883db2222651a6997cc3b65e63422e62ad5dc4967"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-39-browser-chrome-navigation.py",
+            "action": "modify",
+            "sha256": "38c143c2d3d2dacbac2ad896dad260b512d5dbd5af30638bcb7535783efda157",
+            "size": 5123,
+            "source_sha256": "7fb4123f0062a5df92eacbb0bf3a4782840fb4e0429e2faa05bf4f1193ff24a1"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-40-browser-tabs-session-ux.py",
+            "action": "modify",
+            "sha256": "a00564ad5865e2e6dc93d34d575a41a76b02732cf746f1d05bd36f70b3c6089d",
+            "size": 4992,
+            "source_sha256": "0090761feaf7365263106b21f310412310c45fe42a19a94cce720cee6fb79270"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-41-browser-download-bridge.py",
+            "action": "modify",
+            "sha256": "c801d3b365d96a3254cf1ee1d1d75fb294ae234d137ab2f43aff057c07949309",
+            "size": 5189,
+            "source_sha256": "0de3108f0d3785721eaeba50541fc4576ffa5fa63f9d086ab79615ddeae5883c"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-42-browser-media-capture-cockpit.py",
+            "action": "modify",
+            "sha256": "576dba41a040e3170b022ebec6bfcd57e1f33c88a5dc40835e9240cbaba54d0b",
+            "size": 5635,
+            "source_sha256": "4ea5136d4f50b5baee804c816387d65eb54cac57f5199b3c455454f461546551"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-43-browser-library-surfaces.py",
+            "action": "modify",
+            "sha256": "e14b4dedd7a94848098059c251f90b36556c093c1fe335fc480f02974355bb80",
+            "size": 4839,
+            "source_sha256": "8759a5a56c79b74a8ce267ecc4e87b5b1530691815115df9416dc4e7649421a7"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-44-browser-settings-privacy-controls.py",
+            "action": "modify",
+            "sha256": "f508e789d1f7409283db6063067d2eb2870fe8d35f3572be154bf21d5a2b2d96",
+            "size": 6120,
+            "source_sha256": "d0a78266a58d1a0351c8c7bb064a59bbdf41779e3b41785bf89cba2385a5112b"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-45-browser-visual-polish-adaptive-layout.py",
+            "action": "modify",
+            "sha256": "d3d6fe4913629a23c34f863bae78046706732572829895707482b46cad4f067e",
+            "size": 3439,
+            "source_sha256": "f8eca690577c2eb5332b658fb44c62190e1c663b1d816ab9fa686cf6355a26b8"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-46-browser-private-mode-data-isolation.py",
+            "action": "modify",
+            "sha256": "1b4cd091c8ec44fb507954058154cd59dc923e5dca63364b5a726fb7990e6446",
+            "size": 5149,
+            "source_sha256": "abf1ef2adf8f6b19459621e26198425c29234e6d2ce4457c4e2f849a57efa8b6"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-47-browser-permission-ux-settings-polish.py",
+            "action": "modify",
+            "sha256": "25b40760585c0855d99d717d77b451269c3391f7f5b23437b125e645fa3faa59",
+            "size": 2879,
+            "source_sha256": "0360d8f40d9273a0e3117b8e2914b1c03828093b36f1296b3740a4fd6dde0228"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-48-browser-resource-inspector.py",
+            "action": "modify",
+            "sha256": "7fc08843cbd19222df44c3b7929e0e4817861719f2b358e50ebd2204a1b65e40",
+            "size": 2418,
+            "source_sha256": "7f256554cd517dbd24be2c097615327869daa81bc4a2f046b7156dc83f89bb7f"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-49-browser-download-rules-file-type-interception.py",
+            "action": "modify",
+            "sha256": "7b568bed2b90f9bd2d11417426c6f31fb316dc972fc119227c63369e0694a257",
+            "size": 2111,
+            "source_sha256": "15a58f2712cd9e244c0add56903d3825b6c7e22e826526c701104dad8043fb96"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-50-browser-downloader-ux-polish-seal.py",
+            "action": "modify",
+            "sha256": "55171b722932785127476540438b4bf89b6cb2645f595bb134bf0cc359d7dccf",
+            "size": 2238,
+            "source_sha256": "e6e24f1151323ab2faf8659270f46760f6c03b9d837f2c7da3c4235d7b08a18e"
+          },
+          {
+            "path": "app/XDM.Android/tools/validate-phase-51g-geckoview-migration-foundation.py",
+            "action": "add",
+            "sha256": "08f716bf5fafb7655494ef15e9d10ad5eb5a66f3bbabf0eff8361d3e80941e64",
+            "size": 7484
+          }
+        ]
+      },
+      "apply": {
+        "atomic": true,
+        "conflict_policy": "fail",
+        "path_policy": "repository-relative",
+        "requires_clean_worktree": false,
+        "commit": {
+          "enabled": true,
+          "strategy": "single",
+          "message": "Add Phase 51G GeckoView migration foundation"
+        }
+      },
+      "validation": {
+        "required": true,
+        "restore": true,
+        "build": true,
+        "test": true,
+        "rollback_on_failure": true,
+        "script": {
+          "path": ".devtool-artifact/validate.sh",
+          "runner": "bash",
+          "sha256": "eaff558ab496ad36c6890a11c83440d1184d6265dee5286e9a32c7f0da07e3af",
+          "timeout_seconds": 900
+        },
+        "expected": {
+          "restore": "pass",
+          "build": "pass",
+          "tests": "pass",
+          "maximum_warnings": 0
+        }
+      },
+      "notes": [
+        "Phase 49/50 is the required landed baseline; the old WebView-oriented Phase 51 and Phase 52 overlays are superseded.",
+        "Pins org.mozilla.geckoview:geckoview:152.0.20260713164047 from the official Mozilla Maven repository.",
+        "GeckoView is the migration default; the rendered WebView path is retained only as an explicit fallback until Phase 52G and later parity work.",
+        "No top-level route, Room schema, app version, transfer engine, media execution, adblock, proxy, DNS, or extension changes are included.",
+        "The embedded validator runs the complete static release gate with Python bytecode generation disabled."
+      ]
+    },
+    "preview": {
+      "artifact": "/storage/emulated/0/Download/xdm_android_phase51g_geckoview_migration_foundation_overlay.zip",
+      "snapshot": false,
+      "files": 36,
+      "changes": [
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/.github/workflows/android.yml"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/app/build.gradle.kts"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserScreen.kt"
+        },
+        {
+          "kind": "add",
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/browser/BrowserEngine.kt"
+        },
+        {
+          "kind": "add",
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/browser/gecko/GeckoBrowserEngine.kt"
+        },
+        {
+          "kind": "add",
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/browser/gecko/GeckoBrowserSession.kt"
+        },
+        {
+          "kind": "add",
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/browser/gecko/GeckoBrowserSurface.kt"
+        },
+        {
+          "kind": "add",
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/browser/gecko/GeckoRuntimeProvider.kt"
+        },
+        {
+          "kind": "add",
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/browser/webview/WebViewBrowserEngine.kt"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt"
+        },
+        {
+          "kind": "add",
+          "path": "app/XDM.Android/docs/browser/GECKOVIEW_MIGRATION_PLAN.md"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/gradle/libs.versions.toml"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/settings.gradle.kts"
+        },
+        {
+          "kind": "add",
+          "path": "app/XDM.Android/tools/phase_overlay_compat.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-browser-media-downloader.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-37a-browser-downloader-roadmap.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-37b-dual-launcher-navigation-split.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-38-browser-reliability-foundation.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-39-browser-chrome-navigation.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-40-browser-tabs-session-ux.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-41-browser-download-bridge.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-42-browser-media-capture-cockpit.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-43-browser-library-surfaces.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-44-browser-settings-privacy-controls.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-45-browser-visual-polish-adaptive-layout.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-46-browser-private-mode-data-isolation.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-47-browser-permission-ux-settings-polish.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-48-browser-resource-inspector.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-49-browser-download-rules-file-type-interception.py"
+        },
+        {
+          "kind": "modify",
+          "path": "app/XDM.Android/tools/validate-phase-50-browser-downloader-ux-polish-seal.py"
+        },
+        {
+          "kind": "add",
+          "path": "app/XDM.Android/tools/validate-phase-51g-geckoview-migration-foundation.py"
+        }
+      ],
+      "counts": {
+        "add": 9,
+        "modify": 27
+      }
+    },
+    "commit": "Add Phase 51G GeckoView migration foundation",
+    "keep_artifact": false,
+    "delete_artifact_on_failure": false,
+    "no_artifact_script": false,
+    "no_manifest_check": false,
+    "ignore_checksum": false,
+    "validate_only": false,
+    "rollback_on_failure": true,
+    "validation_mode": "deferred",
+    "minimum_phase": "finalize",
+    "resource_profile": "android-low-power",
+    "artifact_script_in_plan": true,
+    "target": "xdm_android",
+    "solution": "",
+    "transaction_path": "/data/data/com.termux/files/home/.local/share/devtool/transactions/xdm-de6163049c2837b4/20260724T212641Z-d07f2303e3d0/transaction.json"
+  },
+  "options": {
+    "skip_restore": false,
+    "skip_build": false,
+    "skip_test": false,
+    "max_runtime": "",
+    "stop_below_battery": 30,
+    "require_charging": false,
+    "stop_above_temperature": 44.0,
+    "require_complete": false,
+    "stop_gradle_after_phase": true,
+    "keep_gradle_daemon": false,
+    "validation_resource_profile": "android-low-power",
+    "rollback_on_failure": false,
+    "recovery_available": true
+  },
+  "last_error": "",
+  "paused_reason": "aborted by user",
+  "invalidated_from": "",
+  "finalized_at": "2026-07-24T23:42:28.148969Z",
+  "schema_version": 1,
+  "complete": false,
+  "next_phase": "dependencies",
+  "completed_phases": 2,
+  "phase_total": 10
+}

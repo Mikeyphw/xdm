@@ -19,7 +19,8 @@ class BrowserRemovalPhase3ContractTest {
         listOf("enum class DownloadIntakeKind", "object DownloadIntakeClassifier", "canInspectAsMedia")
             .forEach { marker -> assertTrue("Neutral intake lost $marker", intake.contains(marker)) }
         assertTrue(shell.contains("externalKind = state.externalAddDraft?.kind"))
-        assertTrue(shell.contains("onInspectMedia = { state.externalAddDraft?.let(viewModel::inspectExternalMedia) }"))
+        assertTrue(shell.contains("state.externalAddDraft?.let(viewModel::inspectExternalMedia)"))
+        assertTrue(shell.contains("viewModel.inspectManualMedia(url, fileName)"))
         assertTrue(screens.contains("Inspect as media"))
         assertTrue(screens.contains("Start direct download"))
         assertTrue(screens.contains("XDM never auto-queues external handoffs"))

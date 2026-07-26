@@ -1,3 +1,17 @@
+## XDM Android Phase 8E Gradle architecture-contract repair — 2026-07-25
+
+- Rebased stale source-shape assertions onto the downloader-first Phase 8A–8E implementation without weakening behavior contracts.
+- Fixed external Add draft state-flow, dashboard ordering, Activity/Library ownership, route restoration, filename inference, and archived-browser checks.
+- Made retired-browser directory checks tolerate an empty filesystem directory while still rejecting any active browser contract files.
+- Preserved the cumulative Compose scope, storage-action, and JUnit 4 compilation repairs.
+
+## XDM Android Phase 8E cumulative compile repair — 2026-07-25
+
+- Superseded the rolled-back Compose/storage hotfix with a cumulative overlay that applies directly to the Phase 8E activity-diagnostics tree.
+- Kept the Compose scoped-weight and deprecated storage-action repairs.
+- Fixed `OperationalActivityTest.kt` to use the core-model module's configured JUnit 4 API instead of the undeclared `kotlin.test` library.
+- Added static and JVM regression coverage for the module-compatible test imports.
+
 ## XDM Android downloader experience: Phase 8E
 
 - Turned Activity into a unified operational timeline for transfers, queue decisions, handoffs, verification, finalization, and recovery.

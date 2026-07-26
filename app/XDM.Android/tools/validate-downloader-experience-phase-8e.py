@@ -24,9 +24,14 @@ def require(text: str, marker: str, owner: str) -> None:
 
 
 manifest = json.loads(read("PROJECT_MANIFEST.json") or "{}")
-expected_overlay = "xdm_android_browser_removal_phase8e_activity_diagnostics_overlay.zip"
-if manifest.get("current_overlay") != expected_overlay:
-    errors.append("current_overlay must identify Phase 8E activity diagnostics overlay")
+expected_overlays = {
+    "xdm_android_browser_removal_phase8e_activity_diagnostics_overlay.zip",
+    "xdm_android_browser_removal_phase8e_compose_storage_compile_hotfix_overlay.zip",
+    "xdm_android_browser_removal_phase8e_compile_test_repair_overlay.zip",
+    "xdm_android_browser_removal_phase8e_gradle_contract_repair_overlay.zip",
+}
+if manifest.get("current_overlay") not in expected_overlays:
+    errors.append("current_overlay must identify Phase 8E activity diagnostics or its compile hotfix")
 phase = manifest.get("downloader_experience_phase8e", {})
 for key in (
     "unified_operational_timeline",
@@ -117,6 +122,13 @@ for marker in (
     require(screens, marker, "Activity UI")
 
 shell = read("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")
+for owner, source in (("Activity UI", screens), ("App shell", shell)):
+    if "import androidx.compose.foundation.layout.weight" in source:
+        errors.append(f"{owner} imports Compose's internal weight symbol")
+monitor = read("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueConditionMonitor.kt")
+for deprecated_field in ("Intent.ACTION_DEVICE_STORAGE_LOW", "Intent.ACTION_DEVICE_STORAGE_OK"):
+    if deprecated_field in monitor:
+        errors.append(f"Queue condition monitor uses deprecated field: {deprecated_field}")
 for marker in (
     "ActivityPanel.Timeline",
     "ActivityPanel.Attention",

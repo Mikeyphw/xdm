@@ -58,8 +58,11 @@ for phase_number in (40, 41, 42, 49, 50):
     if phase_number in manifest_data.get("implemented_phases", []):
         errors.append(f"Browser-only phase {phase_number} remains in implemented_phases")
 
+retired_browser_dir = ROOT / "docs/browser"
+if retired_browser_dir.exists() and any(path.is_file() for path in retired_browser_dir.rglob("*")):
+    errors.append("Retired browser documentation files still exist under docs/browser")
+
 for path in (
-    "docs/browser",
     "docs/architecture/PHASE-18-BUILT-IN-BROWSER-MEDIA-DOWNLOADER.md",
     "docs/architecture/PHASE-18-BROWSER-MEDIA-CONTINUITY.md",
     "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBrowserCaptureQuality.kt",

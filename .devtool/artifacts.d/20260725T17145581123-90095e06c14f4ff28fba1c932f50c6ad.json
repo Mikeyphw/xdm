@@ -1,0 +1,140 @@
+{
+  "applied_at": "2026-07-25T17:14:55.811237Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_browser_removal_phase8e_compose_storage_compile_hotfix_overlay.zip",
+  "artifact_name": "xdm_android_browser_removal_phase8e_compose_storage_compile_hotfix_overlay.zip",
+  "type": "overlay",
+  "sha256": "339fee10425dbd10cc43aa759ae00a21a8343020ac897d40946296ffb5456f96",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Fix Phase 8E Compose compilation and storage warnings",
+  "commit_hash": "",
+  "file_count": 11,
+  "change_counts": {
+    "add": 3,
+    "modify": 8
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 8E Compose and storage compile hotfix",
+    "description": "Repairs Phase 8E target-environment Kotlin compilation by removing invalid explicit imports of Compose scoped weight extensions and removes deprecated storage broadcast field warnings while preserving queue policy, Activity diagnostics, downloader engines, schema, version, and the browser-free product boundary.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Fix Phase 8E Compose compilation and storage warnings"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Apply only after xdm_android_browser_removal_phase8e_activity_diagnostics_overlay.zip.",
+      "Removes invalid explicit androidx.compose.foundation.layout.weight imports; scoped RowScope and ColumnScope weight calls remain unchanged.",
+      "Replaces deprecated Intent.ACTION_DEVICE_STORAGE_LOW/OK field references with stable platform action strings used only as reevaluation hints; actual available storage remains authoritative.",
+      "Does not alter routes, manifest intent ownership, Room schema 14, versionCode 21, versionName 0.20.0-rc08, queue policy, media resolver, Activity diagnostics, downloader engines, or browser-free runtime."
+    ],
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "source_sha256": "c0c3ef35d8e225a575f8719ad37d7c3d66cb675094adfab68019c4b7919b5e9f",
+          "sha256": "ccb6e018c9c52ef3910c9253c875eb73f34846c77fc8c1a87ecbd5eb7cf47ce4",
+          "size": 14579
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "source_sha256": "ff3b6eb744344266b645d904bd41154b2ad348a6da5396d56fcbadcff46ca51e",
+          "sha256": "021f58d9943997b0535c72faadd0bf0ad86cbc20d72143c80a938a3d14e410f5",
+          "size": 4486
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "source_sha256": "d58e9509f1a24dd7994e6698dc3ecc7bd9aa99f503369d47ca523b79fbe75420",
+          "sha256": "88ffead3119e43c05ed9daba5f97cc446c7bef93f26bd981061fc0388745b93c",
+          "size": 43442
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/OperationalActivityScreens.kt",
+          "action": "modify",
+          "source_sha256": "ce3857ba732a1d89b1c80ead34626a40d0b85b785609b54d6ba62e3e2379d82c",
+          "sha256": "b7377efd6bd93487566ab693e3aad2426cd16108865e352a68554d516ed5f66a",
+          "size": 14408
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "source_sha256": "62fdddfabf73408e966663faad26bdbd6a8fd0da797842546cc23643423b6d12",
+          "sha256": "c9d4071e1fb1b989b16bc2cbd72402a3d5a708394505cae283503aebcbaef0aa",
+          "size": 18039
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase8ECompileHotfixContractTest.kt",
+          "action": "add",
+          "sha256": "91438f275d2f05cbb7a35b74048a63721f0f3674c6e3e9f53e4a5b897924e32e",
+          "size": 1752
+        },
+        {
+          "path": "app/XDM.Android/docs/downloader/PHASE-8E-COMPOSE-STORAGE-COMPILE-HOTFIX.md",
+          "action": "add",
+          "sha256": "6dcafe90a20ef043793d4cc09e6adf06488f93c60580e52ae17e2a75e88155de",
+          "size": 1156
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueConditionMonitor.kt",
+          "action": "modify",
+          "source_sha256": "3b2437ad704a88027bbd4d63ae3a1f2f55a367dbce2e4fffb7eb1fda78468d86",
+          "sha256": "1e88c2eaad77423cdcdac710f8b9cbe5f3a38e7ac0f909e32252dd77c4df006b",
+          "size": 2655
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "source_sha256": "967b2cb896efa89d706555f22871667b204b2b6a6a8218d970bf252006362d0b",
+          "sha256": "9865a8541c19802a912e67e58f29b826411038e227f471eb67bb00e4b131c01b",
+          "size": 3322
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8e.py",
+          "action": "modify",
+          "source_sha256": "2a87cd843a02948299f9c88b296654dce558c2e3ce6deff1e3f67752cf455324",
+          "sha256": "e6c2a5983767a5d2195bc970ebd55e448679e5fc37e7cf9ac599431e8b68f0d6",
+          "size": 9579
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-8e-compose-storage-hotfix.py",
+          "action": "add",
+          "sha256": "f5a35fbf871f60f6884fce06284a6750149cc37bfb525a7a26d940e25695ed00",
+          "size": 3318
+        }
+      ]
+    }
+  },
+  "history_id": "90095e06c14f4ff28fba1c932f50c6ad"
+}

@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "session_id": "20260725T201903Z-65b1d6b869",
+  "status": "failed",
+  "validation_mode": "standalone",
+  "artifact": "",
+  "resource_profile": "standard",
+  "transaction_path": "",
+  "recovery_available": false,
+  "phases": [
+    {
+      "key": "xdm_android:preflight:1",
+      "name": "preflight",
+      "label": "xdm_android: preflight",
+      "status": "succeeded"
+    },
+    {
+      "key": "xdm_android:dependencies:2",
+      "name": "dependencies",
+      "label": "xdm_android: dependencies",
+      "status": "succeeded"
+    },
+    {
+      "key": "xdm_android:compile:3",
+      "name": "compile",
+      "label": "xdm_android: compile",
+      "status": "succeeded"
+    },
+    {
+      "key": "xdm_android:resources:4",
+      "name": "resources",
+      "label": "xdm_android: resources",
+      "status": "succeeded"
+    },
+    {
+      "key": "xdm_android:unit-test:5",
+      "name": "unit-test",
+      "label": "xdm_android: unit-test",
+      "status": "succeeded"
+    },
+    {
+      "key": "xdm_android:package:6",
+      "name": "package",
+      "label": "xdm_android: package",
+      "status": "succeeded"
+    },
+    {
+      "key": "xdm_android:artifact-check:7",
+      "name": "artifact-check",
+      "label": "xdm_android: artifact-check",
+      "status": "failed"
+    },
+    {
+      "key": "xdm_android:lint:8",
+      "name": "lint",
+      "label": "xdm_android: lint",
+      "status": "pending"
+    },
+    {
+      "key": "xdm_android:finalize:9",
+      "name": "finalize",
+      "label": "xdm_android: finalize",
+      "status": "pending"
+    }
+  ],
+  "updated_at": "2026-07-25T20:29:51.399382Z"
+}
