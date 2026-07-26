@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -214,7 +213,7 @@ internal fun DownloadDetails(
         val latestVerification = verificationRecords.firstOrNull { it.downloadId == download.id }
         val latestChecksum = checksumResults.firstOrNull { it.downloadId == download.id }
         if (download.state == DownloadState.Verifying || download.state == DownloadState.Repairing || latestVerification != null || latestChecksum != null) {
-            Card(Modifier.fillMaxWidth()) {
+            XdmFlatCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     val status = latestVerification?.status ?: if (download.state == DownloadState.Verifying) VerificationStatus.Running else VerificationStatus.Pending
                     XdmCardTitle("Verification: ${status.uiLabel()}")

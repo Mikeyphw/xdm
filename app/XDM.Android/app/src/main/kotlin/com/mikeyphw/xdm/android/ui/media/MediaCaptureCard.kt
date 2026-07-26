@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -501,7 +500,7 @@ internal fun PostProcessingAutomationCard(
     onClearEvents: (() -> Unit)?,
 ) {
     val context = LocalContext.current
-    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Post-processing automation ${automation.readinessLabel}" }) {
+    XdmFlatCard(Modifier.fillMaxWidth().semantics { contentDescription = "Post-processing automation ${automation.readinessLabel}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -546,7 +545,7 @@ internal fun PostProcessingAutomationCard(
 }
 @Composable
 internal fun VariantSelectorRow(variant: MediaVariant, selected: Boolean, onSelect: () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    XdmFlatCard(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 XdmCardTitle(variant.qualityLabel)

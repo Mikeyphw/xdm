@@ -1,0 +1,263 @@
+{
+  "applied_at": "2026-07-26T05:29:47.124424Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_uix_r2_flat_dark_adaptive_shell_overlay.zip",
+  "artifact_name": "xdm_android_uix_r2_flat_dark_adaptive_shell_overlay.zip",
+  "type": "overlay",
+  "sha256": "8dfc15e6f43d0e4f78c42a1bcb0bfc40d2bc3ede1d6ff2217e071d8dd9de23be",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Implement the flat dark adaptive XDM Android shell",
+  "commit_hash": "",
+  "file_count": 29,
+  "change_counts": {
+    "add": 8,
+    "modify": 21
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android UIX R2 flat dark adaptive shell",
+    "description": "Installs the dark-first flat Android design system, responsive window classes, five-destination adaptive navigation shell, internal Add modal, shared UI primitives, edge-to-edge inset handling, and updated compatibility contracts on top of UIX R1.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "4a35582dcb20bc66a157ab5ef60c27e92a8e55dfa04fe13f3fbfa90e5f36afa7",
+          "size": 16517,
+          "source_sha256": "7dbd9be12d1d3e4cf50b99e78e1bc4be40a091a7dc77f99fe172b7fbb94d140f"
+        },
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "d990a9f01cf196def0fd85d9342f1e72c60f5b06777bab555acaa62a9d96d738",
+          "size": 1509,
+          "source_sha256": "ffa10ed234edb98783002417ab2c87ab21b6bd5d1eb623141a18da14f7fa4e62"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "8656e3f379bbe0fdb4d4000d959c5a5bf4166e45694501658c3ef06d81e5f9d4",
+          "size": 4605,
+          "source_sha256": "f4c99155e67314ca475ced7b06e9fc994395058770ef51b4e9d06b390fdee667"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "c1c244739a0e646f4d22d448271743e372d7f722a60ebeb655a0ed2386ce6110",
+          "size": 45934,
+          "source_sha256": "0a46c8c63f56093a3737c535601f4fa7bd580db1013572058aed0ae2ad378022"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+          "action": "modify",
+          "sha256": "72c326cc0889b6ab3956613110e99749e10a91bbdee29d51684d296a58b438a4",
+          "size": 11533,
+          "source_sha256": "3c6285aac2c17c2a78bdbd9f56bf806b2fbcc2708ba7a9ff527049ec8720da4e"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt",
+          "action": "modify",
+          "sha256": "e6a222a39aacd39707de976dbd1411f3a1f74daf489e3dedd0137c651fd99af9",
+          "size": 7146,
+          "source_sha256": "d6b68a85a41b70ed93af9835c481e45c55031f7e15960c226a5eebcf31757653"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAdaptiveShell.kt",
+          "action": "add",
+          "sha256": "ab2ebc8e4f7065eadf20fdfcf59d43fe86c77661baea2f3ce8f93e7868c3be91",
+          "size": 14211
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "1e5a9f04a299fd65779806510e0f577b5b0efc156cb97b5312c7afe9620fd2e9",
+          "size": 16114,
+          "source_sha256": "c9d4071e1fb1b989b16bc2cbd72402a3d5a708394505cae283503aebcbaef0aa"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmDesignSystem.kt",
+          "action": "modify",
+          "sha256": "5358863e90f7958160a3d5ed3382dd4eb89aa4cdd870ff827d4157e6c1e6b3cc",
+          "size": 6960,
+          "source_sha256": "824ce812e4161c1e0f60558e89bc4448968261ad0d8cc3454692a8b4f954d0f3"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmPrimitives.kt",
+          "action": "add",
+          "sha256": "056da0ff272b89473e4fcda99ce1f5cd2284d1b7f5133197998036c46f398acc",
+          "size": 19106
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmTheme.kt",
+          "action": "add",
+          "sha256": "ea2dede485bca19fbd2877fa00af18651e933463e6502bccdd422bd1d6410186",
+          "size": 3956
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmWindowClass.kt",
+          "action": "add",
+          "sha256": "ff986a955b14032adb83bae9e71e2920bb02db2231aec8e13be0732962ed27ae",
+          "size": 888
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDetails.kt",
+          "action": "modify",
+          "sha256": "e60b44adbaab47fa922cb15f3f4d9310756e83d860cc47b73bae1649d9cce366",
+          "size": 14772,
+          "source_sha256": "17cebcb91564ebf312384a91803c02130c28fea96f867522fff5f43c63194ba5"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt",
+          "action": "modify",
+          "sha256": "5977bf710027d5a7b1f19083732edeeb2323f3638fa2bc4d02ba7748cc4f3612",
+          "size": 16271,
+          "source_sha256": "d9a7c53b7cc898f9af96928e87c1e89c49698aef130221afbd6ff96c669ae0be"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+          "action": "modify",
+          "sha256": "bccd72fdcbe9fad80d831182a358856105940d3f2e39d4c8e1f8a8125cc425af",
+          "size": 32443,
+          "source_sha256": "5aaed7608467af1aa850f4965bacb7d2b80c5a01f2cabd9acc10badc26af2f43"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt",
+          "action": "modify",
+          "sha256": "33dbd1eb55aff0096cac0fe198eb06a0d9492608d2c72b36217dad043b2d4a66",
+          "size": 27343,
+          "source_sha256": "4ff4369544ccc5ae1b1ca1408d72ad0c3676b7d5d16f34ff5d2e2dd314f86181"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/library/MediaLibraryScreen.kt",
+          "action": "modify",
+          "sha256": "c0219a12b2e78e765b4c1f21da394b1cb1286a363a5c37a9ee3382a8bfc2a5b3",
+          "size": 16696,
+          "source_sha256": "5cb6adfb6ba29c1436fc3ed4e2e7e513826f208e975db67469422855d220509d"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaCaptureCard.kt",
+          "action": "modify",
+          "sha256": "0e12f8a865cef8f40fc58665bbaf3f35a1e66e7ba2a922f2ca50d6be0dc030ab",
+          "size": 31612,
+          "source_sha256": "80b68517cd356b69f87af51fced02d0c754c6e0a72d14070e91923b3d70a6a63"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt",
+          "action": "modify",
+          "sha256": "fec1ab70c41f542a6ac39475eae8de8f04a33d21b8a564a775ef44bf58ab499c",
+          "size": 29435,
+          "source_sha256": "a3a77823966d5020997c9b089990166bcc08ca97f8a879b3f7f04d22b09ba38b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "56805b36055bb16dfa8f2a628ad838b499882a7a26dab86ef70615faa0ffef16",
+          "size": 89234,
+          "source_sha256": "6e02cf4722f7f198d1e632d2f069b3eb04979cbf51d5ec71266b92e4e0f2d751"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPhase6ContractTest.kt",
+          "action": "modify",
+          "sha256": "66abb638837ff8b8ed88793a449dc8c06bf6df736f3cb94dbf03ec7a20dd9c9c",
+          "size": 4133,
+          "source_sha256": "e5245407021f8b1a48833cc7037ffd728e54f906809a5edc4f2d0ccdebc67030"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR2AdaptiveShellContractTest.kt",
+          "action": "add",
+          "sha256": "4b3f324a7c3c1e35bec7b98755412cb656699f834f6519a11142cac05e448698",
+          "size": 5376
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/XdmWindowClassTest.kt",
+          "action": "add",
+          "sha256": "5d6d656606fdaedc89ed1373bd7c4767ff601df63c7cf0e3a72818252615974d",
+          "size": 1183
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UIX-R2-FLAT-DARK-ADAPTIVE-SHELL.md",
+          "action": "add",
+          "sha256": "03a06002b0c7b5a5917329c877f079841accbba02837df1945a7191d29751804",
+          "size": 2426
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+          "action": "modify",
+          "sha256": "765d08f6e3bb30aa91df791bbd4a706ea373be2f031b6491163cd45b61b22c63",
+          "size": 13580,
+          "source_sha256": "9a546ba5bc16ea8b258f5dbf484fd79343e5852e609df33e06e5a447588a03c4"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "b3132c7ea03b58c5d3c7f7ec99759b0b8d48f3af78c1d2f13a6397613d95f671",
+          "size": 3475,
+          "source_sha256": "349fd8ff74379ff71c21b24233a0d9586ff295c4afddb9da4d95f3db3c6e9510"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-4.py",
+          "action": "modify",
+          "sha256": "0dc44a145e43fa5a53de43a3457795f4e3db0cd2b3100d197486e0d96e186693",
+          "size": 8332,
+          "source_sha256": "48899f53bdb24cf6fa8a0c38cce756a35cd79c9355efe0d619db9fce77d648cf"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-6.py",
+          "action": "modify",
+          "sha256": "1d77eacd5eaa1bea5d57b25f63ecaa51bbb4130ef558241b20a0c2012f867f8f",
+          "size": 6910,
+          "source_sha256": "65da78cf8d8ab204b6f7b37de65e2049436f21ea3b2fe35b9ff9e5dcb7b0c2bf"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-uix-r2-flat-dark-shell.py",
+          "action": "add",
+          "sha256": "89342c0de3d02fdfc6b5244e83b22854037ef474c5a05d845900a943f7291cde",
+          "size": 6343
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Implement the flat dark adaptive XDM Android shell"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Requires UIX R1 surface contract modularization as its direct baseline.",
+      "Visible navigation contains Downloads, Media, Library, Activity, and Settings; AppRoute.Add remains internal for restoration and external handoff compatibility.",
+      "Compact and medium layouts use bottom navigation; expanded layouts use a persistent 224 dp sidebar and a bounded content canvas.",
+      "Primary user surfaces use flat zero-elevation grouped surfaces. Existing download, media, library, activity, settings, queue, scheduler, recovery, and developer behavior remains wired.",
+      "Room schema 14, versionName 0.20.0-rc08, versionCode 21, engine selection, external handoff, and worker behavior are unchanged.",
+      "UIX R3 is the next overlay and redesigns the Downloads control center plus Add workflow."
+    ]
+  },
+  "history_id": "b63637ae702642dcb716cc6a80669309"
+}

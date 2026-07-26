@@ -8,9 +8,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,88 +29,44 @@ object XdmSpacing {
     val ListPadding = 16.dp
     val CardPadding = 16.dp
     val CompactCardPadding = 10.dp
-    val SectionGap = 12.dp
+    val SectionGap = 16.dp
     val ItemGap = 8.dp
     val TightGap = 4.dp
     val BadgeHorizontalPadding = 10.dp
     val BadgeVerticalPadding = 6.dp
+    val MinimumTouchTarget = 48.dp
 }
 
 val XdmTypography = Typography(
-    headlineSmall = TextStyle(
-        fontSize = 24.sp,
-        lineHeight = 32.sp,
-        fontWeight = FontWeight.SemiBold,
-    ),
-    titleLarge = TextStyle(
-        fontSize = 20.sp,
-        lineHeight = 28.sp,
-        fontWeight = FontWeight.SemiBold,
-    ),
-    titleMedium = TextStyle(
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        fontWeight = FontWeight.SemiBold,
-    ),
-    titleSmall = TextStyle(
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        fontWeight = FontWeight.SemiBold,
-        fontFeatureSettings = "tnum",
-    ),
-    bodyMedium = TextStyle(
-        fontSize = 14.sp,
-        lineHeight = 21.sp,
-        fontWeight = FontWeight.Normal,
-    ),
-    bodySmall = TextStyle(
-        fontSize = 12.sp,
-        lineHeight = 18.sp,
-        fontWeight = FontWeight.Normal,
-    ),
-    labelLarge = TextStyle(
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        fontWeight = FontWeight.Medium,
-    ),
-    labelMedium = TextStyle(
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        fontWeight = FontWeight.Medium,
-    ),
+    headlineLarge = TextStyle(fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3f).sp),
+    headlineMedium = TextStyle(fontSize = 27.sp, lineHeight = 34.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.2f).sp),
+    headlineSmall = TextStyle(fontSize = 24.sp, lineHeight = 31.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.1f).sp),
+    titleLarge = TextStyle(fontSize = 20.sp, lineHeight = 27.sp, fontWeight = FontWeight.SemiBold),
+    titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 23.sp, fontWeight = FontWeight.SemiBold),
+    titleSmall = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum"),
+    bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Normal),
+    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.Normal),
+    bodySmall = TextStyle(fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.Normal),
+    labelLarge = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium),
+    labelMedium = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.2.sp),
+    labelSmall = TextStyle(fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.25.sp),
 )
 
 enum class XdmStatusTone { Neutral, Success, Warning, Error, Info }
 
 @Composable
 fun XdmSectionHeader(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        modifier = modifier.semantics { heading() },
-        style = MaterialTheme.typography.titleLarge,
-    )
+    Text(text = text, modifier = modifier.semantics { heading() }, style = MaterialTheme.typography.titleLarge)
 }
 
 @Composable
 fun XdmCardTitle(text: String, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE) {
-    Text(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.titleMedium,
-        maxLines = maxLines,
-        overflow = TextOverflow.Ellipsis,
-    )
+    Text(text = text, modifier = modifier, style = MaterialTheme.typography.titleMedium, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
 }
 
 @Composable
 fun XdmSupportingText(text: String, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE) {
-    Text(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.bodyMedium,
-        maxLines = maxLines,
-        overflow = TextOverflow.Ellipsis,
-    )
+    Text(text = text, modifier = modifier, style = MaterialTheme.typography.bodyMedium, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
 }
 
 @Composable
@@ -128,13 +83,8 @@ fun XdmMetadataText(text: String, modifier: Modifier = Modifier, maxLines: Int =
 
 @Composable
 fun XdmMetricText(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.titleSmall,
-    )
+    Text(text = text, modifier = modifier, style = MaterialTheme.typography.titleSmall)
 }
-
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -154,26 +104,29 @@ fun XdmActionFlowRow(
 
 @Composable
 fun XdmStatusBadge(text: String, modifier: Modifier = Modifier, tone: XdmStatusTone = XdmStatusTone.Neutral) {
-    val colorScheme = MaterialTheme.colorScheme
+    val scheme = MaterialTheme.colorScheme
+    val extended = XdmTheme.extendedColors
     val background = when (tone) {
-        XdmStatusTone.Success -> colorScheme.primaryContainer
-        XdmStatusTone.Warning -> colorScheme.tertiaryContainer
-        XdmStatusTone.Error -> colorScheme.errorContainer
-        XdmStatusTone.Info -> colorScheme.secondaryContainer
-        XdmStatusTone.Neutral -> colorScheme.surfaceVariant
+        XdmStatusTone.Success -> extended.successContainer
+        XdmStatusTone.Warning -> extended.warningContainer
+        XdmStatusTone.Error -> scheme.errorContainer
+        XdmStatusTone.Info -> scheme.primaryContainer
+        XdmStatusTone.Neutral -> extended.groupedSurfaceStrong
     }
     val foreground = when (tone) {
-        XdmStatusTone.Success -> colorScheme.onPrimaryContainer
-        XdmStatusTone.Warning -> colorScheme.onTertiaryContainer
-        XdmStatusTone.Error -> colorScheme.onErrorContainer
-        XdmStatusTone.Info -> colorScheme.onSecondaryContainer
-        XdmStatusTone.Neutral -> colorScheme.onSurfaceVariant
+        XdmStatusTone.Success -> extended.onSuccessContainer
+        XdmStatusTone.Warning -> extended.onWarningContainer
+        XdmStatusTone.Error -> scheme.onErrorContainer
+        XdmStatusTone.Info -> scheme.onPrimaryContainer
+        XdmStatusTone.Neutral -> scheme.onSurfaceVariant
     }
     Surface(
         modifier = modifier,
         color = background,
         contentColor = foreground,
         shape = MaterialTheme.shapes.small,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
     ) {
         Text(
             text,
@@ -193,7 +146,13 @@ fun XdmListCard(
     compact: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Card(modifier.fillMaxWidth()) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = XdmTheme.extendedColors.groupedSurface,
+        shape = MaterialTheme.shapes.large,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
         Column(
             Modifier.padding(if (compact) XdmSpacing.CompactCardPadding else XdmSpacing.CardPadding),
             verticalArrangement = Arrangement.spacedBy(XdmSpacing.ItemGap),

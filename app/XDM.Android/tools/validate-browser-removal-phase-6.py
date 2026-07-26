@@ -61,8 +61,8 @@ preferences = read("app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferences
 require(preferences, "AppRoute.restore(preferences[Keys.LastRoute])", "User preferences route restore")
 
 shell = read("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")
-require(shell, "listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Library, AppRoute.Activity, AppRoute.Settings)", "Compact navigation")
-require(shell, "if (state.route != AppRoute.Add)", "Global Add action")
+require(shell, "private val primaryRoutes = routeTopology.filterNot { it == AppRoute.Add }", "Adaptive primary navigation")
+require(shell, "onAddDownload = { viewModel.navigate(AppRoute.Add) }", "Global Add action")
 require(shell, "AppRoute.Library -> MediaLibraryScreen", "Library route")
 require(shell, "AppRoute.Activity -> ActivityHub", "Activity route")
 for marker in ("ActivityPanel.Queues", "ActivityPanel.Schedule", "ActivityPanel.Recovery", "ActivityPanel.Diagnostics"):

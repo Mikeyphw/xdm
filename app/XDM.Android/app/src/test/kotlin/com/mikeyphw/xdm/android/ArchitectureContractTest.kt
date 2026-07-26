@@ -226,12 +226,14 @@ class ArchitectureContractTest {
         val root = androidRoot()
         val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
         val mainActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
+        val theme = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmTheme.kt").readText()
         val screens = UiSourceTree.readAll(root)
         val design = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmDesignSystem.kt").readText()
         val labels = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmUiLabels.kt").readText()
 
         assertTrue("UI contract must define visual language rules", contract.contains("Visual Language Rules"))
-        assertTrue("Theme must install shared typography", mainActivity.contains("typography = XdmTypography"))
+        assertTrue("Activity must install the XDM theme", mainActivity.contains("XdmTheme"))
+        assertTrue("Theme must install shared typography", theme.contains("typography = XdmTypography"))
         listOf("XdmTypography", "XdmSpacing", "XdmSectionHeader", "XdmCardTitle", "XdmSupportingText", "XdmMetadataText", "XdmMetricText", "XdmStatusBadge").forEach { primitive ->
             assertTrue("Design system missing $primitive", design.contains(primitive))
         }

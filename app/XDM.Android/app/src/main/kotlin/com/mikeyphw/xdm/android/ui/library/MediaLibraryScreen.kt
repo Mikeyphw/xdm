@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -239,7 +238,7 @@ fun MediaLibraryScreen(
 @Composable
 internal fun OfflineMediaLibraryCard(summary: OfflineMediaLibrarySummary, items: List<OfflineMediaLibraryItem>, downloads: List<Download>, onResumeOrRetryDownload: (Download) -> Unit) {
     var expandedPlayerId by remember { mutableStateOf<String?>(null) }
-    Card(Modifier.fillMaxWidth().semantics { contentDescription = "Offline library ${summary.message}" }) {
+    XdmFlatCard(Modifier.fillMaxWidth().semantics { contentDescription = "Offline library ${summary.message}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Offline library and player")
             XdmSupportingText(summary.message, maxLines = 3)

@@ -24,8 +24,8 @@ class BrowserRemovalPhase6ContractTest {
     fun shellPromotesLibraryAndActivityWithoutLosingAdd() {
         val root = androidRoot()
         val shell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
-        assertTrue(shell.contains("listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Library, AppRoute.Activity, AppRoute.Settings)"))
-        assertTrue(shell.contains("if (state.route != AppRoute.Add)"))
+        assertTrue(shell.contains("private val primaryRoutes = routeTopology.filterNot { it == AppRoute.Add }"))
+        assertTrue(shell.contains("onAddDownload = { viewModel.navigate(AppRoute.Add) }"))
         assertTrue(shell.contains("AppRoute.Library -> MediaLibraryScreen"))
         assertTrue(shell.contains("AppRoute.Activity -> ActivityHub"))
         listOf("ActivityPanel.Queues", "ActivityPanel.Schedule", "ActivityPanel.Recovery", "ActivityPanel.Diagnostics").forEach {

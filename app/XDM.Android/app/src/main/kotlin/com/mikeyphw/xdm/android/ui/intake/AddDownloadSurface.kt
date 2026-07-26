@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -250,7 +249,7 @@ fun AddDownloadScreen(
         ) {
             if (externalDraftId != null) {
                 item {
-                    Card(Modifier.fillMaxWidth()) {
+                    XdmFlatCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                                 Column(Modifier.weight(1f)) {
@@ -274,7 +273,7 @@ fun AddDownloadScreen(
                 }
             }
             item {
-                Card(Modifier.fillMaxWidth()) {
+                XdmFlatCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         XdmCardTitle("Review-first intake")
                         XdmSupportingText("Enter or paste a link, confirm what XDM detected, choose a destination, then explicitly add it to the queue.")
@@ -307,7 +306,7 @@ fun AddDownloadScreen(
                 )
             }
             item {
-                Card(Modifier.fillMaxWidth()) {
+                XdmFlatCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                             Column(Modifier.weight(1f)) {
@@ -342,7 +341,7 @@ fun AddDownloadScreen(
                 }
             }
             item {
-                Card(Modifier.fillMaxWidth()) {
+                XdmFlatCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         XdmCardTitle("Destination")
                         XdmMetadataText(destinationUri.ifBlank { "Choose where completed files should be saved." }, maxLines = 2)
@@ -360,7 +359,7 @@ fun AddDownloadScreen(
             }
             recommendation?.let { recommendation ->
                 item {
-                    Card(Modifier.fillMaxWidth()) {
+                    XdmFlatCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 XdmCardTitle("Recommended backend", modifier = Modifier.weight(1f))
@@ -384,7 +383,7 @@ fun AddDownloadScreen(
                 }
             }
             item {
-                Card(Modifier.fillMaxWidth()) {
+                XdmFlatCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
@@ -432,7 +431,7 @@ fun AddDownloadScreen(
                 }
             }
         }
-        Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+        XdmFlatCard(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 XdmMetadataText(if (canSubmit) "Ready for explicit queue submission." else review.guidance)
                 Button(

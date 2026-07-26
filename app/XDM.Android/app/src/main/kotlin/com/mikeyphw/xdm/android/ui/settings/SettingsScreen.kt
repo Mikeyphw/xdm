@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -255,7 +254,7 @@ fun SettingsScreen(
     ) {
         item { XdmSectionHeader("Appearance") }
         item {
-            Card(Modifier.fillMaxWidth()) {
+            XdmFlatCard(Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         XdmCardTitle("Compact download cards")
@@ -271,7 +270,7 @@ fun SettingsScreen(
         }
         item { XdmSectionHeader("Settings import/export") }
         item {
-            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Settings import export snapshot" }) {
+            XdmFlatCard(Modifier.fillMaxWidth().semantics { contentDescription = "Settings import export snapshot" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     XdmCardTitle("Portable settings snapshot")
                     XdmSupportingText("Copy a safe backup, paste one back here, and review whether it looks ready before importing.")
@@ -299,7 +298,7 @@ fun SettingsScreen(
         }
         item { XdmSectionHeader("Rules and restore hardening") }
         item {
-            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Destination rules ${destinationRules.size}" }) {
+            XdmFlatCard(Modifier.fillMaxWidth().semantics { contentDescription = "Destination rules ${destinationRules.size}" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     XdmCardTitle("Destination rules")
                     XdmSupportingText("Route new downloads by host, extension, MIME type, or fallback destination before the download is queued.")
@@ -323,7 +322,7 @@ fun SettingsScreen(
             }
         }
         item {
-            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Duplicate URL rules ${duplicateRules.size}" }) {
+            XdmFlatCard(Modifier.fillMaxWidth().semantics { contentDescription = "Duplicate URL rules ${duplicateRules.size}" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     XdmCardTitle("Duplicate URL rules")
                     XdmSupportingText("Detect repeated source URLs before enqueueing and prefer opening the existing record by default.")
@@ -340,7 +339,7 @@ fun SettingsScreen(
         }
         item { XdmSectionHeader("Proxy and credentials") }
         item {
-            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Proxy credential profile ${proxySettings.redactedSummary}" }) {
+            XdmFlatCard(Modifier.fillMaxWidth().semantics { contentDescription = "Proxy credential profile ${proxySettings.redactedSummary}" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -400,7 +399,7 @@ fun SettingsScreen(
         item { XdmSectionHeader("Conversion and post-processing") }
         item { PostProcessingAutomationCard(postProcessingAutomation, onPostProcessingAutomationEnabledChanged, onRetryPostProcessing, onClearPostProcessingEvents) }
         item {
-            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Conversion post processing ${postProcessingSettings.redactedSummary}" }) {
+            XdmFlatCard(Modifier.fillMaxWidth().semantics { contentDescription = "Conversion post processing ${postProcessingSettings.redactedSummary}" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -437,7 +436,7 @@ fun SettingsScreen(
         }
         item { XdmSectionHeader("Protocol expansion") }
         item {
-            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Protocol expansion ${protocolExpansionReport.summary}" }) {
+            XdmFlatCard(Modifier.fillMaxWidth().semantics { contentDescription = "Protocol expansion ${protocolExpansionReport.summary}" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     XdmCardTitle(protocolExpansionReport.summary)
                     protocolExpansionReport.rows.forEach { row -> XdmMetadataText("${row.protocol.uppercase()}: ${row.recommendation}") }
@@ -446,7 +445,7 @@ fun SettingsScreen(
         }
         item { XdmSectionHeader("Backend strategy") }
         items(capabilities, key = { it.backend.name }) { capability ->
-            Card(Modifier.fillMaxWidth()) {
+            XdmFlatCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         XdmCardTitle(capability.backend.uiLabel())
@@ -472,7 +471,7 @@ fun SettingsScreen(
         if (migrations.isNotEmpty()) {
             item { XdmSectionHeader("Recent backend migrations") }
             items(migrations.take(5), key = BackendMigrationRecord::id) { migration ->
-                Card(Modifier.fillMaxWidth()) {
+                XdmFlatCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         XdmCardTitle("${migration.sourceBackend.uiLabel()} → ${migration.targetBackend.uiLabel()}")
                         XdmMetricText(migration.stage.uiLabel())

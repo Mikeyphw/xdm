@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,7 +35,7 @@ import com.mikeyphw.xdm.android.media.MediaPlayerErrorSnapshot
 @OptIn(UnstableApi::class)
 @Composable
 fun Media3DirectPlayerCard(candidate: MediaPlaybackCandidate, modifier: Modifier = Modifier) {
-    Card(modifier.fillMaxWidth().semantics { contentDescription = "Media3 player ${candidate.title}" }) {
+    XdmFlatCard(modifier.fillMaxWidth().semantics { contentDescription = "Media3 player ${candidate.title}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Media3 player")
             XdmSupportingText(

@@ -72,7 +72,7 @@ for marker, text, context in (
 ):
     if marker in text:
         errors.append(f"{context} still contains removed browser marker: {marker}")
-require(shell, "listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Library, AppRoute.Activity, AppRoute.Settings)", "Primary navigation")
+require(shell, "private val primaryRoutes = routeTopology.filterNot { it == AppRoute.Add }", "Primary navigation")
 require(activity, "handleExternalIntent(intent)", "MainActivity external intake")
 
 manifest = read("app/src/main/AndroidManifest.xml")

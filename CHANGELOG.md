@@ -1,3 +1,11 @@
+## UIX R2 - Flat dark adaptive shell
+
+- Added a dark-first, flat, zero-elevation Android visual system with semantic status colors and shared responsive primitives.
+- Added explicit compact, medium, and expanded window classes with bottom navigation below 840 dp and a persistent 224 dp sidebar at 840 dp and above.
+- Reduced visible navigation to Downloads, Media, Library, Activity, and Settings while preserving Add as an internal restorable route presented through an adaptive modal.
+- Added safe-drawing and IME-aware edge-to-edge layout handling, bounded expanded content width, accessibility semantics, and shell contract tests.
+- Preserved Room schema 14, app version, all download engines, external handoff, queue behavior, recovery, and developer diagnostics.
+
 ## UIX R1 - Surface contract and modularization
 
 - Split the Android UI monolith into feature-owned sources while preserving public composable APIs.

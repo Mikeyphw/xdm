@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -205,7 +204,7 @@ internal fun DownloadCard(
 ) {
     val context = LocalContext.current
     var expanded by remember(download.id) { mutableStateOf(false) }
-    Card(
+    XdmFlatCard(
         Modifier
             .fillMaxWidth()
             .semantics { contentDescription = download.accessibilitySummary() },
@@ -274,7 +273,7 @@ internal fun DownloadCard(
                 XdmMetadataText("Explicit override bypasses soft queue policy, but XDM still requires a validated internet connection.")
             }
             DownloadDashboardPlanner.attentionSignal(download)?.let { signal ->
-                Card(Modifier.fillMaxWidth()) {
+                XdmFlatCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         XdmStatusBadge(signal.label, tone = XdmStatusTone.Error)
                         XdmMetadataText(signal.guidance, maxLines = if (expanded) 4 else 2)

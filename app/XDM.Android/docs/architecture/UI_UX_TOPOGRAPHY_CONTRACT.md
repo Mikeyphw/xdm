@@ -13,7 +13,7 @@ The stable top-level routes are:
 - Activity
 - Settings
 
-Compact layouts keep Downloads, Media, Library, Activity, and Settings in the bottom bar. Add remains a first-class route and is always reachable through the global floating action button. Expanded layouts expose all six routes in a navigation rail.
+The internal compatibility topology remains six routes so persisted navigation and external handoffs can still restore `AppRoute.Add`. The visible shell exposes exactly five primary destinations: Downloads, Media, Library, Activity, and Settings. Compact and medium layouts use bottom navigation. Expanded layouts use a persistent 224 dp sidebar. Add is launched through a visible New download action and rendered as an adaptive modal sheet or dialog rather than a permanent navigation destination.
 
 Library owns completed media, playback readiness, sidecar health, resume, and retry. Media remains the external media intake, resolver, track-selection, and execution-planning workbench.
 
@@ -59,6 +59,8 @@ New aria2, recovery, scheduling, storage, media, Tasker, diagnostics, and protoc
 Every future phase that changes navigation or major screen behavior must add or update Compose tests and source contract tests. The tests are part of this contract.
 
 ## Visual Language Rules
+
+XDM uses a dark-first, flat, borderless visual system. Primary backgrounds are near-black; grouped content uses tonal surface separation rather than elevation or decorative outlines. Compact layouts are below 600 dp, medium layouts are 600–839 dp, and expanded layouts begin at 840 dp. Safe drawing insets and IME padding are mandatory at the application shell.
 
 Runtime screens must use the shared XDM UI primitives for typography, status, and spacing instead of ad hoc bold text or raw Material defaults. The app theme must install `XdmTypography`, and screen code should prefer `XdmSectionHeader`, `XdmCardTitle`, `XdmSupportingText`, `XdmMetadataText`, `XdmMetricText`, and `XdmStatusBadge` for reusable hierarchy.
 

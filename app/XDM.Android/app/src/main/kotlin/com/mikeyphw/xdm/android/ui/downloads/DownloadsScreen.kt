@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -353,7 +352,7 @@ internal fun DownloadListSummary(
     val failed = dashboard.summary.needsAttention
     val completed = dashboard.summary.completed
     val paused = downloads.count { it.state == DownloadState.Paused }
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    XdmFlatCard(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -380,7 +379,7 @@ internal fun DownloadListSummary(
                 if (dashboard.summary.aggregateSpeedBytesPerSecond > 0) XdmMetricText(dashboard.summary.aggregateSpeedBytesPerSecond.formatSpeed())
                 TextButton(onClick = onToggleHistoryTools) { Text(if (showHistoryTools) "Hide history tools" else "History tools") }
             }
-            Card(Modifier.fillMaxWidth()) {
+            XdmFlatCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -399,7 +398,7 @@ internal fun DownloadListSummary(
                     }
                 }
             }
-            Card(Modifier.fillMaxWidth()) {
+            XdmFlatCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     XdmCardTitle("Operational health")
                     XdmSupportingText("Activity keeps transfer failures and queue decisions searchable without crowding the download list.", maxLines = 2)
@@ -451,7 +450,7 @@ internal fun OrganizationPowerToolsCard(
     var tagName by remember { mutableStateOf("") }
     var searchName by remember { mutableStateOf("") }
     var toolsExpanded by remember { mutableStateOf(false) }
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+    XdmFlatCard(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -580,7 +579,7 @@ internal fun DownloadFilterChip(label: String, selected: Boolean, onClick: () ->
 }
 @Composable
 internal fun DownloadDashboardSectionHeader(section: DownloadDashboardSection) {
-    Card(Modifier.fillMaxWidth()) {
+    XdmFlatCard(Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,

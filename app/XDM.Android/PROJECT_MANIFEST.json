@@ -1332,5 +1332,44 @@
     "version_name_unchanged": "0.20.0-rc08",
     "version_code_unchanged": 21,
     "next_overlay": "uix_r2_flat_dark_adaptive_shell"
-  }
+  },
+  "uix_r2_flat_dark_adaptive_shell": {
+    "program": "android_uix_redesign",
+    "contract_document": "docs/architecture/UIX-R2-FLAT-DARK-ADAPTIVE-SHELL.md",
+    "static_validator": "tools/validate-uix-r2-flat-dark-shell.py",
+    "dark_theme_default": true,
+    "flat_zero_elevation_primary_surfaces": true,
+    "compact_breakpoint_dp": 600,
+    "expanded_breakpoint_dp": 840,
+    "expanded_sidebar_width_dp": 224,
+    "visible_primary_destinations": [
+      "Downloads",
+      "Media",
+      "Library",
+      "Activity",
+      "Settings"
+    ],
+    "add_preserved_as_internal_route": true,
+    "safe_drawing_and_ime_insets": true,
+    "shared_primitives": [
+      "page_header",
+      "metric_strip",
+      "notice_row",
+      "grouped_list",
+      "list_row",
+      "segmented_control",
+      "file_type_icon",
+      "progress_line",
+      "section_label",
+      "technical_details",
+      "adaptive_sheet",
+      "empty_state"
+    ],
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "depends_on": "uix_r1_surface_contract_modularization",
+    "next_overlay": "uix_r3_downloads_add_workspace"
+  },
+  "current_uix_overlay": "xdm_android_uix_r2_flat_dark_adaptive_shell_overlay.zip"
 }
