@@ -1,3 +1,11 @@
+## UIX R4 - Media and Library consumer workflows
+
+- Rebuilt Media as a consumer-first review workspace with Paste page URL, private-session guidance, common quality chips, complete video/audio/subtitle selection, estimated size, explicit download, and compact recently queued progress.
+- Rebuilt Library as a playable-first adaptive list/grid with All, Video, Audio, and Recently added filters plus clear Play, Resume, Retry, More, open-file, and record-removal actions.
+- Removed resolver history, runtime plans, Termux controls, telemetry, worker bridges, sidecar JSON, privacy audits, validation decks, and routine Media3 diagnostics from normal user surfaces.
+- Kept redacted playback support details hidden until an actual player error.
+- Preserved Room schema 14, app version, routes, engines, queue behavior, resolver persistence, recovery, external handoff, and developer diagnostics.
+
 ## UIX R3 - Downloads and Add workspace
 
 - Rebuilt Downloads as a transfer-first adaptive workspace with compact metrics, Active/Queued/Finished/All filters, contextual queue notices, on-demand search, flat transfer rows, and long-press selection.

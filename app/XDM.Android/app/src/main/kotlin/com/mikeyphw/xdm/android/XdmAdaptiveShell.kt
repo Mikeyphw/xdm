@@ -86,7 +86,7 @@ fun XdmAdaptiveShell(
                     contentAlignment = Alignment.TopCenter,
                 ) {
                     Column(Modifier.fillMaxSize().widthIn(max = 1480.dp)) {
-                        if (selectedRoute != AppRoute.Downloads) {
+                        if (selectedRoute !in setOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Library)) {
                             XdmPageHeader(
                                 title = selectedRoute.label,
                                 subtitle = selectedRoute.shellSubtitle(),

@@ -7,12 +7,14 @@ checks = {
     "planner": (ROOT / "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt", [
         "MediaTrackSelection", "MediaVariantPickerGroup", "MediaSessionHandoff", "YtDlpMetadataProbeResult", "ProtectedMediaDiagnostic", "redactedSummary",
     ]),
-    "screens": (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", [
-        "Choose variant", "Selected variant", "VariantSelectorRow", "Choose tracks", "Audio track", "Subtitle track",
-        "yt-dlp metadata preview", "Cookie/header session handoff", "Protected media diagnostics", "Media3DirectPlayerCard",
+    "media card": (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaCaptureCard.kt", [
+        "Selected quality", "MediaTrackPickerSheet", "Audio track", "Subtitle track", "VariantSelectorRow",
+    ]),
+    "library": (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/library/MediaLibraryScreen.kt", [
+        "Media3DirectPlayerCard", "MediaLibraryFilter.entries", "LazyVerticalGrid",
     ]),
     "player": (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt", [
-        "ExoPlayer.Builder", "PlayerView", "Media3 player",
+        "ExoPlayer.Builder", "PlayerView", "Support details",
     ]),
     "termux models": (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt", [
         "extraArguments", "YtDlpMetadata", "YtDlpDownload",

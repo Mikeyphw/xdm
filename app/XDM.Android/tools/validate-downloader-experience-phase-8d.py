@@ -104,29 +104,37 @@ for marker in (
 ):
     require(application, marker, "Application resolver wiring")
 
-screens = read("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt")
+media_inbox = read("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt")
+media_card = read("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaCaptureCard.kt")
+consumer_media = media_inbox + "\n" + media_card
 for marker in (
-    "Resolver workspace",
-    "Recent resolutions",
-    "Quality comparison",
-    "Audio and subtitle tracks",
-    "yt-dlp / manifest probe",
-    "Cookies available / redacted",
-    "Authorization present / redacted",
-    "Ready to queue",
+    "Paste page URL",
+    "Ready to download",
+    "Recently queued",
+    "MediaTrackPickerSheet",
+    "Selected quality",
+    "Audio track",
+    "Subtitle track",
     "onTrackSelectionChanged",
 ):
-    require(screens, marker, "Compose resolver UX")
-for forbidden in ("Download immediately", "raw cookie", "show authorization value"):
-    if forbidden.lower() in screens.lower():
-        errors.append(f"Resolver UI violates review/redaction contract: {forbidden}")
+    require(consumer_media, marker, "Consumer media UX")
+for forbidden in (
+    "Recent resolutions",
+    "Resolver workspace",
+    "yt-dlp metadata preview",
+    "Cookie/header session handoff",
+    "Authorization present / redacted",
+    "Sidecar:",
+):
+    if forbidden.lower() in consumer_media.lower():
+        errors.append(f"Normal Media surface exposes retired resolver/debug copy: {forbidden}")
 
 routes = read("app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt")
 shell = read("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")
 for route in ("Downloads", "Add", "Media", "Library", "Activity", "Settings"):
     require(routes, f'{route}("{route}"', "AppRoute")
 for forbidden in ("Browser(", "AppRoute.Browser", "android.webkit", "WebView(", "WebViewClient", "WebChromeClient"):
-    if forbidden in routes + shell + screens + workspace:
+    if forbidden in routes + shell + consumer_media + workspace:
         errors.append(f"Browser runtime token returned: {forbidden}")
 
 for preserved in (

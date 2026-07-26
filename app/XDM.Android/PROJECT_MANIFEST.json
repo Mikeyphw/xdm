@@ -1371,7 +1371,7 @@
     "depends_on": "uix_r1_surface_contract_modularization",
     "next_overlay": "uix_r3_downloads_add_workspace"
   },
-  "current_uix_overlay": "xdm_android_uix_r3_downloads_add_workspace_overlay.zip",
+  "current_uix_overlay": "xdm_android_uix_r4_media_library_consumer_workflow_overlay.zip",
   "uix_r3_downloads_add_workspace": {
     "program": "android_uix_redesign",
     "contract_document": "docs/architecture/UIX-R3-DOWNLOADS-ADD-WORKSPACE.md",
@@ -1396,5 +1396,28 @@
     "version_code_unchanged": 21,
     "depends_on": "uix_r2_flat_dark_adaptive_shell",
     "next_overlay": "uix_r4_media_library_workspaces"
+  },
+  "uix_r4_media_library_consumer_workflows": {
+    "program": "android_uix_redesign",
+    "contract_document": "docs/architecture/UIX-R4-MEDIA-LIBRARY-CONSUMER-WORKFLOWS.md",
+    "static_validator": "tools/validate-uix-r4-media-library-consumer-workflows.py",
+    "consumer_first_media": true,
+    "quality_and_track_review": true,
+    "recent_queue_summary": true,
+    "playable_first_library": true,
+    "library_filters": [
+      "All",
+      "Video",
+      "Audio",
+      "Recently added"
+    ],
+    "adaptive_library_grid": true,
+    "normal_debug_decks_removed": true,
+    "player_support_details_error_bound": true,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "depends_on": "uix_r3_downloads_add_workspace",
+    "next_overlay": "uix_r5_activity_settings_developer_boundary"
   }
 }

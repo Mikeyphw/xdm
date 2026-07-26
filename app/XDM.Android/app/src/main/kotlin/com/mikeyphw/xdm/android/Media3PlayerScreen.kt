@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,93 +34,89 @@ import com.mikeyphw.xdm.android.media.MediaPlayerErrorSnapshot
 @OptIn(UnstableApi::class)
 @Composable
 fun Media3DirectPlayerCard(candidate: MediaPlaybackCandidate, modifier: Modifier = Modifier) {
-    XdmFlatCard(modifier.fillMaxWidth().semantics { contentDescription = "Media3 player ${candidate.title}" }) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            XdmCardTitle("Media3 player")
-            XdmSupportingText(
-                if (candidate.needsExternalResolver) {
-                    "Adaptive or protected media must be resolved into a safe offline asset before playback."
-                } else {
-                    "Completed direct media can be reviewed here before opening it from the offline library."
-                },
-                maxLines = 3,
-            )
+    XdmFlatCard(modifier.fillMaxWidth().semantics { contentDescription = "Player for ${candidate.title}" }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            XdmCardTitle(candidate.title, maxLines = 2)
             if (candidate.needsExternalResolver) {
-                XdmMetadataText("Player withheld until resolver prepares a direct local/direct-safe URL.", maxLines = 2)
-            } else {
-                val context = LocalContext.current
-                var playerDiagnostic by remember(candidate.playbackUrl) { mutableStateOf("Media3 player diagnostics: preparing source.") }
-                var playerErrorSnapshot by remember(candidate.playbackUrl) { mutableStateOf<MediaPlayerErrorSnapshot?>(null) }
-                var playbackPositionMs by remember(candidate.playbackUrl) { mutableStateOf(0L) }
-                val player = remember(candidate.playbackUrl) {
-                    ExoPlayer.Builder(context).build().apply {
-                        setMediaItem(MediaItem.fromUri(Uri.parse(candidate.playbackUrl)))
-                        playWhenReady = false
-                        prepare()
-                    }
-                }
-                DisposableEffect(player) {
-                    val listener = object : Player.Listener {
-                        override fun onPlaybackStateChanged(playbackState: Int) {
-                            playbackPositionMs = player.currentPosition.coerceAtLeast(0L)
-                            playerDiagnostic = when (playbackState) {
-                                Player.STATE_BUFFERING -> "Media3 player diagnostics: buffering direct media."
-                                Player.STATE_READY -> "Media3 player diagnostics: ready for direct playback."
-                                Player.STATE_ENDED -> "Media3 player diagnostics: playback ended."
-                                Player.STATE_IDLE -> "Media3 player diagnostics: idle; retry prepare if the file changed."
-                                else -> "Media3 player diagnostics: state=$playbackState."
-                            }
-                        }
-
-                        override fun onPlayerError(error: PlaybackException) {
-                            playerErrorSnapshot = MediaPlayerErrorSnapshot(
-                                errorCodeName = error.errorCodeName,
-                                message = error.message,
-                                playbackStateLabel = "state=${player.playbackState}",
-                                playWhenReady = player.playWhenReady,
-                                suppressionReasonLabel = "suppression=${player.playbackSuppressionReason}",
-                            )
-                            playerDiagnostic = "Media3 player error diagnostics: ${error.errorCodeName} ${error.message.orEmpty().take(120)}"
-                        }
-                    }
-                    player.addListener(listener)
-                    onDispose {
-                        player.removeListener(listener)
-                        player.release()
-                    }
-                }
-                AndroidView(
-                    modifier = Modifier.fillMaxWidth().height(220.dp),
-                    factory = { viewContext ->
-                        PlayerView(viewContext).apply {
-                            this.player = player
-                            useController = true
-                            contentDescription = "Media3 direct media player"
-                        }
-                    },
-                    update = { it.player = player },
+                XdmNoticeRow(
+                    text = "This item must finish resolving before it can be played safely.",
+                    tone = XdmStatusTone.Warning,
                 )
-                XdmMetadataText(playerDiagnostic, maxLines = 2)
-                val playerReport = MediaPlayerDiagnosticsPlanner().report(candidate, playerErrorSnapshot, playbackPositionMs, player.duration.takeIf { it > 0L })
-                XdmListCard(compact = true) {
-                    XdmMetadataText("Player 2.0 diagnostics")
-                    XdmSupportingText(playerReport.summary, maxLines = 3)
-                    XdmMetadataText("Track availability: ${playerReport.tracks.joinToString { it.summary }}", maxLines = 2)
-                    playerReport.subtitleRows.takeIf { it.isNotEmpty() }?.let { rows -> XdmMetadataText("Subtitle availability: ${rows.joinToString { it.summary }}", maxLines = 2) }
-                    XdmMetadataText("Playback position: ${playerReport.positionMemory.summary}", maxLines = 2)
-                    XdmMetadataText(if (playerReport.protectedDiagnosticOnly) "Protected media diagnostics only; XDM does not bypass DRM." else "Retry prepare is available for source/player failures after review.", maxLines = 2)
-                }
-                TextButton(onClick = {
-                    playerDiagnostic = "Media3 player diagnostics: retrying prepare."
-                    playerErrorSnapshot = null
-                    player.prepare()
-                }) { Text("Retry player prepare") }
-                Text(
-                    text = candidate.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                )
+                return@Column
             }
+
+            val context = LocalContext.current
+            var playerError by remember(candidate.playbackUrl) { mutableStateOf<MediaPlayerErrorSnapshot?>(null) }
+            var playbackPositionMs by remember(candidate.playbackUrl) { mutableStateOf(0L) }
+            val player = remember(candidate.playbackUrl) {
+                ExoPlayer.Builder(context).build().apply {
+                    setMediaItem(MediaItem.fromUri(Uri.parse(candidate.playbackUrl)))
+                    playWhenReady = false
+                    prepare()
+                }
+            }
+            DisposableEffect(player) {
+                val listener = object : Player.Listener {
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        playbackPositionMs = player.currentPosition.coerceAtLeast(0L)
+                        if (playbackState == Player.STATE_READY) playerError = null
+                    }
+
+                    override fun onPlayerError(error: PlaybackException) {
+                        playerError = MediaPlayerErrorSnapshot(
+                            errorCodeName = error.errorCodeName,
+                            message = error.message,
+                            playbackStateLabel = "state=${player.playbackState}",
+                            playWhenReady = player.playWhenReady,
+                            suppressionReasonLabel = "suppression=${player.playbackSuppressionReason}",
+                        )
+                    }
+                }
+                player.addListener(listener)
+                onDispose {
+                    player.removeListener(listener)
+                    player.release()
+                }
+            }
+
+            AndroidView(
+                modifier = Modifier.fillMaxWidth().height(220.dp),
+                factory = { viewContext ->
+                    PlayerView(viewContext).apply {
+                        this.player = player
+                        useController = true
+                        contentDescription = "Media player"
+                    }
+                },
+                update = { it.player = player },
+            )
+
+            playerError?.let { error ->
+                XdmNoticeRow(
+                    text = "This file could not be played. It may have moved, be incomplete, or use an unsupported format.",
+                    tone = XdmStatusTone.Error,
+                    actionLabel = "Retry",
+                    onAction = {
+                        playerError = null
+                        player.prepare()
+                    },
+                )
+                val supportReport = remember(error, playbackPositionMs, player.duration) {
+                    MediaPlayerDiagnosticsPlanner().report(
+                        candidate = candidate,
+                        error = error,
+                        playbackPositionMs = playbackPositionMs,
+                        durationMs = player.duration.takeIf { it > 0L },
+                    )
+                }
+                XdmTechnicalDetails(label = "Support details") {
+                    XdmMetadataText(supportReport.summary, maxLines = 3)
+                    XdmMetadataText("Playback position: ${supportReport.positionMemory.summary}", maxLines = 2)
+                    XdmMetadataText("Track availability: ${supportReport.tracks.joinToString { it.summary }}", maxLines = 3)
+                }
+            }
+
+            TextButton(onClick = { player.seekTo(0L) }) { Text("Restart from beginning") }
         }
     }
 }

@@ -1,0 +1,218 @@
+{
+  "applied_at": "2026-07-26T15:34:43.893959Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_uix_r4_media_library_consumer_workflow_overlay.zip",
+  "artifact_name": "xdm_android_uix_r4_media_library_consumer_workflow_overlay.zip",
+  "type": "overlay",
+  "sha256": "a317b1c3233a1e2ff10ea5417ddc4ddeefed8f37392ab4af02c4bf4a3d7ead87",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Redesign XDM Android media and library workflows",
+  "commit_hash": "",
+  "file_count": 22,
+  "change_counts": {
+    "add": 5,
+    "modify": 17
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android UIX R4 Media and Library consumer workflows",
+    "description": "Rebuilds Media as a private review-first quality and track workspace and Library as a playable-first adaptive collection, while removing resolver, runtime, telemetry, sidecar, validation, and routine player-debug output from normal user surfaces.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "97cb20c5acd0b36a11a39101d4c8d403e2d958f60b019fd6daecddfc93fdcc96",
+          "size": 18194,
+          "source_sha256": "be2d03d4980a51e99a9a901567c6887d6b3be5982f897c9258c897ef0be11f53"
+        },
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "8d82a6a86d5178cc9646aefffbf39c7538db6a6164f7ccafae5b00266cec2d95",
+          "size": 1618,
+          "source_sha256": "877b7979ef7a0c040305049bc489e797f5131e4d2036a1d605c8cc3600457d7a"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "d00be8e3f6a5d8c80e19ccef8cfa636baeb4e6ba88de87080fda0cf4843dfa9b",
+          "size": 4748,
+          "source_sha256": "e966229cddf65abf8a78e8dccbc77e322795bfe37ad9c984445bb2a8547e7046"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "169270c47d4d2f2aeb91e1686d9057f3dfe87d60002280ac10a8ef88ab13efa8",
+          "size": 47682,
+          "source_sha256": "c0ea89ab1b8b844b46ba94b2d884619069e2e68fe12a8154f187482b372c81d7"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt",
+          "action": "modify",
+          "sha256": "f17cabfcb27413fec63a1c870ba50722995b7c6542265c5e64c691e70896fd17",
+          "size": 5612,
+          "source_sha256": "e6a222a39aacd39707de976dbd1411f3a1f74daf489e3dedd0137c651fd99af9"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAdaptiveShell.kt",
+          "action": "modify",
+          "sha256": "688c32012bbe3adf2002842ac0808fdc53380deeea71eab28050e14bac7e3236",
+          "size": 14362,
+          "source_sha256": "f7a99b487659a6eba5c464481b553ea674cf23258f79d26b1ce4d8bed78d21d3"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "5d7d915c29dd713df0e04e2edc8167bf827589a1f94966dd853a2ce1e901cede",
+          "size": 16003,
+          "source_sha256": "fbe7e436e935d10ec687cc0320c858fcec41d042b3d4da4a234d2f6f889f2dbd"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/library/MediaLibraryScreen.kt",
+          "action": "modify",
+          "sha256": "f9311fe9104f10278f85cd58d9b4644cd1d17c062ea61ae629fe2aa76e18c781",
+          "size": 12512,
+          "source_sha256": "c0219a12b2e78e765b4c1f21da394b1cb1286a363a5c37a9ee3382a8bfc2a5b3"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaCaptureCard.kt",
+          "action": "modify",
+          "sha256": "a2f05e44866c1a5a6519a893859bbbe157adfe5757a5db0a1547663e3193acb4",
+          "size": 13131,
+          "source_sha256": "0e12f8a865cef8f40fc58665bbaf3f35a1e66e7ba2a922f2ca50d6be0dc030ab"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt",
+          "action": "modify",
+          "sha256": "0494b262895ce44c350896e112fc2a74b7e2371d294c89d07cde5f7be9d68827",
+          "size": 7636,
+          "source_sha256": "8a1d24ac07f279abbeee5b67a1667d792daa7c7b0e30195340fd9965e31c121f"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "0eda7b3baf4baa72ef186a0bb1c5d343acf585ec0b273aac76f2841b880f9de7",
+          "size": 89595,
+          "source_sha256": "ebde12126d84fa2343b31d6f332626f205ad981e8671e77e956729d9edf9f8f4"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR4MediaLibraryContractTest.kt",
+          "action": "add",
+          "sha256": "75d4ba8b223490d71978ae2776683c1c0f84b3857541ccce0aec0ccfb6324d7e",
+          "size": 3753
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UIX-R4-MEDIA-LIBRARY-CONSUMER-WORKFLOWS.md",
+          "action": "add",
+          "sha256": "0e63f3e11082775f7a0242724e4067eef4a1897c17e76e297c6d59f05d53f816",
+          "size": 2038
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+          "action": "modify",
+          "sha256": "c8deb5b0743c420a9a1aa698884abac1ebaf3ed05bbbdbcde30aeae8d057547d",
+          "size": 15411,
+          "source_sha256": "4aa1fe88f6d7d9c03370f54ce8bd1e14146347b0749bede13e8df2ba1aa0d0fc"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaConsumerWorkspace.kt",
+          "action": "add",
+          "sha256": "a2bfb888ba9aa9c38035e76dd083f6011a386c4f7e38a92ba68d60041ae89e7c",
+          "size": 6470
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaConsumerWorkspaceTest.kt",
+          "action": "add",
+          "sha256": "b95faa24c0d836f0846a1c907092eeb02196e065c6d5bbb2a556b77116c2e6c1",
+          "size": 6279
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "761fafdc717a9056ec748c23cda6954e58be9497a747504816160a714028d98d",
+          "size": 3586,
+          "source_sha256": "d2759887908ba8f14a8e86465ca75cfcb4164b3fc578dc6763d1c7741b6605c4"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8d.py",
+          "action": "modify",
+          "sha256": "ca9b1efb52e9c5c5078740e9565da55809757e3d5756b10699b26126a3bdfe26",
+          "size": 7917,
+          "source_sha256": "c43f5ac5b02616ef40ea7fa28a3e13352c202cf830e0f8a63be7ae5762bb2dd9"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-download-engine-hardening.py",
+          "action": "modify",
+          "sha256": "e0bcb98a1ea764fad8bfdce513b15a901d68397b4d887f0fed878b562332332c",
+          "size": 2440,
+          "source_sha256": "98ab9b33dba6fb443fd8e98912af08960b455e03982e25efbd82b8e7e149a372"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-player-diagnostics.py",
+          "action": "modify",
+          "sha256": "f13cac27d47283bf63caf45b4e5aa964f80bdd692a04a4d7938400b37f4ac514",
+          "size": 1267,
+          "source_sha256": "bade570e1b0a4f58839f23ee5b7bf73b0831d76699678779045c23c6baa9b36e"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-resolver-player.py",
+          "action": "modify",
+          "sha256": "27238dd34387bc70fcfa9a2e2b3fe481c344879528a06c2116c542774cf86299",
+          "size": 3638,
+          "source_sha256": "516ac2e501169d64ef85a8f7dbda92d3fe673b00a568198c4a6c674215e6aab2"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-uix-r4-media-library-consumer-workflows.py",
+          "action": "add",
+          "sha256": "eea8c49776c2c84cee571adb7dc244f6dd2fdd4a90cee0634efcd71616d34047",
+          "size": 7238
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Redesign XDM Android media and library workflows"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Requires xdm_android_uix_r3_downloads_add_workspace_overlay.zip as its direct baseline; validated user baseline commit is 3eb4ef1.",
+      "Media leads with Paste page URL, private-session guidance, reviewable captures, common quality chips, complete video/audio/subtitle selection, estimated size, explicit download, and recently queued progress.",
+      "Library leads with playable media, All/Video/Audio/Recently added filters, compact list or adaptive grid, and Play/Resume/Retry/More actions.",
+      "Resolver history, raw media/session values, Termux controls, dispatch plans, telemetry, worker bridges, privacy audits, validation decks, sidecar JSON, and routine player diagnostics stay out of normal Media and Library surfaces.",
+      "Redacted player support details appear only after an actual playback error.",
+      "Room schema 14, versionName 0.20.0-rc08, versionCode 21, routes, engines, queue policy, scheduler, recovery, external handoff, resolver persistence, and developer diagnostics are unchanged.",
+      "UIX R5 is the next overlay and redesigns Activity, Settings, and the Developer options boundary."
+    ]
+  },
+  "history_id": "db72e16411194948b985ec9ea9adb1bb"
+}

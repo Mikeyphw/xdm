@@ -28,6 +28,7 @@ jobs:
           python3 tools/validate-uix-r1-surface-boundary.py
           python3 tools/validate-uix-r2-flat-dark-shell.py
           python3 tools/validate-uix-r3-downloads-add-workspace.py
+          python3 tools/validate-uix-r4-media-library-consumer-workflows.py
           python3 tools/validate-phase-2-3.py
           python3 tools/validate-phase-4.py
           python3 tools/validate-phase-5.py

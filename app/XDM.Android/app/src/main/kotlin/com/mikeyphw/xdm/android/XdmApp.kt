@@ -150,31 +150,24 @@ private fun XdmRouteContent(
             )
             AppRoute.Add -> Unit
             AppRoute.Media -> MediaInboxScreen(
-                state.mediaCaptures,
-                state.mediaVariants,
-                state.mediaTrackSelections,
-                state.downloads,
-                state.termuxMediaPipeline,
-                state.postProcessingAutomation,
-                viewModel::downloadMediaCapture,
-                viewModel::togglePause,
-                viewModel::resolveMediaCapture,
-                viewModel::selectMediaVariant,
-                viewModel::updateMediaTrackSelection,
-                viewModel::removeMediaCapture,
-                viewModel::extractMediaMetadataWithTermux,
-                viewModel::inspectMediaWithTermuxFfprobe,
-                viewModel::downloadMediaWithTermuxYtDlp,
-                viewModel::convertMediaWithTermux,
-                viewModel::clearCompletedTermuxMediaJobs,
-                viewModel::previewPostProcessingForMedia,
-                viewModel::runPostProcessingForMedia,
+                captures = state.mediaCaptures,
+                variants = state.mediaVariants,
+                mediaTrackSelections = state.mediaTrackSelections,
+                downloads = state.downloads,
+                onPastePageUrl = { viewModel.navigate(AppRoute.Add) },
+                onDownload = viewModel::downloadMediaCapture,
+                onResumeOrRetryDownload = viewModel::togglePause,
+                onResolve = viewModel::resolveMediaCapture,
+                onSelectVariant = viewModel::selectMediaVariant,
+                onTrackSelectionChanged = viewModel::updateMediaTrackSelection,
+                onRemove = viewModel::removeMediaCapture,
             )
             AppRoute.Library -> MediaLibraryScreen(
                 captures = state.mediaCaptures,
                 variants = state.mediaVariants,
                 downloads = state.downloads,
                 onResumeOrRetryDownload = viewModel::togglePause,
+                onRemoveRecord = viewModel::removeMediaCapture,
             )
             AppRoute.Activity -> ActivityHub(state, viewModel)
             AppRoute.Settings -> SettingsScreen(

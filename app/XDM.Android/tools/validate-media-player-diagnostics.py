@@ -4,8 +4,7 @@ root = Path(__file__).resolve().parents[1]
 checks = {
     'docs/architecture/PHASE-29-MEDIA-PLAYER-DIAGNOSTICS.md': ['source, network, decoder', 'no DRM bypass', 'playback-position'],
     'media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaPlayerDiagnostics.kt': ['MediaPlayerDiagnosticBucket', 'RetryPrepare', 'Protected media diagnostics only', 'MediaPlayerPositionMemoryPlan'],
-    'app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt': ['Player 2.0 diagnostics', 'Retry player prepare', 'Track availability', 'Playback position'],
-    'app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt': ['Player diagnostics deck', 'Phase 29 makes Media3 playback failures'],
+    'app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt': ['playerError?.let', 'Support details', 'Track availability', 'Playback position'],
     'PROJECT_MANIFEST.json': ['media_player_diagnostics', 'no_validation_until_final_phase'],
 }
 for rel, tokens in checks.items():

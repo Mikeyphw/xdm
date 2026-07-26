@@ -1,23 +1,26 @@
-# XDM Android UIX R3 Overlay
+# XDM Android UIX R4 Overlay
 
-UIX R3 installs the transfer-first Downloads control center and two-step Add workflow on top of the validated UIX R2 adaptive shell.
+UIX R4 installs consumer-first Media and playable-first Library workflows on top of the validated UIX R3 Downloads and Add baseline.
 
 ## Included
 
-- Compact metrics for active transfers, aggregate speed, remaining time, and queued work.
-- Active, Queued, Finished, and All filters with contextual empty states and an explicit search action.
-- Flat download rows with long-press selection, one primary action, progress, reason, size, speed, and ETA.
-- Adaptive detail presentation: bottom sheet on compact/medium screens and persistent list-detail pane on expanded layouts.
-- Folded, redacted technical details.
-- Organize downloads workspace for sorting, archive visibility, bulk actions, tags, saved searches, history, and Activity links.
-- Two-step Add workflow: Review download, then Add to queue.
-- External source review and explicit Inspect media that never auto-queues.
-- JVM contracts, static validation, architecture documentation, CI, and final-gate integration.
+- Media page header with Paste page URL and plain privacy guidance.
+- Reviewable capture cards with common quality chips, full video/audio/subtitle selection, estimated size, and explicit Download.
+- Compact Recently queued progress rows.
+- Library filters for All, Video, Audio, and Recently added.
+- Compact list on phones and adaptive grid on medium/expanded screens.
+- Play, Resume download, Retry, More, open-file, and safe record-removal actions.
+- Media3 support details shown only after an actual playback error.
+- Pure planner tests, UI source contracts, static validator, architecture documentation, CI, and final-gate integration.
+
+## User/developer boundary
+
+Resolver history, raw media/session values, Termux and yt-dlp controls, dispatch plans, queue telemetry, worker bridges, privacy audits, validation decks, sidecar JSON, and routine player diagnostics are not rendered in normal Media or Library workflows. The underlying redacted developer and support tools remain preserved.
 
 ## Preserved
 
-Room remains schema 14 and the app remains `versionName 0.20.0-rc08` / `versionCode 21`. Internal routes, native, aria2, Termux, yt-dlp, Media3, queue intelligence, schedules, recovery, external handoff, and developer diagnostics are unchanged.
+Room remains schema 14 and the app remains `versionName 0.20.0-rc08` / `versionCode 21`. Internal routes, native, aria2, Termux, yt-dlp, Media3, queue intelligence, schedules, recovery, external handoff, resolver state, and track-selection persistence are unchanged.
 
 ## Dependency
 
-Apply after `xdm_android_uix_r2_flat_dark_adaptive_shell_overlay.zip`. UIX R4 will redesign Media and Library.
+Apply after `xdm_android_uix_r3_downloads_add_workspace_overlay.zip`. UIX R5 will redesign Activity, Settings, and the Developer options boundary.

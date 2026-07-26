@@ -10,6 +10,7 @@ validators=(
   tools/validate-uix-r1-surface-boundary.py
   tools/validate-uix-r2-flat-dark-shell.py
   tools/validate-uix-r3-downloads-add-workspace.py
+  tools/validate-uix-r4-media-library-consumer-workflows.py
   tools/validate-phase-2-3.py
   tools/validate-phase-4.py
   tools/validate-phase-5.py

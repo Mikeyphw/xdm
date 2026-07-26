@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 checks = {
     "doc": ROOT / "docs/architecture/PHASE-21-MEDIA-DOWNLOAD-ENGINE-HARDENING.md",
     "execution": ROOT / "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionLibrary.kt",
-    "screens": ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt",
+    "screens": ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsScreen.kt",
     "viewmodel": ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
     "player": ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt",
     "handoff": ROOT / "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/MediaRequestHandoffStore.kt",
@@ -19,7 +19,7 @@ required = {
     "execution": ["MediaExecutionLane", "MediaBackgroundExecutionPolicy", "MediaTempCookieFilePlan", "Aria2TransientInputPlan", "MediaSecretLeakReport", "MediaExecutionEnginePlan", "# Netscape HTTP Cookie File"],
     "screens": ["Download engine hardening", "UIDT / WorkManager fallback / foreground service policy", "No cookie leaks"],
     "viewmodel": ["enginePlan.safeSummary", "cleanupActions = enginePlan.cleanupActions", "tempCookieFileName = enginePlan.tempCookieFile?.fileName"],
-    "player": ["onPlayerError", "Retry player prepare", "Media3 player error diagnostics"],
+    "player": ["onPlayerError", "actionLabel = \"Retry\"", "Support details"],
     "handoff": ["cleanupActions", "tempCookieFileName", "verifyForgotten", "process-local handoff"],
     "manifest": ["media_download_engine_hardening", "no_validation_until_final_phase", "top_level_route_added"],
 }

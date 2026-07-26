@@ -162,3 +162,10 @@ Schedule editing exposes network type, charging, minimum battery, storage reserv
 Downloads is a transfer-first adaptive workspace. It exposes Active, Queued, Finished, and All filters, a compact live metric strip, contextual queue notices, an explicit search action, and an **Organize downloads** workspace for sort, archive, selection, tags, saved searches, history, and activity links. Long press enters selection mode; permanent row-level Select chips are prohibited. Compact and medium layouts open details in an adaptive sheet, while expanded layouts keep a persistent list-detail pane. Technical engine and request information stays folded and redacted.
 
 Add uses a two-step review contract: **Review download**, then **Add to queue**. File, Destination, and Method are visible in the review summary. Advanced settings remain folded. External handoffs identify their source and never auto-queue. **Inspect media** may open the resolver but must never create a transfer automatically.
+
+
+## UIX R4 Media and Library Rules
+
+Media is a consumer-first review workspace. It leads with captured media, common quality choices, a complete video/audio/subtitle selection sheet, estimated size, explicit Download, and a compact Recently queued summary. Raw URLs, session data, cookies, authorization values, resolver stages, runtime plans, telemetry, worker bridges, privacy audits, phase labels, and release validation decks are prohibited from the normal Media surface.
+
+Library is playable-first. It exposes All, Video, Audio, and Recently added filters, a compact list on phones, an adaptive grid on larger screens, and one clear Play, Resume download, or Retry action per item. Sidecar JSON is developer-only. Media3 support details remain hidden until an actual playback error occurs. Removing a library record must clearly state that it does not delete the downloaded file.
