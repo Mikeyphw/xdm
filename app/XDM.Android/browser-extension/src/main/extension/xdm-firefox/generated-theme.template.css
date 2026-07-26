@@ -4,9 +4,24 @@
   --xdm-bg: @@BACKGROUND@@;
   --xdm-surface: @@SURFACE@@;
   --xdm-raised: @@RAISED@@;
+  --xdm-strong-surface: @@STRONG_SURFACE@@;
   --xdm-text: @@TEXT@@;
   --xdm-muted: @@MUTED@@;
   --xdm-primary: @@PRIMARY@@;
+  --xdm-on-primary: @@ON_PRIMARY@@;
   --xdm-primary-container: @@PRIMARY_CONTAINER@@;
+  --xdm-on-primary-container: @@ON_PRIMARY_CONTAINER@@;
   --xdm-outline: @@OUTLINE@@;
+  --xdm-outline-variant: @@OUTLINE_VARIANT@@;
+  --xdm-separator: @@SEPARATOR@@;
+  --xdm-success: @@SUCCESS@@;
+  --xdm-success-container: @@SUCCESS_CONTAINER@@;
+  --xdm-error: @@ERROR@@;
+  --xdm-error-container: @@ERROR_CONTAINER@@;
+  --xdm-fab-size: @@FAB_SIZE@@px;
+  --xdm-fab-radius: @@FAB_RADIUS@@px;
+  --xdm-fab-edge-inset: @@FAB_EDGE_INSET@@px;
+  --xdm-fab-action-gap: @@FAB_ACTION_GAP@@px;
+  --xdm-motion-fast: @@MOTION_FAST@@ms;
+  --xdm-motion-standard: @@MOTION_STANDARD@@ms;
 }

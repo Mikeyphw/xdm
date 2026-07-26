@@ -34,3 +34,9 @@ The extension defaults to XDM through the Phase 37 `xdmdownload://capture?v=1&ur
 ```
 
 Outputs are deterministic, validated XPIs under `build/outputs/xpi/`. The Android app calls the same Kotlin generator when exporting through a persisted SAF folder.
+
+## Phase 40 shared theme and FAB
+
+The Android Compose theme and generated Firefox packages now consume `XdmThemeTokenCatalog` as one palette, shape, and motion source. `Follow app` resolves to Dark or AMOLED when the XPI is generated; later app-theme changes mark the previous export as stale.
+
+The webpage launcher is a 56 px Shadow DOM FAB with safe-area placement, candidate and HLS/DASH badges, reduced-motion support, and XDM, 1DM+, or Ask target behavior. Detailed status remains in the popup rather than a large page card.

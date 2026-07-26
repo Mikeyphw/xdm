@@ -80,7 +80,7 @@ async function showLauncher(input) {
     runAt: "document_idle"
   });
   if (!results || results[0] !== true) throw new Error("The page launcher could not be created.");
-  setStatus("Launcher added to the webpage. Close this panel, then tap it.", "ok");
+  setStatus("Themed FAB added to the webpage. Close this panel, then tap it.", "ok");
 }
 
 async function handle(action) {
@@ -184,7 +184,7 @@ document.getElementById("rescan").addEventListener("click", async () => {
       runAt: "document_idle"
     });
     if (!results || !results.some(Boolean)) throw new Error("No page detector was reachable.");
-    setStatus("Rescan requested. Start or resume the video, then watch for the page launcher.", "ok");
+    setStatus("Rescan requested. Start or resume the video, then watch for the themed page FAB.", "ok");
     await refreshDiagnostics();
   } catch (error) {
     setStatus(error && error.message ? error.message : String(error), "error");

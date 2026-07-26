@@ -1,3 +1,18 @@
+# Apply XDM Android Phase 40 shared theme and themed FAB
+
+Phase 40 depends on the landed Phase 39 XPI export pipeline. It adds the shared XDM theme contract, Follow app export behavior, and compact Shadow DOM FAB without expanding the browser deep-link payload or changing routes, Room, transfer engines, or app version.
+
+```bash
+cd "$HOME/Code/xdm" && \
+  devtool --copy --auto-hud --hud-mode desktop-window --yes \
+  -r "$HOME/Code/xdm" \
+  --target xdm_android \
+  apply-overlay "$HOME/Downloads/xdm_android_phase40_extension_theme_fab_overlay.zip" \
+  --validate
+```
+
+The schema-v2 artifact owns the commit message `Add shared XDM extension theme and FAB`. Do not pass `--commit`.
+
 # Apply XDM Android Phase 37 browser scheme contract
 
 Phase 37 depends on the current Phase 36 external-download-handoff baseline and adds the XDM-owned custom URI contract without changing routes, Room, or transfer engines.

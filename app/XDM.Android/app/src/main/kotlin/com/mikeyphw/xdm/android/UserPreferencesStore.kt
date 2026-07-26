@@ -92,8 +92,8 @@ class UserPreferencesStore(private val context: Context) {
                     ?.let { stored -> BrowserExtensionSourceContract.Target.entries.firstOrNull { it.wireValue == stored } }
                     ?: BrowserExtensionSourceContract.Target.Xdm,
                 requestedTheme = preferences[Keys.BrowserExtensionRequestedTheme]
-                    ?.let { stored -> BrowserExtensionSourceContract.ThemeMode.entries.firstOrNull { it.wireValue == stored } }
-                    ?: BrowserExtensionSourceContract.ThemeMode.Dark,
+                    ?.let { stored -> BrowserExtensionSourceContract.ThemeSelection.entries.firstOrNull { it.wireValue == stored } }
+                    ?: BrowserExtensionSourceContract.ThemeSelection.FollowApp,
                 lastExportTheme = preferences[Keys.BrowserExtensionLastExportTheme]
                     ?.let { stored -> BrowserExtensionSourceContract.ThemeMode.entries.firstOrNull { it.wireValue == stored } },
                 lastExportAppVersion = preferences[Keys.BrowserExtensionLastExportAppVersion].orEmpty(),
@@ -159,7 +159,7 @@ class UserPreferencesStore(private val context: Context) {
         context.dataStore.edit { it[Keys.BrowserExtensionDefaultTarget] = target.wireValue }
     }
 
-    suspend fun setBrowserExtensionRequestedTheme(theme: BrowserExtensionSourceContract.ThemeMode) {
+    suspend fun setBrowserExtensionRequestedTheme(theme: BrowserExtensionSourceContract.ThemeSelection) {
         context.dataStore.edit { it[Keys.BrowserExtensionRequestedTheme] = theme.wireValue }
     }
 

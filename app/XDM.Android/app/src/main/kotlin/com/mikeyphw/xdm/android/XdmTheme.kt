@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
@@ -7,62 +8,48 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
+import com.mikeyphw.xdm.android.browserextension.BrowserExtensionSourceContract
+import com.mikeyphw.xdm.android.browserextension.XdmThemeTokenCatalog
+import com.mikeyphw.xdm.android.browserextension.XdmThemeTokens
 
-private val XdmBackground = Color(0xFF090B0F)
-private val XdmSurface = Color(0xFF101318)
-private val XdmSurfaceRaised = Color(0xFF161A21)
-private val XdmSurfaceStrong = Color(0xFF1C212A)
-private val XdmBlue = Color(0xFF7DB8FF)
-private val XdmBlueContainer = Color(0xFF183B59)
-private val XdmGreen = Color(0xFF79D49A)
-private val XdmGreenContainer = Color(0xFF153D29)
-private val XdmAmber = Color(0xFFF1C36D)
-private val XdmAmberContainer = Color(0xFF453510)
-private val XdmRose = Color(0xFFFFB4AB)
-private val XdmRoseContainer = Color(0xFF5A1F22)
-private val XdmText = Color(0xFFE8EDF5)
-private val XdmTextMuted = Color(0xFFABB4C2)
-private val XdmOutline = Color(0xFF333A46)
+private fun XdmThemeMode.extensionMode(): BrowserExtensionSourceContract.ThemeMode = when (this) {
+    XdmThemeMode.Dark -> BrowserExtensionSourceContract.ThemeMode.Dark
+    XdmThemeMode.Amoled -> BrowserExtensionSourceContract.ThemeMode.Amoled
+}
 
-private val XdmDarkColorScheme = darkColorScheme(
-    primary = XdmBlue,
-    onPrimary = Color(0xFF003259),
-    primaryContainer = XdmBlueContainer,
-    onPrimaryContainer = Color(0xFFD2E8FF),
+private fun themeTokens(mode: XdmThemeMode): XdmThemeTokens = XdmThemeTokenCatalog.forMode(mode.extensionMode())
+
+private fun colorScheme(tokens: XdmThemeTokens) = darkColorScheme(
+    primary = Color(tokens.primary),
+    onPrimary = Color(tokens.onPrimary),
+    primaryContainer = Color(tokens.primaryContainer),
+    onPrimaryContainer = Color(tokens.onPrimaryContainer),
     inversePrimary = Color(0xFF285F8B),
-    secondary = Color(0xFFAEC9E6),
-    onSecondary = Color(0xFF163149),
-    secondaryContainer = Color(0xFF243C53),
-    onSecondaryContainer = Color(0xFFD8E9FA),
-    tertiary = XdmAmber,
-    onTertiary = Color(0xFF3E2E00),
-    tertiaryContainer = XdmAmberContainer,
-    onTertiaryContainer = Color(0xFFFFE3A7),
-    background = XdmBackground,
-    onBackground = XdmText,
-    surface = XdmSurface,
-    onSurface = XdmText,
-    surfaceVariant = XdmSurfaceRaised,
-    onSurfaceVariant = XdmTextMuted,
+    secondary = Color(tokens.secondary),
+    onSecondary = Color(tokens.onSecondary),
+    secondaryContainer = Color(tokens.secondaryContainer),
+    onSecondaryContainer = Color(tokens.onSecondaryContainer),
+    tertiary = Color(tokens.tertiary),
+    onTertiary = Color(tokens.onTertiary),
+    tertiaryContainer = Color(tokens.tertiaryContainer),
+    onTertiaryContainer = Color(tokens.onTertiaryContainer),
+    background = Color(tokens.background),
+    onBackground = Color(tokens.text),
+    surface = Color(tokens.surface),
+    onSurface = Color(tokens.text),
+    surfaceVariant = Color(tokens.raisedSurface),
+    onSurfaceVariant = Color(tokens.mutedText),
     surfaceTint = Color.Transparent,
     inverseSurface = Color(0xFFE4E8EF),
     inverseOnSurface = Color(0xFF25282E),
-    error = XdmRose,
-    onError = Color(0xFF690005),
-    errorContainer = XdmRoseContainer,
-    onErrorContainer = Color(0xFFFFDAD6),
-    outline = XdmOutline,
-    outlineVariant = Color(0xFF262C35),
+    error = Color(tokens.error),
+    onError = Color(tokens.onError),
+    errorContainer = Color(tokens.errorContainer),
+    onErrorContainer = Color(tokens.onErrorContainer),
+    outline = Color(tokens.outline),
+    outlineVariant = Color(tokens.outlineVariant),
     scrim = Color.Black,
-)
-
-private val XdmAmoledColorScheme = XdmDarkColorScheme.copy(
-    background = Color.Black,
-    surface = Color.Black,
-    surfaceVariant = Color(0xFF0B0D10),
-    outlineVariant = Color(0xFF1B1E24),
 )
 
 private val XdmShapes = Shapes(
@@ -90,29 +77,23 @@ data class XdmExtendedColors(
     val separator: Color,
 )
 
-private val XdmDarkExtendedColors = XdmExtendedColors(
-    success = XdmGreen,
-    onSuccess = Color(0xFF003919),
-    successContainer = XdmGreenContainer,
-    onSuccessContainer = Color(0xFFB5F3C8),
-    warning = XdmAmber,
-    onWarning = Color(0xFF3E2E00),
-    warningContainer = XdmAmberContainer,
-    onWarningContainer = Color(0xFFFFE3A7),
-    info = XdmBlue,
-    onInfo = Color(0xFF003259),
-    groupedSurface = XdmSurfaceRaised,
-    groupedSurfaceStrong = XdmSurfaceStrong,
-    separator = Color(0xFF252B35),
+private fun extendedColors(tokens: XdmThemeTokens) = XdmExtendedColors(
+    success = Color(tokens.success),
+    onSuccess = Color(tokens.onSuccess),
+    successContainer = Color(tokens.successContainer),
+    onSuccessContainer = Color(tokens.onSuccessContainer),
+    warning = Color(tokens.tertiary),
+    onWarning = Color(tokens.onTertiary),
+    warningContainer = Color(tokens.tertiaryContainer),
+    onWarningContainer = Color(tokens.onTertiaryContainer),
+    info = Color(tokens.primary),
+    onInfo = Color(tokens.onPrimary),
+    groupedSurface = Color(tokens.raisedSurface),
+    groupedSurfaceStrong = Color(tokens.strongSurface),
+    separator = Color(tokens.separator),
 )
 
-private val XdmAmoledExtendedColors = XdmDarkExtendedColors.copy(
-    groupedSurface = Color(0xFF0B0D10),
-    groupedSurfaceStrong = Color(0xFF12151A),
-    separator = Color(0xFF191C22),
-)
-
-private val LocalXdmExtendedColors = staticCompositionLocalOf { XdmDarkExtendedColors }
+private val LocalXdmExtendedColors = staticCompositionLocalOf { extendedColors(XdmThemeTokenCatalog.Dark) }
 
 object XdmTheme {
     val extendedColors: XdmExtendedColors
@@ -124,11 +105,10 @@ fun XdmTheme(
     mode: XdmThemeMode = XdmThemeMode.Dark,
     content: @Composable () -> Unit,
 ) {
-    val colors = if (mode == XdmThemeMode.Amoled) XdmAmoledColorScheme else XdmDarkColorScheme
-    val extended = if (mode == XdmThemeMode.Amoled) XdmAmoledExtendedColors else XdmDarkExtendedColors
-    androidx.compose.runtime.CompositionLocalProvider(LocalXdmExtendedColors provides extended) {
+    val tokens = themeTokens(mode)
+    androidx.compose.runtime.CompositionLocalProvider(LocalXdmExtendedColors provides extendedColors(tokens)) {
         MaterialTheme(
-            colorScheme = colors,
+            colorScheme = colorScheme(tokens),
             typography = XdmTypography,
             shapes = XdmShapes,
             content = content,

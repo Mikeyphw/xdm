@@ -2,10 +2,15 @@ package com.mikeyphw.xdm.android
 
 import com.mikeyphw.xdm.android.browserextension.BrowserExtensionSourceContract
 
+fun XdmThemeMode.toBrowserExtensionThemeMode(): BrowserExtensionSourceContract.ThemeMode = when (this) {
+    XdmThemeMode.Dark -> BrowserExtensionSourceContract.ThemeMode.Dark
+    XdmThemeMode.Amoled -> BrowserExtensionSourceContract.ThemeMode.Amoled
+}
+
 data class BrowserExtensionExportPreferences(
     val exportTreeUri: String = "",
     val defaultTarget: BrowserExtensionSourceContract.Target = BrowserExtensionSourceContract.Target.Xdm,
-    val requestedTheme: BrowserExtensionSourceContract.ThemeMode = BrowserExtensionSourceContract.ThemeMode.Dark,
+    val requestedTheme: BrowserExtensionSourceContract.ThemeSelection = BrowserExtensionSourceContract.ThemeSelection.FollowApp,
     val lastExportTheme: BrowserExtensionSourceContract.ThemeMode? = null,
     val lastExportAppVersion: String = "",
     val lastExportExtensionVersion: String = "",
@@ -13,7 +18,13 @@ data class BrowserExtensionExportPreferences(
     val lastExportEpochMs: Long = 0L,
     val lastExportFileName: String = "",
     val lastExportByteCount: Long = 0L,
-)
+) {
+    fun resolvedTheme(appTheme: XdmThemeMode): BrowserExtensionSourceContract.ThemeMode =
+        requestedTheme.resolve(appTheme.toBrowserExtensionThemeMode())
+
+    fun isThemeStale(appTheme: XdmThemeMode): Boolean =
+        lastExportFileName.isNotBlank() && lastExportTheme != resolvedTheme(appTheme)
+}
 
 enum class BrowserExtensionExportPhase {
     Idle,

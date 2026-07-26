@@ -23,6 +23,8 @@ internal fun BrowserExtensionSettingsScreen(
 ) {
     val preferences = state.browserExtension
     val runtime = state.browserExtensionRuntime
+    val resolvedTheme = preferences.resolvedTheme(state.themeMode)
+    val themeStale = preferences.isThemeStale(state.themeMode)
     val exportFolderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.toString()?.let(viewModel::registerBrowserExtensionExportDirectory)
     }
@@ -37,8 +39,8 @@ internal fun BrowserExtensionSettingsScreen(
             XdmListCard {
                 XdmCardTitle("Firefox bridge package")
                 XdmSupportingText(
-                    "XDM generates the repository-owned Firefox extension with this app variant's scheme and your selected target. The XPI is validated and checksum-verified before export.",
-                    maxLines = 5,
+                    "XDM generates the repository-owned Firefox extension with this app variant's scheme, selected target, and shared XDM theme tokens. The XPI is validated and checksum-verified before export.",
+                    maxLines = 6,
                 )
                 XdmMetadataText("Extension ${BrowserExtensionSourceContract.DevelopmentVersion} • Contract ${BrowserExtensionSourceContract.ContractVersion}")
             }
@@ -57,7 +59,7 @@ internal fun BrowserExtensionSettingsScreen(
         item {
             XdmListCard {
                 XdmCardTitle("Default target")
-                XdmSupportingText("The extension can open detected media in XDM, 1DM+, or ask on each page.", maxLines = 3)
+                XdmSupportingText("The themed page FAB can open detected media in XDM, 1DM+, or expand compact target choices.", maxLines = 3)
                 XdmActionFlowRow {
                     BrowserExtensionSourceContract.Target.entries.forEach { target ->
                         FilterChip(
@@ -72,9 +74,12 @@ internal fun BrowserExtensionSettingsScreen(
         item {
             XdmListCard {
                 XdmCardTitle("Generated theme")
-                XdmSupportingText("Phase 39 packages Dark and AMOLED palettes. Phase 40 will move these colors to the shared XDM theme-token contract.", maxLines = 4)
+                XdmSupportingText(
+                    "Follow app captures XDM's current ${state.themeMode.label} palette when the XPI is generated. Firefox cannot read Android theme changes after installation, so a changed app theme requires regeneration.",
+                    maxLines = 5,
+                )
                 XdmActionFlowRow {
-                    BrowserExtensionSourceContract.ThemeMode.entries.forEach { theme ->
+                    BrowserExtensionSourceContract.ThemeSelection.entries.forEach { theme ->
                         FilterChip(
                             selected = preferences.requestedTheme == theme,
                             onClick = { viewModel.setBrowserExtensionTheme(theme) },
@@ -82,18 +87,29 @@ internal fun BrowserExtensionSettingsScreen(
                         )
                     }
                 }
+                XdmMetadataText("Next package: ${resolvedTheme.label}")
+                if (themeStale) {
+                    XdmStatusBadge("Regeneration needed", tone = XdmStatusTone.Warning)
+                    XdmSupportingText("The last exported XPI uses ${preferences.lastExportTheme?.label ?: "another theme"}; XDM now resolves this package to ${resolvedTheme.label}.", maxLines = 3)
+                }
             }
         }
         item {
             XdmListCard {
-                XdmCardTitle("Generate XPI")
+                XdmCardTitle(if (themeStale) "Regenerate XPI" else "Generate XPI")
                 XdmSupportingText(runtime.message, maxLines = 4)
                 XdmActionFlowRow {
                     Button(
                         enabled = preferences.exportTreeUri.isNotBlank() && runtime.phase != BrowserExtensionExportPhase.Exporting,
                         onClick = viewModel::generateBrowserExtensionXpi,
                     ) {
-                        Text(if (runtime.phase == BrowserExtensionExportPhase.Exporting) "Generating…" else "Generate XPI")
+                        Text(
+                            when {
+                                runtime.phase == BrowserExtensionExportPhase.Exporting -> "Generating…"
+                                themeStale -> "Regenerate XPI"
+                                else -> "Generate XPI"
+                            },
+                        )
                     }
                 }
             }

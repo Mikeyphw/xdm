@@ -1574,5 +1574,43 @@
     "top_level_route_added": false,
     "depends_on": "browser_bridge_phase38_repo_owned_firefox_extension",
     "next_overlay": "browser_bridge_phase40_extension_theme_fab"
+  },
+  "browser_bridge_phase40_extension_theme_fab": {
+    "program": "android_browser_bridge",
+    "contract_version": 1,
+    "contract_document": "docs/architecture/PHASE-40-SHARED-THEME-FAB.md",
+    "static_validator": "tools/validate-phase-40-theme-fab.py",
+    "shared_theme_catalog": "XdmThemeTokenCatalog",
+    "compose_and_xpi_single_source": true,
+    "supported_export_selections": [
+      "follow-app",
+      "dark",
+      "amoled"
+    ],
+    "follow_app_resolved_at_generation": true,
+    "stale_export_on_app_theme_change": true,
+    "launcher_surface": "shadow-dom-fab",
+    "fab_size_px": 56,
+    "fab_corner_radius_px": 18,
+    "safe_area_aware": true,
+    "reduced_motion": true,
+    "candidate_count_badge": true,
+    "stream_kind_badges": [
+      "HLS",
+      "DASH"
+    ],
+    "target_modes": [
+      "xdm",
+      "1dm",
+      "ask"
+    ],
+    "whole_document_polling": false,
+    "custom_scheme_payload_expanded": false,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "top_level_route_added": false,
+    "depends_on": "browser_bridge_phase39_xpi_generation_export",
+    "next_overlay": "browser_bridge_phase41_browser_bridge_integration"
   }
 }

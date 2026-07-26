@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "XDM Android Media Bridge",
   "version": "@@EXTENSION_VERSION@@",
-  "description": "Detect browser media and hand it to XDM Android or 1DM+ through a real in-page launcher.",
+  "description": "Detect browser media and hand it to XDM Android or 1DM+ through a themed in-page FAB.",
   "browser_specific_settings": {
     "gecko": {
       "id": "xdm-android-media-bridge@mikeyphw",

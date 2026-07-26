@@ -32,11 +32,21 @@ for token in ("params.set(\"v\"", "params.set(\"url\"", "//capture?", "idmdownlo
 for token in ("extra_cookies", "extra_authorization", "extra_headers"):
     if token in handoff: errors.append(f"credential-bearing XDM handoff token present: {token}")
 config = (root / "generated-config.js").read_text(encoding="utf-8") if (root / "generated-config.js").is_file() else ""
-if 'xdmScheme: "xdmdownload"' not in config: errors.append("development XDM scheme missing")
-if 'defaultTarget: \"xdm\"' not in config: errors.append("XDM must be the development default target")
-if 'themeMode: \"dark\"' not in config: errors.append("development theme mode missing")
+scheme_match = re.search(r'xdmScheme:\s*"([a-z][a-z0-9+.-]{1,40})"', config)
+target_match = re.search(r'defaultTarget:\s*"(xdm|1dm|ask)"', config)
+theme_match = re.search(r'themeMode:\s*"(dark|amoled)"', config)
+if not scheme_match: errors.append("generated XDM scheme missing or invalid")
+if not target_match: errors.append("generated default target missing or invalid")
+if not theme_match: errors.append("generated theme mode missing or invalid")
 theme = (root / "generated-theme.css").read_text(encoding="utf-8") if (root / "generated-theme.css").is_file() else ""
-if "--xdm-theme-mode: dark" not in theme: errors.append("generated dark theme missing")
+if theme_match and f"--xdm-theme-mode: {theme_match.group(1)}" not in theme:
+    errors.append("generated CSS theme does not match generated config")
+for token in (
+    "--xdm-bg:", "--xdm-surface:", "--xdm-primary:", "--xdm-on-primary-container:",
+    "--xdm-separator:", "--xdm-fab-size: 56px", "--xdm-fab-radius: 18px",
+    "--xdm-motion-standard: 220ms",
+):
+    if token not in theme: errors.append(f"generated shared theme token missing: {token}")
 if errors:
     print("Firefox extension validation failed:", file=sys.stderr)
     for error in errors: print(f"- {error}", file=sys.stderr)

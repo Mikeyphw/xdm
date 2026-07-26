@@ -926,7 +926,7 @@ class MainViewModel(
         viewModelScope.launch { preferences.setBrowserExtensionDefaultTarget(target) }
     }
 
-    fun setBrowserExtensionTheme(theme: BrowserExtensionSourceContract.ThemeMode) {
+    fun setBrowserExtensionTheme(theme: BrowserExtensionSourceContract.ThemeSelection) {
         viewModelScope.launch { preferences.setBrowserExtensionRequestedTheme(theme) }
     }
 
@@ -945,6 +945,7 @@ class MainViewModel(
             "debug" -> BrowserExtensionSourceContract.Channel.Debug
             else -> BrowserExtensionSourceContract.Channel.Release
         }
+        val resolvedTheme = current.resolvedTheme(uiState.value.themeMode)
         val config = BrowserExtensionBuildConfig(
             extensionVersion = BrowserExtensionSourceContract.DevelopmentVersion,
             appVersion = BuildConfig.VERSION_NAME,
@@ -952,7 +953,7 @@ class MainViewModel(
             channel = channel,
             xdmScheme = BuildConfig.XDM_BROWSER_SCHEME,
             defaultTarget = current.defaultTarget,
-            themeMode = current.requestedTheme,
+            themeMode = resolvedTheme,
         )
         browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
             phase = BrowserExtensionExportPhase.Exporting,
@@ -963,7 +964,7 @@ class MainViewModel(
             result.onSuccess { exported ->
                 val now = System.currentTimeMillis()
                 preferences.recordBrowserExtensionExport(
-                    theme = current.requestedTheme,
+                    theme = resolvedTheme,
                     appVersion = BuildConfig.VERSION_NAME,
                     extensionVersion = BrowserExtensionSourceContract.DevelopmentVersion,
                     sha256 = exported.sha256,

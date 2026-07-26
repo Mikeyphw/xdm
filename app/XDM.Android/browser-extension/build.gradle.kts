@@ -30,7 +30,7 @@ val prepareFirefoxExtension by tasks.registering(Exec::class) {
         layout.projectDirectory.file("tools/prepare_extension.py").asFile.absolutePath,
         "--source", extensionSource.asFile.absolutePath,
         "--output", unpackedOutput.get().asFile.absolutePath,
-        "--extension-version", "1.0.0",
+        "--extension-version", "1.1.0",
         "--app-version", "0.20.0-rc08",
         "--application-id", "com.mikeyphw.xdm.android",
         "--channel", "release",
@@ -45,7 +45,7 @@ val jsTest by tasks.registering(Exec::class) {
     description = "Run the repository-owned detector, candidate-store, and handoff JavaScript tests."
     commandLine(
         "bash", "-lc",
-        "node tests/test_detector.js && node tests/test_handoff.js && node tests/test_background.js",
+        "node tests/test_detector.js && node tests/test_handoff.js && node tests/test_fab.js && node tests/test_background.js",
     )
 }
 
@@ -74,7 +74,7 @@ fun registerXpiTask(
     outputs.file(outputFile)
     args(
         "--output", outputFile.get().asFile.absolutePath,
-        "--extension-version", "1.0.0",
+        "--extension-version", "1.1.0",
         "--app-version", "0.20.0-rc08",
         "--application-id", "com.mikeyphw.xdm.android",
         "--channel", "release",

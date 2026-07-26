@@ -4,7 +4,7 @@ package com.mikeyphw.xdm.android.browserextension
 object BrowserExtensionSourceContract {
     const val ContractVersion = 1
     const val ExtensionId = "xdm-android-media-bridge@mikeyphw"
-    const val DevelopmentVersion = "1.0.0"
+    const val DevelopmentVersion = "1.1.0"
     const val DefaultApplicationId = "com.mikeyphw.xdm.android"
     const val DefaultScheme = "xdmdownload"
     const val BodyInspectionLimitBytes = 786_432
@@ -46,6 +46,18 @@ object BrowserExtensionSourceContract {
     enum class ThemeMode(val wireValue: String, val label: String, val fileToken: String) {
         Dark("dark", "Dark", "dark"),
         Amoled("amoled", "AMOLED black", "amoled"),
+    }
+
+    enum class ThemeSelection(val wireValue: String, val label: String) {
+        FollowApp("follow-app", "Follow app"),
+        Dark("dark", "Dark"),
+        Amoled("amoled", "AMOLED black");
+
+        fun resolve(appTheme: ThemeMode): ThemeMode = when (this) {
+            FollowApp -> appTheme
+            Dark -> ThemeMode.Dark
+            Amoled -> ThemeMode.Amoled
+        }
     }
 
     enum class Channel(val wireValue: String) {

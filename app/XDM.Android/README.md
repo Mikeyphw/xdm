@@ -206,3 +206,7 @@ The canonical Firefox Android media bridge source now lives in `browser-extensio
 ### Deterministic Firefox XPI export
 
 Phase 39 lets Gradle and XDM Android generate the same validated Firefox extension package through a shared Kotlin packager. Settings → Browser extension stores a user-selected SAF directory, default target, and generated theme, then stages and verifies the XPI before promotion. Successful exports expose filename, size, app/extension version, timestamp, and SHA-256. See `docs/architecture/PHASE-39-XPI-GENERATION-SAF-EXPORT.md`.
+
+### Shared extension theme and compact media FAB
+
+Phase 40 moves the XDM Dark and AMOLED palettes, extension shape values, and motion values into one non-Compose token catalog consumed by both the Android theme and XPI generator. Follow-app exports capture the current app theme and become visibly stale when XDM changes theme. The extension now uses a safe-area-aware 56 px Shadow DOM FAB with candidate and stream-kind badges instead of the former floating card. See `docs/architecture/PHASE-40-SHARED-THEME-FAB.md`.

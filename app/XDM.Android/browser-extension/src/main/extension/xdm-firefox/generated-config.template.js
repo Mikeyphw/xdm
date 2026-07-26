@@ -9,6 +9,31 @@
     xdmScheme: "@@XDM_SCHEME@@",
     defaultTarget: "@@DEFAULT_TARGET@@",
     themeMode: "@@THEME_MODE@@",
+    theme: Object.freeze({
+      background: "@@BACKGROUND@@",
+      surface: "@@SURFACE@@",
+      raisedSurface: "@@RAISED@@",
+      strongSurface: "@@STRONG_SURFACE@@",
+      text: "@@TEXT@@",
+      mutedText: "@@MUTED@@",
+      primary: "@@PRIMARY@@",
+      onPrimary: "@@ON_PRIMARY@@",
+      primaryContainer: "@@PRIMARY_CONTAINER@@",
+      onPrimaryContainer: "@@ON_PRIMARY_CONTAINER@@",
+      outline: "@@OUTLINE@@",
+      outlineVariant: "@@OUTLINE_VARIANT@@",
+      separator: "@@SEPARATOR@@",
+      success: "@@SUCCESS@@",
+      successContainer: "@@SUCCESS_CONTAINER@@",
+      error: "@@ERROR@@",
+      errorContainer: "@@ERROR_CONTAINER@@",
+      fabSizePx: "@@FAB_SIZE@@",
+      fabCornerRadiusPx: "@@FAB_RADIUS@@",
+      fabEdgeInsetPx: "@@FAB_EDGE_INSET@@",
+      fabActionGapPx: "@@FAB_ACTION_GAP@@",
+      motionFastMs: "@@MOTION_FAST@@",
+      motionStandardMs: "@@MOTION_STANDARD@@"
+    }),
     bodyInspectionLimit: 786432
   });
 })();

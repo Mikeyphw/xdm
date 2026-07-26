@@ -43455,6 +43455,311 @@
         ]
       },
       "history_id": "ebbcb2a8425e4686a2668808489377e9"
+    },
+    {
+      "applied_at": "2026-07-26T23:18:59.121440Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_phase40_extension_theme_fab_overlay.zip",
+      "artifact_name": "xdm_android_phase40_extension_theme_fab_overlay.zip",
+      "type": "overlay",
+      "sha256": "aa555eee09ef1c21701330ed9e2fae9e57411815b356504359d7b94e84862148",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Add shared XDM extension theme and FAB",
+      "commit_hash": "",
+      "file_count": 34,
+      "change_counts": {
+        "add": 7,
+        "modify": 27
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 40 Shared Extension Theme and Themed FAB",
+        "description": "Adds one shared Dark and AMOLED token contract consumed by Compose and generated Firefox packages, Follow app theme resolution with stale-export regeneration, and a compact safe-area-aware Shadow DOM media FAB with XDM, 1DM+, and Ask targets.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": ".github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "efbaa7d73c07033a80487d7b677253a7d3fbb96823d1481b0b36bd24cbf52349",
+              "size": 3144,
+              "source_sha256": "dd4ef0c5243655e14120ebde5bc6bd2fbeb4aea5ff29d6fcb0d4fa3b16e41c69"
+            },
+            {
+              "path": "APPLY_DIRECT_PATCH.md",
+              "action": "modify",
+              "sha256": "6a5923c681bff9cf0f3c9cc225a95ec97899869c543ea72cdf55e2ad2d93c808",
+              "size": 2789,
+              "source_sha256": "de0fa3c41548bf6655e08c4c1b4996c80479cce5e1bc8a71207f7569926dacac"
+            },
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "184813bcae173a330d3708915a38f83ffffdda62ef869419213b3de1971fb2f6",
+              "size": 22488,
+              "source_sha256": "bb53d6a0cc3c48b7e5ec2cb783566c442200ce6b544f34e1fd5b457bfa0f37ad"
+            },
+            {
+              "path": "DEVTOOL_OVERLAY.md",
+              "action": "modify",
+              "sha256": "9f1644d575f4531d838d9a6e6dacefad2d855bf4dd7bbc7fd292e9ce6be9b18c",
+              "size": 4908,
+              "source_sha256": "7bd98871d8922027ff11f4ab94dec8a3c02d765f71e6a8d844139c960480caf1"
+            },
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "2ffa0520552b16d9816c68e6a6a34475d1f7dd6f9a5bec6de82e60fc81eedf35",
+              "size": 5375,
+              "source_sha256": "7b1861987907514487968715c289d4eba52c981cdb6dab190f05994c9afe11dc"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "c1dfde3129678beb28566a021ea9cd48135bd4dc91d83119fc5abfbb4517555c",
+              "size": 54601,
+              "source_sha256": "94993e128758c4b7a30dc317644d6df46c8d6bb53c88cb17766bbcc09f3415db"
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "sha256": "8dc2c7702b53b9d4f60ab1cc8a57afe6e578e9452eeeee4f36d2a3d8377ae714",
+              "size": 20358,
+              "source_sha256": "cfbabda48b6be5c9f9f4c16ab31dfea93582da7ae3cf1786a72f5222f2046981"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserExtensionExportModels.kt",
+              "action": "modify",
+              "sha256": "1cf4deaa6637cbc85304336e25aacdc764f0cc558ddd4f2ace139997e1e3da8c",
+              "size": 1657,
+              "source_sha256": "3085fad7a58703f13af62d0f04727c8b186fc35bd2393393e13909af82b9b3fe"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "08805ca75e69a40dd06e0a20d123472296c16abbf046d298820408cc88f215e7",
+              "size": 85831,
+              "source_sha256": "7349af16ee496cbc31b40e7b9ed9036a12f31d4fed952ea2dbf3415f661a960d"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferencesStore.kt",
+              "action": "modify",
+              "sha256": "a52b42ca1a08adc715f8ddcf9d6134caf85b5fc85e8fa13e734c0d1cf0fa4fdc",
+              "size": 11108,
+              "source_sha256": "0d41aa75a9683dd710872d0d2be35053dd8a3298d2e8021a4218a6028b4af02d"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmTheme.kt",
+              "action": "modify",
+              "sha256": "b8f225eb1137de4ac808bbc92bdd6993a70c83c73d8b7647e7ce2c2dd655bfba",
+              "size": 4419,
+              "source_sha256": "be764d2fb3c6c660c3161fae3c0b284a5ff5d782229cdae7cba42e6bcda5a11c"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/BrowserExtensionSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "2ce3928366a12c00d2187fed265a35fc9e8706747d3d8f0dc298d6f48f3c01ba",
+              "size": 7110,
+              "source_sha256": "1f70118852cb7903ccd282e28fbb53b134a33d335b2b1f4b4746080ac2a1d2f0"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserExtensionPhase40ContractTest.kt",
+              "action": "add",
+              "sha256": "8b8c6b383f2210090446ab77f68f501d294abdf403b726e60c7fe758f20f94e1",
+              "size": 2795
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/README.md",
+              "action": "modify",
+              "sha256": "a34187d0884554761d8f2fc5b86ce7e597c51864fa0e33d7a8b28cbd55fcfef6",
+              "size": 1801,
+              "source_sha256": "592d016deead1b9cf32defaf421f7cc4f164f91114b09c6c7ca130a9bbf929f8"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/build.gradle.kts",
+              "action": "modify",
+              "sha256": "033c22722f990eb17c6ef6178b9db35d5df236b4dfd354f6b3ce6f0d794b6003",
+              "size": 3362,
+              "source_sha256": "22f8ac33773823fd1474cf9178fcd317ca0338e6c17ba845aadd256dca0dc749"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/extension.css",
+              "action": "modify",
+              "sha256": "f806b914058389dcbd7b6ef577725904ee6cb57d3eb6c562ab839ae90fd96702",
+              "size": 1896,
+              "source_sha256": "8adbf08d3869bab4438c9003dfa083412ec679e909c600e1f467df2cc44c9efc"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/fab.js",
+              "action": "modify",
+              "sha256": "fcde5107781b9a8cc9a6910361ae01eabd192590629603dd7ad7aaa2a185c30a",
+              "size": 12871,
+              "source_sha256": "cd498fb2b52434b37be5cddfe3a9f5141784cf2a6e13e7fd0fa1408238a5172c"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/frame-bridge.js",
+              "action": "modify",
+              "sha256": "f77c93cec47e365d06e940a1fca36601bc4a968dc4383d6c044769362a1252d0",
+              "size": 15236,
+              "source_sha256": "206b0f4812350927f9c69b134ae79dcd2bc20dc90cfaeee13ad01c5d8186c0f1"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/generated-config.template.js",
+              "action": "modify",
+              "sha256": "8257d1a128866080c8176fd7b8c8cf8ac1cbc5fc3e2ee17374fa9c7aec4fec1b",
+              "size": 1348,
+              "source_sha256": "490c092a34c4da6e203eaf1e11cc515c704d0ee6c14e1ab05a46842831ab1f30"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/generated-theme.template.css",
+              "action": "modify",
+              "sha256": "b52a7938b8df6faf687e81f0a39899acf2fa89ff19a3d21b6a8508602acef735",
+              "size": 934,
+              "source_sha256": "d0958617e60e2a59a9e9f976d8ef2dee9f59d8f11f960f686ec7d6d2e2352f2d"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/manifest.template.json",
+              "action": "modify",
+              "sha256": "6f4f1f2c97ff747a1c05726bd4c416b1a172f6c30ad114ffa6189428ea4f235a",
+              "size": 1253,
+              "source_sha256": "bc9df65a101532d10264279b3454006e15dfa93d93e1ea2c45c35e91640079e1"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/network-observer.js",
+              "action": "modify",
+              "sha256": "97f8eb6cb9a8a0d8ef0efc3e4cb6080f34c4250bd492c2737f7c501a3fd76eb9",
+              "size": 17010,
+              "source_sha256": "bb16e2fc0384f1cf001b6953733eb66cb2a042769d0a14649b1978b6846a2481"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/popup.html",
+              "action": "modify",
+              "sha256": "6272ad3f7d30de8af90eec8e075ec17c20e10b92b82552addc66bbc17ede99fc",
+              "size": 2136,
+              "source_sha256": "50b768a082e39b281d6bb32e80376b25c569a24eb0b93b994e028f514b21dfa9"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/popup.js",
+              "action": "modify",
+              "sha256": "cbbcbbb6e21c8444c259caf074bd547129b7227359e11a5ae62b2cb511ee5bb6",
+              "size": 8378,
+              "source_sha256": "ccca3cbed25f214eeff370103e8c607285cec78b8159ce76c93ffbf6a192dbd2"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionPackageGenerator.kt",
+              "action": "modify",
+              "sha256": "af593b50c1f98b8285161e2cb3f60b21d375e1c6e76fa51141f4f2161224be63",
+              "size": 5141,
+              "source_sha256": "9f00ee6c3fb65795e000165d94f5e3baeffb86838ca3624e071ce09bbd61622f"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionSourceContract.kt",
+              "action": "modify",
+              "sha256": "37d17c41319a67a170068ba612d7964f9e19a91d9497d5b3b8c6dd7e90d0567e",
+              "size": 2206,
+              "source_sha256": "c9d97b41b40876bba5f42767c49643615f4b388bbc39e8df36c2b65822bef1f3"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/XdmThemeCssGenerator.kt",
+              "action": "add",
+              "sha256": "2360ccd223c429aac5fc499278faf5c449b46781c1ccb532d59ab4e3166cd45b",
+              "size": 2325
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/XdmThemeTokens.kt",
+              "action": "add",
+              "sha256": "7fa23ce2807e4f0d9b202cf8cef04830cc3f75ea9d32abece1465b52b8ada754",
+              "size": 5306
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/test/kotlin/com/mikeyphw/xdm/android/browserextension/XdmThemeTokensTest.kt",
+              "action": "add",
+              "sha256": "1ac698dbbe9cefb68421ec29e7cf83dad0dcae6af35bd3fc57fc9bf35240cd89",
+              "size": 3157
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_fab.js",
+              "action": "add",
+              "sha256": "0e6a1558819d7147ac1039f97a8f534f24ede763832023b454729ffa0e5161b7",
+              "size": 5337
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tools/prepare_extension.py",
+              "action": "modify",
+              "sha256": "238fbbd2074bce118c4d5f2728f29e31a3122e36bc3365998c0da19af1b9cb54",
+              "size": 5836,
+              "source_sha256": "d8f93f7664e462cab72e1ecb207178ed9c72f5203714970f26b197cc4a2ae593"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tools/validate_extension.py",
+              "action": "modify",
+              "sha256": "e67b12a03348857b9aacef211f4d87ed7f07da6f3c6579d793d1dabfb601aa76",
+              "size": 3155,
+              "source_sha256": "bc01cc9988be50005ee6d2d1dcc7ed259384004baf7fe0176382d28b5fc11e6a"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-40-SHARED-THEME-FAB.md",
+              "action": "add",
+              "sha256": "aa9080c9dc71e04f95b6e7b301538e04e47a0d7f8acf025566057e59c003343a",
+              "size": 3095
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-40-theme-fab.py",
+              "action": "add",
+              "sha256": "1475939060a6db2b7388f9a8559a96ea0618899877d1b88062fc95f2dc20bb31",
+              "size": 6991
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add shared XDM extension theme and FAB"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": false,
+          "build": false,
+          "test": false,
+          "rollback_on_failure": true,
+          "script": {
+            "path": ".devtool-artifact/validate_phase40_extension_theme_fab.sh",
+            "runner": "bash",
+            "sha256": "cf24d493804deea152e8ed2095c70218817bf6a45400987727ab25bc1e09803f",
+            "timeout_seconds": 1800
+          },
+          "expected": {
+            "restore": "skip",
+            "build": "skip",
+            "tests": "skip",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Depends on the landed Phase 39 deterministic XPI generation and SAF export overlay.",
+          "Compose and generated Firefox CSS consume XdmThemeTokenCatalog as one Dark and AMOLED palette, shape, and motion source.",
+          "Follow app resolves at XPI generation time; an app-theme change marks the previous export stale and offers deterministic regeneration.",
+          "The previous page card is replaced by a 56 px safe-area-aware Shadow DOM FAB with candidate, HLS/DASH, accessibility, reduced-motion, and fullscreen contracts.",
+          "The working Phase 37 in-page custom-scheme anchors and credential-thin payload are preserved without expansion.",
+          "No top-level route, Room migration, transfer-engine behavior, app version, or Android browser runtime is introduced."
+        ]
+      },
+      "history_id": "0e036d72163640abb29458bb21f63969"
     }
   ]
 }

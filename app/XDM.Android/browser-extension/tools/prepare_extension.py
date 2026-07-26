@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -17,17 +18,33 @@ TOKENS = {
     "@@THEME_MODE@@": "theme",
 }
 
-THEMES = {
-    "dark": {
-        "@@THEME_MODE@@": "dark", "@@BACKGROUND@@": "#0c0f13", "@@SURFACE@@": "#151a20",
-        "@@RAISED@@": "#1b222b", "@@TEXT@@": "#e9eef5", "@@MUTED@@": "#9aa6b5",
-        "@@PRIMARY@@": "#9fd2ff", "@@PRIMARY_CONTAINER@@": "#214b68", "@@OUTLINE@@": "#313a46",
-    },
-    "amoled": {
-        "@@THEME_MODE@@": "amoled", "@@BACKGROUND@@": "#000000", "@@SURFACE@@": "#000000",
-        "@@RAISED@@": "#0b0e12", "@@TEXT@@": "#f0f4f8", "@@MUTED@@": "#a4afbd",
-        "@@PRIMARY@@": "#9fd2ff", "@@PRIMARY_CONTAINER@@": "#173d58", "@@OUTLINE@@": "#29313b",
-    },
+COLOR_FIELDS = {
+    "@@BACKGROUND@@": "background",
+    "@@SURFACE@@": "surface",
+    "@@RAISED@@": "raisedSurface",
+    "@@STRONG_SURFACE@@": "strongSurface",
+    "@@TEXT@@": "text",
+    "@@MUTED@@": "mutedText",
+    "@@PRIMARY@@": "primary",
+    "@@ON_PRIMARY@@": "onPrimary",
+    "@@PRIMARY_CONTAINER@@": "primaryContainer",
+    "@@ON_PRIMARY_CONTAINER@@": "onPrimaryContainer",
+    "@@OUTLINE@@": "outline",
+    "@@OUTLINE_VARIANT@@": "outlineVariant",
+    "@@SEPARATOR@@": "separator",
+    "@@SUCCESS@@": "success",
+    "@@SUCCESS_CONTAINER@@": "successContainer",
+    "@@ERROR@@": "error",
+    "@@ERROR_CONTAINER@@": "errorContainer",
+}
+
+NUMBER_FIELDS = {
+    "@@FAB_SIZE@@": "fabSizePx",
+    "@@FAB_RADIUS@@": "fabCornerRadiusPx",
+    "@@FAB_EDGE_INSET@@": "fabEdgeInsetPx",
+    "@@FAB_ACTION_GAP@@": "fabActionGapPx",
+    "@@MOTION_FAST@@": "motionFastMs",
+    "@@MOTION_STANDARD@@": "motionStandardMs",
 }
 
 
@@ -40,8 +57,33 @@ def render(text: str, values: dict[str, str]) -> str:
     return text
 
 
-def render_theme(text: str, theme: str) -> str:
-    for token, value in THEMES[theme].items():
+def parse_theme_contract(path: Path, theme: str) -> dict[str, str]:
+    source = path.read_text(encoding="utf-8")
+    object_name = "Dark" if theme == "dark" else "Amoled"
+    match = re.search(
+        rf"val\s+{object_name}:\s*XdmThemeTokens\s*=\s*XdmThemeTokens\((.*?)\n\s*\)",
+        source,
+        re.DOTALL,
+    )
+    if not match:
+        raise SystemExit(f"could not read {object_name} from shared XDM theme contract")
+    block = match.group(1)
+    colors = {name: int(value, 16) for name, value in re.findall(r"(\w+)\s*=\s*0x([0-9A-Fa-f]{8})", block)}
+    numbers = {name: int(value) for name, value in re.findall(r"(\w+)\s*=\s*(\d+)", block)}
+    replacements: dict[str, str] = {"@@THEME_MODE@@": theme}
+    for token, field in COLOR_FIELDS.items():
+        if field not in colors:
+            raise SystemExit(f"shared XDM theme contract is missing {field} for {theme}")
+        replacements[token] = f"#{colors[field] & 0xFFFFFF:06X}"
+    for token, field in NUMBER_FIELDS.items():
+        if field not in numbers:
+            raise SystemExit(f"shared XDM theme contract is missing {field} for {theme}")
+        replacements[token] = str(numbers[field])
+    return replacements
+
+
+def render_theme(text: str, replacements: dict[str, str]) -> str:
+    for token, value in replacements.items():
         text = text.replace(token, value)
     if "@@" in text:
         raise SystemExit("unresolved generated theme token")
@@ -52,8 +94,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--theme-contract", type=Path)
     parser.add_argument("--contract-version", default="1")
-    parser.add_argument("--extension-version", default="1.0.0")
+    parser.add_argument("--extension-version", default="1.1.0")
     parser.add_argument("--app-version", default="0.20.0-rc08")
     parser.add_argument("--application-id", default="com.mikeyphw.xdm.android")
     parser.add_argument("--channel", choices=("release", "beta", "debug"), default="release")
@@ -64,6 +107,12 @@ def main() -> int:
 
     source = args.source.resolve()
     output = args.output.resolve()
+    module_root = Path(__file__).resolve().parents[1]
+    theme_contract = (args.theme_contract or (
+        module_root / "src/main/kotlin/com/mikeyphw/xdm/android/browserextension/XdmThemeTokens.kt"
+    )).resolve()
+    theme_replacements = parse_theme_contract(theme_contract, args.theme)
+
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True)
@@ -78,10 +127,11 @@ def main() -> int:
             target.write_text(render(item.read_text(encoding="utf-8"), values), encoding="utf-8")
         elif rel.name == "generated-config.template.js":
             target = output / rel.with_name("generated-config.js")
-            target.write_text(render(item.read_text(encoding="utf-8"), values), encoding="utf-8")
+            base = render(item.read_text(encoding="utf-8"), values)
+            target.write_text(render_theme(base, theme_replacements), encoding="utf-8")
         elif rel.name == "generated-theme.template.css":
             target = output / rel.with_name("generated-theme.css")
-            target.write_text(render_theme(item.read_text(encoding="utf-8"), args.theme), encoding="utf-8")
+            target.write_text(render_theme(item.read_text(encoding="utf-8"), theme_replacements), encoding="utf-8")
         else:
             target = output / rel
             target.parent.mkdir(parents=True, exist_ok=True)

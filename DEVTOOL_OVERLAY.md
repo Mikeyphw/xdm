@@ -1,3 +1,22 @@
+# XDM Android Phase 40 shared theme and themed FAB overlay
+
+## Included
+
+- A non-Compose Dark/AMOLED token catalog shared by XDM Compose and Firefox package generation.
+- Generated CSS and extension configuration for palette, shape, and motion tokens.
+- Follow app, Dark, and AMOLED export choices with stale-export detection and regeneration guidance.
+- A 56 px safe-area-aware Shadow DOM FAB with XDM, 1DM+, and Ask targets, candidate and stream badges, accessibility semantics, reduced motion, and fullscreen reparenting.
+- Focused Kotlin, JavaScript, static, package, documentation, project-manifest, and CI validation.
+- No custom-scheme payload expansion, browser runtime, top-level route, Room migration, transfer-engine change, or app version change.
+
+## Validation policy
+
+The embedded validator replays Phases 37 through 40 static contracts, JavaScript syntax and behavior suites, Dark and AMOLED unpacked rendering, deterministic XPI generation, shared token tests, app contract tests, and focused Gradle tasks. Phase 42 remains responsible for the complete release matrix.
+
+## Apply
+
+Use Devtool with `--validate`. The schema-v2 artifact owns its commit message; do not add a CLI `--commit` flag.
+
 # XDM Android Phase 37 browser scheme contract overlay
 
 ## Included

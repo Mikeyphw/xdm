@@ -1,3 +1,10 @@
+## XDM Android Phase 40 - Shared extension theme and themed FAB
+
+- Added one Dark/AMOLED palette, shape, and motion token catalog shared by Compose and the Firefox XPI generator.
+- Added Follow app export selection with concrete-theme resolution and stale-export regeneration state.
+- Replaced the large page launcher card with a safe-area-aware 56 px Shadow DOM FAB, candidate and HLS/DASH badges, fullscreen support, reduced motion, and XDM/1DM+/Ask targets.
+- Preserved deterministic Phase 39 packaging, credential-thin Phase 37 handoffs, six-route topology, Room schema 14, versionCode 21, and versionName 0.20.0-rc08.
+
 ## XDM Android Phase 39 - Deterministic XPI generation and SAF export
 
 - Added one Kotlin XPI generator and validator shared by Gradle and the Android runtime.

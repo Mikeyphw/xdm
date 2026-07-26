@@ -41,48 +41,22 @@ class BrowserExtensionPackageGenerator(
         val text = bytes.toString(Charsets.UTF_8)
         val rendered = when (name) {
             "manifest.template.json" -> text.replace("@@EXTENSION_VERSION@@", jsonEscape(config.extensionVersion))
-            "generated-config.template.js" -> text
-                .replace("@@CONTRACT_VERSION@@", config.contractVersion.toString())
-                .replace("@@EXTENSION_VERSION@@", jsEscape(config.extensionVersion))
-                .replace("@@APP_VERSION@@", jsEscape(config.appVersion))
-                .replace("@@APPLICATION_ID@@", jsEscape(config.applicationId))
-                .replace("@@CHANNEL@@", jsEscape(config.channel.wireValue))
-                .replace("@@XDM_SCHEME@@", jsEscape(config.xdmScheme))
-                .replace("@@DEFAULT_TARGET@@", jsEscape(config.defaultTarget.wireValue))
-                .replace("@@THEME_MODE@@", jsEscape(config.themeMode.wireValue))
-            "generated-theme.template.css" -> renderTheme(text, config.themeMode)
+            "generated-config.template.js" -> XdmThemeCssGenerator.render(
+                text
+                    .replace("@@CONTRACT_VERSION@@", config.contractVersion.toString())
+                    .replace("@@EXTENSION_VERSION@@", jsEscape(config.extensionVersion))
+                    .replace("@@APP_VERSION@@", jsEscape(config.appVersion))
+                    .replace("@@APPLICATION_ID@@", jsEscape(config.applicationId))
+                    .replace("@@CHANNEL@@", jsEscape(config.channel.wireValue))
+                    .replace("@@XDM_SCHEME@@", jsEscape(config.xdmScheme))
+                    .replace("@@DEFAULT_TARGET@@", jsEscape(config.defaultTarget.wireValue)),
+                config.themeMode,
+            )
+            "generated-theme.template.css" -> XdmThemeCssGenerator.render(text, config.themeMode)
             else -> error("Unsupported extension template: $name")
         }
         require("@@" !in rendered) { "Unresolved template token in $name" }
         return rendered.toByteArray(Charsets.UTF_8)
-    }
-
-    private fun renderTheme(text: String, mode: BrowserExtensionSourceContract.ThemeMode): String {
-        val colors = when (mode) {
-            BrowserExtensionSourceContract.ThemeMode.Dark -> mapOf(
-                "@@THEME_MODE@@" to "dark",
-                "@@BACKGROUND@@" to "#0c0f13",
-                "@@SURFACE@@" to "#151a20",
-                "@@RAISED@@" to "#1b222b",
-                "@@TEXT@@" to "#e9eef5",
-                "@@MUTED@@" to "#9aa6b5",
-                "@@PRIMARY@@" to "#9fd2ff",
-                "@@PRIMARY_CONTAINER@@" to "#214b68",
-                "@@OUTLINE@@" to "#313a46",
-            )
-            BrowserExtensionSourceContract.ThemeMode.Amoled -> mapOf(
-                "@@THEME_MODE@@" to "amoled",
-                "@@BACKGROUND@@" to "#000000",
-                "@@SURFACE@@" to "#000000",
-                "@@RAISED@@" to "#0b0e12",
-                "@@TEXT@@" to "#f0f4f8",
-                "@@MUTED@@" to "#a4afbd",
-                "@@PRIMARY@@" to "#9fd2ff",
-                "@@PRIMARY_CONTAINER@@" to "#173d58",
-                "@@OUTLINE@@" to "#29313b",
-            )
-        }
-        return colors.entries.fold(text) { value, (token, replacement) -> value.replace(token, replacement) }
     }
 
     private fun writeDeterministicZip(entries: Map<String, ByteArray>, output: OutputStream) {

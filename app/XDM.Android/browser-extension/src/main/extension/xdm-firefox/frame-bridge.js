@@ -73,27 +73,33 @@
   function showLauncher(input = {}) {
     const isProbe = input.mode === "probe";
     const url = absoluteUrl(input.url) || (isProbe ? absoluteUrl(location.href) : "");
-    const key = `${isProbe ? "probe" : url}\n${location.href}`;
-    if (!input.force && lastOffer.key === key && Date.now() - lastOffer.at < DEDUPE_MS) return false;
-    lastOffer = { key, at: Date.now() };
-
+    const key = `${isProbe ? "probe" : url}
+${location.href}`;
     const target = settings.defaultTarget === "1dm" || settings.defaultTarget === "ask"
       ? settings.defaultTarget
       : "xdm";
+    const contentType = input.contentType || "";
     const handoffInput = {
       url,
       title: input.title || document.title,
-      mimeType: input.contentType || "",
+      mimeType: contentType,
       pageUrl: location.href,
       scheme: globalThis.XdmExtensionConfig && globalThis.XdmExtensionConfig.xdmScheme
     };
     const links = globalThis.XdmHandoffV1.buildTargets(handoffInput);
-    return globalThis.XdmLauncherUiV1.show({
+    const launcherInput = {
       url,
       target,
       links,
+      candidateCount: Math.max(1, Number(input.candidateCount || candidates.size || 1)),
+      streamKind: input.streamKind || globalThis.XdmHandoffV1.mediaKind(url, contentType),
       label: isProbe ? "Test Android app links" : (input.label || "Media ready")
-    });
+    };
+    if (!input.force && lastOffer.key === key && Date.now() - lastOffer.at < DEDUPE_MS) {
+      return globalThis.XdmLauncherUiV1.update(launcherInput);
+    }
+    lastOffer = { key, at: Date.now() };
+    return globalThis.XdmLauncherUiV1.show(launcherInput);
   }
 
   // All-frame playback observations are aggregated by the background candidate store.
@@ -105,7 +111,9 @@
         title: document.title,
         label: label || (candidate.manifest ? "Playing stream detected" : "Playing video detected"),
         headers: candidate.headers || {},
-        contentType: candidate.contentType || ""
+        contentType: candidate.contentType || "",
+        candidateCount: Math.max(1, candidates.size),
+        streamKind: candidate.manifest ? (/\.mpd(?:$|[?#])/i.test(candidate.url) ? "dash" : "hls") : ""
       });
     }
     sendBackground({
@@ -163,7 +171,9 @@
         title: input.title || document.title,
         label: input.manifest ? "Video manifest detected" : (input.bodyDerived ? "Video URL found in player response" : "Video stream detected"),
         headers: input.headers || {},
-        contentType: input.contentType || ""
+        contentType: input.contentType || "",
+        candidateCount: Math.max(1, Number(input.candidateCount || candidates.size || 1)),
+        streamKind: input.streamKind || (input.manifest ? (/\.mpd(?:$|[?#])/i.test(url) ? "dash" : "hls") : "")
       });
     }
     return true;
@@ -340,6 +350,8 @@
         label: value.label || "",
         mode: value.mode || "",
         headers: value.headers || {},
+        candidateCount: value.candidateCount || 1,
+        streamKind: value.streamKind || "",
         force: true
       });
     },
@@ -351,7 +363,7 @@
       evaluateAllVideos();
       return true;
     },
-    version: "1.0.0"
+    version: "1.1.0"
   });
 
   if (document.documentElement) start();

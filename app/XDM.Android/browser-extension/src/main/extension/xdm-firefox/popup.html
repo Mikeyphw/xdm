@@ -8,7 +8,7 @@
 </head>
 <body>
   <h1>XDM media bridge</h1>
-  <p>Detects media across page frames and places a real app-link launcher inside the webpage.</p>
+  <p>Detects media across page frames and places a themed XDM app-link FAB inside the webpage.</p>
 
   <section class="card">
     <label><input id="enabled" type="checkbox"> Enable detector</label>
@@ -24,15 +24,15 @@
 
   <section class="card">
     <strong id="currentHost">Current page</strong>
-    <button id="sendPage" disabled>Show page launcher</button>
-    <button id="appTest" class="secondary" disabled>Show app-link test</button>
+    <button id="sendPage" disabled>Show page FAB</button>
+    <button id="appTest" class="secondary" disabled>Show app-link test FAB</button>
     <button id="rescan" class="secondary" disabled>Rescan media</button>
   </section>
 
   <section class="card">
     <label for="manualUrl">Manual URL</label>
     <input id="manualUrl" type="url" inputmode="url" placeholder="https://example.com/video.mp4">
-    <button id="sendManual" disabled>Show URL launcher</button>
+    <button id="sendManual" disabled>Show URL FAB</button>
   </section>
 
   <section id="siteCard" class="card">

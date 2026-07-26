@@ -38,7 +38,7 @@
       await browser.storage.local.set({
         [STATUS_KEY]: Object.assign({
           active: true,
-          version: "1.0.0-dev",
+          version: "1.1.0",
           startedAt: Date.now(),
           lastError: ""
         }, previous[STATUS_KEY] || {}, extra)
@@ -204,6 +204,16 @@
     dispatchTimers.set(numericTabId, setTimeout(() => dispatchTab(numericTabId), delay));
   }
 
+  function candidateStreamKind(candidate) {
+    const url = String(candidate && candidate.url || "");
+    const mime = CORE.normalizeMime(candidate && candidate.contentType || "");
+    if (/\.mpd(?:$|[?#])/i.test(url) || mime === "application/dash+xml") return "dash";
+    if (/\.m3u8(?:$|[?#])/i.test(url) || /mpegurl/i.test(mime)) return "hls";
+    if (mime.startsWith("audio/")) return "audio";
+    if (mime.startsWith("video/")) return "video";
+    return candidate && candidate.manifest ? "hls" : "media";
+  }
+
   async function dispatchTab(tabId) {
     dispatchTimers.delete(tabId);
     trimTabCandidates(tabId);
@@ -225,6 +235,8 @@
       tabUrl: tab.url,
       title: tab.title || "Detected video",
       displayFallback: true,
+      candidateCount: candidateStore.size(tabId),
+      streamKind: candidateStreamKind(candidate),
       rank
     });
     await updateDiagnostics(tabId, payload);
