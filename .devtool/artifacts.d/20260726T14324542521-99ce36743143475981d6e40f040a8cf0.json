@@ -1,0 +1,237 @@
+{
+  "applied_at": "2026-07-26T14:32:45.425217Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_uix_r3_downloads_add_workspace_overlay.zip",
+  "artifact_name": "xdm_android_uix_r3_downloads_add_workspace_overlay.zip",
+  "type": "overlay",
+  "sha256": "335368a30320f854f686cd88ed37b27c6afad0cedf53f5436dc5db9dc5162d22",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Redesign XDM Android downloads and add workflow",
+  "commit_hash": "",
+  "file_count": 25,
+  "change_counts": {
+    "add": 6,
+    "modify": 19
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android UIX R3 Downloads and Add workspace",
+    "description": "Rebuilds Downloads as a transfer-first adaptive list-detail control center and Add as a two-step review workflow, with compact rows, live metrics, visible filters, long-press selection, an Organize workspace, folded redacted details, and explicit non-queueing media inspection.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "be2d03d4980a51e99a9a901567c6887d6b3be5982f897c9258c897ef0be11f53",
+          "size": 17300,
+          "source_sha256": "4a35582dcb20bc66a157ab5ef60c27e92a8e55dfa04fe13f3fbfa90e5f36afa7"
+        },
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "877b7979ef7a0c040305049bc489e797f5131e4d2036a1d605c8cc3600457d7a",
+          "size": 1390,
+          "source_sha256": "d990a9f01cf196def0fd85d9342f1e72c60f5b06777bab555acaa62a9d96d738"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "e966229cddf65abf8a78e8dccbc77e322795bfe37ad9c984445bb2a8547e7046",
+          "size": 4672,
+          "source_sha256": "8656e3f379bbe0fdb4d4000d959c5a5bf4166e45694501658c3ef06d81e5f9d4"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "c0ea89ab1b8b844b46ba94b2d884619069e2e68fe12a8154f187482b372c81d7",
+          "size": 46816,
+          "source_sha256": "c1c244739a0e646f4d22d448271743e372d7f722a60ebeb655a0ed2386ce6110"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAdaptiveShell.kt",
+          "action": "modify",
+          "sha256": "f7a99b487659a6eba5c464481b553ea674cf23258f79d26b1ce4d8bed78d21d3",
+          "size": 14320,
+          "source_sha256": "ab2ebc8e4f7065eadf20fdfcf59d43fe86c77661baea2f3ce8f93e7868c3be91"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "fbe7e436e935d10ec687cc0320c858fcec41d042b3d4da4a234d2f6f889f2dbd",
+          "size": 16191,
+          "source_sha256": "1e5a9f04a299fd65779806510e0f577b5b0efc156cb97b5312c7afe9620fd2e9"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDetails.kt",
+          "action": "modify",
+          "sha256": "df310e460ae0be1ca25fd06519affb61eb6d215305c43383f71ce5fc966d3ef0",
+          "size": 13708,
+          "source_sha256": "e60b44adbaab47fa922cb15f3f4d9310756e83d860cc47b73bae1649d9cce366"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt",
+          "action": "modify",
+          "sha256": "f7b20e899b1b18d447c629a9eb3a0767edf8e76972080b7a50d7d94734769f4a",
+          "size": 10003,
+          "source_sha256": "5977bf710027d5a7b1f19083732edeeb2323f3638fa2bc4d02ba7748cc4f3612"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+          "action": "modify",
+          "sha256": "1c536917a3461862507db0374a9f7c8a4c15fd455ff7bf4afb9b6a5290b19f04",
+          "size": 21964,
+          "source_sha256": "bccd72fdcbe9fad80d831182a358856105940d3f2e39d4c8e1f8a8125cc425af"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsWorkspace.kt",
+          "action": "add",
+          "sha256": "63a99c9a79cd024b4ab2731fa0106c727380fcbd8adc2fc2d846b78aecb6839f",
+          "size": 6849
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/OrganizeDownloadsSheet.kt",
+          "action": "add",
+          "sha256": "ff904f3e5f4cd212248a2eea724f3567a916e2726f8171ea1557928cd7367c33",
+          "size": 10044
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt",
+          "action": "modify",
+          "sha256": "985669a20498f70ef31f5359804e5e97dcbdc2c696b1ebc6395a203a889a0fda",
+          "size": 21650,
+          "source_sha256": "33dbd1eb55aff0096cac0fe198eb06a0d9492608d2c72b36217dad043b2d4a66"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "ebde12126d84fa2343b31d6f332626f205ad981e8671e77e956729d9edf9f8f4",
+          "size": 89367,
+          "source_sha256": "56805b36055bb16dfa8f2a628ad838b499882a7a26dab86ef70615faa0ffef16"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8ABContractTest.kt",
+          "action": "modify",
+          "sha256": "9a045f8a657893fe96b3c6b633a99c01411f3fcd48ba470e1504ee892ca94717",
+          "size": 6120,
+          "source_sha256": "14c4f8eacef4b3cb880292c4bc9ce8352c73c97d3f3887a4f4991ff4b839dc29"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR2AdaptiveShellContractTest.kt",
+          "action": "modify",
+          "sha256": "a4ce235efe48d6f647a7e41b2560c82ea75f3dcbde98a65c0897d212c4a4d4ae",
+          "size": 5443,
+          "source_sha256": "4b3f324a7c3c1e35bec7b98755412cb656699f834f6519a11142cac05e448698"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR3DownloadsAddContractTest.kt",
+          "action": "add",
+          "sha256": "c481468acf2e0946a9dab92d224796621c421b7ef66d6f256334e6c024cc50a5",
+          "size": 2568
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR3DownloadsWorkspaceTest.kt",
+          "action": "add",
+          "sha256": "19828b44a246c0a084672862e49cdfbe2ef4fb9ce2d57602527a998725b40b90",
+          "size": 3505
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UIX-R3-DOWNLOADS-ADD-WORKSPACE.md",
+          "action": "add",
+          "sha256": "b873dd6bd4b1da783262f114cf35d30cc91a9fe2fa2891443e7a3b94092c4fe7",
+          "size": 2220
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md",
+          "action": "modify",
+          "sha256": "4aa1fe88f6d7d9c03370f54ce8bd1e14146347b0749bede13e8df2ba1aa0d0fc",
+          "size": 14525,
+          "source_sha256": "765d08f6e3bb30aa91df791bbd4a706ea373be2f031b6491163cd45b61b22c63"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "d2759887908ba8f14a8e86465ca75cfcb4164b3fc578dc6763d1c7741b6605c4",
+          "size": 3526,
+          "source_sha256": "b3132c7ea03b58c5d3c7f7ec99759b0b8d48f3af78c1d2f13a6397613d95f671"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8ab.py",
+          "action": "modify",
+          "sha256": "e929e7693a7dd12890f7bbfe442ee5e3f24caee4e5f25e8c4f06b928a3d4874d",
+          "size": 7571,
+          "source_sha256": "8d4d680b17536c3ed64a11462f6d0d859fb439344b4a872d423b1935b6f3a0a8"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-15.py",
+          "action": "modify",
+          "sha256": "44cc0216cac352c02a7dabd3cab91757ecb7ab7d41fa78c83ba0d0aaef776dce",
+          "size": 4638,
+          "source_sha256": "7bfa0ff6bc98142e8e27704d35e795b704463a0a77f02ae1c2c7563a35c26326"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-8e-compose-storage-hotfix.py",
+          "action": "modify",
+          "sha256": "89ca03a9eb951fb581c162cdd7bcf6738345eccd8180c0b531aad8675306f0eb",
+          "size": 6575,
+          "source_sha256": "33382fc99313785c3620c873200fa00a0cc4c33264c1093b510160fb054d3ade"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-uix-r2-flat-dark-shell.py",
+          "action": "modify",
+          "sha256": "1a4a5152da7f56950a56878daf72248d76cf51c553f7d82d54e4876344623a42",
+          "size": 6427,
+          "source_sha256": "89342c0de3d02fdfc6b5244e83b22854037ef474c5a05d845900a943f7291cde"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-uix-r3-downloads-add-workspace.py",
+          "action": "add",
+          "sha256": "6d071799d163c4b480546bf267f87a09fc7dc70b18ec26cd7cf9fdddeae64604",
+          "size": 5395
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Redesign XDM Android downloads and add workflow"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Requires xdm_android_uix_r2_flat_dark_adaptive_shell_overlay.zip as its direct baseline.",
+      "Downloads exposes Active, Queued, Finished, and All filters, compact live metrics, contextual queue notices, explicit search, flat rows, long-press selection, and adaptive list-detail presentation.",
+      "Sort, archive, tags, saved searches, bulk actions, history, and Activity links live in Organize downloads rather than permanently preceding the transfer list.",
+      "Add uses Review download followed by Add to queue; external handoffs remain review-first and Inspect media never creates a transfer automatically.",
+      "Room schema 14, versionName 0.20.0-rc08, versionCode 21, routes, engines, queue policy, scheduler, recovery, external handoff, and developer diagnostics are unchanged.",
+      "UIX R4 is the next overlay and redesigns Media and Library."
+    ]
+  },
+  "history_id": "99ce36743143475981d6e40f040a8cf0"
+}

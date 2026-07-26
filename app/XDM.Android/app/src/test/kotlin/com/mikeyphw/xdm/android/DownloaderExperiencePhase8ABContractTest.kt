@@ -23,11 +23,12 @@ class DownloaderExperiencePhase8ABContractTest {
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
 
         listOf(
-            "Review-first intake",
             "Paste detected URL",
             "DownloadReviewPlanner.plan(",
-            "Inspect as media (recommended)",
-            "Ready for explicit queue submission.",
+            "Review download",
+            "Add to queue",
+            "Inspect media",
+            "never creates a transfer automatically",
         ).forEach { assertTrue("Add Download missing $it", screens.contains(it)) }
         assertTrue(shell.contains("viewModel.inspectManualMedia(url, fileName)"))
         assertTrue(viewModel.contains("fun inspectManualMedia(url: String, fileName: String)"))
@@ -58,10 +59,11 @@ class DownloaderExperiencePhase8ABContractTest {
         val root = androidRoot()
         val screens = UiSourceTree.readAll(root)
         listOf(
-            "DownloadDashboardPlanner.plan(visible, ordering)",
-            "DownloadDashboardSectionHeader(section)",
-            "Ordered by",
-        ).forEach { assertTrue("Downloads dashboard missing $it", screens.contains(it)) }
+            "DownloadsWorkspacePlanner.visibleDownloads",
+            "DownloadWorkspaceFilter.entries",
+            "Organize downloads",
+            "combinedClickable",
+        ).forEach { assertTrue("Downloads workspace missing $it", screens.contains(it)) }
         val model = File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloaderExperience.kt").readText()
         listOf("Needs attention", "Retry available").forEach {
             assertTrue("Dashboard model missing $it", model.contains(it))

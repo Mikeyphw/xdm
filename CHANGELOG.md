@@ -1,3 +1,11 @@
+## UIX R3 - Downloads and Add workspace
+
+- Rebuilt Downloads as a transfer-first adaptive workspace with compact metrics, Active/Queued/Finished/All filters, contextual queue notices, on-demand search, flat transfer rows, and long-press selection.
+- Added a persistent expanded list-detail layout and adaptive compact detail sheet with useful information first and redacted technical details folded.
+- Moved archive, sort, bulk selection, tags, saved searches, history, and activity links into Organize downloads.
+- Rebuilt Add as a two-step Review download -> Add to queue flow with folded advanced settings and explicit non-queueing media inspection.
+- Preserved Room schema 14, app version, routes, engines, external handoff, queue behavior, recovery, and developer diagnostics.
+
 ## UIX R2 - Flat dark adaptive shell
 
 - Added a dark-first, flat, zero-elevation Android visual system with semantic status colors and shared responsive primitives.

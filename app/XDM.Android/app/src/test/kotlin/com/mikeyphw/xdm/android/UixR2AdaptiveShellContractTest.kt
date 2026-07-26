@@ -101,7 +101,7 @@ class UixR2AdaptiveShellContractTest {
             val text = file.readText()
             assertFalse("${file.name} still imports elevated Material Card", text.contains("import androidx.compose.material3.Card"))
             assertFalse("${file.name} still renders Material Card", Regex("(?<![A-Za-z0-9_])Card\\(").containsMatchIn(text))
-            assertTrue("${file.name} should use flat XDM surfaces", text.contains("XdmFlatCard(") || text.contains("XdmListCard("))
+            assertTrue("${file.name} should use flat XDM surfaces", listOf("XdmFlatCard(", "XdmListCard(", "XdmGroupedList(", "Surface(", "XdmMetricStrip(", "XdmAdaptiveSheet(").any(text::contains))
         }
     }
 

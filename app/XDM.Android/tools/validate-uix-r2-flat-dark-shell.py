@@ -131,7 +131,7 @@ for relative in primary_sources:
         ERRORS.append(f"{relative} still imports Material Card")
     if re.search(r"(?<![A-Za-z0-9_])Card\(", text):
         ERRORS.append(f"{relative} still renders a default elevated Material Card")
-    if "XdmFlatCard(" not in text and "XdmListCard(" not in text:
+    if not any(marker in text for marker in ("XdmFlatCard(", "XdmListCard(", "XdmGroupedList(", "Surface(", "XdmMetricStrip(", "XdmAdaptiveSheet(")):
         ERRORS.append(f"{relative} does not use a flat XDM grouped surface")
 
 routes = read("app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt")

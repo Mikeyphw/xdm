@@ -63,12 +63,12 @@ class ArchitectureContractTest {
         val root = androidRoot()
         val screens = UiSourceTree.readAll(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
-        assertTrue("Filename field should describe inference", screens.contains("XDM will infer a name from the URL"))
+        assertTrue("Filename field should describe inference", screens.contains("XDM infers a name from the link"))
         assertTrue(
             "Add button should not require a nonblank filename",
-            screens.contains("val canSubmit = review.canStartDirectly && recommendation?.compatible != false"),
+            screens.contains("val canReview = review.canStartDirectly && recommendation?.compatible != false"),
         )
-        assertTrue("Add button should use the filename-independent submit state", screens.contains("enabled = canSubmit"))
+        assertTrue("Add button should use the filename-independent submit state", screens.contains("enabled = canReview"))
         assertTrue("ViewModel should centralize inferred filename resolution", viewModel.contains("private fun resolveFileName"))
         assertFalse("ViewModel should not reject blank filename", viewModel.contains("fileName.isBlank()"))
     }
@@ -136,7 +136,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 15 baseline must be carried forward on Room schema v14", manifest.contains("\"schema_version_unchanged\": 14"))
         val phaseFifteenVersion = Regex("""versionName = "0\.(\d+)\.0-(?:alpha01|rc\d+)"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.15", phaseFifteenVersion != null && phaseFifteenVersion >= 15)
-        assertTrue("Downloads must expose a compact overview card", screens.contains("Download overview"))
+        assertTrue("Downloads must expose compact transfer metrics", screens.contains("XdmMetricStrip") && screens.contains("DownloadWorkspaceMetrics"))
         assertTrue("UI must expose accessibility state descriptions", screens.contains("stateDescription") && appShell.contains("stateDescription"))
         assertTrue("Primary actions must keep stable touch targets", screens.contains("sizeIn(minWidth = 48.dp") || screens.contains("sizeIn(minWidth = 96.dp"))
         assertFalse("Settings must not expose implementation phases", screens.contains("Phase 15 polish"))
@@ -259,17 +259,18 @@ class ArchitectureContractTest {
 
         assertTrue("UI contract must define Downloads scanability rules", contract.contains("Downloads Scanability Rules"))
         assertTrue("UI contract must define form and settings workflow rules", contract.contains("Form and Settings Workflow Rules"))
-        assertTrue("Downloads must keep history tools behind an affordance", screens.contains("History tools"))
+        assertTrue("Downloads must keep organization and history behind an affordance", screens.contains("Organize downloads"))
         assertTrue("Downloads must support search", screens.contains("Search downloads"))
         assertTrue("Downloads must support sort choices", screens.contains("DownloadDashboardOrdering"))
-        assertTrue("Download rows must expose details without always rendering everything", screens.contains("Hide details") && screens.contains("Details"))
-        assertTrue("Filtered empty state must explain how to recover", screens.contains("No matching downloads"))
-        assertTrue("Add route must fold advanced settings", screens.contains("Advanced download options") && screens.contains("advancedExpanded"))
+        assertTrue("Download details must disclose technical data on demand", screens.contains("XdmTechnicalDetails") && screens.contains("Technical details"))
+        assertTrue("Filtered empty states must explain what appears in each view", screens.contains("Nothing is moving") && screens.contains("The queue is clear"))
+        assertTrue("Add route must fold advanced settings", screens.contains("Advanced options") && screens.contains("advancedExpanded"))
         assertTrue(
-            "Add route must use a persistent bottom action",
-            screens.contains("Ready for explicit queue submission.") &&
-                screens.contains("enabled = canSubmit") &&
-                screens.contains("Start direct download"),
+            "Add route must use a persistent two-step bottom action",
+            screens.contains("Step 1 of 2") &&
+                screens.contains("enabled = canReview") &&
+                screens.contains("Review download") &&
+                screens.contains("Add to queue"),
         )
         assertTrue("Settings must show unsaved draft state", screens.contains("Unsaved") && screens.contains("Saved"))
         assertTrue("Settings must provide reset paths", screens.contains("Reset"))

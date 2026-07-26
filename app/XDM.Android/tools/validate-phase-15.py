@@ -63,10 +63,11 @@ version_name_match = re.search(r'versionName\s*=\s*"0\.(\d+)\.0-(?:alpha01|rc\d+
 if not version_name_match or int(version_name_match.group(1)) < 15:
     errors.append("app/build.gradle.kts versionName is older than 0.15.0-alpha01/rc01")
 
-screens = require_file("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt")
+screens = "\n".join(path.read_text(encoding="utf-8") for path in (root / "app/src/main/kotlin/com/mikeyphw/xdm/android/ui").rglob("*.kt"))
 app_shell = require_file("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")
 for needle in [
-    "Download overview",
+    "XdmMetricStrip",
+    "DownloadWorkspaceMetrics",
     "stateDescription",
     "contentDescription",
     "sizeIn(minWidth = 48.dp",

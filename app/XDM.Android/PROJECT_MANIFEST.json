@@ -1371,5 +1371,30 @@
     "depends_on": "uix_r1_surface_contract_modularization",
     "next_overlay": "uix_r3_downloads_add_workspace"
   },
-  "current_uix_overlay": "xdm_android_uix_r2_flat_dark_adaptive_shell_overlay.zip"
+  "current_uix_overlay": "xdm_android_uix_r3_downloads_add_workspace_overlay.zip",
+  "uix_r3_downloads_add_workspace": {
+    "program": "android_uix_redesign",
+    "contract_document": "docs/architecture/UIX-R3-DOWNLOADS-ADD-WORKSPACE.md",
+    "static_validator": "tools/validate-uix-r3-downloads-add-workspace.py",
+    "adaptive_list_detail": true,
+    "visible_filters": [
+      "Active",
+      "Queued",
+      "Finished",
+      "All"
+    ],
+    "long_press_selection": true,
+    "organize_workspace": true,
+    "compact_transfer_rows": true,
+    "technical_details_folded": true,
+    "two_step_add_review": true,
+    "external_handoff_review_first": true,
+    "media_inspection_auto_queue": false,
+    "add_advanced_options_folded": true,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "depends_on": "uix_r2_flat_dark_adaptive_shell",
+    "next_overlay": "uix_r4_media_library_workspaces"
+  }
 }

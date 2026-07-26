@@ -156,3 +156,9 @@ Downloads must group visible records into Needs attention, Active, Queued, Compl
 The Activity workspace owns queue policy status, schedules, recent decision history, and explicit evaluation. Downloads may show policy holds and a **Start anyway** action, but the action must explain that only soft constraints are bypassed and a validated internet connection is still required.
 
 Schedule editing exposes network type, charging, minimum battery, storage reserve, retry strategy, and retry limit without creating another top-level destination. Queue policy status is supplemental to the existing Downloads dashboard, not a replacement for transfer state, recovery, or diagnostics.
+
+## UIX R3 Downloads and Add Rules
+
+Downloads is a transfer-first adaptive workspace. It exposes Active, Queued, Finished, and All filters, a compact live metric strip, contextual queue notices, an explicit search action, and an **Organize downloads** workspace for sort, archive, selection, tags, saved searches, history, and activity links. Long press enters selection mode; permanent row-level Select chips are prohibited. Compact and medium layouts open details in an adaptive sheet, while expanded layouts keep a persistent list-detail pane. Technical engine and request information stays folded and redacted.
+
+Add uses a two-step review contract: **Review download**, then **Add to queue**. File, Destination, and Method are visible in the review summary. Advanced settings remain folded. External handoffs identify their source and never auto-queue. **Inspect media** may open the resolver but must never create a transfer automatically.

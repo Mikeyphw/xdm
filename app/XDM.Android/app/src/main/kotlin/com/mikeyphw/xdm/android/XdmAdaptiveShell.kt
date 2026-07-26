@@ -86,10 +86,12 @@ fun XdmAdaptiveShell(
                     contentAlignment = Alignment.TopCenter,
                 ) {
                     Column(Modifier.fillMaxSize().widthIn(max = 1480.dp)) {
-                        XdmPageHeader(
-                            title = selectedRoute.label,
-                            subtitle = selectedRoute.shellSubtitle(),
-                        )
+                        if (selectedRoute != AppRoute.Downloads) {
+                            XdmPageHeader(
+                                title = selectedRoute.label,
+                                subtitle = selectedRoute.shellSubtitle(),
+                            )
+                        }
                         Box(Modifier.fillMaxWidth().weight(1f)) { content() }
                     }
                 }

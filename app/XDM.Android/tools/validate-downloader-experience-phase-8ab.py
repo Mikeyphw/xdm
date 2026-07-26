@@ -75,17 +75,18 @@ intake = read("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/Downloa
 require(intake, "ManualEntry", "Download intake origin")
 require(intake, "fun fromManual(", "Download intake planner")
 
-screens = read("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt")
+screens = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/ui").rglob("*.kt"))
 for marker in (
-    "Review-first intake",
     "Paste detected URL",
     "DownloadReviewPlanner.plan(",
-    "Inspect as media (recommended)",
-    "Ready for explicit queue submission.",
-    "DownloadDashboardPlanner.plan(visible, ordering)",
-    "DownloadDashboardSectionHeader(section)",
+    "Review download",
+    "Add to queue",
+    "Inspect media",
+    "never creates a transfer automatically",
+    "DownloadsWorkspacePlanner.visibleDownloads",
+    "DownloadWorkspaceFilter.entries",
     "DownloadDashboardOrdering.entries",
-    "DownloadDashboardPlanner.attentionSignal(download)",
+    "combinedClickable",
 ):
     require(screens, marker, "Compose UI")
 require(screens, "firstDownloadUrlFromClipboard(context)", "Explicit clipboard intake")
@@ -162,4 +163,4 @@ if errors:
         print(f"- {error}")
     sys.exit(1)
 
-print("Downloader experience Phase 8A + 8B validation passed: review-first intake and grouped Downloads dashboard are sealed")
+print("Downloader experience Phase 8A + 8B validation passed: review-first intake and the adaptive Downloads workspace are sealed")

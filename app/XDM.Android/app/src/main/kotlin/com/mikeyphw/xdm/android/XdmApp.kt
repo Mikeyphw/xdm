@@ -91,6 +91,7 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
                         state.externalAddDraft?.let(viewModel::inspectExternalMedia)
                             ?: viewModel.inspectManualMedia(url, fileName)
                     },
+                    onCancel = { viewModel.navigate(previousPrimaryRoute) },
                     onDestinationChanged = viewModel::setDestination,
                     onSafDestinationSelected = viewModel::registerSafDestination,
                     onConflictPolicyChanged = viewModel::setConflictPolicy,
