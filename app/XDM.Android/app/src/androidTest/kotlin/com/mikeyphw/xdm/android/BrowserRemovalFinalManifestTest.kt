@@ -37,4 +37,25 @@ class BrowserRemovalFinalManifestTest {
                 it.activityInfo.name.endsWith("ExternalAddDownloadActivity")
         })
     }
+
+    @Test
+    fun debugBrowserSchemeResolvesOnlyToExternalAddDownload() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        listOf("capture", "add").forEach { host ->
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("${BuildConfig.XDM_BROWSER_SCHEME}://$host?v=1&url=https%3A%2F%2Fexample.test%2Fvideo.mp4"),
+            ).addCategory(Intent.CATEGORY_BROWSABLE)
+            val matches = context.packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            assertTrue(matches.any {
+                it.activityInfo.packageName == context.packageName &&
+                    it.activityInfo.name.endsWith("ExternalAddDownloadActivity")
+            })
+            assertFalse(matches.any {
+                it.activityInfo.packageName == context.packageName &&
+                    it.activityInfo.name.endsWith("MainActivity") &&
+                    !it.activityInfo.name.endsWith("ExternalAddDownloadActivity")
+            })
+        }
+    }
 }

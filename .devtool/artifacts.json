@@ -42651,6 +42651,205 @@
         ]
       },
       "history_id": "79e453758c2742999c0dd27e9fb2c17c"
+    },
+    {
+      "applied_at": "2026-07-26T21:11:55.201817Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_phase37_browser_scheme_contract_overlay.zip",
+      "artifact_name": "xdm_android_phase37_browser_scheme_contract_overlay.zip",
+      "type": "overlay",
+      "sha256": "cfbf6c47db241abd9ba7baed47bfcc2b47742ab3ec2d9eb26a059f5941c86738",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Add XDM Android browser scheme contract",
+      "commit_hash": "",
+      "file_count": 19,
+      "change_counts": {
+        "add": 7,
+        "modify": 12
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 37 Browser Scheme Contract",
+        "description": "Adds the variant-specific XDM browser custom scheme, a bounded versioned parser, capture/add routing, security constraints, idempotency contracts, documentation, CI wiring, and focused validation without adding a browser runtime or top-level route.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": ".github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "eb523160949d99ba4e0e96875f4bad129a2414420203c795d255643a37a1bebe",
+              "size": 2678,
+              "source_sha256": "255144e41cbd9acfa6d9aea01386fbbff6cc22a5254d1ce740b7a2db560b75b1"
+            },
+            {
+              "path": "APPLY_DIRECT_PATCH.md",
+              "action": "modify",
+              "sha256": "7867ce182fead7f0ff84b8e490137a58493ddf953a0672556ffb5360f12dab53",
+              "size": 729,
+              "source_sha256": "47bd4083a7ba841034c3dfd561f3082237f498388320f77c672ee3611e466234"
+            },
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "1d4259adb577315464398e3a98ca29e85ccc607064bf9c3ca4429072f24e0c27",
+              "size": 20885,
+              "source_sha256": "b3cdda9c7c3d96621d7d17d1857110d77de95fe33271dbeb8304cf657d89b46c"
+            },
+            {
+              "path": "DEVTOOL_OVERLAY.md",
+              "action": "modify",
+              "sha256": "362a82c5987c2aaadef1c695a5b950c78e7a285856cc08c564affebd23896c03",
+              "size": 1010,
+              "source_sha256": "d6f1ce802e0e852592a89f9b4b19fde9ef22dc72afe5fb6661e9ef17d5692584"
+            },
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "5dab987ba361af4ce3795d32aac84be790f9ee7c33832642b8913e7685d3224d",
+              "size": 4979,
+              "source_sha256": "7d8b221f6abb3683ece2a67e763c4ce859774dcc0a3270181b38d977c9696335"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "4ba2f8ab9c770d262e482a5f30e1c8be405b3a1fc29b36c09b9cc3fb4c6fb74e",
+              "size": 51020,
+              "source_sha256": "56cf24616eb3ee55b3e0dd53a00b54281f54d847de591fd97d93995a3f85668d"
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "sha256": "111801d681958b9f1a3bccb525bcb1fc0ddafa2b4b05443b103a27157eef28d4",
+              "size": 18959,
+              "source_sha256": "16bfeba0e2523d787fd59a33b2e2a2c817e7dde8e73d2dba052483f6c0458ef3"
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "sha256": "1a569c795004a79e2aa109191876a6e983765c6e3d79ababc80978f12e67bbb5",
+              "size": 6142,
+              "source_sha256": "ab80a94c98f4e79bc36f1c712969aacc0496392965b54a3dbdb7b353f05aebf9"
+            },
+            {
+              "path": "app/XDM.Android/app/src/androidTest/kotlin/com/mikeyphw/xdm/android/BrowserRemovalFinalManifestTest.kt",
+              "action": "modify",
+              "sha256": "bcae5a06fc1362348318f6a61a13d38c43f1e8d4d28f368d0168d988d6913f41",
+              "size": 2751,
+              "source_sha256": "8c9a34afe662447c53dde9a11ab5f33757a35c284410c5f0e71b6e09de4a4842"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "a9d5b28185cb198f7266ac310645480fc2a7b48b84cf072f555e8b689efb043d",
+              "size": 15101,
+              "source_sha256": "6978b2429688d91d595e90a3b4cd7ef67d011259a16f6e5621761f21702687d4"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAddDownloadActivity.kt",
+              "action": "modify",
+              "sha256": "654bdea4a9bd6cad033252d5a5cf844c833ecc925dd301f729c6ff9fe37b85a1",
+              "size": 571,
+              "source_sha256": "0bc9e54fee03d83ffc910a7d614937eb7c6624b4e0493313982f9fe0a9bfc2d0"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+              "action": "modify",
+              "sha256": "ab61dd63f14c42c0f8854590234dab60f0cd51021693385d51f3837b36ef4a19",
+              "size": 12214,
+              "source_sha256": "e5d1d068f1f6885e79e7cbcba9daff0174edfaea47bc7036c79179491010282a"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserSchemePhase37ContractTest.kt",
+              "action": "add",
+              "sha256": "5b6c6ec79e642bf9e93d34c3177bb70bbf0a7bd2c59b296c2bc58a9698b4c246",
+              "size": 4979
+            },
+            {
+              "path": "app/XDM.Android/browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkContract.kt",
+              "action": "add",
+              "sha256": "96e0d6cc496e2a8dc611596ae23e3f2847920ae4280b5f18c9a2a9ea981514a6",
+              "size": 1089
+            },
+            {
+              "path": "app/XDM.Android/browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkParser.kt",
+              "action": "add",
+              "sha256": "438eec30819463522b9e1fed5a84f1d5e6e01570d3d6eff058ca6dc96e4fc04c",
+              "size": 6085
+            },
+            {
+              "path": "app/XDM.Android/browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkPayload.kt",
+              "action": "add",
+              "sha256": "bcc6abe1a562981b3a53d36ab72d98a60154322f9df21ac54fe3c1bdeade4645",
+              "size": 977
+            },
+            {
+              "path": "app/XDM.Android/browser-integration/src/test/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkParserTest.kt",
+              "action": "add",
+              "sha256": "bbfc490ac5d591ed22da611a268caa0430145e510bf9fe0ea1cfc98e45303666",
+              "size": 7651
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-37-BROWSER-SCHEME-CONTRACT.md",
+              "action": "add",
+              "sha256": "986158ff38b7ad0e6c9647a2f9ceeab5e5b3869caae142e88cef871363b61ec6",
+              "size": 3747
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-37-browser-scheme-contract.py",
+              "action": "add",
+              "sha256": "8aa87a2aade2403ccdad5eacedd10db2cd7a7ae4ccbb7e69b2f8dfa092106823",
+              "size": 7214
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add XDM Android browser scheme contract"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": false,
+          "build": false,
+          "test": false,
+          "rollback_on_failure": true,
+          "script": {
+            "path": ".devtool-artifact/validate_phase37_browser_scheme_contract.sh",
+            "runner": "bash",
+            "sha256": "64997c916bbaee6334a73e6c61e52818c009a9c26ed9632e49a6f5f2976b5951",
+            "timeout_seconds": 1800
+          },
+          "expected": {
+            "restore": "skip",
+            "build": "skip",
+            "tests": "skip",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Depends on the current Phase 36 external-download-handoff baseline from xdm-20260726-164547.tar.gz.",
+          "Release, beta, and debug variants use xdmdownload, xdmdownload-beta, and xdmdownload-debug respectively.",
+          "The custom URI carries no standalone cookies, authorization headers, proxy credentials, POST bodies, or raw header blocks.",
+          "The existing ExternalAddDownloadActivity, six-route topology, Room schema 14, versionCode 21, and versionName 0.20.0-rc08 are preserved.",
+          "Phase 38 should add the repository-owned Firefox extension source against this contract."
+        ]
+      },
+      "history_id": "6ef9f9458abb4bd4b25db0b0e2f9950a"
     }
   ]
 }

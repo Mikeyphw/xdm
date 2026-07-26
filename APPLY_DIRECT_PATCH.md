@@ -1,16 +1,14 @@
-# Apply the XDM Android UIX R6 overlay
+# Apply XDM Android Phase 37 browser scheme contract
 
-UIX R6 must be applied after `xdm_android_uix_r5_activity_settings_developer_boundary_overlay.zip`. The Devtool artifact validates source hashes and rolls back atomically if the final gate fails.
+Phase 37 depends on the current Phase 36 external-download-handoff baseline and adds the XDM-owned custom URI contract without changing routes, Room, or transfer engines.
 
 ```bash
 cd "$HOME/Code/xdm" && \
   devtool --copy --auto-hud --hud-mode desktop-window --yes \
   -r "$HOME/Code/xdm" \
   --target xdm_android \
-  apply-overlay "$HOME/Downloads/xdm_android_uix_r6_accessibility_performance_release_seal_overlay.zip" \
+  apply-overlay "$HOME/Downloads/xdm_android_phase37_browser_scheme_contract_overlay.zip" \
   --validate
 ```
 
-The artifact owns the commit message `Seal the XDM Android UI UX redesign`. Do not pass `--commit` on the command line.
-
-The full target gate includes lintDebug, lintBeta, module and app unit tests, Android-test assembly, assembleDebug, and assembleBeta. A connected-device smoke pass can also be run from `app/XDM.Android` with `tools/run-uix-device-smoke.sh`.
+The artifact owns the commit message `Add XDM Android browser scheme contract`. Do not pass `--commit` on the command line. Validation is focused on the Phase 37 parser, manifest, routing, core idempotency, app contracts, and Android-test assembly.

@@ -1481,5 +1481,36 @@
     "version_code_unchanged": 21,
     "depends_on": "uix_r5_activity_settings_developer_boundary",
     "next_overlay": "complete"
+  },
+  "browser_scheme_contract": {
+    "program": "android_browser_bridge",
+    "contract_version": 1,
+    "contract_document": "docs/architecture/PHASE-37-BROWSER-SCHEME-CONTRACT.md",
+    "static_validator": "tools/validate-phase-37-browser-scheme-contract.py",
+    "release_scheme": "xdmdownload",
+    "beta_scheme": "xdmdownload-beta",
+    "debug_scheme": "xdmdownload-debug",
+    "receiver": "ExternalAddDownloadActivity",
+    "hosts": [
+      "capture",
+      "add"
+    ],
+    "capture_action": "CaptureMedia",
+    "add_action": "PromptAddDownload",
+    "source": "BrowserExtension",
+    "allowed_inner_schemes": [
+      "http",
+      "https",
+      "ftp"
+    ],
+    "standalone_sensitive_headers_in_uri": false,
+    "stable_idempotency_reused": true,
+    "browser_runtime_added": false,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "top_level_route_added": false,
+    "depends_on": "phase36_external_download_handoff",
+    "next_overlay": "browser_bridge_phase38_repo_owned_firefox_extension"
   }
 }

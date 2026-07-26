@@ -21,6 +21,7 @@ import com.mikeyphw.xdm.android.model.AutomationCommandSource
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.tasker.TaskerContract
 import com.mikeyphw.xdm.android.browser.BrowserHandoffContract
+import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkParser
 import java.util.Locale
 
 open class MainActivity : ComponentActivity() {
@@ -52,6 +53,17 @@ open class MainActivity : ComponentActivity() {
 
     private fun handleExternalIntent(intent: Intent?) {
         val incoming = intent ?: return
+        val browserDeepLink = XdmBrowserDeepLinkParser.parse(
+            rawDeepLink = incoming.dataString,
+            expectedScheme = BuildConfig.XDM_BROWSER_SCHEME,
+        )
+        if (browserDeepLink != null) {
+            viewModel.ingestAutomationCommand(
+                browserDeepLink.toAutomationCommandDraft(originPackage = browserOriginPackage(incoming)),
+            )
+            return
+        }
+
         val sharedUrl = sharedText(incoming)
         val url = handoffUrl(incoming, sharedUrl)
         val fileName = handoffFileName(incoming)

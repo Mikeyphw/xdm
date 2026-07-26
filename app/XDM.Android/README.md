@@ -144,6 +144,16 @@ The Media route remains the review and resolver workbench for direct media, HLS,
 
 Browser-era tabs, history, bookmarks, private sessions, permissions, WebView resources, and active browser-product validators are gone. Capture quality remains as a browser-neutral media intake service, and privacy auditing treats external page context as transient data. The `browser-integration` module remains intentionally because it handles external browser and download-manager intents without embedding a browser engine.
 
+### XDM browser custom scheme
+
+External browser extensions can now target XDM directly through a versioned custom scheme owned only by `ExternalAddDownloadActivity`. Release, beta, and debug builds use `xdmdownload`, `xdmdownload-beta`, and `xdmdownload-debug` respectively, preventing parallel installations from fighting over one handler. `capture` opens the existing Media review flow, while `add` opens Add Download. The envelope accepts only bounded URL and display metadata; cookies, authorization headers, proxy credentials, POST bodies, and unrestricted header blocks are excluded.
+
+Example release handoff:
+
+```text
+xdmdownload://capture?v=1&url=https%3A%2F%2Fexample.com%2Fmaster.m3u8
+```
+
 ### Media resolver and player
 
 The Media route now resolves captured HLS/DASH manifests through a real picker surface: video quality, audio tracks, and subtitle tracks are selected before download planning. yt-dlp metadata previews show title, thumbnail availability, duration, extractor, and format count before the download action runs. Session handoff is review-first: referer, Origin, and short-lived cookie/header hints are passed only to typed yt-dlp/aria2/native planning paths, while diagnostics keep cookies, authorization, tokens, and signed query values redacted.

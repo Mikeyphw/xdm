@@ -1,3 +1,11 @@
+## XDM Android Phase 37 - Browser scheme contract
+
+- Added variant-specific `xdmdownload`, `xdmdownload-beta`, and `xdmdownload-debug` custom schemes owned only by `ExternalAddDownloadActivity`.
+- Added a versioned, bounded parser for `capture` and `add` browser handoffs with review-first routing into the existing automation intake.
+- Rejected nested or unsafe schemes, user-info credentials, oversized payloads, and standalone sensitive headers while preserving signed media URL query values.
+- Added parser, manifest, routing, idempotency, browser-free architecture, static validator, and Android intent-resolution contracts.
+- Preserved the six-route topology, Room schema 14, `versionCode 21`, `versionName 0.20.0-rc08`, and all existing external handoff paths.
+
 ## UIX R6 - Accessibility, performance, and release seal
 
 - Added stable screen semantics and 48 dp minimum touch targets across the adaptive shell and primary workflows.

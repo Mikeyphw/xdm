@@ -35,6 +35,8 @@ android {
         versionCode = 21
         versionName = "0.20.0-rc08"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["xdmBrowserScheme"] = "xdmdownload"
+        buildConfigField("String", "XDM_BROWSER_SCHEME", "\"xdmdownload\"")
     }
 
     signingConfigs {
@@ -49,16 +51,25 @@ android {
     }
 
     buildTypes {
-        getByName("debug") { applicationIdSuffix = ".debug"; versionNameSuffix = "-debug" }
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            manifestPlaceholders["xdmBrowserScheme"] = "xdmdownload-debug"
+            buildConfigField("String", "XDM_BROWSER_SCHEME", "\"xdmdownload-debug\"")
+        }
         create("beta") {
             initWith(getByName("release"))
             applicationIdSuffix = ".beta"
             versionNameSuffix = "-beta"
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
+            manifestPlaceholders["xdmBrowserScheme"] = "xdmdownload-beta"
+            buildConfigField("String", "XDM_BROWSER_SCHEME", "\"xdmdownload-beta\"")
         }
         getByName("release") {
             isMinifyEnabled = false
+            manifestPlaceholders["xdmBrowserScheme"] = "xdmdownload"
+            buildConfigField("String", "XDM_BROWSER_SCHEME", "\"xdmdownload\"")
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }

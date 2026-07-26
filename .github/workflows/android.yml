@@ -47,6 +47,7 @@ jobs:
           python3 tools/validate-phase-8.py
           python3 tools/validate-phase-9.py
           python3 tools/validate-phase-10.py
+          python3 tools/validate-phase-37-browser-scheme-contract.py
           bash tools/run-final-release-gate.sh --ci
       - name: Bootstrap wrapper
         run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.4.1
