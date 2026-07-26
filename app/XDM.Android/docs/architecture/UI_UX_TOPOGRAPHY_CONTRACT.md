@@ -17,7 +17,7 @@ The internal compatibility topology remains six routes so persisted navigation a
 
 Library owns completed media, playback readiness, sidecar health, resume, and retry. Media remains the external media intake, resolver, track-selection, and execution-planning workbench.
 
-Activity consolidates the previous Queues, Scheduler, Recovery, and Diagnostics destinations through visible sub-navigation. Those capabilities remain operational but no longer compete as separate top-level routes. Persisted legacy route names must restore to Activity, while unknown or removed route names fall back to Downloads.
+Activity exposes two primary views: Needs attention and Recent. Queue decisions, Queues, Schedules, and Recovery remain operational behind a visible Manage action and adaptive secondary sheet. Diagnostics is not normal Activity navigation; legacy Diagnostics state redirects to the gated Developer tools workspace only when Developer options is enabled. Persisted legacy route names must restore safely, while unknown or removed route names fall back to Downloads.
 
 Future features must extend one of these routes by default. Adding or removing a top-level route requires updating this contract and the route contract tests in the same change.
 
@@ -84,7 +84,7 @@ Settings must make deferred-save sections explicit. Proxy and post-processing dr
 
 ## Activity and Library Operational Rules
 
-Activity is an operational workspace, not a read-only dashboard. Its sub-navigation must expose Overview, Queues, Schedule, Recovery, and Diagnostics with visible selected state.
+Activity is an operational workspace, not a debug dashboard. Its primary navigation must expose only Needs attention and Recent with visible selected state. Queue decisions, Queues, Schedules, and Recovery belong behind Manage activity. Diagnostics must not appear as a normal Activity tab.
 
 Queues must expose create, edit, enable or disable, and delete controls. The default queue may be protected from deletion, but the UI must explain the disabled action through its enabled state rather than shipping a placeholder.
 
@@ -102,7 +102,7 @@ XDM must be discoverable as an Android download target when browsers delegate a 
 
 XDM has no built-in browsing surface. Shared text and explicit external handoffs must never fall through to a normal cold-launch experience. Media URLs may open the Media route when stream metadata is detected. Reviewed URLs must open Add or Media with the candidate prefilled; no handoff may silently start a transfer.
 
-The ShareSheet intake path must extract URLs from `EXTRA_TEXT`, `EXTRA_SUBJECT`, or the first ClipData text item before rejecting the handoff. Rejections should be visible in Diagnostics, but supported links must navigate to the relevant user workflow. Externally shared HLS, DASH, progressive video, and audio requests must be captured into the Media route instead of starting surprise downloads.
+The ShareSheet intake path must extract URLs from `EXTRA_TEXT`, `EXTRA_SUBJECT`, or the first ClipData text item before rejecting the handoff. Rejections should appear as plain-language Activity items, with redacted intake details available in gated Developer tools. Supported links must navigate to the relevant user workflow. Externally shared HLS, DASH, progressive video, and audio requests must be captured into the Media route instead of starting surprise downloads.
 
 
 ## Phase 7 Termux Bridge Rules
@@ -169,3 +169,12 @@ Add uses a two-step review contract: **Review download**, then **Add to queue**.
 Media is a consumer-first review workspace. It leads with captured media, common quality choices, a complete video/audio/subtitle selection sheet, estimated size, explicit Download, and a compact Recently queued summary. Raw URLs, session data, cookies, authorization values, resolver stages, runtime plans, telemetry, worker bridges, privacy audits, phase labels, and release validation decks are prohibited from the normal Media surface.
 
 Library is playable-first. It exposes All, Video, Audio, and Recently added filters, a compact list on phones, an adaptive grid on larger screens, and one clear Play, Resume download, or Retry action per item. Sidecar JSON is developer-only. Media3 support details remain hidden until an actual playback error occurs. Removing a library record must clearly state that it does not delete the downloaded file.
+
+## UIX R5 Activity, Settings, and Developer Boundary Rules
+
+Activity defaults to Needs attention and exposes only Needs attention and Recent as primary views. Its compact metrics show unresolved items, user decisions, and events today. Each row must explain the consequence in plain language and provide one useful action. Queue decisions, Queues, Schedules, and Recovery remain operational through Manage activity. Legacy Overview maps to Needs attention, Timeline maps to Recent, and Diagnostics redirects to Developer tools only when enabled.
+
+Settings begins with Save location and Smart queue, followed by Notifications and Advanced download rules. Appearance, Privacy and support, Developer options, and About follow in ordinary-user order. Settings import/export, proxy, Termux, aria2, conversion, automation, destination rules, and duplicate rules remain available on secondary advanced pages rather than occupying the opening screen.
+
+Developer options are persisted in DataStore and default off. Disabling them must remove runtime probes, engine matrices, media planners, dispatch and worker dashboards, privacy audits, release checks, raw intake diagnostics, and redacted logs from reachable normal navigation. The support report remains available while Developer options is off. Developer surfaces must remain redacted and typed; a raw shell or arbitrary command textbox is prohibited.
+

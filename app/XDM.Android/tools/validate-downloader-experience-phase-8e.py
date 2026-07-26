@@ -105,8 +105,19 @@ require(coordinator, "fun clearDecisionHistory()", "Queue coordinator")
 require(coordinator, "Queue decision history cleared; transfer records were not removed.", "Queue coordinator")
 
 panels = read("app/src/main/kotlin/com/mikeyphw/xdm/android/ActivityPanel.kt")
-for panel in ("Overview", "Timeline", "Attention", "Decisions", "Queues", "Schedule", "Recovery", "Diagnostics"):
-    require(panels, f'{panel}("{panel}")', "Activity panels")
+for marker in (
+    'Overview("Needs attention")',
+    'Timeline("Recent")',
+    'Attention("Needs attention")',
+    'Decisions("Queue decisions")',
+    'Queues("Queues")',
+    'Schedule("Schedules")',
+    'Recovery("Recovery")',
+    'Diagnostics("Developer tools")',
+    "val primaryPanels = listOf(Attention, Timeline)",
+    "val managePanels = listOf(Decisions, Queues, Schedule, Recovery)",
+):
+    require(panels, marker, "Activity panels")
 
 screens = read("app/src/main/kotlin/com/mikeyphw/xdm/android/OperationalActivityScreens.kt")
 for marker in (
@@ -130,16 +141,19 @@ for deprecated_field in ("Intent.ACTION_DEVICE_STORAGE_LOW", "Intent.ACTION_DEVI
     if deprecated_field in monitor:
         errors.append(f"Queue condition monitor uses deprecated field: {deprecated_field}")
 for marker in (
-    "ActivityPanel.Timeline",
+    "ActivityWorkspaceScreen(",
     "ActivityPanel.Attention",
     "ActivityPanel.Decisions",
     "ActivityPanel.Queues",
     "ActivityPanel.Schedule",
     "ActivityPanel.Recovery",
     "ActivityPanel.Diagnostics",
-    "OperationalDiagnosticsHeader",
+    "viewModel.openDeveloperTools()",
+    "XdmAdaptiveSheet(",
 ):
     require(shell, marker, "App shell")
+developer_workspace = read("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsWorkspace.kt")
+require(developer_workspace, "OperationalDiagnosticsHeader(", "Developer workspace")
 
 view_model = read("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
 for marker in (

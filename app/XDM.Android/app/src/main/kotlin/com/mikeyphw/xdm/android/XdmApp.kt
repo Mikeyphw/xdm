@@ -4,12 +4,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +22,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.OperationalActivityEvent
 
 private val routeTopology = AppRoute.entries
 private val primaryRoutes = routeTopology.filterNot { it == AppRoute.Add }
@@ -170,42 +168,7 @@ private fun XdmRouteContent(
                 onRemoveRecord = viewModel::removeMediaCapture,
             )
             AppRoute.Activity -> ActivityHub(state, viewModel)
-            AppRoute.Settings -> SettingsScreen(
-                state.compactDensity,
-                state.backendCapabilities,
-                state.backendMigrations,
-                state.installUpdateReadinessReport,
-                state.finalReleaseGateReport,
-                state.proxySettings,
-                state.postProcessingSettings,
-                state.settingsExportText,
-                state.backupRestoreReport,
-                state.destinationRules,
-                state.duplicateRules,
-                state.protocolExpansionReport,
-                state.releasePackagingReport,
-                state.termuxBridge,
-                state.termuxAria2,
-                state.postProcessingAutomation,
-                viewModel::setCompactDensity,
-                viewModel::setProxySettings,
-                viewModel::setPostProcessingSettings,
-                viewModel::importSettingsSnapshot,
-                viewModel::saveDestinationRule,
-                viewModel::saveDuplicateRule,
-                viewModel::runTermuxToolProbe,
-                viewModel::openTermux,
-                viewModel::setTermuxRootMode,
-                viewModel::runTermuxRootProbe,
-                viewModel::collectTermuxRootProcessDiagnostics,
-                viewModel::killStuckTermuxAria2WithRoot,
-                viewModel::fixTermuxDownloadPermissionsWithRoot,
-                viewModel::setTermuxAria2Enabled,
-                viewModel::rotateTermuxAria2Secret,
-                viewModel::setPostProcessingAutomationEnabled,
-                viewModel::retryFailedPostProcessing,
-                viewModel::clearPostProcessingEvents,
-            )
+            AppRoute.Settings -> SettingsScreen(state, viewModel)
         }
     }
 }
@@ -213,7 +176,20 @@ private fun XdmRouteContent(
 @Composable
 private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
     val panel = state.activityPanel
-    val onActivityAction: (com.mikeyphw.xdm.android.model.OperationalActivityEvent) -> Unit = { event ->
+    var lastPrimaryPanelName by rememberSaveable { mutableStateOf(ActivityPanel.Attention.name) }
+
+    LaunchedEffect(panel) {
+        if (panel.isPrimary) lastPrimaryPanelName = panel.normalized(false).name
+        if (panel == ActivityPanel.Diagnostics) viewModel.openDeveloperTools()
+    }
+
+    val lastPrimary = runCatching { ActivityPanel.valueOf(lastPrimaryPanelName) }
+        .getOrDefault(ActivityPanel.Attention)
+        .normalized(false)
+        .takeIf { it.isPrimary }
+        ?: ActivityPanel.Attention
+
+    val onActivityAction: (OperationalActivityEvent) -> Unit = { event ->
         val download = event.downloadId?.let { id -> state.downloads.firstOrNull { it.id == id } }
         when (event.actionLabel) {
             "Start anyway" -> download?.let(viewModel::startIgnoringQueuePolicy)
@@ -223,103 +199,70 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
             "Open resolver diagnostics" -> viewModel.navigate(AppRoute.Media)
         }
     }
-    Column(Modifier.fillMaxSize()) {
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-        ) {
-            items(ActivityPanel.entries) { item ->
-                FilterChip(
-                    selected = panel == item,
-                    onClick = { viewModel.selectActivityPanel(item) },
-                    label = { Text(item.label) },
-                    modifier = Modifier.semantics {
-                        stateDescription = if (panel == item) "${item.label} selected" else "${item.label} not selected"
-                    },
-                )
-            }
-        }
-        Box(Modifier.fillMaxWidth().weight(1f)) {
-            when (panel) {
-                ActivityPanel.Overview -> ActivityOverviewScreen(
-                    state = state,
-                    onEvaluateQueueIntelligence = viewModel::runQueueIntelligenceNow,
-                    onOpenTimeline = { viewModel.selectActivityPanel(ActivityPanel.Timeline) },
-                    onOpenAttention = { viewModel.selectActivityPanel(ActivityPanel.Attention) },
-                    onOpenDecisions = { viewModel.selectActivityPanel(ActivityPanel.Decisions) },
-                )
-                ActivityPanel.Timeline -> ActivityTimelineScreen(
-                    events = state.activityEvents,
-                    onAction = onActivityAction,
-                    onDismiss = viewModel::dismissActivityEvent,
-                )
-                ActivityPanel.Attention -> ActivityAttentionScreen(
-                    events = state.activityEvents,
-                    onAction = onActivityAction,
-                    onDismiss = viewModel::dismissActivityEvent,
-                )
-                ActivityPanel.Decisions -> ActivityDecisionsScreen(
-                    events = state.activityEvents,
-                    onEvaluateNow = viewModel::runQueueIntelligenceNow,
-                    onAction = onActivityAction,
-                    onDismiss = viewModel::dismissActivityEvent,
-                )
-                ActivityPanel.Queues -> QueuesScreen(
-                    queues = state.queues,
-                    onCreateQueue = viewModel::createQueue,
-                    onUpdateQueue = viewModel::updateQueue,
-                    onToggleQueue = viewModel::setQueueEnabled,
-                    onDeleteQueue = viewModel::deleteQueue,
-                )
-                ActivityPanel.Schedule -> SchedulerScreen(
-                    rules = state.schedules,
-                    queues = state.queues,
-                    queueIntelligence = state.queueIntelligence,
-                    onCreateSchedule = viewModel::createSchedule,
-                    onUpdateSchedule = viewModel::updateSchedule,
-                    onToggleSchedule = viewModel::setScheduleEnabled,
-                    onDeleteSchedule = viewModel::deleteSchedule,
-                    onEvaluateNow = viewModel::runQueueIntelligenceNow,
-                )
-                ActivityPanel.Recovery -> RecoveryScreen(
-                    state.recovery,
-                    viewModel::validateRecoveryRecord,
-                    viewModel::removeRecoveryRecord,
-                )
-                ActivityPanel.Diagnostics -> Column(Modifier.fillMaxSize()) {
-                    OperationalDiagnosticsHeader(
-                        summary = state.activitySummary,
-                        diagnosticsExport = state.activityDiagnosticsExport,
-                        onOpenTimeline = { viewModel.selectActivityPanel(ActivityPanel.Timeline) },
-                        onClearHistory = viewModel::clearActivityHistory,
+
+    ActivityWorkspaceScreen(
+        events = state.activityEvents,
+        selectedPanel = if (panel.isPrimary) panel else lastPrimary,
+        onPanelChanged = viewModel::selectActivityPanel,
+        onOpenManage = { viewModel.selectActivityPanel(ActivityPanel.Decisions) },
+        onAction = onActivityAction,
+        onDismiss = viewModel::dismissActivityEvent,
+    )
+
+    XdmAdaptiveSheet(
+        visible = panel.isManage,
+        windowClass = LocalXdmWindowClass.current,
+        onDismissRequest = { viewModel.selectActivityPanel(lastPrimary) },
+        title = "Manage activity",
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            XdmActionFlowRow(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                ActivityPanel.managePanels.forEach { item ->
+                    FilterChip(
+                        selected = panel == item,
+                        onClick = { viewModel.selectActivityPanel(item) },
+                        label = { Text(item.label) },
+                        modifier = Modifier.semantics {
+                            stateDescription = if (panel == item) "${item.label} selected" else "${item.label} not selected"
+                        },
                     )
-                    Box(Modifier.fillMaxWidth().weight(1f)) {
-                        DiagnosticsScreen(
-                            state,
-                            state.browserIntegrationStatus,
-                            state.clipboardInbox,
-                            viewModel::runAria2SmokeTest,
-                            viewModel::runTermuxToolProbe,
-                            viewModel::runTermuxRootProbe,
-                            viewModel::collectTermuxRootProcessDiagnostics,
-                            viewModel::killStuckTermuxAria2WithRoot,
-                            viewModel::startTermuxAria2Daemon,
-                            viewModel::stopTermuxAria2Daemon,
-                            viewModel::probeTermuxAria2Daemon,
-                            viewModel::refreshTermuxAria2Tasks,
-                            viewModel::pauseAllTermuxAria2Tasks,
-                            viewModel::resumeAllTermuxAria2Tasks,
-                            viewModel::saveTermuxAria2Session,
-                            viewModel::retryFailedPostProcessing,
-                            viewModel::clearPostProcessingEvents,
-                            viewModel::scanClipboardText,
-                            viewModel::acceptClipboardItem,
-                            viewModel::dismissClipboardItem,
-                        )
-                    }
+                }
+            }
+            Box(Modifier.fillMaxWidth().weight(1f)) {
+                when (panel) {
+                    ActivityPanel.Decisions -> ActivityDecisionsScreen(
+                        events = state.activityEvents,
+                        onEvaluateNow = viewModel::runQueueIntelligenceNow,
+                        onAction = onActivityAction,
+                        onDismiss = viewModel::dismissActivityEvent,
+                    )
+                    ActivityPanel.Queues -> QueuesScreen(
+                        queues = state.queues,
+                        onCreateQueue = viewModel::createQueue,
+                        onUpdateQueue = viewModel::updateQueue,
+                        onToggleQueue = viewModel::setQueueEnabled,
+                        onDeleteQueue = viewModel::deleteQueue,
+                    )
+                    ActivityPanel.Schedule -> SchedulerScreen(
+                        rules = state.schedules,
+                        queues = state.queues,
+                        queueIntelligence = state.queueIntelligence,
+                        onCreateSchedule = viewModel::createSchedule,
+                        onUpdateSchedule = viewModel::updateSchedule,
+                        onToggleSchedule = viewModel::setScheduleEnabled,
+                        onDeleteSchedule = viewModel::deleteSchedule,
+                        onEvaluateNow = viewModel::runQueueIntelligenceNow,
+                    )
+                    ActivityPanel.Recovery -> RecoveryScreen(
+                        state.recovery,
+                        viewModel::validateRecoveryRecord,
+                        viewModel::removeRecoveryRecord,
+                    )
+                    else -> Unit
                 }
             }
         }
     }
 }
-

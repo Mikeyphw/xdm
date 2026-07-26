@@ -12,6 +12,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
 import android.content.pm.PackageManager
 import com.mikeyphw.xdm.android.model.AutomationCommandAction
 import com.mikeyphw.xdm.android.model.AutomationCommandDraft
@@ -34,7 +36,8 @@ open class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         setContent {
-            XdmTheme {
+            val state by viewModel.uiState.collectAsStateWithLifecycle()
+            XdmTheme(mode = state.themeMode) {
                 XdmApp(viewModel, requestNotifications = ::requestNotificationPermissionIfNeeded)
             }
         }

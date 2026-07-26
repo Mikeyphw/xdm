@@ -72,6 +72,7 @@ import com.mikeyphw.xdm.android.model.OperationalActivityPlanner
 import com.mikeyphw.xdm.android.model.OperationalActivitySummary
 import com.mikeyphw.xdm.android.model.OperationalDiagnosticsContext
 import com.mikeyphw.xdm.android.model.PostProcessingSettings
+import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
 import com.mikeyphw.xdm.android.model.ProtocolExpansionPolish
 import com.mikeyphw.xdm.android.model.ProtocolExpansionReport
 import com.mikeyphw.xdm.android.model.ProxyCredentialSettings
@@ -125,16 +126,20 @@ data class Aria2DiagnosticsUi(
 data class MainUiState(
     val route: AppRoute = AppRoute.Downloads,
     val compactDensity: Boolean = false,
+    val themeMode: XdmThemeMode = XdmThemeMode.Dark,
+    val developerOptionsEnabled: Boolean = false,
     val downloads: List<Download> = emptyList(),
     val queues: List<QueueDefinition> = emptyList(),
     val schedules: List<ScheduleRule> = emptyList(),
     val recovery: List<RecoveryRecord> = emptyList(),
     val activeTransfers: ActiveTransferSummary = ActiveTransferSummary(),
     val queueIntelligence: QueueIntelligenceSummary = QueueIntelligenceSummary(),
-    val activityPanel: ActivityPanel = ActivityPanel.Overview,
+    val activityPanel: ActivityPanel = ActivityPanel.Attention,
+    val settingsPanel: SettingsPanel = SettingsPanel.Overview,
     val activityEvents: List<OperationalActivityEvent> = emptyList(),
     val activitySummary: OperationalActivitySummary = OperationalActivitySummary(),
     val activityDiagnosticsExport: String = "",
+    val supportReportText: String = "",
     val destinationUri: String = DestinationUris.PUBLIC_DOWNLOADS,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val externalAddDraft: DownloadIntakeDraft? = null,
@@ -226,7 +231,8 @@ class MainViewModel(
 ) : ViewModel() {
     private data class NavigationOverride(
         val route: AppRoute? = null,
-        val activityPanel: ActivityPanel = ActivityPanel.Overview,
+        val activityPanel: ActivityPanel = ActivityPanel.Attention,
+        val settingsPanel: SettingsPanel = SettingsPanel.Overview,
     )
 
     private val navigationOverride = MutableStateFlow(NavigationOverride())
@@ -471,19 +477,75 @@ class MainViewModel(
             events = activityEvents,
             summary = activitySummary,
         )
+        val releaseSecurityReport = ReleaseSecurityGate.evaluate(
+            versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+            schemaVersion = 14,
+            buildType = BuildConfig.BUILD_TYPE,
+            debuggable = BuildConfig.DEBUG,
+            privacySafeDiagnostics = true,
+            releaseSigningConfigured = !BuildConfig.DEBUG,
+        )
+        val installUpdateReadinessReport = ReleaseInstallReadinessGate.evaluate(
+            versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+            versionCode = BuildConfig.VERSION_CODE,
+            packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".beta"),
+            schemaVersion = 14,
+            buildType = BuildConfig.BUILD_TYPE,
+            releaseSafetyComplete = true,
+            recoverySurfaceReady = snapshot.finalizationJournals.none { it.needsRecovery } || snapshot.recovery.isNotEmpty() || snapshot.finalizationJournals.isEmpty(),
+            diagnosticsExportRedacted = true,
+            aria2PayloadGateRetained = true,
+            updateKeepsPackageIdentity = true,
+            releaseSigningConfigured = !BuildConfig.DEBUG,
+        )
+        val finalReleaseGateReport = FinalPublicReleaseGate.evaluate(
+            versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+            versionCode = BuildConfig.VERSION_CODE,
+            packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".beta"),
+            schemaVersion = 14,
+            buildType = BuildConfig.BUILD_TYPE,
+            releaseSafetyReady = true,
+            installUpdateReady = true,
+            diagnosticsRedacted = true,
+            aria2PayloadVerified = false,
+            staticValidatorsComplete = true,
+            releaseDocsComplete = true,
+            noNewTopLevelRoutes = true,
+            fullValidationPassed = false,
+            releaseSigningConfigured = !BuildConfig.DEBUG,
+        )
+        val supportReportText = buildString {
+            appendLine(activityDiagnosticsExport.trim())
+            appendLine()
+            appendLine(PrivacyDiagnosticsRedactor.redactedHealthSummary(
+                report = releaseSecurityReport,
+                downloadCount = snapshot.downloads.size,
+                mediaCaptureCount = snapshot.mediaCaptures.size,
+                automationCount = snapshot.automationCommands.size,
+                rejectedHandoffCount = snapshot.automationCommands.count { it.status == AutomationCommandStatus.Rejected },
+            ))
+            appendLine()
+            appendLine(installUpdateReadinessReport.redactedSummary())
+            appendLine()
+            appendLine(finalReleaseGateReport.redactedSummary())
+        }
         MainUiState(
             route = navigation.route ?: prefs.lastRoute,
             compactDensity = prefs.compactDensity,
+            themeMode = prefs.themeMode,
+            developerOptionsEnabled = prefs.developerOptionsEnabled,
             downloads = snapshot.downloads,
             queues = snapshot.queues,
             schedules = snapshot.schedules,
             recovery = snapshot.recovery,
             activeTransfers = runtime.activeTransfers,
             queueIntelligence = runtime.queueIntelligence,
-            activityPanel = navigation.activityPanel,
+            activityPanel = navigation.activityPanel.normalized(prefs.developerOptionsEnabled),
+            settingsPanel = navigation.settingsPanel,
             activityEvents = activityEvents,
             activitySummary = activitySummary,
             activityDiagnosticsExport = activityDiagnosticsExport,
+            supportReportText = supportReportText,
             destinationUri = prefs.destinationUri,
             conflictPolicy = prefs.conflictPolicy,
             externalAddDraft = review.externalAddDraft,
@@ -536,43 +598,9 @@ class MainViewModel(
                 protocolExpansion = true,
                 releasePackaging = true,
             ),
-            releaseSecurityReport = ReleaseSecurityGate.evaluate(
-                versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
-                schemaVersion = 14,
-                buildType = BuildConfig.BUILD_TYPE,
-                debuggable = BuildConfig.DEBUG,
-                privacySafeDiagnostics = true,
-                releaseSigningConfigured = !BuildConfig.DEBUG,
-            ),
-            installUpdateReadinessReport = ReleaseInstallReadinessGate.evaluate(
-                versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
-                versionCode = BuildConfig.VERSION_CODE,
-                packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".beta"),
-                schemaVersion = 14,
-                buildType = BuildConfig.BUILD_TYPE,
-                releaseSafetyComplete = true,
-                recoverySurfaceReady = snapshot.finalizationJournals.none { it.needsRecovery } || snapshot.recovery.isNotEmpty() || snapshot.finalizationJournals.isEmpty(),
-                diagnosticsExportRedacted = true,
-                aria2PayloadGateRetained = true,
-                updateKeepsPackageIdentity = true,
-                releaseSigningConfigured = !BuildConfig.DEBUG,
-            ),
-            finalReleaseGateReport = FinalPublicReleaseGate.evaluate(
-                versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
-                versionCode = BuildConfig.VERSION_CODE,
-                packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".beta"),
-                schemaVersion = 14,
-                buildType = BuildConfig.BUILD_TYPE,
-                releaseSafetyReady = true,
-                installUpdateReady = true,
-                diagnosticsRedacted = true,
-                aria2PayloadVerified = false,
-                staticValidatorsComplete = true,
-                releaseDocsComplete = true,
-                noNewTopLevelRoutes = true,
-                fullValidationPassed = false,
-                releaseSigningConfigured = !BuildConfig.DEBUG,
-            ),
+            releaseSecurityReport = releaseSecurityReport,
+            installUpdateReadinessReport = installUpdateReadinessReport,
+            finalReleaseGateReport = finalReleaseGateReport,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -596,12 +624,26 @@ class MainViewModel(
     }
 
     fun navigateActivity(panel: ActivityPanel) {
-        navigationOverride.value = NavigationOverride(route = AppRoute.Activity, activityPanel = panel)
+        navigationOverride.value = NavigationOverride(route = AppRoute.Activity, activityPanel = panel.normalized(uiState.value.developerOptionsEnabled))
         viewModelScope.launch { preferences.setRoute(AppRoute.Activity) }
     }
 
     fun selectActivityPanel(panel: ActivityPanel) {
-        navigationOverride.value = navigationOverride.value.copy(activityPanel = panel)
+        navigationOverride.value = navigationOverride.value.copy(activityPanel = panel.normalized(uiState.value.developerOptionsEnabled))
+    }
+
+    fun selectSettingsPanel(panel: SettingsPanel) {
+        navigationOverride.value = navigationOverride.value.copy(route = AppRoute.Settings, settingsPanel = panel)
+        viewModelScope.launch { preferences.setRoute(AppRoute.Settings) }
+    }
+
+    fun openDeveloperTools() {
+        navigationOverride.value = NavigationOverride(
+            route = AppRoute.Settings,
+            activityPanel = ActivityPanel.Attention,
+            settingsPanel = SettingsPanel.DeveloperTools,
+        )
+        viewModelScope.launch { preferences.setRoute(AppRoute.Settings) }
     }
 
     fun dismissActivityEvent(eventId: String) {
@@ -852,6 +894,17 @@ class MainViewModel(
 
     fun setCompactDensity(compact: Boolean) {
         viewModelScope.launch { preferences.setCompactDensity(compact) }
+    }
+
+    fun setThemeMode(mode: XdmThemeMode) {
+        viewModelScope.launch { preferences.setThemeMode(mode) }
+    }
+
+    fun setDeveloperOptionsEnabled(enabled: Boolean) {
+        if (!enabled && navigationOverride.value.settingsPanel == SettingsPanel.DeveloperTools) {
+            navigationOverride.value = navigationOverride.value.copy(settingsPanel = SettingsPanel.Overview)
+        }
+        viewModelScope.launch { preferences.setDeveloperOptionsEnabled(enabled) }
     }
 
     fun setProxySettings(settings: ProxyCredentialSettings) {

@@ -15,11 +15,18 @@ import com.mikeyphw.xdm.android.storage.DestinationUris
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+enum class XdmThemeMode(val label: String) {
+    Dark("Dark"),
+    Amoled("AMOLED black"),
+}
+
 private val Context.dataStore by preferencesDataStore("xdm_preferences")
 
 data class UserPreferences(
     val lastRoute: AppRoute = AppRoute.Downloads,
     val compactDensity: Boolean = false,
+    val themeMode: XdmThemeMode = XdmThemeMode.Dark,
+    val developerOptionsEnabled: Boolean = false,
     val destinationUri: String = DestinationUris.PUBLIC_DOWNLOADS,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val proxySettings: ProxyCredentialSettings = ProxyCredentialSettings(),
@@ -30,6 +37,8 @@ class UserPreferencesStore(private val context: Context) {
     private object Keys {
         val LastRoute = stringPreferencesKey("last_route")
         val CompactDensity = booleanPreferencesKey("compact_density")
+        val ThemeMode = stringPreferencesKey("theme_mode")
+        val DeveloperOptionsEnabled = booleanPreferencesKey("developer_options_enabled")
         val DestinationUri = stringPreferencesKey("destination_uri")
         val ConflictPolicy = stringPreferencesKey("filename_conflict_policy")
         val ProxyEnabled = booleanPreferencesKey("proxy_enabled")
@@ -46,6 +55,10 @@ class UserPreferencesStore(private val context: Context) {
         UserPreferences(
             lastRoute = AppRoute.restore(preferences[Keys.LastRoute]),
             compactDensity = preferences[Keys.CompactDensity] ?: false,
+            themeMode = preferences[Keys.ThemeMode]
+                ?.let { runCatching { XdmThemeMode.valueOf(it) }.getOrNull() }
+                ?: XdmThemeMode.Dark,
+            developerOptionsEnabled = preferences[Keys.DeveloperOptionsEnabled] ?: false,
             destinationUri = preferences[Keys.DestinationUri] ?: defaultDestinationUri(),
             conflictPolicy = preferences[Keys.ConflictPolicy]?.let { runCatching { FilenameConflictPolicy.valueOf(it) }.getOrNull() } ?: FilenameConflictPolicy.Rename,
             proxySettings = ProxyCredentialSettings(
@@ -71,6 +84,14 @@ class UserPreferencesStore(private val context: Context) {
 
     suspend fun setCompactDensity(compact: Boolean) {
         context.dataStore.edit { it[Keys.CompactDensity] = compact }
+    }
+
+    suspend fun setThemeMode(mode: XdmThemeMode) {
+        context.dataStore.edit { it[Keys.ThemeMode] = mode.name }
+    }
+
+    suspend fun setDeveloperOptionsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.DeveloperOptionsEnabled] = enabled }
     }
 
     suspend fun setDestination(uri: String) {

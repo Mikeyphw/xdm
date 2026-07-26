@@ -1,3 +1,12 @@
+## UIX R5 - Activity, Settings, and Developer boundary
+
+- Refocused Activity on Needs attention and Recent, with plain-language consequences, compact metrics, and a Manage activity sheet for queue decisions, queues, schedules, and recovery.
+- Reordered Settings around save location, smart queue, notifications, appearance, privacy, support, and About, while retaining power-user settings on secondary pages.
+- Added persisted dark/AMOLED theme selection and Developer options, disabled by default.
+- Moved runtime probes, engine matrices, media planners, dispatch and worker dashboards, privacy audits, validation checks, intake diagnostics, and redacted logs into a grouped gated workspace.
+- Kept the support report available with Developer options off and redacted clipboard URLs inside developer diagnostics.
+- Preserved Room schema 14, app version, routes, queue and schedule operations, recovery semantics, Termux, aria2, proxy, automation, rules, and external handoff.
+
 ## UIX R4 - Media and Library consumer workflows
 
 - Rebuilt Media as a consumer-first review workspace with Paste page URL, private-session guidance, common quality chips, complete video/audio/subtitle selection, estimated size, explicit download, and compact recently queued progress.

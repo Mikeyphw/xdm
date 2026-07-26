@@ -1266,7 +1266,10 @@ internal fun toneForPlayerDiagnostic(bucket: MediaPlayerDiagnosticBucket): XdmSt
 
 @Composable
 @UiSurface(UiAudience.Developer, "Inspect media execution, privacy, and readiness planners")
-internal fun MediaDeveloperToolsSection(state: MainUiState) {
+internal fun MediaDeveloperToolsSection(
+    state: MainUiState,
+    section: DeveloperToolSection = DeveloperToolSection.MediaPipeline,
+) {
     val mediaPlanner = remember { MediaDownloadPlanner() }
     val executionPlanner = remember { MediaExecutionLibraryPlanner(mediaPlanner) }
     val dispatchPlanner = remember { MediaExecutionDispatcher() }
@@ -1392,24 +1395,44 @@ internal fun MediaDeveloperToolsSection(state: MainUiState) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        XdmSectionHeader("Media internals")
+        XdmSectionHeader(section.label)
         XdmSupportingText(
-            "Redacted execution, backend, cleanup, privacy, and release-readiness details for troubleshooting.",
-            maxLines = 3,
+            when (section) {
+                DeveloperToolSection.MediaPipeline -> "Resolver, execution queue, offline library, capture quality, and player readiness."
+                DeveloperToolSection.DispatchWorkers -> "Dispatch plans, queue telemetry, worker requests, Termux launches, and native direct-download plans."
+                DeveloperToolSection.PrivacyCleanup -> "Session redaction, cleanup readiness, capture quality, and offline-library health."
+                DeveloperToolSection.ValidationRelease -> "Media release gates, mobile polish checks, warnings-as-errors readiness, and final validation."
+                else -> "Redacted media diagnostics."
+            },
+            maxLines = 4,
         )
-        MediaFinalValidationGateCard(finalValidation)
-        MediaMobilePolishCard(mobilePolish)
-        MediaDispatchDashboardCard(dispatchDashboard, dispatchPlans)
-        MediaQueueTelemetryCard(queueTelemetry)
-        MediaQueueActionsCard(queueActions)
-        MediaWorkerBridgeCard(workerBridge)
-        MediaTermuxRuntimeAdapterCard(termuxRuntime)
-        MediaNativeDirectDownloadEngineCard(nativeDirect)
-        MediaExecutionQueueCard(executionJobs)
-        MediaCaptureQualityCard(captureQuality)
-        SessionPrivacyAuditCard(privacyAudit)
-        OfflineLibraryV2Card(libraryV2)
-        PlayerDiagnosticsDeckCard(playerDiagnostics)
+        when (section) {
+            DeveloperToolSection.MediaPipeline -> {
+                MediaExecutionQueueCard(executionJobs)
+                MediaCaptureQualityCard(captureQuality)
+                OfflineLibraryV2Card(libraryV2)
+                PlayerDiagnosticsDeckCard(playerDiagnostics)
+            }
+            DeveloperToolSection.DispatchWorkers -> {
+                MediaDispatchDashboardCard(dispatchDashboard, dispatchPlans)
+                MediaQueueTelemetryCard(queueTelemetry)
+                MediaQueueActionsCard(queueActions)
+                MediaWorkerBridgeCard(workerBridge)
+                MediaTermuxRuntimeAdapterCard(termuxRuntime)
+                MediaNativeDirectDownloadEngineCard(nativeDirect)
+            }
+            DeveloperToolSection.PrivacyCleanup -> {
+                SessionPrivacyAuditCard(privacyAudit)
+                MediaCaptureQualityCard(captureQuality)
+                OfflineLibraryV2Card(libraryV2)
+            }
+            DeveloperToolSection.ValidationRelease -> {
+                MediaFinalValidationGateCard(finalValidation)
+                MediaMobilePolishCard(mobilePolish)
+                SessionPrivacyAuditCard(privacyAudit)
+            }
+            else -> Unit
+        }
     }
 }
 

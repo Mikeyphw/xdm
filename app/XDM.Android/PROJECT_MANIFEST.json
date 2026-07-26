@@ -1371,7 +1371,7 @@
     "depends_on": "uix_r1_surface_contract_modularization",
     "next_overlay": "uix_r3_downloads_add_workspace"
   },
-  "current_uix_overlay": "xdm_android_uix_r4_media_library_consumer_workflow_overlay.zip",
+  "current_uix_overlay": "xdm_android_uix_r5_activity_settings_developer_boundary_overlay.zip",
   "uix_r3_downloads_add_workspace": {
     "program": "android_uix_redesign",
     "contract_document": "docs/architecture/UIX-R3-DOWNLOADS-ADD-WORKSPACE.md",
@@ -1419,5 +1419,43 @@
     "version_code_unchanged": 21,
     "depends_on": "uix_r3_downloads_add_workspace",
     "next_overlay": "uix_r5_activity_settings_developer_boundary"
+  },
+  "uix_r5_activity_settings_developer_boundary": {
+    "program": "android_uix_redesign",
+    "contract_document": "docs/architecture/UIX-R5-ACTIVITY-SETTINGS-DEVELOPER-BOUNDARY.md",
+    "static_validator": "tools/validate-uix-r5-activity-settings-developer-boundary.py",
+    "activity_default": "Needs attention",
+    "activity_primary_views": [
+      "Needs attention",
+      "Recent"
+    ],
+    "activity_management_sheet": [
+      "Queue decisions",
+      "Queues",
+      "Schedules",
+      "Recovery"
+    ],
+    "normal_activity_diagnostics": false,
+    "settings_everyday_first": true,
+    "developer_options_default": false,
+    "developer_options_persisted": true,
+    "developer_sections": [
+      "Runtime and engines",
+      "Termux and aria2",
+      "Media pipeline",
+      "Dispatch and workers",
+      "Privacy and cleanup",
+      "Validation and release",
+      "Intake and clipboard",
+      "Redacted logs and exports"
+    ],
+    "support_report_without_developer_mode": true,
+    "developer_redaction_mandatory": true,
+    "raw_shell_surface": false,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "depends_on": "uix_r4_media_library_consumer_workflows",
+    "next_overlay": "uix_r6_accessibility_responsiveness_release_seal"
   }
 }

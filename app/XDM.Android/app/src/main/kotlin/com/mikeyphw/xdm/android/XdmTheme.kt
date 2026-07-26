@@ -58,6 +58,13 @@ private val XdmDarkColorScheme = darkColorScheme(
     scrim = Color.Black,
 )
 
+private val XdmAmoledColorScheme = XdmDarkColorScheme.copy(
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceVariant = Color(0xFF0B0D10),
+    outlineVariant = Color(0xFF1B1E24),
+)
+
 private val XdmShapes = Shapes(
     extraSmall = RoundedCornerShape(6.dp),
     small = RoundedCornerShape(8.dp),
@@ -99,6 +106,12 @@ private val XdmDarkExtendedColors = XdmExtendedColors(
     separator = Color(0xFF252B35),
 )
 
+private val XdmAmoledExtendedColors = XdmDarkExtendedColors.copy(
+    groupedSurface = Color(0xFF0B0D10),
+    groupedSurfaceStrong = Color(0xFF12151A),
+    separator = Color(0xFF191C22),
+)
+
 private val LocalXdmExtendedColors = staticCompositionLocalOf { XdmDarkExtendedColors }
 
 object XdmTheme {
@@ -107,10 +120,15 @@ object XdmTheme {
 }
 
 @Composable
-fun XdmTheme(content: @Composable () -> Unit) {
-    androidx.compose.runtime.CompositionLocalProvider(LocalXdmExtendedColors provides XdmDarkExtendedColors) {
+fun XdmTheme(
+    mode: XdmThemeMode = XdmThemeMode.Dark,
+    content: @Composable () -> Unit,
+) {
+    val colors = if (mode == XdmThemeMode.Amoled) XdmAmoledColorScheme else XdmDarkColorScheme
+    val extended = if (mode == XdmThemeMode.Amoled) XdmAmoledExtendedColors else XdmDarkExtendedColors
+    androidx.compose.runtime.CompositionLocalProvider(LocalXdmExtendedColors provides extended) {
         MaterialTheme(
-            colorScheme = XdmDarkColorScheme,
+            colorScheme = colors,
             typography = XdmTypography,
             shapes = XdmShapes,
             content = content,
