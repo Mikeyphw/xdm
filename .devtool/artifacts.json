@@ -42850,6 +42850,293 @@
         ]
       },
       "history_id": "6ef9f9458abb4bd4b25db0b0e2f9950a"
+    },
+    {
+      "applied_at": "2026-07-26T21:39:08.593451Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_phase38_repo_owned_firefox_extension_overlay.zip",
+      "artifact_name": "xdm_android_phase38_repo_owned_firefox_extension_overlay.zip",
+      "type": "overlay",
+      "sha256": "88bc10f767dccd421f557bfd76d9ac25ba6dbc72ec3f4e27a937ef2d58cc1a3f",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Add repository-owned XDM Firefox extension",
+      "commit_hash": "",
+      "file_count": 34,
+      "change_counts": {
+        "add": 25,
+        "modify": 9
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 38 Repository-Owned Firefox Extension",
+        "description": "Adds the canonical WebKit-free Firefox extension source module, preserves the v6.4 layered detector, makes XDM the default target through the Phase 37 scheme contract, retains an optional 1DM+ fallback, and adds unpacked-development preparation plus focused validation without generating an XPI.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": ".github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "39bee65c080977b2c431621fa1917c167cb5ed907a2620e891dad8c4ff41676c",
+              "size": 2867,
+              "source_sha256": "eb523160949d99ba4e0e96875f4bad129a2414420203c795d255643a37a1bebe"
+            },
+            {
+              "path": "APPLY_DIRECT_PATCH.md",
+              "action": "modify",
+              "sha256": "589bce3d33d6c71fbf22eb497f6671ff1606da1078263f149a5044f0ea8afe16",
+              "size": 1382,
+              "source_sha256": "7867ce182fead7f0ff84b8e490137a58493ddf953a0672556ffb5360f12dab53"
+            },
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "f8fe91ae1fac466f7e311faa81e5d799aecb1e4ee586311eaf80d8070d079ae5",
+              "size": 21075,
+              "source_sha256": "1d4259adb577315464398e3a98ca29e85ccc607064bf9c3ca4429072f24e0c27"
+            },
+            {
+              "path": "DEVTOOL_OVERLAY.md",
+              "action": "modify",
+              "sha256": "31c2a6138435ce7b587e56d1ee169042aa6c9b36485aaa7e33b9c80461c67913",
+              "size": 2159,
+              "source_sha256": "362a82c5987c2aaadef1c695a5b950c78e7a285856cc08c564affebd23896c03"
+            },
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "2341a24dc8f608abbf2ffed2bec35a306214da31321ef157150d5567e87e30b5",
+              "size": 5168,
+              "source_sha256": "5dab987ba361af4ce3795d32aac84be790f9ee7c33832642b8913e7685d3224d"
+            },
+            {
+              "path": "app/XDM.Android/.gitignore",
+              "action": "modify",
+              "sha256": "0d8429ddded65cdc010f9391c9731f5d4f6a941feaa02114e5f35d064bb162b8",
+              "size": 367,
+              "source_sha256": "4e5599424ccc66cb3fef3895b7c8247a2651a0445f8764b489a8ee3d8eeec184"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "6b16d47c328f62e39b48f1a85ded0ec875cb26b5248965a78ea121b88d755102",
+              "size": 52116,
+              "source_sha256": "4ba2f8ab9c770d262e482a5f30e1c8be405b3a1fc29b36c09b9cc3fb4c6fb74e"
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "sha256": "ecb652b1e20c2fdbaeb94b9114647b097e11e9ddf04dd9372ed9f00f930a7bb8",
+              "size": 19364,
+              "source_sha256": "111801d681958b9f1a3bccb525bcb1fc0ddafa2b4b05443b103a27157eef28d4"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/README.md",
+              "action": "add",
+              "sha256": "5c358762f1699d1cf0b633c4ce4b318c9309530f000a3595a4a2eca428594e48",
+              "size": 899
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/build.gradle.kts",
+              "action": "add",
+              "sha256": "96238ddb468a03870bacefe53fc2ed2aedaabd9bdf08a55977090c0a1de32611",
+              "size": 1872
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/candidate-store.js",
+              "action": "add",
+              "sha256": "67e472abb167c81b77437e8295fbcc5f8833ff79b41ecb834ba3997cb0204ab3",
+              "size": 3388
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/detector-core.js",
+              "action": "add",
+              "sha256": "7f4c9da99a5a9584b7dae04fd4bcb94a68b21cf457cbbf545edfd477d1b7d225",
+              "size": 9698
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/extension.css",
+              "action": "add",
+              "sha256": "ed251cac5435b7d71060683fc0b6b322be4e7834bcff029d4489866aee2936d0",
+              "size": 1469
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/fab.js",
+              "action": "add",
+              "sha256": "cd498fb2b52434b37be5cddfe3a9f5141784cf2a6e13e7fd0fa1408238a5172c",
+              "size": 3481
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/frame-bridge.js",
+              "action": "add",
+              "sha256": "206b0f4812350927f9c69b134ae79dcd2bc20dc90cfaeee13ad01c5d8186c0f1",
+              "size": 14465
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/generated-config.template.js",
+              "action": "add",
+              "sha256": "9d2e3e331a90037023a85915d6fe11cc988ceaf9b3e558c9498ae018bef95895",
+              "size": 371
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/handoff.js",
+              "action": "add",
+              "sha256": "e9d7902358263a5c8f15600090796ba6bf688fad56c8453a3ab973a87f3322e2",
+              "size": 3487
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/icons/icon48.png",
+              "action": "add",
+              "sha256": "1ffad2f3f3e18ce0558fb506deb38c600f1747bb0dc0a5b1ad8c7ea448d8373b",
+              "size": 333
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/icons/icon96.png",
+              "action": "add",
+              "sha256": "0f442e4f1c9075c0d8bdbe20a71102fa13bb6e603770010e78e1a87c27a7aa2f",
+              "size": 649
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/manifest.template.json",
+              "action": "add",
+              "sha256": "bc9df65a101532d10264279b3454006e15dfa93d93e1ea2c45c35e91640079e1",
+              "size": 1256
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/network-observer.js",
+              "action": "add",
+              "sha256": "bb16e2fc0384f1cf001b6953733eb66cb2a042769d0a14649b1978b6846a2481",
+              "size": 16398
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/page-sniffer.js",
+              "action": "add",
+              "sha256": "e5f2ef0205925e5cc9fc5f627f0384e8b41e067e587eb5501904db981066129b",
+              "size": 11068
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/popup.html",
+              "action": "add",
+              "sha256": "50b768a082e39b281d6bb32e80376b25c569a24eb0b93b994e028f514b21dfa9",
+              "size": 2141
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/popup.js",
+              "action": "add",
+              "sha256": "ccca3cbed25f214eeff370103e8c607285cec78b8159ce76c93ffbf6a192dbd2",
+              "size": 8374
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionSourceContract.kt",
+              "action": "add",
+              "sha256": "8bf9aa8e701343674762305e7de74b61c5bf4edce720d694bc31db468b8c1c0e",
+              "size": 595
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/test/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionSourceContractTest.kt",
+              "action": "add",
+              "sha256": "aea9ffb2cf2cf9322b4cb5fb99668c49adf6c4300571d9154551fd381dd957b9",
+              "size": 2378
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_background.js",
+              "action": "add",
+              "sha256": "79d954c9dc5629d3e4fbca89a1a4209cffc76d42a135998eb5acd0feb27a8293",
+              "size": 4533
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_detector.js",
+              "action": "add",
+              "sha256": "d5895c222e6bfa84cba15f1296976c782a967afbcaf9b09681c7fdc7e39f60ce",
+              "size": 1693
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_handoff.js",
+              "action": "add",
+              "sha256": "cda4ead00dfddc1f2e85ef1cc31434ea770ba59d6f6c72ee07b6dd8aad7ce925",
+              "size": 1423
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tools/prepare_extension.py",
+              "action": "add",
+              "sha256": "e1d4fabc6d427d1d5a8c497a4236a2d96a3a950dcb1ddb1e2a8a6c3f3e173c6f",
+              "size": 2490
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tools/validate_extension.py",
+              "action": "add",
+              "sha256": "c057582b0a690897e11164f794d6990b1ba016de30ec8753e81207461f655b56",
+              "size": 2305
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-38-REPO-OWNED-FIREFOX-EXTENSION.md",
+              "action": "add",
+              "sha256": "ce4dcecadb2e6e47dc04c11b0f2e679071f8c2406a1111bfe08fe67a6dc7efa1",
+              "size": 1941
+            },
+            {
+              "path": "app/XDM.Android/settings.gradle.kts",
+              "action": "modify",
+              "sha256": "b9a12f4fa6c7535ec5129f03fb253829594ee1abafe3868fbd7461cadff8bf45",
+              "size": 634,
+              "source_sha256": "cd3619377b957ad59c629ae5f2a6b9f3dcfa2db56d4b37133fb8c44003fbcd07"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-38-repo-owned-extension.py",
+              "action": "add",
+              "sha256": "acf6078308de43a7df3acb7a416045c6199c3b0f11efab503d68494bb9a63f2e",
+              "size": 4950
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add repository-owned XDM Firefox extension"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": false,
+          "build": false,
+          "test": false,
+          "rollback_on_failure": true,
+          "script": {
+            "path": ".devtool-artifact/validate_phase38_repo_owned_firefox_extension.sh",
+            "runner": "bash",
+            "sha256": "054bd36adf3c880513183089f92ecaa8532e1856a7d9f092f75d6bbfc9588f72",
+            "timeout_seconds": 1800
+          },
+          "expected": {
+            "restore": "skip",
+            "build": "skip",
+            "tests": "skip",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Depends on the landed Phase 37 browser scheme contract overlay.",
+          "The canonical extension ID is xdm-android-media-bridge@mikeyphw and the development default target is XDM.",
+          "The extension source preserves v6.4 MIME, fetch/XHR, response-body, DOM, all-frame, ranking, dedupe, segment/ad filtering, and redacted diagnostic behavior.",
+          "The XDM custom URI carries no standalone cookies, authorization headers, proxy credentials, request bodies, or raw header blocks.",
+          "Phase 38 prepares an unpacked development extension only; deterministic XPI generation and Android SAF export belong to Phase 39.",
+          "No Android browser runtime, new top-level route, Room migration, version change, or transfer-engine behavior is introduced."
+        ]
+      },
+      "history_id": "379c10b05c1b4d3e9986bbf418be223b"
     }
   ]
 }

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>XDM Android Media Bridge</title>
+  <link rel="stylesheet" href="extension.css">
+</head>
+<body>
+  <h1>XDM media bridge</h1>
+  <p>Detects media across page frames and places a real app-link launcher inside the webpage.</p>
+
+  <section class="card">
+    <label><input id="enabled" type="checkbox"> Enable detector</label>
+    <label><input id="autoDetect" type="checkbox"> Offer high-confidence media automatically</label>
+    <label for="defaultTarget">Default target</label>
+    <select id="defaultTarget">
+      <option value="xdm">XDM</option>
+      <option value="1dm">1DM+</option>
+      <option value="ask">Ask every time</option>
+    </select>
+    <button id="save">Save settings</button>
+  </section>
+
+  <section class="card">
+    <strong id="currentHost">Current page</strong>
+    <button id="sendPage" disabled>Show page launcher</button>
+    <button id="appTest" class="secondary" disabled>Show app-link test</button>
+    <button id="rescan" class="secondary" disabled>Rescan media</button>
+  </section>
+
+  <section class="card">
+    <label for="manualUrl">Manual URL</label>
+    <input id="manualUrl" type="url" inputmode="url" placeholder="https://example.com/video.mp4">
+    <button id="sendManual" disabled>Show URL launcher</button>
+  </section>
+
+  <section id="siteCard" class="card">
+    <label for="siteMode">Site policy</label>
+    <select id="siteMode">
+      <option value="all">All sites</option>
+      <option value="blacklist">All except listed sites</option>
+      <option value="whitelist">Only listed sites</option>
+    </select>
+    <textarea id="siteList" placeholder="example.com"></textarea>
+  </section>
+
+  <section class="card small">
+    <strong>Detector health</strong>
+    <div id="detectorState" class="host">Checking observer…</div>
+    <div id="lastDetectedMedia" class="host">No media captured yet</div>
+  </section>
+
+  <div id="status" class="status"></div>
+  <script src="generated-config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

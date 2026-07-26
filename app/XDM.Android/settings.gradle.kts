@@ -29,6 +29,7 @@ include(
     ":media",
     ":diagnostics",
     ":browser-integration",
+    ":browser-extension",
     ":tasker-plugin",
     ":protocol-test-lab",
 )

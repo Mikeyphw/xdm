@@ -197,3 +197,7 @@ Destructive actions are modeled as confirmation-required, terminal cleanup remai
 Phase 25 converts ready media queue actions into worker bridge requests without actually enqueueing workers yet. The bridge models Android UIDT, WorkManager foreground, foreground dataSync fallback, native direct, aria2, and Termux yt-dlp adapters with durable job IDs, redacted foreground notification text, cleanup-owned transient files, and typed arguments only.
 
 The Media worker bridge card stays inside the existing Media route. No Room migration, no new top-level route, no raw shell, and no persistent cookies or tokens are introduced. This intermediate phase is intended for `--no-validate`; the final media validation gate will replay its validator and architecture contract.
+
+## Repository-owned Firefox extension
+
+The canonical Firefox Android media bridge source now lives in `browser-extension/`. Phase 38 preserves the layered v6.4 detector, defaults to the Phase 37 `xdmdownload://capture` contract, retains an optional 1DM+ fallback, and prepares an unpacked development extension without committing an XPI. See `docs/architecture/PHASE-38-REPO-OWNED-FIREFOX-EXTENSION.md`.

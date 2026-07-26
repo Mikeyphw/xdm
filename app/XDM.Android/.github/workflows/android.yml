@@ -15,6 +15,9 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Install SDK
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
@@ -70,6 +73,7 @@ jobs:
           python3 tools/validate-phase-35-release-candidate-polish.py
           python3 tools/validate-phase-36-external-download-handoff.py
           python3 tools/validate-phase-37-browser-scheme-contract.py
+          python3 tools/validate-phase-38-repo-owned-extension.py
           python3 tools/validate-browser-removal-phase-0-1.py
           python3 tools/validate-browser-removal-phase-2.py
           python3 tools/validate-browser-removal-phase-3.py
@@ -84,7 +88,7 @@ jobs:
           python3 tools/validate-phase-8e-compose-storage-hotfix.py
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
-      - run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug assembleBeta
+      - run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace :browser-extension:validateFirefoxExtension lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug assembleBeta
       - name: Verify packaged aria2 payload
         run: |
           apk="$(find app/build/outputs/apk/beta -maxdepth 1 -type f -name '*.apk' -print -quit)"

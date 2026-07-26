@@ -1,3 +1,4 @@
+- Added Phase 38 repository-owned Firefox extension source with layered media detection, XDM-first handoff, optional 1DM+ fallback, unpacked development preparation, and focused validation.
 ## XDM Android Phase 37 - Browser scheme contract
 
 - Added variant-specific `xdmdownload`, `xdmdownload-beta`, and `xdmdownload-debug` custom schemes owned only by `ExternalAddDownloadActivity`.

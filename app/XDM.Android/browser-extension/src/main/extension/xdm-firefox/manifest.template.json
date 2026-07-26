@@ -1,0 +1,54 @@
+{
+  "manifest_version": 2,
+  "name": "XDM Android Media Bridge",
+  "version": "@@EXTENSION_VERSION@@",
+  "description": "Detect browser media and hand it to XDM Android or 1DM+ through a real in-page launcher.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "xdm-android-media-bridge@mikeyphw",
+      "strict_min_version": "115.0",
+      "data_collection_permissions": {
+        "required": ["none"],
+        "optional": []
+      }
+    }
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab",
+    "webRequest",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "generated-config.js",
+      "detector-core.js",
+      "candidate-store.js",
+      "network-observer.js"
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "generated-config.js",
+        "handoff.js",
+        "fab.js",
+        "frame-bridge.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": ["page-sniffer.js"],
+  "browser_action": {
+    "default_icon": {"48": "icons/icon48.png"},
+    "default_title": "XDM Android Media Bridge",
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "48": "icons/icon48.png",
+    "96": "icons/icon96.png"
+  }
+}

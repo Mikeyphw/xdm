@@ -1512,5 +1512,34 @@
     "top_level_route_added": false,
     "depends_on": "phase36_external_download_handoff",
     "next_overlay": "browser_bridge_phase38_repo_owned_firefox_extension"
+  },
+  "browser_bridge_phase38_repo_owned_firefox_extension": {
+    "program": "android_browser_bridge",
+    "contract_version": 1,
+    "contract_document": "docs/architecture/PHASE-38-REPO-OWNED-FIREFOX-EXTENSION.md",
+    "static_validator": "tools/validate-phase-38-repo-owned-extension.py",
+    "module": "browser-extension",
+    "extension_id": "xdm-android-media-bridge@mikeyphw",
+    "default_target": "xdm",
+    "target_modes": [
+      "xdm",
+      "1dm",
+      "ask"
+    ],
+    "phase37_scheme_contract_reused": true,
+    "detector_baseline": "v6.4-layered",
+    "response_body_limit_bytes": 786432,
+    "all_frame_aggregation": true,
+    "popup_custom_protocol_links": false,
+    "popup_runtime_handoff_dependency": false,
+    "xpi_committed": false,
+    "unpacked_development_build": true,
+    "browser_runtime_added": false,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "top_level_route_added": false,
+    "depends_on": "browser_scheme_contract",
+    "next_overlay": "browser_bridge_phase39_xpi_generation_export"
   }
 }

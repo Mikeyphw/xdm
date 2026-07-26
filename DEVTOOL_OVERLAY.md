@@ -16,3 +16,19 @@ The embedded Devtool validator runs the Phase 37 static validator plus focused G
 ## Apply
 
 Use Devtool with `--validate`. The schema-v2 artifact owns its commit message; do not add a CLI `--commit` flag.
+
+# XDM Android Phase 38 repository-owned Firefox extension overlay
+
+## Included
+
+- A WebKit-free `:browser-extension` Kotlin/JVM source and validation module.
+- Stable XDM-owned extension identity `xdm-android-media-bridge@mikeyphw`.
+- The layered v6.4 detector split into detector, candidate-store, network, page, frame, handoff, and launcher sources.
+- XDM, 1DM+, and Ask target modes, with XDM as the default.
+- Phase 37 version-1 `xdmdownload://capture` URI construction with no standalone cookies, authorization, proxy credentials, bodies, or raw headers.
+- Unpacked development rendering, source validation, Node behavior tests, Kotlin contracts, docs, project manifest, and CI wiring.
+- No generated XPI, Android browser runtime, top-level route, Room migration, app version change, or transfer-engine change.
+
+## Validation policy
+
+The embedded validator runs Phase 37 and Phase 38 static contracts, JavaScript syntax checks, detector/handoff/background behavior tests, unpacked-extension preparation and validation, then the focused Gradle module suite. The Phase 42 release overlay remains responsible for the full Android release matrix.
