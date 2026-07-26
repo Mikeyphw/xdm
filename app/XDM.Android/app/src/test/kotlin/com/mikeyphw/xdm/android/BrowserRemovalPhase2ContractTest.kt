@@ -57,7 +57,7 @@ class BrowserRemovalPhase2ContractTest {
     @Test
     fun phaseTwoNeutralContractsAndDownloaderEnginesRemainAfterRuntimeRemoval() {
         val root = androidRoot()
-        val mediaInbox = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val mediaInbox = UiSourceTree.readAll(root)
 
         assertFalse("Media screen must not retain unused browser callbacks", mediaInbox.contains("onBrowserMediaRequest") || mediaInbox.contains("onOpenAddForBrowserUrl"))
         assertTrue(File(root, "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt").isFile)

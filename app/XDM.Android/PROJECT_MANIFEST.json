@@ -1309,5 +1309,28 @@
     "route_restore_contract_updated": true,
     "empty_retired_browser_directory_tolerated": true,
     "all_app_architecture_contracts_pass": true
+  },
+  "uix_r1_surface_contract_modularization": {
+    "program": "android_uix_redesign",
+    "contract_document": "docs/architecture/UIX-R1-SURFACE-CONTRACT-MODULARIZATION.md",
+    "static_validator": "tools/validate-uix-r1-surface-boundary.py",
+    "screens_monolith_replaced_by_feature_sources": true,
+    "ui_audience_classification": true,
+    "normal_media_debug_decks_removed": true,
+    "normal_library_debug_decks_removed": true,
+    "developer_diagnostics_preserved_lazily": true,
+    "package_aware_contract_tests": true,
+    "top_level_routes_unchanged": [
+      "Downloads",
+      "Add",
+      "Media",
+      "Library",
+      "Activity",
+      "Settings"
+    ],
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "next_overlay": "uix_r2_flat_dark_adaptive_shell"
   }
 }

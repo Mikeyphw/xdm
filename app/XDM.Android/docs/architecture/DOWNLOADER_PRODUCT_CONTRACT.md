@@ -81,3 +81,8 @@ Queued downloads must pass an explainable, browser-neutral policy decision befor
 Automatic condition-driven work must be owned by a foreground WorkManager worker for its full execution lifetime. A background evaluator must not spawn an unrelated foreground service and then finish. Unique immediate work uses keep semantics so condition changes cannot cancel transfers already owned by the foreground worker.
 
 An explicit user override may bypass soft policy but must not pretend an unvalidated network is usable. Automatic retry is restricted to classified transient failures. Authentication, permission, verification, unsupported/DRM, permanent HTTP, and unknown failures require review. Queue decisions are recorded in a bounded private ledger without URLs, request headers, cookies, tokens, or other secret-bearing payloads.
+
+## UIX audience boundary
+
+Downloader capabilities remain available even when their engineering diagnostics are hidden from normal workflows. Media and Library must prioritize review, track selection, playback, and recovery actions. Dispatch planners, telemetry, worker bridges, runtime adapters, privacy audits, and release gates belong to the redacted Developer workspace and must not be required content on normal screens.
+

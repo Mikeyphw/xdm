@@ -7,6 +7,7 @@ cd "$ROOT"
 
 validators=(
   tools/validate-foundation.py
+  tools/validate-uix-r1-surface-boundary.py
   tools/validate-phase-2-3.py
   tools/validate-phase-4.py
   tools/validate-phase-5.py

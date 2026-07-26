@@ -11,7 +11,7 @@ class DownloaderExperiencePhase8DContractTest {
     @Test
     fun resolverWorkspaceIsFirstClassAndReviewFirst() {
         val planner = root.resolve("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaResolverWorkspace.kt").readText()
-        val screens = root.resolve("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         assertTrue(planner.contains("data class MediaResolverWorkspace"))
         assertTrue(planner.contains("MediaResolverStage"))
         assertTrue(planner.contains("Quality comparison").not())

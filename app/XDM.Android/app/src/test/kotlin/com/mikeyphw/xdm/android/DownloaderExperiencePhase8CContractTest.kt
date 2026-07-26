@@ -57,7 +57,7 @@ class DownloaderExperiencePhase8CContractTest {
     @Test
     fun appSurfacesPolicyEditingDecisionHistoryAndStartAnyway() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val application = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt").readText()
         listOf(

@@ -12,7 +12,7 @@ class BrowserRemovalPhase3ContractTest {
         val activity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
         val intake = File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadIntake.kt").readText()
         val shell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
 
         listOf("handoffMimeType", "handoffContentLength", "handoffPageUrl", "mimeType = mimeType", "contentLength = contentLength")
             .forEach { marker -> assertTrue("External handoff lost $marker", activity.contains(marker)) }

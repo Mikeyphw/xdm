@@ -49,10 +49,8 @@ class ArchitectureContractTest {
     @Test
     fun uiSourceHasNoPlaceholderActionsOrRoadmapCopy() {
         val root = androidRoot()
-        val sourceFiles = listOf(
-            File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt"),
-            File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt"),
-        )
+        val sourceFiles = UiSourceTree.files(root) +
+            File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")
         sourceFiles.forEach { file ->
             val text = file.readText()
             assertFalse("${file.name} contains placeholder click handlers", text.contains("onClick = {}"))
@@ -63,7 +61,7 @@ class ArchitectureContractTest {
     @Test
     fun addDownloadAllowsFilenameInference() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         assertTrue("Filename field should describe inference", screens.contains("XDM will infer a name from the URL"))
         assertTrue(
@@ -86,7 +84,7 @@ class ArchitectureContractTest {
     @Test
     fun phaseSevenStrategyAndMigrationRemainInsideExistingTopography() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val migration = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/BackendMigrationCoordinator.kt")
         val contract = File(root, "docs/architecture/PHASE-7-BACKEND-STRATEGY-MIGRATION.md")
         assertTrue("Phase 7 migration coordinator is missing", migration.isFile)
@@ -111,7 +109,7 @@ class ArchitectureContractTest {
         val root = androidRoot()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         val buildGradle = File(root, "app/build.gradle.kts").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         assertTrue("Phase 14 architecture contract is missing", File(root, "docs/architecture/PHASE-14-RELEASE-SAFETY.md").isFile)
         assertTrue("Phase 14 validator is missing", File(root, "tools/validate-phase-14.py").isFile)
         assertTrue("Release safety model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt").isFile)
@@ -130,7 +128,7 @@ class ArchitectureContractTest {
         val root = androidRoot()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         val buildGradle = File(root, "app/build.gradle.kts").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         assertTrue("Phase 15 architecture contract is missing", File(root, "docs/architecture/PHASE-15-UX-ACCESSIBILITY-POLISH.md").isFile)
         assertTrue("Phase 15 validator is missing", File(root, "tools/validate-phase-15.py").isFile)
@@ -154,7 +152,7 @@ class ArchitectureContractTest {
         val root = androidRoot()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         val buildGradle = File(root, "app/build.gradle.kts").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         assertTrue("Phase 16 architecture contract is missing", File(root, "docs/architecture/PHASE-16-PACKAGING-RECOVERY-READINESS.md").isFile)
         assertTrue("Phase 16 validator is missing", File(root, "tools/validate-phase-16.py").isFile)
@@ -178,7 +176,7 @@ class ArchitectureContractTest {
         val root = androidRoot()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         val buildGradle = File(root, "app/build.gradle.kts").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val workflow = File(root, ".github/workflows/android.yml").readText()
         assertTrue("Phase 17 architecture contract is missing", File(root, "docs/architecture/PHASE-17-FINAL-RELEASE-GATE.md").isFile)
@@ -202,7 +200,7 @@ class ArchitectureContractTest {
     fun postSeventeenDesktopParityContractsArePresent() {
         val root = androidRoot()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val workflow = File(root, ".github/workflows/android.yml").readText()
         assertTrue("Post-17 parity contract is missing", File(root, "docs/architecture/POST-17-DESKTOP-PARITY.md").isFile)
@@ -228,7 +226,7 @@ class ArchitectureContractTest {
         val root = androidRoot()
         val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
         val mainActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val design = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmDesignSystem.kt").readText()
         val labels = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmUiLabels.kt").readText()
 
@@ -255,7 +253,7 @@ class ArchitectureContractTest {
     fun uiUxPhaseThreeAndFourWorkflowContractsArePresent() {
         val root = androidRoot()
         val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
 
         assertTrue("UI contract must define Downloads scanability rules", contract.contains("Downloads Scanability Rules"))
         assertTrue("UI contract must define form and settings workflow rules", contract.contains("Form and Settings Workflow Rules"))
@@ -282,7 +280,7 @@ class ArchitectureContractTest {
     fun uiUxPhaseFiveSecondaryRoutesAreOperational() {
         val root = androidRoot()
         val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val repository = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt").readText()
@@ -299,7 +297,7 @@ class ArchitectureContractTest {
         assertTrue("Scheduler route must expose deletion", screens.contains("Delete schedule") && repository.contains("deleteSchedule") && dao.contains("DELETE FROM schedule_rules"))
         assertTrue("Scheduler must show a next-run summary", screens.contains("Next eligible window"))
         assertTrue("Scheduler must edit human-readable conditions", screens.contains("QueueNetworkRequirement.entries") && screens.contains("Charging required") && screens.contains("Minimum battery %"))
-        assertTrue("Media route must expose a variant selector", screens.contains("Choose variant") && screens.contains("Selected variant") && screens.contains("VariantSelectorRow"))
+        assertTrue("Media route must expose a user-facing track selector", UiSourceTree.readUser(root).contains("Choose tracks") && UiSourceTree.readUser(root).contains("Selected quality") && UiSourceTree.readUser(root).contains("VariantPickerGroupCard"))
         assertTrue("Media cards must emphasize origin instead of raw URL", screens.contains("mediaOriginLabel") && !screens.contains("XdmMetadataText(capture.sourceUrl"))
         assertTrue("Recovery route must clarify safe record-only removal", screens.contains("Remove record only") && screens.contains("Technical details"))
         assertTrue("Recovery route must lead with consequence copy", screens.contains("recoveryProblemTitle") && screens.contains("recoveryRecommendedExplanation"))
@@ -315,7 +313,7 @@ class ArchitectureContractTest {
         val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
         val activity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
 
         assertTrue("UI contract must define browser/share handoff rules", contract.contains("Browser and Share Handoff Rules"))
@@ -342,7 +340,7 @@ class ArchitectureContractTest {
         val database = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt").readText()
         val migrations = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt").readText()
         val repository = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
 
@@ -400,7 +398,7 @@ class ArchitectureContractTest {
     fun termuxCommandRunnerAndOptionalRootFoundationContractsArePresent() {
         val root = androidRoot()
         val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
@@ -430,7 +428,7 @@ class ArchitectureContractTest {
     @Test
     fun termuxAria2CockpitContractsArePresent() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
@@ -459,7 +457,7 @@ class ArchitectureContractTest {
     @Test
     fun termuxMediaPipelineContractsArePresent() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
@@ -476,7 +474,7 @@ class ArchitectureContractTest {
         assertTrue("Media pipeline models must track jobs", mediaModels.contains("TermuxMediaPipelineStatus") && mediaModels.contains("TermuxMediaPipelineJob"))
         assertTrue("Media manager must launch typed media tools", mediaManager.contains("extractMetadata") && mediaManager.contains("downloadWithYtDlp") && mediaManager.contains("inspectWithFfprobe"))
         assertTrue("Shell templates must cover yt-dlp, ffprobe, and ffmpeg", templates.contains("yt-dlp --dump-single-json") && templates.contains("ffprobe -hide_banner") && templates.contains("ffmpeg -hide_banner"))
-        assertTrue("Media route must expose the Termux media pipeline", screens.contains("Termux media pipeline") && screens.contains("yt-dlp metadata") && screens.contains("Fast-start MP4"))
+        assertTrue("Media route must keep optional typed external-tool actions", UiSourceTree.readUser(root).contains("External tools") && UiSourceTree.readUser(root).contains("Read metadata") && UiSourceTree.readUser(root).contains("Optimize MP4"))
         assertTrue("App shell must wire media callbacks", appShell.contains("viewModel::extractMediaMetadataWithTermux") && appShell.contains("viewModel::convertMediaWithTermux"))
         assertTrue("ViewModel must carry media pipeline state", viewModel.contains("termuxMediaPipelineManager.status") && viewModel.contains("downloadMediaWithTermuxYtDlp"))
         assertTrue("Project manifest must record the media pipeline", manifestJson.contains("termux_media_pipeline") && manifestJson.contains("\"root_required\": false"))
@@ -487,7 +485,7 @@ class ArchitectureContractTest {
     @Test
     fun termuxOptionalRootModeContractsArePresent() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
@@ -516,7 +514,7 @@ class ArchitectureContractTest {
     @Test
     fun termuxPostProcessingAutomationContractsArePresent() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val app = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt").readText()
@@ -547,7 +545,7 @@ class ArchitectureContractTest {
     @Test
     fun mediaResolverPlayerOverlayContractsArePresent() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt").readText()
         val player = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt").readText()
@@ -563,9 +561,9 @@ class ArchitectureContractTest {
         listOf("MediaTrackSelection", "MediaVariantPickerGroup", "MediaSessionHandoff", "YtDlpMetadataProbeResult", "ProtectedMediaDiagnostic").forEach { token ->
             assertTrue("Planner missing $token", planner.contains(token))
         }
-        assertTrue("Screens must expose track picking", screens.contains("Choose tracks") && screens.contains("Audio track") && screens.contains("Subtitle track"))
-        assertTrue("Screens must expose yt-dlp preview and protected diagnostics", screens.contains("yt-dlp metadata preview") && screens.contains("Protected media diagnostics"))
-        assertTrue("Screens must expose redacted session handoff", screens.contains("Cookie/header session handoff") && screens.contains("Resolver will forward referer/header context"))
+        assertTrue("User Media must expose track picking", UiSourceTree.readUser(root).contains("Choose tracks") && UiSourceTree.readUser(root).contains("MediaVariantKind.Audio") && UiSourceTree.readUser(root).contains("MediaVariantKind.Subtitle"))
+        assertTrue("Developer tools must preserve yt-dlp preview and protected diagnostics", UiSourceTree.readDeveloper(root).contains("yt-dlp metadata preview") && UiSourceTree.readDeveloper(root).contains("Protected media diagnostics"))
+        assertTrue("Developer tools must preserve redacted session handoff helpers", UiSourceTree.readAll(root).contains("Cookie/header session handoff") && UiSourceTree.readAll(root).contains("Resolver will forward referer/header context"))
         assertTrue("Media3 player must use ExoPlayer and PlayerView", player.contains("ExoPlayer.Builder") && player.contains("PlayerView"))
         assertTrue("Media3 dependency must be wired", libs.contains("androidx.media3:media3-exoplayer") && appGradle.contains("libs.androidx.media3.exoplayer"))
         assertTrue("Termux commands must carry extra yt-dlp args", bridgeModels.contains("extraArguments") && templates.contains("appendYtDlpExtraArguments"))
@@ -578,7 +576,7 @@ class ArchitectureContractTest {
     @Test
     fun mediaExecutionLibraryOverlayContractsArePresent() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val execution = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionLibrary.kt").readText()
@@ -591,7 +589,7 @@ class ArchitectureContractTest {
         listOf("MediaExecutionStage", "MediaQueuedDownloadSpec", "OfflineMediaSidecarMetadata", "OfflineMediaLibraryItem").forEach { token ->
             assertTrue("Execution/library planner missing $token", execution.contains(token))
         }
-        assertTrue("Screens must expose execution states", screens.contains("Media download execution") && screens.contains("Probing, Queued, Downloading, Completed, Failed, or Blocked"))
+        assertTrue("Developer tools must expose execution states", UiSourceTree.readDeveloper(root).contains("Media download execution") && UiSourceTree.readDeveloper(root).contains("Probing, Queued, Downloading, Completed, Failed, or Blocked"))
         assertTrue("Offline library must expose resume/retry/player actions", screens.contains("Retry media") && screens.contains("Resume media") && screens.contains("Open player"))
         assertTrue("Download selected must carry track selection", screens.contains("onDownload(capture, mediaPlan.trackSelection)"))
         assertTrue("App shell must pass downloads and retry callback", appShell.contains("state.downloads") && appShell.contains("viewModel::togglePause"))
@@ -606,7 +604,7 @@ class ArchitectureContractTest {
     @Test
     fun mediaDownloadEngineHardeningContractsArePresent() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val execution = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionLibrary.kt").readText()
         val player = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt").readText()
@@ -619,7 +617,7 @@ class ArchitectureContractTest {
         listOf("MediaExecutionLane", "MediaBackgroundExecutionPolicy", "MediaTempCookieFilePlan", "Aria2TransientInputPlan", "MediaSecretLeakReport", "MediaExecutionEnginePlan").forEach { token ->
             assertTrue("Media engine hardening missing $token", execution.contains(token))
         }
-        assertTrue("Screens must expose engine hardening", screens.contains("Download engine hardening") && screens.contains("UIDT / WorkManager fallback / foreground service policy"))
+        assertTrue("Developer source must preserve engine hardening diagnostics", UiSourceTree.readAll(root).contains("Download engine hardening") && UiSourceTree.readAll(root).contains("UIDT / WorkManager fallback / foreground service policy"))
         assertTrue("ViewModel must attach engine cleanup handoff", viewModel.contains("enginePlan.safeSummary") && viewModel.contains("cleanupActions = enginePlan.cleanupActions"))
         assertTrue("Handoff store must track transient cleanup only", handoff.contains("cleanupActions") && handoff.contains("tempCookieFileName") && handoff.contains("verifyForgotten"))
         assertTrue("Runtime must keep process-local handoff cleanup", runtime.contains("MediaRequestHandoffStore.forget(downloadId)"))
@@ -633,7 +631,7 @@ class ArchitectureContractTest {
     @Test
     fun mediaDispatchControlTowerContractsArePresent() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val dispatcher = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionDispatcher.kt").readText()
         val tests = File(root, "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt").readText()
         val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
@@ -644,8 +642,8 @@ class ArchitectureContractTest {
             assertTrue("Dispatch planner missing $token", dispatcher.contains(token))
         }
         assertTrue("Dispatch planner must model safe terminal cleanup", dispatcher.contains("Register terminal cleanup") && dispatcher.contains("Verify no durable secrets"))
-        assertTrue("Screens must expose dispatch control tower", screens.contains("Media dispatch control tower") && screens.contains("Dispatch runbook"))
-        assertTrue("Screens must expose readiness and action labels", screens.contains("toneForDispatchReadiness") && screens.contains("primaryActionLabel"))
+        assertTrue("Developer tools must expose dispatch diagnostics", UiSourceTree.readDeveloper(root).contains("Media dispatch control tower") && UiSourceTree.readAll(root).contains("Dispatch runbook"))
+        assertTrue("Developer tools must preserve readiness and action labels", UiSourceTree.readDeveloper(root).contains("toneForDispatchReadiness") && UiSourceTree.readDeveloper(root).contains("primaryActionLabel"))
         assertTrue("Tests must cover dispatch redaction and dashboard counts", tests.contains("mediaDispatchRunbookKeepsSecretsOut") && tests.contains("mediaDispatchDashboardCounts"))
         assertTrue("Project manifest must record dispatch control tower", manifestJson.contains("media_dispatch_control_tower") && manifestJson.contains("no_validation_until_final_phase"))
         assertFalse("Media dispatch control tower must not add top-level routes", AppRoute.entries.any { it.label == "Dispatch" || it.label == "Control" || it.label == "Tower" })
@@ -655,7 +653,7 @@ class ArchitectureContractTest {
     @Test
     fun mediaQueueTelemetryContractsArePresent() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val telemetry = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaQueueTelemetry.kt").readText()
         val tests = File(root, "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt").readText()
         val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
@@ -666,8 +664,8 @@ class ArchitectureContractTest {
             assertTrue("Queue telemetry missing $token", telemetry.contains(token))
         }
         assertTrue("Queue telemetry must model cleanup and next action", telemetry.contains("cleanupArmed") && telemetry.contains("nextActionLabel") && telemetry.contains("safeDiagnostic"))
-        assertTrue("Screens must expose queue telemetry", screens.contains("Media queue telemetry") && screens.contains("Phase 23 turns dispatch runbooks"))
-        assertTrue("Screens must keep telemetry inside Media route", screens.contains("MediaQueueTelemetryCard(queueTelemetry)"))
+        assertTrue("Developer tools must expose queue telemetry", UiSourceTree.readDeveloper(root).contains("Media queue telemetry") && UiSourceTree.readDeveloper(root).contains("Phase 23 turns dispatch runbooks"))
+        assertTrue("Normal Media must not render telemetry", !UiSourceTree.readUser(root).contains("MediaQueueTelemetryCard(queueTelemetry)"))
         assertTrue("Tests must cover telemetry redaction and retry action", tests.contains("mediaQueueTelemetryDeckShowsReadyCleanup") && tests.contains("mediaQueueTelemetryRedactsFailedJobDetails"))
         assertTrue("Project manifest must record queue telemetry", manifestJson.contains("media_queue_telemetry") && manifestJson.contains("no_validation_until_final_phase"))
         assertFalse("Media queue telemetry must not add top-level routes", AppRoute.entries.any { it.label == "Telemetry" || it.label == "Queue telemetry" || it.label == "Pulse" })
@@ -676,7 +674,7 @@ class ArchitectureContractTest {
     @Test
     fun mediaQueueActionsContractsArePresent() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val actions = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaQueueActions.kt").readText()
         val tests = File(root, "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt").readText()
         val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
@@ -687,8 +685,8 @@ class ArchitectureContractTest {
             assertTrue("Queue actions missing $token", actions.contains(token))
         }
         assertTrue("Queue actions must model pause resume retry cancel cleanup", actions.contains("Pause media") && actions.contains("Resume media") && actions.contains("Retry media") && actions.contains("Cancel media") && actions.contains("Cleanup finished"))
-        assertTrue("Screens must expose queue actions inside Media", screens.contains("Media queue actions") && screens.contains("Phase 24 turns telemetry"))
-        assertTrue("Screens must keep queue actions inside the Media route", screens.contains("MediaQueueActionsCard(queueActions)"))
+        assertTrue("Developer tools must expose queue actions", UiSourceTree.readDeveloper(root).contains("Media queue actions") && UiSourceTree.readDeveloper(root).contains("Phase 24 turns telemetry"))
+        assertTrue("Normal Media must not render queue-action planners", !UiSourceTree.readUser(root).contains("MediaQueueActionsCard(queueActions)"))
         assertTrue("Tests must cover queue actions and redaction", tests.contains("mediaQueueActionsExposeLaunchRetryCancelAndCleanupWithoutSecrets") && tests.contains("mediaQueueActionsExplainBlockedPreQueueStates"))
         assertTrue("Project manifest must record queue actions", manifestJson.contains("media_queue_actions") && manifestJson.contains("no_validation_until_final_phase"))
         assertFalse("Media queue actions must not add top-level routes", AppRoute.entries.any { it.label == "Actions" || it.label == "Queue actions" || it.label == "Control" })
@@ -698,7 +696,7 @@ class ArchitectureContractTest {
     @Test
     fun mediaWorkerBridgeContractsArePresent() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val bridge = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaWorkerBridge.kt").readText()
         val tests = File(root, "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt").readText()
         val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
@@ -710,8 +708,8 @@ class ArchitectureContractTest {
         }
         assertTrue("Worker bridge must model UIDT WorkManager Termux aria2 yt-dlp", bridge.contains("Android UIDT worker") && bridge.contains("WorkManager foreground worker") && bridge.contains("aria2 launch adapter") && bridge.contains("Termux yt-dlp adapter"))
         assertTrue("Worker bridge must keep typed adapters", bridge.contains("rawShellExposed") && bridge.contains("typedArguments") && bridge.contains("redactedPreview"))
-        assertTrue("Screens must expose worker bridge inside Media", screens.contains("Media worker bridge") && screens.contains("Phase 25 converts ready media actions"))
-        assertTrue("Screens must keep worker bridge inside the Media route", screens.contains("MediaWorkerBridgeCard(workerBridge)"))
+        assertTrue("Developer tools must expose worker bridge diagnostics", UiSourceTree.readDeveloper(root).contains("Media worker bridge") && UiSourceTree.readDeveloper(root).contains("Phase 25 converts ready media actions"))
+        assertTrue("Normal Media must not render worker bridge diagnostics", !UiSourceTree.readUser(root).contains("MediaWorkerBridgeCard(workerBridge)"))
         assertTrue("Tests must cover worker bridge redaction", tests.contains("mediaWorkerBridgeBuildsUidtRequestForDirectMediaWithoutSecrets") && tests.contains("mediaWorkerBridgeBuildsTypedTermuxYtDlpRequestWithCleanupOwnedSecrets"))
         assertTrue("Project manifest must record worker bridge", manifestJson.contains("media_worker_bridge") && manifestJson.contains("no_validation_until_final_phase"))
         assertFalse("Media worker bridge must not add top-level routes", AppRoute.entries.any { it.label == "Worker" || it.label == "Bridge" || it.label == "Workers" })
@@ -723,13 +721,13 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 26 contract doc is missing", File(root, "docs/architecture/PHASE-26-MEDIA-TERMUX-RUNTIME-ADAPTER.md").isFile)
         assertTrue("Phase 26 validator is missing", File(root, "tools/validate-media-termux-runtime-adapter.py").isFile)
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val adapter = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaTermuxRuntimeAdapter.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Runtime adapter must expose typed launch plans", adapter.contains("TermuxRuntimeLaunchPlan") && adapter.contains("typedArguments"))
         assertTrue("Runtime adapter must expose capability probes", adapter.contains("TermuxMediaRuntimeCapabilityReport") && adapter.contains("Install yt-dlp"))
         assertTrue("Runtime adapter must model transient cleanup", adapter.contains("Netscape cookie file") && adapter.contains("delete after terminal state"))
-        assertTrue("Screens must expose Termux runtime adapter inside Media", screens.contains("Media Termux runtime adapter") && screens.contains("Phase 26 turns worker bridge requests"))
+        assertTrue("Developer tools must expose Termux runtime adapter diagnostics", UiSourceTree.readDeveloper(root).contains("Media Termux runtime adapter") && UiSourceTree.readDeveloper(root).contains("Phase 26 turns worker bridge requests"))
         assertTrue("Manifest must record Phase 26", manifest.contains("media_termux_runtime_adapter"))
         assertFalse("Termux runtime adapter must not add top-level routes", AppRoute.entries.any { it.label == "Runtime" || it.label == "Termux runtime" || it.label == "yt-dlp" })
     }
@@ -740,12 +738,12 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 27 contract doc is missing", File(root, "docs/architecture/PHASE-27-MEDIA-NATIVE-DIRECT-DOWNLOAD-ENGINE.md").isFile)
         assertTrue("Phase 27 validator is missing", File(root, "tools/validate-media-native-direct-download-engine.py").isFile)
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaNativeDirectDownloadEngine.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Native engine must expose direct request plans", planner.contains("NativeDirectDownloadRequestPlan") && planner.contains("NativeDirectHeaderPolicy"))
         assertTrue("Native engine must expose resume planning", planner.contains("NativeDirectResumePlan") && planner.contains("Range=bytes="))
-        assertTrue("Screens must expose native direct engine inside Media", screens.contains("Native direct download engine") && screens.contains("Phase 27 plans Android-native direct media transfers"))
+        assertTrue("Developer tools must expose native direct engine diagnostics", UiSourceTree.readDeveloper(root).contains("Native direct download engine") && UiSourceTree.readDeveloper(root).contains("Phase 27 plans Android-native direct media transfers"))
         assertTrue("Manifest must record Phase 27", manifest.contains("media_native_direct_download_engine"))
         assertFalse("Native direct engine must not add top-level routes", AppRoute.entries.any { it.label == "Native" || it.label == "Direct engine" || it.label == "Media engine" })
     }
@@ -756,12 +754,12 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 28 contract doc is missing", File(root, "docs/architecture/PHASE-28-MEDIA-OFFLINE-LIBRARY-V2.md").isFile)
         assertTrue("Phase 28 validator is missing", File(root, "tools/validate-media-offline-library-v2.py").isFile)
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaOfflineLibraryV2.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Offline Library 2.0 must expose filter/sort dashboard", planner.contains("OfflineLibraryV2Filter") && planner.contains("OfflineLibraryV2SortKey") && planner.contains("OfflineLibraryV2Dashboard"))
         assertTrue("Offline Library 2.0 must keep safe exports and sidecar actions", planner.contains("safeExportJson") && planner.contains("RemoveSidecar") && planner.contains("RenameSidecar"))
-        assertTrue("Screens must expose Offline Library 2.0 inside Media", screens.contains("Offline Library 2.0") && screens.contains("Phase 28 makes completed media filterable"))
+        assertTrue("Developer tools must preserve Offline Library 2.0 diagnostics", UiSourceTree.readDeveloper(root).contains("Offline Library 2.0") && UiSourceTree.readDeveloper(root).contains("Phase 28 makes completed media filterable"))
         assertTrue("Manifest must record Phase 28", manifest.contains("media_offline_library_v2"))
         assertFalse("Offline Library 2.0 must not expose implementation-detail routes", AppRoute.entries.any { it.label == "Offline" || it.label == "Player" })
     }
@@ -771,13 +769,13 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 29 contract doc is missing", File(root, "docs/architecture/PHASE-29-MEDIA-PLAYER-DIAGNOSTICS.md").isFile)
         assertTrue("Phase 29 validator is missing", File(root, "tools/validate-media-player-diagnostics.py").isFile)
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val player = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt").readText()
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaPlayerDiagnostics.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Player diagnostics must expose buckets and retry prepare", planner.contains("MediaPlayerDiagnosticBucket") && planner.contains("RetryPrepare") && planner.contains("Protected media diagnostics only"))
         assertTrue("Media3 card must expose Player 2.0 diagnostics", player.contains("Player 2.0 diagnostics") && player.contains("Track availability") && player.contains("Playback position"))
-        assertTrue("Screens must expose player diagnostics inside Media", screens.contains("Player diagnostics deck") && screens.contains("Phase 29 makes Media3 playback failures"))
+        assertTrue("Developer tools must preserve player diagnostics", UiSourceTree.readDeveloper(root).contains("Player diagnostics deck") && UiSourceTree.readDeveloper(root).contains("Phase 29 makes Media3 playback failures"))
         assertTrue("Manifest must record Phase 29", manifest.contains("media_player_diagnostics"))
         assertFalse("Player diagnostics must not add top-level routes", AppRoute.entries.any { it.label == "Player" || it.label == "Playback" })
     }
@@ -788,12 +786,12 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 30 contract doc is missing", File(root, "docs/architecture/PHASE-30-MEDIA-CAPTURE-QUALITY.md").isFile)
         assertTrue("Phase 30 validator is missing", File(root, "tools/validate-media-capture-quality.py").isFile)
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureQuality.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Capture quality must expose dispositions and signals", planner.contains("CaptureQualityDisposition") && planner.contains("AnalyticsBeacon") && planner.contains("GroupWithExisting"))
         assertTrue("Capture quality must score and redact diagnostics", planner.contains("confidenceScore") && planner.contains("secret-safe capture quality") && planner.contains("redactKnownSecrets"))
-        assertTrue("Screens must expose Media capture quality inside Media", screens.contains("Media capture quality") && screens.contains("Phase 30 improves sniffing quality"))
+        assertTrue("Developer tools must expose capture-quality diagnostics", UiSourceTree.readDeveloper(root).contains("Media capture quality") && UiSourceTree.readDeveloper(root).contains("Phase 30 improves sniffing quality"))
         assertTrue("Manifest must record Phase 30", manifest.contains("media_capture_quality"))
         assertFalse("Media capture quality must not add top-level routes", AppRoute.entries.any { it.label == "Capture" || it.label == "Quality" || it.label == "Sniffer" })
     }
@@ -803,12 +801,12 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 31 contract doc is missing", File(root, "docs/architecture/PHASE-31-SESSION-PRIVACY-CLEANUP-AUDIT.md").isFile)
         assertTrue("Phase 31 validator is missing", File(root, "tools/validate-media-session-privacy-audit.py").isFile)
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSessionPrivacyAudit.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Privacy audit must scan expected surfaces", planner.contains("MediaPrivacySurface") && planner.contains("TermuxCommandPreview") && planner.contains("TempFiles"))
         assertTrue("Privacy audit must classify cleanup and blockers", planner.contains("MediaCleanupState") && planner.contains("durable secret-safe") && planner.contains("transientCleanupHealthy"))
-        assertTrue("Screens must expose Session privacy audit inside Media", screens.contains("Session privacy audit") && screens.contains("Phase 31 audits external page context"))
+        assertTrue("Developer tools must expose the privacy audit", UiSourceTree.readDeveloper(root).contains("Session privacy audit") && UiSourceTree.readDeveloper(root).contains("Phase 31 audits external page context"))
         assertTrue("Manifest must record Phase 31", manifest.contains("media_session_privacy_audit"))
         assertFalse("Session privacy audit must not add top-level routes", AppRoute.entries.any { it.label == "Privacy" || it.label == "Audit" || it.label == "Cleanup" })
     }
@@ -819,12 +817,12 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 32 contract doc is missing", File(root, "docs/architecture/PHASE-32-MEDIA-MOBILE-POLISH.md").isFile)
         assertTrue("Phase 32 validator is missing", File(root, "tools/validate-media-mobile-polish.py").isFile)
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaMobilePolish.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Mobile polish must expose phone-first dashboard concepts", planner.contains("MediaMobilePolishDashboard") && planner.contains("StickyCurrentJob") && planner.contains("NoTinyScrollIslands"))
         assertTrue("Mobile polish must include accessibility and foldable rules", planner.contains("AccessibilityLabels") && planner.contains("FoldableReady") && planner.contains("TouchTargetSafe"))
-        assertTrue("Screens must expose Media mobile polish inside Media", screens.contains("Media mobile polish") && screens.contains("Phase 32 makes the Media stack phone-friendly"))
+        assertTrue("Developer tools must preserve mobile-polish diagnostics", UiSourceTree.readDeveloper(root).contains("Media mobile polish") && UiSourceTree.readDeveloper(root).contains("Phase 32 makes the Media stack phone-friendly"))
         assertTrue("Manifest must record Phase 32", manifest.contains("media_mobile_polish"))
         assertFalse("Media mobile polish must not add top-level routes", AppRoute.entries.any { it.label == "Mobile" || it.label == "Polish" || it.label == "Media UX" })
     }
@@ -835,14 +833,14 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 33 contract doc is missing", File(root, "docs/architecture/PHASE-33-MEDIA-FINAL-VALIDATION-GATE.md").isFile)
         assertTrue("Phase 33 validator is missing", File(root, "tools/validate-media-final-validation-gate.py").isFile)
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaFinalValidationGate.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         val runGate = File(root, "tools/run-final-release-gate.sh").readText()
         val workflow = File(root, ".github/workflows/android.yml").readText()
         assertTrue("Final gate planner must expose checks and commands", planner.contains("MediaFinalValidationGatePlanner") && planner.contains("DefaultGradleCommand") && planner.contains("warning-zero gate"))
         assertTrue("Final gate must scan secrets and known Kotlin traps", planner.contains("PrivacyLeakScan") && planner.contains("KotlinTrapScan") && planner.contains("TermuxChrootSafety"))
-        assertTrue("Screens must expose Phase 33 inside Media", screens.contains("Media final validation gate") && screens.contains("Phase 33 re-enables validation"))
+        assertTrue("Developer tools must preserve final-validation diagnostics", UiSourceTree.readDeveloper(root).contains("Media final validation gate") && UiSourceTree.readDeveloper(root).contains("Phase 33 re-enables validation"))
         assertTrue("Manifest must record Phase 33", manifest.contains("media_final_validation_gate") && manifest.contains("\"next_phase\": \"complete\""))
         assertTrue("Final gate script must include media validators", runGate.contains("validate-media-final-validation-gate.py") && runGate.contains("validate-media-mobile-polish.py"))
         assertTrue("CI must include final media validator", workflow.contains("validate-media-final-validation-gate.py"))
@@ -900,7 +898,7 @@ class ArchitectureContractTest {
         val externalActivity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAddDownloadActivity.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val models = File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/AutomationModels.kt").readText()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val runGate = File(root, "tools/run-final-release-gate.sh").readText()
         val workflow = File(root, ".github/workflows/android.yml").readText()

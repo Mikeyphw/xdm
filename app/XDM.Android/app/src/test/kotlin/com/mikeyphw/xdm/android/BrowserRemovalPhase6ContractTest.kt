@@ -40,7 +40,7 @@ class BrowserRemovalPhase6ContractTest {
     @Test
     fun libraryAndActivityOwnTheirFocusedSurfaces() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         assertTrue(screens.contains("fun MediaLibraryScreen("))
         assertTrue(screens.contains("fun ActivityOverviewScreen("))
         assertTrue(screens.contains("Completed media, playback readiness, sidecar health"))

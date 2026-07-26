@@ -1,3 +1,11 @@
+## UIX R1 - Surface contract and modularization
+
+- Split the Android UI monolith into feature-owned sources while preserving public composable APIs.
+- Added User, Advanced, and Developer audience contracts.
+- Removed phase dashboards, planner telemetry, worker bridges, runtime adapters, privacy audits, and validation decks from normal Media and Library workflows.
+- Preserved those redacted diagnostics lazily in the existing developer diagnostics workspace.
+- Added package-aware architecture tests and the UIX R1 surface-boundary validator.
+
 ## XDM Android Phase 8E Gradle architecture-contract repair — 2026-07-25
 
 - Rebased stale source-shape assertions onto the downloader-first Phase 8A–8E implementation without weakening behavior contracts.

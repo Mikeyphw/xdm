@@ -18,7 +18,7 @@ class DownloaderExperiencePhase8ABContractTest {
     @Test
     fun addDownloadUsesAReviewFirstManualAndExternalFlow() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         val shell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
 
@@ -56,7 +56,7 @@ class DownloaderExperiencePhase8ABContractTest {
     @Test
     fun downloadsAreAGroupedOperationalDashboard() {
         val root = androidRoot()
-        val screens = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt").readText()
+        val screens = UiSourceTree.readAll(root)
         listOf(
             "DownloadDashboardPlanner.plan(visible, ordering)",
             "DownloadDashboardSectionHeader(section)",

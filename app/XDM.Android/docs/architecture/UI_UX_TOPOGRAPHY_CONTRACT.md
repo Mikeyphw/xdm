@@ -43,6 +43,15 @@ Empty states must be actionable or explanatory. They should tell the user what i
 
 Diagnostics may use technical language, but they must remain user-facing and must not expose secrets, cookies, authentication headers, or private full URLs.
 
+
+## User, Advanced, and Developer Surface Boundary
+
+Every major composable must have a clear audience. Normal User surfaces may show current state, user consequence, a plain-language reason, and a useful next action. Advanced surfaces may expose queue policy, schedules, recovery, and optional integrations, but should still avoid raw planner output.
+
+Developer surfaces own engine readiness, dispatch planners, queue telemetry, worker bridges, Termux runtime plans, privacy audits, final-validation summaries, raw IDs, paths, and redacted technical exports. Developer diagnostics must be computed lazily and must not render in normal Media, Library, Downloads, Activity overview, or Settings sections.
+
+`UiAudience` and `UiSurface` are the source-level classification contract. Tests must inspect the modular UI source tree rather than coupling to `Screens.kt`.
+
 ## Future Phase Rules
 
 New aria2, recovery, scheduling, storage, media, Tasker, diagnostics, and protocol-lab UI must respect this topography. New work should prefer adding panels, detail screens, dialogs, or sub-navigation inside existing routes instead of adding top-level destinations.
