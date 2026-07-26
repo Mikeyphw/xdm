@@ -1,0 +1,12 @@
+:root {
+  color-scheme: dark;
+  --xdm-theme-mode: @@THEME_MODE@@;
+  --xdm-bg: @@BACKGROUND@@;
+  --xdm-surface: @@SURFACE@@;
+  --xdm-raised: @@RAISED@@;
+  --xdm-text: @@TEXT@@;
+  --xdm-muted: @@MUTED@@;
+  --xdm-primary: @@PRIMARY@@;
+  --xdm-primary-container: @@PRIMARY_CONTAINER@@;
+  --xdm-outline: @@OUTLINE@@;
+}

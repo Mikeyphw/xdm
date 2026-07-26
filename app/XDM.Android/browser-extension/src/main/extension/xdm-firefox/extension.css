@@ -1,14 +1,4 @@
-:root {
-  color-scheme: dark;
-  --xdm-bg: #0c0f13;
-  --xdm-surface: #151a20;
-  --xdm-raised: #1b222b;
-  --xdm-text: #e9eef5;
-  --xdm-muted: #9aa6b5;
-  --xdm-primary: #9fd2ff;
-  --xdm-primary-container: #214b68;
-  --xdm-outline: #313a46;
-}
+@import url("generated-theme.css");
 * { box-sizing: border-box; }
 body { width: min(390px, 100vw); margin: 0; padding: 14px; background: var(--xdm-bg); color: var(--xdm-text); font: 13px system-ui, sans-serif; }
 h1 { margin: 0 0 4px; font-size: 18px; }

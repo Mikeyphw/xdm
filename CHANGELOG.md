@@ -1,3 +1,12 @@
+## XDM Android Phase 39 - Deterministic XPI generation and SAF export
+
+- Added one Kotlin XPI generator and validator shared by Gradle and the Android runtime.
+- Added sorted, timestamp-normalized, traversal-safe extension archives with exact inventory and SHA-256 verification.
+- Added Settings → Browser extension with persisted SAF export directory, target, theme, and verified artifact metadata.
+- Added staged export, rename/backup promotion, providers-without-rename fallback, checksum verification, and failed-partial cleanup.
+- Added Dark and AMOLED package tasks, CI output generation, focused tests, documentation, and Devtool validation.
+- Preserved the six-route topology, Room schema 14, versionCode 21, versionName 0.20.0-rc08, transfer engines, and browser-free runtime.
+
 - Added Phase 38 repository-owned Firefox extension source with layered media detection, XDM-first handoff, optional 1DM+ fallback, unpacked development preparation, and focused validation.
 ## XDM Android Phase 37 - Browser scheme contract
 

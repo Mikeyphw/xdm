@@ -9,7 +9,7 @@ from pathlib import Path
 root = Path(sys.argv[1]).resolve()
 errors: list[str] = []
 required = {
-    "manifest.json", "generated-config.js", "detector-core.js", "candidate-store.js",
+    "manifest.json", "generated-config.js", "generated-theme.css", "detector-core.js", "candidate-store.js",
     "network-observer.js", "page-sniffer.js", "frame-bridge.js", "handoff.js",
     "fab.js", "popup.html", "popup.js", "extension.css", "icons/icon48.png", "icons/icon96.png",
 }
@@ -33,7 +33,10 @@ for token in ("extra_cookies", "extra_authorization", "extra_headers"):
     if token in handoff: errors.append(f"credential-bearing XDM handoff token present: {token}")
 config = (root / "generated-config.js").read_text(encoding="utf-8") if (root / "generated-config.js").is_file() else ""
 if 'xdmScheme: "xdmdownload"' not in config: errors.append("development XDM scheme missing")
-if 'defaultTarget: "xdm"' not in config: errors.append("XDM must be the development default target")
+if 'defaultTarget: \"xdm\"' not in config: errors.append("XDM must be the development default target")
+if 'themeMode: \"dark\"' not in config: errors.append("development theme mode missing")
+theme = (root / "generated-theme.css").read_text(encoding="utf-8") if (root / "generated-theme.css").is_file() else ""
+if "--xdm-theme-mode: dark" not in theme: errors.append("generated dark theme missing")
 if errors:
     print("Firefox extension validation failed:", file=sys.stderr)
     for error in errors: print(f"- {error}", file=sys.stderr)

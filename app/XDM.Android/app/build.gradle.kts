@@ -119,6 +119,7 @@ dependencies {
     implementation(project(":media"))
     implementation(project(":diagnostics"))
     implementation(project(":browser-integration"))
+    implementation(project(":browser-extension"))
     implementation(project(":tasker-plugin"))
 
     implementation(libs.androidx.core.ktx)
@@ -146,4 +147,14 @@ dependencies {
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+}
+
+
+tasks.register("checkBrowserIntegration") {
+    group = "verification"
+    description = "Run the Android browser bridge unit checks and build the deterministic default XPI."
+    dependsOn(
+        "testDebugUnitTest",
+        ":browser-extension:packageFirefoxExtension",
+    )
 }

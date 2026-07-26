@@ -5,6 +5,8 @@ import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.mikeyphw.xdm.android.browserextension.BrowserExtensionBuildConfig
+import com.mikeyphw.xdm.android.browserextension.BrowserExtensionSourceContract
 import com.mikeyphw.xdm.android.model.AutomationCommandAction
 import com.mikeyphw.xdm.android.model.AutomationCommandDraft
 import com.mikeyphw.xdm.android.model.AutomationCommandIds
@@ -128,6 +130,8 @@ data class MainUiState(
     val compactDensity: Boolean = false,
     val themeMode: XdmThemeMode = XdmThemeMode.Dark,
     val developerOptionsEnabled: Boolean = false,
+    val browserExtension: BrowserExtensionExportPreferences = BrowserExtensionExportPreferences(),
+    val browserExtensionRuntime: BrowserExtensionRuntimeStatus = BrowserExtensionRuntimeStatus(),
     val downloads: List<Download> = emptyList(),
     val queues: List<QueueDefinition> = emptyList(),
     val schedules: List<ScheduleRule> = emptyList(),
@@ -228,6 +232,7 @@ class MainViewModel(
     private val postProcessingAutomationManager: PostProcessingAutomationManager,
     private val mediaResolverSelectionStore: MediaResolverSelectionStore,
     private val operationalActivityStore: OperationalActivityStore,
+    private val browserExtensionExportManager: BrowserExtensionExportManager,
 ) : ViewModel() {
     private data class NavigationOverride(
         val route: AppRoute? = null,
@@ -236,6 +241,8 @@ class MainViewModel(
     )
 
     private val navigationOverride = MutableStateFlow(NavigationOverride())
+    private val browserExtensionRuntime = MutableStateFlow(BrowserExtensionRuntimeStatus())
+    private val preferencesAndBrowserExtension = combine(preferences.values, browserExtensionRuntime) { prefs, runtime -> prefs to runtime }
     private val aria2Capability = MutableStateFlow<Aria2CapabilityReport?>(null)
     private val aria2SmokeMessage = MutableStateFlow<String?>(null)
     private val aria2SmokeRunning = MutableStateFlow(false)
@@ -436,11 +443,13 @@ class MainViewModel(
 
     val uiState: StateFlow<MainUiState> = combine(
         repositorySnapshot,
-        preferences.values,
+        preferencesAndBrowserExtension,
         navigationOverride,
         runtimeUi,
         reviewUi,
-    ) { snapshot, prefs, navigation, runtime, review ->
+    ) { snapshot, preferenceSnapshot, navigation, runtime, review ->
+        val prefs = preferenceSnapshot.first
+        val browserExtensionRuntimeStatus = preferenceSnapshot.second
         val settingsSnapshot = SettingsExchangeSnapshot(
             compactDensity = prefs.compactDensity,
             destinationUri = prefs.destinationUri,
@@ -534,6 +543,8 @@ class MainViewModel(
             compactDensity = prefs.compactDensity,
             themeMode = prefs.themeMode,
             developerOptionsEnabled = prefs.developerOptionsEnabled,
+            browserExtension = prefs.browserExtension,
+            browserExtensionRuntime = browserExtensionRuntimeStatus,
             downloads = snapshot.downloads,
             queues = snapshot.queues,
             schedules = snapshot.schedules,
@@ -889,6 +900,88 @@ class MainViewModel(
     fun refreshBackendCapabilities() {
         viewModelScope.launch(Dispatchers.IO) {
             capabilitySnapshot.value = transferRuntime.backendCapabilities()
+        }
+    }
+
+
+    fun registerBrowserExtensionExportDirectory(uri: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = browserExtensionExportManager.persistDirectoryPermission(uri)
+            if (result.isSuccess) {
+                preferences.setBrowserExtensionExportTreeUri(uri)
+                browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
+                    phase = BrowserExtensionExportPhase.Idle,
+                    message = "Export folder saved. Generate the XPI when ready.",
+                )
+            } else {
+                browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
+                    phase = BrowserExtensionExportPhase.Failed,
+                    message = result.exceptionOrNull()?.message ?: "The export folder could not be saved.",
+                )
+            }
+        }
+    }
+
+    fun setBrowserExtensionDefaultTarget(target: BrowserExtensionSourceContract.Target) {
+        viewModelScope.launch { preferences.setBrowserExtensionDefaultTarget(target) }
+    }
+
+    fun setBrowserExtensionTheme(theme: BrowserExtensionSourceContract.ThemeMode) {
+        viewModelScope.launch { preferences.setBrowserExtensionRequestedTheme(theme) }
+    }
+
+    fun generateBrowserExtensionXpi() {
+        if (browserExtensionRuntime.value.phase == BrowserExtensionExportPhase.Exporting) return
+        val current = uiState.value.browserExtension
+        if (current.exportTreeUri.isBlank()) {
+            browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
+                phase = BrowserExtensionExportPhase.Failed,
+                message = "Choose an export folder before generating the XPI.",
+            )
+            return
+        }
+        val channel = when (BuildConfig.BUILD_TYPE.lowercase()) {
+            "beta" -> BrowserExtensionSourceContract.Channel.Beta
+            "debug" -> BrowserExtensionSourceContract.Channel.Debug
+            else -> BrowserExtensionSourceContract.Channel.Release
+        }
+        val config = BrowserExtensionBuildConfig(
+            extensionVersion = BrowserExtensionSourceContract.DevelopmentVersion,
+            appVersion = BuildConfig.VERSION_NAME,
+            applicationId = BuildConfig.APPLICATION_ID,
+            channel = channel,
+            xdmScheme = BuildConfig.XDM_BROWSER_SCHEME,
+            defaultTarget = current.defaultTarget,
+            themeMode = current.requestedTheme,
+        )
+        browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
+            phase = BrowserExtensionExportPhase.Exporting,
+            message = "Generating and validating the Firefox XPI…",
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = browserExtensionExportManager.export(current.exportTreeUri, config)
+            result.onSuccess { exported ->
+                val now = System.currentTimeMillis()
+                preferences.recordBrowserExtensionExport(
+                    theme = current.requestedTheme,
+                    appVersion = BuildConfig.VERSION_NAME,
+                    extensionVersion = BrowserExtensionSourceContract.DevelopmentVersion,
+                    sha256 = exported.sha256,
+                    epochMs = now,
+                    fileName = exported.fileName,
+                    byteCount = exported.byteCount,
+                )
+                browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
+                    phase = BrowserExtensionExportPhase.Succeeded,
+                    message = "Exported ${exported.fileName} and verified its checksum.",
+                    exportedUri = exported.uri,
+                )
+            }.onFailure { failure ->
+                browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
+                    phase = BrowserExtensionExportPhase.Failed,
+                    message = failure.message ?: "The Firefox XPI export failed safely.",
+                )
+            }
         }
     }
 
@@ -1656,6 +1749,7 @@ class MainViewModel(
             container.postProcessingAutomationManager,
             container.mediaResolverSelectionStore,
             container.operationalActivityStore,
+            container.browserExtensionExportManager,
         ) as T
     }
 }

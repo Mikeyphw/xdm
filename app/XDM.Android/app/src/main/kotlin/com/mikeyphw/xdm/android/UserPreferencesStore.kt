@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.mikeyphw.xdm.android.model.ConversionPreset
@@ -11,6 +12,7 @@ import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.PostProcessingSettings
 import com.mikeyphw.xdm.android.model.ProxyCredentialSettings
 import com.mikeyphw.xdm.android.model.SettingsExchangeSnapshot
+import com.mikeyphw.xdm.android.browserextension.BrowserExtensionSourceContract
 import com.mikeyphw.xdm.android.storage.DestinationUris
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -31,6 +33,7 @@ data class UserPreferences(
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val proxySettings: ProxyCredentialSettings = ProxyCredentialSettings(),
     val postProcessingSettings: PostProcessingSettings = PostProcessingSettings(),
+    val browserExtension: BrowserExtensionExportPreferences = BrowserExtensionExportPreferences(),
 )
 
 class UserPreferencesStore(private val context: Context) {
@@ -49,6 +52,16 @@ class UserPreferencesStore(private val context: Context) {
         val PostProcessingEnabled = booleanPreferencesKey("post_processing_enabled")
         val ConversionPreset = stringPreferencesKey("conversion_preset")
         val CustomCommandLabel = stringPreferencesKey("custom_command_label")
+        val BrowserExtensionExportTreeUri = stringPreferencesKey("browser_extension_export_tree_uri")
+        val BrowserExtensionDefaultTarget = stringPreferencesKey("browser_extension_default_target")
+        val BrowserExtensionRequestedTheme = stringPreferencesKey("browser_extension_requested_theme")
+        val BrowserExtensionLastExportTheme = stringPreferencesKey("browser_extension_last_export_theme")
+        val BrowserExtensionLastExportAppVersion = stringPreferencesKey("browser_extension_last_export_app_version")
+        val BrowserExtensionLastExportExtensionVersion = stringPreferencesKey("browser_extension_last_export_extension_version")
+        val BrowserExtensionLastExportSha256 = stringPreferencesKey("browser_extension_last_export_sha256")
+        val BrowserExtensionLastExportEpochMs = longPreferencesKey("browser_extension_last_export_epoch_ms")
+        val BrowserExtensionLastExportFileName = stringPreferencesKey("browser_extension_last_export_file_name")
+        val BrowserExtensionLastExportByteCount = longPreferencesKey("browser_extension_last_export_byte_count")
     }
 
     val values: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
@@ -72,6 +85,23 @@ class UserPreferencesStore(private val context: Context) {
                 enabled = preferences[Keys.PostProcessingEnabled] ?: false,
                 preset = preferences[Keys.ConversionPreset]?.let { runCatching { ConversionPreset.valueOf(it) }.getOrNull() } ?: ConversionPreset.None,
                 customCommandLabel = preferences[Keys.CustomCommandLabel].orEmpty(),
+            ),
+            browserExtension = BrowserExtensionExportPreferences(
+                exportTreeUri = preferences[Keys.BrowserExtensionExportTreeUri].orEmpty(),
+                defaultTarget = preferences[Keys.BrowserExtensionDefaultTarget]
+                    ?.let { stored -> BrowserExtensionSourceContract.Target.entries.firstOrNull { it.wireValue == stored } }
+                    ?: BrowserExtensionSourceContract.Target.Xdm,
+                requestedTheme = preferences[Keys.BrowserExtensionRequestedTheme]
+                    ?.let { stored -> BrowserExtensionSourceContract.ThemeMode.entries.firstOrNull { it.wireValue == stored } }
+                    ?: BrowserExtensionSourceContract.ThemeMode.Dark,
+                lastExportTheme = preferences[Keys.BrowserExtensionLastExportTheme]
+                    ?.let { stored -> BrowserExtensionSourceContract.ThemeMode.entries.firstOrNull { it.wireValue == stored } },
+                lastExportAppVersion = preferences[Keys.BrowserExtensionLastExportAppVersion].orEmpty(),
+                lastExportExtensionVersion = preferences[Keys.BrowserExtensionLastExportExtensionVersion].orEmpty(),
+                lastExportSha256 = preferences[Keys.BrowserExtensionLastExportSha256].orEmpty(),
+                lastExportEpochMs = preferences[Keys.BrowserExtensionLastExportEpochMs] ?: 0L,
+                lastExportFileName = preferences[Keys.BrowserExtensionLastExportFileName].orEmpty(),
+                lastExportByteCount = preferences[Keys.BrowserExtensionLastExportByteCount] ?: 0L,
             ),
         )
     }
@@ -117,6 +147,39 @@ class UserPreferencesStore(private val context: Context) {
             it[Keys.PostProcessingEnabled] = settings.enabled
             it[Keys.ConversionPreset] = settings.preset.name
             it[Keys.CustomCommandLabel] = settings.customCommandLabel.trim()
+        }
+    }
+
+
+    suspend fun setBrowserExtensionExportTreeUri(uri: String) {
+        context.dataStore.edit { it[Keys.BrowserExtensionExportTreeUri] = uri.trim() }
+    }
+
+    suspend fun setBrowserExtensionDefaultTarget(target: BrowserExtensionSourceContract.Target) {
+        context.dataStore.edit { it[Keys.BrowserExtensionDefaultTarget] = target.wireValue }
+    }
+
+    suspend fun setBrowserExtensionRequestedTheme(theme: BrowserExtensionSourceContract.ThemeMode) {
+        context.dataStore.edit { it[Keys.BrowserExtensionRequestedTheme] = theme.wireValue }
+    }
+
+    suspend fun recordBrowserExtensionExport(
+        theme: BrowserExtensionSourceContract.ThemeMode,
+        appVersion: String,
+        extensionVersion: String,
+        sha256: String,
+        epochMs: Long,
+        fileName: String,
+        byteCount: Long,
+    ) {
+        context.dataStore.edit {
+            it[Keys.BrowserExtensionLastExportTheme] = theme.wireValue
+            it[Keys.BrowserExtensionLastExportAppVersion] = appVersion
+            it[Keys.BrowserExtensionLastExportExtensionVersion] = extensionVersion
+            it[Keys.BrowserExtensionLastExportSha256] = sha256
+            it[Keys.BrowserExtensionLastExportEpochMs] = epochMs
+            it[Keys.BrowserExtensionLastExportFileName] = fileName
+            it[Keys.BrowserExtensionLastExportByteCount] = byteCount
         }
     }
 

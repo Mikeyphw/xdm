@@ -52,6 +52,7 @@ fun SettingsScreen(
             SettingsPanel.Overview -> SettingsOverview(state, viewModel)
             SettingsPanel.AdvancedDownloads -> AdvancedDownloadSettingsScreen(state, viewModel)
             SettingsPanel.Privacy -> PrivacySettingsScreen(state, viewModel)
+            SettingsPanel.BrowserExtension -> BrowserExtensionSettingsScreen(state, viewModel)
             SettingsPanel.DeveloperTools -> DeveloperSettingsScreen(state, viewModel)
         }
     }
@@ -134,6 +135,16 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
                 summary = "Fit more downloads on screen without hiding progress or primary actions.",
                 checked = state.compactDensity,
                 onCheckedChange = viewModel::setCompactDensity,
+            )
+        }
+
+        item { XdmSectionHeader("Browser integration") }
+        item {
+            SettingsActionRow(
+                title = "Browser extension",
+                summary = browserExtensionSummary(state),
+                actionLabel = "Open",
+                onClick = { viewModel.selectSettingsPanel(SettingsPanel.BrowserExtension) },
             )
         }
 
@@ -304,6 +315,12 @@ private fun destinationSummary(uri: String): String = when {
     uri.contains("app-private", ignoreCase = true) -> "App-private Downloads folder"
     uri.startsWith("content://") -> "Selected Android folder"
     else -> "Configured download folder"
+}
+
+private fun browserExtensionSummary(state: MainUiState): String = when {
+    state.browserExtension.lastExportFileName.isNotBlank() -> "${state.browserExtension.lastExportFileName} • verified SHA-256 export"
+    state.browserExtension.exportTreeUri.isNotBlank() -> "Export folder selected • ready to generate the Firefox XPI"
+    else -> "Generate the XDM Firefox bridge into a folder you choose"
 }
 
 private fun queueSummary(state: MainUiState): String {

@@ -15,6 +15,7 @@ class BrowserExtensionSourceContractTest {
         val required = setOf(
             "manifest.template.json",
             "generated-config.template.js",
+            "generated-theme.template.css",
             "detector-core.js",
             "candidate-store.js",
             "network-observer.js",

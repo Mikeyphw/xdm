@@ -52,13 +52,14 @@ jobs:
           python3 tools/validate-phase-10.py
           python3 tools/validate-phase-37-browser-scheme-contract.py
           python3 tools/validate-phase-38-repo-owned-extension.py
+          python3 tools/validate-phase-39-xpi-export.py
           bash tools/run-final-release-gate.sh --ci
       - name: Bootstrap wrapper
         run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.4.1
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
       - name: Lint, test, and package
-        run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace :browser-extension:validateFirefoxExtension lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug assembleBeta
+        run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtension lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug assembleBeta
       - name: Verify packaged aria2 payload
         run: |
           apk="$(find app/build/outputs/apk/beta -maxdepth 1 -type f -name '*.apk' -print -quit)"
@@ -70,4 +71,5 @@ jobs:
           path: |
             app/XDM.Android/app/build/outputs/apk/debug/*.apk
             app/XDM.Android/app/build/outputs/apk/beta/*.apk
+            app/XDM.Android/browser-extension/build/outputs/xpi/*.xpi
           if-no-files-found: error

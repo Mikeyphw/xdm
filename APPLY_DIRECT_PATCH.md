@@ -27,3 +27,18 @@ cd "$HOME/Code/xdm" && \
 ```
 
 The schema-v2 artifact owns the commit message `Add repository-owned XDM Firefox extension`. Do not pass `--commit`.
+
+# Apply XDM Android Phase 39 deterministic XPI generation and SAF export
+
+Phase 39 depends on the landed Phase 38 repository-owned Firefox extension. It adds the shared deterministic XPI packager, Android SAF export transaction, persisted export settings, and focused validation without changing routes, Room, transfer engines, or the app version.
+
+```bash
+cd "$HOME/Code/xdm" && \
+  devtool --copy --auto-hud --hud-mode desktop-window --yes \
+  -r "$HOME/Code/xdm" \
+  --target xdm_android \
+  apply-overlay "$HOME/Downloads/xdm_android_phase39_xpi_generation_saf_export_overlay.zip" \
+  --validate
+```
+
+The schema-v2 artifact owns the commit message `Add deterministic XDM Firefox XPI export`. Do not pass `--commit`.

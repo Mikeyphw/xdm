@@ -1541,5 +1541,38 @@
     "top_level_route_added": false,
     "depends_on": "browser_scheme_contract",
     "next_overlay": "browser_bridge_phase39_xpi_generation_export"
+  },
+  "browser_bridge_phase39_xpi_generation_export": {
+    "program": "android_browser_bridge",
+    "contract_version": 1,
+    "contract_document": "docs/architecture/PHASE-39-XPI-GENERATION-SAF-EXPORT.md",
+    "static_validator": "tools/validate-phase-39-xpi-export.py",
+    "module": "browser-extension",
+    "shared_runtime_gradle_generator": true,
+    "deterministic_zip_entries": true,
+    "deterministic_zip_timestamp": "1980-01-01T00:00:00Z",
+    "archive_hash": "SHA-256",
+    "gradle_tasks": [
+      "packageFirefoxExtension",
+      "packageFirefoxExtensionDark",
+      "packageFirefoxExtensionAmoled"
+    ],
+    "output_directory": "browser-extension/build/outputs/xpi",
+    "settings_panel": "BrowserExtension",
+    "saf_open_document_tree": true,
+    "persisted_uri_permission": true,
+    "staged_verified_export": true,
+    "rename_fallback": true,
+    "partial_cleanup_required": true,
+    "supported_export_themes": [
+      "dark",
+      "amoled"
+    ],
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "top_level_route_added": false,
+    "depends_on": "browser_bridge_phase38_repo_owned_firefox_extension",
+    "next_overlay": "browser_bridge_phase40_extension_theme_fab"
   }
 }
