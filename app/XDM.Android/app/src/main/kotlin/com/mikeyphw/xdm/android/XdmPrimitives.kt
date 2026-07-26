@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
@@ -84,21 +85,44 @@ fun XdmPageHeader(
     subtitle: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    Row(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .testTag(XdmTestTags.PageHeader).semantics { contentDescription = "$title page header" }
+            .testTag(XdmTestTags.PageHeader)
+            .semantics { contentDescription = "$title page header" }
             .padding(horizontal = XdmSpacing.ScreenPadding, vertical = 18.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-            subtitle?.takeIf(String::isNotBlank)?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        val stackActions = maxWidth < 420.dp
+        if (stackActions) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
+                    subtitle?.takeIf(String::isNotBlank)?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    content = actions,
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
+                    subtitle?.takeIf(String::isNotBlank)?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
     }
 }
 
@@ -112,14 +136,22 @@ fun XdmMetricStrip(metrics: List<XdmMetric>, modifier: Modifier = Modifier) {
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            metrics.forEach { metric ->
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(metric.value, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(metric.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val columns = if (maxWidth < 520.dp) 2 else metrics.size.coerceAtMost(4)
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                metrics.chunked(columns).forEach { rowMetrics ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                        rowMetrics.forEach { metric ->
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(metric.value, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Text(metric.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                            }
+                        }
+                        repeat(columns - rowMetrics.size) { Spacer(Modifier.weight(1f)) }
+                    }
                 }
             }
         }
@@ -244,7 +276,7 @@ fun <T> XdmSegmentedControl(
                 val isSelected = option == selected
                 Surface(
                     modifier = Modifier
-                        .sizeIn(minHeight = 44.dp)
+                        .sizeIn(minWidth = XdmMinimumTouchTarget, minHeight = XdmMinimumTouchTarget)
                         .clickable(role = Role.RadioButton) { onSelected(option) }
                         .semantics {
                             this.selected = isSelected
@@ -334,7 +366,9 @@ fun XdmTechnicalDetails(
     Column(modifier.fillMaxWidth().testTag(XdmTestTags.TechnicalDetails).semantics { contentDescription = label }) {
         TextButton(
             onClick = { expanded = !expanded },
-            modifier = Modifier.sizeIn(minHeight = 48.dp),
+            modifier = Modifier
+                .xdmMinimumTouchTarget()
+                .semantics { stateDescription = if (expanded) "$label expanded" else "$label collapsed" },
         ) {
             Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null)
             Spacer(Modifier.width(6.dp))
@@ -365,7 +399,14 @@ fun XdmAdaptiveSheet(
             properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = true, dismissOnClickOutside = true),
         ) {
             Surface(
-                modifier = Modifier.fillMaxWidth(0.76f).sizeIn(maxWidth = 760.dp, maxHeight = 820.dp).testTag(XdmTestTags.AdaptiveSheet).semantics { contentDescription = "$title dialog" },
+                modifier = Modifier
+                    .fillMaxWidth(0.76f)
+                    .sizeIn(maxWidth = 760.dp, maxHeight = 820.dp)
+                    .testTag(XdmTestTags.AdaptiveSheet)
+                    .semantics {
+                        contentDescription = "$title dialog"
+                        stateDescription = "Open"
+                    },
                 color = MaterialTheme.colorScheme.surface,
                 shape = MaterialTheme.shapes.extraLarge,
                 tonalElevation = 0.dp,
@@ -385,7 +426,15 @@ fun XdmAdaptiveSheet(
             tonalElevation = 0.dp,
             dragHandle = null,
         ) {
-            Column(Modifier.fillMaxWidth().testTag(XdmTestTags.AdaptiveSheet)) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(XdmTestTags.AdaptiveSheet)
+                    .semantics {
+                        contentDescription = "$title bottom sheet"
+                        stateDescription = "Open"
+                    },
+            ) {
                 XdmPageHeader(title = title)
                 content()
             }
@@ -419,7 +468,7 @@ fun XdmEmptyState(
         }
         Text(title, style = MaterialTheme.typography.titleMedium)
         Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (actionLabel != null && onAction != null) Button(onClick = onAction) { Text(actionLabel) }
+        if (actionLabel != null && onAction != null) Button(onClick = onAction, modifier = Modifier.xdmMinimumTouchTarget()) { Text(actionLabel) }
     }
 }
 

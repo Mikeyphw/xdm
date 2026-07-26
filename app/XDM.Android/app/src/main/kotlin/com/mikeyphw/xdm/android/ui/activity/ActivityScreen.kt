@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -44,7 +45,12 @@ fun ActivityWorkspaceScreen(
     val visibleEvents = remember(events, normalizedPanel) { ActivityWorkspacePlanner.forPanel(events, normalizedPanel) }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .xdmScreen(XdmScreenTags.Activity, "Activity")
+            .xdmStateDescription(
+                if (normalizedPanel == ActivityPanel.Attention) "Needs attention selected" else "Recent selected",
+            ),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -83,9 +89,13 @@ fun ActivityWorkspaceScreen(
                         selected = normalizedPanel == panel,
                         onClick = { onPanelChanged(panel) },
                         label = { Text(panel.label) },
-                        modifier = Modifier.semantics {
-                            stateDescription = if (normalizedPanel == panel) "${panel.label} selected" else "${panel.label} not selected"
-                        },
+                        modifier = Modifier
+                            .testTag(
+                                if (panel == ActivityPanel.Attention) XdmScreenTags.ActivityAttention else XdmScreenTags.ActivityRecent,
+                            )
+                            .semantics {
+                                stateDescription = if (normalizedPanel == panel) "${panel.label} selected" else "${panel.label} not selected"
+                            },
                     )
                 }
             }

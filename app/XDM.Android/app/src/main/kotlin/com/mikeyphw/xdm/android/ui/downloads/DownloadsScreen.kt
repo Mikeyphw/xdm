@@ -31,6 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -96,14 +97,14 @@ fun DownloadsScreen(
 ) {
     val context = LocalContext.current
     val windowClass = LocalXdmWindowClass.current
-    var filter by remember { mutableStateOf(DownloadWorkspaceFilter.Active) }
-    var query by remember { mutableStateOf("") }
-    var searchVisible by remember { mutableStateOf(false) }
-    var ordering by remember { mutableStateOf(DownloadDashboardOrdering.Smart) }
-    var includeArchived by remember { mutableStateOf(false) }
+    var filter by rememberSaveable { mutableStateOf(DownloadWorkspaceFilter.Active) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var searchVisible by rememberSaveable { mutableStateOf(false) }
+    var ordering by rememberSaveable { mutableStateOf(DownloadDashboardOrdering.Smart) }
+    var includeArchived by rememberSaveable { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(setOf<String>()) }
-    var detailDownloadId by remember { mutableStateOf<String?>(null) }
-    var organizeVisible by remember { mutableStateOf(false) }
+    var detailDownloadId by rememberSaveable { mutableStateOf<String?>(null) }
+    var organizeVisible by rememberSaveable { mutableStateOf(false) }
 
     val metrics = DownloadsWorkspacePlanner.metrics(downloads.filterNot { it.archived })
     val visibleDownloads = DownloadsWorkspacePlanner.visibleDownloads(
@@ -128,7 +129,7 @@ fun DownloadsScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.Downloads, "Downloads")) {
         DownloadsOverviewHeader(
             windowClass = windowClass,
             activeCount = active.activeCount,
@@ -452,13 +453,16 @@ private fun DownloadWorkspaceList(
     modifier: Modifier = Modifier,
 ) {
     if (downloads.isEmpty()) {
-        Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        Box(
+            modifier.fillMaxWidth().xdmScreen(XdmScreenTags.DownloadsList, "Downloads list"),
+            contentAlignment = Alignment.TopCenter,
+        ) {
             XdmEmptyState(title = emptyTitle, description = emptyDescription)
         }
         return
     }
     LazyColumn(
-        modifier = modifier,
+        modifier = modifier.xdmScreen(XdmScreenTags.DownloadsList, "Downloads list"),
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 8.dp),
     ) {

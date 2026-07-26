@@ -182,6 +182,7 @@ current_uix_overlay = manifest.get("current_uix_overlay")
 allowed_current_uix_overlays = {
     "xdm_android_uix_r4_media_library_consumer_workflow_overlay.zip",
     "xdm_android_uix_r5_activity_settings_developer_boundary_overlay.zip",
+    "xdm_android_uix_r6_accessibility_performance_release_seal_overlay.zip",
 }
 if current_uix_overlay not in allowed_current_uix_overlays:
     ERRORS.append("current_uix_overlay must identify UIX R4 or a later compatible UIX overlay")

@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,15 +76,15 @@ fun AddDownloadScreen(
     recommend: (String, String, BackendType, String, FilenameConflictPolicy, Boolean) -> BackendRecommendation,
 ) {
     val context = LocalContext.current
-    var url by remember { mutableStateOf(initialUrl.orEmpty()) }
-    var name by remember { mutableStateOf(initialFileName.orEmpty()) }
-    var backend by remember { mutableStateOf(BackendType.Automatic) }
-    var allowFallback by remember { mutableStateOf(true) }
-    var expectedChecksum by remember { mutableStateOf("") }
-    var checksumAlgorithm by remember { mutableStateOf(ChecksumAlgorithm.Sha256) }
-    var advancedExpanded by remember { mutableStateOf(false) }
-    var reviewConfirmed by remember { mutableStateOf(false) }
-    var clipboardMessage by remember { mutableStateOf<String?>(null) }
+    var url by rememberSaveable { mutableStateOf(initialUrl.orEmpty()) }
+    var name by rememberSaveable { mutableStateOf(initialFileName.orEmpty()) }
+    var backend by rememberSaveable { mutableStateOf(BackendType.Automatic) }
+    var allowFallback by rememberSaveable { mutableStateOf(true) }
+    var expectedChecksum by rememberSaveable { mutableStateOf("") }
+    var checksumAlgorithm by rememberSaveable { mutableStateOf(ChecksumAlgorithm.Sha256) }
+    var advancedExpanded by rememberSaveable { mutableStateOf(false) }
+    var reviewConfirmed by rememberSaveable { mutableStateOf(false) }
+    var clipboardMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(externalDraftId) {
         if (externalDraftId != null) {
@@ -113,7 +114,7 @@ fun AddDownloadScreen(
     val methodLabel = recommendation?.let { recommendationSummary(it, allowFallback) } ?: "Automatic • resumable"
     val fileLabel = name.ifBlank { inferredFileName(url) }
 
-    Column(Modifier.fillMaxSize().imePadding()) {
+    Column(Modifier.fillMaxSize().imePadding().xdmScreen(XdmScreenTags.AddDownload, "New download")) {
         LazyColumn(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
@@ -280,6 +281,9 @@ fun AddDownloadScreen(
                                         allowFallback = it
                                         reviewConfirmed = false
                                     },
+                                    modifier = Modifier.xdmStateDescription(
+                                        if (allowFallback) "Compatible fallback enabled" else "Compatible fallback disabled",
+                                    ),
                                 )
                             }
 
@@ -313,7 +317,9 @@ fun AddDownloadScreen(
             }
 
             item {
-                XdmGroupedList {
+                XdmGroupedList(
+                    modifier = Modifier.xdmScreen(XdmScreenTags.AddReview, "Download review summary"),
+                ) {
                     XdmListRow(
                         headline = if (reviewConfirmed) "Review confirmed" else review.title,
                         supporting = if (reviewConfirmed) "Nothing has been queued yet. Add it only when the summary below is correct." else review.guidance,

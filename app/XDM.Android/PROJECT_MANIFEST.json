@@ -1371,7 +1371,7 @@
     "depends_on": "uix_r1_surface_contract_modularization",
     "next_overlay": "uix_r3_downloads_add_workspace"
   },
-  "current_uix_overlay": "xdm_android_uix_r5_activity_settings_developer_boundary_overlay.zip",
+  "current_uix_overlay": "xdm_android_uix_r6_accessibility_performance_release_seal_overlay.zip",
   "uix_r3_downloads_add_workspace": {
     "program": "android_uix_redesign",
     "contract_document": "docs/architecture/UIX-R3-DOWNLOADS-ADD-WORKSPACE.md",
@@ -1457,5 +1457,29 @@
     "version_code_unchanged": 21,
     "depends_on": "uix_r4_media_library_consumer_workflows",
     "next_overlay": "uix_r6_accessibility_responsiveness_release_seal"
+  },
+  "uix_r6_accessibility_performance_release_seal": {
+    "program": "android_uix_redesign",
+    "contract_document": "docs/architecture/UIX-R6-ACCESSIBILITY-PERFORMANCE-RELEASE-SEAL.md",
+    "static_validator": "tools/validate-uix-r6-accessibility-performance-release-seal.py",
+    "minimum_touch_target_dp": 48,
+    "font_scale_qualified": 2.0,
+    "window_classes": [
+      "Compact",
+      "Medium",
+      "Expanded"
+    ],
+    "semantics_layout_contracts": true,
+    "developer_planners_lazy": true,
+    "normal_ui_debug_language_banned": true,
+    "normal_ui_raw_machine_values_banned": true,
+    "manual_clean_install_upgrade_checklist": true,
+    "external_handoff_manual_gate": true,
+    "full_validation_required": true,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "depends_on": "uix_r5_activity_settings_developer_boundary",
+    "next_overlay": "complete"
   }
 }

@@ -57,7 +57,7 @@ internal fun DownloadDetails(
     val queuePolicyHeld = download.errorMessage.orEmpty().startsWith("Queue policy:") &&
         download.state !in setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Completed, DownloadState.Cancelled)
 
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier.fillMaxWidth().xdmScreen(XdmScreenTags.DownloadsDetail, "Download details"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = XdmTheme.extendedColors.groupedSurface,

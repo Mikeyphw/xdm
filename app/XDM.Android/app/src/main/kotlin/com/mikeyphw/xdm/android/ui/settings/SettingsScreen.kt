@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -39,11 +40,20 @@ fun SettingsScreen(
         viewModel.selectSettingsPanel(SettingsPanel.Overview)
     }
 
-    when (state.settingsPanel) {
-        SettingsPanel.Overview -> SettingsOverview(state, viewModel)
-        SettingsPanel.AdvancedDownloads -> AdvancedDownloadSettingsScreen(state, viewModel)
-        SettingsPanel.Privacy -> PrivacySettingsScreen(state, viewModel)
-        SettingsPanel.DeveloperTools -> DeveloperSettingsScreen(state, viewModel)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .xdmScreen(XdmScreenTags.Settings, "Settings")
+            .xdmStateDescription(
+                if (state.developerOptionsEnabled) "Developer options enabled" else "Developer options disabled",
+            ),
+    ) {
+        when (state.settingsPanel) {
+            SettingsPanel.Overview -> SettingsOverview(state, viewModel)
+            SettingsPanel.AdvancedDownloads -> AdvancedDownloadSettingsScreen(state, viewModel)
+            SettingsPanel.Privacy -> PrivacySettingsScreen(state, viewModel)
+            SettingsPanel.DeveloperTools -> DeveloperSettingsScreen(state, viewModel)
+        }
     }
 }
 
@@ -238,6 +248,7 @@ private fun SettingsActionRow(
     XdmListCard(
         compact = true,
         modifier = Modifier
+            .xdmMinimumTouchTarget()
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "$title. $summary. $actionLabel" },
     ) {
@@ -268,7 +279,13 @@ private fun SettingsSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     XdmListCard(compact = true) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .xdmMinimumTouchTarget()
+                .semantics { stateDescription = if (checked) "$title enabled" else "$title disabled" },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Column(Modifier.weight(1f)) {
                 XdmCardTitle(title)
                 XdmSupportingText(summary, maxLines = 3)

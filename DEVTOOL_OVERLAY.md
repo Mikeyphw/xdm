@@ -1,28 +1,22 @@
-# XDM Android UIX R5 Overlay
+# XDM Android UIX R6 Overlay
 
-UIX R5 completes the consumer information architecture on top of UIX R4 by refocusing Activity and Settings while placing engineering dashboards behind persisted Developer options.
+UIX R6 is the final accessibility, responsiveness, performance, and release-validation seal for the Android redesign. It depends on the UIX R5 Activity, Settings, and Developer boundary overlay.
 
 ## Included
 
-- Activity defaults to Needs attention with Recent as the second primary view.
-- Compact metrics for unresolved items, waiting decisions, and events today.
-- Plain-language activity rows with time, affected file, consequence, and one relevant action.
-- Manage activity adaptive sheet for queue decisions, queues, schedules, and recovery.
-- Settings reordered around Save location, Smart queue, Notifications, Appearance, Privacy and support, and About.
-- Persisted Dark and AMOLED black themes plus compact row preference.
-- Persisted Developer options, disabled by default.
-- Grouped developer workspace for runtime, Termux/aria2, media, dispatch/workers, privacy/cleanup, validation/release, intake/clipboard, and redacted logs/exports.
-- Redacted support report remains available with Developer options disabled.
-- R5 planner tests, source contracts, static validator, architecture documentation, CI, and final-gate integration.
+- Stable semantics tags for every primary screen and adaptive shell region.
+- 48 dp minimum interaction targets and TalkBack state descriptions.
+- Large-font-safe shared headers and metric layouts qualified at 200% font scale.
+- Compact, Medium, Expanded, Add-modal, list-detail, list/grid, empty, and error layout contracts.
+- Saveable navigation, filter, modal, quality, and organization state where transient UI must survive rotation.
+- Lazy Developer planner ownership behind the persisted gate and active panel.
+- Consumer-source scans blocking debug architecture phrases, raw machine values, unredacted URLs, cookies, authorization, and command templates.
+- Updated product/topography contracts, project manifest, CI, final release gate, device smoke helper, and full Devtool build matrix.
 
-## User/developer boundary
+## Validation policy
 
-Normal Activity has no Diagnostics tab. Normal Settings does not inline runtime probes, backend matrices, planner dashboards, telemetry, worker bridges, privacy audits, release checks, or raw intake output. Developer mode changes visibility only; URL, header, cookie, token, signature, and credential redaction remains mandatory. No raw shell input is introduced.
+R6 requires the complete target-environment gate: debug and beta lint, module tests, app unit tests, Android-test assembly, debug and beta packaging, aria2 payload verification in CI, and zero warnings/errors. Manual qualification covers clean install, upgrade from R5, external browser/share handoff, TalkBack, 200% font scale, portrait/landscape, foldables/tablets, process restoration, failure states, recovery, and Developer-options shutdown.
 
-## Preserved
+## Apply
 
-Room remains schema 14 and the app remains `versionName 0.20.0-rc08` / `versionCode 21`. Routes, download engines, queue and schedule operations, recovery validation, Termux, aria2, proxy, post-processing, destination and duplicate rules, settings exchange, and external handoff remain operational.
-
-## Dependency
-
-Apply after `xdm_android_uix_r4_media_library_consumer_workflow_overlay.zip`. UIX R6 will run the accessibility, responsive-layout, performance, and final release seal.
+Use Devtool with `--validate`. The artifact owns its commit message; do not add a CLI `--commit` flag.

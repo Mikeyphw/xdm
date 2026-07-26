@@ -72,7 +72,7 @@ shell = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAdaptiveShell.kt",
     "NavigationBar(",
     "XdmNavigationSidebar(",
-    "Modifier.width(224.dp)",
+    "width(224.dp)",
     "WindowInsets.safeDrawing",
     "imePadding()",
     "widthIn(max = 1480.dp)",
@@ -98,7 +98,7 @@ primitives = require(
     "fun XdmAdaptiveSheet",
     "fun XdmEmptyState",
     "testTag(XdmTestTags.PageHeader)",
-    "sizeIn(minHeight = 48.dp)",
+    "XdmMinimumTouchTarget",
 )
 
 require(

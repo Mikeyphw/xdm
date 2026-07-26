@@ -132,7 +132,7 @@ advanced = require(
 developer_settings = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperSettingsScreen.kt",
     "UiAudience.Developer",
-    "if (!state.developerOptionsEnabled)",
+    "DeveloperWorkspacePolicy.shouldCompose",
     "DeveloperToolsWorkspace(",
     "Enable developer options",
 )
@@ -249,8 +249,13 @@ expected = {
 for key, value in expected.items():
     if r5.get(key) != value:
         ERRORS.append(f"PROJECT_MANIFEST uix_r5_activity_settings_developer_boundary.{key} must equal {value!r}")
-if manifest.get("current_uix_overlay") != "xdm_android_uix_r5_activity_settings_developer_boundary_overlay.zip":
-    ERRORS.append("current_uix_overlay must identify UIX R5")
+current_uix_overlay = manifest.get("current_uix_overlay")
+allowed_current_uix_overlays = {
+    "xdm_android_uix_r5_activity_settings_developer_boundary_overlay.zip",
+    "xdm_android_uix_r6_accessibility_performance_release_seal_overlay.zip",
+}
+if current_uix_overlay not in allowed_current_uix_overlays:
+    ERRORS.append("current_uix_overlay must identify UIX R5 or the compatible UIX R6 seal")
 
 validator = "tools/validate-uix-r5-activity-settings-developer-boundary.py"
 for gate in ("tools/run-final-release-gate.sh", ".github/workflows/android.yml"):

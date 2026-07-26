@@ -1,3 +1,12 @@
+## UIX R6 - Accessibility, performance, and release seal
+
+- Added stable screen semantics and 48 dp minimum touch targets across the adaptive shell and primary workflows.
+- Qualified shared headers, metrics, long filenames, empty/error states, and modal flows at 200% font scale.
+- Added Compact, Medium, Expanded, Add-modal, and current-product instrumentation contracts plus a connected-device smoke runner.
+- Persisted transient Downloads, Add, Media, Library, Activity, and navigation state through rotation and modal dismissal where appropriate.
+- Enforced lazy Developer planner composition and consumer-safe source scans that reject debug language, raw machine values, full secret-bearing URLs, and command templates in normal UI.
+- Expanded Devtool, CI, final-gate, clean-install, upgrade, external-handoff, accessibility, and recovery qualification while preserving routes, Room schema 14, app version, engines, and runtime behavior.
+
 ## UIX R5 - Activity, Settings, and Developer boundary
 
 - Refocused Activity on Needs attention and Recent, with plain-language consequences, compact metrics, and a Manage activity sheet for queue decisions, queues, schedules, and recovery.

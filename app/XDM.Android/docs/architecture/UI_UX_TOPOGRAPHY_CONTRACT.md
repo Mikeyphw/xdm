@@ -178,3 +178,8 @@ Settings begins with Save location and Smart queue, followed by Notifications an
 
 Developer options are persisted in DataStore and default off. Disabling them must remove runtime probes, engine matrices, media planners, dispatch and worker dashboards, privacy audits, release checks, raw intake diagnostics, and redacted logs from reachable normal navigation. The support report remains available while Developer options is off. Developer surfaces must remain redacted and typed; a raw shell or arbitrary command textbox is prohibited.
 
+
+
+## UIX R6 Accessibility, Performance, and Release Seal
+
+The redesigned topology is release-qualified across Compact, Medium, and Expanded windows. Primary actions use 48 dp minimum targets, stable semantics identify each workflow, shared layout primitives tolerate 200% font scaling, and restorable UI state protects route, filter, sheet, and list-detail continuity. Normal destinations remain consumer-facing; developer diagnostics compose only behind the persisted Developer options gate.

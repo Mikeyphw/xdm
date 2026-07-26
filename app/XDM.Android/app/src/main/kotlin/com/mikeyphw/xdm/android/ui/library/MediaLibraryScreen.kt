@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +53,7 @@ fun MediaLibraryScreen(
     val allItems = remember(captures, downloads, variants) {
         executionPlanner.offlineLibraryItems(captures, downloads, variants)
     }
-    var filter by remember { mutableStateOf(MediaLibraryFilter.All) }
+    var filter by rememberSaveable { mutableStateOf(MediaLibraryFilter.All) }
     var selectedPlayerItem by remember { mutableStateOf<OfflineMediaLibraryItem?>(null) }
     var selectedDetailsItem by remember { mutableStateOf<OfflineMediaLibraryItem?>(null) }
     val visibleItems = remember(allItems, filter) {
@@ -60,7 +61,7 @@ fun MediaLibraryScreen(
     }
     val playableCount = allItems.count { it.toPlaybackCandidate() != null }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.Library, "Media library")) {
         XdmPageHeader(
             title = "Library",
             subtitle = "Completed video and audio, ready to play or manage.",
@@ -95,7 +96,10 @@ fun MediaLibraryScreen(
             )
         } else if (LocalXdmWindowClass.current == XdmWindowClass.Compact) {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .xdmScreen(XdmScreenTags.LibraryList, "Media library list"),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -112,7 +116,10 @@ fun MediaLibraryScreen(
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 250.dp),
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .xdmScreen(XdmScreenTags.LibraryGrid, "Media library grid"),
                 contentPadding = PaddingValues(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),

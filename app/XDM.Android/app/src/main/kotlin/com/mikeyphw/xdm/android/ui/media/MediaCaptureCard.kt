@@ -17,6 +17,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,7 +44,7 @@ internal fun MediaCaptureCard(
     onTrackSelectionChanged: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onRemove: (MediaCaptureRecord) -> Unit,
 ) {
-    var detailsVisible by remember(capture.id) { mutableStateOf(false) }
+    var detailsVisible by rememberSaveable(capture.id) { mutableStateOf(false) }
     var trackSelection by remember(capture.id) {
         mutableStateOf(persistedSelection.copy(videoVariantId = persistedSelection.videoVariantId ?: capture.selectedVariantId))
     }
@@ -58,7 +59,9 @@ internal fun MediaCaptureCard(
         captureVariants.filter { it.kind == MediaVariantKind.Video || it.kind == MediaVariantKind.Primary }
     }
 
-    XdmListCard {
+    XdmListCard(
+        modifier = Modifier.xdmScreen(XdmScreenTags.MediaCapture, "Media capture ${capture.title.ifBlank { capture.fileName }}"),
+    ) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -198,7 +201,7 @@ private fun MediaTrackPickerSheet(
         title = "Media options",
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().xdmScreen(XdmScreenTags.MediaTrackSheet, "Media track selection"),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

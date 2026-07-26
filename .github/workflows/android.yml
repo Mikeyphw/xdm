@@ -36,6 +36,7 @@ jobs:
       - name: Static and final release contracts
         run: |
           python3 tools/validate-foundation.py
+          python3 tools/validate-uix-r6-accessibility-performance-release-seal.py
           python3 tools/validate-phase-2-3.py
           python3 tools/validate-phase-4.py
           python3 tools/validate-phase-5.py

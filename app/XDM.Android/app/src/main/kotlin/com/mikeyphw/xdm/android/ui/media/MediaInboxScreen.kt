@@ -54,7 +54,7 @@ fun MediaInboxScreen(
         }.sortedByDescending { (_, download) -> download.updatedAtEpochMs }.take(5)
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.Media, "Media")) {
         XdmPageHeader(
             title = "Media",
             subtitle = "Choose quality and tracks before anything is added to Downloads.",

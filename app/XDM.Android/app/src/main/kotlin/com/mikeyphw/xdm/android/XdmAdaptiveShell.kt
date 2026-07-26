@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -62,7 +62,7 @@ fun XdmAdaptiveShell(
     content: @Composable () -> Unit,
 ) {
     if (windowClass.usesNavigationSidebar) {
-        Row(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.ShellExpanded, "Expanded XDM shell")) {
             XdmNavigationSidebar(
                 selectedRoute = selectedRoute,
                 destinations = destinations,
@@ -81,6 +81,7 @@ fun XdmAdaptiveShell(
                 Box(
                     Modifier
                         .fillMaxSize()
+                        .xdmScreen(XdmScreenTags.ContentCanvas, "XDM content")
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End + WindowInsetsSides.Bottom))
                         .imePadding(),
                     contentAlignment = Alignment.TopCenter,
@@ -99,7 +100,12 @@ fun XdmAdaptiveShell(
         }
     } else {
         Scaffold(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .xdmScreen(
+                    if (windowClass == XdmWindowClass.Compact) XdmScreenTags.ShellCompact else XdmScreenTags.ShellMedium,
+                    if (windowClass == XdmWindowClass.Compact) "Compact XDM shell" else "Medium XDM shell",
+                ),
             containerColor = MaterialTheme.colorScheme.background,
             contentColor = MaterialTheme.colorScheme.onBackground,
             contentWindowInsets = WindowInsets.safeDrawing,
@@ -135,8 +141,8 @@ private fun XdmCompactTopBar(route: AppRoute, onAddDownload: () -> Unit) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .height(60.dp)
-                .padding(start = 20.dp, end = 10.dp),
+                .defaultMinSize(minHeight = 60.dp)
+                .padding(start = 20.dp, end = 10.dp, top = 6.dp, bottom = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -150,7 +156,7 @@ private fun XdmCompactTopBar(route: AppRoute, onAddDownload: () -> Unit) {
             IconButton(
                 onClick = onAddDownload,
                 modifier = Modifier
-                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                    .xdmMinimumTouchTarget()
                     .semantics { contentDescription = "New download" },
             ) {
                 Icon(Icons.Rounded.Add, contentDescription = "New download")
@@ -166,6 +172,7 @@ private fun XdmBottomNavigation(
     onNavigate: (AppRoute) -> Unit,
 ) {
     NavigationBar(
+        modifier = Modifier.xdmScreen(XdmScreenTags.BottomNavigation, "Primary navigation"),
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp,
@@ -207,7 +214,10 @@ private fun XdmNavigationSidebar(
     onAddDownload: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier.width(224.dp).fillMaxHeight(),
+        modifier = Modifier
+            .width(224.dp)
+            .fillMaxHeight()
+            .xdmScreen(XdmScreenTags.NavigationSidebar, "Primary navigation"),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
@@ -239,7 +249,7 @@ private fun XdmNavigationSidebar(
             Spacer(Modifier.height(20.dp))
             Button(
                 onClick = onAddDownload,
-                modifier = Modifier.fillMaxWidth().sizeIn(minHeight = 48.dp).semantics { contentDescription = "New download" },
+                modifier = Modifier.fillMaxWidth().xdmMinimumTouchTarget().semantics { contentDescription = "New download" },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -275,7 +285,7 @@ private fun XdmSidebarDestination(route: AppRoute, selected: Boolean, onClick: (
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .sizeIn(minHeight = 48.dp)
+            .xdmMinimumTouchTarget()
             .clickable(role = Role.Button, onClick = onClick)
             .semantics {
                 this.selected = selected

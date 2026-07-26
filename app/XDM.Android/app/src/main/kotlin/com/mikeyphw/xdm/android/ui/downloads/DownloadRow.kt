@@ -98,7 +98,7 @@ internal fun DownloadRow(
                         download.fileName,
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 1,
+                        maxLines = if (compact) 1 else 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                     XdmStatusBadge(download.rowBadgeLabel(), tone = download.state.statusTone())
@@ -125,7 +125,7 @@ internal fun DownloadRow(
                         download.rowProgressText(),
                         style = MaterialTheme.typography.labelMedium,
                         color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        maxLines = if (compact) 1 else 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(

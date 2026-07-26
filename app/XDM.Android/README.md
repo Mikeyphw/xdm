@@ -4,6 +4,10 @@ Adds Phase 8 checksum verification, persisted verification results, trusted bloc
 
 # XDM Android
 
+## UIX R6 final experience seal
+
+The Android UI is now sealed as a dark, flat, adaptive five-destination experience with Downloads, Media, Library, Activity, and Settings. Add remains an internal review-first route presented as an adaptive sheet/dialog. UIX R6 adds stable accessibility semantics, 48 dp targets, 200% font-scale qualification, Compact/Medium/Expanded contracts, lazy Developer diagnostics, consumer-safe source scans, device smoke tests, and the final release checklist. See `docs/architecture/UIX-R6-ACCESSIBILITY-PERFORMANCE-RELEASE-SEAL.md`.
+
 ## Downloader-only release seal
 
 XDM Android is a focused download manager with six stable destinations: Downloads, Add, Media, Library, Activity, and Settings. It integrates with external browsers through explicit sharing, typed download intents, file-extension handlers, and Android download-manager actions. It does not contain WebView or register as a general browser.

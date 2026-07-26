@@ -86,3 +86,8 @@ An explicit user override may bypass soft policy but must not pretend an unvalid
 
 Downloader capabilities remain available even when their engineering diagnostics are hidden from normal workflows. Media and Library must prioritize review, track selection, playback, and recovery actions. Dispatch planners, telemetry, worker bridges, runtime adapters, privacy audits, and release gates belong to the redacted Developer workspace and must not be required content on normal screens.
 
+
+
+## UIX R6 final release boundary
+
+The final Android UIX release keeps six internal routes and five visible primary destinations. Add remains a review-first adaptive modal route. Accessibility semantics, 48 dp minimum targets, 200% font scaling, and Compact/Medium/Expanded behavior are permanent product contracts. Normal screens may not expose raw diagnostic values or construct developer planners. Room remains schema 14 and the downloader-only external handoff boundary remains unchanged.

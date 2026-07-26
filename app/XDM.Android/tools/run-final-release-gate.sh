@@ -12,6 +12,7 @@ validators=(
   tools/validate-uix-r3-downloads-add-workspace.py
   tools/validate-uix-r4-media-library-consumer-workflows.py
   tools/validate-uix-r5-activity-settings-developer-boundary.py
+  tools/validate-uix-r6-accessibility-performance-release-seal.py
   tools/validate-phase-2-3.py
   tools/validate-phase-4.py
   tools/validate-phase-5.py
@@ -82,6 +83,6 @@ Run the full build/test/lint gate in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Phase 7 seals the downloader-only product, Phase 8A + 8B refines intake and Downloads, Phase 8C adds explainable queue policy, Phase 8D adds a first-class review-first media resolver workspace, and Phase 8E adds searchable operational visibility and privacy-safe diagnostics. The Phase 8E repair chain preserves scoped Compose layout extensions, warning-free storage reevaluation, JUnit 4 test compilation, and downloader-first architecture contracts.
-The browser-free product boundary remains complete after the full target-environment Gradle gate and manual PackageManager check pass.
+UIX R6 seals the dark adaptive five-destination experience with 48 dp touch targets, stable semantics, 200% font-scale qualification, compact/medium/expanded layout contracts, lazy developer planners, and consumer-safe source scans.
+The browser-free product boundary remains complete only after the full target-environment Gradle gate, device smoke suite, clean-install and upgrade checks, and manual PackageManager validation pass.
 EOF2

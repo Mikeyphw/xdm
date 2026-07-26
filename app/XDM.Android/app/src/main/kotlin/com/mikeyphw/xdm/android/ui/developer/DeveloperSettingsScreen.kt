@@ -15,9 +15,9 @@ import androidx.compose.ui.unit.dp
 @Composable
 @UiSurface(UiAudience.Developer, "Open the gated redacted technical workspace")
 internal fun DeveloperSettingsScreen(state: MainUiState, viewModel: MainViewModel) {
-    if (!state.developerOptionsEnabled) {
+    if (!DeveloperWorkspacePolicy.shouldCompose(state.developerOptionsEnabled, state.settingsPanel)) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().xdmScreen(XdmScreenTags.DeveloperTools, "Developer tools"),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -33,7 +33,7 @@ internal fun DeveloperSettingsScreen(state: MainUiState, viewModel: MainViewMode
         return
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.DeveloperTools, "Developer tools")) {
         SettingsPageHeader(
             title = "Developer tools",
             onBack = { viewModel.selectSettingsPanel(SettingsPanel.Overview) },
