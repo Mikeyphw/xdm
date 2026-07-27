@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.InsertDriveFile
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -384,6 +385,7 @@ fun XdmTechnicalDetails(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun XdmAdaptiveSheet(
     visible: Boolean,

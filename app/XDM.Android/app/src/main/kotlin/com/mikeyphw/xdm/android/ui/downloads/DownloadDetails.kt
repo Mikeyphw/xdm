@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.weight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Download
@@ -274,10 +273,13 @@ private fun Download.plainStatus(): String = when (state) {
     DownloadState.Cancelled -> "Cancelled"
 }
 
-private fun Download.progressSummary(): String = when {
-    totalBytes != null -> "${(progressFraction * 100).toInt()}% • ${bytesReceived.formatBytes()} of ${totalBytes.formatBytes()}"
-    bytesReceived > 0L -> bytesReceived.formatBytes()
-    else -> state.uiLabel()
+private fun Download.progressSummary(): String {
+    val total = totalBytes
+    return when {
+        total != null -> "${(progressFraction * 100).toInt()}% • ${bytesReceived.formatBytes()} of ${total.formatBytes()}"
+        bytesReceived > 0L -> bytesReceived.formatBytes()
+        else -> state.uiLabel()
+    }
 }
 
 private fun verificationSummary(

@@ -320,3 +320,11 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Browser extension store distribution and signing remain release-channel tasks
 - Linux desktop integration may vary between desktop environments
 - Retain a backup before migrating legacy state even though recorded migration fixtures are qualified
+
+### Phase 42 Kotlin source compatibility hotfix
+
+- Aligned the Media3 diagnostics call with the current `positionMs` API.
+- Added the required Material 3 opt-in for the adaptive bottom sheet.
+- Removed stale `ui.common` and internal Compose `weight` imports.
+- Replaced K2-invalid cross-module nullable-property smart casts with stable local values.
+- Added a focused source-compatibility validator to the browser bridge release gate.

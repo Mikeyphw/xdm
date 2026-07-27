@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -47,8 +46,6 @@ import com.mikeyphw.xdm.android.model.DownloadIntakeKind
 import com.mikeyphw.xdm.android.model.DownloadReviewPlanner
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
-import com.mikeyphw.xdm.android.ui.common.UiAudience
-import com.mikeyphw.xdm.android.ui.common.UiSurface
 import com.mikeyphw.xdm.android.util.formatBytes
 
 @Composable

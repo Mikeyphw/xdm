@@ -149,9 +149,9 @@ private fun ActivityEventRow(
         XdmSupportingText(event.detail, maxLines = 3)
         XdmMetadataText(ActivityWorkspacePlanner.consequence(event), maxLines = 2)
         HorizontalDivider()
-        if (event.actionLabel != null) {
-            Button(onClick = { onAction(event) }) { Text(event.actionLabel) }
-        } else {
+        event.actionLabel?.let { actionLabel ->
+            Button(onClick = { onAction(event) }) { Text(actionLabel) }
+        } ?: run {
             TextButton(onClick = { onDismiss(event.id) }) { Text("Dismiss") }
         }
     }

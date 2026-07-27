@@ -46,6 +46,7 @@ validators=(
   tools/validate-phase-41-browser-bridge-integration.py
   tools/validate-phase-42-browser-bridge-release-gate.py
   tools/validate-phase-42-kotlin-compile-recovery.py
+  tools/validate-phase-42-kotlin-source-compatibility.py
 )
 for validator in "${validators[@]}"; do
   python3 "$validator"

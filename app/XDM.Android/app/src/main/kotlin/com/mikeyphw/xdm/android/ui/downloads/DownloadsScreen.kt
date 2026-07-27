@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.weight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.MoreVert
@@ -55,8 +54,6 @@ import com.mikeyphw.xdm.android.model.QueueIntelligenceSummary
 import com.mikeyphw.xdm.android.model.SavedSearch
 import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
-import com.mikeyphw.xdm.android.ui.common.UiAudience
-import com.mikeyphw.xdm.android.ui.common.UiSurface
 import com.mikeyphw.xdm.android.util.formatSpeed
 
 @Composable

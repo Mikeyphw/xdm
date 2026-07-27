@@ -105,7 +105,7 @@ fun Media3DirectPlayerCard(candidate: MediaPlaybackCandidate, modifier: Modifier
                     MediaPlayerDiagnosticsPlanner().report(
                         candidate = candidate,
                         error = error,
-                        playbackPositionMs = playbackPositionMs,
+                        positionMs = playbackPositionMs,
                         durationMs = player.duration.takeIf { it > 0L },
                     )
                 }

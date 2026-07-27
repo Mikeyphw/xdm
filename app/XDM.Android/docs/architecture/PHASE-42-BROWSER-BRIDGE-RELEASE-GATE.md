@@ -51,3 +51,7 @@ Static and Gradle success do not prove that IronFox hands custom schemes to Andr
 - Release metadata contains no raw credentials.
 
 Until the device matrix is signed off, the code and automated release gate are landed but device release qualification remains pending.
+
+## Kotlin 2.3 source compatibility repair
+
+The release gate also validates source-level compatibility exposed by the clean compile lane: Media3 diagnostic argument names, explicit Material 3 opt-ins, K2-safe local captures for nullable cross-module properties, package-correct UI contract references, and scope-owned Compose `weight` usage without importing the internal parent-data property.

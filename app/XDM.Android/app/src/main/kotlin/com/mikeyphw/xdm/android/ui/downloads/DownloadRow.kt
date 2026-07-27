@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.MoreHoriz
@@ -211,10 +210,13 @@ private fun Download.rowSupportingText(): String {
     return listOf(reason, totalBytes?.formatBytes(), host.takeIf { it.isNotBlank() && it !in reason }).filterNotNull().joinToString(" • ")
 }
 
-private fun Download.rowProgressText(): String = when {
-    totalBytes != null -> "${bytesReceived.formatBytes()} / ${totalBytes.formatBytes()}"
-    bytesReceived > 0L -> bytesReceived.formatBytes()
-    else -> destinationUri
+private fun Download.rowProgressText(): String {
+    val total = totalBytes
+    return when {
+        total != null -> "${bytesReceived.formatBytes()} / ${total.formatBytes()}"
+        bytesReceived > 0L -> bytesReceived.formatBytes()
+        else -> destinationUri
+    }
 }
 
 private fun Download.rowTrailingText(): String = when {

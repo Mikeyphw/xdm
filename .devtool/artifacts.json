@@ -44678,6 +44678,400 @@
         ]
       },
       "history_id": "8970c17f521941219bfb9043786c3d41"
+    },
+    {
+      "applied_at": "2026-07-27T02:36:28.295741Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_phase42_kotlin_source_compatibility_hotfix_overlay.zip",
+      "artifact_name": "xdm_android_phase42_kotlin_source_compatibility_hotfix_overlay.zip",
+      "type": "overlay",
+      "sha256": "93741f24a0fc17d205144c546ba43c2762a64d6578c127dcf7e9495d5116773b",
+      "status": "failed",
+      "validation_status": "not-run",
+      "commit_message": "Fix XDM Android Kotlin source compatibility",
+      "commit_hash": "",
+      "file_count": 21,
+      "change_counts": {
+        "add": 1,
+        "modify": 13,
+        "unchanged": 7
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 42 Kotlin Source Compatibility Hotfix",
+        "description": "Combines the clean Kotlin validation lane with the concrete Kotlin 2.3/Compose source repairs exposed by the first clean compile: Media3 signature alignment, explicit Material3 opt-in, K2-safe nullable captures, package-correct UI contracts, and scope-owned Compose weight usage.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": ".devtool.toml",
+              "action": "modify",
+              "sha256": "42cbd6edd39d744ab5c16b863cbae4b3fabb2067c861862a471b49e84f94570e",
+              "size": 4006,
+              "source_sha256": "38d576974b7280ee97db821c150aaf0dfea41b092c00c984b735e7e2d41cdac2"
+            },
+            {
+              "path": ".github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "20185df0cf5112719e212cc9c8e5e3dec6f1334fb2f0e52da345d163453df61c",
+              "size": 3868,
+              "source_sha256": "a588c358224a16cde40ffcf901a1a36cd23e65ea4c5dfbd1046cfa632bf395b8"
+            },
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "e67886c6595ec9418637bce2f964f32bcbc864b87905c6af2d66c2075903b14d",
+              "size": 25303,
+              "source_sha256": "998acba827ca2b27c224bdb1e80bf263810d89659862889535ef7c310710c388"
+            },
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "09c14e21c12e72aa5049cfc336d27010541ef83c0a4c1e46843275802b8e69dc",
+              "size": 6291,
+              "source_sha256": "0a17db611edb1e1621acb5c907f9d317f1546303a058da3608da443f9fcb1380"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "53379687ebb6d64dcd1aa91dee8062e36a79bb85bc0b8af2575a5de9da3b36d4",
+              "size": 57631,
+              "source_sha256": "d6541220e8f4b50f8827a38a497f751cdaf44149035c884152460fb532bb3547"
+            },
+            {
+              "path": "app/XDM.Android/app/build.gradle.kts",
+              "action": "modify",
+              "sha256": "bb1493d551ce0d4413db689038c08e34c3eac1334a3ac2c8b17fa5c8e1c17bdf",
+              "size": 7344,
+              "source_sha256": "1168b9c717d8367ab7d6a5b73b971c9b3ffcf381967f11eb5626b3a99256f946"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt",
+              "action": "modify",
+              "sha256": "0ffe4c5f9f8341f39fe30a2bffe19787907aea97f0e4310f46cef6f2f4bfd2d0",
+              "size": 5604,
+              "source_sha256": "f17cabfcb27413fec63a1c870ba50722995b7c6542265c5e64c691e70896fd17"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmPrimitives.kt",
+              "action": "modify",
+              "sha256": "283f42ad10326932b44b9dd6f326811bc45eaf5533a4545ac4c4b1e091ac4a73",
+              "size": 21542,
+              "source_sha256": "351e0cc78378125206b136f45fda7e3dd7c124b58b1a7d922fd155199b07d596"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/activity/ActivityScreen.kt",
+              "action": "modify",
+              "sha256": "6af852de7ea81c4b080dd09a085117f7725cfe1526ab3f1be5e30d1b266c5b60",
+              "size": 7762,
+              "source_sha256": "529ec3a00c9a1861614acd3c5182d941735276f367ea9224b4ef7eecf6f5edfb"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDetails.kt",
+              "action": "modify",
+              "sha256": "1d036957dd4d482ec6c142eb1183dc3e19b9f59decef8af7d9b6122059856bf6",
+              "size": 13766,
+              "source_sha256": "1bc539326b7a2ae7108268173addfb585c8305e580cc4a4074964cc09fc9d51e"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt",
+              "action": "modify",
+              "sha256": "c8814bc40ef7fa0558fb908c00989fc0a10a30fa71a6f1fa8b2f5f7e18dc7399",
+              "size": 10040,
+              "source_sha256": "887e0176131f88a41dae94fb06419b8b6732a36e20650ec53edb700df37b106b"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+              "action": "modify",
+              "sha256": "0d161706464ebaeb84a0094721d3a40f6606981427befcf4e4a66c4d6a0655f1",
+              "size": 22121,
+              "source_sha256": "2c8583a9605c7624925487947389f7bc2e8dac651d9d3a1ad2ac7366963b4a11"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/OrganizeDownloadsSheet.kt",
+              "action": "modify",
+              "sha256": "c2db3a9da47f34d6409389b532d6830a6ead3d63f75bd16bd91b597cad0a81c9",
+              "size": 9995,
+              "source_sha256": "ff904f3e5f4cd212248a2eea724f3567a916e2726f8171ea1557928cd7367c33"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt",
+              "action": "modify",
+              "sha256": "aa510b217d015ae441e42c3a2133030f865219c0b8b4f1df1385a59dfd6a61cf",
+              "size": 22043,
+              "source_sha256": "11f022e69a74a4ae7f701b64ba76771c2abacd95d7bcfcb7c73f100d55c04255"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-42-BROWSER-BRIDGE-RELEASE-GATE.md",
+              "action": "modify",
+              "sha256": "97b5fbfa35722b30cfe83313a8ea97d48ac7fe9b1c9e4e5582ddaf0e550359d6",
+              "size": 4006,
+              "source_sha256": "8b2a6a2e1292525160a6f0d71984d0eed3d1aea5db635c425888b2db4fe69aae"
+            },
+            {
+              "path": "app/XDM.Android/tools/run-browser-bridge-release-gate.sh",
+              "action": "modify",
+              "sha256": "a90d3403cf144320638f26ec67da7793dbaf5fb135ba21f556c0e0e5bbdcd4b8",
+              "size": 3622,
+              "source_sha256": "f627221235a8b4592e8dc0c3f776feee88258c34d41420a6825bedef439d1847"
+            },
+            {
+              "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+              "action": "modify",
+              "sha256": "8fa55928733f40e8444f5d1b147d6e2b9fc5dab932f5aa2ee5702ff2ddfdfe03",
+              "size": 4653,
+              "source_sha256": "61bb6c2ab9b4ae77e3456c3c72dc568bf6d9f147cfa5c43812cbe1679e9aa9f7"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-42-browser-bridge-release-gate.py",
+              "action": "modify",
+              "sha256": "8bfb06d57d226dc8d51d6497ffb53da068e2ad4bd0393c0d62fc1e2a85d6d00b",
+              "size": 13892,
+              "source_sha256": "34fd1058fb3e504806cf9bd36013d6e1ad249da3322ea0ef6761f2bffece017e"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-42-kotlin-compile-recovery.py",
+              "action": "add",
+              "sha256": "496150d8857392d7102a9cdda8f1e71e44596dbfe8ba696b24f7088ab1ad748a",
+              "size": 4036
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-42-kotlin-source-compatibility.py",
+              "action": "add",
+              "sha256": "9b2a4d03ca3b0eb9458e9789f10ef017a95848221cb3f027fefdade1b9e26fc8",
+              "size": 2747
+            },
+            {
+              "path": "docs/RELEASE-CHECKLIST.md",
+              "action": "modify",
+              "sha256": "df38e3b8db50c583b3edce7b7721ae1bdae45e99161118e3bb575e305f1bef8d",
+              "size": 4953,
+              "source_sha256": "b09f7f9ce877fb8e3f1e6d44803f35b88cb22ae2865f339a99b00efcec4a5e88"
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Fix XDM Android Kotlin source compatibility"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate_phase42_kotlin_source_compatibility.sh",
+            "runner": "bash",
+            "sha256": "1ee07ea23978c0bd860750b3c73c9854569da333208dd0378317a512ced8894d",
+            "timeout_seconds": 1800
+          },
+          "expected": {
+            "restore": "success",
+            "build": "success",
+            "tests": "success",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Supersedes the earlier Phase 42 Kotlin compile-recovery hotfix and includes its clean-room compile lane, because the failed validated application is expected to have rolled back atomically.",
+          "Fixes all compiler errors reported in Media3PlayerScreen, XdmPrimitives, ActivityScreen, DownloadDetails, DownloadRow, DownloadsScreen, OrganizeDownloadsSheet, and AddDownloadSurface.",
+          "The release gate rejects stale Compose internal weight imports, incorrect ui.common imports, obsolete Media3 argument names, implicit Material3 experimental API use, and K2-invalid cross-module nullable-property smart casts.",
+          "Normal developer builds remain incremental; the non-incremental in-process compiler lane is enabled only for Devtool validation."
+        ]
+      },
+      "history_id": "1096f3007ebc497fb1f048fe5f171fc2"
+    },
+    {
+      "applied_at": "2026-07-27T02:53:27.728086Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_phase42_kotlin_source_compatibility_rebased_overlay.zip",
+      "artifact_name": "xdm_android_phase42_kotlin_source_compatibility_rebased_overlay.zip",
+      "type": "overlay",
+      "sha256": "0d5e33b9099d371b58a312c09734d94fe3f6bc9f9e671f00e1fac130a100f8b6",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Fix XDM Android Kotlin source compatibility",
+      "commit_hash": "",
+      "file_count": 14,
+      "change_counts": {
+        "add": 1,
+        "modify": 13
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 42 Kotlin Source Compatibility Rebased Hotfix",
+        "description": "Applies only the Kotlin 2.3/Compose source compatibility repairs on top of the already-landed Phase 42 Kotlin compile-recovery baseline, avoiding duplicate additions and stale pre-recovery source hashes.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "e67886c6595ec9418637bce2f964f32bcbc864b87905c6af2d66c2075903b14d",
+              "size": 25303,
+              "source_sha256": "86846b57bcf7343b6347e0862f4efa2d24be28c78356e7df0375931b18288585"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "53379687ebb6d64dcd1aa91dee8062e36a79bb85bc0b8af2575a5de9da3b36d4",
+              "size": 57631,
+              "source_sha256": "88c27bf2bbc362ea9d342861b2d4250891d8b82807f1fafa3b8d53b648c26fe8"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt",
+              "action": "modify",
+              "sha256": "0ffe4c5f9f8341f39fe30a2bffe19787907aea97f0e4310f46cef6f2f4bfd2d0",
+              "size": 5604,
+              "source_sha256": "f17cabfcb27413fec63a1c870ba50722995b7c6542265c5e64c691e70896fd17"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmPrimitives.kt",
+              "action": "modify",
+              "sha256": "283f42ad10326932b44b9dd6f326811bc45eaf5533a4545ac4c4b1e091ac4a73",
+              "size": 21542,
+              "source_sha256": "351e0cc78378125206b136f45fda7e3dd7c124b58b1a7d922fd155199b07d596"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/activity/ActivityScreen.kt",
+              "action": "modify",
+              "sha256": "6af852de7ea81c4b080dd09a085117f7725cfe1526ab3f1be5e30d1b266c5b60",
+              "size": 7762,
+              "source_sha256": "529ec3a00c9a1861614acd3c5182d941735276f367ea9224b4ef7eecf6f5edfb"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDetails.kt",
+              "action": "modify",
+              "sha256": "1d036957dd4d482ec6c142eb1183dc3e19b9f59decef8af7d9b6122059856bf6",
+              "size": 13766,
+              "source_sha256": "1bc539326b7a2ae7108268173addfb585c8305e580cc4a4074964cc09fc9d51e"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt",
+              "action": "modify",
+              "sha256": "c8814bc40ef7fa0558fb908c00989fc0a10a30fa71a6f1fa8b2f5f7e18dc7399",
+              "size": 10040,
+              "source_sha256": "887e0176131f88a41dae94fb06419b8b6732a36e20650ec53edb700df37b106b"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+              "action": "modify",
+              "sha256": "0d161706464ebaeb84a0094721d3a40f6606981427befcf4e4a66c4d6a0655f1",
+              "size": 22121,
+              "source_sha256": "2c8583a9605c7624925487947389f7bc2e8dac651d9d3a1ad2ac7366963b4a11"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/OrganizeDownloadsSheet.kt",
+              "action": "modify",
+              "sha256": "c2db3a9da47f34d6409389b532d6830a6ead3d63f75bd16bd91b597cad0a81c9",
+              "size": 9995,
+              "source_sha256": "ff904f3e5f4cd212248a2eea724f3567a916e2726f8171ea1557928cd7367c33"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt",
+              "action": "modify",
+              "sha256": "aa510b217d015ae441e42c3a2133030f865219c0b8b4f1df1385a59dfd6a61cf",
+              "size": 22043,
+              "source_sha256": "11f022e69a74a4ae7f701b64ba76771c2abacd95d7bcfcb7c73f100d55c04255"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-42-BROWSER-BRIDGE-RELEASE-GATE.md",
+              "action": "modify",
+              "sha256": "97b5fbfa35722b30cfe83313a8ea97d48ac7fe9b1c9e4e5582ddaf0e550359d6",
+              "size": 4006,
+              "source_sha256": "6c24abaad184a231cd097c68fa348d66182a3439533e6191ace52af1da53c4aa"
+            },
+            {
+              "path": "app/XDM.Android/tools/run-browser-bridge-release-gate.sh",
+              "action": "modify",
+              "sha256": "a90d3403cf144320638f26ec67da7793dbaf5fb135ba21f556c0e0e5bbdcd4b8",
+              "size": 3622,
+              "source_sha256": "e1732a12b54e604e89156a0000182a9a84db63212cfeb4d9ea407d25b62b3694"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-42-browser-bridge-release-gate.py",
+              "action": "modify",
+              "sha256": "8bfb06d57d226dc8d51d6497ffb53da068e2ad4bd0393c0d62fc1e2a85d6d00b",
+              "size": 13892,
+              "source_sha256": "9dd9d9ba67c4d6783939774fca352334eb0fef1c6179136a52a7936f27589fe3"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-42-kotlin-source-compatibility.py",
+              "action": "add",
+              "sha256": "9b2a4d03ca3b0eb9458e9789f10ef017a95848221cb3f027fefdade1b9e26fc8",
+              "size": 2747
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Fix XDM Android Kotlin source compatibility"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate_phase42_kotlin_source_compatibility.sh",
+            "runner": "bash",
+            "sha256": "1ee07ea23978c0bd860750b3c73c9854569da333208dd0378317a512ced8894d",
+            "timeout_seconds": 1800
+          },
+          "expected": {
+            "restore": "success",
+            "build": "success",
+            "tests": "success",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Rebased against the supplied 2026-07-26 23:39:39 snapshot, which already contains the Phase 42 Kotlin compile-recovery hotfix.",
+          "Does not modify or add the compile-recovery configuration, Gradle task, CI wiring, validator, release checklist, or final gate files that already match the baseline.",
+          "Fixes the concrete compiler errors in Media3PlayerScreen, XdmPrimitives, ActivityScreen, DownloadDetails, DownloadRow, DownloadsScreen, OrganizeDownloadsSheet, and AddDownloadSurface.",
+          "Adds only the new Kotlin source-compatibility validator; all other inventory entries are modifications with source hashes computed from the supplied baseline.",
+          "The release gate rejects stale Compose internal weight imports, incorrect ui.common imports, obsolete Media3 argument names, implicit Material3 experimental API use, and K2-invalid cross-module nullable-property smart casts."
+        ]
+      },
+      "history_id": "881be80bc36e4f82a8f96fa2a97d3bdc"
     }
   ]
 }

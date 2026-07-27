@@ -1673,6 +1673,11 @@
     "validation_kotlin_in_process": true,
     "validation_build_cache_disabled": true,
     "validation_configuration_cache_disabled": true,
-    "validation_project_parallelism_disabled": true
+    "validation_project_parallelism_disabled": true,
+    "kotlin_source_compatibility_validator": "tools/validate-phase-42-kotlin-source-compatibility.py",
+    "compose_weight_import_repair": true,
+    "k2_cross_module_smart_cast_repair": true,
+    "material3_experimental_opt_in_explicit": true,
+    "media_player_diagnostics_signature_aligned": true
   }
 }

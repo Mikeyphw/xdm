@@ -53,6 +53,7 @@ ironfox = read("docs/browser-extension/IRONFOX-INSTALLATION.md")
 device_doc = read("docs/browser-extension/DEVICE-ACCEPTANCE.md")
 device_script = read("tools/run-browser-bridge-device-acceptance.sh")
 compile_recovery = read("tools/validate-phase-42-kotlin-compile-recovery.py")
+source_compatibility = read("tools/validate-phase-42-kotlin-source-compatibility.py")
 bridge_gate = read("tools/run-browser-bridge-release-gate.sh")
 final_gate = read("tools/run-final-release-gate.sh")
 build_gradle = read("browser-extension/build.gradle.kts")
@@ -139,6 +140,15 @@ compile_tasks = validation.get("phases", {}).get("compile", [])
 if compile_tasks != [":app:resetKotlinValidationState", ":app:compileDebugSources"]:
     raise SystemExit(f"Phase 42 Kotlin recovery compile phase mismatch: {compile_tasks!r}")
 for needle in (
+    "positionMs = playbackPositionMs",
+    "ExperimentalMaterial3Api",
+    "foundation.layout.weight",
+    "ui.common",
+    "val total = totalBytes",
+):
+    require(source_compatibility, needle, "Kotlin source compatibility validator")
+
+for needle in (
     "-Pkotlin.incremental=false",
     "-Pkotlin.compiler.execution.strategy=in-process",
     "-Pxdm.cleanKotlinValidation=true",
@@ -164,6 +174,7 @@ for needle in (
 for needle in (
     "validate-phase-42-browser-bridge-release-gate.py",
     "validate-phase-42-kotlin-compile-recovery.py",
+    "validate-phase-42-kotlin-source-compatibility.py",
     "test_release_gate.js",
     "verifyFirefoxExtensionReleaseArtifacts",
     "run-browser-bridge-device-acceptance.sh --print",
