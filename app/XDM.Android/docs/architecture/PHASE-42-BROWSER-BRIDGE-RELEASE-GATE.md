@@ -55,3 +55,8 @@ Until the device matrix is signed off, the code and automated release gate are l
 ## Kotlin 2.3 source compatibility repair
 
 The release gate also validates source-level compatibility exposed by the clean compile lane: Media3 diagnostic argument names, explicit Material 3 opt-ins, K2-safe local captures for nullable cross-module properties, package-correct UI contract references, and scope-owned Compose `weight` usage without importing the internal parent-data property.
+
+
+## Contract-test modernization hotfix
+
+The final gate runs contract tests from the Android Gradle root and accepts the modular UI ownership introduced by UIX R2-R5. Contract tests must locate the repository root instead of trusting `user.dir`, scan modular app sources when callbacks move out of `XdmApp.kt`, read shared theme tokens from `:browser-extension`, and avoid cross-function regular expressions that confuse review-only media inspection with queue submission.

@@ -54,6 +54,7 @@ device_doc = read("docs/browser-extension/DEVICE-ACCEPTANCE.md")
 device_script = read("tools/run-browser-bridge-device-acceptance.sh")
 compile_recovery = read("tools/validate-phase-42-kotlin-compile-recovery.py")
 source_compatibility = read("tools/validate-phase-42-kotlin-source-compatibility.py")
+contract_test_modernization = read("tools/validate-phase-42-contract-test-modernization.py")
 bridge_gate = read("tools/run-browser-bridge-release-gate.sh")
 final_gate = read("tools/run-final-release-gate.sh")
 build_gradle = read("browser-extension/build.gradle.kts")
@@ -148,6 +149,14 @@ for needle in (
 ):
     require(source_compatibility, needle, "Kotlin source compatibility validator")
 
+
+for needle in (
+    "private val repo = androidRoot()",
+    "DeveloperWorkspacePolicy.shouldCompose",
+    "XdmMinimumTouchTarget",
+):
+    require(contract_test_modernization, needle, "contract-test modernization validator")
+
 for needle in (
     "-Pkotlin.incremental=false",
     "-Pkotlin.compiler.execution.strategy=in-process",
@@ -175,6 +184,7 @@ for needle in (
     "validate-phase-42-browser-bridge-release-gate.py",
     "validate-phase-42-kotlin-compile-recovery.py",
     "validate-phase-42-kotlin-source-compatibility.py",
+    "validate-phase-42-contract-test-modernization.py",
     "test_release_gate.js",
     "verifyFirefoxExtensionReleaseArtifacts",
     "run-browser-bridge-device-acceptance.sh --print",

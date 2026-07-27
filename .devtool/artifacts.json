@@ -45072,6 +45072,172 @@
         ]
       },
       "history_id": "881be80bc36e4f82a8f96fa2a97d3bdc"
+    },
+    {
+      "applied_at": "2026-07-27T03:37:36.505280Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_phase42_contract_test_modernization_overlay.zip",
+      "artifact_name": "xdm_android_phase42_contract_test_modernization_overlay.zip",
+      "type": "overlay",
+      "sha256": "1660887b5048246047f4637c5887cd13b81243051b2198c898bc49b06eec9bd0",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Modernize XDM Android Phase 42 contract tests",
+      "commit_hash": "",
+      "file_count": 13,
+      "change_counts": {
+        "add": 1,
+        "modify": 12
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 42 Contract-Test Modernization Hotfix",
+        "description": "Rebases the remaining Android contract tests on the already-applied Kotlin source compatibility tree, fixing Gradle-root discovery and stale pre-modular UI assertions without reverting the compiled source repairs.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "9a8f8cf99d9f6c5d05132fb89709be07cc47b9a882f74ad171dd9804710ff21f",
+              "size": 25887,
+              "source_sha256": "e67886c6595ec9418637bce2f964f32bcbc864b87905c6af2d66c2075903b14d"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "48207e5974b079219b707ce44d86f3401d7756c240c885c3ba16457adace9cab",
+              "size": 57868,
+              "source_sha256": "53379687ebb6d64dcd1aa91dee8062e36a79bb85bc0b8af2575a5de9da3b36d4"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+              "action": "modify",
+              "sha256": "04943cfb2cf2e2af0ac0473af9c8ac8a4c4ad744d5a7ebd3687a0b69bbe8c6fc",
+              "size": 89302,
+              "source_sha256": "0eda7b3baf4baa72ef186a0bb1c5d343acf585ec0b273aac76f2841b880f9de7"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserExtensionPhase41ContractTest.kt",
+              "action": "modify",
+              "sha256": "e9633b37fceb44ecc0bc0144693d745817a72174348eb03520df089c4c6360c2",
+              "size": 3916,
+              "source_sha256": "8adc88a79f218e67c7392ed4ff7049a6ff1bdbba1b5b5061b3e7203e9bbe7ce6"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPhase6ContractTest.kt",
+              "action": "modify",
+              "sha256": "0d8c1d7bf272c5a25df2fabcf82d75c04622f740057e2b23b6b206b70426b4bb",
+              "size": 4195,
+              "source_sha256": "66abb638837ff8b8ed88793a449dc8c06bf6df736f3cb94dbf03ec7a20dd9c9c"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8EContractTest.kt",
+              "action": "modify",
+              "sha256": "0d36728464545e0333be8370a62e130b9a452e713780c447f0094fd04d9b2413",
+              "size": 4086,
+              "source_sha256": "d0eb71e3f575945df72bee570d5dcda65a6dd9ad496974c89cfca83728425ad3"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR2AdaptiveShellContractTest.kt",
+              "action": "modify",
+              "sha256": "e5a8441ea9ff8d30630687ef7d5a9c4dc252645131ecf56151a81c6bffa70319",
+              "size": 5702,
+              "source_sha256": "a4ce235efe48d6f647a7e41b2560c82ea75f3dcbde98a65c0897d212c4a4d4ae"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR3DownloadsAddContractTest.kt",
+              "action": "modify",
+              "sha256": "d2937cff80c84f137c628cbc145904c3431c1fbda69e7a615d3bf7423eddbc87",
+              "size": 2677,
+              "source_sha256": "c481468acf2e0946a9dab92d224796621c421b7ef66d6f256334e6c024cc50a5"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR5ActivitySettingsContractTest.kt",
+              "action": "modify",
+              "sha256": "9358cf15d825e3d628cba9a3a1c8989647637eb6cffa313040ef63f9af40baba",
+              "size": 4469,
+              "source_sha256": "a8b2527ab5cb7e4602065285f70fd4964677ba2e6193ea9ba984ffe3ed36b87c"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-42-BROWSER-BRIDGE-RELEASE-GATE.md",
+              "action": "modify",
+              "sha256": "6714ad9fdc581ffb26c3ee6ac2d2127eed44faae1110d95a80fa6051321e6b6a",
+              "size": 4479,
+              "source_sha256": "97b5fbfa35722b30cfe83313a8ea97d48ac7fe9b1c9e4e5582ddaf0e550359d6"
+            },
+            {
+              "path": "app/XDM.Android/tools/run-browser-bridge-release-gate.sh",
+              "action": "modify",
+              "sha256": "a1c7491019701c19b972a8d820fb2eeb95661ee339810c7e1e168b3312cfbdf0",
+              "size": 3679,
+              "source_sha256": "a90d3403cf144320638f26ec67da7793dbaf5fb135ba21f556c0e0e5bbdcd4b8"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-42-browser-bridge-release-gate.py",
+              "action": "modify",
+              "sha256": "67ba89c055892662bac310f510609130d2b65087a6a36b707fc77de13de076f7",
+              "size": 14267,
+              "source_sha256": "8bfb06d57d226dc8d51d6497ffb53da068e2ad4bd0393c0d62fc1e2a85d6d00b"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-42-contract-test-modernization.py",
+              "action": "add",
+              "sha256": "41759074b21138cc4c7d6c26ac10e6c0c2e75768b76a6ffdf4966b8b481a9ec3",
+              "size": 2963
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Modernize XDM Android Phase 42 contract tests"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate_phase42_contract_test_modernization.sh",
+            "runner": "bash",
+            "sha256": "0fb435d40c18c0437e351088f43f70cdd735d56ad78f66e47e76ae5a52590aeb",
+            "timeout_seconds": 1800
+          },
+          "expected": {
+            "restore": "success",
+            "build": "success",
+            "tests": "success",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Built against the currently applied Phase 42 Kotlin source compatibility hotfix; do not roll that source tree back before applying this overlay.",
+          "Before applying, abandon the failed validation session with validation-abort --keep-changes so Devtool preserves the compiled source fixes and releases the pending transaction.",
+          "Fixes five Phase 41 FileNotFound failures by locating the Android Gradle root instead of trusting the app test working directory.",
+          "Modernizes stale UIX and architecture assertions for modular settings, developer tools, Activity labels, shared theme tokens, touch-target tokens, track selection, and review-only media inspection.",
+          "Does not modify production Kotlin sources, the compile-recovery lane, the browser extension, the XPI generator, or the working custom-scheme handoff."
+        ]
+      },
+      "history_id": "afae986ea8084804ac0284310683144d"
     }
   ]
 }

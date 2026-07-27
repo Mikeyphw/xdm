@@ -1678,6 +1678,10 @@
     "compose_weight_import_repair": true,
     "k2_cross_module_smart_cast_repair": true,
     "material3_experimental_opt_in_explicit": true,
-    "media_player_diagnostics_signature_aligned": true
+    "media_player_diagnostics_signature_aligned": true,
+    "contract_test_modernization_validator": "tools/validate-phase-42-contract-test-modernization.py",
+    "gradle_root_discovery_hardened": true,
+    "modular_ui_contracts_aligned": true,
+    "review_only_media_assertion_scoped": true
   }
 }

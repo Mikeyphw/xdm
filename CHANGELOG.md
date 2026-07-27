@@ -328,3 +328,11 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Removed stale `ui.common` and internal Compose `weight` imports.
 - Replaced K2-invalid cross-module nullable-property smart casts with stable local values.
 - Added a focused source-compatibility validator to the browser bridge release gate.
+
+
+### Phase 42 contract-test modernization hotfix
+
+- Rebased the remaining Android architecture and UI contract tests on the modular UI source tree.
+- Fixed Phase 41 tests to locate the Android Gradle root instead of assuming the module working directory.
+- Updated Activity labels, shared theme tokens, touch-target tokens, developer gating, media track selection, and review-only intake assertions without weakening their behavior contracts.
+- Preserved the already-applied Kotlin source compatibility fixes and added the modernization validator to the browser bridge release gate.

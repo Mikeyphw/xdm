@@ -40,7 +40,7 @@ class UixR2AdaptiveShellContractTest {
 
         assertTrue(window.contains("widthDp < 600f"))
         assertTrue(window.contains("widthDp < 840f"))
-        assertTrue(shell.contains("Modifier.width(224.dp)"))
+        assertTrue(shell.contains(".width(224.dp)"))
         assertTrue(shell.contains("NavigationBar("))
         assertTrue(shell.contains("XdmNavigationSidebar("))
         assertTrue(shell.contains("WindowInsets.safeDrawing"))
@@ -54,9 +54,10 @@ class UixR2AdaptiveShellContractTest {
         val theme = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmTheme.kt").readText()
         val activity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
         val design = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmDesignSystem.kt").readText()
+        val tokens = File(root, "browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/XdmThemeTokens.kt").readText()
 
         assertTrue(theme.contains("darkColorScheme("))
-        assertTrue(theme.contains("private val XdmBackground = Color(0xFF090B0F)"))
+        assertTrue(tokens.contains("background = 0xFF090B0F"))
         assertTrue(theme.contains("surfaceTint = Color.Transparent"))
         assertTrue(theme.contains("successContainer"))
         assertTrue(theme.contains("warningContainer"))
@@ -83,9 +84,12 @@ class UixR2AdaptiveShellContractTest {
             "XdmTechnicalDetails",
             "XdmAdaptiveSheet",
             "XdmEmptyState",
-        ).forEach { primitive -> assertTrue("Missing $primitive", primitives.contains("fun $primitive")) }
+        ).forEach { primitive ->
+            val declaration = Regex("fun(?:\\s+<[^>]+>)?\\s+$primitive\\(")
+            assertTrue("Missing $primitive", declaration.containsMatchIn(primitives))
+        }
         assertTrue(primitives.contains("testTag(XdmTestTags.PageHeader)"))
-        assertTrue(primitives.contains("sizeIn(minHeight = 48.dp)"))
+        assertTrue(primitives.contains("sizeIn(minWidth = XdmMinimumTouchTarget, minHeight = XdmMinimumTouchTarget)"))
 
         val primarySources = listOf(
             "ui/downloads/DownloadRow.kt",

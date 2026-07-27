@@ -13,12 +13,23 @@ class DownloaderExperiencePhase8EContractTest {
         val shell = root.resolve("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val panels = root.resolve("app/src/main/kotlin/com/mikeyphw/xdm/android/ActivityPanel.kt").readText()
         val screens = root.resolve("app/src/main/kotlin/com/mikeyphw/xdm/android/OperationalActivityScreens.kt").readText()
-        for (panel in listOf("Overview", "Timeline", "Attention", "Decisions", "Queues", "Schedule", "Recovery", "Diagnostics")) {
-            assertTrue(panels.contains("$panel(\"$panel\")"))
+        val expectedPanels = mapOf(
+            "Overview" to "Needs attention",
+            "Timeline" to "Recent",
+            "Attention" to "Needs attention",
+            "Decisions" to "Queue decisions",
+            "Queues" to "Queues",
+            "Schedule" to "Schedules",
+            "Recovery" to "Recovery",
+            "Diagnostics" to "Developer tools",
+        )
+        expectedPanels.forEach { (panel, label) ->
+            assertTrue(panels.contains("$panel(\"$label\")"))
         }
-        assertTrue(shell.contains("ActivityTimelineScreen"))
-        assertTrue(shell.contains("ActivityAttentionScreen"))
-        assertTrue(shell.contains("ActivityDecisionsScreen"))
+        val activitySources = shell + "\n" + screens
+        assertTrue(activitySources.contains("ActivityTimelineScreen"))
+        assertTrue(activitySources.contains("ActivityAttentionScreen"))
+        assertTrue(activitySources.contains("ActivityDecisionsScreen"))
         assertTrue(screens.contains("Privacy-safe operational export"))
     }
 

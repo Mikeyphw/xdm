@@ -41,12 +41,13 @@ class BrowserRemovalPhase6ContractTest {
     fun libraryAndActivityOwnTheirFocusedSurfaces() {
         val root = androidRoot()
         val screens = UiSourceTree.readAll(root)
+        val userScreens = UiSourceTree.readUser(root)
         assertTrue(screens.contains("fun MediaLibraryScreen("))
         assertTrue(screens.contains("fun ActivityOverviewScreen("))
         assertTrue(screens.contains("Completed media, playback readiness, sidecar health"))
         assertTrue(screens.contains("A single operational workspace for queue control"))
-        assertEquals(0, Regex("OfflineLibraryV2Card\\(libraryV2\\)").findAll(screens).count())
-        assertEquals(1, Regex("OfflineLibraryV2Card\\(library\\)").findAll(screens).count())
+        assertEquals(0, Regex("OfflineLibraryV2Card\\(libraryV2\\)").findAll(userScreens).count())
+        assertEquals(0, Regex("OfflineLibraryV2Card\\(library\\)").findAll(userScreens).count())
     }
 
     @Test

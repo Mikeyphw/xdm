@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BrowserExtensionPhase41ContractTest {
-    private val repo = File(System.getProperty("user.dir"))
+    private val repo = androidRoot()
 
     @Test
     fun settingsExposeTruthfulStatusRecoveryOpenAndCopyActions() {
@@ -73,4 +73,6 @@ class BrowserExtensionPhase41ContractTest {
         assertFalse(changedSources.contains("WebView"))
         assertFalse(changedSources.contains("setJavaScriptEnabled"))
     }
+    private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
+        .first { File(it, "settings.gradle.kts").isFile && File(it, "app/src/main").isDirectory }
 }

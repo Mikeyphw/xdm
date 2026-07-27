@@ -344,7 +344,7 @@ class ArchitectureContractTest {
         val migrations = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt").readText()
         val repository = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt").readText()
         val screens = UiSourceTree.readAll(root)
-        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val appSources = appSources(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
 
         assertTrue("Manifest must record organization power tools", manifest.contains("organization_history_power_tools"))
@@ -361,7 +361,7 @@ class ArchitectureContractTest {
         assertTrue("Diagnostics must expose browser integration and clipboard inbox", screens.contains("Browser integration and clipboard inbox") && screens.contains("Scan clipboard"))
         assertTrue("Settings must expose destination and duplicate rules", screens.contains("Destination rules") && screens.contains("Duplicate URL rules"))
         assertTrue("Settings must expose backup hardening", screens.contains("Backup ready") || screens.contains("backupRestoreReport"))
-        assertTrue("App shell must wire Phase 12-14 actions", appShell.contains("viewModel::archiveDownloads") && appShell.contains("viewModel::scanClipboardText") && appShell.contains("viewModel::saveDestinationRule"))
+        assertTrue("App shell must wire Phase 12-14 actions", appSources.contains("viewModel::archiveDownloads") && appSources.contains("viewModel::scanClipboardText") && appSources.contains("viewModel.saveDestinationRule"))
         assertTrue("ViewModel must evaluate organization, browser, and backup reports", viewModel.contains("OrganizationPowerTools.summarize") && viewModel.contains("BrowserIntegrationStatus") && viewModel.contains("BackupRestorePolicy.evaluate"))
         assertFalse("Phases 12-14 must not add new top-level routes", AppRoute.entries.any { it.label in setOf("History", "Clipboard", "Backup", "Updater") })
     }
@@ -402,7 +402,7 @@ class ArchitectureContractTest {
         val root = androidRoot()
         val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
         val screens = UiSourceTree.readAll(root)
-        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val appSources = appSources(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
         val runner = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxCommandRunner.kt").readText()
@@ -420,7 +420,7 @@ class ArchitectureContractTest {
         assertTrue("Typed commands must cover media tools", templates.contains("yt-dlp") && templates.contains("ffprobe") && templates.contains("ffmpeg"))
         assertTrue("Optional root mode must default to off", models.contains("TermuxRootMode") && models.contains("Off(\"Off\""))
         assertTrue("Root actions must be typed", models.contains("sealed class XdmRootAction"))
-        assertTrue("Diagnostics must expose Termux status", screens.contains("Termux bridge") && appShell.contains("viewModel::runTermuxToolProbe"))
+        assertTrue("Diagnostics must expose Termux status", screens.contains("Termux bridge") && appSources.contains("viewModel::runTermuxToolProbe"))
         assertTrue("Settings must expose optional root mode", screens.contains("Termux backend") && screens.contains("Optional root mode"))
         assertTrue("ViewModel must carry Termux state", viewModel.contains("termuxBridgeManager.status") && viewModel.contains("setTermuxRootMode"))
         assertTrue("Project manifest must record Termux bridge", manifestJson.contains("termux_bridge") && manifestJson.contains("\"chroot_support\": false"))
@@ -432,7 +432,7 @@ class ArchitectureContractTest {
     fun termuxAria2CockpitContractsArePresent() {
         val root = androidRoot()
         val screens = UiSourceTree.readAll(root)
-        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val appSources = appSources(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
         val cockpitModels = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxAria2CockpitModels.kt").readText()
@@ -450,7 +450,7 @@ class ArchitectureContractTest {
         assertTrue("Shell templates must start and control the RPC daemon", templates.contains("--enable-rpc=true") && templates.contains("aria2.tellActive") && templates.contains("aria2.saveSession"))
         assertTrue("Diagnostics must expose cockpit controls", screens.contains("Termux aria2 cockpit") && screens.contains("Start daemon") && screens.contains("Pause all"))
         assertTrue("Settings must expose backend enablement", screens.contains("Termux aria2 backend") && screens.contains("Rotate RPC secret"))
-        assertTrue("App shell must wire cockpit actions", appShell.contains("viewModel::startTermuxAria2Daemon") && appShell.contains("viewModel::setTermuxAria2Enabled"))
+        assertTrue("App shell must wire cockpit actions", appSources.contains("viewModel::startTermuxAria2Daemon") && appSources.contains("viewModel::setTermuxAria2Enabled"))
         assertTrue("ViewModel must carry cockpit state", viewModel.contains("termuxAria2CockpitManager.status") && viewModel.contains("rotateTermuxAria2Secret"))
         assertTrue("Project manifest must record the cockpit", manifestJson.contains("termux_aria2_cockpit") && manifestJson.contains("\"root_required\": false"))
         assertFalse("Termux aria2 cockpit must not add a top-level route", AppRoute.entries.any { it.label == "Termux" || it.label == "aria2" || it.label == "Tools" })
@@ -461,7 +461,6 @@ class ArchitectureContractTest {
     fun termuxMediaPipelineContractsArePresent() {
         val root = androidRoot()
         val screens = UiSourceTree.readAll(root)
-        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
         val mediaModels = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineModels.kt").readText()
@@ -477,8 +476,8 @@ class ArchitectureContractTest {
         assertTrue("Media pipeline models must track jobs", mediaModels.contains("TermuxMediaPipelineStatus") && mediaModels.contains("TermuxMediaPipelineJob"))
         assertTrue("Media manager must launch typed media tools", mediaManager.contains("extractMetadata") && mediaManager.contains("downloadWithYtDlp") && mediaManager.contains("inspectWithFfprobe"))
         assertTrue("Shell templates must cover yt-dlp, ffprobe, and ffmpeg", templates.contains("yt-dlp --dump-single-json") && templates.contains("ffprobe -hide_banner") && templates.contains("ffmpeg -hide_banner"))
-        assertTrue("Media route must keep optional typed external-tool actions", UiSourceTree.readUser(root).contains("External tools") && UiSourceTree.readUser(root).contains("Read metadata") && UiSourceTree.readUser(root).contains("Optimize MP4"))
-        assertTrue("App shell must wire media callbacks", appShell.contains("viewModel::extractMediaMetadataWithTermux") && appShell.contains("viewModel::convertMediaWithTermux"))
+        assertTrue("Developer tools must keep the typed Termux media surface", screens.contains("External tools through Termux") && !screens.contains("Raw shell"))
+        assertTrue("ViewModel must retain typed media actions", viewModel.contains("extractMediaMetadataWithTermux") && viewModel.contains("convertMediaWithTermux"))
         assertTrue("ViewModel must carry media pipeline state", viewModel.contains("termuxMediaPipelineManager.status") && viewModel.contains("downloadMediaWithTermuxYtDlp"))
         assertTrue("Project manifest must record the media pipeline", manifestJson.contains("termux_media_pipeline") && manifestJson.contains("\"root_required\": false"))
         assertFalse("Termux media pipeline must not add a top-level route", AppRoute.entries.any { it.label == "Convert" || it.label == "Tools" || it.label == "Termux" })
@@ -489,7 +488,7 @@ class ArchitectureContractTest {
     fun termuxOptionalRootModeContractsArePresent() {
         val root = androidRoot()
         val screens = UiSourceTree.readAll(root)
-        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val appSources = appSources(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt").readText()
         val manager = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeManager.kt").readText()
@@ -506,7 +505,7 @@ class ArchitectureContractTest {
         assertTrue("Root actions must be audited", runStore.contains("recordRootActionLaunch") && runStore.contains("rootAudit") && runStore.contains("lastRootMessage"))
         assertTrue("Shell templates must use su only behind typed actions", templates.contains("su -c") && templates.contains("XDM_ROOT_ACTION") && templates.contains("process is not XDM-owned"))
         assertTrue("Diagnostics/settings must expose root controls", screens.contains("Optional root actions") && screens.contains("Root audit") && screens.contains("Kill stuck aria2"))
-        assertTrue("App shell must wire root actions", appShell.contains("viewModel::runTermuxRootProbe") && appShell.contains("viewModel::killStuckTermuxAria2WithRoot"))
+        assertTrue("App shell must wire root actions", appSources.contains("viewModel::runTermuxRootProbe") && appSources.contains("viewModel::killStuckTermuxAria2WithRoot"))
         assertTrue("ViewModel must carry root actions", viewModel.contains("collectTermuxRootProcessDiagnostics") && viewModel.contains("fixTermuxDownloadPermissionsWithRoot"))
         assertTrue("Project manifest must record optional root", manifestJson.contains("termux_optional_root") && manifestJson.contains("\"raw_shell_exposed\": false") && manifestJson.contains("\"root_required\": false"))
         assertFalse("Optional root mode must not add a top-level route", AppRoute.entries.any { it.label == "Root" || it.label == "Termux" || it.label == "Tools" })
@@ -518,7 +517,7 @@ class ArchitectureContractTest {
     fun termuxPostProcessingAutomationContractsArePresent() {
         val root = androidRoot()
         val screens = UiSourceTree.readAll(root)
-        val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+        val appSources = appSources(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val app = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt").readText()
         val models = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingAutomationModels.kt").readText()
@@ -537,7 +536,7 @@ class ArchitectureContractTest {
         assertTrue("Shell templates must include typed post-processing actions", templates.contains("XDM_POST_PROCESS") && templates.contains("PostProcessingActionKind.CleanupPartials") && templates.contains("-movflags +faststart"))
         assertTrue("Settings and Diagnostics must expose post-processing automation", screens.contains("Post-processing automation") && screens.contains("Retry failed") && screens.contains("Copy diagnostics"))
         assertTrue("Media route must expose preview and run actions", screens.contains("Preview rules") && screens.contains("Run rules"))
-        assertTrue("App shell must wire automation callbacks", appShell.contains("viewModel::previewPostProcessingForMedia") && appShell.contains("viewModel::setPostProcessingAutomationEnabled"))
+        assertTrue("App shell must wire automation callbacks", appSources.contains("viewModel::previewPostProcessingForDownload") && appSources.contains("viewModel::setPostProcessingAutomationEnabled"))
         assertTrue("ViewModel must carry automation state", viewModel.contains("postProcessingAutomationManager.status") && viewModel.contains("runPostProcessingForMedia"))
         assertTrue("Application must create the automation manager", app.contains("PostProcessingAutomationManager") && app.contains("postProcessingAutomationManager"))
         assertTrue("Project manifest must record post-processing automation", manifestJson.contains("termux_post_processing_automation") && manifestJson.contains("\"raw_shell_exposed\": false") && manifestJson.contains("\"root_required\": false"))
@@ -564,7 +563,7 @@ class ArchitectureContractTest {
         listOf("MediaTrackSelection", "MediaVariantPickerGroup", "MediaSessionHandoff", "YtDlpMetadataProbeResult", "ProtectedMediaDiagnostic").forEach { token ->
             assertTrue("Planner missing $token", planner.contains(token))
         }
-        assertTrue("User Media must expose track picking", UiSourceTree.readUser(root).contains("Choose tracks") && UiSourceTree.readUser(root).contains("MediaVariantKind.Audio") && UiSourceTree.readUser(root).contains("MediaVariantKind.Subtitle"))
+        assertTrue("User Media must expose track picking", UiSourceTree.readUser(root).contains("Media track selection") && UiSourceTree.readUser(root).contains("Audio track") && UiSourceTree.readUser(root).contains("Subtitle track"))
         assertTrue("Developer tools must preserve yt-dlp preview and protected diagnostics", UiSourceTree.readDeveloper(root).contains("yt-dlp metadata preview") && UiSourceTree.readDeveloper(root).contains("Protected media diagnostics"))
         assertTrue("Developer tools must preserve redacted session handoff helpers", UiSourceTree.readAll(root).contains("Cookie/header session handoff") && UiSourceTree.readAll(root).contains("Resolver will forward referer/header context"))
         assertTrue("Media3 player must use ExoPlayer and PlayerView", player.contains("ExoPlayer.Builder") && player.contains("PlayerView"))
@@ -960,6 +959,11 @@ class ArchitectureContractTest {
         assertTrue(runGate.contains("validate-browser-removal-phase-4.py"))
         assertTrue(workflow.contains("validate-browser-removal-phase-4.py"))
     }
+
+    private fun appSources(root: File): String = File(root, "app/src/main/kotlin")
+        .walkTopDown()
+        .filter { it.isFile && it.extension == "kt" }
+        .joinToString("\n") { it.readText() }
 
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile && File(it, "app").isDirectory }

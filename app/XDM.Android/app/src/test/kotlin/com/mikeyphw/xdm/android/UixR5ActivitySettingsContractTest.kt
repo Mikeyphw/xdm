@@ -35,7 +35,7 @@ class UixR5ActivitySettingsContractTest {
         assertTrue("Everyday settings must lead", save >= 0 && queue > save && advanced > queue && support > advanced)
         assertTrue("Developer options must default off", preferences.contains("developerOptionsEnabled: Boolean = false"))
         assertTrue("Developer preference must persist", preferences.contains("DeveloperOptionsEnabled") && preferences.contains("setDeveloperOptionsEnabled"))
-        assertTrue("Developer workspace must refuse access while disabled", developer.contains("if (!state.developerOptionsEnabled)"))
+        assertTrue("Developer workspace must refuse access while disabled", developer.contains("DeveloperWorkspacePolicy.shouldCompose(state.developerOptionsEnabled, state.settingsPanel)"))
         assertTrue("Support report must remain outside the developer-only branch", settings.contains("state.supportReportText"))
     }
 

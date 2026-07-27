@@ -47,7 +47,8 @@ class UixR3DownloadsAddContractTest {
             "never creates a transfer automatically",
             "onCancel",
         ).forEach { assertTrue("Add R3 missing $it", add.contains(it)) }
-        assertFalse("Inspect media must not call onAdd", Regex("onInspectMedia\\([^)]*\\).*onAdd", RegexOption.DOT_MATCHES_ALL).containsMatchIn(add))
+        assertTrue("Inspect media must use its dedicated callback", add.contains("onClick = { onInspectMedia(url, name) }"))
+        assertFalse("Inspect media callback must not directly enqueue", add.contains("onClick = { onInspectMedia(url, name); onAdd"))
     }
 
     private fun androidRoot(): File {
