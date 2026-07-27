@@ -136,7 +136,7 @@
       "compare"
     ]
   },
-  "next_phase": "Phase 43B Add Download media recommendation demotion",
+  "next_phase": "Phase 44 Download list action model and menus",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -443,7 +443,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_phase43a_browser_extension_parity_repair_overlay.zip",
+  "current_overlay": "xdm_android_phase43b_add_download_media_recommendation_demotion_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1710,5 +1710,42 @@
     "version_code_unchanged": 21,
     "depends_on": "browser_bridge_phase42_release_gate + no_pre_release_channel_v9",
     "next_overlay": "browser_bridge_phase43b_add_download_media_recommendation_demotion"
+  },
+  "browser_bridge_phase43b_add_download_media_recommendation_demotion": {
+    "program": "android_browser_bridge",
+    "contract_version": 1,
+    "contract_document": "docs/architecture/PHASE-43B-ADD-DOWNLOAD-MEDIA-DEMOTION.md",
+    "static_validator": "tools/validate-phase-43b-add-download-media-demotion.py",
+    "module": "app + core-model",
+    "add_download_media_recommendation_demoted": true,
+    "media_inspection_policy": "MediaInspectionPolicy",
+    "recommendation_levels": [
+      "Hidden",
+      "Optional",
+      "Recommended"
+    ],
+    "manual_page_unknown_hidden": true,
+    "external_page_unknown_optional": true,
+    "browser_extension_direct_media_recommended": true,
+    "adaptive_media_recommended": true,
+    "direct_file_media_button_hidden": true,
+    "torrent_media_button_hidden": true,
+    "neutral_page_analysis_label": "Analyze page for media",
+    "planner_origin_parameter": "DownloadIntakeOrigin",
+    "browser_extension_origin_preserved": true,
+    "compose_uses_planner_labels": true,
+    "phase43b_contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserExtensionPhase43BContractTest.kt",
+    "core_model_tests_updated": true,
+    "xpi_committed": false,
+    "browser_extension_source_changed": false,
+    "download_list_actions_changed": false,
+    "completed_notification_changed": false,
+    "media_batch_input_changed": false,
+    "shared_app_side_sniffing_engine_changed": false,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "depends_on": "browser_bridge_phase43a_extension_parity",
+    "next_overlay": "browser_bridge_phase44_download_list_action_model_and_menus"
   }
 }

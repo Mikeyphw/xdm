@@ -10,6 +10,7 @@ enum class DownloadIntakeOrigin {
     ExternalShare,
     ExternalView,
     ExternalDownloadManager,
+    BrowserExtension,
     Automation,
     Clipboard,
     ManualEntry,

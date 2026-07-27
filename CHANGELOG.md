@@ -1,3 +1,11 @@
+## XDM Android Phase 43B - Add Download media recommendation demotion
+
+- Added a pure `MediaInspectionPolicy` with Hidden, Optional, and Recommended visibility weights for Add Download media/page analysis.
+- Kept HLS/DASH and browser-extension direct-media handoffs strongly recommended while demoting ordinary manual page/unknown links back to the normal Add Download path.
+- Preserved a dedicated `BrowserExtension` intake origin so extension-captured media can be promoted without making manual Add Download noisy.
+- Updated Add Download to use planner-owned labels and guidance, including neutral `Analyze page for media` wording for page-shaped external links.
+- Added Phase 43B core-model and app contract tests plus static validation, without changing XPI packaging, download-list actions, notifications, Room schema, versionCode, or versionName.
+
 ## XDM Android Phase 43A - Browser extension FAB/detector parity repair
 
 - Added a dependency-free browser-extension bridge self-test so the popup can prove the active top frame can host a Shadow DOM launcher before detector checks run.

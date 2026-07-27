@@ -9,6 +9,13 @@ enum class DownloadReviewReadiness {
     Ready,
 }
 
+/** Visibility weight for the optional media/page-analysis branch in Add Download. */
+enum class MediaInspectionRecommendation {
+    Hidden,
+    Optional,
+    Recommended,
+}
+
 data class DownloadReviewStep(
     val label: String,
     val complete: Boolean,
@@ -25,6 +32,9 @@ data class DownloadReviewPlan(
     val canStartDirectly: Boolean,
     val canInspectAsMedia: Boolean,
     val mediaInspectionRecommended: Boolean,
+    val mediaInspectionRecommendation: MediaInspectionRecommendation,
+    val mediaInspectionActionLabel: String,
+    val mediaInspectionGuidance: String,
     val steps: List<DownloadReviewStep>,
 )
 
@@ -35,20 +45,15 @@ object DownloadReviewPlanner {
         fileName: String = "",
         mimeType: String? = null,
         destinationUri: String = "",
+        origin: DownloadIntakeOrigin = DownloadIntakeOrigin.ManualEntry,
     ): DownloadReviewPlan {
         val hasInput = url.isNotBlank()
         val normalized = ExternalUrlPolicy.normalizedUrl(url)
         val kind = normalized?.let { DownloadIntakeClassifier.classify(it, fileName, mimeType) }
         val destinationReady = destinationUri.isNotBlank()
-        val inspectable = kind in setOf(
-            DownloadIntakeKind.DirectMedia,
-            DownloadIntakeKind.AdaptiveMedia,
-            DownloadIntakeKind.PageOrUnknown,
-        )
-        val inspectionRecommended = kind in setOf(
-            DownloadIntakeKind.AdaptiveMedia,
-            DownloadIntakeKind.PageOrUnknown,
-        )
+        val mediaInspectionRecommendation = MediaInspectionPolicy.recommendation(kind, origin)
+        val inspectable = mediaInspectionRecommendation != MediaInspectionRecommendation.Hidden
+        val inspectionRecommended = mediaInspectionRecommendation == MediaInspectionRecommendation.Recommended
         val readiness = when {
             !hasInput -> DownloadReviewReadiness.MissingLink
             normalized == null -> DownloadReviewReadiness.InvalidLink
@@ -102,6 +107,9 @@ object DownloadReviewPlanner {
             canStartDirectly = normalized != null && destinationReady,
             canInspectAsMedia = normalized != null && inspectable,
             mediaInspectionRecommended = inspectionRecommended,
+            mediaInspectionRecommendation = mediaInspectionRecommendation,
+            mediaInspectionActionLabel = MediaInspectionPolicy.actionLabel(kind, mediaInspectionRecommendation),
+            mediaInspectionGuidance = MediaInspectionPolicy.guidance(kind, mediaInspectionRecommendation),
             steps = listOf(
                 DownloadReviewStep("Link", normalized != null, if (normalized != null) kind?.displayLabel.orEmpty() else "Enter a supported URL"),
                 DownloadReviewStep("Destination", destinationReady, if (destinationReady) "Selected" else "Choose a folder"),
@@ -109,6 +117,8 @@ object DownloadReviewPlanner {
             ),
         )
     }
+
+
 
     private val DownloadIntakeKind.displayLabel: String
         get() = when (this) {
@@ -118,6 +128,52 @@ object DownloadReviewPlanner {
             DownloadIntakeKind.Torrent -> "Torrent"
             DownloadIntakeKind.PageOrUnknown -> "Page or unknown"
         }
+}
+
+object MediaInspectionPolicy {
+    fun recommendation(
+        kind: DownloadIntakeKind?,
+        origin: DownloadIntakeOrigin,
+    ): MediaInspectionRecommendation = when (kind) {
+        DownloadIntakeKind.AdaptiveMedia -> MediaInspectionRecommendation.Recommended
+        DownloadIntakeKind.DirectMedia -> when (origin) {
+            DownloadIntakeOrigin.BrowserExtension,
+            DownloadIntakeOrigin.BuiltInBrowserDownload,
+            DownloadIntakeOrigin.ExternalDownloadManager,
+            -> MediaInspectionRecommendation.Recommended
+            else -> MediaInspectionRecommendation.Optional
+        }
+        DownloadIntakeKind.PageOrUnknown -> when (origin) {
+            DownloadIntakeOrigin.ManualEntry -> MediaInspectionRecommendation.Hidden
+            DownloadIntakeOrigin.BrowserExtension,
+            DownloadIntakeOrigin.ExternalView,
+            DownloadIntakeOrigin.ExternalShare,
+            DownloadIntakeOrigin.Automation,
+            DownloadIntakeOrigin.BuiltInBrowserPage,
+            DownloadIntakeOrigin.BuiltInBrowserDownload,
+            DownloadIntakeOrigin.Clipboard,
+            -> MediaInspectionRecommendation.Optional
+            DownloadIntakeOrigin.ExternalDownloadManager -> MediaInspectionRecommendation.Hidden
+        }
+        DownloadIntakeKind.DirectFile,
+        DownloadIntakeKind.Torrent,
+        null,
+        -> MediaInspectionRecommendation.Hidden
+    }
+
+    fun actionLabel(kind: DownloadIntakeKind?, recommendation: MediaInspectionRecommendation): String = when {
+        recommendation == MediaInspectionRecommendation.Hidden -> "Analyze page for media"
+        kind == DownloadIntakeKind.PageOrUnknown -> "Analyze page for media"
+        recommendation == MediaInspectionRecommendation.Recommended -> "Inspect media (recommended)"
+        else -> "Inspect media"
+    }
+
+    fun guidance(kind: DownloadIntakeKind?, recommendation: MediaInspectionRecommendation): String = when {
+        recommendation == MediaInspectionRecommendation.Hidden -> "Media analysis is hidden for ordinary file or manual unknown links so Add Download stays focused on queueing files."
+        kind == DownloadIntakeKind.PageOrUnknown -> "Use page analysis only when this link is a watch page or playlist, not a normal file."
+        recommendation == MediaInspectionRecommendation.Recommended -> "This handoff looks media-shaped, so inspect it before queueing when variants, tracks, or expiring URLs may matter."
+        else -> "Use media inspection only when track selection or resolver diagnostics are useful."
+    }
 }
 
 enum class DownloadDashboardOrdering(val label: String) {

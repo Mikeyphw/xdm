@@ -80,6 +80,7 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
                     initialFileName = state.externalAddDraft?.fileName,
                     externalSourceLabel = state.externalAddDraft?.sourceLabel,
                     externalKind = state.externalAddDraft?.kind,
+                    externalOrigin = state.externalAddDraft?.origin,
                     externalPageTitle = state.externalAddDraft?.pageTitle,
                     externalPageUrl = state.externalAddDraft?.pageUrl,
                     externalMimeType = state.externalAddDraft?.mimeType,

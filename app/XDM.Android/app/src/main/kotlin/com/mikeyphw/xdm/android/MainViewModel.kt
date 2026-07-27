@@ -1526,7 +1526,8 @@ class MainViewModel(
 
     private fun intakeOriginFor(source: AutomationCommandSource): DownloadIntakeOrigin = when (source) {
         AutomationCommandSource.ShareSheet -> DownloadIntakeOrigin.ExternalShare
-        AutomationCommandSource.ViewIntent, AutomationCommandSource.BrowserExtension -> DownloadIntakeOrigin.ExternalView
+        AutomationCommandSource.ViewIntent -> DownloadIntakeOrigin.ExternalView
+        AutomationCommandSource.BrowserExtension -> DownloadIntakeOrigin.BrowserExtension
         AutomationCommandSource.Tasker, AutomationCommandSource.DeepLink, AutomationCommandSource.Internal -> DownloadIntakeOrigin.Automation
     }
 

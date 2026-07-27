@@ -83,6 +83,23 @@ class DownloadIntakePlannerTest {
         assertTrue(page.canInspectAsMedia)
     }
 
+
+    @Test
+    fun browserExtensionSourceKeepsDedicatedOriginForAddDownloadPolicy() {
+        val draft = planner.fromExternal(
+            id = "extension-command",
+            url = "https://cdn.example/video.mp4",
+            fileName = "video.mp4",
+            sourceLabel = "Browser extension",
+            origin = DownloadIntakeOrigin.BrowserExtension,
+        ) ?: error("Expected browser extension draft")
+
+        assertEquals("extension-command", draft.id)
+        assertEquals(DownloadIntakeOrigin.BrowserExtension, draft.origin)
+        assertEquals(DownloadIntakeKind.DirectMedia, draft.kind)
+        assertTrue(draft.canInspectAsMedia)
+    }
+
     @Test
     fun unsafeAndLocalSchemesAreRejected() {
         assertNull(planner.fromBuiltInBrowserPage("javascript:alert(1)"))

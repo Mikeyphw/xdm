@@ -33,8 +33,41 @@ class DownloaderExperienceTest {
 
         val page = DownloadReviewPlanner.plan("https://example.com/watch/42", destinationUri = "xdm://downloads")
         assertEquals(DownloadIntakeKind.PageOrUnknown, page.kind)
-        assertTrue(page.mediaInspectionRecommended)
-        assertEquals("Review choice", page.primaryActionLabel)
+        assertEquals(MediaInspectionRecommendation.Hidden, page.mediaInspectionRecommendation)
+        assertFalse(page.canInspectAsMedia)
+        assertEquals("Add to queue", page.primaryActionLabel)
+    }
+
+
+    @Test
+    fun mediaInspectionRecommendationDemotesOrdinaryAddDownloadLinks() {
+        val manualPage = DownloadReviewPlanner.plan(
+            "https://example.com/watch/42",
+            destinationUri = "xdm://downloads",
+            origin = DownloadIntakeOrigin.ManualEntry,
+        )
+        assertEquals(MediaInspectionRecommendation.Hidden, manualPage.mediaInspectionRecommendation)
+        assertFalse(manualPage.canInspectAsMedia)
+        assertEquals(DownloadReviewReadiness.Ready, manualPage.readiness)
+
+        val externalPage = DownloadReviewPlanner.plan(
+            "https://example.com/watch/42",
+            destinationUri = "xdm://downloads",
+            origin = DownloadIntakeOrigin.ExternalView,
+        )
+        assertEquals(MediaInspectionRecommendation.Optional, externalPage.mediaInspectionRecommendation)
+        assertTrue(externalPage.canInspectAsMedia)
+        assertEquals("Analyze page for media", externalPage.mediaInspectionActionLabel)
+        assertFalse(externalPage.mediaInspectionRecommended)
+
+        val extensionVideo = DownloadReviewPlanner.plan(
+            "https://cdn.example/video.mp4",
+            destinationUri = "xdm://downloads",
+            origin = DownloadIntakeOrigin.BrowserExtension,
+        )
+        assertEquals(MediaInspectionRecommendation.Recommended, extensionVideo.mediaInspectionRecommendation)
+        assertEquals(DownloadReviewReadiness.ChoiceRecommended, extensionVideo.readiness)
+        assertEquals("Inspect media (recommended)", extensionVideo.mediaInspectionActionLabel)
     }
 
     @Test

@@ -43,6 +43,7 @@ import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.DownloadIntakeKind
+import com.mikeyphw.xdm.android.model.DownloadIntakeOrigin
 import com.mikeyphw.xdm.android.model.DownloadReviewPlanner
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
@@ -59,6 +60,7 @@ fun AddDownloadScreen(
     initialFileName: String? = null,
     externalSourceLabel: String? = null,
     externalKind: DownloadIntakeKind? = null,
+    externalOrigin: DownloadIntakeOrigin? = null,
     externalPageTitle: String? = null,
     externalPageUrl: String? = null,
     externalMimeType: String? = null,
@@ -105,6 +107,7 @@ fun AddDownloadScreen(
         fileName = name,
         mimeType = externalMimeType.takeIf { url == initialUrl },
         destinationUri = destinationUri,
+        origin = if (externalDraftId != null && url == initialUrl) externalOrigin ?: DownloadIntakeOrigin.ExternalView else DownloadIntakeOrigin.ManualEntry,
     )
     val canReview = review.canStartDirectly && recommendation?.compatible != false
     val canInspectMedia = review.canInspectAsMedia && (externalDraftId == null || externalCanInspectMedia || url != initialUrl)
@@ -345,11 +348,11 @@ fun AddDownloadScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Icon(Icons.Rounded.Movie, contentDescription = null)
-                        Text(if (review.mediaInspectionRecommended) "Inspect media (recommended)" else "Inspect media")
+                        Text(review.mediaInspectionActionLabel)
                     }
                 }
                 item {
-                    XdmMetadataText("Media inspection opens the resolver and never creates a transfer automatically.")
+                    XdmMetadataText(review.mediaInspectionGuidance)
                 }
             }
         }

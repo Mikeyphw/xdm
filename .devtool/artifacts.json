@@ -54948,6 +54948,167 @@
         }
       },
       "history_id": "9d4431e974ae4a0592eee401a28befee"
+    },
+    {
+      "applied_at": "2026-07-27T18:24:17.034457Z",
+      "artifact": "/home/mike/Downloads/xdm_android_phase43b_add_download_media_recommendation_demotion_overlay.zip",
+      "artifact_name": "xdm_android_phase43b_add_download_media_recommendation_demotion_overlay.zip",
+      "type": "overlay",
+      "sha256": "c47bd9343fd992d3c1c021f319887fa2493070e1aa0d93ff360bb3cff66ce65d",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Demote Add Download media recommendations",
+      "commit_hash": "",
+      "file_count": 12,
+      "change_counts": {
+        "add": 3,
+        "modify": 9
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 43B Add Download Media Recommendation Demotion",
+        "description": "Demotes Add Download media/page-analysis recommendations so ordinary manual links stay focused on queueing downloads while browser-extension and adaptive-media handoffs keep the strong inspection path.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "2ca5b056e229c55db02c49d4fc4e031c25d3717d03b7c4a5fba07a8671410376",
+              "size": 27509,
+              "source_sha256": "f3d20f879819384e1e046385684d80d19c2ed2b9f460cc5fdf2095e351780b97"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "61ab957eba5dca0ee09954e32749b5d804c849c656a7c92826b2e05ed911e226",
+              "size": 60986,
+              "source_sha256": "2edc98e7c810a94ed7a248c91688ece4bd127b624f2b9cd45417953906b49348"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "17e8985e3aeecfe90d1581dac014e9a8454c573cd557caa62ac330518730e7b4",
+              "size": 91905,
+              "source_sha256": "656e6c6fb4bc08bae14d1de5c74c71b579d4304cbda3aac084eb543aa5b4ad5c"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "97d6962714283b6fc9ae24f279e66dcb88c9ff9a2574870688e766d4afe81dd8",
+              "size": 12764,
+              "source_sha256": "656f1fe762a6692afc8b0be7513504d5c41e0154c1d475debe0e86115bb58afc"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt",
+              "action": "modify",
+              "sha256": "51f6251e46eabdedcbf5e9de2af4f8b7aa65c53887f0c279b83b5f29baef1a93",
+              "size": 22203,
+              "source_sha256": "aa510b217d015ae441e42c3a2133030f865219c0b8b4f1df1385a59dfd6a61cf"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserExtensionPhase43BContractTest.kt",
+              "action": "add",
+              "sha256": "f90b974afb5a8b50e564c98443793f28b85579e1a98c6085d4b5abb53dc6d2b7",
+              "size": 4280
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadIntake.kt",
+              "action": "modify",
+              "sha256": "45adf29f443e176d7003aae7fa1e49fb6894a760922db8ae7b0a4ef09e89c73d",
+              "size": 8842,
+              "source_sha256": "381b8e9dc851b393dfd6e51a85a00d1398453bc3720b96036969e287ff950610"
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloaderExperience.kt",
+              "action": "modify",
+              "sha256": "28559e3c5ceedffff00c8741abdde408a0637f3d99af508d96f708dfb686e575",
+              "size": 16815,
+              "source_sha256": "8b4c498df732de90c2e3068e5cabf05e055e4a4af8c1e6a24d76eb5b24c6fba0"
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadIntakePlannerTest.kt",
+              "action": "modify",
+              "sha256": "cd504cd9642bca92485f7bc43b6d0311d51abe10df93e937438722b28de51814",
+              "size": 5029,
+              "source_sha256": "123fd93024ddff26df936097497bdb6f442acba2b4fa69b4032be70302166962"
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloaderExperienceTest.kt",
+              "action": "modify",
+              "sha256": "9825a759ee8a38b3da318e92a995245daf06b482174ca28bd4ca6ad8bf6d740d",
+              "size": 6196,
+              "source_sha256": "c3df3246e8de6c1d23896eb1025f888227d078052e4470d7f01f8c7750524f04"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-43B-ADD-DOWNLOAD-MEDIA-DEMOTION.md",
+              "action": "add",
+              "sha256": "26f246c4eb4cd5408527796e7a5016123f3493cae9de6a734aa9f0d1d06983ed",
+              "size": 2465
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-43b-add-download-media-demotion.py",
+              "action": "add",
+              "sha256": "cf6e1139aadf1aa1c38b83a6c98948bf5317a8dc5c213c4804c4c94a593db122",
+              "size": 3197
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Demote Add Download media recommendations"
+          }
+        },
+        "validation": {
+          "required": true,
+          "reason": "Phase 43B must prove Add Download no longer promotes ordinary manual page/unknown links as media while browser-extension/adaptive media still surface inspection.",
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate_phase43b_add_download_media_demotion.sh",
+            "runner": "bash",
+            "timeout_seconds": 900,
+            "sha256": "a54da5d93cb3c51c8430cad31c9047cd1e7002d88aec7c57c4e7575c2a509c90"
+          },
+          "expected": {
+            "restore": "success",
+            "build": "success",
+            "tests": "success",
+            "maximum_warnings": 0
+          }
+        },
+        "compatibility": {
+          "base_overlay": "xdm_android_phase43a_browser_extension_parity_repair_r4_overlay.zip",
+          "requires": [
+            "post-v9 source snapshot",
+            "Phase 43A r4 applied"
+          ],
+          "room_schema": 14,
+          "version_name": "0.20.0-rc08",
+          "version_code": 21
+        }
+      },
+      "history_id": "1b88af0be31347978f686cf3941c55b6"
     }
   ]
 }
