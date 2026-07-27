@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.Delete
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -157,4 +159,27 @@ tasks.register("checkBrowserIntegration") {
         "testDebugUnitTest",
         ":browser-extension:packageFirefoxExtension",
     )
+}
+
+
+val cleanKotlinValidationState = providers.gradleProperty("xdm.cleanKotlinValidation")
+    .map(String::toBoolean)
+    .orElse(false)
+
+val resetKotlinValidationState by tasks.registering(Delete::class) {
+    group = "verification"
+    description = "Remove app Kotlin compiler outputs and incremental state before constrained validation."
+    delete(
+        layout.buildDirectory.dir("kotlin"),
+        layout.buildDirectory.dir("intermediates/built_in_kotlinc"),
+        layout.buildDirectory.dir("tmp/kotlin-classes"),
+        layout.buildDirectory.dir("reports/kotlin-build"),
+    )
+    onlyIf { cleanKotlinValidationState.get() }
+}
+
+tasks.matching { it.name.startsWith("compile") && it.name.endsWith("Kotlin") }.configureEach {
+    if (cleanKotlinValidationState.get()) {
+        dependsOn(resetKotlinValidationState)
+    }
 }

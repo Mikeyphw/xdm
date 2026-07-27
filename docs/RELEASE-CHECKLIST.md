@@ -66,6 +66,10 @@
 
 ## XDM Android browser bridge Phase 42 release gate
 
+- [ ] `tools/validate-phase-42-kotlin-compile-recovery.py` passes
+- [ ] Devtool compile runs `:app:resetKotlinValidationState` before `:app:compileDebugSources`
+- [ ] Validation uses in-process, non-incremental Kotlin compilation with Gradle caches and parallelism disabled
+
 ### Automated
 
 - [ ] `devtool --target xdm_android apply-overlay ... --validate` completes with zero warnings and zero errors

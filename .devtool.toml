@@ -35,11 +35,24 @@ prefer_native_termux = false
 
 [targets.xdm_android.gradle]
 version = "9.4.1"
-max_workers = 4
+max_workers = 1
 structured_events = false
 no_daemon = true
+parallel = false
+build_cache = false
 fail_fast = true
 offline = false
+args = [
+  "--no-build-cache",
+  "--no-configuration-cache",
+  "-Dorg.gradle.parallel=false",
+  "-Dorg.gradle.vfs.watch=false",
+  "-Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8",
+  "-Pkotlin.incremental=false",
+  "-Pkotlin.incremental.useClasspathSnapshot=false",
+  "-Pkotlin.compiler.execution.strategy=in-process",
+  "-Pxdm.cleanKotlinValidation=true",
+]
 
 [targets.xdm_android.tasks]
 restore = ["help"]
@@ -74,6 +87,38 @@ clean = ["clean"]
 [targets.xdm_android.artifacts]
 required = true
 
+[validation.phases]
+preflight = ["help"]
+dependencies = ["dependencies"]
+compile = [":app:resetKotlinValidationState", ":app:compileDebugSources"]
+resources = [":app:processDebugResources"]
+unit-test = [
+  ":browser-extension:test",
+  ":browser-extension:jsTest",
+  ":browser-extension:validateFirefoxExtension",
+  ":app:checkBrowserIntegration",
+  ":core-model:test",
+  ":core-utils:test",
+  ":transfer-api:test",
+  ":browser-integration:testDebugUnitTest",
+  ":storage:testDebugUnitTest",
+  ":transfer-native:testDebugUnitTest",
+  ":transfer-aria2:test",
+  ":scheduler:testDebugUnitTest",
+  ":media:test",
+  ":persistence:testDebugUnitTest",
+  ":app:testDebugUnitTest",
+]
+package = [
+  "assembleDebug",
+  "assembleBeta",
+  ":app:assembleDebugAndroidTest",
+  ":browser-extension:packageFirefoxExtensionDark",
+  ":browser-extension:packageFirefoxExtensionAmoled",
+  ":browser-extension:verifyFirefoxExtensionReleaseArtifacts",
+]
+lint = ["lintDebug", "lintBeta"]
+
 [env]
 DOTNET_CLI_TELEMETRY_OPTOUT = "1"
 DOTNET_NOLOGO = "1"
@@ -86,6 +131,14 @@ split_gradle = true
 no_daemon = true
 low_priority = true
 parallel = false
-gradle_heap_mb = 512
-gradle_metaspace_mb = 384
+gradle_heap_mb = 1536
+gradle_metaspace_mb = 768
 memory_guard_mb = 256
+
+[validation.phase_profiles.compile]
+max_workers = 1
+cpu_limit = 2
+gradle_heap_mb = 1536
+memory_guard_mb = 256
+no_daemon = true
+low_priority = true

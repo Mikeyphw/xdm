@@ -52,6 +52,7 @@ extension_readme = read("docs/browser-extension/README.md")
 ironfox = read("docs/browser-extension/IRONFOX-INSTALLATION.md")
 device_doc = read("docs/browser-extension/DEVICE-ACCEPTANCE.md")
 device_script = read("tools/run-browser-bridge-device-acceptance.sh")
+compile_recovery = read("tools/validate-phase-42-kotlin-compile-recovery.py")
 bridge_gate = read("tools/run-browser-bridge-release-gate.sh")
 final_gate = read("tools/run-final-release-gate.sh")
 build_gradle = read("browser-extension/build.gradle.kts")
@@ -130,6 +131,20 @@ for key, expected in (("android_safe", True), ("max_workers", 1), ("cpu_limit", 
     if validation.get(key) != expected:
         raise SystemExit(f"Phase 42 Devtool safety value mismatch: {key}={validation.get(key)!r}")
 
+gradle_options = devtool.get("targets", {}).get("xdm_android", {}).get("gradle", {})
+for key, expected in (("max_workers", 1), ("no_daemon", True), ("parallel", False), ("build_cache", False)):
+    if gradle_options.get(key) != expected:
+        raise SystemExit(f"Phase 42 Kotlin recovery Gradle value mismatch: {key}={gradle_options.get(key)!r}")
+compile_tasks = validation.get("phases", {}).get("compile", [])
+if compile_tasks != [":app:resetKotlinValidationState", ":app:compileDebugSources"]:
+    raise SystemExit(f"Phase 42 Kotlin recovery compile phase mismatch: {compile_tasks!r}")
+for needle in (
+    "-Pkotlin.incremental=false",
+    "-Pkotlin.compiler.execution.strategy=in-process",
+    "-Pxdm.cleanKotlinValidation=true",
+):
+    require(compile_recovery, needle, "Kotlin compile recovery validator")
+
 for source, label in ((root_workflow, "root CI"), (local_workflow, "Android-local CI")):
     for needle in (
         "validate-phase-42-browser-bridge-release-gate.py",
@@ -148,6 +163,7 @@ for needle in (
 
 for needle in (
     "validate-phase-42-browser-bridge-release-gate.py",
+    "validate-phase-42-kotlin-compile-recovery.py",
     "test_release_gate.js",
     "verifyFirefoxExtensionReleaseArtifacts",
     "run-browser-bridge-device-acceptance.sh --print",

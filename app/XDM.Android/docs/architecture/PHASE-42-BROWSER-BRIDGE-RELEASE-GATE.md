@@ -17,6 +17,12 @@ The Phase 42 Devtool overlay requires restore, build, test, package, and lint va
 
 The artifact validator runs Phase 37 through Phase 42 static contracts and the extension JavaScript suites before Devtool starts the full Gradle phases. Any failure is rollback-eligible.
 
+## Kotlin compile recovery
+
+The Android validation compile lane is deliberately clean-room. Before any app Kotlin compile, `:app:resetKotlinValidationState` removes only app-local Kotlin compiler outputs and incremental state. Devtool then compiles with Kotlin incremental compilation, classpath snapshots, Gradle configuration cache, Gradle build cache, and project parallelism disabled. The Kotlin compiler runs in-process inside one bounded Gradle JVM.
+
+This prevents a stale `built_in_kotlinc` tree or a missing `kotlin-backups/*.backup` file from turning one damaged incremental compile into hundreds of false unresolved-reference diagnostics. Normal developer builds remain incremental unless `-Pxdm.cleanKotlinValidation=true` is supplied.
+
 ## Release artifact contract
 
 `verifyFirefoxExtensionReleaseArtifacts` checks exact archive inventory, stable extension identity, version, minimal declared permissions, fixed ZIP timestamps, generated scheme, generated theme, and distinct Dark/AMOLED hashes. It writes `browser-extension/build/outputs/xpi/release-artifacts.json` after both XPIs pass.

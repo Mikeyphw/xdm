@@ -45,6 +45,7 @@ validators=(
   tools/validate-phase-40-theme-fab.py
   tools/validate-phase-41-browser-bridge-integration.py
   tools/validate-phase-42-browser-bridge-release-gate.py
+  tools/validate-phase-42-kotlin-compile-recovery.py
 )
 for validator in "${validators[@]}"; do
   python3 "$validator"
@@ -71,7 +72,10 @@ if [[ "$MODE" == "static" ]]; then
   exit 0
 fi
 
-./gradlew -Pxdm.requireAria2Runtime=true --no-daemon --max-workers=1 --stacktrace \
+./gradlew -Pxdm.requireAria2Runtime=true -Pxdm.cleanKotlinValidation=true \
+  -Pkotlin.incremental=false -Pkotlin.incremental.useClasspathSnapshot=false \
+  -Pkotlin.compiler.execution.strategy=in-process \
+  --no-daemon --max-workers=1 --no-parallel --no-build-cache --no-configuration-cache --stacktrace \
   help \
   :browser-extension:test \
   :browser-extension:jsTest \

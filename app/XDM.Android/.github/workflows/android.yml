@@ -78,6 +78,7 @@ jobs:
           python3 tools/validate-phase-40-theme-fab.py
           python3 tools/validate-phase-41-browser-bridge-integration.py
           python3 tools/validate-phase-42-browser-bridge-release-gate.py
+          python3 tools/validate-phase-42-kotlin-compile-recovery.py
           python3 tools/validate-browser-removal-phase-0-1.py
           python3 tools/validate-browser-removal-phase-2.py
           python3 tools/validate-browser-removal-phase-3.py
@@ -92,7 +93,7 @@ jobs:
           python3 tools/validate-phase-8e-compose-storage-hotfix.py
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
-      - run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug assembleBeta
+      - run: ./gradlew -Pxdm.requireAria2Runtime=true -Pxdm.cleanKotlinValidation=true -Pkotlin.incremental=false -Pkotlin.incremental.useClasspathSnapshot=false -Pkotlin.compiler.execution.strategy=in-process --no-daemon --max-workers=1 --no-parallel --no-build-cache --no-configuration-cache --stacktrace :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug assembleBeta
       - name: Browser bridge release artifacts
         run: bash tools/run-browser-bridge-release-gate.sh --verify-artifacts
       - name: Verify packaged aria2 payload

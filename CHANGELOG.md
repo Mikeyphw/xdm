@@ -1,3 +1,10 @@
+## XDM Android Phase 42 Kotlin compile recovery hotfix
+
+- Added a targeted app Kotlin compiler-state reset before Devtool validation compilation.
+- Disabled Kotlin incremental compilation, classpath snapshots, Gradle build/configuration caches, VFS watching, and project parallelism for the release-validation lane.
+- Moved validation compilation into one bounded in-process Kotlin compiler JVM, preventing stale daemon backup failures from cascading into false unresolved references.
+- Added static contracts, CI wiring, and release-gate coverage for the recovery lane without slowing ordinary developer builds.
+
 ## XDM Android Phase 42 - Browser bridge release gate
 
 - Added the full Devtool restore, build, test, XPI package, release-artifact, and lint matrix for the complete browser bridge.

@@ -57,6 +57,7 @@ validators=(
   tools/validate-phase-40-theme-fab.py
   tools/validate-phase-41-browser-bridge-integration.py
   tools/validate-phase-42-browser-bridge-release-gate.py
+  tools/validate-phase-42-kotlin-compile-recovery.py
   tools/validate-browser-removal-phase-0-1.py
   tools/validate-browser-removal-phase-2.py
   tools/validate-browser-removal-phase-3.py
@@ -75,7 +76,7 @@ for validator in "${validators[@]}"; do
   python3 "$validator"
 done
 
-FULL_GRADLE_GATE='./gradlew -Pxdm.requireAria2Runtime=true --stacktrace :browser-extension:test :browser-extension:jsTest :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts :app:checkBrowserIntegration :core-model:test :core-utils:test :media:test :transfer-api:test :browser-integration:testDebugUnitTest :storage:testDebugUnitTest :transfer-native:testDebugUnitTest :transfer-aria2:test :scheduler:testDebugUnitTest :persistence:testDebugUnitTest :app:testDebugUnitTest lintDebug lintBeta :app:assembleDebugAndroidTest assembleDebug assembleBeta'
+FULL_GRADLE_GATE='./gradlew -Pxdm.requireAria2Runtime=true -Pxdm.cleanKotlinValidation=true -Pkotlin.incremental=false -Pkotlin.incremental.useClasspathSnapshot=false -Pkotlin.compiler.execution.strategy=in-process --no-daemon --max-workers=1 --no-parallel --no-build-cache --no-configuration-cache --stacktrace :browser-extension:test :browser-extension:jsTest :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts :app:checkBrowserIntegration :core-model:test :core-utils:test :media:test :transfer-api:test :browser-integration:testDebugUnitTest :storage:testDebugUnitTest :transfer-native:testDebugUnitTest :transfer-aria2:test :scheduler:testDebugUnitTest :persistence:testDebugUnitTest :app:testDebugUnitTest lintDebug lintBeta :app:assembleDebugAndroidTest assembleDebug assembleBeta'
 
 if [[ "${1:-}" == "--ci" ]]; then
   echo "CI final static gate passed"

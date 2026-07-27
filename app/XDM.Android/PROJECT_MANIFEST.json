@@ -1666,6 +1666,13 @@
     "top_level_route_added": false,
     "browser_runtime_added": false,
     "depends_on": "browser_bridge_phase41_browser_bridge_integration",
-    "next_overlay": "complete"
+    "next_overlay": "complete",
+    "kotlin_compile_recovery_validator": "tools/validate-phase-42-kotlin-compile-recovery.py",
+    "targeted_kotlin_state_reset": true,
+    "validation_kotlin_incremental_disabled": true,
+    "validation_kotlin_in_process": true,
+    "validation_build_cache_disabled": true,
+    "validation_configuration_cache_disabled": true,
+    "validation_project_parallelism_disabled": true
   }
 }

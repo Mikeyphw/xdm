@@ -1,0 +1,159 @@
+{
+  "applied_at": "2026-07-27T02:04:09.525788Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_phase42_kotlin_compile_recovery_hotfix_overlay.zip",
+  "artifact_name": "xdm_android_phase42_kotlin_compile_recovery_hotfix_overlay.zip",
+  "type": "overlay",
+  "sha256": "1449e4202592a4fe7710f4f8de373ee9ce667b953b82d25392a3bc162a8fb961",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Fix XDM Android Kotlin validation recovery",
+  "commit_hash": "",
+  "file_count": 12,
+  "change_counts": {
+    "add": 1,
+    "modify": 11
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 42 Kotlin Compile Recovery Hotfix",
+    "description": "Repairs Phase 42 Devtool validation by resetting only app-local Kotlin compiler outputs and forcing a bounded non-incremental in-process compile lane without Gradle caches or project parallelism.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": ".devtool.toml",
+          "action": "modify",
+          "sha256": "42cbd6edd39d744ab5c16b863cbae4b3fabb2067c861862a471b49e84f94570e",
+          "size": 4006,
+          "source_sha256": "38d576974b7280ee97db821c150aaf0dfea41b092c00c984b735e7e2d41cdac2"
+        },
+        {
+          "path": ".github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "20185df0cf5112719e212cc9c8e5e3dec6f1334fb2f0e52da345d163453df61c",
+          "size": 3868,
+          "source_sha256": "a588c358224a16cde40ffcf901a1a36cd23e65ea4c5dfbd1046cfa632bf395b8"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "86846b57bcf7343b6347e0862f4efa2d24be28c78356e7df0375931b18288585",
+          "size": 24867,
+          "source_sha256": "998acba827ca2b27c224bdb1e80bf263810d89659862889535ef7c310710c388"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "09c14e21c12e72aa5049cfc336d27010541ef83c0a4c1e46843275802b8e69dc",
+          "size": 6291,
+          "source_sha256": "0a17db611edb1e1621acb5c907f9d317f1546303a058da3608da443f9fcb1380"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "88c27bf2bbc362ea9d342861b2d4250891d8b82807f1fafa3b8d53b648c26fe8",
+          "size": 57331,
+          "source_sha256": "d6541220e8f4b50f8827a38a497f751cdaf44149035c884152460fb532bb3547"
+        },
+        {
+          "path": "app/XDM.Android/app/build.gradle.kts",
+          "action": "modify",
+          "sha256": "bb1493d551ce0d4413db689038c08e34c3eac1334a3ac2c8b17fa5c8e1c17bdf",
+          "size": 7344,
+          "source_sha256": "1168b9c717d8367ab7d6a5b73b971c9b3ffcf381967f11eb5626b3a99256f946"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-42-BROWSER-BRIDGE-RELEASE-GATE.md",
+          "action": "modify",
+          "sha256": "6c24abaad184a231cd097c68fa348d66182a3439533e6191ace52af1da53c4aa",
+          "size": 3612,
+          "source_sha256": "8b2a6a2e1292525160a6f0d71984d0eed3d1aea5db635c425888b2db4fe69aae"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-browser-bridge-release-gate.sh",
+          "action": "modify",
+          "sha256": "e1732a12b54e604e89156a0000182a9a84db63212cfeb4d9ea407d25b62b3694",
+          "size": 3565,
+          "source_sha256": "f627221235a8b4592e8dc0c3f776feee88258c34d41420a6825bedef439d1847"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "8fa55928733f40e8444f5d1b147d6e2b9fc5dab932f5aa2ee5702ff2ddfdfe03",
+          "size": 4653,
+          "source_sha256": "61bb6c2ab9b4ae77e3456c3c72dc568bf6d9f147cfa5c43812cbe1679e9aa9f7"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-42-browser-bridge-release-gate.py",
+          "action": "modify",
+          "sha256": "9dd9d9ba67c4d6783939774fca352334eb0fef1c6179136a52a7936f27589fe3",
+          "size": 13497,
+          "source_sha256": "34fd1058fb3e504806cf9bd36013d6e1ad249da3322ea0ef6761f2bffece017e"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-42-kotlin-compile-recovery.py",
+          "action": "add",
+          "sha256": "496150d8857392d7102a9cdda8f1e71e44596dbfe8ba696b24f7088ab1ad748a",
+          "size": 4036
+        },
+        {
+          "path": "docs/RELEASE-CHECKLIST.md",
+          "action": "modify",
+          "sha256": "df38e3b8db50c583b3edce7b7721ae1bdae45e99161118e3bb575e305f1bef8d",
+          "size": 4953,
+          "source_sha256": "b09f7f9ce877fb8e3f1e6d44803f35b88cb22ae2865f339a99b00efcec4a5e88"
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Fix XDM Android Kotlin validation recovery"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate_phase42_kotlin_compile_recovery.sh",
+        "runner": "bash",
+        "sha256": "bb5e69662227b9e236096ae1793886b7b79bc68b24227999d18116b82d932b0f",
+        "timeout_seconds": 1800
+      },
+      "expected": {
+        "restore": "success",
+        "build": "success",
+        "tests": "success",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Targets the Kotlin incremental-state corruption shown by missing kotlin-backups files and cascading same-module unresolved references.",
+      "The validation compile phase runs :app:resetKotlinValidationState before :app:compileDebugSources.",
+      "Only app-local Kotlin outputs and incremental state are deleted; generated resources, dependency caches, source files, and normal developer build behavior are preserved.",
+      "Devtool validation disables project parallelism, Gradle build/configuration caches, Kotlin incremental compilation, and classpath snapshots, and uses the in-process Kotlin compiler.",
+      "Phase 37 through Phase 42 static contracts and browser-extension regressions remain required before full Gradle validation."
+    ]
+  },
+  "history_id": "8970c17f521941219bfb9043786c3d41"
+}
