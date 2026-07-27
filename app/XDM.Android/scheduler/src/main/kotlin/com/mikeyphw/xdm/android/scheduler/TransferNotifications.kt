@@ -58,7 +58,7 @@ class TransferNotifications(private val context: Context) {
             .addAction(android.R.drawable.ic_media_pause, "Pause all", actionPendingIntent(ACTION_PAUSE_ALL, null, 11))
             .addAction(android.R.drawable.ic_media_play, "Resume all", actionPendingIntent(ACTION_RESUME_ALL, null, 12))
         if (downloadId != null) {
-            val paused = summary.primaryState == com.mikeyphw.xdm.android.model.DownloadState.Paused
+            val paused = summary.primaryState == DownloadState.Paused
             builder.addAction(
                 if (paused) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause,
                 if (paused) "Resume" else "Pause",
@@ -87,18 +87,31 @@ class TransferNotifications(private val context: Context) {
             .build()
     }
 
-    fun terminal(downloadId: String, fileName: String, state: DownloadState, message: String?): Notification {
+    fun terminal(
+        downloadId: String,
+        fileName: String,
+        state: DownloadState,
+        message: String?,
+        destinationUri: String? = null,
+        mimeType: String? = null,
+    ): Notification {
         ensureChannels()
         val profile = notificationProfile(state, fileName, message)
+        val contentIntent = if (state == DownloadState.Completed) {
+            openCompletedPendingIntent(downloadId)
+        } else {
+            openAppPendingIntent(downloadId)
+        }
         return NotificationCompat.Builder(context, CHANNEL_STATUS)
             .setSmallIcon(profile.icon)
             .setContentTitle(profile.title)
             .setContentText(profile.text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(profile.text))
             .setAutoCancel(true)
-            .setContentIntent(openAppPendingIntent())
+            .setContentIntent(contentIntent)
             .apply {
                 when (state) {
+                    DownloadState.Completed -> addAction(android.R.drawable.ic_menu_view, "Open XDM", openAppPendingIntent(downloadId))
                     DownloadState.Paused -> addAction(android.R.drawable.ic_media_play, "Resume", actionPendingIntent(ACTION_RESUME, downloadId, 20 + downloadId.hashCode()))
                     DownloadState.Failed -> addAction(android.R.drawable.ic_popup_sync, "Retry", actionPendingIntent(ACTION_RETRY, downloadId, 20 + downloadId.hashCode()))
                     DownloadState.RecoveryRequired -> addAction(android.R.drawable.ic_popup_sync, "Retry", actionPendingIntent(ACTION_RETRY, downloadId, 20 + downloadId.hashCode()))
@@ -155,10 +168,21 @@ class TransferNotifications(private val context: Context) {
         if (count > 0) manager.notify(RESTORE_NOTIFICATION_ID, restored(count))
     }
 
-    private fun openAppPendingIntent(): PendingIntent {
+    private fun openAppPendingIntent(downloadId: String? = null): PendingIntent {
         val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
             ?: Intent(Intent.ACTION_MAIN).setPackage(context.packageName)
-        return PendingIntent.getActivity(context, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        if (downloadId != null) {
+            intent.action = ACTION_OPEN_DOWNLOAD_DETAILS
+            intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId)
+        }
+        return PendingIntent.getActivity(context, 1 + (downloadId?.hashCode() ?: 0), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+
+    private fun openCompletedPendingIntent(downloadId: String): PendingIntent {
+        val intent = Intent(context, OpenDownloadedFileActivity::class.java)
+            .setAction(ACTION_OPEN_COMPLETED_DOWNLOAD)
+            .putExtra(EXTRA_DOWNLOAD_ID, downloadId)
+        return PendingIntent.getActivity(context, 31 + downloadId.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
     private fun actionPendingIntent(action: String, downloadId: String?, requestCode: Int): PendingIntent {
@@ -179,7 +203,10 @@ class TransferNotifications(private val context: Context) {
         const val ACTION_RESUME = "com.mikeyphw.xdm.android.action.RESUME"
         const val ACTION_RETRY = "com.mikeyphw.xdm.android.action.RETRY"
         const val ACTION_MUTE = "com.mikeyphw.xdm.android.action.MUTE"
+        const val ACTION_OPEN_COMPLETED_DOWNLOAD = "com.mikeyphw.xdm.android.action.OPEN_COMPLETED_DOWNLOAD"
+        const val ACTION_OPEN_DOWNLOAD_DETAILS = "com.mikeyphw.xdm.android.action.OPEN_DOWNLOAD_DETAILS"
         const val EXTRA_DOWNLOAD_ID = "download_id"
+        const val EXTRA_OPEN_FALLBACK_REASON = "open_fallback_reason"
 
         private fun formatSpeed(bytes: Long): String = when {
             bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MiB/s", bytes / (1024.0 * 1024.0))

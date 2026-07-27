@@ -26,6 +26,8 @@ data class TransferTerminalEvent(
     val fileName: String,
     val state: DownloadState,
     val message: String?,
+    val destinationUri: String? = null,
+    val mimeType: String? = null,
 )
 
 internal fun String.stableSystemId(): Int = (hashCode() and 0x3fffffff).coerceAtLeast(1)

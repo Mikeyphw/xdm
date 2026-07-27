@@ -47,7 +47,7 @@ class UserInitiatedTransferJobService : JobService() {
             setNotification(
                 params,
                 TransferNotifications.ACTIVE_NOTIFICATION_ID + params.jobId,
-                notifications.terminal(downloadId, result?.fileName ?: "Download", state, result?.errorMessage),
+                notifications.terminal(downloadId, result?.fileName ?: "Download", state, result?.errorMessage, result?.destinationUri, result?.mimeType),
                 JOB_END_NOTIFICATION_POLICY_DETACH,
             )
             val reschedule = state in setOf(DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)

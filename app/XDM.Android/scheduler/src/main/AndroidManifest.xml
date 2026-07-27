@@ -16,6 +16,20 @@
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE"
             tools:targetApi="34" />
+        <activity
+            android:name=".OpenDownloadedFileActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.completed-downloads"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/xdm_completed_download_paths" />
+        </provider>
         <receiver
             android:name=".TransferActionReceiver"
             android:exported="false" />

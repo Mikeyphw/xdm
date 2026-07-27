@@ -1779,5 +1779,39 @@
     "version_code_unchanged": 21,
     "depends_on": "browser_bridge_phase43b_add_download_media_recommendation_demotion",
     "next_overlay": "browser_bridge_phase45_completed_notification_open_file_intent"
+  },
+  "browser_bridge_phase45_completed_notification_open_file_intent": {
+    "program": "android_completed_notifications",
+    "contract_version": 1,
+    "contract_document": "docs/architecture/PHASE-45-COMPLETED-NOTIFICATION-OPEN-FILE.md",
+    "static_validator": "tools/validate-phase-45-completed-notification-open-file.py",
+    "module": "scheduler + app contracts",
+    "completed_notification_tap": "open_completed_file_trampoline",
+    "completed_notification_action": "open_xdm_details",
+    "failed_paused_recovery_tap": "open_xdm_details",
+    "trampoline_activity": "OpenDownloadedFileActivity",
+    "trampoline_exported": false,
+    "notification_embeds_raw_uri": false,
+    "pending_intent_payload": [
+      "EXTRA_DOWNLOAD_ID"
+    ],
+    "revalidates_completed_state": true,
+    "uses_action_view": true,
+    "grants_read_permission": true,
+    "file_uri_uses_fileprovider": true,
+    "fallback_reasons": [
+      "download-not-found",
+      "download-not-completed",
+      "completed-file-missing",
+      "no-viewer",
+      "uri-permission-lost",
+      "invalid-completed-uri"
+    ],
+    "completed_uri_persisted_to_download_destination_uri": true,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "depends_on": "browser_bridge_phase44_download_list_action_model_and_menus",
+    "next_overlay": "browser_bridge_phase46_media_batch_intake"
   }
 }

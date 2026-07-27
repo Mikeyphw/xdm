@@ -35,7 +35,7 @@ class TransferForegroundService : Service() {
             runtime.terminalEvents.collectLatest { event ->
                 getSystemService(android.app.NotificationManager::class.java).notify(
                     5000 + event.downloadId.stableSystemId(),
-                    notifications.terminal(event.downloadId, event.fileName, event.state, event.message),
+                    notifications.terminal(event.downloadId, event.fileName, event.state, event.message, event.destinationUri, event.mimeType),
                 )
             }
         }

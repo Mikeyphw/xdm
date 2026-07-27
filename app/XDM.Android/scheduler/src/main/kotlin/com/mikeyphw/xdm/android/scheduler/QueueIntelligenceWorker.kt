@@ -42,6 +42,8 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
                                     fileName = current?.fileName ?: download.fileName,
                                     state = state,
                                     message = current?.errorMessage,
+                                    destinationUri = current?.destinationUri ?: download.destinationUri,
+                                    mimeType = current?.mimeType ?: download.mimeType,
                                 ),
                             )
                         }

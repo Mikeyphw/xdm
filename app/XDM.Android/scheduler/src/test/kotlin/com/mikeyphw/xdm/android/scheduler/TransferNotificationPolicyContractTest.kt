@@ -8,7 +8,7 @@ import org.junit.Test
 class TransferNotificationPolicyContractTest {
     @Test fun userInitiatedJobsReportPausedAsPausedInsteadOfFailed() {
         val service = File(androidRoot(), "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt").readText()
-        assertTrue(service.contains("notifications.terminal(downloadId, result?.fileName ?: \"Download\", state, result?.errorMessage)"))
+        assertTrue(service.contains("notifications.terminal(downloadId, result?.fileName ?: \"Download\", state, result?.errorMessage, result?.destinationUri, result?.mimeType)"))
         assertFalse(service.contains("val completed = state == DownloadState.Completed"))
         assertTrue(service.contains("state in setOf(DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)"))
     }

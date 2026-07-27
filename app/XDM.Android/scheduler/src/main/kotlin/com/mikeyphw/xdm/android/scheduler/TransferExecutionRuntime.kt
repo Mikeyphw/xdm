@@ -236,7 +236,7 @@ class TransferExecutionRuntime(
                         updatedAtEpochMs = System.currentTimeMillis(),
                     ),
                 )
-                _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, DownloadState.RecoveryRequired, message))
+                _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, DownloadState.RecoveryRequired, message, download.destinationUri, download.mimeType))
                 return
             }
         }
@@ -328,7 +328,7 @@ class TransferExecutionRuntime(
             ),
         )
         if (state == DownloadState.Paused || state == DownloadState.Failed || state == DownloadState.RecoveryRequired) {
-            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, state, storedMessage))
+            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, state, storedMessage, current.destinationUri, current.mimeType))
         }
     }
 
@@ -341,7 +341,9 @@ class TransferExecutionRuntime(
         val finalState = storedAfterCompletion?.state ?: finalSnapshot.state
         val finalMessage = storedAfterCompletion?.errorMessage ?: finalSnapshot.errorMessage
         if (finalState in TERMINAL_STATES || finalState == DownloadState.Paused || finalState == DownloadState.RecoveryRequired) {
-            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage))
+            val storedDestination = storedAfterCompletion?.destinationUri ?: download.destinationUri
+            val storedMimeType = storedAfterCompletion?.mimeType ?: download.mimeType
+            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage, storedDestination, storedMimeType))
         }
     }
 
@@ -370,6 +372,7 @@ class TransferExecutionRuntime(
         store.save(
             current.copy(
                 state = verifiedSnapshot.state,
+                destinationUri = if (verifiedSnapshot.state == DownloadState.Completed && !verifiedSnapshot.completedUri.isNullOrBlank()) verifiedSnapshot.completedUri else current.destinationUri,
                 backend = backendTaskIds[original.id]?.first ?: current.backend,
                 bytesReceived = verifiedSnapshot.bytesReceived,
                 totalBytes = verifiedSnapshot.totalBytes ?: current.totalBytes,

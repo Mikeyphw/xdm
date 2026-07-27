@@ -55241,6 +55241,194 @@
         }
       },
       "history_id": "56842048635c4580a4c424b009298752"
+    },
+    {
+      "applied_at": "2026-07-27T18:46:31.125927Z",
+      "artifact": "/home/mike/Downloads/xdm_android_phase45_completed_notification_open_file_overlay.zip",
+      "artifact_name": "xdm_android_phase45_completed_notification_open_file_overlay.zip",
+      "type": "overlay",
+      "sha256": "6660205ca9375ffe38d089228e26f91132a1eeea9ad2d5752b5e5e87d10f0963",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Open completed downloads from notifications",
+      "commit_hash": "",
+      "file_count": 16,
+      "change_counts": {
+        "add": 6,
+        "modify": 10
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 45 Completed Notification Open File",
+        "description": "Makes completed download notifications open the completed file through a safe non-exported trampoline while keeping raw file/content URIs out of notification PendingIntents.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "f2490a8a4b32a47af499ef885c7a410b335b1f75d1f41881fa6a53f935113300",
+              "size": 28025,
+              "source_sha256": "2ca5b056e229c55db02c49d4fc4e031c25d3717d03b7c4a5fba07a8671410376"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "d86fa76a084364cf6cc909873b58282ca6d9fbe237968ba42ac4cd0055395d3e",
+              "size": 63770,
+              "source_sha256": "80de99a8582737e4fd87fd870f4e497c290a9e511b7fdbccf38fa653ad200597"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/CompletedNotificationPhase45ContractTest.kt",
+              "action": "add",
+              "sha256": "86a0065a53467553e4cd6e72048e9a0c922e2c62fe8f975ee582c6b872480995",
+              "size": 1998
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-45-COMPLETED-NOTIFICATION-OPEN-FILE.md",
+              "action": "add",
+              "sha256": "c167c1ffef93d9f0d5c6f74aa97f76e76eb1e5df9f99558cd37e7d93210f1cc0",
+              "size": 1351
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "2db3b198c76e944b3235497e8ffa70d8cb4a0310d1337f80f54533944fb60924",
+              "size": 2097,
+              "source_sha256": "2431f398aa7e7932f35175cdc3148126a5e426f4c20c4727d73048616f1df0cb"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/OpenDownloadedFileActivity.kt",
+              "action": "add",
+              "sha256": "b5a98544624d381d6fbede98c08f91f02a961e5832639a63850061b5de991c52",
+              "size": 4373
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt",
+              "action": "modify",
+              "sha256": "b11c0339055ff8dd39babceae1b05c4e45395dfb3b6cdaf633703951fafa853c",
+              "size": 4311,
+              "source_sha256": "2a3486aa49e3c1a63fd3c25f2c488cd93b04dffb49554778b6d10b3cf2214877"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionModels.kt",
+              "action": "modify",
+              "sha256": "4ae74630b97c43b06b0dd3f8dad66c3ea40372cb8d17c58c0fabe7cb861b0c15",
+              "size": 1081,
+              "source_sha256": "357861921714d64aa1d4c3b19a4a8edd08634207910bed890be95c8be0fc03c5"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt",
+              "action": "modify",
+              "sha256": "a6a9b413fa382cabeab99df153748ec5a8b1ea70730af2b586041f0a6d7fd5d2",
+              "size": 20226,
+              "source_sha256": "73d10bced248cf370332d6f1584fcb4c9b286c12661921c74ea1392ac4708a2e"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt",
+              "action": "modify",
+              "sha256": "50bedce9b0180f9504c9c16ca49230d1bae3735dbbf51985918caf6f4dddc97c",
+              "size": 4453,
+              "source_sha256": "9686d44ed05ad4cb41fa54175639a75598f8f239955ce1b683fe4c1b74a82c8e"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotifications.kt",
+              "action": "modify",
+              "sha256": "dba196674743efcdef595e97bbee379ccee71f9e2c5cb06b2c87069c1c22ee4f",
+              "size": 10672,
+              "source_sha256": "738db9534ee4c22b8707c351abf03e622309e5a9a35daee3bd8c6dfda9fbdd0a"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt",
+              "action": "modify",
+              "sha256": "ceb13c8ec6faa43bb83451ccd4c0509f7df7f53dd0b4ec2113edab277ae8ccbf",
+              "size": 3037,
+              "source_sha256": "036636706aabacd58e6ded8169f888d2f85fb50423635f0f425065074b94176b"
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/main/res/xml/xdm_completed_download_paths.xml",
+              "action": "add",
+              "sha256": "5c6289195493a38d6a2111a72b33e6f59454b042982b7bc39cd5a286862813db",
+              "size": 426
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/CompletedNotificationOpenFileContractTest.kt",
+              "action": "add",
+              "sha256": "3d98f76b7ece5bbaf5542794498a0c86004148d79b88bfe0a2595e9f99581733",
+              "size": 2893
+            },
+            {
+              "path": "app/XDM.Android/scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+              "action": "modify",
+              "sha256": "d3b3111c1322027e7e23cbf8f6e9a7a8bde76c59e881ad1a1835b2f56a2ab2e9",
+              "size": 1635,
+              "source_sha256": "1319edbcaa7b25330a1a3b1656ec9958d17ce144531fcafdf7449cb721d5522d"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-45-completed-notification-open-file.py",
+              "action": "add",
+              "sha256": "fc9f247f80a1031efc4abee548483abf52578af6198bfed718fcafc7883f91c4",
+              "size": 3827
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Open completed downloads from notifications"
+          }
+        },
+        "validation": {
+          "required": true,
+          "reason": "Phase 45 must prove completed notifications carry only a download id, revalidate completed state in a non-exported trampoline, grant temporary read access, and fall back to XDM details safely.",
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate_phase45_completed_notification_open_file.sh",
+            "runner": "bash",
+            "timeout_seconds": 900,
+            "sha256": "f7fa5739a826829ee86ae8b9fb9920c4648f05cb6e3c9371877cc492962e82dd"
+          },
+          "expected": {
+            "restore": "success",
+            "build": "success",
+            "tests": "success",
+            "maximum_warnings": 0
+          }
+        },
+        "compatibility": {
+          "base_overlay": "xdm_android_phase44_download_list_action_model_menus_overlay.zip",
+          "requires": [
+            "post-v9 source snapshot",
+            "Phase 43A r4 applied",
+            "Phase 43B applied",
+            "Phase 44 applied"
+          ],
+          "room_schema": 14,
+          "version_name": "0.20.0-rc08",
+          "version_code": 21
+        }
+      },
+      "history_id": "e807edddfdd44acfb37e96cfa3ae4062"
     }
   ]
 }

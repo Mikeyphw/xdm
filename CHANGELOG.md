@@ -352,3 +352,10 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Fixed Phase 41 tests to locate the Android Gradle root instead of assuming the module working directory.
 - Updated Activity labels, shared theme tokens, touch-target tokens, developer gating, media track selection, and review-only intake assertions without weakening their behavior contracts.
 - Preserved the already-applied Kotlin source compatibility fixes and added the modernization validator to the browser bridge release gate.
+
+
+## Phase 45 — Completed notification open-file intent
+
+- Completed download notifications now tap into a safe non-exported open-file trampoline instead of opening the app by default.
+- The trampoline revalidates the download id/state, resolves the completed URI, grants temporary read access, and falls back to XDM details on missing files, lost permissions, or no viewer.
+- Transfer completion persistence now keeps concrete backend completed URIs so notification taps can open MediaStore/content destinations.
