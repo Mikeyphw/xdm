@@ -45238,6 +45238,94 @@
         ]
       },
       "history_id": "afae986ea8084804ac0284310683144d"
+    },
+    {
+      "applied_at": "2026-07-27T04:33:50.216245Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_phase42_compose_androidtest_api_hotfix_overlay.zip",
+      "artifact_name": "xdm_android_phase42_compose_androidtest_api_hotfix_overlay.zip",
+      "type": "overlay",
+      "sha256": "896c93641541d2311b02ccd1751acd6645a3c5d638696445883fa13fd8874a7f",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Fix XDM Android Compose instrumentation test imports",
+      "commit_hash": "",
+      "file_count": 2,
+      "change_counts": {
+        "modify": 2
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 42 Compose Android-Test API Hotfix",
+        "description": "Removes three obsolete Compose UI test top-level imports after the Kotlin source and contract-test hotfixes are already applied, allowing compileDebugAndroidTestKotlin to use the current receiver-method API.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/androidTest/kotlin/com/mikeyphw/xdm/android/AppSmokeTest.kt",
+              "action": "modify",
+              "sha256": "5cae3ca6d0eb41339e61492bb21ecdafa0770ad99361fe0bcfd49a6b96b53b47",
+              "size": 2512,
+              "source_sha256": "f3cfbd50ecf317864963d6d2cf4a7d9c5544f8ecddcfac689cce8f2b915e377e"
+            },
+            {
+              "path": "app/XDM.Android/app/src/androidTest/kotlin/com/mikeyphw/xdm/android/UixR6AdaptiveLayoutTest.kt",
+              "action": "modify",
+              "sha256": "03d060d88d3af60c6c39429fc673ddbd5a104544ecbc50083e70ece86056c1f3",
+              "size": 5922,
+              "source_sha256": "590c3a443e555058304c855a918b803d21e326e6920b12832280645e100e87c1"
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Fix XDM Android Compose instrumentation test imports"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate_phase42_compose_androidtest_api.sh",
+            "runner": "bash",
+            "sha256": "61cb386aa32258b6dab7786a7cca9727e5bc816770c8103f97aaf90c39cd08de",
+            "timeout_seconds": 1800
+          },
+          "expected": {
+            "restore": "success",
+            "build": "success",
+            "tests": "success",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Built against the still-applied Phase 42 Kotlin source compatibility and contract-test modernization tree.",
+          "Before applying, close the failed validation session with validation-abort --keep-changes so Devtool preserves all already-passing fixes.",
+          "Only removes obsolete top-level imports; the ComposeTestRule and SemanticsNodeInteraction receiver calls remain unchanged.",
+          "Does not modify production sources, Gradle configuration, extension code, release artifacts, or prior Phase 42 validators."
+        ]
+      },
+      "history_id": "55d8680a242547668bac2f4b4be68a3e"
     }
   ]
 }
