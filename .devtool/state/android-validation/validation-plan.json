@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "session_id": "20260725T201903Z-65b1d6b869",
-  "status": "failed",
+  "session_id": "20260727T033927Z-0060b4e24b",
+  "status": "aborted",
   "validation_mode": "standalone",
   "artifact": "",
   "resource_profile": "standard",
@@ -15,53 +15,47 @@
       "status": "succeeded"
     },
     {
-      "key": "xdm_android:dependencies:2",
+      "key": "xdm_android:dependencies:1",
       "name": "dependencies",
       "label": "xdm_android: dependencies",
-      "status": "succeeded"
+      "status": "cancelled"
     },
     {
-      "key": "xdm_android:compile:3",
+      "key": "xdm_android:compile:1",
       "name": "compile",
       "label": "xdm_android: compile",
-      "status": "succeeded"
+      "status": "cancelled"
     },
     {
-      "key": "xdm_android:resources:4",
+      "key": "xdm_android:resources:1",
       "name": "resources",
       "label": "xdm_android: resources",
-      "status": "succeeded"
+      "status": "cancelled"
     },
     {
-      "key": "xdm_android:unit-test:5",
+      "key": "xdm_android:unit-test:1",
       "name": "unit-test",
       "label": "xdm_android: unit-test",
-      "status": "succeeded"
+      "status": "cancelled"
     },
     {
-      "key": "xdm_android:package:6",
+      "key": "xdm_android:package:1",
       "name": "package",
       "label": "xdm_android: package",
-      "status": "succeeded"
+      "status": "cancelled"
     },
     {
-      "key": "xdm_android:artifact-check:7",
-      "name": "artifact-check",
-      "label": "xdm_android: artifact-check",
-      "status": "failed"
-    },
-    {
-      "key": "xdm_android:lint:8",
+      "key": "xdm_android:lint:1",
       "name": "lint",
       "label": "xdm_android: lint",
-      "status": "pending"
+      "status": "cancelled"
     },
     {
-      "key": "xdm_android:finalize:9",
+      "key": "xdm_android:finalize:1",
       "name": "finalize",
       "label": "xdm_android: finalize",
-      "status": "pending"
+      "status": "cancelled"
     }
   ],
-  "updated_at": "2026-07-25T20:29:51.399382Z"
+  "updated_at": "2026-07-27T04:16:19.041023Z"
 }

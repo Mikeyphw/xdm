@@ -58,7 +58,6 @@ args = [
 restore = ["help"]
 build = [
   "assembleDebug",
-  "assembleBeta",
   ":app:assembleDebugAndroidTest",
   ":browser-extension:packageFirefoxExtensionDark",
   ":browser-extension:packageFirefoxExtensionAmoled",
@@ -81,7 +80,7 @@ test = [
   ":persistence:testDebugUnitTest",
   ":app:testDebugUnitTest",
 ]
-lint = ["lintDebug", "lintBeta"]
+lint = ["lintDebug"]
 clean = ["clean"]
 
 [targets.xdm_android.artifacts]
@@ -111,13 +110,12 @@ unit-test = [
 ]
 package = [
   "assembleDebug",
-  "assembleBeta",
   ":app:assembleDebugAndroidTest",
   ":browser-extension:packageFirefoxExtensionDark",
   ":browser-extension:packageFirefoxExtensionAmoled",
   ":browser-extension:verifyFirefoxExtensionReleaseArtifacts",
 ]
-lint = ["lintDebug", "lintBeta"]
+lint = ["lintDebug"]
 
 [env]
 DOTNET_CLI_TELEMETRY_OPTOUT = "1"
