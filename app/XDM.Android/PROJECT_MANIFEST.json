@@ -136,7 +136,7 @@
       "compare"
     ]
   },
-  "next_phase": "Phase 44 Download list action model and menus",
+  "next_phase": "Phase 45 Completed notification open-file intent",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -1747,5 +1747,37 @@
     "version_code_unchanged": 21,
     "depends_on": "browser_bridge_phase43a_extension_parity",
     "next_overlay": "browser_bridge_phase44_download_list_action_model_and_menus"
+  },
+  "browser_bridge_phase44_download_list_action_model_and_menus": {
+    "program": "android_downloader_actions",
+    "contract_version": 1,
+    "contract_document": "docs/architecture/PHASE-44-DOWNLOAD-LIST-ACTION-MODEL-MENUS.md",
+    "static_validator": "tools/validate-phase-44-download-list-actions.py",
+    "module": "app + core-model",
+    "pure_action_planner": "DownloadActionPlanner",
+    "action_kind_model": "DownloadActionKind",
+    "action_metadata": [
+      "enabled",
+      "primary",
+      "destructive",
+      "requiresConfirmation"
+    ],
+    "primary_row_action_from_planner": true,
+    "more_actions_button": true,
+    "adaptive_action_sheet": true,
+    "batch_actions_contract": true,
+    "completed_primary_action": "OpenFile",
+    "recovery_primary_action": "ReviewRecovery",
+    "queued_primary_action": "StartNow",
+    "destructive_actions_require_confirmation": true,
+    "raw_file_opening_changed": false,
+    "notification_open_file_changed": false,
+    "queue_reordering_execution_changed": false,
+    "file_delete_execution_changed": false,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "depends_on": "browser_bridge_phase43b_add_download_media_recommendation_demotion",
+    "next_overlay": "browser_bridge_phase45_completed_notification_open_file_intent"
   }
 }

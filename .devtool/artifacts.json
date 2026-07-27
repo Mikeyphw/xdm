@@ -55109,6 +55109,138 @@
         }
       },
       "history_id": "1b88af0be31347978f686cf3941c55b6"
+    },
+    {
+      "applied_at": "2026-07-27T18:34:27.324364Z",
+      "artifact": "/home/mike/Downloads/xdm_android_phase44_download_list_action_model_menus_overlay.zip",
+      "artifact_name": "xdm_android_phase44_download_list_action_model_menus_overlay.zip",
+      "type": "overlay",
+      "sha256": "7a4e33a9821e8653c093eb1745e1b7145b31e38e6c24ec646ba901930af6721f",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Add download list action menus",
+      "commit_hash": "",
+      "file_count": 8,
+      "change_counts": {
+        "add": 5,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 44 Download List Action Model and Menus",
+        "description": "Adds a pure download action planner plus planner-backed row primary actions and adaptive more-actions menus for the downloads list.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "80de99a8582737e4fd87fd870f4e497c290a9e511b7fdbccf38fa653ad200597",
+              "size": 62348,
+              "source_sha256": "61ab957eba5dca0ee09954e32749b5d804c849c656a7c92826b2e05ed911e226"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt",
+              "action": "modify",
+              "sha256": "c4f4e3772138304fa693e11921cafbf1c3eec234e89699b0b3e62a39a7f043c3",
+              "size": 11299,
+              "source_sha256": "c8814bc40ef7fa0558fb908c00989fc0a10a30fa71a6f1fa8b2f5f7e18dc7399"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+              "action": "modify",
+              "sha256": "552f30fe704bfbb40533e263ca83e367748089c81b761dfd64aab4771cd5c5cb",
+              "size": 27717,
+              "source_sha256": "0d161706464ebaeb84a0094721d3a40f6606981427befcf4e4a66c4d6a0655f1"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloadListPhase44ActionMenusContractTest.kt",
+              "action": "add",
+              "sha256": "977ce7f622e32eca265ccf4b47b9f0179946600c130118adcba8b053d967b66d",
+              "size": 2646
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadActionPlanner.kt",
+              "action": "add",
+              "sha256": "3bd40215a80de5f2f82eef628196c4e6f2186adcddc22d528cfb8085afd805a9",
+              "size": 12497
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadActionPlannerTest.kt",
+              "action": "add",
+              "sha256": "017d5df058fa93026075015ea0aa276aac5d20d263c6dbdbe90ccb6f727ba1b5",
+              "size": 5091
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-44-DOWNLOAD-LIST-ACTION-MODEL-MENUS.md",
+              "action": "add",
+              "sha256": "f0f29cb4f7ebc8582ea48a09bcdcb7e8515cecf51d0ff45b5f2273ed63dc9a7f",
+              "size": 3115
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-44-download-list-actions.py",
+              "action": "add",
+              "sha256": "5f6256c8399379cf3b258487a8b39b5d6d7a30f826655839e88ef58b4126b92f",
+              "size": 3519
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add download list action menus"
+          }
+        },
+        "validation": {
+          "required": true,
+          "reason": "Phase 44 must prove downloads list actions are planner-backed, state-aware, and destructive choices remain confirmation-marked.",
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate_phase44_download_list_actions.sh",
+            "runner": "bash",
+            "timeout_seconds": 900,
+            "sha256": "2d11025aec1d6e3b6f0ed9f0424899fb1cadbebec4c6f54fa3d4b88a96d4d3db"
+          },
+          "expected": {
+            "restore": "success",
+            "build": "success",
+            "tests": "success",
+            "maximum_warnings": 0
+          }
+        },
+        "compatibility": {
+          "base_overlay": "xdm_android_phase43b_add_download_media_recommendation_demotion_overlay.zip",
+          "requires": [
+            "post-v9 source snapshot",
+            "Phase 43A r4 applied",
+            "Phase 43B applied"
+          ],
+          "room_schema": 14,
+          "version_name": "0.20.0-rc08",
+          "version_code": 21
+        }
+      },
+      "history_id": "56842048635c4580a4c424b009298752"
     }
   ]
 }

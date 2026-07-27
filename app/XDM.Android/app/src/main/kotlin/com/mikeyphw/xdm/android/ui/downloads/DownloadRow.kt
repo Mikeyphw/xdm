@@ -12,7 +12,13 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
@@ -32,6 +38,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.DownloadAction
+import com.mikeyphw.xdm.android.model.DownloadActionIcon
+import com.mikeyphw.xdm.android.model.DownloadActionKind
+import com.mikeyphw.xdm.android.model.DownloadActionPlanner
 import com.mikeyphw.xdm.android.model.DownloadDashboardPlanner
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.util.formatBytes
@@ -47,8 +57,9 @@ internal fun DownloadRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onPrimaryAction: () -> Unit,
+    onMoreActions: () -> Unit,
 ) {
-    val action = download.primaryRowAction()
+    val action = DownloadActionPlanner.primaryActionFor(download)
     val totalBytes = download.totalBytes
     val supporting = download.rowSupportingText()
     val progressVisible = totalBytes != null && download.state !in setOf(DownloadState.Created, DownloadState.Cancelled)
@@ -136,49 +147,51 @@ internal fun DownloadRow(
                 }
             }
             Spacer(Modifier.width(2.dp))
-            IconButton(
-                onClick = onPrimaryAction,
-                modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics {
-                    contentDescription = "${action.label} ${download.fileName}"
-                },
-            ) {
-                Icon(action.icon, contentDescription = action.label)
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = onPrimaryAction,
+                    enabled = action.enabled,
+                    modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics {
+                        contentDescription = "${action.label} ${download.fileName}"
+                    },
+                ) {
+                    Icon(action.iconVector(), contentDescription = action.label)
+                }
+                IconButton(
+                    onClick = onMoreActions,
+                    modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics {
+                        contentDescription = "More actions for ${download.fileName}"
+                    },
+                ) {
+                    Icon(Icons.Rounded.MoreVert, contentDescription = "More actions")
+                }
             }
         }
     }
 }
 
-private data class DownloadRowAction(
-    val label: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-)
-
-private fun Download.primaryRowAction(): DownloadRowAction = when (state) {
-    DownloadState.Downloading,
-    DownloadState.Connecting,
-    DownloadState.Finalizing,
-    DownloadState.Queued,
-    -> DownloadRowAction("Pause", Icons.Rounded.Pause)
-
-    DownloadState.Paused,
-    DownloadState.WaitingForNetwork,
-    DownloadState.WaitingForPower,
-    -> DownloadRowAction("Resume", Icons.Rounded.PlayArrow)
-
-    DownloadState.Failed -> DownloadRowAction("Retry", Icons.Rounded.Refresh)
-    DownloadState.Completed -> DownloadRowAction("Details", Icons.Rounded.Check)
-    else -> DownloadRowAction("Details", Icons.Rounded.MoreHoriz)
+internal fun DownloadAction.iconVector(): androidx.compose.ui.graphics.vector.ImageVector = when (icon) {
+    DownloadActionIcon.Open -> Icons.Rounded.Check
+    DownloadActionIcon.Details -> Icons.Rounded.Info
+    DownloadActionIcon.Recovery -> Icons.Rounded.Refresh
+    DownloadActionIcon.Pause -> Icons.Rounded.Pause
+    DownloadActionIcon.Play -> Icons.Rounded.PlayArrow
+    DownloadActionIcon.Refresh -> Icons.Rounded.Refresh
+    DownloadActionIcon.Cancel -> Icons.Rounded.Close
+    DownloadActionIcon.Queue -> Icons.Rounded.MoreHoriz
+    DownloadActionIcon.Move -> Icons.Rounded.MoreHoriz
+    DownloadActionIcon.Copy -> Icons.Rounded.ContentPaste
+    DownloadActionIcon.Share -> Icons.Rounded.Link
+    DownloadActionIcon.Folder -> Icons.Rounded.Folder
+    DownloadActionIcon.Rename -> Icons.Rounded.MoreHoriz
+    DownloadActionIcon.Delete -> Icons.Rounded.Close
 }
 
-internal fun Download.primaryActionUsesToggle(): Boolean = state in setOf(
-    DownloadState.Downloading,
-    DownloadState.Connecting,
-    DownloadState.Finalizing,
-    DownloadState.Queued,
-    DownloadState.Paused,
-    DownloadState.WaitingForNetwork,
-    DownloadState.WaitingForPower,
-    DownloadState.Failed,
+internal fun Download.primaryActionUsesToggle(): Boolean = DownloadActionPlanner.primaryActionFor(this).kind in setOf(
+    DownloadActionKind.Pause,
+    DownloadActionKind.Resume,
+    DownloadActionKind.Retry,
+    DownloadActionKind.StartNow,
 )
 
 private fun Download.rowBadgeLabel(): String = when (state) {

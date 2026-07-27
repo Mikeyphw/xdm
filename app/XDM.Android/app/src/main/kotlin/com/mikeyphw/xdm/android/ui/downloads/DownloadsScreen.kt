@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,9 @@ import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.ChecksumResult
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.DownloadAction
+import com.mikeyphw.xdm.android.model.DownloadActionKind
+import com.mikeyphw.xdm.android.model.DownloadActionPlanner
 import com.mikeyphw.xdm.android.model.DownloadDashboardOrdering
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.DownloadTag
@@ -102,6 +106,7 @@ fun DownloadsScreen(
     var selectedIds by remember { mutableStateOf(setOf<String>()) }
     var detailDownloadId by rememberSaveable { mutableStateOf<String?>(null) }
     var organizeVisible by rememberSaveable { mutableStateOf(false) }
+    var actionDownloadId by rememberSaveable { mutableStateOf<String?>(null) }
 
     val metrics = DownloadsWorkspacePlanner.metrics(downloads.filterNot { it.archived })
     val visibleDownloads = DownloadsWorkspacePlanner.visibleDownloads(
@@ -113,6 +118,7 @@ fun DownloadsScreen(
     )
     val selectedDownloads = downloads.filter { it.id in selectedIds }
     val detailDownload = downloads.firstOrNull { it.id == detailDownloadId }
+    val actionDownload = downloads.firstOrNull { it.id == actionDownloadId }
     val heldDownload = DownloadsWorkspacePlanner.firstPolicyHeldDownload(downloads)
     val copy = DownloadsWorkspacePlanner.copyFor(filter)
     val selectionMode = selectedIds.isNotEmpty()
@@ -219,8 +225,17 @@ fun DownloadsScreen(
                     },
                     onDownloadLongClick = { download -> selectedIds = selectedIds.toggle(download.id) },
                     onPrimaryAction = { download ->
-                        if (download.primaryActionUsesToggle()) onTogglePause(download) else detailDownloadId = download.id
+                        val action = DownloadActionPlanner.primaryActionFor(download)
+                        performDownloadAction(
+                            context = context,
+                            download = download,
+                            action = action,
+                            onTogglePause = onTogglePause,
+                            onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
+                            onOpenDetails = { detailDownloadId = download.id },
+                        )
                     },
+                    onMoreActions = { download -> actionDownloadId = download.id },
                     modifier = Modifier.weight(0.58f).fillMaxHeight(),
                 )
                 Box(
@@ -265,9 +280,42 @@ fun DownloadsScreen(
                 },
                 onDownloadLongClick = { download -> selectedIds = selectedIds.toggle(download.id) },
                 onPrimaryAction = { download ->
-                    if (download.primaryActionUsesToggle()) onTogglePause(download) else detailDownloadId = download.id
+                    val action = DownloadActionPlanner.primaryActionFor(download)
+                    performDownloadAction(
+                        context = context,
+                        download = download,
+                        action = action,
+                        onTogglePause = onTogglePause,
+                        onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
+                        onOpenDetails = { detailDownloadId = download.id },
+                    )
                 },
+                onMoreActions = { download -> actionDownloadId = download.id },
                 modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 6.dp),
+            )
+        }
+    }
+
+    actionDownload?.let { download ->
+        XdmAdaptiveSheet(
+            visible = true,
+            windowClass = windowClass,
+            onDismissRequest = { actionDownloadId = null },
+            title = "Actions for ${download.fileName}",
+        ) {
+            DownloadActionsContent(
+                download = download,
+                onAction = { action ->
+                    actionDownloadId = null
+                    performDownloadAction(
+                        context = context,
+                        download = download,
+                        action = action,
+                        onTogglePause = onTogglePause,
+                        onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
+                        onOpenDetails = { detailDownloadId = download.id },
+                    )
+                },
             )
         }
     }
@@ -447,6 +495,7 @@ private fun DownloadWorkspaceList(
     onDownloadClick: (Download) -> Unit,
     onDownloadLongClick: (Download) -> Unit,
     onPrimaryAction: (Download) -> Unit,
+    onMoreActions: (Download) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (downloads.isEmpty()) {
@@ -472,9 +521,91 @@ private fun DownloadWorkspaceList(
                 onClick = { onDownloadClick(download) },
                 onLongClick = { onDownloadLongClick(download) },
                 onPrimaryAction = { onPrimaryAction(download) },
+                onMoreActions = { onMoreActions(download) },
             )
         }
     }
+}
+
+
+@Composable
+private fun DownloadActionsContent(
+    download: Download,
+    onAction: (DownloadAction) -> Unit,
+) {
+    val actions = DownloadActionPlanner.actionsFor(download)
+    Column(Modifier.fillMaxWidth().padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        XdmMetadataText("Tap the row for details. Use the primary row button for ${DownloadActionPlanner.primaryActionFor(download).label.lowercase()}.")
+        XdmGroupedList {
+            actions.forEachIndexed { index, action ->
+                if (index > 0) XdmListSeparator()
+                XdmListRow(
+                    headline = action.label,
+                    supporting = action.menuSupportingText(),
+                    enabled = action.enabled,
+                    leading = { Icon(action.iconVector(), contentDescription = null) },
+                    trailing = if (action.primary) ({ XdmStatusBadge("Primary", tone = XdmStatusTone.Info) }) else null,
+                    onClick = if (action.enabled) ({ onAction(action) }) else null,
+                )
+            }
+        }
+    }
+}
+
+private fun DownloadAction.menuSupportingText(): String = buildList {
+    if (supportingText.isNotBlank()) add(supportingText)
+    if (requiresConfirmation) add("Requires confirmation")
+    if (destructive) add("Destructive")
+    if (!enabled) add("Unavailable for this item")
+}.joinToString(" • ")
+
+private fun performDownloadAction(
+    context: android.content.Context,
+    download: Download,
+    action: DownloadAction,
+    onTogglePause: (Download) -> Unit,
+    onStartIgnoringQueuePolicy: (Download) -> Unit,
+    onOpenDetails: () -> Unit,
+) {
+    when (action.kind) {
+        DownloadActionKind.Pause,
+        DownloadActionKind.Resume,
+        DownloadActionKind.Retry,
+        -> onTogglePause(download)
+
+        DownloadActionKind.StartNow -> {
+            if (download.errorMessage.orEmpty().startsWith("Queue policy:")) onStartIgnoringQueuePolicy(download) else onTogglePause(download)
+        }
+
+        DownloadActionKind.CopyLink -> copyTextToClipboard(context, "XDM source URL", download.sourceUrl)
+        DownloadActionKind.CopyFileName -> copyTextToClipboard(context, "XDM file name", download.fileName)
+        DownloadActionKind.CopyDestination -> copyTextToClipboard(context, "XDM destination", download.destinationUri)
+        DownloadActionKind.ShareLink -> shareText(context, "XDM source URL", download.sourceUrl)
+
+        DownloadActionKind.OpenFile,
+        DownloadActionKind.OpenDetails,
+        DownloadActionKind.ReviewRecovery,
+        DownloadActionKind.Cancel,
+        DownloadActionKind.MoveToTop,
+        DownloadActionKind.MoveUp,
+        DownloadActionKind.MoveDown,
+        DownloadActionKind.MoveToBottom,
+        DownloadActionKind.ShareFile,
+        DownloadActionKind.OpenFolder,
+        DownloadActionKind.Rename,
+        DownloadActionKind.Redownload,
+        DownloadActionKind.RefreshLink,
+        DownloadActionKind.DeleteRecord,
+        DownloadActionKind.DeleteFileAndRecord,
+        -> onOpenDetails()
+    }
+}
+
+private fun shareText(context: android.content.Context, title: String, value: String) {
+    val intent = Intent(Intent.ACTION_SEND)
+        .setType("text/plain")
+        .putExtra(Intent.EXTRA_TEXT, value)
+    context.startActivity(Intent.createChooser(intent, title))
 }
 
 private fun Set<String>.toggle(id: String): Set<String> = if (id in this) this - id else this + id
