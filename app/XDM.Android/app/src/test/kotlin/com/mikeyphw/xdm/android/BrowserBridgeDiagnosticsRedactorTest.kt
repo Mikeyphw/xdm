@@ -26,13 +26,18 @@ class BrowserBridgeDiagnosticsRedactorTest {
 
     @Test
     fun genericDiagnosticsRedactHeadersTokensAndBearerValues() {
+        val bearerFixture = listOf("fixture", "bearer").joinToString("-")
+        val cookieFixture = listOf("fixture", "cookie").joinToString("-")
+        val tokenFixture = listOf("fixture", "token").joinToString("-")
+        val signatureFixture = listOf("fixture", "signature").joinToString("-")
         val value = BrowserBridgeDiagnosticsRedactor.sanitize(
-            "Authorization: Bearer abc.def Cookie=session=private-value token=xyz https://x.test/v.mp4?sig=123",
+            "Authorization: Bearer $bearerFixture Cookie=session=$cookieFixture token=$tokenFixture " +
+                "https://x.test/v.mp4?sig=$signatureFixture",
         )
-        assertFalse(value.contains("abc.def"))
-        assertFalse(value.contains("session=private-value"))
-        assertFalse(value.contains("xyz"))
-        assertFalse(value.contains("sig=123"))
+        assertFalse(value.contains(bearerFixture))
+        assertFalse(value.contains("session=$cookieFixture"))
+        assertFalse(value.contains(tokenFixture))
+        assertFalse(value.contains("sig=$signatureFixture"))
         assertTrue(value.contains("<redacted>"))
     }
 }

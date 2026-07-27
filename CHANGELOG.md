@@ -1,3 +1,11 @@
+## XDM Android Phase 42 - Browser bridge release gate
+
+- Added the full Devtool restore, build, test, XPI package, release-artifact, and lint matrix for the complete browser bridge.
+- Added deterministic Dark/AMOLED XPI verification with exact inventory, fixed timestamps, stable identity, minimal permissions, SHA-256 metadata, and distinct theme hashes.
+- Added consolidated Phase 37-42 architecture, secret-surface, MIME-case, route-topology, browser-runtime, and static-reference scans.
+- Added IronFox installation documentation, automated Android resolver checks, and a manual direct/HLS/DASH/blob/iframe device acceptance matrix.
+- Preserved the browser-free Android runtime, six-route topology, Room schema 14, versionCode 21, versionName 0.20.0-rc08, review-first intake, and credential-thin custom URI.
+
 ## XDM Android Phase 41 - Browser bridge settings, diagnostics, and hardening
 
 - Added truthful browser-bridge health for Android scheme ownership, retained SAF access, verified XPI presence/checksum, and app-extension compatibility.

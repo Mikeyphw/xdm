@@ -43,8 +43,19 @@ offline = false
 
 [targets.xdm_android.tasks]
 restore = ["help"]
-build = ["assembleDebug", "assembleBeta", ":app:assembleDebugAndroidTest"]
+build = [
+  "assembleDebug",
+  "assembleBeta",
+  ":app:assembleDebugAndroidTest",
+  ":browser-extension:packageFirefoxExtensionDark",
+  ":browser-extension:packageFirefoxExtensionAmoled",
+  ":browser-extension:verifyFirefoxExtensionReleaseArtifacts",
+]
 test = [
+  ":browser-extension:test",
+  ":browser-extension:jsTest",
+  ":browser-extension:validateFirefoxExtension",
+  ":app:checkBrowserIntegration",
   ":core-model:test",
   ":core-utils:test",
   ":transfer-api:test",

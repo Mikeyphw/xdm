@@ -214,3 +214,7 @@ Phase 39 lets Gradle and XDM Android generate the same validated Firefox extensi
 ### Shared extension theme and compact media FAB
 
 Phase 40 moves the XDM Dark and AMOLED palettes, extension shape values, and motion values into one non-Compose token catalog consumed by both the Android theme and XPI generator. Follow-app exports capture the current app theme and become visibly stale when XDM changes theme. The extension now uses a safe-area-aware 56 px Shadow DOM FAB with candidate and stream-kind badges instead of the former floating card. See `docs/architecture/PHASE-40-SHARED-THEME-FAB.md`.
+
+### Browser bridge release qualification
+
+Phase 42 binds the `xdmdownload` receiver, repository-owned Firefox detector, deterministic Dark/AMOLED XPI generator, shared theme/FAB, and Settings recovery surface into one release gate. Run `bash tools/run-browser-bridge-release-gate.sh --full` in the Android build environment, then complete `docs/browser-extension/DEVICE-ACCEPTANCE.md` on IronFox 152 or newer. Automated success does not replace physical-device sign-off.

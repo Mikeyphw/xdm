@@ -6,19 +6,19 @@ import com.mikeyphw.xdm.android.browserextension.BrowserExtensionSourceContract
 import java.net.URI
 import java.util.Locale
 
-enum class BrowserBridgeSchemeState {
-    Ready,
-    Missing,
-    WrongHandler,
+enum class BrowserBridgeSchemeState(val displayLabel: String) {
+    Ready("Ready"),
+    Missing("Not registered"),
+    WrongHandler("Handled by another app"),
 }
 
-enum class BrowserBridgeSafState {
-    NotConfigured,
-    Ready,
-    PermissionRevoked,
-    ExportMissing,
-    Unreadable,
-    ChecksumMismatch,
+enum class BrowserBridgeSafState(val displayLabel: String) {
+    NotConfigured("Not configured"),
+    Ready("Ready"),
+    PermissionRevoked("Folder permission revoked"),
+    ExportMissing("Export missing"),
+    Unreadable("Export unreadable"),
+    ChecksumMismatch("Checksum mismatch"),
 }
 
 data class BrowserBridgeDiagnosticsPreferences(
@@ -50,8 +50,8 @@ data class BrowserBridgeIntegrationStatus(
 
     fun redactedReport(diagnostics: BrowserBridgeDiagnosticsPreferences): String = buildString {
         appendLine("XDM Browser Bridge")
-        appendLine("Scheme: ${schemeState.name.lowercase(Locale.US)} • $schemeDetail")
-        appendLine("Export access: ${safState.name.lowercase(Locale.US)} • $safDetail")
+        appendLine("Scheme: ${schemeState.displayLabel} • $schemeDetail")
+        appendLine("Export access: ${safState.displayLabel} • $safDetail")
         appendLine("Extension: $detectorVersion • contract $contractVersion")
         if (compatibilityIssues.isEmpty()) appendLine("Compatibility: current")
         else compatibilityIssues.forEach { appendLine("Compatibility: ${BrowserBridgeDiagnosticsRedactor.sanitize(it)}") }

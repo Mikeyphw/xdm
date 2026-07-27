@@ -38,11 +38,20 @@ window = require(
 theme = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmTheme.kt",
     "darkColorScheme(",
-    "Color(0xFF090B0F)",
+    "XdmThemeTokenCatalog",
+    "Color(tokens.background)",
     "surfaceTint = Color.Transparent",
     "successContainer",
     "warningContainer",
     "groupedSurface",
+)
+require(
+    "browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/XdmThemeTokens.kt",
+    "object XdmThemeTokenCatalog",
+    "val Dark",
+    "background = 0xFF090B0F",
+    "val Amoled",
+    "background = 0xFF000000",
 )
 
 activity = require(

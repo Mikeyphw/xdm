@@ -81,3 +81,7 @@ See `docs/MIGRATING-FROM-XDM8.md` and `docs/RELEASE-CHECKLIST.md`.
 ## Phase 41 browser bridge integration
 
 XDM Android now includes truthful browser-extension status, redacted handoff diagnostics, SAF/XPI recovery, and variant-specific IronFox setup guidance. See `app/XDM.Android/docs/architecture/PHASE-41-BROWSER-BRIDGE-INTEGRATION.md`.
+
+## XDM Android browser bridge release gate
+
+The Android project owns its Firefox media bridge source, deterministic XPI generator, XDM-themed FAB, custom `xdmdownload` intake, settings diagnostics, and recovery flow. Phase 42 seals the automated release matrix and documents the remaining physical-device IronFox sign-off. See `app/XDM.Android/docs/architecture/PHASE-42-BROWSER-BRIDGE-RELEASE-GATE.md`.

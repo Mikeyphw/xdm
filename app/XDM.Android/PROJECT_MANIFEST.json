@@ -44,6 +44,9 @@
       37,
       38,
       39,
+      40,
+      41,
+      42,
       43,
       47,
       48
@@ -1639,5 +1642,30 @@
     "browser_runtime_added": false,
     "depends_on": "browser_bridge_phase40_extension_theme_fab",
     "next_overlay": "browser_bridge_phase42_release_gate"
+  },
+  "browser_bridge_phase42_release_gate": {
+    "program": "android_browser_bridge",
+    "contract_version": 1,
+    "contract_document": "docs/architecture/PHASE-42-BROWSER-BRIDGE-RELEASE-GATE.md",
+    "static_validator": "tools/validate-phase-42-browser-bridge-release-gate.py",
+    "full_devtool_matrix": true,
+    "phase37_41_replayed": true,
+    "deterministic_xpi_release_metadata": true,
+    "release_artifact_verifier": "browser-extension/tools/verify_release_artifacts.py",
+    "release_artifact_metadata": "browser-extension/build/outputs/xpi/release-artifacts.json",
+    "browser_runtime_absence_scanned": true,
+    "manifest_mime_case_scanned": true,
+    "static_context_leak_scanned": true,
+    "secret_surface_scanned": true,
+    "device_acceptance_runner": true,
+    "manual_ironfox_signoff_required": true,
+    "minimum_ironfox_version": 152,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "top_level_route_added": false,
+    "browser_runtime_added": false,
+    "depends_on": "browser_bridge_phase41_browser_bridge_integration",
+    "next_overlay": "complete"
   }
 }

@@ -183,9 +183,16 @@ if "if (!enabled && navigationOverride.value.settingsPanel == SettingsPanel.Deve
 
 theme = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmTheme.kt",
-    "XdmAmoledColorScheme",
     "mode: XdmThemeMode = XdmThemeMode.Dark",
-    "if (mode == XdmThemeMode.Amoled)",
+    "themeTokens(mode)",
+    "XdmThemeTokenCatalog.forMode",
+    "Color(tokens.background)",
+)
+require(
+    "browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/XdmThemeTokens.kt",
+    "val Dark",
+    "val Amoled",
+    "background = 0xFF000000",
 )
 main_activity = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",

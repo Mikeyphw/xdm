@@ -55,13 +55,16 @@ jobs:
           python3 tools/validate-phase-39-xpi-export.py
           python3 tools/validate-phase-40-theme-fab.py
           python3 tools/validate-phase-41-browser-bridge-integration.py
+          python3 tools/validate-phase-42-browser-bridge-release-gate.py
           bash tools/run-final-release-gate.sh --ci
       - name: Bootstrap wrapper
         run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.4.1
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
       - name: Lint, test, and package
-        run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug assembleBeta
+        run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug assembleBeta
+      - name: Browser bridge release artifacts
+        run: bash tools/run-browser-bridge-release-gate.sh --verify-artifacts
       - name: Verify packaged aria2 payload
         run: |
           apk="$(find app/build/outputs/apk/beta -maxdepth 1 -type f -name '*.apk' -print -quit)"
@@ -74,4 +77,5 @@ jobs:
             app/XDM.Android/app/build/outputs/apk/debug/*.apk
             app/XDM.Android/app/build/outputs/apk/beta/*.apk
             app/XDM.Android/browser-extension/build/outputs/xpi/*.xpi
+            app/XDM.Android/browser-extension/build/outputs/xpi/release-artifacts.json
           if-no-files-found: error

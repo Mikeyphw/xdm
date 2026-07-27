@@ -56,6 +56,7 @@ validators=(
   tools/validate-phase-39-xpi-export.py
   tools/validate-phase-40-theme-fab.py
   tools/validate-phase-41-browser-bridge-integration.py
+  tools/validate-phase-42-browser-bridge-release-gate.py
   tools/validate-browser-removal-phase-0-1.py
   tools/validate-browser-removal-phase-2.py
   tools/validate-browser-removal-phase-3.py
@@ -74,7 +75,7 @@ for validator in "${validators[@]}"; do
   python3 "$validator"
 done
 
-FULL_GRADLE_GATE='./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :media:test :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug assembleBeta'
+FULL_GRADLE_GATE='./gradlew -Pxdm.requireAria2Runtime=true --stacktrace :browser-extension:test :browser-extension:jsTest :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts :app:checkBrowserIntegration :core-model:test :core-utils:test :media:test :transfer-api:test :browser-integration:testDebugUnitTest :storage:testDebugUnitTest :transfer-native:testDebugUnitTest :transfer-aria2:test :scheduler:testDebugUnitTest :persistence:testDebugUnitTest :app:testDebugUnitTest lintDebug lintBeta :app:assembleDebugAndroidTest assembleDebug assembleBeta'
 
 if [[ "${1:-}" == "--ci" ]]; then
   echo "CI final static gate passed"
@@ -89,5 +90,5 @@ Run the full build/test/lint gate in the target Android build environment:
 $FULL_GRADLE_GATE
 
 UIX R6 seals the dark adaptive five-destination experience with 48 dp touch targets, stable semantics, 200% font-scale qualification, compact/medium/expanded layout contracts, lazy developer planners, and consumer-safe source scans.
-The browser-free product boundary remains complete only after the full target-environment Gradle gate, device smoke suite, clean-install and upgrade checks, and manual PackageManager validation pass.
+The browser-free product boundary remains complete only after the full target-environment Gradle gate, clean-install and upgrade checks, and manual PackageManager validation pass. Device acceptance remains a separate IronFox physical-device sign-off documented in docs/browser-extension/DEVICE-ACCEPTANCE.md.
 EOF2

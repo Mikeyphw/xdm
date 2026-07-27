@@ -68,7 +68,7 @@ assert.strictEqual(events.message.listeners.length, 1, "page observation receive
     requestHeaders: [
       { name: "User-Agent", value: "IronFox test" },
       { name: "Referer", value: "https://page.example/watch/7" },
-      { name: "Authorization", value: "Bearer test-token" }
+      { name: "Authorization", value: "Bearer <redacted>" }
     ]
   });
 

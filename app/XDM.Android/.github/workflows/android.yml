@@ -77,6 +77,7 @@ jobs:
           python3 tools/validate-phase-39-xpi-export.py
           python3 tools/validate-phase-40-theme-fab.py
           python3 tools/validate-phase-41-browser-bridge-integration.py
+          python3 tools/validate-phase-42-browser-bridge-release-gate.py
           python3 tools/validate-browser-removal-phase-0-1.py
           python3 tools/validate-browser-removal-phase-2.py
           python3 tools/validate-browser-removal-phase-3.py
@@ -91,7 +92,9 @@ jobs:
           python3 tools/validate-phase-8e-compose-storage-hotfix.py
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
-      - run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug assembleBeta
+      - run: ./gradlew -Pxdm.requireAria2Runtime=true --stacktrace :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug assembleBeta
+      - name: Browser bridge release artifacts
+        run: bash tools/run-browser-bridge-release-gate.sh --verify-artifacts
       - name: Verify packaged aria2 payload
         run: |
           apk="$(find app/build/outputs/apk/beta -maxdepth 1 -type f -name '*.apk' -print -quit)"
@@ -99,5 +102,12 @@ jobs:
           python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --apk "$apk"
       - name: Final public release gate
         run: bash tools/run-final-release-gate.sh --ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xdm-android-browser-extension
+          path: |
+            browser-extension/build/outputs/xpi/*.xpi
+            browser-extension/build/outputs/xpi/release-artifacts.json
+          if-no-files-found: error
       - name: Smoke beta artifact helper
         run: bash -n tools/build-release-artifacts.sh

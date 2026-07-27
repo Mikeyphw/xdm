@@ -45,7 +45,7 @@ val jsTest by tasks.registering(Exec::class) {
     description = "Run the repository-owned detector, candidate-store, and handoff JavaScript tests."
     commandLine(
         "bash", "-lc",
-        "node tests/test_detector.js && node tests/test_handoff.js && node tests/test_fab.js && node tests/test_background.js",
+        "node tests/test_detector.js && node tests/test_handoff.js && node tests/test_fab.js && node tests/test_background.js && node tests/test_release_gate.js",
     )
 }
 
@@ -93,6 +93,24 @@ val packageFirefoxExtension by tasks.registering {
     dependsOn(packageFirefoxExtensionDark)
 }
 
+val verifyFirefoxExtensionReleaseArtifacts by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Verify deterministic Dark and AMOLED release XPIs and write release-artifacts.json."
+    dependsOn(packageFirefoxExtensionDark, packageFirefoxExtensionAmoled)
+    val metadataFile = xpiOutput.map { it.file("release-artifacts.json") }
+    inputs.files(
+        xpiOutput.map { it.file("XDM-Android-Firefox-1.1.0-release-dark.xpi") },
+        xpiOutput.map { it.file("XDM-Android-Firefox-1.1.0-release-amoled.xpi") },
+    )
+    outputs.file(metadataFile)
+    commandLine(
+        "python3",
+        layout.projectDirectory.file("tools/verify_release_artifacts.py").asFile.absolutePath,
+        "--output-dir", xpiOutput.get().asFile.absolutePath,
+        "--metadata", metadataFile.get().asFile.absolutePath,
+    )
+}
+
 tasks.named("check") {
-    dependsOn(validateFirefoxExtension)
+    dependsOn(validateFirefoxExtension, verifyFirefoxExtensionReleaseArtifacts)
 }

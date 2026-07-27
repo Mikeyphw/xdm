@@ -44003,6 +44003,522 @@
         ]
       },
       "history_id": "89a75c51bf004c8fac399d4620f9df33"
+    },
+    {
+      "applied_at": "2026-07-27T01:03:51.792589Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_phase42_browser_bridge_release_gate_overlay.zip",
+      "artifact_name": "xdm_android_phase42_browser_bridge_release_gate_overlay.zip",
+      "type": "overlay",
+      "sha256": "1274f067182b91d933bac168b25ca7a64876189ac16d353dbc9f22c2d8ee686d",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "Seal XDM Android browser bridge release gate",
+      "commit_hash": "",
+      "file_count": 27,
+      "change_counts": {
+        "add": 9,
+        "modify": 18
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 42 Browser Bridge Release Gate",
+        "description": "Seals the complete XDM Android browser bridge with the full Devtool Android and Firefox extension matrix, deterministic Dark and AMOLED XPI release metadata, consolidated architecture and secret-surface scans, CI release qualification, human-readable diagnostics, and physical-device acceptance tooling.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": ".devtool.toml",
+              "action": "modify",
+              "sha256": "38d576974b7280ee97db821c150aaf0dfea41b092c00c984b735e7e2d41cdac2",
+              "size": 2467,
+              "source_sha256": "6308a4afd248bcfc282bb37f99bb438b29bbd0c87668a1119f60e3b30e033775"
+            },
+            {
+              "path": ".github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "a588c358224a16cde40ffcf901a1a36cd23e65ea4c5dfbd1046cfa632bf395b8",
+              "size": 3559,
+              "source_sha256": "69dcc90b02bd464c6f12df88d1fa2c8061590274481b752e36eec557c3a90572"
+            },
+            {
+              "path": "APPLY_DIRECT_PATCH.md",
+              "action": "modify",
+              "sha256": "e6627070fe341567aa3cfbff901a6c95951939e64cde5511b7d06178beabc913",
+              "size": 3647,
+              "source_sha256": "683998c34f264af2534d33928254cae30fa50a722e935c4836b36fcb13cd50b0"
+            },
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "998acba827ca2b27c224bdb1e80bf263810d89659862889535ef7c310710c388",
+              "size": 24253,
+              "source_sha256": "749725ab705bbdd12c1f85ee6d704007e100d00cbde3722c521dce2692f6911f"
+            },
+            {
+              "path": "DEVTOOL_OVERLAY.md",
+              "action": "modify",
+              "sha256": "84e0f6cdfe727a906d2917c2bcb55692d1f28423043cba76e8cb5d3e7b2bbf74",
+              "size": 6134,
+              "source_sha256": "596a2fb6649fa94737a604b573c06ff6f0c6c436129b6a20b83e6f54306e70a9"
+            },
+            {
+              "path": "README.md",
+              "action": "modify",
+              "sha256": "47518ffafcaa93b3fb534d0c2d01415f08d5e61166c0f46a49181a07c457324e",
+              "size": 3309,
+              "source_sha256": "dd5c3a8f3e85c4eea971d745085b93f64269b68e3df3bd432766ac8977f89471"
+            },
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "0a17db611edb1e1621acb5c907f9d317f1546303a058da3608da443f9fcb1380",
+              "size": 5982,
+              "source_sha256": "d35900768b395452787bdf595464e50db31ae79d5915254b055d290b6ccf4b84"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "d6541220e8f4b50f8827a38a497f751cdaf44149035c884152460fb532bb3547",
+              "size": 56950,
+              "source_sha256": "d4095f248d9f519a1a4998b1b422cc528bc3ca1a0448b23b2921670cc98be625"
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "sha256": "9a5cb01f01f3760d82d5688a1a767475e7db96f8cf8771e55cc72880ff8cc2e3",
+              "size": 21318,
+              "source_sha256": "d2e27905c4b6dca67b6ac21c441a829b01186a2d894dfc30c670775b87ce9038"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserBridgeIntegrationModels.kt",
+              "action": "modify",
+              "sha256": "a84ac93d6959676241d8bd8181539d7b5bfb6ffadd665c86cb63b5ee7c9c3238",
+              "size": 5538,
+              "source_sha256": "13aaca11b2b3ba2ec21d8bf302796237453a75d5667d406beac8f40b132bde5f"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/BrowserExtensionSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "ad7d81fde2296c26dfb701589d0f40e8f7da026286290ce42a63b01851fbfd25",
+              "size": 12226,
+              "source_sha256": "d43b86c6e71337543e3afb7ffbdf85f98399f1f7951d9ba9c6e9ec4a3ba1bc36"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgeDiagnosticsRedactorTest.kt",
+              "action": "modify",
+              "sha256": "ced9ec3605d98915909b922620085c588bc0bac42179dde32e228715ac9599f9",
+              "size": 1917,
+              "source_sha256": "0b85426b5069d9d7a2dd35e333e36dbdea1bc243c540a2bed08e5dbfff71df85"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/build.gradle.kts",
+              "action": "modify",
+              "sha256": "605157f8a54899d348b6306913ccd556022e9118acddf1d82b4d249ebd65bcaf",
+              "size": 4278,
+              "source_sha256": "4668021cc205e12eb30403eec8f0a5ef8b82ee641761ffff513ffa918f0e8b4a"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_background.js",
+              "action": "modify",
+              "sha256": "e7968cb8e6f5b74fced33b7d2079916d3e23efb489018a27f7a243036971167b",
+              "size": 4533,
+              "source_sha256": "79d954c9dc5629d3e4fbca89a1a4209cffc76d42a135998eb5acd0feb27a8293"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_release_gate.js",
+              "action": "add",
+              "sha256": "2e0958e53dc5e975755a8b9447c1c1f2a5029421e95c439dbb1e6019ed91d44b",
+              "size": 2573
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tools/verify_release_artifacts.py",
+              "action": "add",
+              "sha256": "f35881027f0389408a1bae561edffb9192b5e9d8ac91b31789d87a0c650fa99d",
+              "size": 5056
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-42-BROWSER-BRIDGE-RELEASE-GATE.md",
+              "action": "add",
+              "sha256": "8b2a6a2e1292525160a6f0d71984d0eed3d1aea5db635c425888b2db4fe69aae",
+              "size": 2864
+            },
+            {
+              "path": "app/XDM.Android/docs/browser-extension/DEVICE-ACCEPTANCE.md",
+              "action": "add",
+              "sha256": "16cd6a920ac535eb71184589b25431b12e5d3e78649cdf0b0080865445c81613",
+              "size": 1865
+            },
+            {
+              "path": "app/XDM.Android/docs/browser-extension/IRONFOX-INSTALLATION.md",
+              "action": "add",
+              "sha256": "767ddf9c84e7b1eec40c90b759997b43408c4d5f641e90ccf1679c7c5eb72b30",
+              "size": 1319
+            },
+            {
+              "path": "app/XDM.Android/docs/browser-extension/README.md",
+              "action": "add",
+              "sha256": "47dcf923c655adfc675a0579525d18581425d001aaa93e3aadff3d40087fb8b3",
+              "size": 1467
+            },
+            {
+              "path": "app/XDM.Android/tools/run-browser-bridge-device-acceptance.sh",
+              "action": "add",
+              "sha256": "f1b87b7504b0abaa6d2e483ece9a9dce1ca014ef294d5e9e38676f7441e18759",
+              "size": 4832
+            },
+            {
+              "path": "app/XDM.Android/tools/run-browser-bridge-release-gate.sh",
+              "action": "add",
+              "sha256": "f627221235a8b4592e8dc0c3f776feee88258c34d41420a6825bedef439d1847",
+              "size": 3288
+            },
+            {
+              "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+              "action": "modify",
+              "sha256": "61bb6c2ab9b4ae77e3456c3c72dc568bf6d9f147cfa5c43812cbe1679e9aa9f7",
+              "size": 4360,
+              "source_sha256": "71ff9ec20d73f0578211f2041fd74113fd279245950b9e6e4d0258e843119624"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-42-browser-bridge-release-gate.py",
+              "action": "add",
+              "sha256": "34fd1058fb3e504806cf9bd36013d6e1ad249da3322ea0ef6761f2bffece017e",
+              "size": 12553
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-uix-r2-flat-dark-shell.py",
+              "action": "modify",
+              "sha256": "cfb018c685cd69a307c6420096a16d9b83d1e5a743200e1ddd8fdfb9bab28ac9",
+              "size": 6692,
+              "source_sha256": "ab2d949767029790583d65ef021bc46422294189eaafb3ac83b1e811c3774bdb"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-uix-r5-activity-settings-developer-boundary.py",
+              "action": "modify",
+              "sha256": "0f0ee5d9c53521e179d96da119c4ccc402face3a5b67c55a35224323a400e4da",
+              "size": 10769,
+              "source_sha256": "87fe87d946e7b4587f223a445d5761a9b975e6fe484cdcb4cf4bd9709dfcf67b"
+            },
+            {
+              "path": "docs/RELEASE-CHECKLIST.md",
+              "action": "modify",
+              "sha256": "b09f7f9ce877fb8e3f1e6d44803f35b88cb22ae2865f339a99b00efcec4a5e88",
+              "size": 4678,
+              "source_sha256": "72838ee74fb90cf41528e63525ffce785de1adc5c2491163241e5366d0150413"
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Seal XDM Android browser bridge release gate"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate_phase42_browser_bridge_release_gate.sh",
+            "runner": "bash",
+            "sha256": "a45a5cd340cc9f2736b9e82e55a402b86b06d63569ec67ea5a3fc573098402b5",
+            "timeout_seconds": 1800
+          },
+          "expected": {
+            "restore": "success",
+            "build": "success",
+            "tests": "success",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Depends on the landed Phase 41 browser bridge settings, diagnostics, and recovery overlay.",
+          "This final overlay requires the complete configured Devtool restore, build, test, XPI package, artifact verification, and lint matrix and forbids deferred validation.",
+          "Dark and AMOLED XPIs are checked for exact inventory, fixed timestamps, stable identity, minimal permissions, generated theme and scheme contracts, distinct hashes, and release-artifacts.json metadata.",
+          "The consolidated validator replays Phases 37 through 41 and scans for browser runtime reintroduction, route drift, uppercase MIME declarations, static Android references, and raw secret signatures.",
+          "Legacy UIX R2 and R5 validators are updated for the shared Phase 40 theme-token architecture, and browser bridge diagnostics render stable human-readable labels instead of enum names.",
+          "Android resolver automation and the manual IronFox 152+ matrix remain physical-device release evidence after the code gate lands.",
+          "No top-level route, Android browser runtime, Room migration, transfer-engine behavior, app version, or custom-scheme credential payload is introduced."
+        ]
+      },
+      "history_id": "6af16c29d4ad42ee8d2422279a553d9b"
+    },
+    {
+      "applied_at": "2026-07-27T01:04:39.674153Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_phase42_browser_bridge_release_gate_overlay.zip",
+      "artifact_name": "xdm_android_phase42_browser_bridge_release_gate_overlay.zip",
+      "type": "overlay",
+      "sha256": "1274f067182b91d933bac168b25ca7a64876189ac16d353dbc9f22c2d8ee686d",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Seal XDM Android browser bridge release gate",
+      "commit_hash": "",
+      "file_count": 27,
+      "change_counts": {
+        "add": 9,
+        "modify": 18
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 42 Browser Bridge Release Gate",
+        "description": "Seals the complete XDM Android browser bridge with the full Devtool Android and Firefox extension matrix, deterministic Dark and AMOLED XPI release metadata, consolidated architecture and secret-surface scans, CI release qualification, human-readable diagnostics, and physical-device acceptance tooling.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": ".devtool.toml",
+              "action": "modify",
+              "sha256": "38d576974b7280ee97db821c150aaf0dfea41b092c00c984b735e7e2d41cdac2",
+              "size": 2467,
+              "source_sha256": "6308a4afd248bcfc282bb37f99bb438b29bbd0c87668a1119f60e3b30e033775"
+            },
+            {
+              "path": ".github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "a588c358224a16cde40ffcf901a1a36cd23e65ea4c5dfbd1046cfa632bf395b8",
+              "size": 3559,
+              "source_sha256": "69dcc90b02bd464c6f12df88d1fa2c8061590274481b752e36eec557c3a90572"
+            },
+            {
+              "path": "APPLY_DIRECT_PATCH.md",
+              "action": "modify",
+              "sha256": "e6627070fe341567aa3cfbff901a6c95951939e64cde5511b7d06178beabc913",
+              "size": 3647,
+              "source_sha256": "683998c34f264af2534d33928254cae30fa50a722e935c4836b36fcb13cd50b0"
+            },
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "998acba827ca2b27c224bdb1e80bf263810d89659862889535ef7c310710c388",
+              "size": 24253,
+              "source_sha256": "749725ab705bbdd12c1f85ee6d704007e100d00cbde3722c521dce2692f6911f"
+            },
+            {
+              "path": "DEVTOOL_OVERLAY.md",
+              "action": "modify",
+              "sha256": "84e0f6cdfe727a906d2917c2bcb55692d1f28423043cba76e8cb5d3e7b2bbf74",
+              "size": 6134,
+              "source_sha256": "596a2fb6649fa94737a604b573c06ff6f0c6c436129b6a20b83e6f54306e70a9"
+            },
+            {
+              "path": "README.md",
+              "action": "modify",
+              "sha256": "47518ffafcaa93b3fb534d0c2d01415f08d5e61166c0f46a49181a07c457324e",
+              "size": 3309,
+              "source_sha256": "dd5c3a8f3e85c4eea971d745085b93f64269b68e3df3bd432766ac8977f89471"
+            },
+            {
+              "path": "app/XDM.Android/.github/workflows/android.yml",
+              "action": "modify",
+              "sha256": "0a17db611edb1e1621acb5c907f9d317f1546303a058da3608da443f9fcb1380",
+              "size": 5982,
+              "source_sha256": "d35900768b395452787bdf595464e50db31ae79d5915254b055d290b6ccf4b84"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "d6541220e8f4b50f8827a38a497f751cdaf44149035c884152460fb532bb3547",
+              "size": 56950,
+              "source_sha256": "d4095f248d9f519a1a4998b1b422cc528bc3ca1a0448b23b2921670cc98be625"
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "sha256": "9a5cb01f01f3760d82d5688a1a767475e7db96f8cf8771e55cc72880ff8cc2e3",
+              "size": 21318,
+              "source_sha256": "d2e27905c4b6dca67b6ac21c441a829b01186a2d894dfc30c670775b87ce9038"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserBridgeIntegrationModels.kt",
+              "action": "modify",
+              "sha256": "a84ac93d6959676241d8bd8181539d7b5bfb6ffadd665c86cb63b5ee7c9c3238",
+              "size": 5538,
+              "source_sha256": "13aaca11b2b3ba2ec21d8bf302796237453a75d5667d406beac8f40b132bde5f"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/BrowserExtensionSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "ad7d81fde2296c26dfb701589d0f40e8f7da026286290ce42a63b01851fbfd25",
+              "size": 12226,
+              "source_sha256": "d43b86c6e71337543e3afb7ffbdf85f98399f1f7951d9ba9c6e9ec4a3ba1bc36"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgeDiagnosticsRedactorTest.kt",
+              "action": "modify",
+              "sha256": "ced9ec3605d98915909b922620085c588bc0bac42179dde32e228715ac9599f9",
+              "size": 1917,
+              "source_sha256": "0b85426b5069d9d7a2dd35e333e36dbdea1bc243c540a2bed08e5dbfff71df85"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/build.gradle.kts",
+              "action": "modify",
+              "sha256": "605157f8a54899d348b6306913ccd556022e9118acddf1d82b4d249ebd65bcaf",
+              "size": 4278,
+              "source_sha256": "4668021cc205e12eb30403eec8f0a5ef8b82ee641761ffff513ffa918f0e8b4a"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_background.js",
+              "action": "modify",
+              "sha256": "e7968cb8e6f5b74fced33b7d2079916d3e23efb489018a27f7a243036971167b",
+              "size": 4533,
+              "source_sha256": "79d954c9dc5629d3e4fbca89a1a4209cffc76d42a135998eb5acd0feb27a8293"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_release_gate.js",
+              "action": "add",
+              "sha256": "2e0958e53dc5e975755a8b9447c1c1f2a5029421e95c439dbb1e6019ed91d44b",
+              "size": 2573
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tools/verify_release_artifacts.py",
+              "action": "add",
+              "sha256": "f35881027f0389408a1bae561edffb9192b5e9d8ac91b31789d87a0c650fa99d",
+              "size": 5056
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-42-BROWSER-BRIDGE-RELEASE-GATE.md",
+              "action": "add",
+              "sha256": "8b2a6a2e1292525160a6f0d71984d0eed3d1aea5db635c425888b2db4fe69aae",
+              "size": 2864
+            },
+            {
+              "path": "app/XDM.Android/docs/browser-extension/DEVICE-ACCEPTANCE.md",
+              "action": "add",
+              "sha256": "16cd6a920ac535eb71184589b25431b12e5d3e78649cdf0b0080865445c81613",
+              "size": 1865
+            },
+            {
+              "path": "app/XDM.Android/docs/browser-extension/IRONFOX-INSTALLATION.md",
+              "action": "add",
+              "sha256": "767ddf9c84e7b1eec40c90b759997b43408c4d5f641e90ccf1679c7c5eb72b30",
+              "size": 1319
+            },
+            {
+              "path": "app/XDM.Android/docs/browser-extension/README.md",
+              "action": "add",
+              "sha256": "47dcf923c655adfc675a0579525d18581425d001aaa93e3aadff3d40087fb8b3",
+              "size": 1467
+            },
+            {
+              "path": "app/XDM.Android/tools/run-browser-bridge-device-acceptance.sh",
+              "action": "add",
+              "sha256": "f1b87b7504b0abaa6d2e483ece9a9dce1ca014ef294d5e9e38676f7441e18759",
+              "size": 4832
+            },
+            {
+              "path": "app/XDM.Android/tools/run-browser-bridge-release-gate.sh",
+              "action": "add",
+              "sha256": "f627221235a8b4592e8dc0c3f776feee88258c34d41420a6825bedef439d1847",
+              "size": 3288
+            },
+            {
+              "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+              "action": "modify",
+              "sha256": "61bb6c2ab9b4ae77e3456c3c72dc568bf6d9f147cfa5c43812cbe1679e9aa9f7",
+              "size": 4360,
+              "source_sha256": "71ff9ec20d73f0578211f2041fd74113fd279245950b9e6e4d0258e843119624"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-42-browser-bridge-release-gate.py",
+              "action": "add",
+              "sha256": "34fd1058fb3e504806cf9bd36013d6e1ad249da3322ea0ef6761f2bffece017e",
+              "size": 12553
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-uix-r2-flat-dark-shell.py",
+              "action": "modify",
+              "sha256": "cfb018c685cd69a307c6420096a16d9b83d1e5a743200e1ddd8fdfb9bab28ac9",
+              "size": 6692,
+              "source_sha256": "ab2d949767029790583d65ef021bc46422294189eaafb3ac83b1e811c3774bdb"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-uix-r5-activity-settings-developer-boundary.py",
+              "action": "modify",
+              "sha256": "0f0ee5d9c53521e179d96da119c4ccc402face3a5b67c55a35224323a400e4da",
+              "size": 10769,
+              "source_sha256": "87fe87d946e7b4587f223a445d5761a9b975e6fe484cdcb4cf4bd9709dfcf67b"
+            },
+            {
+              "path": "docs/RELEASE-CHECKLIST.md",
+              "action": "modify",
+              "sha256": "b09f7f9ce877fb8e3f1e6d44803f35b88cb22ae2865f339a99b00efcec4a5e88",
+              "size": 4678,
+              "source_sha256": "72838ee74fb90cf41528e63525ffce785de1adc5c2491163241e5366d0150413"
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Seal XDM Android browser bridge release gate"
+          }
+        },
+        "validation": {
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate_phase42_browser_bridge_release_gate.sh",
+            "runner": "bash",
+            "sha256": "a45a5cd340cc9f2736b9e82e55a402b86b06d63569ec67ea5a3fc573098402b5",
+            "timeout_seconds": 1800
+          },
+          "expected": {
+            "restore": "success",
+            "build": "success",
+            "tests": "success",
+            "maximum_warnings": 0
+          }
+        },
+        "notes": [
+          "Depends on the landed Phase 41 browser bridge settings, diagnostics, and recovery overlay.",
+          "This final overlay requires the complete configured Devtool restore, build, test, XPI package, artifact verification, and lint matrix and forbids deferred validation.",
+          "Dark and AMOLED XPIs are checked for exact inventory, fixed timestamps, stable identity, minimal permissions, generated theme and scheme contracts, distinct hashes, and release-artifacts.json metadata.",
+          "The consolidated validator replays Phases 37 through 41 and scans for browser runtime reintroduction, route drift, uppercase MIME declarations, static Android references, and raw secret signatures.",
+          "Legacy UIX R2 and R5 validators are updated for the shared Phase 40 theme-token architecture, and browser bridge diagnostics render stable human-readable labels instead of enum names.",
+          "Android resolver automation and the manual IronFox 152+ matrix remain physical-device release evidence after the code gate lands.",
+          "No top-level route, Android browser runtime, Room migration, transfer-engine behavior, app version, or custom-scheme credential payload is introduced."
+        ]
+      },
+      "history_id": "756a9ce88fa5433e951f0d4d7978f5e9"
     }
   ]
 }

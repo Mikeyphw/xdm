@@ -1,3 +1,21 @@
+# XDM Android Phase 42 browser bridge release gate overlay
+
+## Included
+
+- Full Devtool restore, build, test, XPI package, release-artifact, and lint validation.
+- Consolidated Phase 37-42 architecture, security, manifest, route, browser-runtime, and static-reference contracts.
+- Deterministic Dark and AMOLED XPI release metadata with SHA-256.
+- IronFox installation, Android resolver automation, and manual device acceptance documentation.
+- No new Android browser runtime, route, Room migration, transfer-engine behavior, or app version change.
+
+## Validation policy
+
+Validation is required, cannot be deferred, and rolls back atomically on any static, Gradle, XPI, test, lint, or packaging failure. Physical-device IronFox acceptance remains a release sign-off after the overlay lands.
+
+## Apply
+
+Use Devtool with `--validate`. The schema-v2 artifact owns its commit message; do not add a CLI `--commit` flag.
+
 # XDM Android Phase 40 shared theme and themed FAB overlay
 
 ## Included

@@ -62,3 +62,16 @@ The schema-v2 artifact owns the commit message `Add deterministic XDM Firefox XP
 ## Phase 41 browser bridge integration
 
 Apply `xdm_android_phase41_browser_bridge_integration_overlay.zip` after Phase 40. The artifact owns the commit message `Add browser bridge settings diagnostics and recovery` and runs the focused Phase 37–41 validators plus browser-extension and Android unit tests.
+
+## Phase 42 browser bridge release gate
+
+Apply `xdm_android_phase42_browser_bridge_release_gate_overlay.zip` only after Phase 41 has landed. Use Devtool with `--validate`; the artifact forbids deferred validation and owns the commit message `Seal XDM Android browser bridge release gate`.
+
+```bash
+cd "$HOME/Code/xdm" && \
+  devtool --copy --auto-hud --hud-mode desktop-window --yes \
+  -r "$HOME/Code/xdm" \
+  --target xdm_android \
+  apply-overlay "$HOME/Downloads/xdm_android_phase42_browser_bridge_release_gate_overlay.zip" \
+  --validate
+```

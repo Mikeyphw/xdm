@@ -197,8 +197,8 @@ internal fun BrowserExtensionSettingsScreen(
         item {
             XdmListCard {
                 XdmCardTitle("Redacted diagnostics")
-                XdmMetadataText("Scheme registration: ${health.schemeState.name}")
-                XdmMetadataText("SAF state: ${health.safState.name}")
+                XdmMetadataText("Scheme registration: ${health.schemeState.displayLabel}")
+                XdmMetadataText("SAF state: ${health.safState.displayLabel}")
                 XdmMetadataText(
                     "Last accepted link: ${diagnostics.lastAcceptedSummary.ifBlank { "None recorded" }}${diagnosticTime(diagnostics.lastAcceptedEpochMs)}",
                     maxLines = 4,
