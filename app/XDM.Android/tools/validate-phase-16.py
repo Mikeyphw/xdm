@@ -64,13 +64,13 @@ if not version_code_match or int(version_code_match.group(1)) < 17:
 version_name_match = re.search(r'versionName\s*=\s*"0\.(\d+)\.0-(?:alpha01|rc\d+)"', build_gradle)
 if not version_name_match or int(version_name_match.group(1)) < 16:
     errors.append("app/build.gradle.kts versionName is older than 0.16.0-alpha01/rc01")
-for needle in ['applicationId = "com.mikeyphw.xdm.android"', 'applicationIdSuffix = ".beta"', 'applicationIdSuffix = ".debug"']:
+for needle in ['applicationId = "com.mikeyphw.xdm.android"', 'applicationIdSuffix = ".debug"']:
     if needle not in build_gradle:
         errors.append(f"app/build.gradle.kts missing {needle!r}")
 
 require_text("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt", "ReleaseInstallReadinessGate")
 require_text("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt", "InstallUpdateReadinessReport")
-require_text("core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModelsTest.kt", "cleanBetaReadinessReportHasNoBlockingChecks")
+require_text("core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModelsTest.kt", "cleanInstallReadinessReportHasNoBlockingChecks")
 require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt", "ReleaseInstallReadinessGate.evaluate")
 require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Update compatibility")
 require_text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt", "Portable settings snapshot")
@@ -85,7 +85,7 @@ workflow = require_file(".github/workflows/android.yml")
 for validator in ["validate-phase-11.py", "validate-phase-12.py", "validate-phase-13.py", "validate-phase-14.py", "validate-phase-15.py", "validate-phase-16.py"]:
     if validator not in workflow:
         errors.append(f"Android CI is missing {validator}")
-for task in ["lintBeta", "assembleBeta", "verify-aria2-runtime.py"]:
+for task in ["lintDebug", "assembleDebug", "verify-aria2-runtime.py"]:
     if task not in workflow:
         errors.append(f"Android CI is missing {task}")
 

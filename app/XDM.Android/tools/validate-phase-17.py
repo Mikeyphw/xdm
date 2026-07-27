@@ -67,7 +67,6 @@ if not version_name_match or int(version_name_match.group(1)) < 17:
     errors.append("app/build.gradle.kts missing a 0.17+ release-candidate versionName")
 for needle in [
     'applicationId = "com.mikeyphw.xdm.android"',
-    'applicationIdSuffix = ".beta"',
     'applicationIdSuffix = ".debug"',
     'warningsAsErrors = true',
 ]:
@@ -88,7 +87,7 @@ workflow = require_file(".github/workflows/android.yml")
 for validator in ["validate-phase-13.py", "validate-phase-14.py", "validate-phase-15.py", "validate-phase-16.py", "validate-phase-17.py"]:
     if validator not in workflow:
         errors.append(f"Android CI is missing {validator}")
-for task in ["lintBeta", "assembleBeta", "verify-aria2-runtime.py", "run-final-release-gate.sh"]:
+for task in ["lintDebug", "assembleDebug", "verify-aria2-runtime.py", "run-final-release-gate.sh"]:
     if task not in workflow:
         errors.append(f"Android CI is missing {task}")
 

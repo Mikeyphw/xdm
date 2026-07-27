@@ -32,7 +32,7 @@ The final validator and tests lock:
 The target Android environment must run:
 
 ```bash
-./gradlew -Pxdm.requireAria2Runtime=true --stacktrace   lintDebug lintBeta   :media:test :transfer-api:test :storage:test   :transfer-native:test :transfer-aria2:test :scheduler:test   :persistence:testDebugUnitTest testDebugUnitTest   :app:assembleDebugAndroidTest assembleDebug assembleBeta
+./gradlew -Pxdm.requireAria2Runtime=true --stacktrace   lintDebug   :media:test :transfer-api:test :storage:test   :transfer-native:test :transfer-aria2:test :scheduler:test   :persistence:testDebugUnitTest testDebugUnitTest   :app:assembleDebugAndroidTest assembleDebug
 ```
 
 The Android test APK is assembled so the PackageManager non-browser test remains compile-checked. The final manual release pass should execute that instrumentation test on a device or emulator.

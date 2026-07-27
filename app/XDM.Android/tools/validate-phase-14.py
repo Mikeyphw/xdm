@@ -40,7 +40,7 @@ except (TypeError, ValueError):
     next_phase = 999 if str(next_phase_raw).lower() in {"complete", "post17-parity"} else 0
 if next_phase < 15 and str(next_phase_raw).lower() not in {"automation-rule-editor-and-foreground-post-processing", "complete", "post17-parity"}:
     errors.append("PROJECT_MANIFEST next_phase is older than 15")
-for key in ["privacy_safe_diagnostics", "redacted_diagnostic_summary", "release_gate_script", "beta_build_type_retained"]:
+for key in ["privacy_safe_diagnostics", "redacted_diagnostic_summary", "release_gate_script"]:
     if release.get(key) is not True:
         errors.append(f"release_security_hardening.{key} is not true")
 if release.get("schema_version_unchanged") != 14:
@@ -50,7 +50,6 @@ if release.get("top_level_route_added") is not False:
 
 build_gradle = require_file("app/build.gradle.kts")
 for needle in [
-    'create("beta")',
     'signingConfigs',
     'warningsAsErrors = true',
 ]:

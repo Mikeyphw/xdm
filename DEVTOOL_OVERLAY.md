@@ -14,7 +14,7 @@ Validation is required, cannot be deferred, and rolls back atomically on any sta
 
 ## Apply
 
-Use Devtool with `--validate`. The schema-v2 artifact owns its commit message; do not add a CLI `--commit` flag.
+Use Devtool with `--validate`. The schema-v3 artifact owns its commit message; do not add a CLI `--commit` flag.
 
 # XDM Android Phase 40 shared theme and themed FAB overlay
 
@@ -33,13 +33,13 @@ The embedded validator replays Phases 37 through 40 static contracts, JavaScript
 
 ## Apply
 
-Use Devtool with `--validate`. The schema-v2 artifact owns its commit message; do not add a CLI `--commit` flag.
+Use Devtool with `--validate`. The schema-v3 artifact owns its commit message; do not add a CLI `--commit` flag.
 
 # XDM Android Phase 37 browser scheme contract overlay
 
 ## Included
 
-- Variant-specific `xdmdownload`, `xdmdownload-beta`, and `xdmdownload-debug` manifest contracts.
+- Variant-specific `xdmdownload` and `xdmdownload-debug` manifest contracts.
 - A pure-Kotlin version-1 parser in `browser-integration`.
 - `capture` routing to Media review and `add` routing to Add Download.
 - Strict inner URL policy, payload bounds, credential rejection, and no sensitive-header transport.
@@ -52,7 +52,7 @@ The embedded Devtool validator runs the Phase 37 static validator plus focused G
 
 ## Apply
 
-Use Devtool with `--validate`. The schema-v2 artifact owns its commit message; do not add a CLI `--commit` flag.
+Use Devtool with `--validate`. The schema-v3 artifact owns its commit message; do not add a CLI `--commit` flag.
 
 # XDM Android Phase 38 repository-owned Firefox extension overlay
 
@@ -88,9 +88,19 @@ The embedded validator runs the Phase 37 through Phase 39 static contracts, Java
 
 ## Apply
 
-Use Devtool with `--validate`. The schema-v2 artifact owns its commit message; do not add a CLI `--commit` flag.
+Use Devtool with `--validate`. The schema-v3 artifact owns its commit message; do not add a CLI `--commit` flag.
 
 
 ## Phase 41 browser bridge integration
 
 Apply `xdm_android_phase41_browser_bridge_integration_overlay.zip` after Phase 40. The artifact owns the commit message `Add browser bridge settings diagnostics and recovery` and runs the focused Phase 37–41 validators plus browser-extension and Android unit tests.
+
+
+## v3 update
+
+- Adds the explicit Material3 bottom-sheet opt-in required by the current Kotlin compiler.
+
+
+## v6 note
+
+This rebased artifact also fixes the current scheduler lint gate by converting `QueueDecisionLedger` persistence to the AndroidX KTX `SharedPreferences.edit {}` API.

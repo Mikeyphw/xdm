@@ -27,7 +27,7 @@ def runtime_id(name: str) -> str | None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--packages", type=Path, required=True)
-    parser.add_argument("--channel", choices=("stable", "beta", "nightly"), required=True)
+    parser.add_argument("--channel", choices=("stable", "nightly"), required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--release-notes-url", required=True)

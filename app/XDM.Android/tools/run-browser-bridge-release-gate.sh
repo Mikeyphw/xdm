@@ -46,6 +46,7 @@ validators=(
   tools/validate-phase-41-browser-bridge-integration.py
   tools/validate-phase-42-browser-bridge-release-gate.py
   tools/validate-phase-42-kotlin-compile-recovery.py
+  tools/validate-retired-prerelease-channel.py
   tools/validate-phase-42-kotlin-source-compatibility.py
   tools/validate-phase-42-contract-test-modernization.py
 )
@@ -75,7 +76,7 @@ if [[ "$MODE" == "static" ]]; then
 fi
 
 ./gradlew -Pxdm.requireAria2Runtime=true -Pxdm.cleanKotlinValidation=true \
-  -Pkotlin.incremental=false -Pkotlin.incremental.useClasspathSnapshot=false \
+  -Pkotlin.incremental=false \
   -Pkotlin.compiler.execution.strategy=in-process \
   --no-daemon --max-workers=1 --no-parallel --no-build-cache --no-configuration-cache --stacktrace \
   help \
@@ -98,10 +99,8 @@ fi
   :persistence:testDebugUnitTest \
   :app:testDebugUnitTest \
   lintDebug \
-  lintBeta \
   :app:assembleDebugAndroidTest \
-  assembleDebug \
-  assembleBeta
+  assembleDebug
 
 verify_artifacts
 printf '\nBrowser bridge full release gate passed. Device acceptance remains a separate physical-device sign-off.\n'

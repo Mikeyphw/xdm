@@ -35,7 +35,7 @@ Phase 33 exposes a small **Media final validation gate** card inside the existin
 - `PROJECT_MANIFEST.json` includes Phase 33 in both phase ledgers and sets `next_phase` to `complete`.
 - `tools/validate-media-final-validation-gate.py` passes.
 - `bash tools/run-final-release-gate.sh --ci` passes.
-- `./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :media:test :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta` passes in the target environment.
+- `./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug :media:test :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug` passes in the target environment.
 - `devtool ... apply-overlay xdm_android_phase33_media_final_validation_gate_overlay.zip --validate` passes when validation is re-enabled.
 
 

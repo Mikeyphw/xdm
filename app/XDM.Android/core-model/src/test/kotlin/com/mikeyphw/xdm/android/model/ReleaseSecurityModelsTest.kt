@@ -27,24 +27,24 @@ class ReleaseSecurityModelsTest {
             releaseSigningConfigured = false,
         )
 
-        assertFalse(report.betaReady)
+        assertFalse(report.releaseReady)
         assertEquals(1, report.blockingCount)
         assertTrue(report.findings.any { it.id == "database.schema" })
     }
 
     @Test
-    fun cleanBetaGateProducesInfoFinding() {
+    fun cleanReleaseGateProducesInfoFinding() {
         val report = ReleaseSecurityGate.evaluate(
             versionName = "0.14.0-alpha01",
             schemaVersion = 14,
-            buildType = "beta",
+            buildType = "release",
             debuggable = false,
             privacySafeDiagnostics = true,
             releaseSigningConfigured = true,
         )
 
-        assertTrue(report.betaReady)
-        assertEquals("Beta gate checks are clean", report.summary)
+        assertTrue(report.releaseReady)
+        assertEquals("Release gate checks are clean", report.summary)
         assertTrue(report.findings.any { it.severity == ReleaseSecuritySeverity.Info })
     }
 }

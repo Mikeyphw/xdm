@@ -12,7 +12,7 @@ python3 tools/verify-aria2-runtime.py --require-payload
 The installer writes `src/main/jniLibs/arm64-v8a/libaria2c.so` and `runtime/aria2-runtime.lock.json`. Both are verified before a distribution build when `-Pxdm.requireAria2Runtime=true` is supplied. After packaging, verify the exact APK entry with:
 
 ```bash
-python3 tools/verify-aria2-runtime.py --require-payload --apk app/build/outputs/apk/beta/app-beta.apk
+python3 tools/verify-aria2-runtime.py --require-payload --apk app/build/outputs/apk/release/app-release.apk
 ```
 
 The payload remains GPL-2.0-or-later and must be distributed with corresponding license/source notices.

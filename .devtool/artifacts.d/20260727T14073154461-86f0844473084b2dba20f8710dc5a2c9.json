@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-07-27T14:07:31.544618Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase43a_browser_extension_parity_repair_overlay.zip",
+  "artifact_name": "xdm_android_phase43a_browser_extension_parity_repair_overlay.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "86f0844473084b2dba20f8710dc5a2c9"
+}

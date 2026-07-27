@@ -882,7 +882,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 35 doc must define the ship/no-ship gate", polish.contains("Phase 35: Release Candidate Polish") && polish.contains("Ship/no-ship gate") && polish.contains("No-ship is required"))
         assertTrue("Manifest must record Phase 35", manifest.contains("phase35_release_candidate_polish") && isCurrentBrowserRemovalOverlay(manifest))
         assertTrue("Phase 35 must keep version metadata stable", buildGradle.contains("versionName = \"0.20.0-rc08\"") && buildGradle.contains("versionCode = 21"))
-        assertTrue("Release helper must keep artifact checksums", releaseHelper.contains("sha256sum") && releaseHelper.contains("assembleBeta") && releaseHelper.contains("assembleRelease"))
+        assertTrue("Release helper must keep artifact checksums", releaseHelper.contains("sha256sum") && releaseHelper.contains("assembleRelease"))
         assertTrue("Final release gate must include the Phase 35 validator", runGate.contains("validate-phase-35-release-candidate-polish.py"))
         assertTrue("CI must include the Phase 35 validator", workflow.contains("validate-phase-35-release-candidate-polish.py"))
         assertFalse("Phase 35 must not add top-level routes", AppRoute.entries.any { it.label == "Release Candidate" || it.label == "Ship" || it.label == "No Ship" || it.label == "Checklist" })

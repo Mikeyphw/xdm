@@ -259,10 +259,10 @@ object ProtocolExpansionPolish {
     }
 }
 
-data class ReleasePackagingReport(val versionName: String, val versionCode: Int, val packageId: String, val debugPackageId: String, val betaPackageId: String, val releaseTask: String, val betaTask: String, val checksumScript: String) {
-    val summary: String get() = "Release task $releaseTask • beta task $betaTask • checksum script $checksumScript"
+data class ReleasePackagingReport(val versionName: String, val versionCode: Int, val packageId: String, val debugPackageId: String, val releaseTask: String, val checksumScript: String) {
+    val summary: String get() = "Release task $releaseTask • checksum script $checksumScript"
 }
-object ReleasePackagingGate { fun report(versionName: String, versionCode: Int, packageId: String) = ReleasePackagingReport(versionName, versionCode, packageId, "$packageId.debug", "$packageId.beta", "assembleRelease", "assembleBeta", "tools/build-release-artifacts.sh") }
+object ReleasePackagingGate { fun report(versionName: String, versionCode: Int, packageId: String) = ReleasePackagingReport(versionName, versionCode, packageId, "$packageId.debug", "assembleRelease", "tools/build-release-artifacts.sh") }
 
 data class DesktopParityReport(val settingsImportExport: Boolean, val historyManagement: Boolean, val proxyCredentials: Boolean, val conversionPostProcessing: Boolean, val protocolExpansion: Boolean, val releasePackaging: Boolean) {
     val complete: Boolean get() = listOf(settingsImportExport, historyManagement, proxyCredentials, conversionPostProcessing, protocolExpansion, releasePackaging).all { it }

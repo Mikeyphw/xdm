@@ -91,7 +91,7 @@ for validator in [
 ]:
     if validator not in run_gate:
         errors.append(f"run-final-release-gate.sh missing {validator}")
-if "lintDebug" not in run_gate or ":media:test" not in run_gate or "assembleBeta" not in run_gate:
+if "lintDebug" not in run_gate or ":media:test" not in run_gate:
     errors.append("run-final-release-gate.sh must document the full Gradle gate")
 
 screens = text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt")

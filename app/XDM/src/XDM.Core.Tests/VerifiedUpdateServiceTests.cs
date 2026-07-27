@@ -149,18 +149,18 @@ public sealed class VerifiedUpdateServiceTests
         string sha512 = Convert.ToHexString(SHA512.HashData(packageBytes));
         UpdateManifestDocument manifest = new(
             2,
-            "9.2.0-beta.1",
-            "https://github.com/Mikeyphw/xdm/releases/tag/beta-v9.2.0-beta.1",
+            "9.2.0-nightly.1",
+            "https://github.com/Mikeyphw/xdm/releases/tag/nightly",
             [new UpdatePackageDescriptor(
                 "linux-x64",
-                "https://github.com/Mikeyphw/xdm/releases/download/beta-v9.2.0-beta.1/xdm-modern-linux-x64.zip",
+                "https://github.com/Mikeyphw/xdm/releases/download/nightly/xdm-modern-linux-x64.zip",
                 sha256,
                 packageBytes.Length,
                 "xdm-modern-linux-x64.zip",
                 sha512,
-                "https://github.com/Mikeyphw/xdm/releases/download/beta-v9.2.0-beta.1/xdm-modern-linux-x64.spdx.json",
+                "https://github.com/Mikeyphw/xdm/releases/download/nightly/xdm-modern-linux-x64.spdx.json",
                 "https://github.com/Mikeyphw/xdm/attestations")],
-            "beta",
+            "nightly",
             DateTimeOffset.Parse("2026-07-12T23:00:00Z", CultureInfo.InvariantCulture),
             "9.0.0");
         byte[] manifestBytes = JsonSerializer.SerializeToUtf8Bytes(manifest, SerializerOptions);
@@ -170,14 +170,14 @@ public sealed class VerifiedUpdateServiceTests
             client,
             new TestPlatformInfo("Linux", "X64"),
             root,
-            new Uri("https://github.com/Mikeyphw/xdm/releases/download/beta/xdm-update-beta.json"));
+            new Uri("https://github.com/Mikeyphw/xdm/releases/download/nightly/xdm-update-nightly.json"));
 
         try
         {
-            UpdateCheckResult check = await service.CheckAsync(UpdateChannel.Beta);
+            UpdateCheckResult check = await service.CheckAsync(UpdateChannel.Nightly);
             StagedUpdateResult staged = await service.StageAsync(check);
 
-            Assert.Equal(UpdateChannel.Beta, check.Channel);
+            Assert.Equal(UpdateChannel.Nightly, check.Channel);
             Assert.Equal(sha512, staged.Sha512);
             Assert.True(File.Exists(staged.ReceiptPath));
             Assert.True(File.Exists(staged.TransactionPath));
@@ -186,7 +186,7 @@ public sealed class VerifiedUpdateServiceTests
                 SerializerOptions);
             Assert.NotNull(transaction);
             Assert.Equal(UpdateTransactionState.Staged, transaction.State);
-            Assert.Equal("9.2.0-beta.1", transaction.TargetVersion);
+            Assert.Equal("9.2.0-nightly.1", transaction.TargetVersion);
         }
         finally
         {
@@ -202,15 +202,15 @@ public sealed class VerifiedUpdateServiceTests
     {
         UpdateManifestDocument manifest = new(
             2,
-            "9.2.0-beta.1",
+            "9.2.0-nightly.1",
             null,
             [new UpdatePackageDescriptor(
                 "linux-x64",
-                "https://github.com/Mikeyphw/xdm/releases/download/beta/package.zip",
+                "https://github.com/Mikeyphw/xdm/releases/download/nightly/package.zip",
                 new string('0', 64),
                 1,
                 "package.zip")],
-            "beta",
+            "nightly",
             DateTimeOffset.UtcNow);
         byte[] manifestBytes = JsonSerializer.SerializeToUtf8Bytes(manifest, SerializerOptions);
         using HttpClient client = new(new UpdateRoutingHandler(manifestBytes, [1]));

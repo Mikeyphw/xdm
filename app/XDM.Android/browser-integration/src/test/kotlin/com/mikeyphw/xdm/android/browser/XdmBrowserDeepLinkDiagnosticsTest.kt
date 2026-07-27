@@ -19,7 +19,7 @@ class XdmBrowserDeepLinkDiagnosticsTest {
     @Test
     fun variantMismatchHasBoundedReasonWithoutPayload() {
         val result = XdmBrowserDeepLinkParser.parseDetailed(
-            deepLink(XdmBrowserDeepLinkContract.BetaScheme, "https://example.test/video.mp4?token=opaque-value"),
+            deepLink(XdmBrowserDeepLinkContract.DebugScheme, "https://example.test/video.mp4?token=opaque-value"),
             XdmBrowserDeepLinkContract.ReleaseScheme,
         )
         assertEquals(

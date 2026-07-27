@@ -1,6 +1,6 @@
 # Phase 14: Release Safety and Privacy Hardening
 
-Phase 14 prepares XDM Android for beta-style validation without changing the Room schema or adding a new top-level route.
+Phase 14 prepares XDM Android for release-candidate validation without changing the Room schema or adding a new top-level route.
 
 ## Goals
 
@@ -31,7 +31,7 @@ Diagnostic output must be safe to paste into bug reports. The redactor must:
 - database version remains 13;
 - release hardening is documented in the manifest;
 - app build metadata matches version code 15 and version name `0.14.0-alpha01`;
-- beta and release signing configuration are still present;
+- release candidate and release signing configuration are still present;
 - release safety model/tests exist;
 - Diagnostics exposes a real redacted summary copy action;
 - no unsupported Room schema bump was introduced.

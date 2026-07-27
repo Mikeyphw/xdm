@@ -19,7 +19,7 @@ data class InstallUpdateReadinessReport(
 ) {
     val blockingCount: Int get() = checks.count { it.severity == ReleaseReadinessSeverity.Blocking }
     val warningCount: Int get() = checks.count { it.severity == ReleaseReadinessSeverity.Warning }
-    val readyForBetaInstall: Boolean get() = blockingCount == 0
+    val readyForInstall: Boolean get() = blockingCount == 0
     val summary: String get() = when {
         blockingCount > 0 -> "$blockingCount blocking install/update issue${if (blockingCount == 1) "" else "s"}"
         warningCount > 0 -> "$warningCount install/update warning${if (warningCount == 1) "" else "s"}"
@@ -54,7 +54,7 @@ object ReleaseInstallReadinessGate {
         val normalizedBuildType = buildType.trim().ifBlank { "unknown" }
         val normalizedPackageId = packageId.trim().ifBlank { "unknown" }
         val checks = buildList {
-            val minor = normalizedVersion.removeSuffix("-debug").removeSuffix("-beta")
+            val minor = normalizedVersion.removeSuffix("-debug")
                 .split('.')
                 .getOrNull(1)
                 ?.toIntOrNull()
@@ -75,7 +75,7 @@ object ReleaseInstallReadinessGate {
                         id = "version.code",
                         severity = ReleaseReadinessSeverity.Blocking,
                         title = "Version code is not monotonic",
-                        detail = "A beta/update APK must advance versionCode to at least 17.",
+                        detail = "An update APK must advance versionCode to at least 17.",
                     ),
                 )
             }
@@ -135,7 +135,7 @@ object ReleaseInstallReadinessGate {
                         id = "aria2.payload",
                         severity = ReleaseReadinessSeverity.Blocking,
                         title = "aria2 payload gate is missing",
-                        detail = "Beta packaging must keep the runtime payload verification gate.",
+                        detail = "Release packaging must keep the runtime payload verification gate.",
                     ),
                 )
             }
@@ -165,7 +165,7 @@ object ReleaseInstallReadinessGate {
                         id = "install-update.clean",
                         severity = ReleaseReadinessSeverity.Info,
                         title = "Install/update gate",
-                        detail = "Package identity, schema, recovery, diagnostics, and payload checks are ready for beta packaging.",
+                        detail = "Package identity, schema, recovery, diagnostics, and payload checks are ready for install/update packaging.",
                     ),
                 )
             }

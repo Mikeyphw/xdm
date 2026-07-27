@@ -9,11 +9,11 @@ Phase 42 seals the complete XDM Android to Firefox extension bridge introduced i
 The Phase 42 Devtool overlay requires restore, build, test, package, and lint validation. `.devtool.toml` declares the full matrix:
 
 - `help` restore/preflight;
-- `assembleDebug`, `assembleBeta`, and `:app:assembleDebugAndroidTest`;
+- `assembleDebug` and `:app:assembleDebugAndroidTest`;
 - Dark and AMOLED XPI packaging and release-artifact verification;
 - all configured module and app unit tests;
 - browser-extension Kotlin, JavaScript, package, and app integration checks;
-- `lintDebug` and `lintBeta`.
+- `lintDebug`.
 
 The artifact validator runs Phase 37 through Phase 42 static contracts and the extension JavaScript suites before Devtool starts the full Gradle phases. Any failure is rollback-eligible.
 

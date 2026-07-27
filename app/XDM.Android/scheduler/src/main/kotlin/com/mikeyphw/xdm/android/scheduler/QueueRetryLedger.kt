@@ -1,6 +1,7 @@
 package com.mikeyphw.xdm.android.scheduler
 
 import android.content.Context
+import androidx.core.content.edit
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.QueueIntelligencePlanner
 import com.mikeyphw.xdm.android.model.QueueRetryRecord
@@ -21,11 +22,11 @@ class QueueRetryLedger(context: Context) {
         }
         val previousAttempt = preferences.getInt(prefix + "attempt", 0)
         val record = QueueIntelligencePlanner.retryRecord(strategy, previousAttempt, download.updatedAtEpochMs)
-        preferences.edit()
-            .putInt(prefix + "attempt", record.attempt)
-            .putLong(prefix + "failureAt", record.lastFailureAtEpochMs)
-            .putLong(prefix + "next", record.nextRetryAtEpochMs)
-            .apply()
+        preferences.edit {
+            putInt(prefix + "attempt", record.attempt)
+            putLong(prefix + "failureAt", record.lastFailureAtEpochMs)
+            putLong(prefix + "next", record.nextRetryAtEpochMs)
+        }
         return record
     }
 
@@ -42,6 +43,10 @@ class QueueRetryLedger(context: Context) {
 
     fun clear(downloadId: String) {
         val prefix = downloadId + "."
-        preferences.edit().remove(prefix + "attempt").remove(prefix + "failureAt").remove(prefix + "next").apply()
+        preferences.edit {
+            remove(prefix + "attempt")
+            remove(prefix + "failureAt")
+            remove(prefix + "next")
+        }
     }
 }

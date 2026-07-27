@@ -99,7 +99,7 @@ def main() -> int:
     parser.add_argument("--extension-version", default="1.1.0")
     parser.add_argument("--app-version", default="0.20.0-rc08")
     parser.add_argument("--application-id", default="com.mikeyphw.xdm.android")
-    parser.add_argument("--channel", choices=("release", "beta", "debug"), default="release")
+    parser.add_argument("--channel", choices=("release", "debug"), default="release")
     parser.add_argument("--xdm-scheme", default="xdmdownload")
     parser.add_argument("--default-target", choices=("xdm", "1dm", "ask"), default="xdm")
     parser.add_argument("--theme", choices=("dark", "amoled"), default="dark")

@@ -59,15 +59,6 @@ android {
             manifestPlaceholders["xdmBrowserScheme"] = "xdmdownload-debug"
             buildConfigField("String", "XDM_BROWSER_SCHEME", "\"xdmdownload-debug\"")
         }
-        create("beta") {
-            initWith(getByName("release"))
-            applicationIdSuffix = ".beta"
-            versionNameSuffix = "-beta"
-            signingConfig = signingConfigs.getByName("debug")
-            matchingFallbacks += listOf("release")
-            manifestPlaceholders["xdmBrowserScheme"] = "xdmdownload-beta"
-            buildConfigField("String", "XDM_BROWSER_SCHEME", "\"xdmdownload-beta\"")
-        }
         getByName("release") {
             isMinifyEnabled = false
             manifestPlaceholders["xdmBrowserScheme"] = "xdmdownload"

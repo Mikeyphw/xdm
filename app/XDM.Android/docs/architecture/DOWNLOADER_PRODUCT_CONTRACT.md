@@ -61,7 +61,7 @@ A release candidate is qualified only after:
 2. Android lint passes with warnings treated as errors;
 3. JVM and Android test sources compile;
 4. downloader module tests pass;
-5. debug and beta APKs assemble;
+5. debug APKs assemble;
 6. the packaged aria2 payload passes release checks;
 7. manual clean-install and upgrade scenarios confirm external handoff, media resolution, execution, recovery, library, and playback;
 8. XDM is not offered for ordinary web navigation.

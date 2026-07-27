@@ -483,7 +483,7 @@ class MainViewModel(
         val activitySummary = OperationalActivityPlanner.summarize(activityEvents)
         val activityDiagnosticsExport = OperationalActivityPlanner.diagnosticsExport(
             context = OperationalDiagnosticsContext(
-                appVersion = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+                appVersion = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
                 versionCode = BuildConfig.VERSION_CODE,
                 androidVersion = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
                 schemaVersion = 14,
@@ -496,7 +496,7 @@ class MainViewModel(
             summary = activitySummary,
         )
         val releaseSecurityReport = ReleaseSecurityGate.evaluate(
-            versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+            versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
             schemaVersion = 14,
             buildType = BuildConfig.BUILD_TYPE,
             debuggable = BuildConfig.DEBUG,
@@ -504,9 +504,9 @@ class MainViewModel(
             releaseSigningConfigured = !BuildConfig.DEBUG,
         )
         val installUpdateReadinessReport = ReleaseInstallReadinessGate.evaluate(
-            versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+            versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
             versionCode = BuildConfig.VERSION_CODE,
-            packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".beta"),
+            packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug"),
             schemaVersion = 14,
             buildType = BuildConfig.BUILD_TYPE,
             releaseSafetyComplete = true,
@@ -517,9 +517,9 @@ class MainViewModel(
             releaseSigningConfigured = !BuildConfig.DEBUG,
         )
         val finalReleaseGateReport = FinalPublicReleaseGate.evaluate(
-            versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+            versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
             versionCode = BuildConfig.VERSION_CODE,
-            packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".beta"),
+            packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug"),
             schemaVersion = 14,
             buildType = BuildConfig.BUILD_TYPE,
             releaseSafetyReady = true,
@@ -608,9 +608,9 @@ class MainViewModel(
             backupRestoreReport = BackupRestorePolicy.evaluate(settingsExportText),
             protocolExpansionReport = ProtocolExpansionPolish.summarize(runtime.capabilities),
             releasePackagingReport = ReleasePackagingGate.report(
-                versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta"),
+                versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
                 versionCode = BuildConfig.VERSION_CODE,
-                packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".beta"),
+                packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug"),
             ),
             desktopParityReport = DesktopParityGate.evaluate(
                 settingsImportExport = true,
@@ -963,7 +963,6 @@ class MainViewModel(
             return
         }
         val channel = when (BuildConfig.BUILD_TYPE.lowercase()) {
-            "beta" -> BrowserExtensionSourceContract.Channel.Beta
             "debug" -> BrowserExtensionSourceContract.Channel.Debug
             else -> BrowserExtensionSourceContract.Channel.Release
         }

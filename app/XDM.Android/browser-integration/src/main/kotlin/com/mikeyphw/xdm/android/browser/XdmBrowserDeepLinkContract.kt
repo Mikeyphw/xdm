@@ -5,7 +5,6 @@ object XdmBrowserDeepLinkContract {
     const val CurrentVersion = 1
 
     const val ReleaseScheme = "xdmdownload"
-    const val BetaScheme = "xdmdownload-beta"
     const val DebugScheme = "xdmdownload-debug"
 
     const val CaptureHost = "capture"
@@ -27,5 +26,5 @@ object XdmBrowserDeepLinkContract {
     const val MaxMimeTypeCharacters = 120
     const val MaxMediaKindCharacters = 32
 
-    val BuildVariantSchemes: Set<String> = setOf(ReleaseScheme, BetaScheme, DebugScheme)
+    val BuildVariantSchemes: Set<String> = setOf(ReleaseScheme, DebugScheme)
 }

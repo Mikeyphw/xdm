@@ -259,7 +259,6 @@
     "redacted_diagnostic_summary": true,
     "release_gate_script": true,
     "schema_version_unchanged": 14,
-    "beta_build_type_retained": true,
     "top_level_route_added": false
   },
   "ux_accessibility_polish": {
@@ -277,7 +276,6 @@
     "version_code": 17,
     "version_name": "0.16.0-alpha01",
     "package_id_stable": "com.mikeyphw.xdm.android",
-    "beta_package_suffix": ".beta",
     "debug_package_suffix": ".debug",
     "install_update_gate_script": true,
     "recovery_surface_ready": true,
@@ -872,7 +870,7 @@
     "release_readiness_checklist": [
       "package_identity_locked",
       "version_metadata_locked",
-      "debug_and_beta_suffixes_isolated",
+      "debug_suffix_isolated",
       "signed_release_required",
       "artifact_checksum_required",
       "aria2_payload_required_for_publishable_artifacts",
@@ -1491,7 +1489,6 @@
     "contract_document": "docs/architecture/PHASE-37-BROWSER-SCHEME-CONTRACT.md",
     "static_validator": "tools/validate-phase-37-browser-scheme-contract.py",
     "release_scheme": "xdmdownload",
-    "beta_scheme": "xdmdownload-beta",
     "debug_scheme": "xdmdownload-debug",
     "receiver": "ExternalAddDownloadActivity",
     "hosts": [

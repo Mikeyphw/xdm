@@ -9,7 +9,7 @@ This slice ports the remaining desktop-parity surfaces into the existing Android
 - Proxy and credentials UI stores only redacted proxy profile metadata; passwords are intentionally not exported.
 - Conversion/post-processing exposes a policy surface and named hook choices without enabling silent command execution.
 - Protocol expansion polish summarizes Native and aria2 protocol coverage, including FTP, SFTP, Magnet, Metalink, HLS, and DASH routing guidance.
-- Release/non-debug packaging is handled by `tools/build-release-artifacts.sh`, which builds beta or release APKs and writes SHA-256 checksum files.
+- Release/non-debug packaging is handled by `tools/build-release-artifacts.sh`, which builds release APKs and writes SHA-256 checksum files.
 
 ## Topography
 

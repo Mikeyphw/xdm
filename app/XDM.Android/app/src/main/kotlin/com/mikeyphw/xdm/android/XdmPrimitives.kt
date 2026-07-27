@@ -30,7 +30,7 @@ import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FolderZip
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.InsertDriveFile
+import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -314,7 +314,7 @@ fun XdmFileTypeIcon(
         lowerName.endsWith(".zip") || lowerName.endsWith(".7z") || lowerName.endsWith(".tar") || lowerName.endsWith(".gz") -> Icons.Rounded.FolderZip
         lowerMime.startsWith("text/") || lowerName.endsWith(".pdf") || lowerName.endsWith(".txt") -> Icons.Rounded.Description
         fileName.isBlank() -> Icons.Rounded.Download
-        else -> Icons.Rounded.InsertDriveFile
+        else -> Icons.AutoMirrored.Rounded.InsertDriveFile
     }
     Surface(
         modifier = modifier.size(40.dp),

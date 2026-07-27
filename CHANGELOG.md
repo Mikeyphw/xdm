@@ -40,7 +40,7 @@
 - Added Phase 38 repository-owned Firefox extension source with layered media detection, XDM-first handoff, optional 1DM+ fallback, unpacked development preparation, and focused validation.
 ## XDM Android Phase 37 - Browser scheme contract
 
-- Added variant-specific `xdmdownload`, `xdmdownload-beta`, and `xdmdownload-debug` custom schemes owned only by `ExternalAddDownloadActivity`.
+- Added variant-specific `xdmdownload` and `xdmdownload-debug` custom schemes owned only by `ExternalAddDownloadActivity`.
 - Added a versioned, bounded parser for `capture` and `add` browser handoffs with review-first routing into the existing automation intake.
 - Rejected nested or unsafe schemes, user-info credentials, oversized payloads, and standalone sensitive headers while preserving signed media URL query values.
 - Added parser, manifest, routing, idempotency, browser-free architecture, static validator, and Android intent-resolution contracts.
@@ -248,7 +248,7 @@ Adds Phase 8 checksum verification, persisted verification results, trusted bloc
 - Existing source artifacts are preserved when migration restarts from zero.
 - Unavailable or destination-incompatible migration controls are not presented.
 
-## 0.6.0-beta01
+## 0.6.0-release-candidate01
 
 - Completed the on-device aria2 backend with durable Room-to-GID mappings and every task operation.
 - Added paused-before-ownership activation, authenticated event polling, session reconciliation, orphan/conflict handling, and provisional completion promotion.
@@ -282,7 +282,7 @@ Adds Phase 8 checksum verification, persisted verification results, trusted bloc
 ### Changed
 
 - Replaced synthesized partial ownership keys with backend-prepared physical artifact identities.
-- Added stable backend instance identities, per-process session identities, and Room schema v5 persistence.
+- Added stable backend instance identities, per-process session identities, and Room schema v6 persistence.
 - Added startup reconciliation, quarantine classifications, and generation-safe artifact adoption.
 - Prevented startup from releasing stale claims before the owning backend has validated its task and artifacts.
 - Prepared the ownership boundary required before the embedded aria2 backend can write transfer data.

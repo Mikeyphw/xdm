@@ -62,7 +62,6 @@ object BrowserExtensionSourceContract {
 
     enum class Channel(val wireValue: String) {
         Release("release"),
-        Beta("beta"),
         Debug("debug"),
     }
 }

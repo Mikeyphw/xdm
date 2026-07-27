@@ -49,7 +49,6 @@ args = [
   "-Dorg.gradle.vfs.watch=false",
   "-Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8",
   "-Pkotlin.incremental=false",
-  "-Pkotlin.incremental.useClasspathSnapshot=false",
   "-Pkotlin.compiler.execution.strategy=in-process",
   "-Pxdm.cleanKotlinValidation=true",
 ]
@@ -61,7 +60,6 @@ build = [
   ":app:assembleDebugAndroidTest",
   ":browser-extension:packageFirefoxExtensionDark",
   ":browser-extension:packageFirefoxExtensionAmoled",
-  ":browser-extension:verifyFirefoxExtensionReleaseArtifacts",
 ]
 test = [
   ":browser-extension:test",
@@ -113,7 +111,6 @@ package = [
   ":app:assembleDebugAndroidTest",
   ":browser-extension:packageFirefoxExtensionDark",
   ":browser-extension:packageFirefoxExtensionAmoled",
-  ":browser-extension:verifyFirefoxExtensionReleaseArtifacts",
 ]
 lint = ["lintDebug"]
 

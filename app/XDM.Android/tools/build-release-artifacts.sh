@@ -2,11 +2,10 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-variant="${1:-beta}"
+variant="${1:-release}"
 case "$variant" in
-  beta) task="assembleBeta"; output_dir="app/build/outputs/apk/beta" ;;
   release) task="assembleRelease"; output_dir="app/build/outputs/apk/release" ;;
-  *) echo "usage: $0 [beta|release]" >&2; exit 64 ;;
+  *) echo "usage: $0 [release]" >&2; exit 64 ;;
 esac
 ./gradlew "$task" --no-daemon --build-cache
 mapfile -t apks < <(find "$output_dir" -maxdepth 1 -type f -name "*.apk" | sort)

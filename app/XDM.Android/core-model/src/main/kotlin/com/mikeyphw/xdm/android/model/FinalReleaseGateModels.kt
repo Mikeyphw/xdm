@@ -62,7 +62,7 @@ object FinalPublicReleaseGate {
         val normalizedPackageId = packageId.trim().ifBlank { "unknown" }
         val normalizedBuildType = buildType.trim().ifBlank { "unknown" }.lowercase(Locale.US)
         val checks = buildList {
-            val minor = normalizedVersion.removeSuffix("-debug").removeSuffix("-beta")
+            val minor = normalizedVersion.removeSuffix("-debug")
                 .split('.')
                 .getOrNull(1)
                 ?.toIntOrNull()
@@ -197,7 +197,7 @@ object FinalPublicReleaseGate {
                         detail = if (requiresReleaseBlocking) {
                             "The final public gate requires the full devtool validation pass, not a medium selected-task gate."
                         } else {
-                            "Debug and beta builds surface this as a warning so runtime diagnostics do not look broken before a publishable release gate is run."
+                            "Debug builds surface this as a warning so runtime diagnostics do not look broken before a publishable release gate is run."
                         },
                     ),
                 )

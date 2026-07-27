@@ -47,14 +47,14 @@ tools/run-final-release-gate.sh
 
 ## Phase 16: packaging, recovery and install/update readiness
 
-Phase 16 prepares the Android app for installable beta packaging without changing the database. The app now exposes an install/update readiness report, keeps release diagnostics privacy-safe, records the package identity contract, confirms recovery surfaces remain available before update, refreshes CI/static validators through Phase 16, and removes the deprecated Compose clipboard API in favor of the Android clipboard service. Room remains at schema v14.
+Phase 16 prepares the Android app for installable release packaging without changing the database. The app now exposes an install/update readiness report, keeps release diagnostics privacy-safe, records the package identity contract, confirms recovery surfaces remain available before update, refreshes CI/static validators through Phase 16, and removes the deprecated Compose clipboard API in favor of the Android clipboard service. Room remains at schema v14.
 
 ## Build
 
 The project targets JDK 17, Android SDK 36, target SDK 36, Gradle 9.4.1, and the pinned version catalog.
 
 ```bash
-tools/devtool-gradle.sh lintDebug lintBeta :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test testDebugUnitTest assembleDebug assembleBeta
+tools/devtool-gradle.sh lintDebug :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test testDebugUnitTest assembleDebug
 ```
 
 `tools/devtool-gradle.sh` delegates to `~/.local/bin/build-apk`, which selects or installs the pinned Gradle 9.4.1 distribution and handles Termux/chroot execution. The repository intentionally does not ship a partial wrapper. Run `tools/bootstrap-gradle-wrapper.sh` only when you want to generate and commit a complete standard wrapper, including `gradle-wrapper.jar`.
@@ -122,7 +122,7 @@ Browser, share-sheet, Tasker, and deep-link handoffs now use a shared normalizat
 
 ## Phase 14 release safety
 
-XDM Android now includes privacy-safe diagnostic summaries, redaction helpers, and a schema-free beta release gate for pre-release validation.
+XDM Android now includes privacy-safe diagnostic summaries, redaction helpers, and a schema-free release gate for release-candidate validation.
 
 
 ## Phase 15 UX and accessibility polish
@@ -150,7 +150,7 @@ Browser-era tabs, history, bookmarks, private sessions, permissions, WebView res
 
 ### XDM browser custom scheme
 
-External browser extensions can now target XDM directly through a versioned custom scheme owned only by `ExternalAddDownloadActivity`. Release, beta, and debug builds use `xdmdownload`, `xdmdownload-beta`, and `xdmdownload-debug` respectively, preventing parallel installations from fighting over one handler. `capture` opens the existing Media review flow, while `add` opens Add Download. The envelope accepts only bounded URL and display metadata; cookies, authorization headers, proxy credentials, POST bodies, and unrestricted header blocks are excluded.
+External browser extensions can now target XDM directly through a versioned custom scheme owned only by `ExternalAddDownloadActivity`. Release and debug builds use `xdmdownload` and `xdmdownload-debug` respectively, preventing parallel installations from fighting over one handler. `capture` opens the existing Media review flow, while `add` opens Add Download. The envelope accepts only bounded URL and display metadata; cookies, authorization headers, proxy credentials, POST bodies, and unrestricted header blocks are excluded.
 
 Example release handoff:
 
@@ -218,3 +218,8 @@ Phase 40 moves the XDM Dark and AMOLED palettes, extension shape values, and mot
 ### Browser bridge release qualification
 
 Phase 42 binds the `xdmdownload` receiver, repository-owned Firefox detector, deterministic Dark/AMOLED XPI generator, shared theme/FAB, and Settings recovery surface into one release gate. Run `bash tools/run-browser-bridge-release-gate.sh --full` in the Android build environment, then complete `docs/browser-extension/DEVICE-ACCEPTANCE.md` on IronFox 152 or newer. Automated success does not replace physical-device sign-off.
+
+
+### Phase 43 — Pre-release channel removal
+
+The Android app now carries only release and debug variants. Pre-release build types, package suffixes, browser schemes, release-gate tasks, and extension channel generation have been removed from active source.

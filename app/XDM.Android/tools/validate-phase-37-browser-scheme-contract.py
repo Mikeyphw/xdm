@@ -74,7 +74,7 @@ def validate_build_variants() -> None:
         'manifestPlaceholders["xdmBrowserScheme"]',
         'buildConfigField("String", "XDM_BROWSER_SCHEME"',
     )
-    for scheme in ("xdmdownload", "xdmdownload-beta", "xdmdownload-debug"):
+    for scheme in ("xdmdownload", "xdmdownload-debug"):
         if f'"{scheme}"' not in gradle:
             ERRORS.append(f"app/build.gradle.kts missing build-variant scheme {scheme}")
 
@@ -86,7 +86,6 @@ def validate_parser_and_routing() -> None:
         "MaxMediaUrlBytes = 32 * 1024",
         "MaxPageUrlBytes = 8 * 1024",
         'ReleaseScheme = "xdmdownload"',
-        'BetaScheme = "xdmdownload-beta"',
         'DebugScheme = "xdmdownload-debug"',
     )
     parser = require_contains(
@@ -145,7 +144,6 @@ def validate_contract_files() -> None:
         contract = project_manifest.get("browser_scheme_contract", {})
         expected = {
             "release_scheme": "xdmdownload",
-            "beta_scheme": "xdmdownload-beta",
             "debug_scheme": "xdmdownload-debug",
             "receiver": "ExternalAddDownloadActivity",
             "top_level_route_added": False,

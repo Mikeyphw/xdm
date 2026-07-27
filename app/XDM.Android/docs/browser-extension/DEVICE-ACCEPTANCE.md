@@ -16,12 +16,12 @@ Run the automatable checks on a connected device:
 bash tools/run-browser-bridge-device-acceptance.sh --adb
 ```
 
-For beta:
+For debug:
 
 ```bash
 bash tools/run-browser-bridge-device-acceptance.sh --adb \
-  --package com.mikeyphw.xdm.android.beta \
-  --scheme xdmdownload-beta
+  --package com.mikeyphw.xdm.android.debug \
+  --scheme xdmdownload-debug
 ```
 
 The fixture URLs must be public and credential-free.
@@ -39,7 +39,7 @@ Record device model, Android version, IronFox version, XDM variant/version, exte
 - Dark and AMOLED generated packages use the matching XDM tokens.
 - Follow app export becomes stale after an app theme change and regeneration replaces the selected XPI safely.
 - Revoked SAF access, missing export, checksum mismatch, wrong variant, and interrupted generation each show a specific recovery state.
-- Release and beta can coexist without competing for one scheme.
+- Release and debug can coexist without competing for one scheme.
 - No raw cookie, authorization, credential, or separate secret value appears in the custom URI, logs, diagnostics, screenshots, or release metadata.
 
 ## Sign-off

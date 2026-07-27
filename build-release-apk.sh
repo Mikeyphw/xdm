@@ -9,9 +9,9 @@ BUILD_TYPE="${1:-all}"
 
 usage() {
   cat >&2 <<'EOF'
-Usage: ./build-release-apk.sh [debug|beta|release|all]
+Usage: ./build-release-apk.sh [debug|release|all]
 
-Builds Android APKs. With no argument, builds debug, beta and release.
+Builds Android APKs. With no argument, builds debug and release.
 
 Release builds require signing inputs exported in the environment or placed in:
   app/XDM.Android/release-signing.env
@@ -65,27 +65,6 @@ build_debug() {
   cp "$apk" "$dest"
   write_checksum "$dest"
   echo "Debug APK: $dest"
-}
-
-build_beta() {
-  local apk dest name
-  mkdir -p "$OUT_DIR"
-
-  "$ANDROID_ROOT/tools/devtool-gradle.sh" clean lintBeta testDebugUnitTest assembleBeta
-
-  APK_DIR="$ANDROID_ROOT/app/build/outputs/apk/beta"
-  mapfile -t beta_apks < <(find "$APK_DIR" -maxdepth 1 -type f -name '*beta*.apk' | sort)
-  if (( ${#beta_apks[@]} == 0 )); then
-    echo "No beta APK found in $APK_DIR" >&2
-    exit 1
-  fi
-
-  apk="${beta_apks[-1]}"
-  name="$(version_name)"
-  dest="$OUT_DIR/xdm-android-${name:-beta}-beta.apk"
-  cp "$apk" "$dest"
-  write_checksum "$dest"
-  echo "Beta APK: $dest"
 }
 
 require_release_signing() {
@@ -153,15 +132,11 @@ case "$BUILD_TYPE" in
   debug)
     build_debug
     ;;
-  beta)
-    build_beta
-    ;;
   release)
     build_release
     ;;
   all)
     build_debug
-    build_beta
     build_release
     ;;
   *)

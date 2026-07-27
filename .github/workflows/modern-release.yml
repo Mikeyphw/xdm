@@ -7,7 +7,7 @@ on:
         description: Release channel
         required: true
         type: choice
-        options: [stable, beta, nightly]
+        options: [stable, nightly]
       version:
         description: Semantic version (blank uses VERSION; nightly adds run metadata)
         required: false
@@ -19,7 +19,6 @@ on:
   push:
     tags:
       - 'v*'
-      - 'beta-v*'
   schedule:
     - cron: '23 3 * * *'
 
@@ -55,11 +54,6 @@ jobs:
             channel=nightly
             version="${base_version%%-*}-nightly.$(date -u +%Y%m%d).${{ github.run_number }}"
             tag=nightly
-          elif [[ "${{ github.ref_name }}" == beta-v* ]]; then
-            channel=beta
-            version="${{ github.ref_name }}"
-            version="${version#beta-v}"
-            tag=beta
           elif [[ "${{ github.ref_name }}" == v* ]]; then
             channel=stable
             version="${{ github.ref_name }}"

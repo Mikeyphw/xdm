@@ -1,0 +1,516 @@
+{
+  "applied_at": "2026-07-27T15:43:52.403671Z",
+  "artifact": "/home/mike/Downloads/xdm_android_remove_beta_channel_v3_overlay.zip",
+  "artifact_name": "xdm_android_remove_beta_channel_v3_overlay.zip",
+  "type": "overlay",
+  "sha256": "0766afdae88eb02ea2f57cb7efc7c5505e3049afa08655a7385543446aab5480",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "Remove XDM Android pre-release channel",
+  "commit_hash": "",
+  "file_count": 64,
+  "change_counts": {
+    "add": 2,
+    "modify": 62
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Retired Pre-release Channel Removal v3",
+    "description": "Removes the retired Android pre-release channel from active XDM source and release gates while also applying lint-safe browser-scheme manifest filters, warning cleanup, and the Material3 bottom-sheet opt-in required by the current Kotlin compiler.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": ".devtool.toml",
+          "action": "modify",
+          "sha256": "cdaf16654c2a9cd5b1f411276b365698bd5516d3ee4744a91f0f97210d0710fb",
+          "size": 3893,
+          "source_sha256": "42cbd6edd39d744ab5c16b863cbae4b3fabb2067c861862a471b49e84f94570e"
+        },
+        {
+          "path": ".github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "0efaa932f3a74963b9fe60036f01379a7c3382a34b32a8ccac303baeedf14425",
+          "size": 3867,
+          "source_sha256": "20185df0cf5112719e212cc9c8e5e3dec6f1334fb2f0e52da345d163453df61c"
+        },
+        {
+          "path": ".github/workflows/modern-release.yml",
+          "action": "modify",
+          "sha256": "79275e9248665bc1a913a0eb00c1d81e50594c847c6a9ee5e5a80bc77ca30540",
+          "size": 8328,
+          "source_sha256": "22b2f885084fc2e3ab3997f87d9cc7dadf3274e29ca9ac949f5eff9074f2e5f3"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "d5051944bbd0bfe186530f02d3a9c61db327fa0d70a4995d1b5d171c78ef83f1",
+          "size": 25879,
+          "source_sha256": "9a8f8cf99d9f6c5d05132fb89709be07cc47b9a882f74ad171dd9804710ff21f"
+        },
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "f2cf3ec34a3b0ad661137f065f2e1b98b4c307d305489ae75d4429f7fdf10710",
+          "size": 6220,
+          "source_sha256": "84e0f6cdfe727a906d2917c2bcb55692d1f28423043cba76e8cb5d3e7b2bbf74"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "502d766bbba7211579f9df40fa62dddb14aef695027a3217348395f87f9e8211",
+          "size": 6290,
+          "source_sha256": "09c14e21c12e72aa5049cfc336d27010541ef83c0a4c1e46843275802b8e69dc"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "854d2549c5c120e1f85b901995a0396279bfa04bd8cf891617c39a5e9bb20556",
+          "size": 57744,
+          "source_sha256": "48207e5974b079219b707ce44d86f3401d7756c240c885c3ba16457adace9cab"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "eea7a476e0cf04e7d47fdf58752463d477c4b4f029b1c77d282b3644e9636858",
+          "size": 21532,
+          "source_sha256": "9a5cb01f01f3760d82d5688a1a767475e7db96f8cf8771e55cc72880ff8cc2e3"
+        },
+        {
+          "path": "app/XDM.Android/app/build.gradle.kts",
+          "action": "modify",
+          "sha256": "865e99b37696bda88897988f8791c082cdbc8dfd80cbe47739d0efea643f5c6b",
+          "size": 6912,
+          "source_sha256": "bb1493d551ce0d4413db689038c08e34c3eac1334a3ac2c8b17fa5c8e1c17bdf"
+        },
+        {
+          "path": "app/XDM.Android/app/src/androidTest/kotlin/com/mikeyphw/xdm/android/UixR6AdaptiveLayoutTest.kt",
+          "action": "modify",
+          "source_sha256": "590c3a443e555058304c855a918b803d21e326e6920b12832280645e100e87c1",
+          "sha256": "d0860b248f4a32cf0c353a6dc8a0373b11c3d7fe72217b8461b388a85d67ca0c",
+          "size": 6021
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+          "action": "modify",
+          "source_sha256": "a9d5b28185cb198f7266ac310645480fc2a7b48b84cf072f555e8b689efb043d",
+          "sha256": "a5baf53ae926c4618555543d3f124352caf41a81f562c610c12612a994bca9d1",
+          "size": 15458
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "656e6c6fb4bc08bae14d1de5c74c71b579d4304cbda3aac084eb543aa5b4ad5c",
+          "size": 91857,
+          "source_sha256": "cbeb4b9810c4f56d9fad7f3a3310af3d60c20d2e3c617fdce8dc170818e78fcb"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmPrimitives.kt",
+          "action": "modify",
+          "source_sha256": "351e0cc78378125206b136f45fda7e3dd7c124b58b1a7d922fd155199b07d596",
+          "sha256": "d2a30a8aeeac59f6f511f92eb3c6a41c61362eb91bf2c272a9f0081d13ba3008",
+          "size": 21568
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt",
+          "action": "modify",
+          "sha256": "d96960d971c2835894b2005849dcf890a5235a74d16e04d20a47b59b478c463f",
+          "size": 13593,
+          "source_sha256": "3114716e1ef3024c1334f3cd004f3fc7f57d8aefb0a99ec1f6f6bf25a1131f94"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "07d0e9d79fad8fc8cada606c000a8fe99c04f1399e630d848443ca94e61799ac",
+          "size": 89260,
+          "source_sha256": "04943cfb2cf2e2af0ac0473af9c8ac8a4c4ad744d5a7ebd3687a0b69bbe8c6fc"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserSchemePhase37ContractTest.kt",
+          "action": "modify",
+          "sha256": "ed89b723e53a74bb8826a71f98f104f2215696ad21852668d8a8832a9e3df678",
+          "size": 4959,
+          "source_sha256": "5b6c6ec79e642bf9e93d34c3177bb70bbf0a7bd2c59b296c2bc58a9698b4c246"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionSourceContract.kt",
+          "action": "modify",
+          "sha256": "4cf3a76e92b596bd764a2a25d688a46469b0420e0e4081a2f7a84fe2f7f1dc72",
+          "size": 2184,
+          "source_sha256": "37d17c41319a67a170068ba612d7964f9e19a91d9497d5b3b8c6dd7e90d0567e"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/tools/prepare_extension.py",
+          "action": "modify",
+          "sha256": "3e1ef1cbf20dd8643cd036cdfa3cb078f3167bcc418bae2cc8c6d4ec90357d2e",
+          "size": 5828,
+          "source_sha256": "238fbbd2074bce118c4d5f2728f29e31a3122e36bc3365998c0da19af1b9cb54"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkContract.kt",
+          "action": "modify",
+          "sha256": "0bb97987a4868cf1693f70ed9f13ef2a29b135edcfbd3c76857e3881ddcbb86f",
+          "size": 1031,
+          "source_sha256": "96e0d6cc496e2a8dc611596ae23e3f2847920ae4280b5f18c9a2a9ea981514a6"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/test/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkDiagnosticsTest.kt",
+          "action": "modify",
+          "sha256": "0ba645642a8cc3426b80e496a67b2a2d3acc90e92b3fff4e438039052a3e6de3",
+          "size": 2277,
+          "source_sha256": "364577448e5de88f693c4569859ec3d6c6008cf1aa95e79679ef30347fc64f06"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DesktopParityModels.kt",
+          "action": "modify",
+          "sha256": "2493f10dd7df66e664a85a509113460921f79001dfeee045d9dbd1227a006bd6",
+          "size": 17899,
+          "source_sha256": "a2784aad632c74ff94927a7a7a11c9ff4620e5668413e41d083fcc81fa816413"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModels.kt",
+          "action": "modify",
+          "sha256": "020155382ee87fbbfc598dc85b9af4cde070942149ca6cafc7064ba2822d057d",
+          "size": 11114,
+          "source_sha256": "bd87ec2fd6e1dc1332bcf4c6bb60c5166a67fd87131b59aa1cc1b1485c9bea96"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt",
+          "action": "modify",
+          "sha256": "97ded8d8d04837dfd2d3108fd2dd49d1e002f450113c1c98520418465eff74d6",
+          "size": 7720,
+          "source_sha256": "bcae5bd00ccf8ea6474a18474a979bfc1018957ce164983afbcd8cd6551ea789"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt",
+          "action": "modify",
+          "sha256": "3931d84f2ba45ba605ee9fe8eaf8c8c11bd0f33907bd3def355f5bf609707106",
+          "size": 9127,
+          "source_sha256": "05e3b5ddb0e1a559744304e134dd0fc1ea8b84f974517550a728b68589b03661"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModelsTest.kt",
+          "action": "modify",
+          "sha256": "d9b260e83481039a3ed6f58e8b35c5697d9eb0451617a36c83db16d1a98fc706",
+          "size": 2055,
+          "source_sha256": "773d65cdeeaa79025a2fb55448db3de248520cdcdd7192298016e6eac39bfc0c"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModelsTest.kt",
+          "action": "modify",
+          "sha256": "f5d8e7c71584c45fd70fcdd8235d1b0d23420ec6e2dbeee1ecaf426b1c05cfd9",
+          "size": 1860,
+          "source_sha256": "be248f4427a268fb342a5cf2a6849819650be6af2bac07060c2978a17a876b9c"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md",
+          "action": "modify",
+          "sha256": "6ea009e387af8df52d8432181538ec53ad08092c141ce2cc2e0eb13a3bd6565b",
+          "size": 6684,
+          "source_sha256": "94124cf81b98891a5ffe06f32ba9ac67d0d0da950eec8ca2bd64991a8eb79b51"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-14-RELEASE-SAFETY.md",
+          "action": "modify",
+          "sha256": "141acbdd8f78651e38283b56ac5dfd2ee6f1c499c9a5a3932478893de4fcc6fe",
+          "size": 2100,
+          "source_sha256": "1533217978f3aaf13d69901b0c10e6004123c1bbea241b8745624f401536c709"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-16-PACKAGING-RECOVERY-READINESS.md",
+          "action": "modify",
+          "sha256": "d741ec14772e22c3efe0f88cad065b7152a533cdad8679442c8e4b2a26edea84",
+          "size": 2112,
+          "source_sha256": "284690c3c08b16e83f9e2b35cd7992e211fb1e699a2f749e4f70680e41e12924"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-33-MEDIA-FINAL-VALIDATION-GATE.md",
+          "action": "modify",
+          "sha256": "06f34d13d1efa44e053e89ffe3d8e627e81b8b80388a48d07460433bc861383b",
+          "size": 3983,
+          "source_sha256": "bac595fc54071a69718414b4e7c8b0aad372fba5e9114cc9afbf24ad6412e9b8"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-35-RELEASE-CANDIDATE-POLISH.md",
+          "action": "modify",
+          "sha256": "39da5aa2ee0efd39620d75dd5481ed941ddd783ba1898f27d862c65540ac1d28",
+          "size": 3686,
+          "source_sha256": "ea1cd2b09d2287b543efff281a4aa21ceec08af9b8b23ff06729b3007073750f"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-37-BROWSER-SCHEME-CONTRACT.md",
+          "action": "modify",
+          "sha256": "778c771500c80dbbe40cc5aba065ee0967f64cde2264aa864039969615295182",
+          "size": 3670,
+          "source_sha256": "986158ff38b7ad0e6c9647a2f9ceeab5e5b3869caae142e88cef871363b61ec6"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-41-BROWSER-BRIDGE-INTEGRATION.md",
+          "action": "modify",
+          "sha256": "0b6b6a91b9a9f2b0db5699c53d7008678dd7f5dd023946c50f965ecbcbe44c06",
+          "size": 3682,
+          "source_sha256": "c59bfd0ec688f0e8cdafea09c410032811d2a6d16000a554e0f01ebb755fc520"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-42-BROWSER-BRIDGE-RELEASE-GATE.md",
+          "action": "modify",
+          "sha256": "fc0dd8d8f685810549805f7baf611a23306dc183a9b2917ca7c321acb09a18e5",
+          "size": 4447,
+          "source_sha256": "6714ad9fdc581ffb26c3ee6ac2d2127eed44faae1110d95a80fa6051321e6b6a"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-43-NO-BETA-CHANNEL.md",
+          "action": "add",
+          "sha256": "f4a44f17be4548e9ff772e6dc9e55bba8114a14c040831d28886676d78ac32e2",
+          "size": 860
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/POST-17-DESKTOP-PARITY.md",
+          "action": "modify",
+          "sha256": "bd81cac91ba994f065dd5a381a07d7a5f001e8aae50925fbb48f62c3c124072b",
+          "size": 1222,
+          "source_sha256": "2b6a035bbcb5d9543863bc3ecc8b9be31567f08739fc2a62aea20f60901c91ee"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/UIX-R6-ACCESSIBILITY-PERFORMANCE-RELEASE-SEAL.md",
+          "action": "modify",
+          "sha256": "4ad66083d8c8cb7a721df4cc3fda5f53451ff581b09dacc426ccd2e5734c19e0",
+          "size": 4393,
+          "source_sha256": "f966e8f7edf7167968518500ab7f77a594190dc3f417309eb4c3f023c706e3a4"
+        },
+        {
+          "path": "app/XDM.Android/docs/audits/SCREENSHOT_AUDIT_20260722.md",
+          "action": "modify",
+          "sha256": "e700e6f3792b1c24732b1f50ff5a35380b7564d3cb599db8bd08b70448089dfd",
+          "size": 8107,
+          "source_sha256": "a233e21680e20fc3f54360a3cba2a17f0bcbeb506a43cc7c8e19aeb07045a64e"
+        },
+        {
+          "path": "app/XDM.Android/docs/browser-extension/DEVICE-ACCEPTANCE.md",
+          "action": "modify",
+          "sha256": "25ccfc7259a9446cde9aa5ee9a36e82a216d02be15fe95e5478a30feaa31b684",
+          "size": 1869,
+          "source_sha256": "16cd6a920ac535eb71184589b25431b12e5d3e78649cdf0b0080865445c81613"
+        },
+        {
+          "path": "app/XDM.Android/docs/browser-extension/IRONFOX-INSTALLATION.md",
+          "action": "modify",
+          "sha256": "38ae5cc5d3efc7cb68bf0f3b3038464b6531ee83c5078acd8add244005b3bc2a",
+          "size": 1317,
+          "source_sha256": "767ddf9c84e7b1eec40c90b759997b43408c4d5f641e90ccf1679c7c5eb72b30"
+        },
+        {
+          "path": "app/XDM.Android/docs/browser-removal/PHASE-7-FINAL-DOWNLOADER-RELEASE-SEAL.md",
+          "action": "modify",
+          "sha256": "c6755c7449fa6d89ac11f41435bac0c0b65fba492bf9ace46c39c5833139f550",
+          "size": 2708,
+          "source_sha256": "940df39295f6d8773d448b7e054e19263d46c7352373e66bde7bfbbfc867d003"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaFinalValidationGate.kt",
+          "action": "modify",
+          "sha256": "805884c11931fd3502655d62014d1860388ebce66a7132fc028a8016d51540f0",
+          "size": 14265,
+          "source_sha256": "3848c368b081ad119bc7435e8c0210c9fac2dd682bc0eea35a8d2f2708a2ca61"
+        },
+        {
+          "path": "app/XDM.Android/tools/build-release-artifacts.sh",
+          "action": "modify",
+          "sha256": "4bd06823b9eecd344d4625d76593a7f821e4c7b44ebf8f3ec76a443150e47db6",
+          "size": 600,
+          "source_sha256": "d213d838e1a63f8742af6955b11acfdccf1c20205dd3fcdb5a501abfd9793ff2"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-browser-bridge-device-acceptance.sh",
+          "action": "modify",
+          "sha256": "21287743a54ace40d261a02f4f03f24edb0b0530e2fefe2aa8f43135ef4d04f2",
+          "size": 4773,
+          "source_sha256": "f1b87b7504b0abaa6d2e483ece9a9dce1ca014ef294d5e9e38676f7441e18759"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-browser-bridge-release-gate.sh",
+          "action": "modify",
+          "sha256": "8cad57df6c03776191a4490d47f0be3062f1745c53cf571cc26b32b92b191293",
+          "size": 3648,
+          "source_sha256": "a1c7491019701c19b972a8d820fb2eeb95661ee339810c7e1e168b3312cfbdf0"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "243da2a942578f32225ba9df8e8a2a4227d1edf32bc2576e4675f06b32f775b0",
+          "size": 4630,
+          "source_sha256": "8fa55928733f40e8444f5d1b147d6e2b9fc5dab932f5aa2ee5702ff2ddfdfe03"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-media-final-validation-gate.py",
+          "action": "modify",
+          "sha256": "fc63ac9d50c5b723e841b3dad3731a38de4fdd72ccada43bb7a10ddc4dc71cdc",
+          "size": 10890,
+          "source_sha256": "093ab007e2c46d37ce66920542241ea95d804df4d180aec8e072858253779cdc"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-14.py",
+          "action": "modify",
+          "sha256": "7022701492aa9bee0c15d346c6d6d5be494601a22ecc57c7bf6b88f62809e052",
+          "size": 4379,
+          "source_sha256": "9e0979eb93de056b680b28d6164a91629b599db369cd2db648bf3120e46d6955"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-16.py",
+          "action": "modify",
+          "sha256": "df60f304048ea9e827909bf0ccfa9d3872c3a205250d8b7b441a2bdfbe317637",
+          "size": 6060,
+          "source_sha256": "0dc3836d40708f0a5748b156568b59d2d92914044f0beba4f53afbb19f918864"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-17.py",
+          "action": "modify",
+          "sha256": "1008c50cd9d161affcf2be9fbcab0c118ce413e90a3396fc84fb5a4392af0656",
+          "size": 5902,
+          "source_sha256": "0ad89c0d3945772cce33ba92fd60d111b92bd5b2b6aeaf7e97a40808d79b14b9"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+          "action": "modify",
+          "sha256": "3f45758f06d56370feece1b6a0411da7ebaf543bb0feda2b2781e47eadab7f18",
+          "size": 10828,
+          "source_sha256": "2b51362f69524fc362f46e6c90c935817196c2dcfd8159a1fb67268f88cca622"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-37-browser-scheme-contract.py",
+          "action": "modify",
+          "sha256": "d33fabc1cef275a8d754b4166205ba7f526632b3253e49efb126a97271e91b9d",
+          "size": 7104,
+          "source_sha256": "8aa87a2aade2403ccdad5eacedd10db2cd7a7ae4ccbb7e69b2f8dfa092106823"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-42-browser-bridge-release-gate.py",
+          "action": "modify",
+          "sha256": "d4c18f062b3b017d6b5defac89c2af5f2f5d879f19cda189a06b085b0220cced",
+          "size": 14215,
+          "source_sha256": "67ba89c055892662bac310f510609130d2b65087a6a36b707fc77de13de076f7"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-retired-prerelease-channel.py",
+          "action": "add",
+          "sha256": "e87dd6fd7275e64c845859d20ae0c99152138b6e5dac870a5926164f4ca50b1c",
+          "size": 3292
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-uix-r6-accessibility-performance-release-seal.py",
+          "action": "modify",
+          "sha256": "083f7a37a0c71dd97cb0e07097cfced6770048c02a77aab6f073f4c53fb4950a",
+          "size": 12496,
+          "source_sha256": "ec8e757ffc11de07ac0976d7a516a3c6b2b59ed04545a57bf341658357a6e172"
+        },
+        {
+          "path": "app/XDM.Android/transfer-aria2/ARIA2_BINARY_PACKAGING.md",
+          "action": "modify",
+          "sha256": "d428019e025f57b58fe959d0bdec429d87c52143f252bc9bed5020c2285b72fc",
+          "size": 896,
+          "source_sha256": "f02e06579a71ec41546340b67357b94e234f43189ef32ed3e2b0814e5e325705"
+        },
+        {
+          "path": "app/XDM.Android/transfer-aria2/build.gradle.kts",
+          "action": "modify",
+          "sha256": "82fa3ffedb412888fa77455addb7876686891ba25dcf44715e4fb06ce3015235",
+          "size": 2225,
+          "source_sha256": "f69380459dc5e36a1928c4c67e8531ef6a1a3bd2894b0f1da637e878b3e3f753"
+        },
+        {
+          "path": "app/XDM/eng/generate-release-metadata.py",
+          "action": "modify",
+          "sha256": "5a29db24d6604afab36ccb42c1807e139e147d5dffb016f30804a65b79abecc4",
+          "size": 4181,
+          "source_sha256": "619e43ff3a1ce7f7ecfbb8db4a2c8f9ef3d2a974501789aacb1dbb86fb03d83a"
+        },
+        {
+          "path": "app/XDM/src/XDM.Core.Tests/ReleaseInfrastructureTests.cs",
+          "action": "modify",
+          "sha256": "087df101e88c100685f6fdcedd81d3b6eccda4cf2d208f3766b1b80b9bd5748d",
+          "size": 4410,
+          "source_sha256": "d19b37a2f8497212835290c996fef9cd6e46b458e9747dd8f3bbe99ed46ce3f8"
+        },
+        {
+          "path": "app/XDM/src/XDM.Core.Tests/VerifiedUpdateServiceTests.cs",
+          "action": "modify",
+          "sha256": "356f18355c804ddaa9c3b412ea05b385abe577057a678feca2d677ff3139dc54",
+          "size": 14364,
+          "source_sha256": "d4ececef35448b15a6d49e64f93d5c2754d86d27c14edbee3edddf986375052a"
+        },
+        {
+          "path": "app/XDM/src/XDM.Core/Product/ModernFeaturePolicy.cs",
+          "action": "modify",
+          "sha256": "798f66792b28f894f29b6653c20c4625bf9275d75ed99e002e5a22c8568e2604",
+          "size": 1364,
+          "source_sha256": "1dc4d823e598c32e929a59f3efa2b75d7bd2175e53774e0b71e21c957c67ff00"
+        },
+        {
+          "path": "app/XDM/src/XDM.Core/Product/UpdateChannel.cs",
+          "action": "modify",
+          "sha256": "07ab80832d05d4a1ac9bf792b775d651af17e7f29746c3ae9be4bdcb5752df87",
+          "size": 389,
+          "source_sha256": "735a33cc4e62e69c526133ee4c4b205b34d2c46a22e65a2e4077a8b148081f8a"
+        },
+        {
+          "path": "build-release-apk.sh",
+          "action": "modify",
+          "sha256": "3d9071d91ee9656ec6f62f3d0e317894ef8e47a02bd5f4a1895bea48b4b9d912",
+          "size": 3708,
+          "source_sha256": "a5d4bfe098abef8031880d4799be5c8a5f21d4d8a6459c7f801da527d9051c2f"
+        },
+        {
+          "path": "docs/RELEASE-CHECKLIST.md",
+          "action": "modify",
+          "sha256": "2ac980354640e581e2491067da95f3a648b525e01e51d552881381c27a8b5692",
+          "size": 4941,
+          "source_sha256": "df38e3b8db50c583b3edce7b7721ae1bdae45e99161118e3bb575e305f1bef8d"
+        }
+      ]
+    },
+    "validation": {
+      "required": true,
+      "reason": "Ensure the retired pre-release channel is absent from active source and gates.",
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate_removed_prerelease_channel.sh",
+        "runner": "bash",
+        "timeout_seconds": 1800,
+        "sha256": "decf3737639fdffd7c211a049c16cb0e60e099f13e0b71bc83feea89576d033d"
+      },
+      "expected": {
+        "restore": "success",
+        "build": "success",
+        "tests": "success",
+        "maximum_warnings": 0
+      }
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Remove XDM Android pre-release channel"
+      }
+    }
+  },
+  "history_id": "fadfc58e38ae4bddab03785241cdb02b"
+}

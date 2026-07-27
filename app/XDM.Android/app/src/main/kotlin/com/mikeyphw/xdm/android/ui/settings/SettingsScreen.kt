@@ -188,7 +188,7 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
         item {
             XdmListCard(compact = true) {
                 XdmCardTitle("XDM Android")
-                XdmSupportingText("Version ${BuildConfig.VERSION_NAME.removeSuffix("-debug").removeSuffix("-beta")} • ${releaseChannelLabel()}")
+                XdmSupportingText("Version ${BuildConfig.VERSION_NAME.removeSuffix("-debug")} • ${releaseChannelLabel()}")
                 XdmMetadataText("Downloader-only Android app with external browser handoff and no built-in browser.", maxLines = 3)
             }
         }
@@ -330,7 +330,6 @@ private fun queueSummary(state: MainUiState): String {
 }
 
 private fun releaseChannelLabel(): String = when {
-    BuildConfig.VERSION_NAME.contains("beta", ignoreCase = true) -> "Beta channel"
     BuildConfig.VERSION_NAME.contains("rc", ignoreCase = true) -> "Release candidate channel"
     else -> "Stable channel"
 }

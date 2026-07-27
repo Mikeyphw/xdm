@@ -16,7 +16,6 @@ public sealed class ReleaseInfrastructureTests
 
     [Theory]
     [InlineData(UpdateChannel.Stable, "xdm-update-stable.json")]
-    [InlineData(UpdateChannel.Beta, "xdm-update-beta.json")]
     [InlineData(UpdateChannel.Nightly, "xdm-update-nightly.json")]
     public void EveryChannelHasDedicatedHttpsManifest(UpdateChannel channel, string expectedFile)
     {

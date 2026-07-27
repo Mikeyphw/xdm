@@ -75,7 +75,7 @@ checklist = set(polish.get("release_readiness_checklist", []))
 for item in [
     "package_identity_locked",
     "version_metadata_locked",
-    "debug_and_beta_suffixes_isolated",
+    "debug_suffix_isolated",
     "signed_release_required",
     "artifact_checksum_required",
     "aria2_payload_required_for_publishable_artifacts",
@@ -117,8 +117,8 @@ for rel, token in required_tokens:
 build = text("app/build.gradle.kts")
 if 'applicationId = "com.mikeyphw.xdm.android"' not in build:
     errors.append("applicationId must remain stable")
-if 'applicationIdSuffix = ".debug"' not in build or 'applicationIdSuffix = ".beta"' not in build:
-    errors.append("debug and beta application suffixes must stay isolated")
+if 'applicationIdSuffix = ".debug"' not in build:
+    errors.append("debug application suffix must stay isolated")
 if 'versionName = "0.20.0-rc08"' not in build:
     errors.append("Phase 35 must not bump versionName away from the Phase 33/34 rc")
 if not re.search(r"versionCode\s*=\s*21\b", build):
@@ -131,8 +131,8 @@ if 'signingConfigs.getByName("release")' not in build or "hasReleaseSigning" not
     errors.append("release signing gate must remain configured")
 
 release_helper = text("tools/build-release-artifacts.sh")
-if "sha256sum" not in release_helper or "assembleRelease" not in release_helper or "assembleBeta" not in release_helper:
-    errors.append("release helper must build beta/release artifacts and write sha256 checksums")
+if "sha256sum" not in release_helper or "assembleRelease" not in release_helper:
+    errors.append("release helper must build release artifacts and write sha256 checksums")
 
 workflow = text(".github/workflows/android.yml")
 for token in ["validate-phase-35-release-candidate-polish.py", "install-aria2-runtime.py --download-official", "verify-aria2-runtime.py --require-payload --require-16kb-alignment", "bash -n tools/build-release-artifacts.sh"]:

@@ -24,7 +24,6 @@ Options:
 
 Known variants:
   release  com.mikeyphw.xdm.android        xdmdownload
-  beta     com.mikeyphw.xdm.android.beta   xdmdownload-beta
   debug    com.mikeyphw.xdm.android.debug  xdmdownload-debug
 EOF
 }
@@ -77,7 +76,7 @@ Manual IronFox checks:
   7. Repeated taps do not create duplicate work.
   8. Switching XDM between Dark and AMOLED marks Follow app exports stale and regeneration replaces the XPI.
   9. Revoking the SAF folder produces the specific recovery state.
- 10. Release and beta installed together resolve only their own schemes.
+ 10. Release and debug installed together resolve only their own schemes.
  11. URI, logs, diagnostics, screenshots, and exported metadata contain no raw cookies or authorization values.
 EOF
 

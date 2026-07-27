@@ -7,13 +7,13 @@ import org.junit.Test
 
 class ReleaseReadinessModelsTest {
     @Test
-    fun cleanBetaReadinessReportHasNoBlockingChecks() {
+    fun cleanInstallReadinessReportHasNoBlockingChecks() {
         val report = ReleaseInstallReadinessGate.evaluate(
             versionName = "0.16.0-alpha01",
             versionCode = 17,
             packageId = "com.mikeyphw.xdm.android",
             schemaVersion = 14,
-            buildType = "beta",
+            buildType = "release",
             releaseSafetyComplete = true,
             recoverySurfaceReady = true,
             diagnosticsExportRedacted = true,
@@ -22,7 +22,7 @@ class ReleaseReadinessModelsTest {
             releaseSigningConfigured = false,
         )
 
-        assertTrue(report.readyForBetaInstall)
+        assertTrue(report.readyForInstall)
         assertEquals(0, report.blockingCount)
         assertTrue(report.summary.contains("clean"))
         assertTrue(report.redactedSummary().contains("com.mikeyphw.xdm.android"))
@@ -44,7 +44,7 @@ class ReleaseReadinessModelsTest {
             releaseSigningConfigured = false,
         )
 
-        assertFalse(report.readyForBetaInstall)
+        assertFalse(report.readyForInstall)
         assertTrue(report.checks.any { it.id == "version.phase16" && it.severity == ReleaseReadinessSeverity.Blocking })
         assertTrue(report.checks.any { it.id == "database.schema" && it.severity == ReleaseReadinessSeverity.Blocking })
         assertTrue(report.checks.any { it.id == "signing.release" && it.severity == ReleaseReadinessSeverity.Warning })

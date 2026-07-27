@@ -34,7 +34,7 @@ The release-candidate gate tracks these Android release expectations:
 - Release artifacts must be signed before distribution.
 - Release artifacts must emit checksums.
 - Debug package identity remains isolated through `.debug`.
-- Beta package identity remains isolated through `.beta`.
+- Debug package identity remains isolated through `.debug`.
 - Release builds must not be debug-only artifacts.
 - The aria2 payload gate remains required for publishable artifacts.
 - User-started long transfers remain modeled as user-visible, resumable work with notification controls and persisted state.
@@ -47,7 +47,7 @@ Ship is allowed only when all of the following are true:
 
 1. Static validators pass with zero warnings and zero errors.
 2. Gradle build, lint, unit tests, and packaging tasks pass for the release-candidate tree.
-3. Signed release or beta artifacts are produced by the documented release helper.
+3. Signed release artifacts are produced by the documented release helper.
 4. APK checksums are written next to every produced artifact.
 5. The packaged aria2 runtime is verified when producing publishable artifacts.
 6. No raw cookies, authorization headers, bearer values, tokens, session identifiers, or post bodies are stored in durable diagnostics, sidecars, logs, notifications, or Room metadata.

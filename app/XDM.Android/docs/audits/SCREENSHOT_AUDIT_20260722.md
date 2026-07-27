@@ -42,7 +42,7 @@ This overlay now fixes the handoff path and folds in the screenshot-audit remedi
 
 6. Aligned release gate schema expectations to the actual Room schema v14.
    - Release security, install/update readiness, and final public gate models now treat schema v14 as current.
-   - Debug/beta builds no longer show an unrun full validation pass as a blocking final-release failure; it remains a release-build gate.
+   - Debug/release builds no longer show an unrun full validation pass as a blocking final-release failure; it remains a release-build gate.
    - Phase docs, validators, and model tests were updated to keep the schema contract consistent.
 
 ## Screenshot findings and remediation status
@@ -53,7 +53,7 @@ This overlay now fixes the handoff path and folds in the screenshot-audit remedi
   - `App integrity`: unexpected schema version.
   - `Update compatibility`: unexpected schema migration.
   - `Release readiness`: unexpected Room schema for public gate, aria2 payload verification pending, full validation not passed.
-- Status: fixed for false schema blockers. Real release-build blockers remain visible; debug/beta full validation is now a warning instead of a blocking runtime-health issue.
+- Status: fixed for false schema blockers. Real release-build blockers remain visible; debug full validation is now a warning instead of a blocking runtime-health issue.
 
 ### Horizontal clipping and overflow
 

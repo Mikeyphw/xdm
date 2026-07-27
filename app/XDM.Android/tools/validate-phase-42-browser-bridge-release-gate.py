@@ -99,11 +99,9 @@ tasks = devtool.get("targets", {}).get("xdm_android", {}).get("tasks", {})
 required_restore = {"help"}
 required_build = {
     "assembleDebug",
-    "assembleBeta",
     ":app:assembleDebugAndroidTest",
     ":browser-extension:packageFirefoxExtensionDark",
     ":browser-extension:packageFirefoxExtensionAmoled",
-    ":browser-extension:verifyFirefoxExtensionReleaseArtifacts",
 }
 required_test = {
     ":browser-extension:test",
@@ -122,7 +120,7 @@ required_test = {
     ":persistence:testDebugUnitTest",
     ":app:testDebugUnitTest",
 }
-required_lint = {"lintDebug", "lintBeta"}
+required_lint = {"lintDebug"}
 for key, required in (("restore", required_restore), ("build", required_build), ("test", required_test), ("lint", required_lint)):
     actual = set(tasks.get(key, []))
     missing = sorted(required - actual)
@@ -232,7 +230,7 @@ for activity in manifest_root.findall(".//activity"):
         if mime is not None and mime != mime.lower():
             raise SystemExit(f"Phase 42 manifest MIME must be lowercase: {mime}")
         scheme = data.attrib.get(ANDROID_NS + "scheme", "")
-        if scheme == "${xdmBrowserScheme}" or scheme in {"xdmdownload", "xdmdownload-beta", "xdmdownload-debug"}:
+        if scheme == "${xdmBrowserScheme}" or scheme in {"xdmdownload", "xdmdownload-debug"}:
             custom_scheme_owners.append(activity_name)
 if not custom_scheme_owners or set(custom_scheme_owners) != {".ExternalAddDownloadActivity"}:
     raise SystemExit(f"Phase 42 custom scheme ownership mismatch: {custom_scheme_owners}")

@@ -280,9 +280,9 @@ if not devtool_config.is_file():
 else:
     devtool_text = devtool_config.read_text(encoding="utf-8", errors="replace")
     for task in (
-        '"assembleDebug"', '"assembleBeta"', '":app:assembleDebugAndroidTest"',
+        '"assembleDebug"', '":app:assembleDebugAndroidTest"',
         '":core-model:test"', '":core-utils:test"', '":transfer-aria2:test"',
-        '":media:test"', '":app:testDebugUnitTest"', '"lintDebug"', '"lintBeta"',
+        '":media:test"', '":app:testDebugUnitTest"', '"lintDebug"',
     ):
         if task not in devtool_text:
             ERRORS.append(f"Devtool final Android gate missing {task}")

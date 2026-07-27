@@ -220,7 +220,7 @@ class MediaFinalValidationGatePlanner {
     }
 
     companion object {
-        const val DefaultGradleCommand: String = "./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug lintBeta :media:test :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug assembleBeta"
+        const val DefaultGradleCommand: String = "./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug :media:test :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug"
 
         fun defaultValidatorCommands(): List<String> = listOf(
             "python3 tools/validate-browser-removal-phase-0-1.py",

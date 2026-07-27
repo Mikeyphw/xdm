@@ -16,8 +16,6 @@ public static class ModernFeaturePolicy
         {
             UpdateChannel.Stable => new Uri(
                 "https://github.com/Mikeyphw/xdm/releases/latest/download/xdm-update-stable.json"),
-            UpdateChannel.Beta => new Uri(
-                "https://github.com/Mikeyphw/xdm/releases/download/beta/xdm-update-beta.json"),
             UpdateChannel.Nightly => new Uri(
                 "https://github.com/Mikeyphw/xdm/releases/download/nightly/xdm-update-nightly.json"),
             _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, "Unsupported update channel.")

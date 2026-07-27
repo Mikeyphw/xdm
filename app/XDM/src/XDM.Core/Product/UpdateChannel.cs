@@ -3,7 +3,6 @@ namespace XDM.Core.Product;
 public enum UpdateChannel
 {
     Stable,
-    Beta,
     Nightly
 }
 

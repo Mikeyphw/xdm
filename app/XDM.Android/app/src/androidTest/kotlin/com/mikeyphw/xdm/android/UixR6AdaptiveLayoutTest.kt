@@ -12,7 +12,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
@@ -27,19 +27,19 @@ class UixR6AdaptiveLayoutTest {
 
     @Test
     fun compactUsesBottomNavigationWithAccessibleNewDownloadAction() {
-        composeRule.setContent { shell(XdmWindowClass.Compact) }
+        composeRule.setContent { Shell(XdmWindowClass.Compact) }
         assertBottomNavigationShell(XdmScreenTags.ShellCompact)
     }
 
     @Test
     fun mediumUsesBottomNavigationWithAccessibleNewDownloadAction() {
-        composeRule.setContent { shell(XdmWindowClass.Medium) }
+        composeRule.setContent { Shell(XdmWindowClass.Medium) }
         assertBottomNavigationShell(XdmScreenTags.ShellMedium)
     }
 
     @Test
     fun expandedUsesPersistentSidebarAndBoundedContentCanvas() {
-        composeRule.setContent { shell(XdmWindowClass.Expanded) }
+        composeRule.setContent { Shell(XdmWindowClass.Expanded) }
         composeRule.onNodeWithTag(XdmScreenTags.ShellExpanded).assertExists()
         composeRule.onNodeWithTag(XdmScreenTags.NavigationSidebar).assertIsDisplayed()
         composeRule.onNodeWithTag(XdmScreenTags.BottomNavigation).assertDoesNotExist()
@@ -125,7 +125,7 @@ class UixR6AdaptiveLayoutTest {
     }
 
     @Composable
-    private fun shell(windowClass: XdmWindowClass) {
+    private fun Shell(windowClass: XdmWindowClass) {
         XdmTheme {
             XdmAdaptiveShell(
                 windowClass = windowClass,

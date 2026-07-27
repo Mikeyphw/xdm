@@ -69,6 +69,6 @@ val verifyAria2Runtime by tasks.registering(Exec::class) {
     )
 }
 
-tasks.matching { it.name in setOf("preDebugBuild", "preBetaBuild", "preReleaseBuild") }.configureEach {
+tasks.matching { it.name in setOf("preDebugBuild", "preReleaseBuild") }.configureEach {
     dependsOn(verifyAria2Runtime)
 }

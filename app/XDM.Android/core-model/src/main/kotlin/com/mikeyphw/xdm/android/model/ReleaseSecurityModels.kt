@@ -21,11 +21,11 @@ data class ReleaseSecurityReport(
 ) {
     val blockingCount: Int get() = findings.count { it.severity == ReleaseSecuritySeverity.Blocking }
     val warningCount: Int get() = findings.count { it.severity == ReleaseSecuritySeverity.Warning }
-    val betaReady: Boolean get() = blockingCount == 0
+    val releaseReady: Boolean get() = blockingCount == 0
     val summary: String get() = when {
         blockingCount > 0 -> "$blockingCount blocking release issue${if (blockingCount == 1) "" else "s"}"
         warningCount > 0 -> "$warningCount release warning${if (warningCount == 1) "" else "s"}"
-        else -> "Beta gate checks are clean"
+        else -> "Release gate checks are clean"
     }
 }
 
@@ -40,7 +40,7 @@ object ReleaseSecurityGate {
     ): ReleaseSecurityReport {
         val normalizedBuildType = buildType.trim().ifBlank { "unknown" }
         val findings = buildList {
-            val minor = versionName.removeSuffix("-debug").removeSuffix("-beta")
+            val minor = versionName.removeSuffix("-debug")
                 .split('.')
                 .getOrNull(1)
                 ?.toIntOrNull()

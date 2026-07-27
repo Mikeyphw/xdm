@@ -1,0 +1,123 @@
+{
+  "applied_at": "2026-07-27T14:22:18.070426Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase43a_browser_extension_parity_repair_v2_overlay.zip",
+  "artifact_name": "xdm_android_phase43a_browser_extension_parity_repair_v2_overlay.zip",
+  "type": "overlay",
+  "sha256": "2954d1ba909c812c1a45e6a854ac831e9131a408f30498ae09642f001f311c96",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Repair XDM Firefox extension FAB parity",
+  "commit_hash": "",
+  "file_count": 7,
+  "change_counts": {
+    "add": 2,
+    "modify": 5
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 43A Browser Extension Parity Repair",
+    "description": "Repairs the repo-owned Firefox extension manual FAB and network fallback path while preserving the working XDM/1DM native anchor handoff.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/browser-extension/build.gradle.kts",
+          "action": "modify",
+          "sha256": "613f99ebd8db5ee90a908402e6142b9661d52858ac258d1a215959d92a3482ba",
+          "size": 4316,
+          "source_sha256": "605157f8a54899d348b6306913ccd556022e9118acddf1d82b4d249ebd65bcaf"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/frame-bridge.js",
+          "action": "modify",
+          "sha256": "785df265a082e858f3bb76c028b1717649bb56be741365afb736aacdd279cda4",
+          "size": 23990,
+          "source_sha256": "f77c93cec47e365d06e940a1fca36601bc4a968dc4383d6c044769362a1252d0"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/popup.js",
+          "action": "modify",
+          "sha256": "045b7f306f2abd7b0d901d5d967edb80186cc3f9cb9749d96a580cc565c94200",
+          "size": 11495,
+          "source_sha256": "cbbcbbb6e21c8444c259caf074bd547129b7227359e11a5ae62b2cb511ee5bb6"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/tests/test_phase43a_bridge.js",
+          "action": "add",
+          "sha256": "9490cf57e3095bda477cad6fbdf52c266e57686a465c09dfee003753d2708fcf",
+          "size": 6968
+        },
+        {
+          "path": "app/XDM.Android/docs/browser-extension/README.md",
+          "action": "modify",
+          "sha256": "2e966d9fd138afd4083c35f135b08d5f529d36432fd8a25406ca9e53427e2617",
+          "size": 2175,
+          "source_sha256": "47dcf923c655adfc675a0579525d18581425d001aaa93e3aadff3d40087fb8b3"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-browser-bridge-release-gate.sh",
+          "action": "modify",
+          "sha256": "d39d5774dba047bb19b9a0872c101fe57973c365776df1aaf80ee0c8e9b22a91",
+          "size": 3786,
+          "source_sha256": "a1c7491019701c19b972a8d820fb2eeb95661ee339810c7e1e168b3312cfbdf0"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-43a-browser-extension-parity.py",
+          "action": "add",
+          "sha256": "b34b359552d1e4ae59f75158bbdd273de082c1f3d918c77e3b678db56dec0ce9",
+          "size": 2473
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Repair XDM Firefox extension FAB parity"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate_phase43a_browser_extension_parity.sh",
+        "runner": "bash",
+        "sha256": "d23667d1c0e48386c6739cc7ea971f57070b57d2a4430c350902868fcf89e623",
+        "timeout_seconds": 1800
+      },
+      "expected": {
+        "restore": "success",
+        "build": "success",
+        "tests": "success",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Built against the still-applied Phase 42 Kotlin source compatibility, contract-test modernization, and Compose Android-test API hotfix tree.",
+      "Before applying after a failed validation session, use validation-abort --keep-changes to preserve already-applied fixes.",
+      "Does not implement Phase 43B, download-list actions, completed-notification open-file handling, media batch input, or the shared 1DM-style app-side sniffing engine.",
+      "Focuses only on manual FAB creation, top-frame injection reliability, missing bridge helper functions, structured diagnostics, and high-confidence network fallback parity.",
+      "Rebuilt after validation script path failure: script now resolves repository root from DEVTOOL_REPO_ROOT or current working directory instead of its extracted artifact directory."
+    ]
+  },
+  "history_id": "689b9af9b4fa46748bbaa9f75c492f2b"
+}

@@ -27,6 +27,6 @@ network.protocol-handler.external-default = true
 network.protocol-handler.external.xdmdownload = true
 ```
 
-Beta uses `xdmdownload-beta`; debug uses `xdmdownload-debug`. The extension-generated configuration and XDM package variant must match.
+Debug uses `xdmdownload-debug`. Release uses `xdmdownload`. The extension-generated configuration and XDM package variant must match.
 
 The extension popup never launches a custom scheme directly. It places a real anchor inside the current webpage, and the user taps the themed FAB there.

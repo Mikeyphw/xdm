@@ -16,7 +16,6 @@ Build variants use distinct schemes:
 | Build | Scheme |
 |---|---|
 | Release | `xdmdownload` |
-| Beta | `xdmdownload-beta` |
 | Debug | `xdmdownload-debug` |
 
 The selected scheme is exposed as `BuildConfig.XDM_BROWSER_SCHEME` and substituted into the manifest through `xdmBrowserScheme`.
@@ -100,4 +99,4 @@ adb shell am start -W \
   -d 'xdmdownload://capture?v=1&url=https%3A%2F%2Fexample.com%2Fmaster.m3u8'
 ```
 
-The release scheme above must be replaced by `xdmdownload-beta` or `xdmdownload-debug` when testing those installed variants.
+Use `xdmdownload` for release builds and `xdmdownload-debug` for debug builds.

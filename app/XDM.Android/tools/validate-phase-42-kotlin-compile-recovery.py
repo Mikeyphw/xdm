@@ -41,7 +41,6 @@ required_args = {
     "-Dorg.gradle.vfs.watch=false",
     "-Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8",
     "-Pkotlin.incremental=false",
-    "-Pkotlin.incremental.useClasspathSnapshot=false",
     "-Pkotlin.compiler.execution.strategy=in-process",
     "-Pxdm.cleanKotlinValidation=true",
 }
@@ -98,8 +97,7 @@ for source, label in ((browser_gate, "browser bridge release gate"), (final_gate
     for needle in (
         "-Pxdm.cleanKotlinValidation=true",
         "-Pkotlin.incremental=false",
-        "-Pkotlin.incremental.useClasspathSnapshot=false",
-        "-Pkotlin.compiler.execution.strategy=in-process",
+            "-Pkotlin.compiler.execution.strategy=in-process",
         "--no-build-cache",
         "--no-configuration-cache",
     ):

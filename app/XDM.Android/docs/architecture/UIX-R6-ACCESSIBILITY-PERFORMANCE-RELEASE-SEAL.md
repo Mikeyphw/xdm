@@ -21,7 +21,7 @@ The shell and feature workspaces are qualified for **Compact, Medium, and Expand
 
 ## Automated release gate
 
-The final gate runs all historical validators plus the R6 validator, JVM contracts, lint for debug and beta, unit tests across modules, debug/beta packaging, and Android-test assembly. CI also verifies the packaged ARM64 aria2 payload. The accepted result is **zero warnings and zero errors**.
+The final gate runs all historical validators plus the R6 validator, JVM contracts, lint for debug, unit tests across modules, debug packaging, and Android-test assembly. CI also verifies the packaged ARM64 aria2 payload. The accepted result is **zero warnings and zero errors**.
 
 The device smoke helper is:
 
@@ -35,7 +35,7 @@ It runs the adaptive-layout and current-product smoke classes on a connected And
 
 ### Clean install
 
-1. Install a fresh debug or beta APK.
+1. Install a fresh debug or release candidate APK.
 2. Confirm Downloads opens first and only five primary destinations are visible.
 3. Open and dismiss Add with system Back. Confirm Downloads returns with its filter and selection state intact.
 4. Verify TalkBack labels for navigation, New download, transfer actions, filters, switches, sheets, dialogs, and playback actions.

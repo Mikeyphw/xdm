@@ -56,7 +56,7 @@ class BrowserSchemePhase37ContractTest {
     @Test
     fun buildVariantsOwnDistinctSchemesAndExposeBuildConfig() {
         val gradle = File(androidRoot(), "app/build.gradle.kts").readText()
-        listOf("xdmdownload", "xdmdownload-beta", "xdmdownload-debug").forEach { scheme ->
+        listOf("xdmdownload", "xdmdownload-debug").forEach { scheme ->
             assertTrue("Missing scheme $scheme", gradle.contains("\"$scheme\""))
         }
         assertTrue(gradle.contains("manifestPlaceholders[\"xdmBrowserScheme\"]"))

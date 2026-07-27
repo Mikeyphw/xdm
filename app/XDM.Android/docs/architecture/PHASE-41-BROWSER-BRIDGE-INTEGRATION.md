@@ -44,7 +44,7 @@ An interrupted or failed generation never invalidates the previous verified XPI.
 
 ## IronFox guidance
 
-The settings panel produces instructions for the exact generated scheme, including release, beta, and debug variants. The guide keeps `network.protocol-handler.expose.<scheme>` enabled and uses a real in-page extension anchor.
+The settings panel produces instructions for the exact generated scheme, including release and debug variants. The guide keeps `network.protocol-handler.expose.<scheme>` enabled and uses a real in-page extension anchor.
 
 ## Privacy contract
 

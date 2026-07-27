@@ -1,6 +1,7 @@
 package com.mikeyphw.xdm.android.scheduler
 
 import android.content.Context
+import androidx.core.content.edit
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.QueueDecisionEvent
 import com.mikeyphw.xdm.android.model.QueueHoldReason
@@ -68,7 +69,7 @@ class QueueDecisionLedger(context: Context) {
     private fun writeAll(events: List<QueueDecisionEvent>) {
         val array = JSONArray()
         events.forEach { array.put(it.toJson()) }
-        preferences.edit().putString(KEY_EVENTS, array.toString()).apply()
+        preferences.edit { putString(KEY_EVENTS, array.toString()) }
     }
 
     private fun QueueDecisionEvent.toJson() = JSONObject().apply {

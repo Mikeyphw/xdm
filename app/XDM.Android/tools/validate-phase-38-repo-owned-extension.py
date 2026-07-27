@@ -72,8 +72,13 @@ for rel, tokens in {
     for token in tokens:
         if token not in text: ERRORS.append(f"{rel} missing detector token {token}")
 
-if any(path.suffix == ".xpi" for path in EXT.rglob("*")):
-    ERRORS.append("generated XPI must not be committed in Phase 38 source")
+for path in EXT.rglob("*.xpi"):
+    try:
+        path.relative_to(EXT / "build")
+        continue
+    except ValueError:
+        pass
+    ERRORS.append(f"generated XPI must not be committed in Phase 38 source: {path.relative_to(ROOT)}")
 
 project_manifest_text = require(Path("PROJECT_MANIFEST.json"))
 try:

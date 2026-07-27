@@ -55,7 +55,7 @@
 
 ## XDM Android browser bridge
 
-- [ ] `xdmdownload`, beta, and debug scheme variants resolve only to `ExternalAddDownloadActivity`
+- [ ] `xdmdownload` and debug scheme variants resolve only to `ExternalAddDownloadActivity`
 - [ ] Accepted and rejected deep-link diagnostics remain bounded and redact query values, cookies, authorization, and credentials
 - [ ] Browser extension export directory permission survives restart or reports a specific recovery state
 - [ ] Missing, modified, wrong-variant, stale-theme, and interrupted XPI exports are distinguished in Settings
@@ -76,7 +76,7 @@
 - [ ] `bash tools/run-browser-bridge-release-gate.sh --full` passes in the target Android build environment
 - [ ] Dark and AMOLED XPIs pass exact-inventory, fixed-timestamp, stable-ID, minimal-permission, and SHA-256 verification
 - [ ] `release-artifacts.json` matches the generated XPIs
-- [ ] Debug, beta, Android-test, unit-test, browser-extension, and lint tasks all pass
+- [ ] Debug, Android-test, unit-test, browser-extension, and lint tasks all pass
 - [ ] Phase 37 through Phase 42 validators pass
 
 ### Device
@@ -84,7 +84,7 @@
 - [ ] `bash tools/run-browser-bridge-device-acceptance.sh --adb` resolves the intended XDM variant and launches both `capture` and `add`
 - [ ] The manual IronFox matrix in `app/XDM.Android/docs/browser-extension/DEVICE-ACCEPTANCE.md` is complete
 - [ ] Direct MP4, HLS, DASH, blob/MediaSource, and cross-origin iframe fixtures surface the themed FAB
-- [ ] XDM, 1DM+, Ask, deduplication, theme regeneration, SAF recovery, and release/beta coexistence pass
+- [ ] XDM, 1DM+, Ask, deduplication, theme regeneration, SAF recovery, and release/debug coexistence pass
 - [ ] URI, diagnostics, screenshots, logs, and release metadata contain no raw credentials
 
 Record device model, Android version, IronFox version, XDM variant/version, extension SHA-256, tester, and date with the release evidence.
