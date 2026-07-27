@@ -51,6 +51,19 @@
     <div id="lastDetectedMedia" class="host">No media captured yet</div>
   </section>
 
+  <section class="card small">
+    <strong>Page bridge health</strong>
+    <div class="health-grid">
+      <span>Self-test</span><b id="selfTestState">Not run</b>
+      <span>Bridge</span><b id="bridgeState">Unknown</b>
+      <span>Handoff</span><b id="handoffState">Unknown</b>
+      <span>FAB</span><b id="fabState">Unknown</b>
+      <span>Page host</span><b id="hostState">Unknown</b>
+      <span>Sniffer</span><b id="snifferState">Unknown</b>
+      <span>Offers</span><b id="offerState">0 tried · 0 shown</b>
+    </div>
+  </section>
+
   <div id="status" class="status"></div>
   <script src="generated-config.js"></script>
   <script src="popup.js"></script>

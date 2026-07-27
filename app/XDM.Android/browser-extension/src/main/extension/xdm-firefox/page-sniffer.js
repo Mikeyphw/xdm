@@ -3,12 +3,37 @@
   window.__xdmPageSnifferV1 = true;
 
   const MARKER = "__xdmMediaObservationV1";
+  const STATUS_MARKER = "__xdmPageSnifferStatusV1";
+  let fetchWrapperActive = false;
+  let xhrWrapperActive = false;
+  let mediaPlayWrapperActive = false;
+  let resourceObserverActive = false;
+  let lastError = "";
   const MAX_BODY_BYTES = 786_432;
   const TEXT_MIME_RE = /^(?:text\/|application\/(?:json|ld\+json|javascript|x-javascript|xml|xhtml\+xml|rss\+xml|atom\+xml|vnd\.apple\.mpegurl|x-mpegurl|dash\+xml))/i;
   const RESOURCE_HINT_RE = /(?:\.(?:m3u8|mpd|mp4|m4v|webm|mkv|mov|mp3|m4a|aac|ogg)(?:$|[?#])|videoplayback|playlist|manifest|\/stream(?:\/|\?|$)|\/playback(?:\/|\?|$)|hls|dash)/i;
   const MEDIA_RESPONSE_MIME_RE = /^(?:video\/|audio\/|application\/(?:vnd\.apple\.mpegurl|x-mpegurl|dash\+xml)|audio\/(?:mpegurl|x-mpegurl))/i;
   const BODY_HINT_RE = /(?:#EXTM3U|<\s*MPD(?:\s|>)|\.m3u8|\.mpd|\.mp4|videoplayback|(?:file|video|audio|media|stream|manifest|playlist|hls|dash)(?:Url|URL|_url|_src)?["'\s]*[:=])/i;
   const REQUEST_HEADER_ALLOWLIST = new Set(["authorization", "cookie", "referer", "user-agent", "origin", "accept", "range"]);
+
+
+  function rememberError(error) {
+    if (!lastError) lastError = error && error.message ? error.message : String(error || "");
+  }
+
+  function publishStatus() {
+    window.postMessage({
+      [STATUS_MARKER]: true,
+      status: {
+        active: true,
+        fetchWrapperActive,
+        xhrWrapperActive,
+        mediaPlayWrapperActive,
+        resourceObserverActive,
+        lastError
+      }
+    }, "*");
+  }
 
   function normalizeMime(value) {
     return String(value || "").split(";", 1)[0].trim().toLowerCase();
@@ -153,8 +178,9 @@
         }).catch(() => {});
         return promise;
       };
+      fetchWrapperActive = true;
     }
-  } catch (_) {}
+  } catch (error) { rememberError(error); }
 
   try {
     const metadata = new WeakMap();
@@ -220,7 +246,8 @@
       }
       return nativeSend.apply(this, arguments);
     };
-  } catch (_) {}
+    xhrWrapperActive = true;
+  } catch (error) { rememberError(error); }
 
   try {
     const nativePlay = HTMLMediaElement.prototype.play;
@@ -238,7 +265,8 @@
       }).catch(() => {});
       return result;
     };
-  } catch (_) {}
+    mediaPlayWrapperActive = true;
+  } catch (error) { rememberError(error); }
 
   try {
     const observer = new PerformanceObserver(list => {
@@ -254,5 +282,8 @@
       }
     });
     observer.observe({ type: "resource", buffered: true });
-  } catch (_) {}
+    resourceObserverActive = true;
+  } catch (error) { rememberError(error); }
+
+  publishStatus();
 })();

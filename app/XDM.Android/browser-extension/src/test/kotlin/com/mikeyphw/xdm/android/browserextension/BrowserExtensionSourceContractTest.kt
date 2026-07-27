@@ -14,6 +14,7 @@ class BrowserExtensionSourceContractTest {
     fun `source inventory is complete and contains no generated xpi`() {
         val required = setOf(
             "manifest.template.json",
+            "bridge-selftest.js",
             "generated-config.template.js",
             "generated-theme.template.css",
             "detector-core.js",
@@ -37,6 +38,7 @@ class BrowserExtensionSourceContractTest {
     fun `manifest owns stable xdm identity and layered detector`() {
         val manifest = extensionRoot.resolve("manifest.template.json").readText()
         assertTrue(manifest.contains(BrowserExtensionSourceContract.ExtensionId))
+        assertTrue(manifest.contains("bridge-selftest.js"))
         assertTrue(manifest.contains("candidate-store.js"))
         assertTrue(manifest.contains("network-observer.js"))
         assertTrue(manifest.contains("all_frames"))

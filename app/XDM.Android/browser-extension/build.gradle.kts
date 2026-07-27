@@ -45,7 +45,7 @@ val jsTest by tasks.registering(Exec::class) {
     description = "Run the repository-owned detector, candidate-store, and handoff JavaScript tests."
     commandLine(
         "bash", "-lc",
-        "node tests/test_detector.js && node tests/test_handoff.js && node tests/test_fab.js && node tests/test_background.js && node tests/test_release_gate.js",
+        "node tests/test_detector.js && node tests/test_handoff.js && node tests/test_fab.js && node tests/test_phase43a_bridge.js && node tests/test_background.js && node tests/test_release_gate.js",
     )
 }
 

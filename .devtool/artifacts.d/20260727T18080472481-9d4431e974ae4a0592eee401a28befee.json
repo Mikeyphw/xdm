@@ -1,0 +1,199 @@
+{
+  "applied_at": "2026-07-27T18:08:04.724815Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase43a_browser_extension_parity_repair_r4_overlay.zip",
+  "artifact_name": "xdm_android_phase43a_browser_extension_parity_repair_r4_overlay.zip",
+  "type": "overlay",
+  "sha256": "944db190b39261f27c648b5a85e28735ca132aea8b0a92b86a09c7c669578653",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Repair XDM Android Firefox extension FAB parity",
+  "commit_hash": "",
+  "file_count": 19,
+  "change_counts": {
+    "add": 4,
+    "modify": 15
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 43A Browser Extension Parity Repair r4",
+    "description": "Repairs the repo-owned Firefox Android extension manual FAB, bridge diagnostics, and HLS/DASH network fallback after the no-beta-channel v9 baseline; r4 keeps reserved .devtool-artifact validation scripts out of the repository inventory while retaining the release inventory verifier update from r3.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": ".devtool.toml",
+          "action": "modify",
+          "sha256": "cdaf16654c2a9cd5b1f411276b365698bd5516d3ee4744a91f0f97210d0710fb",
+          "size": 3893,
+          "source_sha256": "757e09a134eaa62dbc2fa1c1681b35b87a6072da7373ecf9c12255055f584815"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "f3d20f879819384e1e046385684d80d19c2ed2b9f460cc5fdf2095e351780b97",
+          "size": 26654,
+          "source_sha256": "fd2cdc2dfdf96175c5637bd8e22247d1c330a095b7c09369680f07ba2e7e5a21"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "2edc98e7c810a94ed7a248c91688ece4bd127b624f2b9cd45417953906b49348",
+          "size": 59286,
+          "source_sha256": "854d2549c5c120e1f85b901995a0396279bfa04bd8cf891617c39a5e9bb20556"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/build.gradle.kts",
+          "action": "modify",
+          "sha256": "613f99ebd8db5ee90a908402e6142b9661d52858ac258d1a215959d92a3482ba",
+          "size": 4316,
+          "source_sha256": "605157f8a54899d348b6306913ccd556022e9118acddf1d82b4d249ebd65bcaf"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/bridge-selftest.js",
+          "action": "add",
+          "sha256": "7c442bee5be87e6802e9f82f6fcca88daede13377fbbd70dd6e85216b0022eb6",
+          "size": 2181
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/extension.css",
+          "action": "modify",
+          "sha256": "bcb4e104ce5e2b1f7b37936603d64ce50e88ae3a849018d2d9ec8d21a9f40a52",
+          "size": 2244,
+          "source_sha256": "f806b914058389dcbd7b6ef577725904ee6cb57d3eb6c562ab839ae90fd96702"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/frame-bridge.js",
+          "action": "modify",
+          "sha256": "39f3473fa8ffe1ceb0cf1a686f84d771ab0f37afe4f604104c0b953ba80df3c7",
+          "size": 23950,
+          "source_sha256": "f77c93cec47e365d06e940a1fca36601bc4a968dc4383d6c044769362a1252d0"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/manifest.template.json",
+          "action": "modify",
+          "sha256": "dac23722fb09b3bc29c2c4c0d0806082ded5823e21e523a5f47cac22b1568ffe",
+          "size": 1283,
+          "source_sha256": "6f4f1f2c97ff747a1c05726bd4c416b1a172f6c30ad114ffa6189428ea4f235a"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/network-observer.js",
+          "action": "modify",
+          "sha256": "0d46792eae4b9882d0796d79e9a480bdfe62718d094a64f92edbc0b08e93f3bc",
+          "size": 17032,
+          "source_sha256": "97f8eb6cb9a8a0d8ef0efc3e4cb6080f34c4250bd492c2737f7c501a3fd76eb9"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/page-sniffer.js",
+          "action": "modify",
+          "sha256": "d108ff98a67a5466b6f18d81e05aa71f5a7a44294b6532dc6c5e667b7be421c7",
+          "size": 11961,
+          "source_sha256": "e5f2ef0205925e5cc9fc5f627f0384e8b41e067e587eb5501904db981066129b"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/popup.html",
+          "action": "modify",
+          "sha256": "a3aebbbbf5b7080736ada2db5d66afd2932eb1ac45672a2d51545f2e84c1310c",
+          "size": 2675,
+          "source_sha256": "6272ad3f7d30de8af90eec8e075ec17c20e10b92b82552addc66bbc17ede99fc"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/popup.js",
+          "action": "modify",
+          "sha256": "67f84c8fffb64176456ae02cd11b15f09e31d426e65df869f4367ad3c67791f2",
+          "size": 12592,
+          "source_sha256": "cbbcbbb6e21c8444c259caf074bd547129b7227359e11a5ae62b2cb511ee5bb6"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionSourceContract.kt",
+          "action": "modify",
+          "sha256": "11d19d89a52ea79e570e4d00d9f39a593b29458d2a46c790271afc1eeb13e53a",
+          "size": 2214,
+          "source_sha256": "4cf3a76e92b596bd764a2a25d688a46469b0420e0e4081a2f7a84fe2f7f1dc72"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/test/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionSourceContractTest.kt",
+          "action": "modify",
+          "sha256": "a814f1ce35e2086808441a21dff2ef202df5eebca3f87320103fbc1c87628314",
+          "size": 2516,
+          "source_sha256": "f606605410343175d149a04ea8ff401e7a410784768b7708568e44567abde308"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/tests/test_phase43a_bridge.js",
+          "action": "add",
+          "sha256": "546f230c42a79c21e6763867fee73c7c4f3089866399be83839585f968f2cafe",
+          "size": 8218
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/tools/verify_release_artifacts.py",
+          "action": "modify",
+          "sha256": "17f974b1f514febfb2adfc36c3350ac89bd9c3e53450fef3c8acc07847d416c6",
+          "size": 5082,
+          "source_sha256": "f35881027f0389408a1bae561edffb9192b5e9d8ac91b31789d87a0c650fa99d"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-43A-BROWSER-EXTENSION-PARITY.md",
+          "action": "add",
+          "sha256": "766cf6871e10bac4404311f2c51d89baa01a2b02870d9dd6b0d78610ffba1f7a",
+          "size": 2508
+        },
+        {
+          "path": "app/XDM.Android/docs/browser-extension/README.md",
+          "action": "modify",
+          "sha256": "c39455102805ed5997beeb6496b02577448e48c7f4ea5537b501d04c39e7c665",
+          "size": 2059,
+          "source_sha256": "47dcf923c655adfc675a0579525d18581425d001aaa93e3aadff3d40087fb8b3"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-43a-browser-extension-parity.py",
+          "action": "add",
+          "sha256": "30c19fc909f495057b40861e83e4df11cca74f684f30f3aecd6ffcda7b9b9225",
+          "size": 8499
+        }
+      ]
+    },
+    "validation": {
+      "required": true,
+      "reason": "Phase 43A must prove the manual top-frame FAB renders on a normal HTTPS page fixture before media detection/fallback is considered healthy.",
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate_phase43a_browser_extension_parity.sh",
+        "runner": "bash",
+        "timeout_seconds": 1200,
+        "sha256": "994cb5e212f078d0b8fe4ea7ffb152bbe02da92ecc493df2347c3ee994c4b1b8"
+      },
+      "expected": {
+        "restore": "success",
+        "build": "success",
+        "tests": "success",
+        "maximum_warnings": 0
+      }
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Repair XDM Android Firefox extension FAB parity"
+      }
+    }
+  },
+  "history_id": "9d4431e974ae4a0592eee401a28befee"
+}

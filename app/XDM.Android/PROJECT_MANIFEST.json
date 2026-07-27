@@ -136,7 +136,7 @@
       "compare"
     ]
   },
-  "next_phase": "complete",
+  "next_phase": "Phase 43B Add Download media recommendation demotion",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -443,7 +443,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_browser_removal_phase8e_gradle_contract_repair_overlay.zip",
+  "current_overlay": "xdm_android_phase43a_browser_extension_parity_repair_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1680,5 +1680,35 @@
     "gradle_root_discovery_hardened": true,
     "modular_ui_contracts_aligned": true,
     "review_only_media_assertion_scoped": true
+  },
+  "browser_bridge_phase43a_extension_parity": {
+    "program": "android_browser_bridge",
+    "contract_version": 1,
+    "contract_document": "docs/architecture/PHASE-43A-BROWSER-EXTENSION-PARITY.md",
+    "static_validator": "tools/validate-phase-43a-browser-extension-parity.py",
+    "module": "browser-extension",
+    "manual_fab_plain_https_exit_gate": true,
+    "top_frame_launcher_required": true,
+    "iframe_detector_injection_best_effort": true,
+    "dependency_free_bridge_selftest": "browser-extension/src/main/extension/xdm-firefox/bridge-selftest.js",
+    "popup_bridge_health_diagnostics": true,
+    "show_manual_with_diagnostics": true,
+    "page_sniffer_status_reporting": true,
+    "blocked_blob_playback_network_fallback_repaired": true,
+    "high_confidence_hls_dash_fallback_repaired": true,
+    "phase43a_js_regression": "browser-extension/tests/test_phase43a_bridge.js",
+    "source_contract_updated": true,
+    "xpi_committed": false,
+    "add_download_ux_changed": false,
+    "download_list_actions_changed": false,
+    "completed_notification_changed": false,
+    "media_batch_input_changed": false,
+    "shared_app_side_sniffing_engine_changed": false,
+    "browser_runtime_added": false,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "depends_on": "browser_bridge_phase42_release_gate + no_pre_release_channel_v9",
+    "next_overlay": "browser_bridge_phase43b_add_download_media_recommendation_demotion"
   }
 }

@@ -53,4 +53,15 @@ button:disabled { opacity: .5; }
 .status.error, .host.error { color: var(--xdm-error); }
 .host { overflow-wrap: anywhere; color: var(--xdm-muted); }
 .small { font-size: 11px; }
+
+.health-grid {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 5px 8px;
+  margin-top: 7px;
+}
+.health-grid span { color: var(--xdm-muted); }
+.health-grid b { overflow-wrap: anywhere; font-weight: 750; color: var(--xdm-text); }
+.health-grid b.ok { color: var(--xdm-success); }
+.health-grid b.error { color: var(--xdm-error); }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }

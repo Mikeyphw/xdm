@@ -1,3 +1,11 @@
+## XDM Android Phase 43A - Browser extension FAB/detector parity repair
+
+- Added a dependency-free browser-extension bridge self-test so the popup can prove the active top frame can host a Shadow DOM launcher before detector checks run.
+- Made manual FAB injection top-frame-required and iframe-best-effort, preventing blocked child frames from breaking the user-visible launcher.
+- Added popup bridge health diagnostics for self-test, bridge, handoff, FAB, page host, sniffer status, and offer counts.
+- Repaired HLS/DASH network fallback so encrypted/blob/blocked playback no longer suppresses a high-confidence media FAB.
+- Added focused Phase 43A static and JavaScript regression gates while leaving Add Download UX and later app-side sniffing roadmap phases untouched.
+
 ## XDM Android Phase 42 Kotlin compile recovery hotfix
 
 - Added a targeted app Kotlin compiler-state reset before Devtool validation compilation.

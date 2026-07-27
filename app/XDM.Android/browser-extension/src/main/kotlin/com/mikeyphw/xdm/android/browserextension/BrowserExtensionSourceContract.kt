@@ -11,6 +11,7 @@ object BrowserExtensionSourceContract {
     const val ResourceRoot = "xdm-firefox"
 
     val SourceEntries: List<String> = listOf(
+        "bridge-selftest.js",
         "candidate-store.js",
         "detector-core.js",
         "extension.css",

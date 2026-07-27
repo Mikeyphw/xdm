@@ -17,6 +17,22 @@
   const MANIFEST_MIME_RE = /^(?:application\/(?:vnd\.apple\.mpegurl|x-mpegurl|dash\+xml)|audio\/(?:mpegurl|x-mpegurl))/i;
   const MAX_DOM_NODES = 3000;
   const MAX_INLINE_TEXT = 786_432;
+  const PAGE_SNIFFER_STATUS_MARKER = "__xdmPageSnifferStatusV1";
+
+  const diagnostics = {
+    startedAt: Date.now(),
+    pageSnifferState: "pending",
+    pageSnifferError: "",
+    fetchWrapperActive: false,
+    xhrWrapperActive: false,
+    playbackEventsSeen: 0,
+    pageObservationsSeen: 0,
+    networkCandidatesSeen: 0,
+    topFrameOffersAttempted: 0,
+    fabShowSuccesses: 0,
+    fabShowFailures: 0,
+    lastError: ""
+  };
 
   let settings = {
     enabled: true,
@@ -70,36 +86,183 @@
     return SEGMENT_RE.test(url) || SEGMENT_PATH_RE.test(path);
   }
 
-  function showLauncher(input = {}) {
-    const isProbe = input.mode === "probe";
-    const url = absoluteUrl(input.url) || (isProbe ? absoluteUrl(location.href) : "");
-    const key = `${isProbe ? "probe" : url}
-${location.href}`;
-    const target = settings.defaultTarget === "1dm" || settings.defaultTarget === "ask"
-      ? settings.defaultTarget
-      : "xdm";
-    const contentType = input.contentType || "";
-    const handoffInput = {
-      url,
-      title: input.title || document.title,
-      mimeType: contentType,
-      pageUrl: location.href,
-      scheme: globalThis.XdmExtensionConfig && globalThis.XdmExtensionConfig.xdmScheme
-    };
-    const links = globalThis.XdmHandoffV1.buildTargets(handoffInput);
-    const launcherInput = {
-      url,
-      target,
-      links,
-      candidateCount: Math.max(1, Number(input.candidateCount || candidates.size || 1)),
-      streamKind: input.streamKind || globalThis.XdmHandoffV1.mediaKind(url, contentType),
-      label: isProbe ? "Test Android app links" : (input.label || "Media ready")
-    };
-    if (!input.force && lastOffer.key === key && Date.now() - lastOffer.at < DEDUPE_MS) {
-      return globalThis.XdmLauncherUiV1.update(launcherInput);
+  function setLastError(error) {
+    diagnostics.lastError = error && error.message ? error.message : String(error || "");
+    return false;
+  }
+
+  function sendBackground(message) {
+    try {
+      const result = browser.runtime.sendMessage(message);
+      if (result && typeof result.catch === "function") result.catch(() => {});
+      return true;
+    } catch (error) {
+      return setLastError(error);
     }
-    lastOffer = { key, at: Date.now() };
-    return globalThis.XdmLauncherUiV1.show(launcherInput);
+  }
+
+  function recordCandidate(value, source, bonus = 0, metadata = {}) {
+    const url = absoluteUrl(value);
+    if (!url || AD_RE.test(url) || isSegment(url)) return false;
+    const trusted = metadata && metadata.trusted === true;
+    const contentType = String(metadata.contentType || "").toLowerCase();
+    if (!trusted && !MEDIA_RE.test(url) && !STREAM_HINT_RE.test(url) && !MEDIA_MIME_RE.test(contentType) && !MANIFEST_MIME_RE.test(contentType)) return false;
+    const previous = candidates.get(url) || {};
+    candidates.set(url, {
+      url,
+      source: source || previous.source || "resource",
+      bonus: Math.max(Number(bonus || 0), Number(previous.bonus || 0)),
+      confidence: Math.max(Number(metadata.confidence || 0), Number(previous.confidence || 0)),
+      contentType: metadata.contentType || previous.contentType || "",
+      headers: Object.assign({}, previous.headers || {}, metadata.headers || {}),
+      manifest: Boolean(metadata.manifest || MANIFEST_RE.test(url) || MANIFEST_MIME_RE.test(contentType) || previous.manifest),
+      trusted: trusted || previous.trusted === true,
+      bodyDerived: Boolean(metadata.bodyDerived || previous.bodyDerived),
+      at: Date.now()
+    });
+    while (candidates.size > 160) candidates.delete(candidates.keys().next().value);
+    return true;
+  }
+
+  function collectElementUrls(element, sourcePrefix = "dom") {
+    if (!(element instanceof Element)) return;
+    const attributes = [
+      "src", "href", "data-src", "data-url", "data-file", "data-video", "data-video-url",
+      "data-stream", "data-stream-url", "data-hls", "data-m3u8", "data-mpd", "data-playlist",
+      "data-manifest", "content"
+    ];
+    for (const name of attributes) {
+      if (!element.hasAttribute(name)) continue;
+      recordCandidate(element.getAttribute(name), `${sourcePrefix}:${name}`, 300);
+    }
+  }
+
+  function collectVideoSources(video) {
+    recordCandidate(video.currentSrc, "currentSrc", 650, { trusted: true });
+    recordCandidate(video.src, "video.src", 600, { trusted: true });
+    collectElementUrls(video, "video");
+    for (const source of video.querySelectorAll("source[src],track[src]")) {
+      recordCandidate(source.src, source.localName, 560, { trusted: true, contentType: source.type || "" });
+      collectElementUrls(source, source.localName);
+    }
+  }
+
+  function score(candidate) {
+    let value = Math.max(Number(candidate.bonus || 0), Number(candidate.confidence || 0));
+    if (candidate.manifest || MANIFEST_RE.test(candidate.url)) value += 850;
+    else if (MEDIA_RE.test(candidate.url)) value += 560;
+    if (/currentSrc|video\.src|source|media-play/.test(candidate.source)) value += 300;
+    if (/fetch|xhr|body/.test(candidate.source)) value += 120;
+    if (candidate.bodyDerived) value += 80;
+    value -= Math.min(300, Math.floor((Date.now() - candidate.at) / 1000));
+    return value;
+  }
+
+  function bestCandidate(video) {
+    if (video) collectVideoSources(video);
+    const now = Date.now();
+    const values = [];
+    for (const [url, item] of candidates) {
+      if (now - item.at > CANDIDATE_TTL_MS) candidates.delete(url);
+      else values.push(item);
+    }
+    values.sort((a, b) => score(b) - score(a));
+    return values[0] || null;
+  }
+
+  function dependencyHealth() {
+    const handoff = globalThis.XdmHandoffV1;
+    const fab = globalThis.XdmLauncherUiV1;
+    const config = globalThis.XdmExtensionConfig;
+    const hostId = fab && fab.hostId ? fab.hostId : "";
+    const host = hostId ? document.getElementById(hostId) : null;
+    let launcherUrlGenerated = false;
+    if (handoff && typeof handoff.buildTargets === "function") {
+      try {
+        const links = handoff.buildTargets({ url: absoluteUrl(location.href), pageUrl: absoluteUrl(location.href), title: document.title });
+        launcherUrlGenerated = Boolean(links && (links.xdm || links.oneDm));
+      } catch (error) {
+        setLastError(error);
+      }
+    }
+    const hasBody = Boolean(document.body || document.documentElement);
+    const hasHandoff = Boolean(handoff && typeof handoff.buildTargets === "function");
+    const hasFab = Boolean(fab && typeof fab.show === "function" && typeof fab.update === "function");
+    const generatedConfig = Boolean(config && config.xdmScheme);
+    return Object.freeze({
+      ok: hasBody && hasHandoff && hasFab && generatedConfig && launcherUrlGenerated,
+      frame: window.top === window ? "top" : "child",
+      url: String(location.href || ""),
+      hasBridge: true,
+      hasHandoff,
+      hasFab,
+      hasBody,
+      hostPresent: Boolean(host && host.isConnected !== false),
+      generatedConfig,
+      launcherUrlGenerated,
+      xdmScheme: generatedConfig ? String(config.xdmScheme || "") : "",
+      defaultTarget: generatedConfig ? String(config.defaultTarget || "xdm") : "",
+      pageSnifferState: diagnostics.pageSnifferState,
+      pageSnifferError: diagnostics.pageSnifferError,
+      fetchWrapperActive: diagnostics.fetchWrapperActive,
+      xhrWrapperActive: diagnostics.xhrWrapperActive,
+      playbackEventsSeen: diagnostics.playbackEventsSeen,
+      pageObservationsSeen: diagnostics.pageObservationsSeen,
+      networkCandidatesSeen: diagnostics.networkCandidatesSeen,
+      topFrameOffersAttempted: diagnostics.topFrameOffersAttempted,
+      fabShowSuccesses: diagnostics.fabShowSuccesses,
+      fabShowFailures: diagnostics.fabShowFailures,
+      lastError: diagnostics.lastError
+    });
+  }
+
+  function showLauncher(input = {}) {
+    diagnostics.topFrameOffersAttempted += 1;
+    try {
+      const health = dependencyHealth();
+      if (!health.hasHandoff) throw new Error("Handoff script is unavailable in the page frame.");
+      if (!health.hasFab) throw new Error("FAB renderer is unavailable in the page frame.");
+      if (!health.hasBody) throw new Error("The page has no mountable document root.");
+      if (!health.generatedConfig) throw new Error("Generated extension configuration is unavailable.");
+
+      const isProbe = input.mode === "probe";
+      const url = absoluteUrl(input.url) || (isProbe ? absoluteUrl(location.href) : "");
+      if (!url) throw new Error("No safe HTTP or HTTPS launcher URL is available.");
+      const key = `${isProbe ? "probe" : url}
+${location.href}`;
+      const target = settings.defaultTarget === "1dm" || settings.defaultTarget === "ask"
+        ? settings.defaultTarget
+        : "xdm";
+      const contentType = input.contentType || "";
+      const handoffInput = {
+        url,
+        title: input.title || document.title,
+        mimeType: contentType,
+        pageUrl: location.href,
+        scheme: globalThis.XdmExtensionConfig && globalThis.XdmExtensionConfig.xdmScheme
+      };
+      const links = globalThis.XdmHandoffV1.buildTargets(handoffInput);
+      if (!links || (!links.xdm && !links.oneDm)) throw new Error("Launcher URL generation failed.");
+      const launcherInput = {
+        url,
+        target,
+        links,
+        candidateCount: Math.max(1, Number(input.candidateCount || candidates.size || 1)),
+        streamKind: input.streamKind || globalThis.XdmHandoffV1.mediaKind(url, contentType),
+        label: isProbe ? "Test Android app links" : (input.label || "Media ready")
+      };
+      const rendered = !input.force && lastOffer.key === key && Date.now() - lastOffer.at < DEDUPE_MS
+        ? globalThis.XdmLauncherUiV1.update(launcherInput)
+        : globalThis.XdmLauncherUiV1.show(launcherInput);
+      if (!rendered) throw new Error("FAB renderer declined the launcher payload.");
+      lastOffer = { key, at: Date.now() };
+      diagnostics.fabShowSuccesses += 1;
+      diagnostics.lastError = "";
+      return true;
+    } catch (error) {
+      diagnostics.fabShowFailures += 1;
+      return setLastError(error);
+    }
   }
 
   // All-frame playback observations are aggregated by the background candidate store.
@@ -140,15 +303,16 @@ ${location.href}`;
   }
 
   function evaluateAllVideos() {
-    let foundPlaying = false;
+    let seenPlaying = false;
+    let offered = false;
     for (const video of document.querySelectorAll("video")) {
       if (!(video instanceof HTMLVideoElement)) continue;
       collectVideoSources(video);
       if (video.paused || video.ended || video.readyState < 1) continue;
-      foundPlaying = true;
-      evaluate(video);
+      seenPlaying = true;
+      offered = evaluate(video) || offered;
     }
-    return foundPlaying;
+    return Object.freeze({ seenPlaying, offered });
   }
 
   function offerNetwork(input = {}) {
@@ -163,10 +327,11 @@ ${location.href}`;
       bodyDerived: Boolean(input.bodyDerived)
     });
 
-    const foundPlaying = evaluateAllVideos();
+    diagnostics.networkCandidatesSeen += 1;
+    const playback = evaluateAllVideos();
     const highConfidence = Boolean(input.manifest || input.playbackObserved || Number(input.rank || input.confidence || 0) >= 850);
-    if (!foundPlaying && input.displayFallback && (input.autoOffer || highConfidence) && document.visibilityState !== "hidden") {
-      showLauncher({
+    if (!playback.offered && input.displayFallback && (input.autoOffer || highConfidence) && document.visibilityState !== "hidden") {
+      return showLauncher({
         url,
         title: input.title || document.title,
         label: input.manifest ? "Video manifest detected" : (input.bodyDerived ? "Video URL found in player response" : "Video stream detected"),
@@ -176,7 +341,7 @@ ${location.href}`;
         streamKind: input.streamKind || (input.manifest ? (/\.mpd(?:$|[?#])/i.test(url) ? "dash" : "hls") : "")
       });
     }
-    return true;
+    return playback.offered;
   }
 
   function schedule(video) {
@@ -191,6 +356,7 @@ ${location.href}`;
   }
 
   function onMediaEvent(event) {
+    diagnostics.playbackEventsSeen += 1;
     const video = event.target;
     if (!(video instanceof HTMLVideoElement)) return;
     if (event.type === "encrypted") {
@@ -207,7 +373,17 @@ ${location.href}`;
   }
 
   window.addEventListener("message", event => {
-    if (event.source !== window || !event.data || event.data[PAGE_MARKER] !== true) return;
+    if (event.source !== window || !event.data) return;
+    if (event.data[PAGE_SNIFFER_STATUS_MARKER] === true) {
+      const status = event.data.status && typeof event.data.status === "object" ? event.data.status : {};
+      diagnostics.pageSnifferState = status.active === false ? "failed" : "active";
+      diagnostics.pageSnifferError = String(status.lastError || "");
+      diagnostics.fetchWrapperActive = Boolean(status.fetchWrapperActive);
+      diagnostics.xhrWrapperActive = Boolean(status.xhrWrapperActive);
+      return;
+    }
+    if (event.data[PAGE_MARKER] !== true) return;
+    diagnostics.pageObservationsSeen += 1;
     const observation = event.data.observation && typeof event.data.observation === "object" ? event.data.observation : {};
     const responseUrl = observation.responseUrl || observation.requestUrl || "";
     const contentType = String(observation.contentType || "");
@@ -239,10 +415,21 @@ ${location.href}`;
     script.src = browser.runtime.getURL("page-sniffer.js");
     script.async = false;
     script.dataset.xdmPageSniffer = "v1";
-    script.onload = () => script.remove();
+    script.onload = () => {
+      diagnostics.pageSnifferState = diagnostics.pageSnifferState === "active" ? "active" : "loaded";
+      script.remove();
+    };
+    script.onerror = () => {
+      diagnostics.pageSnifferState = "failed";
+      diagnostics.pageSnifferError = "The page sniffer script was blocked or could not load.";
+      script.remove();
+    };
     (document.documentElement || document.head || document).appendChild(script);
   }
-  try { injectPageSniffer(); } catch (_) {}
+  try { injectPageSniffer(); } catch (error) {
+    diagnostics.pageSnifferState = "failed";
+    diagnostics.pageSnifferError = error && error.message ? error.message : String(error);
+  }
 
   function scanRelevantDom(root = document) {
     const selector = [
@@ -341,29 +528,36 @@ ${location.href}`;
     window.addEventListener("load", () => setTimeout(runInlineScan, 350), { once: true });
   }
 
+  function showManual(input) {
+    const value = input && typeof input === "object" ? input : {};
+    return showLauncher({
+      url: value.url || "",
+      title: value.title || document.title,
+      label: value.label || "",
+      mode: value.mode || "",
+      headers: value.headers || {},
+      candidateCount: value.candidateCount || 1,
+      streamKind: value.streamKind || "",
+      force: true
+    });
+  }
+
   globalThis[API_NAME] = Object.freeze({
-    showManual(input) {
-      const value = input && typeof input === "object" ? input : {};
-      return showLauncher({
-        url: value.url || "",
-        title: value.title || document.title,
-        label: value.label || "",
-        mode: value.mode || "",
-        headers: value.headers || {},
-        candidateCount: value.candidateCount || 1,
-        streamKind: value.streamKind || "",
-        force: true
-      });
+    showManual,
+    showManualWithDiagnostics(input) {
+      const shown = showManual(input);
+      return Object.freeze({ shown, health: dependencyHealth() });
     },
+    health: dependencyHealth,
     offerNetwork,
     rescan() {
       inlineScanDone = false;
       scanRelevantDom(document);
       scanInlinePlayerData();
-      evaluateAllVideos();
-      return true;
+      const playback = evaluateAllVideos();
+      return Object.freeze({ ok: true, playback, health: dependencyHealth() });
     },
-    version: "1.1.0"
+    version: "1.2.0"
   });
 
   if (document.documentElement) start();

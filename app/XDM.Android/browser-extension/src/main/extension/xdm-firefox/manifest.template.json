@@ -32,6 +32,7 @@
     {
       "matches": ["<all_urls>"],
       "js": [
+        "bridge-selftest.js",
         "generated-config.js",
         "handoff.js",
         "fab.js",

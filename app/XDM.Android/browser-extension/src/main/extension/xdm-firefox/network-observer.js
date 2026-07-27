@@ -178,7 +178,7 @@
     } catch (_) {}
 
     try {
-      for (const file of ["generated-config.js", "handoff.js", "fab.js", "frame-bridge.js"]) {
+      for (const file of ["bridge-selftest.js", "generated-config.js", "handoff.js", "fab.js", "frame-bridge.js"]) {
         await browser.tabs.executeScript(tabId, { file, frameId: 0, runAt: "document_idle" });
       }
       const retry = await browser.tabs.executeScript(tabId, { code, frameId: 0, runAt: "document_idle" });

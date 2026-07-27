@@ -31,4 +31,10 @@ browser-extension/build/outputs/xpi/
 - The XDM custom URI remains credential-thin and carries URL and display metadata only. It does not carry standalone cookies, authorization headers, proxy credentials, POST bodies, or raw header blocks.
 - The Android receiver remains `ExternalAddDownloadActivity` and routes all accepted work through review-first intake.
 
+## Phase 43A launcher parity
+
+The popup now treats the top-frame Shadow DOM launcher as a first-class health gate. `bridge-selftest.js` verifies that a normal HTTPS page can mount a temporary host before the real FAB is injected, and the popup shows separate bridge, handoff, FAB, page-host, sniffer, and offer diagnostics. Child-frame detector injection is best-effort and cannot block the manual top-frame FAB.
+
+High-confidence HLS/DASH network observations may show the FAB even when a playing video exposes only blob, MediaSource, encrypted, or otherwise non-downloadable playback URLs.
+
 See `IRONFOX-INSTALLATION.md` and `DEVICE-ACCEPTANCE.md` for installation and release qualification.

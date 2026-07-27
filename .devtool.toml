@@ -60,6 +60,7 @@ build = [
   ":app:assembleDebugAndroidTest",
   ":browser-extension:packageFirefoxExtensionDark",
   ":browser-extension:packageFirefoxExtensionAmoled",
+  ":browser-extension:verifyFirefoxExtensionReleaseArtifacts",
 ]
 test = [
   ":browser-extension:test",
@@ -111,6 +112,7 @@ package = [
   ":app:assembleDebugAndroidTest",
   ":browser-extension:packageFirefoxExtensionDark",
   ":browser-extension:packageFirefoxExtensionAmoled",
+  ":browser-extension:verifyFirefoxExtensionReleaseArtifacts",
 ]
 lint = ["lintDebug"]
 

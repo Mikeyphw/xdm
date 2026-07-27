@@ -9,6 +9,7 @@ import zipfile
 from pathlib import Path
 
 REQUIRED_FILES = {
+    "bridge-selftest.js",
     "candidate-store.js",
     "detector-core.js",
     "extension.css",
