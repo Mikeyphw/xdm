@@ -48,6 +48,7 @@
       41,
       42,
       43,
+      46,
       47,
       48
     ]
@@ -136,7 +137,7 @@
       "compare"
     ]
   },
-  "next_phase": "Phase 45 Completed notification open-file intent",
+  "next_phase": "Phase 47 Shared app-side media sniffing engine",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -1813,5 +1814,50 @@
     "version_code_unchanged": 21,
     "depends_on": "browser_bridge_phase44_download_list_action_model_and_menus",
     "next_overlay": "browser_bridge_phase46_media_batch_intake"
+  },
+  "browser_bridge_phase46_media_batch_intake": {
+    "program": "android_media_intake",
+    "contract_version": 1,
+    "contract_document": "docs/architecture/PHASE-46-MEDIA-BATCH-INTAKE.md",
+    "static_validator": "tools/validate-phase-46-media-batch-intake.py",
+    "module": "media + app",
+    "batch_input_panel": true,
+    "parser": "MediaBatchInputParser",
+    "planner": "MediaBatchIntakePlanner",
+    "supported_input": [
+      "one_url_per_line",
+      "pasted_page_text",
+      "html",
+      "json"
+    ],
+    "line_endings": [
+      "LF",
+      "CRLF"
+    ],
+    "blank_lines_ignored": true,
+    "unsafe_schemes_rejected": true,
+    "dedupe_normalized_urls": true,
+    "signed_query_strings_preserved": true,
+    "input_size_cap": 262144,
+    "summary_counts": [
+      "accepted",
+      "duplicates",
+      "invalid",
+      "need_page_inspection"
+    ],
+    "ui_actions": [
+      "Inspect all",
+      "Add selected",
+      "Clear invalid",
+      "Copy rejected lines"
+    ],
+    "page_urls_deferred_to_phase47": true,
+    "network_probe_added": false,
+    "javascript_execution_added": false,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "depends_on": "browser_bridge_phase45_completed_notification_open_file_intent",
+    "next_overlay": "browser_bridge_phase47_shared_app_side_sniffing_engine"
   }
 }

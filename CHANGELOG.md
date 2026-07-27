@@ -359,3 +359,10 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Completed download notifications now tap into a safe non-exported open-file trampoline instead of opening the app by default.
 - The trampoline revalidates the download id/state, resolves the completed URI, grants temporary read access, and falls back to XDM details on missing files, lost permissions, or no viewer.
 - Transfer completion persistence now keeps concrete backend completed URIs so notification taps can open MediaStore/content destinations.
+
+## Phase 46 — Media batch intake
+
+- Added a review-first Media batch intake panel for pasted URLs, HTML, JSON, and page text.
+- Added a pure parser/planner that trims input, accepts LF/CRLF, extracts HTTP(S) URLs, rejects unsafe schemes, deduplicates normalized URLs, caps large input, and reports accepted/duplicate/invalid/page-inspection counts.
+- Saves only concrete media candidates into the Media Inbox; page/watch URLs are flagged for the later shared sniffing engine instead of being silently misclassified.
+

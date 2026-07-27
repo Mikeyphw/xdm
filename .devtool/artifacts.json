@@ -55429,6 +55429,154 @@
         }
       },
       "history_id": "e807edddfdd44acfb37e96cfa3ae4062"
+    },
+    {
+      "applied_at": "2026-07-27T18:56:20.306380Z",
+      "artifact": "/home/mike/Downloads/xdm_android_phase46_media_batch_intake_overlay.zip",
+      "artifact_name": "xdm_android_phase46_media_batch_intake_overlay.zip",
+      "type": "overlay",
+      "sha256": "7243e1f13ee465ceaa7554b24e84d166db399000b5e245c60cf2ea62bbc00af2",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Add media batch intake",
+      "commit_hash": "",
+      "file_count": 10,
+      "change_counts": {
+        "add": 5,
+        "modify": 5
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 46 Media Batch Intake",
+        "description": "Adds review-first media batch intake for pasted URLs/page text with pure parsing, dedupe, unsafe-scheme rejection, summary counts, and Media Inbox routing for concrete media candidates.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "7cb82cf5dc68e19c39c34487443dcca9eca77e8044b10b1504c7a81cd7f8b0c9",
+              "size": 28545,
+              "source_sha256": "f2490a8a4b32a47af499ef885c7a410b335b1f75d1f41881fa6a53f935113300"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "dfd0d2de3f692d317e031034871a77e1062c13f697a297819d2e84f2d0f2b3b4",
+              "size": 65161,
+              "source_sha256": "d86fa76a084364cf6cc909873b58282ca6d9fbe237968ba42ac4cd0055395d3e"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "fa10326287cd065ddfbc4cd9b5cb48473a5a16aa62c545c0425031f6f36efc56",
+              "size": 93375,
+              "source_sha256": "17e8985e3aeecfe90d1581dac014e9a8454c573cd557caa62ac330518730e7b4"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "c4f223ac039ae0fa9d9674f5158f41ea320ff7c6298fdd6096adf16b1e5b6813",
+              "size": 12830,
+              "source_sha256": "97d6962714283b6fc9ae24f279e66dcb88c9ff9a2574870688e766d4afe81dd8"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt",
+              "action": "modify",
+              "sha256": "253d7e8713fa35c37f32560210b5bdfbd84a2ad833e0707ab90adaff15c8102e",
+              "size": 12103,
+              "source_sha256": "51a061e60a5a96bcabce51426a412251ca1d6655be02d996c0c2dddc153139b6"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/MediaBatchPhase46ContractTest.kt",
+              "action": "add",
+              "sha256": "3332f132914dea7578ee0ac29175f30aee2a4a935279889ba06b89a9dcc928b7",
+              "size": 1238
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-46-MEDIA-BATCH-INTAKE.md",
+              "action": "add",
+              "sha256": "3c76a8a568267db4acb767c61dbffebf5d0db0968de8ed1c585d6dee857c823d",
+              "size": 1400
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBatchIntake.kt",
+              "action": "add",
+              "sha256": "d902055eacda706162aedbebb91be6665d735d25c1188ff82e75e6844ce8fa3f",
+              "size": 7212
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaBatchInputParserTest.kt",
+              "action": "add",
+              "sha256": "2e065b3fcdfe8c04c2a0e96d04afb87eeb3b2dc830dc1669a9b4f43652941993",
+              "size": 2645
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-46-media-batch-intake.py",
+              "action": "add",
+              "sha256": "a78621f7f4ee68e4f18ad8a271e5f958dd8707fe42291a4f140ca854c06c4b6c",
+              "size": 3237
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Add media batch intake"
+          }
+        },
+        "validation": {
+          "required": true,
+          "reason": "Phase 46 must prove pasted media batches are parsed safely, deduplicated, summarized, and routed into the Media Inbox without adding page probes or JavaScript execution.",
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate_phase46_media_batch_intake.sh",
+            "runner": "bash",
+            "timeout_seconds": 900,
+            "sha256": "6c27dfe7e1cdc73c6952f9c0c546ab778541d1c5cf10e67b6f8d4ce2b57bc133"
+          },
+          "expected": {
+            "restore": "success",
+            "build": "success",
+            "tests": "success",
+            "maximum_warnings": 0
+          }
+        },
+        "compatibility": {
+          "base_overlay": "xdm_android_phase45_completed_notification_open_file_overlay.zip",
+          "requires": [
+            "post-v9 source snapshot",
+            "Phase 43A r4 applied",
+            "Phase 43B applied",
+            "Phase 44 applied",
+            "Phase 45 applied"
+          ],
+          "room_schema": 14,
+          "version_name": "0.20.0-rc08",
+          "version_code": 21
+        }
+      },
+      "history_id": "da574e5791fb4ae38ed46a09026ec66d"
     }
   ]
 }

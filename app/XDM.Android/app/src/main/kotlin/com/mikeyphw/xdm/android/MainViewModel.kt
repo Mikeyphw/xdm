@@ -48,6 +48,7 @@ import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.media.MediaCaptureService
 import com.mikeyphw.xdm.android.media.MediaCaptureIntakePlanner
+import com.mikeyphw.xdm.android.media.MediaBatchIntakePlanner
 import com.mikeyphw.xdm.android.media.ExternalMediaReviewPlanner
 import com.mikeyphw.xdm.android.media.MediaRequestFacts
 import com.mikeyphw.xdm.android.media.MediaExecutionLibraryPlanner
@@ -258,6 +259,7 @@ class MainViewModel(
     private val externalAddDraft = MutableStateFlow<DownloadIntakeDraft?>(null)
     private val mediaCaptureService = MediaCaptureService()
     private val mediaCaptureIntakePlanner = MediaCaptureIntakePlanner(mediaCaptureService)
+    private val mediaBatchIntakePlanner = MediaBatchIntakePlanner(mediaCaptureService)
     private val externalMediaReviewPlanner = ExternalMediaReviewPlanner(mediaCaptureService)
     private val downloadIntakePlanner = DownloadIntakePlanner()
     private val mediaExecutionPlanner = MediaExecutionLibraryPlanner()
@@ -1611,6 +1613,35 @@ class MainViewModel(
             }
             repository.saveMediaCapture(merged)
             repository.saveMediaVariants(intake.candidate.variants)
+        }
+    }
+
+    fun captureMediaBatchInput(text: String) {
+        val plan = mediaBatchIntakePlanner.plan(text)
+        if (plan.parse.acceptedCount == 0 && plan.parse.invalidCount == 0) return
+        viewModelScope.launch(Dispatchers.IO) {
+            if (plan.records.isNotEmpty()) {
+                val now = System.currentTimeMillis()
+                val merged = plan.records.map { record ->
+                    val existing = repository.findMediaCapture(record.id)
+                    if (existing?.downloadId != null) {
+                        record.copy(
+                            status = existing.status,
+                            downloadId = existing.downloadId,
+                            createdAtEpochMs = existing.createdAtEpochMs,
+                            updatedAtEpochMs = now,
+                        )
+                    } else {
+                        record.copy(
+                            createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs,
+                            updatedAtEpochMs = now,
+                        )
+                    }
+                }
+                repository.saveMediaCaptures(merged)
+                if (plan.variants.isNotEmpty()) repository.saveMediaVariants(plan.variants)
+            }
+            navigate(AppRoute.Media)
         }
     }
 

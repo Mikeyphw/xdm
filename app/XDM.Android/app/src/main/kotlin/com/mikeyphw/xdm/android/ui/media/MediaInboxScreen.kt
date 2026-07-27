@@ -1,5 +1,8 @@
 package com.mikeyphw.xdm.android
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,12 +13,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.media.MediaConsumerWorkspacePlanner
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
@@ -35,6 +43,7 @@ fun MediaInboxScreen(
     mediaTrackSelections: Map<String, MediaTrackSelection>,
     downloads: List<Download>,
     onPastePageUrl: () -> Unit,
+    onBatchInput: (String) -> Unit,
     onDownload: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onResumeOrRetryDownload: (Download) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
@@ -43,6 +52,9 @@ fun MediaInboxScreen(
     onRemove: (MediaCaptureRecord) -> Unit,
 ) {
     val consumerPlanner = remember { MediaConsumerWorkspacePlanner() }
+    val context = LocalContext.current
+    var batchText by remember { mutableStateOf("") }
+    var batchFeedback by remember { mutableStateOf<String?>(null) }
     val reviewableCaptures = remember(captures) {
         captures.filterNot { it.status == MediaCaptureStatus.DownloadCreated }
             .sortedByDescending(MediaCaptureRecord::updatedAtEpochMs)
@@ -71,6 +83,48 @@ fun MediaInboxScreen(
                 XdmNoticeRow(
                     text = "Page session details stay private. XDM never shows cookies, authorization values, or temporary media links here.",
                     tone = XdmStatusTone.Info,
+                )
+            }
+
+            item {
+                MediaBatchInputPanel(
+                    text = batchText,
+                    feedback = batchFeedback,
+                    onTextChanged = {
+                        batchText = it
+                        batchFeedback = null
+                    },
+                    onInspectAll = {
+                        val trimmed = batchText.trim()
+                        if (trimmed.isNotEmpty()) {
+                            onBatchInput(trimmed)
+                            batchFeedback = "Batch sent to Media Inbox for review."
+                        }
+                    },
+                    onClearInvalid = {
+                        batchText = batchText.lines()
+                            .filter { line -> line.contains("http://", ignoreCase = true) || line.contains("https://", ignoreCase = true) }
+                            .joinToString("\n")
+                        batchFeedback = "Removed lines without supported HTTP(S) URLs."
+                    },
+                    onCopyRejectedLines = {
+                        val rejected = batchText.lines()
+                            .mapIndexedNotNull { index, line ->
+                                val trimmed = line.trim()
+                                if (trimmed.isNotBlank() && !trimmed.contains("http://", ignoreCase = true) && !trimmed.contains("https://", ignoreCase = true)) {
+                                    "${index + 1}: $trimmed"
+                                } else {
+                                    null
+                                }
+                            }
+                            .joinToString("\n")
+                        if (rejected.isNotBlank()) {
+                            copyTextToClipboard(context, "XDM rejected media batch lines", rejected)
+                            batchFeedback = "Rejected lines copied."
+                        } else {
+                            batchFeedback = "No rejected lines to copy."
+                        }
+                    },
                 )
             }
 
@@ -126,6 +180,41 @@ fun MediaInboxScreen(
 }
 
 @Composable
+private fun MediaBatchInputPanel(
+    text: String,
+    feedback: String?,
+    onTextChanged: (String) -> Unit,
+    onInspectAll: () -> Unit,
+    onClearInvalid: () -> Unit,
+    onCopyRejectedLines: () -> Unit,
+) {
+    XdmGroupedList {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            XdmSectionLabel("Batch media intake")
+            Text(
+                "Paste URLs or page text. XDM extracts HTTP(S) media links, dedupes them, and sends only reviewable media into the inbox.",
+            )
+            OutlinedTextField(
+                value = text,
+                onValueChange = onTextChanged,
+                label = { Text("Paste URLs or page text") },
+                placeholder = { Text("https://site/video1.m3u8\nhttps://site/watch/episode\nhttps://cdn/file.mp4") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                maxLines = 7,
+                supportingText = { Text(feedback ?: "One URL per line, or paste HTML/JSON/text containing media URLs.") },
+            )
+            XdmActionFlowRow {
+                Button(onClick = onInspectAll, enabled = text.isNotBlank()) { Text("Inspect all") }
+                TextButton(onClick = onClearInvalid, enabled = text.isNotBlank()) { Text("Clear invalid") }
+                TextButton(onClick = onCopyRejectedLines, enabled = text.isNotBlank()) { Text("Copy rejected lines") }
+                TextButton(onClick = {}, enabled = false) { Text("Add selected") }
+            }
+        }
+    }
+}
+
+@Composable
 private fun RecentlyQueuedMediaRow(
     title: String,
     download: Download,
@@ -165,4 +254,10 @@ private fun RecentlyQueuedMediaRow(
             }
         }
     }
+}
+
+
+private fun copyTextToClipboard(context: Context, label: String, text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
+    clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
 }
