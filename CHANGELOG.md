@@ -1,3 +1,11 @@
+## XDM Android Phase 41 - Browser bridge settings, diagnostics, and hardening
+
+- Added truthful browser-bridge health for Android scheme ownership, retained SAF access, verified XPI presence/checksum, and app-extension compatibility.
+- Added result-bearing deep-link parsing with bounded accepted/rejected diagnostics that never persist raw media query values, cookies, authorization, tokens, signatures, sessions, or credentials.
+- Added Settings recovery actions for folder reselection, status refresh, safe regeneration, opening the last verified XPI, and copying variant-specific IronFox setup instructions.
+- Added interrupted-generation recovery, variant/contract/theme/target staleness reporting, tests, documentation, CI wiring, and a focused Devtool validator.
+- Preserved the Phase 37 credential-thin scheme, Phase 39 staged replacement, Phase 40 themed FAB, six-route topology, Room schema 14, versionCode 21, and versionName 0.20.0-rc08.
+
 ## XDM Android Phase 40 - Shared extension theme and themed FAB
 
 - Added one Dark/AMOLED palette, shape, and motion token catalog shared by Compose and the Firefox XPI generator.

@@ -70,7 +70,7 @@ fun registerXpiTask(
     dependsOn(tasks.named("classes"), validateFirefoxExtension)
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("com.mikeyphw.xdm.android.browserextension.BrowserExtensionPackageCli")
-    val outputFile = xpiOutput.map { it.file("XDM-Android-Firefox-1.0.0-release-$theme.xpi") }
+    val outputFile = xpiOutput.map { it.file("XDM-Android-Firefox-1.1.0-release-$theme.xpi") }
     outputs.file(outputFile)
     args(
         "--output", outputFile.get().asFile.absolutePath,

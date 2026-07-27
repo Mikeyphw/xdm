@@ -34,6 +34,7 @@ data class UserPreferences(
     val proxySettings: ProxyCredentialSettings = ProxyCredentialSettings(),
     val postProcessingSettings: PostProcessingSettings = PostProcessingSettings(),
     val browserExtension: BrowserExtensionExportPreferences = BrowserExtensionExportPreferences(),
+    val browserBridgeDiagnostics: BrowserBridgeDiagnosticsPreferences = BrowserBridgeDiagnosticsPreferences(),
 )
 
 class UserPreferencesStore(private val context: Context) {
@@ -62,6 +63,19 @@ class UserPreferencesStore(private val context: Context) {
         val BrowserExtensionLastExportEpochMs = longPreferencesKey("browser_extension_last_export_epoch_ms")
         val BrowserExtensionLastExportFileName = stringPreferencesKey("browser_extension_last_export_file_name")
         val BrowserExtensionLastExportByteCount = longPreferencesKey("browser_extension_last_export_byte_count")
+        val BrowserExtensionLastExportDocumentUri = stringPreferencesKey("browser_extension_last_export_document_uri")
+        val BrowserExtensionLastExportTarget = stringPreferencesKey("browser_extension_last_export_target")
+        val BrowserExtensionLastExportApplicationId = stringPreferencesKey("browser_extension_last_export_application_id")
+        val BrowserExtensionLastExportScheme = stringPreferencesKey("browser_extension_last_export_scheme")
+        val BrowserExtensionLastExportContractVersion = longPreferencesKey("browser_extension_last_export_contract_version")
+        val BrowserBridgeLastAcceptedSummary = stringPreferencesKey("browser_bridge_last_accepted_summary")
+        val BrowserBridgeLastAcceptedEpochMs = longPreferencesKey("browser_bridge_last_accepted_epoch_ms")
+        val BrowserBridgeLastRejectedCode = stringPreferencesKey("browser_bridge_last_rejected_code")
+        val BrowserBridgeLastRejectedSummary = stringPreferencesKey("browser_bridge_last_rejected_summary")
+        val BrowserBridgeLastRejectedEpochMs = longPreferencesKey("browser_bridge_last_rejected_epoch_ms")
+        val BrowserBridgeLastGenerationPhase = stringPreferencesKey("browser_bridge_last_generation_phase")
+        val BrowserBridgeLastGenerationMessage = stringPreferencesKey("browser_bridge_last_generation_message")
+        val BrowserBridgeLastGenerationEpochMs = longPreferencesKey("browser_bridge_last_generation_epoch_ms")
     }
 
     val values: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
@@ -102,6 +116,22 @@ class UserPreferencesStore(private val context: Context) {
                 lastExportEpochMs = preferences[Keys.BrowserExtensionLastExportEpochMs] ?: 0L,
                 lastExportFileName = preferences[Keys.BrowserExtensionLastExportFileName].orEmpty(),
                 lastExportByteCount = preferences[Keys.BrowserExtensionLastExportByteCount] ?: 0L,
+                lastExportDocumentUri = preferences[Keys.BrowserExtensionLastExportDocumentUri].orEmpty(),
+                lastExportTarget = preferences[Keys.BrowserExtensionLastExportTarget]
+                    ?.let { stored -> BrowserExtensionSourceContract.Target.entries.firstOrNull { it.wireValue == stored } },
+                lastExportApplicationId = preferences[Keys.BrowserExtensionLastExportApplicationId].orEmpty(),
+                lastExportScheme = preferences[Keys.BrowserExtensionLastExportScheme].orEmpty(),
+                lastExportContractVersion = (preferences[Keys.BrowserExtensionLastExportContractVersion] ?: 0L).toInt(),
+            ),
+            browserBridgeDiagnostics = BrowserBridgeDiagnosticsPreferences(
+                lastAcceptedSummary = preferences[Keys.BrowserBridgeLastAcceptedSummary].orEmpty(),
+                lastAcceptedEpochMs = preferences[Keys.BrowserBridgeLastAcceptedEpochMs] ?: 0L,
+                lastRejectedCode = preferences[Keys.BrowserBridgeLastRejectedCode].orEmpty(),
+                lastRejectedSummary = preferences[Keys.BrowserBridgeLastRejectedSummary].orEmpty(),
+                lastRejectedEpochMs = preferences[Keys.BrowserBridgeLastRejectedEpochMs] ?: 0L,
+                lastGenerationPhase = preferences[Keys.BrowserBridgeLastGenerationPhase] ?: "idle",
+                lastGenerationMessage = preferences[Keys.BrowserBridgeLastGenerationMessage].orEmpty(),
+                lastGenerationEpochMs = preferences[Keys.BrowserBridgeLastGenerationEpochMs] ?: 0L,
             ),
         )
     }
@@ -165,21 +195,54 @@ class UserPreferencesStore(private val context: Context) {
 
     suspend fun recordBrowserExtensionExport(
         theme: BrowserExtensionSourceContract.ThemeMode,
+        target: BrowserExtensionSourceContract.Target,
         appVersion: String,
+        applicationId: String,
+        scheme: String,
         extensionVersion: String,
+        contractVersion: Int,
         sha256: String,
         epochMs: Long,
         fileName: String,
         byteCount: Long,
+        documentUri: String,
     ) {
         context.dataStore.edit {
             it[Keys.BrowserExtensionLastExportTheme] = theme.wireValue
+            it[Keys.BrowserExtensionLastExportTarget] = target.wireValue
             it[Keys.BrowserExtensionLastExportAppVersion] = appVersion
+            it[Keys.BrowserExtensionLastExportApplicationId] = applicationId
+            it[Keys.BrowserExtensionLastExportScheme] = scheme
             it[Keys.BrowserExtensionLastExportExtensionVersion] = extensionVersion
+            it[Keys.BrowserExtensionLastExportContractVersion] = contractVersion.toLong()
             it[Keys.BrowserExtensionLastExportSha256] = sha256
             it[Keys.BrowserExtensionLastExportEpochMs] = epochMs
             it[Keys.BrowserExtensionLastExportFileName] = fileName
             it[Keys.BrowserExtensionLastExportByteCount] = byteCount
+            it[Keys.BrowserExtensionLastExportDocumentUri] = documentUri
+        }
+    }
+
+    suspend fun recordBrowserBridgeAccepted(summary: String, epochMs: Long) {
+        context.dataStore.edit {
+            it[Keys.BrowserBridgeLastAcceptedSummary] = BrowserBridgeDiagnosticsRedactor.sanitize(summary)
+            it[Keys.BrowserBridgeLastAcceptedEpochMs] = epochMs
+        }
+    }
+
+    suspend fun recordBrowserBridgeRejected(code: String, summary: String, epochMs: Long) {
+        context.dataStore.edit {
+            it[Keys.BrowserBridgeLastRejectedCode] = code.take(64)
+            it[Keys.BrowserBridgeLastRejectedSummary] = BrowserBridgeDiagnosticsRedactor.sanitize(summary)
+            it[Keys.BrowserBridgeLastRejectedEpochMs] = epochMs
+        }
+    }
+
+    suspend fun recordBrowserBridgeGeneration(phase: String, message: String, epochMs: Long) {
+        context.dataStore.edit {
+            it[Keys.BrowserBridgeLastGenerationPhase] = phase.take(32)
+            it[Keys.BrowserBridgeLastGenerationMessage] = BrowserBridgeDiagnosticsRedactor.sanitize(message)
+            it[Keys.BrowserBridgeLastGenerationEpochMs] = epochMs
         }
     }
 

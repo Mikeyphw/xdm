@@ -76,3 +76,8 @@ After validating the modern build and making a backup branch:
 ```
 
 See `docs/MIGRATING-FROM-XDM8.md` and `docs/RELEASE-CHECKLIST.md`.
+
+
+## Phase 41 browser bridge integration
+
+XDM Android now includes truthful browser-extension status, redacted handoff diagnostics, SAF/XPI recovery, and variant-specific IronFox setup guidance. See `app/XDM.Android/docs/architecture/PHASE-41-BROWSER-BRIDGE-INTEGRATION.md`.

@@ -1,7 +1,9 @@
 package com.mikeyphw.xdm.android
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.DocumentsContract
 import com.mikeyphw.xdm.android.browserextension.BrowserExtensionBuildConfig
@@ -31,6 +33,126 @@ class BrowserExtensionExportManager(
             Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
         )
         require(hasWritePermission(uri)) { "Android did not retain write access to the selected folder" }
+    }
+
+    fun releaseDirectoryPermission(uriString: String): Result<Unit> = runCatching {
+        val uri = Uri.parse(uriString)
+        if (uri.scheme == "content") {
+            resolver.releasePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+        }
+    }
+
+
+    fun inspect(
+        preferences: BrowserExtensionExportPreferences,
+        diagnostics: BrowserBridgeDiagnosticsPreferences,
+        appTheme: XdmThemeMode,
+        appVersion: String,
+        applicationId: String,
+        scheme: String,
+    ): BrowserBridgeIntegrationStatus {
+        val schemeProbe = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("$scheme://capture?v=1&url=${Uri.encode("https://example.com/video.mp4")}"),
+        ).addCategory(Intent.CATEGORY_BROWSABLE)
+        val resolved = appContext.packageManager.resolveActivity(schemeProbe, PackageManager.MATCH_DEFAULT_ONLY)
+        val resolvedPackage = resolved?.activityInfo?.packageName.orEmpty()
+        val resolvedClass = resolved?.activityInfo?.name.orEmpty()
+        val schemeState = when {
+            resolved == null -> BrowserBridgeSchemeState.Missing
+            resolvedPackage != applicationId || !resolvedClass.endsWith(".ExternalAddDownloadActivity") -> BrowserBridgeSchemeState.WrongHandler
+            else -> BrowserBridgeSchemeState.Ready
+        }
+        val schemeDetail = when (schemeState) {
+            BrowserBridgeSchemeState.Ready -> "$scheme is registered to this XDM build."
+            BrowserBridgeSchemeState.Missing -> "Android did not resolve $scheme to an activity."
+            BrowserBridgeSchemeState.WrongHandler -> "$scheme resolves to ${resolvedPackage.ifBlank { "another app" }}."
+        }
+
+        val treeUri = preferences.exportTreeUri.takeIf(String::isNotBlank)?.let(Uri::parse)
+        val retained = treeUri != null && hasWritePermission(treeUri)
+        var safState = when {
+            treeUri == null -> BrowserBridgeSafState.NotConfigured
+            !retained -> BrowserBridgeSafState.PermissionRevoked
+            else -> BrowserBridgeSafState.Ready
+        }
+        var safDetail = when (safState) {
+            BrowserBridgeSafState.NotConfigured -> "Choose an Android document-tree folder."
+            BrowserBridgeSafState.PermissionRevoked -> "Android no longer grants write access to the selected folder."
+            else -> "Export folder permission is retained."
+        }
+        var canOpen = false
+        val documentUri = preferences.lastExportDocumentUri.takeIf(String::isNotBlank)?.let(Uri::parse)
+        if (retained && preferences.lastExportFileName.isNotBlank()) {
+            if (documentUri == null) {
+                safState = BrowserBridgeSafState.ExportMissing
+                safDetail = "The last export has no persisted document reference. Regenerate it."
+            } else {
+                val verification = runCatching {
+                    val byteCount = resolver.openAssetFileDescriptor(documentUri, "r")?.use { descriptor ->
+                        descriptor.length.takeIf { it >= 0L }
+                    } ?: throw FileNotFoundException("The exported XPI could not be opened")
+                    require(byteCount == preferences.lastExportByteCount) { "Exported XPI size changed" }
+                    val hash = resolver.openInputStream(documentUri)?.buffered()?.use(BrowserExtensionHash::digest)
+                        ?: throw FileNotFoundException("The exported XPI could not be read")
+                    require(hash == preferences.lastExportSha256) { "Exported XPI checksum changed" }
+                }
+                if (verification.isSuccess) {
+                    safState = BrowserBridgeSafState.Ready
+                    safDetail = "The last exported XPI is present and checksum-verified."
+                    canOpen = true
+                } else {
+                    val message = verification.exceptionOrNull()?.message.orEmpty()
+                    safState = when {
+                        message.contains("checksum", ignoreCase = true) || message.contains("size", ignoreCase = true) -> BrowserBridgeSafState.ChecksumMismatch
+                        verification.exceptionOrNull() is FileNotFoundException -> BrowserBridgeSafState.ExportMissing
+                        else -> BrowserBridgeSafState.Unreadable
+                    }
+                    safDetail = BrowserBridgeDiagnosticsRedactor.sanitize(
+                        verification.exceptionOrNull()?.message ?: "The exported XPI could not be verified.",
+                    )
+                }
+            }
+        }
+
+        val issues = preferences.staleReasons(appTheme, appVersion, applicationId, scheme).toMutableList()
+        if (preferences.lastExportFileName.isBlank()) issues += "No verified XPI has been generated yet."
+        if (diagnostics.lastGenerationPhase == "exporting") {
+            issues += "A previous XPI generation was interrupted. The previous verified XPI was retained."
+        }
+        return BrowserBridgeIntegrationStatus(
+            schemeState = schemeState,
+            schemeDetail = schemeDetail,
+            safState = safState,
+            safDetail = safDetail,
+            compatibilityIssues = issues.distinct().take(8),
+            canOpenExport = canOpen,
+            currentExportUri = if (canOpen) preferences.lastExportDocumentUri else "",
+        )
+    }
+
+    fun openExportedFile(uriString: String): Result<Unit> = runCatching {
+        val uri = Uri.parse(uriString)
+        require(uri.scheme == "content") { "The exported XPI document is unavailable" }
+        resolver.openAssetFileDescriptor(uri, "r")?.close()
+            ?: throw FileNotFoundException("The exported XPI document is missing")
+        val candidates = listOf("application/x-xpinstall", "application/zip", "application/octet-stream")
+        var lastFailure: Throwable? = null
+        for (mimeType in candidates) {
+            val intent = Intent(Intent.ACTION_VIEW)
+                .setDataAndType(uri, mimeType)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                appContext.startActivity(intent)
+                return@runCatching
+            } catch (failure: ActivityNotFoundException) {
+                lastFailure = failure
+            }
+        }
+        throw lastFailure ?: ActivityNotFoundException("No installed app can open XPI files")
     }
 
     fun export(treeUriString: String, config: BrowserExtensionBuildConfig): Result<Success> = runCatching {

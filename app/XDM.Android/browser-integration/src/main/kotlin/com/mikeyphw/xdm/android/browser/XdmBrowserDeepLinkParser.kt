@@ -15,57 +15,81 @@ import java.util.Locale
  * already belong to the media URL are preserved by [ExternalUrlPolicy].
  */
 object XdmBrowserDeepLinkParser {
-    fun parse(rawDeepLink: String?, expectedScheme: String): XdmBrowserDeepLinkPayload? {
-        val raw = rawDeepLink?.trim()?.takeIf(String::isNotBlank) ?: return null
-        if (raw.utf8Size() > XdmBrowserDeepLinkContract.MaxDeepLinkBytes) return null
+    fun parse(rawDeepLink: String?, expectedScheme: String): XdmBrowserDeepLinkPayload? =
+        (parseDetailed(rawDeepLink, expectedScheme) as? XdmBrowserDeepLinkParseResult.Accepted)?.payload
+
+    fun parseDetailed(rawDeepLink: String?, expectedScheme: String): XdmBrowserDeepLinkParseResult {
+        val raw = rawDeepLink?.trim()?.takeIf(String::isNotBlank)
+            ?: return XdmBrowserDeepLinkParseResult.NotApplicable
+        val schemePrefix = raw.substringBefore(':', missingDelimiterValue = "").lowercase(Locale.US)
+        if (schemePrefix !in XdmBrowserDeepLinkContract.BuildVariantSchemes) {
+            return XdmBrowserDeepLinkParseResult.NotApplicable
+        }
+        if (raw.utf8Size() > XdmBrowserDeepLinkContract.MaxDeepLinkBytes) {
+            return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.PayloadTooLarge)
+        }
 
         val normalizedExpectedScheme = expectedScheme.trim().lowercase(Locale.US)
-        if (normalizedExpectedScheme !in XdmBrowserDeepLinkContract.BuildVariantSchemes) return null
+        if (normalizedExpectedScheme !in XdmBrowserDeepLinkContract.BuildVariantSchemes) {
+            return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.InvalidExpectedScheme)
+        }
 
-        val uri = runCatching { URI(raw) }.getOrNull() ?: return null
-        if (!uri.scheme.equals(normalizedExpectedScheme, ignoreCase = true)) return null
-        if (uri.rawUserInfo != null || uri.port != -1 || uri.rawFragment != null) return null
-        if (!uri.rawPath.isNullOrBlank() && uri.rawPath != "/") return null
+        val uri = runCatching { URI(raw) }.getOrNull()
+            ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.MalformedUri)
+        val incomingScheme = uri.scheme?.lowercase(Locale.US)
+            ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.MalformedUri)
+        if (incomingScheme != normalizedExpectedScheme) {
+            return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.VariantMismatch)
+        }
+        if (uri.rawUserInfo != null || uri.port != -1 || uri.rawFragment != null) {
+            return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafeEnvelope)
+        }
+        if (!uri.rawPath.isNullOrBlank() && uri.rawPath != "/") {
+            return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafeEnvelope)
+        }
 
         val action = when (uri.host?.lowercase(Locale.US)) {
             XdmBrowserDeepLinkContract.CaptureHost -> AutomationCommandAction.CaptureMedia
             XdmBrowserDeepLinkContract.AddHost -> AutomationCommandAction.PromptAddDownload
-            else -> return null
+            else -> return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsupportedAction)
         }
 
-        val parameters = parseQuery(uri.rawQuery) ?: return null
-        val version = parameters.singleValue(XdmBrowserDeepLinkContract.VersionParameter)?.toIntOrNull()
-            ?: return null
-        if (version != XdmBrowserDeepLinkContract.CurrentVersion) return null
+        val parameters = parseQuery(uri.rawQuery)
+            ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.MalformedQuery)
+        val versionValue = parameters.singleValue(XdmBrowserDeepLinkContract.VersionParameter)
+        val version = versionValue?.toIntOrNull()
+            ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsupportedContract)
+        if (version != XdmBrowserDeepLinkContract.CurrentVersion) {
+            return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsupportedContract)
+        }
 
-        val mediaUrl = parameters.singleValue(XdmBrowserDeepLinkContract.UrlParameter)
-            ?.strictExternalUrl(XdmBrowserDeepLinkContract.MaxMediaUrlBytes)
-            ?: return null
+        val rawMediaUrl = parameters.singleValue(XdmBrowserDeepLinkContract.UrlParameter)
+            ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.MissingMediaUrl)
+        val mediaUrl = rawMediaUrl.strictExternalUrl(XdmBrowserDeepLinkContract.MaxMediaUrlBytes)
+            ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafeMediaUrl)
 
         val rawPageUrl = parameters.singleValue(XdmBrowserDeepLinkContract.PageUrlParameter)
         val pageUrl = when {
             rawPageUrl == null -> null
-            else -> rawPageUrl.strictExternalUrl(XdmBrowserDeepLinkContract.MaxPageUrlBytes) ?: return null
+            else -> rawPageUrl.strictExternalUrl(XdmBrowserDeepLinkContract.MaxPageUrlBytes)
+                ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafePageUrl)
         }
 
-        val pageTitle = parameters.singleValue(XdmBrowserDeepLinkContract.PageTitleParameter)
-            .sanitizedText(XdmBrowserDeepLinkContract.MaxPageTitleCharacters)
-        val fileName = parameters.singleValue(XdmBrowserDeepLinkContract.FileNameParameter)
-            .sanitizedFileName()
-        val mimeType = parameters.singleValue(XdmBrowserDeepLinkContract.MimeTypeParameter)
-            .sanitizedMimeType()
-        val mediaKind = parameters.singleValue(XdmBrowserDeepLinkContract.MediaKindParameter)
-            .sanitizedMediaKind()
-
-        return XdmBrowserDeepLinkPayload(
-            version = version,
-            action = action,
-            url = mediaUrl,
-            pageUrl = pageUrl,
-            pageTitle = pageTitle,
-            fileName = fileName,
-            mimeType = mimeType,
-            mediaKind = mediaKind,
+        return XdmBrowserDeepLinkParseResult.Accepted(
+            XdmBrowserDeepLinkPayload(
+                version = version,
+                action = action,
+                url = mediaUrl,
+                pageUrl = pageUrl,
+                pageTitle = parameters.singleValue(XdmBrowserDeepLinkContract.PageTitleParameter)
+                    .sanitizedText(XdmBrowserDeepLinkContract.MaxPageTitleCharacters),
+                fileName = parameters.singleValue(XdmBrowserDeepLinkContract.FileNameParameter)
+                    .sanitizedFileName(),
+                mimeType = parameters.singleValue(XdmBrowserDeepLinkContract.MimeTypeParameter)
+                    .sanitizedMimeType(),
+                mediaKind = parameters.singleValue(XdmBrowserDeepLinkContract.MediaKindParameter)
+                    .sanitizedMediaKind(),
+            ),
         )
     }
 
@@ -104,7 +128,7 @@ object XdmBrowserDeepLinkParser {
     }
 
     private fun String?.sanitizedText(maxCharacters: Int): String? = this
-        ?.replace(Regex("[\\u0000-\\u001F\\u007F]"), " ")
+        ?.replace(Regex("[\u0000-\u001F\u007F]"), " ")
         ?.trim()
         ?.takeIf(String::isNotBlank)
         ?.take(maxCharacters)

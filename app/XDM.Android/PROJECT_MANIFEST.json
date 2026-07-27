@@ -1612,5 +1612,32 @@
     "top_level_route_added": false,
     "depends_on": "browser_bridge_phase39_xpi_generation_export",
     "next_overlay": "browser_bridge_phase41_browser_bridge_integration"
+  },
+  "browser_bridge_phase41_browser_bridge_integration": {
+    "program": "android_browser_bridge",
+    "contract_version": 1,
+    "contract_document": "docs/architecture/PHASE-41-BROWSER-BRIDGE-INTEGRATION.md",
+    "static_validator": "tools/validate-phase-41-browser-bridge-integration.py",
+    "settings_panel": "BrowserExtension",
+    "result_bearing_deep_link_parser": true,
+    "diagnostics_persisted": true,
+    "diagnostics_redacted": true,
+    "raw_deep_link_persisted": false,
+    "scheme_registration_probe": true,
+    "saf_permission_probe": true,
+    "export_document_reopen_verify": true,
+    "export_sha256_verify": true,
+    "interrupted_generation_recovery": true,
+    "previous_verified_xpi_retained": true,
+    "variant_contract_theme_target_staleness": true,
+    "open_verified_export_action": true,
+    "ironfox_variant_instructions": true,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "top_level_route_added": false,
+    "browser_runtime_added": false,
+    "depends_on": "browser_bridge_phase40_extension_theme_fab",
+    "next_overlay": "browser_bridge_phase42_release_gate"
   }
 }

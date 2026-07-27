@@ -52,3 +52,14 @@
 - [ ] Run `remove-legacy-ui.sh --check`
 - [ ] Run `remove-legacy-ui.sh --apply`
 - [ ] Re-run full validation and package qualification
+
+## XDM Android browser bridge
+
+- [ ] `xdmdownload`, beta, and debug scheme variants resolve only to `ExternalAddDownloadActivity`
+- [ ] Accepted and rejected deep-link diagnostics remain bounded and redact query values, cookies, authorization, and credentials
+- [ ] Browser extension export directory permission survives restart or reports a specific recovery state
+- [ ] Missing, modified, wrong-variant, stale-theme, and interrupted XPI exports are distinguished in Settings
+- [ ] A verified prior XPI remains recoverable when replacement or SAF promotion fails
+- [ ] Exported XPI opens through Android's package installer or a compatible Firefox extension installer
+- [ ] IronFox setup instructions match the active application variant and custom scheme
+- [ ] Phase 37 through Phase 41 validators pass before the Phase 42 browser-bridge release gate

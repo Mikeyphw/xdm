@@ -57,3 +57,8 @@ cd "$HOME/Code/xdm" && \
 ```
 
 The schema-v2 artifact owns the commit message `Add deterministic XDM Firefox XPI export`. Do not pass `--commit`.
+
+
+## Phase 41 browser bridge integration
+
+Apply `xdm_android_phase41_browser_bridge_integration_overlay.zip` after Phase 40. The artifact owns the commit message `Add browser bridge settings diagnostics and recovery` and runs the focused Phase 37–41 validators plus browser-extension and Android unit tests.

@@ -4,6 +4,10 @@ Adds Phase 8 checksum verification, persisted verification results, trusted bloc
 
 # XDM Android
 
+## Browser bridge integration
+
+Phases 37–41 provide a variant-specific `xdmdownload` intake contract, repository-owned Firefox extension, deterministic in-app XPI export, shared XDM theme/FAB, and a truthful Settings health surface. Phase 41 verifies Android scheme ownership, retained SAF access, XPI size/SHA-256, extension/app compatibility, interrupted generation, and redacted accepted/rejected handoff diagnostics. See `docs/architecture/PHASE-41-BROWSER-BRIDGE-INTEGRATION.md`.
+
 ## UIX R6 final experience seal
 
 The Android UI is now sealed as a dark, flat, adaptive five-destination experience with Downloads, Media, Library, Activity, and Settings. Add remains an internal review-first route presented as an adaptive sheet/dialog. UIX R6 adds stable accessibility semantics, 48 dp targets, 200% font-scale qualification, Compact/Medium/Expanded contracts, lazy Developer diagnostics, consumer-safe source scans, device smoke tests, and the final release checklist. See `docs/architecture/UIX-R6-ACCESSIBILITY-PERFORMANCE-RELEASE-SEAL.md`.

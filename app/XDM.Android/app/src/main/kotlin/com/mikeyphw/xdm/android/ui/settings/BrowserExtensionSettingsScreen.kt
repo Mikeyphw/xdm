@@ -9,8 +9,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.browserextension.BrowserExtensionSourceContract
 import java.text.DateFormat
@@ -21,13 +24,25 @@ internal fun BrowserExtensionSettingsScreen(
     state: MainUiState,
     viewModel: MainViewModel,
 ) {
+    val context = LocalContext.current
     val preferences = state.browserExtension
     val runtime = state.browserExtensionRuntime
+    val health = state.browserBridgeStatus
+    val diagnostics = state.browserBridgeDiagnostics
     val resolvedTheme = preferences.resolvedTheme(state.themeMode)
+    val staleReasons = preferences.staleReasons(
+        appTheme = state.themeMode,
+        appVersion = BuildConfig.VERSION_NAME,
+        applicationId = BuildConfig.APPLICATION_ID,
+        scheme = BuildConfig.XDM_BROWSER_SCHEME,
+    )
     val themeStale = preferences.isThemeStale(state.themeMode)
     val exportFolderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.toString()?.let(viewModel::registerBrowserExtensionExportDirectory)
     }
+    val setupInstructions = browserBridgeIronFoxInstructions(BuildConfig.XDM_BROWSER_SCHEME)
+
+    LaunchedEffect(Unit) { viewModel.refreshBrowserExtensionStatus() }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -37,12 +52,37 @@ internal fun BrowserExtensionSettingsScreen(
         item { SettingsPageHeader("Browser extension", { viewModel.selectSettingsPanel(SettingsPanel.Overview) }) }
         item {
             XdmListCard {
-                XdmCardTitle("Firefox bridge package")
-                XdmSupportingText(
-                    "XDM generates the repository-owned Firefox extension with this app variant's scheme, selected target, and shared XDM theme tokens. The XPI is validated and checksum-verified before export.",
-                    maxLines = 6,
+                XdmCardTitle("Bridge status")
+                XdmStatusBadge(
+                    text = if (health.isReady) "Ready" else "Needs attention",
+                    tone = if (health.isReady) XdmStatusTone.Success else XdmStatusTone.Warning,
                 )
-                XdmMetadataText("Extension ${BrowserExtensionSourceContract.DevelopmentVersion} • Contract ${BrowserExtensionSourceContract.ContractVersion}")
+                XdmSupportingText(health.schemeDetail, maxLines = 4)
+                XdmSupportingText(health.safDetail, maxLines = 4)
+                XdmMetadataText(
+                    "Extension ${BrowserExtensionSourceContract.DevelopmentVersion} • Contract ${BrowserExtensionSourceContract.ContractVersion} • ${BuildConfig.XDM_BROWSER_SCHEME}",
+                    maxLines = 3,
+                )
+                XdmActionFlowRow {
+                    TextButton(onClick = viewModel::refreshBrowserExtensionStatus) { Text("Refresh status") }
+                    if (health.canOpenExport) {
+                        TextButton(onClick = viewModel::openBrowserExtensionXpi) { Text("Open exported XPI") }
+                    }
+                }
+            }
+        }
+        if (health.compatibilityIssues.isNotEmpty()) {
+            item {
+                XdmListCard {
+                    XdmCardTitle("Compatibility and recovery")
+                    health.compatibilityIssues.forEach { issue ->
+                        XdmStatusBadge(issue, tone = XdmStatusTone.Warning)
+                    }
+                    XdmSupportingText(
+                        "Regeneration is safe: XDM stages and validates the replacement before promoting it, and preserves the previous verified XPI when replacement fails.",
+                        maxLines = 5,
+                    )
+                }
             }
         }
         item {
@@ -52,6 +92,9 @@ internal fun BrowserExtensionSettingsScreen(
                 XdmActionFlowRow {
                     Button(onClick = { exportFolderPicker.launch(null) }) {
                         Text(if (preferences.exportTreeUri.isBlank()) "Choose folder" else "Change folder")
+                    }
+                    if (preferences.exportTreeUri.isNotBlank()) {
+                        TextButton(onClick = viewModel::clearBrowserExtensionExportFolder) { Text("Clear folder") }
                     }
                 }
             }
@@ -69,13 +112,16 @@ internal fun BrowserExtensionSettingsScreen(
                         )
                     }
                 }
+                if (preferences.lastExportTarget != null && preferences.lastExportTarget != preferences.defaultTarget) {
+                    XdmStatusBadge("Regenerate to apply the new target", tone = XdmStatusTone.Warning)
+                }
             }
         }
         item {
             XdmListCard {
                 XdmCardTitle("Generated theme")
                 XdmSupportingText(
-                    "Follow app captures XDM's current ${state.themeMode.label} palette when the XPI is generated. Firefox cannot read Android theme changes after installation, so a changed app theme requires regeneration.",
+                    "Follow app captures XDM's current ${state.themeMode.label} palette. Firefox cannot read later Android theme changes, so a changed app theme requires regeneration.",
                     maxLines = 5,
                 )
                 XdmActionFlowRow {
@@ -90,13 +136,12 @@ internal fun BrowserExtensionSettingsScreen(
                 XdmMetadataText("Next package: ${resolvedTheme.label}")
                 if (themeStale) {
                     XdmStatusBadge("Regeneration needed", tone = XdmStatusTone.Warning)
-                    XdmSupportingText("The last exported XPI uses ${preferences.lastExportTheme?.label ?: "another theme"}; XDM now resolves this package to ${resolvedTheme.label}.", maxLines = 3)
                 }
             }
         }
         item {
             XdmListCard {
-                XdmCardTitle(if (themeStale) "Regenerate XPI" else "Generate XPI")
+                XdmCardTitle(if (staleReasons.isNotEmpty()) "Regenerate XPI" else "Generate XPI")
                 XdmSupportingText(runtime.message, maxLines = 4)
                 XdmActionFlowRow {
                     Button(
@@ -106,10 +151,13 @@ internal fun BrowserExtensionSettingsScreen(
                         Text(
                             when {
                                 runtime.phase == BrowserExtensionExportPhase.Exporting -> "Generating…"
-                                themeStale -> "Regenerate XPI"
+                                staleReasons.isNotEmpty() && preferences.lastExportFileName.isNotBlank() -> "Regenerate XPI"
                                 else -> "Generate XPI"
                             },
                         )
+                    }
+                    if (health.canOpenExport) {
+                        TextButton(onClick = viewModel::openBrowserExtensionXpi) { Text("Open XPI") }
                     }
                 }
             }
@@ -122,9 +170,61 @@ internal fun BrowserExtensionSettingsScreen(
                     XdmMetadataText("${formatByteCount(preferences.lastExportByteCount)} • ${formatExportTime(preferences.lastExportEpochMs)}")
                     XdmMetadataText("SHA-256 ${preferences.lastExportSha256}", maxLines = 3)
                     XdmMetadataText(
-                        "App ${preferences.lastExportAppVersion} • Extension ${preferences.lastExportExtensionVersion} • ${preferences.lastExportTheme?.label ?: "Unknown theme"}",
+                        "${preferences.lastExportApplicationId.ifBlank { "Unknown variant" }} • ${preferences.lastExportScheme.ifBlank { "Unknown scheme" }}",
                         maxLines = 3,
                     )
+                    XdmMetadataText(
+                        "App ${preferences.lastExportAppVersion} • Extension ${preferences.lastExportExtensionVersion} • Contract ${preferences.lastExportContractVersion} • ${preferences.lastExportTheme?.label ?: "Unknown theme"}",
+                        maxLines = 4,
+                    )
+                }
+            }
+        }
+        item {
+            XdmListCard {
+                XdmCardTitle("IronFox setup")
+                XdmSupportingText(
+                    "Use the generated variant scheme ${BuildConfig.XDM_BROWSER_SCHEME}. IronFox must expose that protocol and allow links to open in apps.",
+                    maxLines = 4,
+                )
+                XdmActionFlowRow {
+                    TextButton(onClick = { copyTextToClipboard(context, "XDM IronFox setup", setupInstructions) }) {
+                        Text("Copy setup instructions")
+                    }
+                }
+            }
+        }
+        item {
+            XdmListCard {
+                XdmCardTitle("Redacted diagnostics")
+                XdmMetadataText("Scheme registration: ${health.schemeState.name}")
+                XdmMetadataText("SAF state: ${health.safState.name}")
+                XdmMetadataText(
+                    "Last accepted link: ${diagnostics.lastAcceptedSummary.ifBlank { "None recorded" }}${diagnosticTime(diagnostics.lastAcceptedEpochMs)}",
+                    maxLines = 4,
+                )
+                XdmMetadataText(
+                    "Last rejected link: ${diagnostics.lastRejectedSummary.ifBlank { "None recorded" }}${diagnosticTime(diagnostics.lastRejectedEpochMs)}",
+                    maxLines = 4,
+                )
+                XdmMetadataText(
+                    "Last generation: ${diagnostics.lastGenerationPhase} • ${diagnostics.lastGenerationMessage.ifBlank { "No result recorded" }}${diagnosticTime(diagnostics.lastGenerationEpochMs)}",
+                    maxLines = 5,
+                )
+                XdmMetadataText(
+                    "Detector build ${health.detectorVersion} • contract ${health.contractVersion} • body inspection cap ${BrowserExtensionSourceContract.BodyInspectionLimitBytes / 1024} KiB",
+                    maxLines = 3,
+                )
+                XdmActionFlowRow {
+                    TextButton(
+                        onClick = {
+                            copyTextToClipboard(
+                                context,
+                                "XDM Browser Bridge diagnostics",
+                                health.redactedReport(diagnostics),
+                            )
+                        },
+                    ) { Text("Copy diagnostics") }
                 }
             }
         }
@@ -148,3 +248,5 @@ private fun formatExportTime(epochMs: Long): String = if (epochMs <= 0L) {
 } else {
     DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(epochMs))
 }
+
+private fun diagnosticTime(epochMs: Long): String = if (epochMs <= 0L) "" else " • ${formatExportTime(epochMs)}"

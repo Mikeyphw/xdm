@@ -1,0 +1,243 @@
+{
+  "applied_at": "2026-07-27T00:26:15.641783Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_phase41_browser_bridge_integration_overlay.zip",
+  "artifact_name": "xdm_android_phase41_browser_bridge_integration_overlay.zip",
+  "type": "overlay",
+  "sha256": "d766e64e456907b0b9b4dcf532934c736545fbb32cbb2dabd1ddc225cbbafffb",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Add browser bridge settings diagnostics and recovery",
+  "commit_hash": "",
+  "file_count": 25,
+  "change_counts": {
+    "add": 7,
+    "modify": 18
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 41 Browser Bridge Settings Diagnostics and Recovery",
+    "description": "Adds truthful Browser Bridge settings, result-bearing deep-link diagnostics, variant and scheme compatibility probes, SAF permission and checksum health, verified XPI opening and recovery actions, interrupted-generation reporting, and bounded redacted persisted diagnostics.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": ".github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "69dcc90b02bd464c6f12df88d1fa2c8061590274481b752e36eec557c3a90572",
+          "size": 3216,
+          "source_sha256": "efbaa7d73c07033a80487d7b677253a7d3fbb96823d1481b0b36bd24cbf52349"
+        },
+        {
+          "path": "APPLY_DIRECT_PATCH.md",
+          "action": "modify",
+          "sha256": "683998c34f264af2534d33928254cae30fa50a722e935c4836b36fcb13cd50b0",
+          "size": 3099,
+          "source_sha256": "6a5923c681bff9cf0f3c9cc225a95ec97899869c543ea72cdf55e2ad2d93c808"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "749725ab705bbdd12c1f85ee6d704007e100d00cbde3722c521dce2692f6911f",
+          "size": 23439,
+          "source_sha256": "184813bcae173a330d3708915a38f83ffffdda62ef869419213b3de1971fb2f6"
+        },
+        {
+          "path": "DEVTOOL_OVERLAY.md",
+          "action": "modify",
+          "sha256": "596a2fb6649fa94737a604b573c06ff6f0c6c436129b6a20b83e6f54306e70a9",
+          "size": 5218,
+          "source_sha256": "9f1644d575f4531d838d9a6e6dacefad2d855bf4dd7bbc7fd292e9ce6be9b18c"
+        },
+        {
+          "path": "README.md",
+          "action": "modify",
+          "sha256": "dd5c3a8f3e85c4eea971d745085b93f64269b68e3df3bd432766ac8977f89471",
+          "size": 2904,
+          "source_sha256": "7cadac63554863feb50806dfda5baca779423f3580bc9544fb05a8324b9c84fa"
+        },
+        {
+          "path": "app/XDM.Android/.github/workflows/android.yml",
+          "action": "modify",
+          "sha256": "d35900768b395452787bdf595464e50db31ae79d5915254b055d290b6ccf4b84",
+          "size": 5447,
+          "source_sha256": "2ffa0520552b16d9816c68e6a6a34475d1f7dd6f9a5bec6de82e60fc81eedf35"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "d4095f248d9f519a1a4998b1b422cc528bc3ca1a0448b23b2921670cc98be625",
+          "size": 55772,
+          "source_sha256": "c1dfde3129678beb28566a021ea9cd48135bd4dc91d83119fc5abfbb4517555c"
+        },
+        {
+          "path": "app/XDM.Android/README.md",
+          "action": "modify",
+          "sha256": "d2e27905c4b6dca67b6ac21c441a829b01186a2d894dfc30c670775b87ce9038",
+          "size": 20846,
+          "source_sha256": "8dc2c7702b53b9d4f60ab1cc8a57afe6e578e9452eeeee4f36d2a3d8377ae714"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserBridgeIntegrationModels.kt",
+          "action": "add",
+          "sha256": "13aaca11b2b3ba2ec21d8bf302796237453a75d5667d406beac8f40b132bde5f",
+          "size": 5343
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserExtensionExportManager.kt",
+          "action": "modify",
+          "sha256": "1d483e434217b3eb39b0688cfab704e0d1c97680c49257cee9c30afec34c1f8d",
+          "size": 14073,
+          "source_sha256": "df29b4a91417b9d1cd71a55efa3c0d9bcc0d8d74aa3f516a4431308118ec4c9f"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserExtensionExportModels.kt",
+          "action": "modify",
+          "sha256": "529cf3321ecd37207a99ee8e883e6a499b40890b65685341396d4d5cdc7dac42",
+          "size": 3159,
+          "source_sha256": "1cf4deaa6637cbc85304336e25aacdc764f0cc558ddd4f2ace139997e1e3da8c"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+          "action": "modify",
+          "sha256": "51b78793704f9b96a5559e238318e51b1259cfa9e782bd5095253bbacc265172",
+          "size": 12645,
+          "source_sha256": "ab61dd63f14c42c0f8854590234dab60f0cd51021693385d51f3837b36ef4a19"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "cbeb4b9810c4f56d9fad7f3a3310af3d60c20d2e3c617fdce8dc170818e78fcb",
+          "size": 92099,
+          "source_sha256": "08805ca75e69a40dd06e0a20d123472296c16abbf046d298820408cc88f215e7"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferencesStore.kt",
+          "action": "modify",
+          "sha256": "07c0b6e8fcf1f6eeb1a38ca593aaf7080aaf75200f8b4966ba79e5ef780c8720",
+          "size": 15809,
+          "source_sha256": "a52b42ca1a08adc715f8ddcf9d6134caf85b5fc85e8fa13e734c0d1cf0fa4fdc"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/BrowserExtensionSettingsScreen.kt",
+          "action": "modify",
+          "sha256": "d43b86c6e71337543e3afb7ffbdf85f98399f1f7951d9ba9c6e9ec4a3ba1bc36",
+          "size": 12210,
+          "source_sha256": "2ce3928366a12c00d2187fed265a35fc9e8706747d3d8f0dc298d6f48f3c01ba"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgeDiagnosticsRedactorTest.kt",
+          "action": "add",
+          "sha256": "0b85426b5069d9d7a2dd35e333e36dbdea1bc243c540a2bed08e5dbfff71df85",
+          "size": 1538
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserExtensionPhase41ContractTest.kt",
+          "action": "add",
+          "sha256": "8adc88a79f218e67c7392ed4ff7049a6ff1bdbba1b5b5061b3e7203e9bbe7ce6",
+          "size": 3714
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/build.gradle.kts",
+          "action": "modify",
+          "sha256": "4668021cc205e12eb30403eec8f0a5ef8b82ee641761ffff513ffa918f0e8b4a",
+          "size": 3362,
+          "source_sha256": "033c22722f990eb17c6ef6178b9db35d5df236b4dfd354f6b3ce6f0d794b6003"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkParseResult.kt",
+          "action": "add",
+          "sha256": "bc744e3f415a865daf8b2e097207ab8cdc35b5da00a3b79abb0c8892a8f63a09",
+          "size": 1588
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkParser.kt",
+          "action": "modify",
+          "sha256": "5a581aba18b6f754b4c6ce14b71480b625e85aabbea982fc58b7e77aaf162bd8",
+          "size": 8044,
+          "source_sha256": "438eec30819463522b9e1fed5a84f1d5e6e01570d3d6eff058ca6dc96e4fc04c"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/test/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkDiagnosticsTest.kt",
+          "action": "add",
+          "sha256": "364577448e5de88f693c4569859ec3d6c6008cf1aa95e79679ef30347fc64f06",
+          "size": 2276
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-41-BROWSER-BRIDGE-INTEGRATION.md",
+          "action": "add",
+          "sha256": "c59bfd0ec688f0e8cdafea09c410032811d2a6d16000a554e0f01ebb755fc520",
+          "size": 3689
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "71ff9ec20d73f0578211f2041fd74113fd279245950b9e6e4d0258e843119624",
+          "size": 3800,
+          "source_sha256": "7faef76224135bc106a1cfcbe5288040925074b965b5746d72531242e36e23ad"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-41-browser-bridge-integration.py",
+          "action": "add",
+          "sha256": "3faa6c3985e56f012e37ca9a567a503cd79afbb6085936de4548542fb8162bba",
+          "size": 7214
+        },
+        {
+          "path": "docs/RELEASE-CHECKLIST.md",
+          "action": "modify",
+          "sha256": "72838ee74fb90cf41528e63525ffce785de1adc5c2491163241e5366d0150413",
+          "size": 3377,
+          "source_sha256": "c1bc33ed39a430f583e849db4c196041588c3eda410c9ad04aa1850bb62dafbc"
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Add browser bridge settings diagnostics and recovery"
+      }
+    },
+    "validation": {
+      "required": true,
+      "restore": false,
+      "build": false,
+      "test": false,
+      "rollback_on_failure": true,
+      "script": {
+        "path": ".devtool-artifact/validate_phase41_browser_bridge_integration.sh",
+        "runner": "bash",
+        "sha256": "ccf7ed58dfa7ba609253884854c671a78efa93feac68916a7b06cdea3c56edc4",
+        "timeout_seconds": 1800
+      },
+      "expected": {
+        "restore": "skip",
+        "build": "skip",
+        "tests": "skip",
+        "maximum_warnings": 0
+      }
+    },
+    "notes": [
+      "Depends on the landed Phase 40 shared extension theme and themed FAB overlay.",
+      "The Settings Browser extension panel now reports scheme registration, retained SAF permission, exported document presence, byte count, SHA-256, app variant, contract, target, theme, and extension-version compatibility.",
+      "Deep-link parsing now returns accepted, rejected, or not-applicable results so malformed XDM links do not fall through into generic external URL intake.",
+      "Persisted diagnostics are bounded and redact query values, cookies, authorization, bearer tokens, credentials, and raw header surfaces.",
+      "Interrupted generation and failed SAF replacement retain the previous verified XPI and expose specific recovery guidance.",
+      "Gradle XPI output filenames now match generated extension version 1.1.0.",
+      "No top-level route, Android browser runtime, Room migration, transfer-engine behavior, app version, or custom-scheme credential payload is introduced."
+    ]
+  },
+  "history_id": "89a75c51bf004c8fac399d4620f9df33"
+}

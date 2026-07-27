@@ -71,3 +71,8 @@ The embedded validator runs the Phase 37 through Phase 39 static contracts, Java
 ## Apply
 
 Use Devtool with `--validate`. The schema-v2 artifact owns its commit message; do not add a CLI `--commit` flag.
+
+
+## Phase 41 browser bridge integration
+
+Apply `xdm_android_phase41_browser_bridge_integration_overlay.zip` after Phase 40. The artifact owns the commit message `Add browser bridge settings diagnostics and recovery` and runs the focused Phase 37–41 validators plus browser-extension and Android unit tests.

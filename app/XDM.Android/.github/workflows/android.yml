@@ -76,6 +76,7 @@ jobs:
           python3 tools/validate-phase-38-repo-owned-extension.py
           python3 tools/validate-phase-39-xpi-export.py
           python3 tools/validate-phase-40-theme-fab.py
+          python3 tools/validate-phase-41-browser-bridge-integration.py
           python3 tools/validate-browser-removal-phase-0-1.py
           python3 tools/validate-browser-removal-phase-2.py
           python3 tools/validate-browser-removal-phase-3.py

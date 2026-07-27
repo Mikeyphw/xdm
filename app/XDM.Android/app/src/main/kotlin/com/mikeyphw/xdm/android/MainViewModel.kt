@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.mikeyphw.xdm.android.browserextension.BrowserExtensionBuildConfig
 import com.mikeyphw.xdm.android.browserextension.BrowserExtensionSourceContract
+import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkParseResult
 import com.mikeyphw.xdm.android.model.AutomationCommandAction
 import com.mikeyphw.xdm.android.model.AutomationCommandDraft
 import com.mikeyphw.xdm.android.model.AutomationCommandIds
@@ -132,6 +133,8 @@ data class MainUiState(
     val developerOptionsEnabled: Boolean = false,
     val browserExtension: BrowserExtensionExportPreferences = BrowserExtensionExportPreferences(),
     val browserExtensionRuntime: BrowserExtensionRuntimeStatus = BrowserExtensionRuntimeStatus(),
+    val browserBridgeStatus: BrowserBridgeIntegrationStatus = BrowserBridgeIntegrationStatus(),
+    val browserBridgeDiagnostics: BrowserBridgeDiagnosticsPreferences = BrowserBridgeDiagnosticsPreferences(),
     val downloads: List<Download> = emptyList(),
     val queues: List<QueueDefinition> = emptyList(),
     val schedules: List<ScheduleRule> = emptyList(),
@@ -242,7 +245,12 @@ class MainViewModel(
 
     private val navigationOverride = MutableStateFlow(NavigationOverride())
     private val browserExtensionRuntime = MutableStateFlow(BrowserExtensionRuntimeStatus())
-    private val preferencesAndBrowserExtension = combine(preferences.values, browserExtensionRuntime) { prefs, runtime -> prefs to runtime }
+    private val browserBridgeStatus = MutableStateFlow(BrowserBridgeIntegrationStatus())
+    private val preferencesAndBrowserExtension = combine(
+        preferences.values,
+        browserExtensionRuntime,
+        browserBridgeStatus,
+    ) { prefs, runtime, status -> Triple(prefs, runtime, status) }
     private val aria2Capability = MutableStateFlow<Aria2CapabilityReport?>(null)
     private val aria2SmokeMessage = MutableStateFlow<String?>(null)
     private val aria2SmokeRunning = MutableStateFlow(false)
@@ -450,6 +458,7 @@ class MainViewModel(
     ) { snapshot, preferenceSnapshot, navigation, runtime, review ->
         val prefs = preferenceSnapshot.first
         val browserExtensionRuntimeStatus = preferenceSnapshot.second
+        val browserBridgeIntegrationStatus = preferenceSnapshot.third
         val settingsSnapshot = SettingsExchangeSnapshot(
             compactDensity = prefs.compactDensity,
             destinationUri = prefs.destinationUri,
@@ -545,6 +554,8 @@ class MainViewModel(
             developerOptionsEnabled = prefs.developerOptionsEnabled,
             browserExtension = prefs.browserExtension,
             browserExtensionRuntime = browserExtensionRuntimeStatus,
+            browserBridgeStatus = browserBridgeIntegrationStatus,
+            browserBridgeDiagnostics = prefs.browserBridgeDiagnostics,
             downloads = snapshot.downloads,
             queues = snapshot.queues,
             schedules = snapshot.schedules,
@@ -627,6 +638,9 @@ class MainViewModel(
         termuxBridgeManager.refreshStatus()
         termuxMediaPipelineManager.refreshStatus()
         postProcessingAutomationManager.refreshStatus()
+        viewModelScope.launch(Dispatchers.IO) {
+            preferences.values.collectLatest(::refreshBrowserBridgeStatus)
+        }
     }
 
     fun navigate(route: AppRoute) {
@@ -645,7 +659,10 @@ class MainViewModel(
 
     fun selectSettingsPanel(panel: SettingsPanel) {
         navigationOverride.value = navigationOverride.value.copy(route = AppRoute.Settings, settingsPanel = panel)
-        viewModelScope.launch { preferences.setRoute(AppRoute.Settings) }
+        viewModelScope.launch {
+            preferences.setRoute(AppRoute.Settings)
+            if (panel == SettingsPanel.BrowserExtension) refreshBrowserBridgeStatusFromCurrent()
+        }
     }
 
     fun openDeveloperTools() {
@@ -909,14 +926,19 @@ class MainViewModel(
             val result = browserExtensionExportManager.persistDirectoryPermission(uri)
             if (result.isSuccess) {
                 preferences.setBrowserExtensionExportTreeUri(uri)
+                preferences.recordBrowserBridgeGeneration("idle", "Export folder permission retained. Generate the XPI when ready.", System.currentTimeMillis())
                 browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
                     phase = BrowserExtensionExportPhase.Idle,
                     message = "Export folder saved. Generate the XPI when ready.",
                 )
             } else {
+                val message = BrowserBridgeDiagnosticsRedactor.sanitize(
+                    result.exceptionOrNull()?.message ?: "The export folder could not be saved.",
+                )
+                preferences.recordBrowserBridgeGeneration("failed", message, System.currentTimeMillis())
                 browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
                     phase = BrowserExtensionExportPhase.Failed,
-                    message = result.exceptionOrNull()?.message ?: "The export folder could not be saved.",
+                    message = message,
                 )
             }
         }
@@ -960,17 +982,32 @@ class MainViewModel(
             message = "Generating and validating the Firefox XPI…",
         )
         viewModelScope.launch(Dispatchers.IO) {
+            preferences.recordBrowserBridgeGeneration(
+                phase = "exporting",
+                message = "Generating and validating the Firefox XPI.",
+                epochMs = System.currentTimeMillis(),
+            )
             val result = browserExtensionExportManager.export(current.exportTreeUri, config)
             result.onSuccess { exported ->
                 val now = System.currentTimeMillis()
                 preferences.recordBrowserExtensionExport(
                     theme = resolvedTheme,
+                    target = current.defaultTarget,
                     appVersion = BuildConfig.VERSION_NAME,
+                    applicationId = BuildConfig.APPLICATION_ID,
+                    scheme = BuildConfig.XDM_BROWSER_SCHEME,
                     extensionVersion = BrowserExtensionSourceContract.DevelopmentVersion,
+                    contractVersion = BrowserExtensionSourceContract.ContractVersion,
                     sha256 = exported.sha256,
                     epochMs = now,
                     fileName = exported.fileName,
                     byteCount = exported.byteCount,
+                    documentUri = exported.uri,
+                )
+                preferences.recordBrowserBridgeGeneration(
+                    phase = "succeeded",
+                    message = "Exported ${exported.fileName} and verified its checksum.",
+                    epochMs = now,
                 )
                 browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
                     phase = BrowserExtensionExportPhase.Succeeded,
@@ -978,12 +1015,108 @@ class MainViewModel(
                     exportedUri = exported.uri,
                 )
             }.onFailure { failure ->
+                val message = BrowserBridgeDiagnosticsRedactor.sanitize(
+                    failure.message ?: "The Firefox XPI export failed safely.",
+                )
+                preferences.recordBrowserBridgeGeneration(
+                    phase = "failed",
+                    message = message,
+                    epochMs = System.currentTimeMillis(),
+                )
                 browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
                     phase = BrowserExtensionExportPhase.Failed,
-                    message = failure.message ?: "The Firefox XPI export failed safely.",
+                    message = message,
                 )
             }
         }
+    }
+
+    fun recordBrowserDeepLinkResult(result: XdmBrowserDeepLinkParseResult) {
+        val now = System.currentTimeMillis()
+        when (result) {
+            XdmBrowserDeepLinkParseResult.NotApplicable -> Unit
+            is XdmBrowserDeepLinkParseResult.Accepted -> viewModelScope.launch(Dispatchers.IO) {
+                preferences.recordBrowserBridgeAccepted(
+                    BrowserBridgeDiagnosticsRedactor.acceptedSummary(result.payload),
+                    now,
+                )
+            }
+            is XdmBrowserDeepLinkParseResult.Rejected -> viewModelScope.launch(Dispatchers.IO) {
+                preferences.recordBrowserBridgeRejected(
+                    result.reason.code,
+                    BrowserBridgeDiagnosticsRedactor.rejectedSummary(result.reason),
+                    now,
+                )
+            }
+        }
+    }
+
+    fun refreshBrowserExtensionStatus() {
+        viewModelScope.launch(Dispatchers.IO) { refreshBrowserBridgeStatusFromCurrent() }
+    }
+
+    fun openBrowserExtensionXpi() {
+        val uri = uiState.value.browserBridgeStatus.currentExportUri
+        if (uri.isBlank()) {
+            browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
+                phase = BrowserExtensionExportPhase.Failed,
+                message = "The last verified XPI is unavailable. Regenerate it.",
+            )
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = browserExtensionExportManager.openExportedFile(uri)
+            browserExtensionRuntime.value = if (result.isSuccess) {
+                BrowserExtensionRuntimeStatus(
+                    phase = BrowserExtensionExportPhase.Succeeded,
+                    message = "Opened the verified XPI with an installed file handler.",
+                    exportedUri = uri,
+                )
+            } else {
+                BrowserExtensionRuntimeStatus(
+                    phase = BrowserExtensionExportPhase.Failed,
+                    message = BrowserBridgeDiagnosticsRedactor.sanitize(
+                        result.exceptionOrNull()?.message ?: "No installed app can open the exported XPI.",
+                    ),
+                )
+            }
+        }
+    }
+
+    fun clearBrowserExtensionExportFolder() {
+        val currentTree = uiState.value.browserExtension.exportTreeUri
+        viewModelScope.launch(Dispatchers.IO) {
+            if (currentTree.isNotBlank()) browserExtensionExportManager.releaseDirectoryPermission(currentTree)
+            preferences.setBrowserExtensionExportTreeUri("")
+            preferences.recordBrowserBridgeGeneration(
+                phase = "idle",
+                message = "Export folder cleared. Choose a folder before generating again.",
+                epochMs = System.currentTimeMillis(),
+            )
+        }
+    }
+
+    private suspend fun refreshBrowserBridgeStatusFromCurrent() {
+        val snapshot = uiState.value
+        browserBridgeStatus.value = browserExtensionExportManager.inspect(
+            preferences = snapshot.browserExtension,
+            diagnostics = snapshot.browserBridgeDiagnostics,
+            appTheme = snapshot.themeMode,
+            appVersion = BuildConfig.VERSION_NAME,
+            applicationId = BuildConfig.APPLICATION_ID,
+            scheme = BuildConfig.XDM_BROWSER_SCHEME,
+        )
+    }
+
+    private fun refreshBrowserBridgeStatus(preferenceSnapshot: UserPreferences) {
+        browserBridgeStatus.value = browserExtensionExportManager.inspect(
+            preferences = preferenceSnapshot.browserExtension,
+            diagnostics = preferenceSnapshot.browserBridgeDiagnostics,
+            appTheme = preferenceSnapshot.themeMode,
+            appVersion = BuildConfig.VERSION_NAME,
+            applicationId = BuildConfig.APPLICATION_ID,
+            scheme = BuildConfig.XDM_BROWSER_SCHEME,
+        )
     }
 
     fun setCompactDensity(compact: Boolean) {

@@ -51,6 +51,11 @@ validators=(
   tools/validate-phase-34-release-handoff.py
   tools/validate-phase-35-release-candidate-polish.py
   tools/validate-phase-36-external-download-handoff.py
+  tools/validate-phase-37-browser-scheme-contract.py
+  tools/validate-phase-38-repo-owned-extension.py
+  tools/validate-phase-39-xpi-export.py
+  tools/validate-phase-40-theme-fab.py
+  tools/validate-phase-41-browser-bridge-integration.py
   tools/validate-browser-removal-phase-0-1.py
   tools/validate-browser-removal-phase-2.py
   tools/validate-browser-removal-phase-3.py
