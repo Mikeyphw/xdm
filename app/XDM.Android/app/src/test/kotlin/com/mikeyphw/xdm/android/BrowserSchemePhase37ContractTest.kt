@@ -35,13 +35,13 @@ class BrowserSchemePhase37ContractTest {
                 if (!hasScheme) continue
                 owners += activityName
                 val categories = filter.getElementsByTagName("category")
-                defaultCategory = (0 until categories.length).map { categories.item(it) as Element }
+                defaultCategory = defaultCategory || (0 until categories.length).map { categories.item(it) as Element }
                     .any { it.androidAttribute("name") == "android.intent.category.DEFAULT" }
-                browsableCategory = (0 until categories.length).map { categories.item(it) as Element }
+                browsableCategory = browsableCategory || (0 until categories.length).map { categories.item(it) as Element }
                     .any { it.androidAttribute("name") == "android.intent.category.BROWSABLE" }
-                captureHost = (0 until data.length).map { data.item(it) as Element }
+                captureHost = captureHost || (0 until data.length).map { data.item(it) as Element }
                     .any { it.androidAttribute("host") == "capture" }
-                addHost = (0 until data.length).map { data.item(it) as Element }
+                addHost = addHost || (0 until data.length).map { data.item(it) as Element }
                     .any { it.androidAttribute("host") == "add" }
             }
         }

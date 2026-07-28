@@ -1,0 +1,114 @@
+{
+  "applied_at": "2026-07-28T14:44:07.419011Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase47_contract_rebaseline_hotfix_overlay.zip",
+  "artifact_name": "xdm_android_phase47_contract_rebaseline_hotfix_overlay.zip",
+  "type": "overlay",
+  "sha256": "651c921550339bbf41a1d85e20d108f62ce4ef94008dd9166735294000f646e7",
+  "status": "failed",
+  "validation_status": "not-run",
+  "commit_message": "Rebaseline Phase 47 browser bridge contract tests",
+  "commit_hash": "",
+  "file_count": 5,
+  "change_counts": {
+    "add": 2,
+    "modify": 3
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 47 Contract Rebaseline Hotfix",
+    "description": "Rebases stale Phase 33-37 test contracts after the browser-removal and Firefox bridge stacks. It preserves historical manifests, fixes Phase 37 scheme-host accumulation in tests, and adds a static validator. No runtime behavior changes.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "sha256": "302e055ed6a8847243a3ac77a47b02b8b9073e1a15c7368318d97a8a5b0f1b12",
+          "size": 89487,
+          "source_sha256": "07d0e9d79fad8fc8cada606c000a8fe99c04f1399e630d848443ca94e61799ac"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserSchemePhase37ContractTest.kt",
+          "action": "modify",
+          "sha256": "5c69366738e903912abec5c163386e4bb08f08ccc9233e613fcb37df0061be8b",
+          "size": 5025,
+          "source_sha256": "ed89b723e53a74bb8826a71f98f104f2215696ad21852668d8a8832a9e3df678"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "6691b856f498ff41921ff7ef5592b9f70609ba11ff24462176ae6d9a5119aaaf",
+          "size": 66077,
+          "source_sha256": "dfd0d2de3f692d317e031034871a77e1062c13f697a297819d2e84f2d0f2b3b4"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-47-CONTRACT-REBASELINE-HOTFIX.md",
+          "action": "create",
+          "sha256": "067ea1cb3f0e0caff5d564c211b2781cb04ea3e59162254c03a9ae0ac9f9d7c7",
+          "size": 795
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-47-contract-rebaseline-hotfix.py",
+          "action": "create",
+          "sha256": "97858159fcedf4080ef643ca98f4a165e0082931aa04ac4c91504f6d36502554",
+          "size": 1909
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Rebaseline Phase 47 browser bridge contract tests"
+      }
+    },
+    "validation": {
+      "required": true,
+      "reason": "Stale contract tests must be rebaselined without muting runtime checks or changing receiver ownership.",
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate_phase47_contract_rebaseline_hotfix.sh",
+        "runner": "bash",
+        "timeout_seconds": 300,
+        "sha256": "76a527df234bd065c7c78726c0008b5bf72f4945b70975560983ee09524e3b74"
+      },
+      "expected": {
+        "restore": "success",
+        "build": "success",
+        "tests": "success",
+        "maximum_warnings": 0
+      }
+    },
+    "compatibility": {
+      "base_snapshot": "xdm-20260728-112839.tar.gz",
+      "requires": [
+        "Phase 47 shared media sniffing engine overlay",
+        "Phase 47 scheduler compile hotfix",
+        "Phase 47 media inbox clipboard compile hotfix r2"
+      ],
+      "room_schema": 14,
+      "version_name": "0.20.0-rc08",
+      "version_code": 21
+    }
+  },
+  "history_id": "8d0ed98d39dc4293ad3ad1e97839df92"
+}

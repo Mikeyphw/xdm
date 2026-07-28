@@ -843,7 +843,7 @@ class ArchitectureContractTest {
         assertTrue("Final gate planner must expose checks and commands", planner.contains("MediaFinalValidationGatePlanner") && planner.contains("DefaultGradleCommand") && planner.contains("warning-zero gate"))
         assertTrue("Final gate must scan secrets and known Kotlin traps", planner.contains("PrivacyLeakScan") && planner.contains("KotlinTrapScan") && planner.contains("TermuxChrootSafety"))
         assertTrue("Developer tools must preserve final-validation diagnostics", UiSourceTree.readDeveloper(root).contains("Media final validation gate") && UiSourceTree.readDeveloper(root).contains("Phase 33 re-enables validation"))
-        assertTrue("Manifest must record Phase 33", manifest.contains("media_final_validation_gate") && manifest.contains("\"next_phase\": \"complete\""))
+        assertTrue("Manifest must record Phase 33", manifest.contains("media_final_validation_gate") && (manifest.contains("\"final_phase\": true") || manifest.contains("\"next_phase\": \"complete\"")))
         assertTrue("Final gate script must include media validators", runGate.contains("validate-media-final-validation-gate.py") && runGate.contains("validate-media-mobile-polish.py"))
         assertTrue("CI must include final media validator", workflow.contains("validate-media-final-validation-gate.py"))
         assertFalse("Final media gate must not add top-level routes", AppRoute.entries.any { it.label == "Validation" || it.label == "Final" || it.label == "Release" || it.label == "Media Gate" })
@@ -860,7 +860,7 @@ class ArchitectureContractTest {
         val runGate = File(root, "tools/run-final-release-gate.sh").readText()
         val workflow = File(root, ".github/workflows/android.yml").readText()
         assertTrue("Handoff doc must record the landed Phase 33 result", handoff.contains("149 passed, 0 failed, 0 skipped") && handoff.contains("Phase 33 is landed"))
-        assertTrue("Manifest must record Phase 34", manifest.contains("phase34_release_handoff") && manifest.contains("\"next_phase\": \"complete\""))
+        assertTrue("Manifest must record Phase 34", manifest.contains("phase34_release_handoff") && manifest.contains("\"phase33_landed\": true"))
         assertTrue("Manifest must keep the Phase 33 success ledger", manifest.contains("\"tests_passed\": 149") && manifest.contains("\"diagnostic_errors\": 0"))
         assertTrue("Final release gate must include the Phase 34 handoff validator", runGate.contains("validate-phase-34-release-handoff.py"))
         assertTrue("CI must include the Phase 34 handoff validator", workflow.contains("validate-phase-34-release-handoff.py"))
@@ -880,7 +880,7 @@ class ArchitectureContractTest {
         val runGate = File(root, "tools/run-final-release-gate.sh").readText()
         val workflow = File(root, ".github/workflows/android.yml").readText()
         assertTrue("Phase 35 doc must define the ship/no-ship gate", polish.contains("Phase 35: Release Candidate Polish") && polish.contains("Ship/no-ship gate") && polish.contains("No-ship is required"))
-        assertTrue("Manifest must record Phase 35", manifest.contains("phase35_release_candidate_polish") && isCurrentBrowserRemovalOverlay(manifest))
+        assertTrue("Manifest must record Phase 35", manifest.contains("phase35_release_candidate_polish") && hasBrowserRemovalLineage(manifest))
         assertTrue("Phase 35 must keep version metadata stable", buildGradle.contains("versionName = \"0.20.0-rc08\"") && buildGradle.contains("versionCode = 21"))
         assertTrue("Release helper must keep artifact checksums", releaseHelper.contains("sha256sum") && releaseHelper.contains("assembleRelease"))
         assertTrue("Final release gate must include the Phase 35 validator", runGate.contains("validate-phase-35-release-candidate-polish.py"))
@@ -916,7 +916,7 @@ class ArchitectureContractTest {
         assertTrue("URL normalization must support ftp for download-manager handoff", models.contains("(?:https?|ftp)://") && models.contains("scheme != \"http\" && scheme != \"https\" && scheme != \"ftp\""))
         assertTrue("Add screen must show external source and no-auto-queue safety copy", screens.contains("externalSourceLabel") && screens.contains("XDM never auto-queues external handoffs"))
         assertTrue("App shell must pass the external source label", appShell.contains("externalSourceLabel = state.externalAddDraft?.sourceLabel"))
-        assertTrue("Manifest must record Phase 36", manifest.contains("phase36_external_download_handoff") && isCurrentBrowserRemovalOverlay(manifest))
+        assertTrue("Manifest must record Phase 36", manifest.contains("phase36_external_download_handoff") && hasBrowserRemovalLineage(manifest))
         assertTrue("Final release gate must include the Phase 36 validator", runGate.contains("validate-phase-36-external-download-handoff.py"))
         assertTrue("CI must include the Phase 36 validator", workflow.contains("validate-phase-36-external-download-handoff.py"))
         assertFalse("Phase 36 must not add top-level routes", AppRoute.entries.any { it.label == "External" || it.label == "Handoff" || it.label == "IronFox" || it.label == "Browser Download" })
@@ -968,7 +968,10 @@ class ArchitectureContractTest {
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile && File(it, "app").isDirectory }
 
-    private fun isCurrentBrowserRemovalOverlay(manifest: String): Boolean =
-        manifest.contains("\"current_overlay\": \"xdm_android_browser_removal_phase")
+    private fun hasBrowserRemovalLineage(manifest: String): Boolean =
+        manifest.contains("\"current_overlay\": \"xdm_android_browser_removal_phase") ||
+            (manifest.contains("\"browser_removal_phase0_1\"") &&
+                manifest.contains("\"browser_removal_phase4\"") &&
+                manifest.contains("\"browser_removal_phase7\""))
 
 }
