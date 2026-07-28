@@ -1,0 +1,107 @@
+{
+  "applied_at": "2026-07-28T15:12:31.530842Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase47_ui_contract_hotfix_overlay.zip",
+  "artifact_name": "xdm_android_phase47_ui_contract_hotfix_overlay.zip",
+  "type": "overlay",
+  "sha256": "a5dd28596a78d1048b5dfe16a97d3f1e20e719a263f93965eff43c61a45ba7c3",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Fix Phase 47 UI validation contracts",
+  "commit_hash": "",
+  "file_count": 4,
+  "change_counts": {
+    "modify": 4
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 47 UI Contract Hotfix",
+    "description": "Fixes the remaining Phase 47 validation fallout: removes the Media Inbox placeholder Add selected action, retains Add Download review-first media contract copy, and fixes the Phase 46 contract test root locator.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt",
+          "action": "modify",
+          "source_sha256": "8e7fd1a1782844a8e1026185a63c9683af815aadaace34ad49a9d9f324689018",
+          "sha256": "ca333c36fc7c45dbc3df1e8d604f0c19f55f273e0424ed569088347955572daa",
+          "size": 11770
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt",
+          "action": "modify",
+          "source_sha256": "51f6251e46eabdedcbf5e9de2af4f8b7aa65c53887f0c279b83b5f29baef1a93",
+          "sha256": "eddcdafe97df98d7a000bfe7db343775881dbe25dc56a7528db16c9f9c153621",
+          "size": 22366
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/MediaBatchPhase46ContractTest.kt",
+          "action": "modify",
+          "source_sha256": "3332f132914dea7578ee0ac29175f30aee2a4a935279889ba06b89a9dcc928b7",
+          "sha256": "8f5221cc930babfe6be6af7c4db330658e3508ea3caef5ca41f449ce1e95b67a",
+          "size": 1587
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "source_sha256": "6691b856f498ff41921ff7ef5592b9f70609ba11ff24462176ae6d9a5119aaaf",
+          "sha256": "962047918a994fc398193358f68f218750cb12cf2e149f89f366b21cc951f01c",
+          "size": 66863
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Fix Phase 47 UI validation contracts"
+      }
+    },
+    "validation": {
+      "required": true,
+      "reason": "The UI and test contract fixes must remove placeholder handlers without changing runtime browser scope.",
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate_phase47_ui_contract_hotfix.sh",
+        "runner": "bash",
+        "timeout_seconds": 300,
+        "sha256": "cd4b4a6001297653291155898f679c951b750f5762b34fdb595dc3953ff4dd62"
+      },
+      "expected": {
+        "restore": "success",
+        "build": "success",
+        "tests": "success",
+        "maximum_warnings": 25
+      }
+    },
+    "compatibility": {
+      "base_snapshot": "xdm-20260728-112839.tar.gz plus Phase 47 clipboard hotfix r2 and contract rebaseline hotfix r2",
+      "requires": [
+        "xdm_android_phase47_media_inbox_clipboard_compile_hotfix_r2_overlay.zip",
+        "xdm_android_phase47_contract_rebaseline_hotfix_r2_overlay.zip"
+      ],
+      "room_schema": 14,
+      "version_name": "0.20.0-rc08",
+      "version_code": 21
+    }
+  },
+  "history_id": "073a54e1a70f44a6939c92452d3bb7a1"
+}

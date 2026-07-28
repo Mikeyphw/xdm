@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BrowserExtensionPhase39ContractTest {
-    private val root = File(System.getProperty("user.dir")).let { current ->
+    private val root = File(System.getProperty("user.dir") ?: ".").let { current ->
         if (current.name == "app") current.parentFile else current
     }
 

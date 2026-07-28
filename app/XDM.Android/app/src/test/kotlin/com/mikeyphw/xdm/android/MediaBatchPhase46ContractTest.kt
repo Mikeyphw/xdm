@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MediaBatchPhase46ContractTest {
-    private val root = File(System.getProperty("user.dir"))
+    private val root = androidRoot()
 
     @Test
     fun mediaScreenExposesReviewFirstBatchActions() {
@@ -26,5 +26,14 @@ class MediaBatchPhase46ContractTest {
         assertTrue(source.contains("captureMediaBatchInput"))
         assertTrue(source.contains("repository.saveMediaCaptures"))
         assertTrue(source.contains("repository.saveMediaVariants"))
+    }
+
+    private fun androidRoot(): File {
+        var cursor = File(System.getProperty("user.dir") ?: ".").canonicalFile
+        repeat(8) {
+            if (File(cursor, "settings.gradle.kts").isFile && File(cursor, "app/src/main").isDirectory) return cursor
+            cursor = cursor.parentFile ?: return@repeat
+        }
+        error("Unable to locate XDM Android root")
     }
 }

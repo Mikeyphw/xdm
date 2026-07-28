@@ -46,5 +46,5 @@ class CompletedNotificationOpenFileContractTest {
     }
 }
 
-private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
+private fun androidRoot(): File = generateSequence(File(System.getProperty("user.dir") ?: ".")) { it.parentFile }
     .first { File(it, "settings.gradle.kts").isFile }

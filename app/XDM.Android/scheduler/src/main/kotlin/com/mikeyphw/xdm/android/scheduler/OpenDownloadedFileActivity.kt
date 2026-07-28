@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import java.io.File
@@ -71,7 +72,7 @@ class OpenDownloadedFileActivity : Activity() {
 
     private fun completedViewUri(download: Download): Uri? {
         val raw = download.destinationUri.trim().takeIf { it.isNotBlank() } ?: return null
-        val parsed = runCatching { Uri.parse(raw) }.getOrNull() ?: return null
+        val parsed = runCatching { raw.toUri() }.getOrNull() ?: return null
         return when (parsed.scheme?.lowercase()) {
             ContentResolver.SCHEME_CONTENT -> parsed.takeIf { canReadContentUri(it) }
             ContentResolver.SCHEME_FILE -> parsed.path?.let(::File)?.takeIf { it.isFile }?.let(::contentUriForFile)

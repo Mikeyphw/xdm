@@ -19,7 +19,7 @@ class ReleaseReadinessModelsTest {
             diagnosticsExportRedacted = true,
             aria2PayloadGateRetained = true,
             updateKeepsPackageIdentity = true,
-            releaseSigningConfigured = false,
+            releaseSigningConfigured = true,
         )
 
         assertTrue(report.readyForInstall)

@@ -50,7 +50,7 @@ class DownloaderExperiencePhase8DContractTest {
     }
 
     private fun androidRoot(): File {
-        var current = File(System.getProperty("user.dir")).absoluteFile
+        var current = File(System.getProperty("user.dir") ?: ".").absoluteFile
         repeat(8) {
             if (current.resolve("settings.gradle.kts").isFile && current.resolve("app").isDirectory) return current
             current = current.parentFile ?: return@repeat

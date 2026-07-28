@@ -354,6 +354,9 @@ fun AddDownloadScreen(
                 item {
                     XdmMetadataText(review.mediaInspectionGuidance)
                 }
+                item {
+                    XdmMetadataText("Inspect media uses a review-first path and never creates a transfer automatically.")
+                }
             }
         }
 

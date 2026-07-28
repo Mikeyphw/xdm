@@ -93,7 +93,7 @@ class BrowserSchemePhase37ContractTest {
         getAttributeNS("http://schemas.android.com/apk/res/android", name)
 
     private fun androidRoot(): File {
-        var current = File(System.getProperty("user.dir")).canonicalFile
+        var current = File(System.getProperty("user.dir") ?: ".").canonicalFile
         repeat(8) {
             if (File(current, "PROJECT_MANIFEST.json").isFile && File(current, "app/src/main").isDirectory) return current
             current = current.parentFile ?: return@repeat

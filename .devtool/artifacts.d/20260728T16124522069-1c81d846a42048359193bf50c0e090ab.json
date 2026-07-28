@@ -1,0 +1,268 @@
+{
+  "applied_at": "2026-07-28T16:12:45.220690Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase47_ui_contract_hotfix_r6_overlay.zip",
+  "artifact_name": "xdm_android_phase47_ui_contract_hotfix_r6_overlay.zip",
+  "type": "overlay",
+  "sha256": "09c2769045a74a041e892a6615ffb264ce6e1da9ec9f6051ace29f886ab05de7",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "Fix Phase 47 final validation contracts r6",
+  "commit_hash": "",
+  "file_count": 27,
+  "change_counts": {
+    "modify": 27
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 47 UI Contract Hotfix r6",
+    "description": "Final Phase 47 validation hotfix: keeps the r3/r4 UI contract fixes, fixes release-readiness test data, removes nullable user.dir warnings, and restores the completed-notification URI persistence contract shape and clears scheduler open-file lint.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt",
+          "action": "modify",
+          "source_sha256": "8e7fd1a1782844a8e1026185a63c9683af815aadaace34ad49a9d9f324689018",
+          "sha256": "ca333c36fc7c45dbc3df1e8d604f0c19f55f273e0424ed569088347955572daa",
+          "size": 11770
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt",
+          "action": "modify",
+          "source_sha256": "51f6251e46eabdedcbf5e9de2af4f8b7aa65c53887f0c279b83b5f29baef1a93",
+          "sha256": "3c1cebf402843a51bba6fada35b82fa7b7766fafc9d9bbb7f4d6cd33ef915e07",
+          "size": 22366
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/MediaBatchPhase46ContractTest.kt",
+          "action": "modify",
+          "source_sha256": "3332f132914dea7578ee0ac29175f30aee2a4a935279889ba06b89a9dcc928b7",
+          "sha256": "776fb50d7c9533eccf4ef0be4f7f4947b2b81ac49428e71e85a5dcb2064b3e6c",
+          "size": 1594
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModelsTest.kt",
+          "action": "modify",
+          "source_sha256": "d9b260e83481039a3ed6f58e8b35c5697d9eb0451617a36c83db16d1a98fc706",
+          "sha256": "6f729895ffb8fb4ed9b15b2166348c243ba1c28476cce8d6f0d0f44d4a7ca5f2",
+          "size": 2054
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt",
+          "action": "modify",
+          "source_sha256": "801bf2b1c76055909d79986b08f5fe7404fb7d511730882888f93f513c79721a",
+          "sha256": "e5d96b4c5ba4c8fd2549160fca6ddff3d3115a56d11f8c11ff62d6f4870808f1",
+          "size": 20310
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/CompletedNotificationOpenFileContractTest.kt",
+          "action": "modify",
+          "source_sha256": "3d98f76b7ece5bbaf5542794498a0c86004148d79b88bfe0a2595e9f99581733",
+          "sha256": "7461a558982024e564f2e4bd2188a94cdeae3280560d49e6522782727a395725",
+          "size": 2884
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/OpenDownloadedFileActivity.kt",
+          "action": "modify",
+          "source_sha256": "b5a98544624d381d6fbede98c08f91f02a961e5832639a63850061b5de991c52",
+          "sha256": "3cf56aff0f23a8eeeddca53b97ff91db18be52c7246876cd01ae384ec024c2db",
+          "size": 4401
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/AndroidManifest.xml",
+          "action": "modify",
+          "source_sha256": "2db3b198c76e944b3235497e8ffa70d8cb4a0310d1337f80f54533944fb60924",
+          "sha256": "ec4309655f9d1c1bd8258f3cbcb328da3de77b27f231f2608f7ab6ee07657fd1",
+          "size": 2271
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "source_sha256": "6691b856f498ff41921ff7ef5592b9f70609ba11ff24462176ae6d9a5119aaaf",
+          "sha256": "8c20d97a9d075ea764b3a351325c9c3d57ff68416c6e7c3da4216d54ff710321",
+          "size": 67176
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserExtensionPhase39ContractTest.kt",
+          "action": "modify",
+          "source_sha256": "0243387c3b13036f2fb8560b99193e4375bb1487b018584f317e2c36834773a3",
+          "sha256": "05bd7974feea20c20c8456f8021adfe9509abb52b98f7cb31608b81d8f493663",
+          "size": 1597
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserExtensionPhase40ContractTest.kt",
+          "action": "modify",
+          "source_sha256": "8b8c6b383f2210090446ab77f68f501d294abdf403b726e60c7fe758f20f94e1",
+          "sha256": "3dbdaa101091f47cd0122d929afca7a5d8b3e87940383e5ab28f3dd7f2db97d7",
+          "size": 2802
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserExtensionPhase43BContractTest.kt",
+          "action": "modify",
+          "source_sha256": "f90b974afb5a8b50e564c98443793f28b85579e1a98c6085d4b5abb53dc6d2b7",
+          "sha256": "63555a86062e88cf40b6dd00175d41d3451e2c3df3508b7f4d6d5c572d892c04",
+          "size": 4287
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPhase5ContractTest.kt",
+          "action": "modify",
+          "source_sha256": "69507cb5cb19c5424ef81fe5e5d094d3a4272b6145eb75ae320f07e63cceb963",
+          "sha256": "9015ac70b634058e135828e52c9e2d7f8e6a38ae8acf0b1f42e8bcc923543f6f",
+          "size": 2670
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPhase6ContractTest.kt",
+          "action": "modify",
+          "source_sha256": "0d8c1d7bf272c5a25df2fabcf82d75c04622f740057e2b23b6b206b70426b4bb",
+          "sha256": "e9fb876c87ce1f7685912c22f6ed3e11f7c1653a735f12ff1129e3bf43d554de",
+          "size": 4202
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPhase7ContractTest.kt",
+          "action": "modify",
+          "source_sha256": "d484e4318674656a8cd5d8df295bb61a0a6faae7d06d4ee9de300928ddf74676",
+          "sha256": "06432243058a565e9158912697da84a6fb799c8612352d1555e0a8dc9648bac1",
+          "size": 6337
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserSchemePhase37ContractTest.kt",
+          "action": "modify",
+          "source_sha256": "5c69366738e903912abec5c163386e4bb08f08ccc9233e613fcb37df0061be8b",
+          "sha256": "90a7570c05e8288c796f649e58fcb0c8654aa97d218983ccd5d0171eb790ed10",
+          "size": 5032
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloadListPhase44ActionMenusContractTest.kt",
+          "action": "modify",
+          "source_sha256": "977ce7f622e32eca265ccf4b47b9f0179946600c130118adcba8b053d967b66d",
+          "sha256": "8b65e1e354d3f0de5689e57dd55b6c679948d6d71ace776e00709ad1e2fc2311",
+          "size": 2653
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8ABContractTest.kt",
+          "action": "modify",
+          "source_sha256": "9a045f8a657893fe96b3c6b633a99c01411f3fcd48ba470e1504ee892ca94717",
+          "sha256": "a78417a43d38624afd004931d2d6589e7cfa080d7526103ab227ba5c6dd3207f",
+          "size": 6127
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8CContractTest.kt",
+          "action": "modify",
+          "source_sha256": "ebcb3203f6af437d5d240b221d91b1965a187986949d5fb5957bf3a68f90019a",
+          "sha256": "d4eb356781347a8e74d96896e083a9c1c74ea46a7406fbd211f803f2fcaa73e0",
+          "size": 5383
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8DContractTest.kt",
+          "action": "modify",
+          "source_sha256": "7da5e242f7722a58a19cfd96d9bdf044acf7f655757838af072b7eeda4a6d82a",
+          "sha256": "a36e8921eb8bc4af20c152684b45aac03ec2ff982bd08e188a3c70d1490c7934",
+          "size": 3079
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8EContractTest.kt",
+          "action": "modify",
+          "source_sha256": "0d36728464545e0333be8370a62e130b9a452e713780c447f0094fd04d9b2413",
+          "sha256": "d2f6571a39bd0e636a653d7e292a35196075e12f0d51f1e4524c6540d841bc38",
+          "size": 4093
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase8ECompileHotfixContractTest.kt",
+          "action": "modify",
+          "source_sha256": "efd3d57ed1dabf24db5ade02d00489bd35823a14f22ab552b704b15173370ce9",
+          "sha256": "b291592b485042a8e50887b32bf222bb4cd8d1192f403e10f9dc62b4a421651e",
+          "size": 2341
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR2AdaptiveShellContractTest.kt",
+          "action": "modify",
+          "source_sha256": "e5a8441ea9ff8d30630687ef7d5a9c4dc252645131ecf56151a81c6bffa70319",
+          "sha256": "3b00d794d7b43f40ab403fc4bf142a936a77b8306f63ba43e25838499e8dc845",
+          "size": 5709
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR3DownloadsAddContractTest.kt",
+          "action": "modify",
+          "source_sha256": "d2937cff80c84f137c628cbc145904c3431c1fbda69e7a615d3bf7423eddbc87",
+          "sha256": "725dec738b0ca2f07284f4356ec875bbe067ab3b973192ec32535127499e7f8f",
+          "size": 2684
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR4MediaLibraryContractTest.kt",
+          "action": "modify",
+          "source_sha256": "75d4ba8b223490d71978ae2776683c1c0f84b3857541ccce0aec0ccfb6324d7e",
+          "sha256": "19b16d3a1b80eb0e4d93623815fc13d4ce16cdf20922edaa1a3e644ec54cdb2a",
+          "size": 3760
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR5ActivitySettingsContractTest.kt",
+          "action": "modify",
+          "source_sha256": "9358cf15d825e3d628cba9a3a1c8989647637eb6cffa313040ef63f9af40baba",
+          "sha256": "8342e32f63e9c89a8e059a70987ef0fe15873a22ccf3d3f751505a393bcc20e5",
+          "size": 4476
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR6ReleaseSealContractTest.kt",
+          "action": "modify",
+          "source_sha256": "06fb8e9ce0eed6e69ab439030161d6ad93abc1affe41f3eceb0993dd33ca8e58",
+          "sha256": "2242bac8b25058255816e628d2f0156f5121865e70beba0aa17957684c2279b3",
+          "size": 9187
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Fix Phase 47 final validation contracts r6"
+      }
+    },
+    "validation": {
+      "required": true,
+      "reason": "The UI/test contract, release-readiness, warning-cleanup, and scheduler completed-notification and lint fixes must pass the final Phase 47 gate.",
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate_phase47_ui_contract_hotfix_r6.sh",
+        "runner": "bash",
+        "timeout_seconds": 300,
+        "sha256": "8920a40778137ff14594df9554d6169955ffa270d6b9bd41c3180cd95e356a30"
+      },
+      "expected": {
+        "restore": "success",
+        "build": "success",
+        "tests": "success",
+        "maximum_warnings": 0
+      }
+    },
+    "compatibility": {
+      "base_snapshot": "xdm-20260728-112839.tar.gz plus Phase 47 scheduler compile hotfix, media inbox clipboard hotfix r2, and contract rebaseline hotfix r2; UI r3 is expected to have been rolled back.",
+      "requires": [
+        "xdm_android_phase47_media_inbox_clipboard_compile_hotfix_r2_overlay.zip",
+        "xdm_android_phase47_contract_rebaseline_hotfix_r2_overlay.zip"
+      ],
+      "room_schema": 14,
+      "version_name": "0.20.0-rc08",
+      "version_code": 21
+    }
+  },
+  "history_id": "1c81d846a42048359193bf50c0e090ab"
+}

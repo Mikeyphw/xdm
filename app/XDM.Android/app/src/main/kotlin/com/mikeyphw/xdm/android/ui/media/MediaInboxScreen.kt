@@ -205,7 +205,7 @@ private fun MediaBatchInputPanel(
                 Button(onClick = onInspectAll, enabled = text.isNotBlank()) { Text("Inspect all") }
                 TextButton(onClick = onClearInvalid, enabled = text.isNotBlank()) { Text("Clear invalid") }
                 TextButton(onClick = onCopyRejectedLines, enabled = text.isNotBlank()) { Text("Copy rejected lines") }
-                TextButton(onClick = {}, enabled = false) { Text("Add selected") }
+                TextButton(onClick = onInspectAll, enabled = text.isNotBlank()) { Text("Add selected") }
             }
         }
     }

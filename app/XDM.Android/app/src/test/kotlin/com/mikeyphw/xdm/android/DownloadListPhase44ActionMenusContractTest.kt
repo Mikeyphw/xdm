@@ -44,7 +44,7 @@ class DownloadListPhase44ActionMenusContractTest {
     }
 
     private fun androidRoot(): File {
-        var cursor = File(System.getProperty("user.dir")).canonicalFile
+        var cursor = File(System.getProperty("user.dir") ?: ".").canonicalFile
         repeat(8) {
             if (File(cursor, "settings.gradle.kts").isFile && File(cursor, "app/src/main").isDirectory) return cursor
             cursor = cursor.parentFile ?: return@repeat

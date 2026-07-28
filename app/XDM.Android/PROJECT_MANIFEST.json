@@ -444,7 +444,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_phase47_contract_rebaseline_hotfix_overlay.zip",
+  "current_overlay": "xdm_android_phase47_ui_contract_hotfix_r6_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -1876,6 +1876,27 @@
     "version_name_unchanged": "0.20.0-rc08",
     "version_code_unchanged": 21,
     "depends_on": "browser_bridge_phase47_shared_media_sniffing_engine + phase47 scheduler/media-inbox compile hotfixes",
+    "next_overlay": "browser_bridge_phase48_final_ux_release_gate"
+  },
+  "browser_bridge_phase47_ui_contract_hotfix": {
+    "program": "android_browser_bridge",
+    "contract_version": 2,
+    "scope": "final Phase 47 validation rebaseline after shared media sniffing engine",
+    "media_inbox_placeholder_removed": true,
+    "add_download_review_first_media_copy_retained": true,
+    "phase43b_exact_planner_label_contract_preserved": true,
+    "phase46_contract_test_root_locator_fixed": true,
+    "release_readiness_clean_signing_contract_fixed": true,
+    "nullable_user_dir_test_warnings_cleaned": true,
+    "completed_notification_uri_persistence_nullsafe_contract_restored": true,
+    "completed_notification_lint_cleaned": true,
+    "runtime_behavior_changed": false,
+    "browser_runtime_added": false,
+    "top_level_route_added": false,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "depends_on": "phase47 shared media sniffing + scheduler compile hotfix + media inbox clipboard hotfix r2 + contract rebaseline hotfix r2",
     "next_overlay": "browser_bridge_phase48_final_ux_release_gate"
   }
 }
