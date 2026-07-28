@@ -78,6 +78,17 @@ class BrowserBridgePhase48FinalReleaseGateContractTest {
         assertTrue("Generated XPI files must not live in extension source", xpis.isEmpty())
     }
 
+    @Test
+    fun phase48CorrectionRecordsRealSharedSniffing() {
+        val manifest = File(root, "PROJECT_MANIFEST.json").readText()
+        val doc = File(root, "docs/architecture/PHASE-48-FINAL-UX-RELEASE-GATE.md").readText()
+        val script = File(root, "tools/run-phase-48-final-release-gate.sh").readText()
+        assertTrue(manifest.contains("browser_bridge_phase47_real_shared_media_sniffing_engine"))
+        assertTrue(manifest.contains("phase48_corrected_after_audit"))
+        assertTrue(doc.contains("browser_bridge_phase47_real_shared_media_sniffing_engine"))
+        assertTrue(script.contains("validate-phase-47-real-shared-media-sniffing-engine.py"))
+    }
+
     private fun androidRoot(): File {
         var cursor = File(System.getProperty("user.dir") ?: ".").canonicalFile
         repeat(8) {

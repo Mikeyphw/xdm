@@ -23,21 +23,26 @@ data class ExternalMediaReviewIntake(
  * user explicitly selects Inspect as media; this planner never starts a probe or download. */
 class ExternalMediaReviewPlanner(
     private val captureService: MediaCaptureService = MediaCaptureService(),
+    private val sniffingEngine: MediaSniffingEngine = MediaSniffingEngine(captureService),
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     fun plan(draft: DownloadIntakeDraft): ExternalMediaReviewIntake? {
         if (!draft.canInspectAsMedia) return null
-        val candidate = captureService.candidateFor(
-            url = draft.url,
-            pageTitle = draft.pageTitle,
-            pageUrl = draft.pageUrl,
-            mimeTypeHint = draft.mimeType,
-            contentLength = draft.contentLength,
+        val sniffingPlan = sniffingEngine.sniff(
+            MediaSniffingInput(
+                url = draft.url,
+                mimeType = draft.mimeType,
+                contentLength = draft.contentLength,
+                pageUrl = draft.pageUrl,
+                pageTitle = draft.pageTitle,
+                source = MediaSniffingSource.ManualPage,
+            ),
         )
-        if (candidate != null) {
+        val sniffedRecord = sniffingPlan.records.firstOrNull()
+        if (sniffedRecord != null) {
             return ExternalMediaReviewIntake(
-                record = captureService.recordFor(candidate),
-                variants = candidate.variants,
+                record = sniffedRecord,
+                variants = sniffingPlan.variants.filter { it.captureId == sniffedRecord.id },
                 isPageProbe = false,
             )
         }

@@ -75,3 +75,8 @@ assembleDebug
 ## Non-goals
 
 Phase 48 does not add JavaScript page execution, DRM bypass, browser runtime, WebView or GeckoView surfaces, Room migrations, or new transfer execution behavior.
+
+
+## Audit correction
+
+The original Phase 48 seal is corrected by `browser_bridge_phase47_real_shared_media_sniffing_engine`. The final gate now requires the real app-side `MediaSniffingEngine`, `MediaPageProbe`, shared batch/external/share routing, and selection-based Add selected media intake before the roadmap can be considered truthfully complete.

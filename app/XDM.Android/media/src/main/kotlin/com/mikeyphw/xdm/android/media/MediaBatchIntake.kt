@@ -52,6 +52,8 @@ data class MediaBatchIntakePlan(
     val parse: MediaBatchParseResult,
     val records: List<MediaCaptureRecord>,
     val variants: List<MediaVariant>,
+    val sniffingCandidates: List<MediaSniffingCandidate> = emptyList(),
+    val sniffingDiagnostics: List<String> = emptyList(),
 ) {
     val hasMediaReady: Boolean get() = records.isNotEmpty()
     val summaryLabel: String get() = parse.summaryLabel
@@ -160,20 +162,25 @@ class MediaBatchInputParser(
 class MediaBatchIntakePlanner(
     private val captureService: MediaCaptureService = MediaCaptureService(),
     private val parser: MediaBatchInputParser = MediaBatchInputParser(),
+    private val sniffingEngine: MediaSniffingEngine = MediaSniffingEngine(captureService),
 ) {
     fun plan(input: String, pageTitle: String? = null, pageUrl: String? = null): MediaBatchIntakePlan {
         val parse = parser.parse(input)
-        val candidates = parse.accepted
-            .filter { it.disposition == MediaBatchUrlDisposition.MediaReady }
-            .mapNotNull { accepted ->
-                captureService.candidateFor(
-                    url = accepted.normalizedUrl,
-                    pageTitle = pageTitle,
-                    pageUrl = pageUrl,
-                )
-            }
-        val records = captureService.recordsFor(candidates)
-        val variants = candidates.flatMap(MediaCaptureCandidate::variants).distinctBy(MediaVariant::id)
-        return MediaBatchIntakePlan(parse = parse, records = records, variants = variants)
+        val sniffingPlan = sniffingEngine.sniff(
+            MediaSniffingInput(
+                url = pageUrl,
+                bodyPrefix = input,
+                pageUrl = pageUrl,
+                pageTitle = pageTitle,
+                source = MediaSniffingSource.BatchInput,
+            ),
+        )
+        return MediaBatchIntakePlan(
+            parse = parse,
+            records = sniffingPlan.records,
+            variants = sniffingPlan.variants,
+            sniffingCandidates = sniffingPlan.candidates,
+            sniffingDiagnostics = sniffingPlan.diagnostics,
+        )
     }
 }

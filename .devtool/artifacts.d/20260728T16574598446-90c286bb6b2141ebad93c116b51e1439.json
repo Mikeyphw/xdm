@@ -1,0 +1,163 @@
+{
+  "applied_at": "2026-07-28T16:57:45.984465Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase47_real_shared_media_sniffing_engine_overlay.zip",
+  "artifact_name": "xdm_android_phase47_real_shared_media_sniffing_engine_overlay.zip",
+  "type": "overlay",
+  "sha256": "b928e1002a78069de7307cf64818a216abc5f24f38a7b2d53f027cf2c3496c6b",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Land real Phase 47 shared media sniffing engine",
+  "commit_hash": "",
+  "file_count": 13,
+  "change_counts": {
+    "add": 5,
+    "modify": 8
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 47 Real Shared Media Sniffing Engine Correction",
+    "description": "Corrects the audited Phase 47 gap by adding the real shared app-side media sniffing engine, routing batch/share/external/extension automation through it, making Add selected selection-based, and updating the Phase 48 seal to require the correction.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "c6197d7db269abfa0aa8af1b4f797dd9f0a302fab2882965e2c08afb68325e7e",
+          "size": 71900,
+          "source_sha256": "485719392fbbc0f5666a1a37f90ca4393f5601de83550c5ed9a8ba1d8d9924eb"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "a3124967388df5643de009ff9be83b872505018fd3366018f2bfe373ff999c19",
+          "size": 94075,
+          "source_sha256": "fa10326287cd065ddfbc4cd9b5cb48473a5a16aa62c545c0425031f6f36efc56"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt",
+          "action": "modify",
+          "sha256": "6e45eb0139586f4103033a1ec09286f6276769bb156addf3771036d80bfe4fd5",
+          "size": 14096,
+          "source_sha256": "ca333c36fc7c45dbc3df1e8d604f0c19f55f273e0424ed569088347955572daa"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgePhase48FinalReleaseGateContractTest.kt",
+          "action": "modify",
+          "sha256": "577c0d99949da187f6847c8cb0d0ed985c3b636358222e37f0382eaca07b6575",
+          "size": 4693,
+          "source_sha256": "7e5002d457ebc32c66adbd0e030f37fbd0bc0265be682f6778ca641b9c61c2af"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/MediaSniffingPhase47ContractTest.kt",
+          "action": "add",
+          "sha256": "1d3c138b4991d7b852644f15a496547ce381bc32cb24fe03153c47c9da6884d3",
+          "size": 3430
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-47-REAL-SHARED-MEDIA-SNIFFING-ENGINE.md",
+          "action": "add",
+          "sha256": "72ec79401015bcb2ac704c4c813f2b5890628a9c7a5ec7b56ddfc4b2d8109e33",
+          "size": 2159
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-48-FINAL-UX-RELEASE-GATE.md",
+          "action": "modify",
+          "sha256": "336ef2baf004566f0b0e87bbdbcbafb984596309d8b31a76f5fbf811271772b9",
+          "size": 3657,
+          "source_sha256": "a216e167a57ad9a5895ac699a4e683e706d265bac06c1d4ba8c0c9f17517f1c0"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/ExternalMediaReviewIntake.kt",
+          "action": "modify",
+          "sha256": "07bb612431e141c8f4dbf6d707e10c3ad50fb0e7ac59bac82b7583efd8f267ba",
+          "size": 3855,
+          "source_sha256": "db5ccc28df6ea3b89c0987e7792571b6a04bc1f63208cdfa8d610822a2f0d1ee"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBatchIntake.kt",
+          "action": "modify",
+          "sha256": "f2cc1133d66c351884ef628da5f1aae97f2091f1d1dc54b40ed6ff5b437defba",
+          "size": 7398,
+          "source_sha256": "d902055eacda706162aedbebb91be6665d735d25c1188ff82e75e6844ce8fa3f"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngine.kt",
+          "action": "add",
+          "sha256": "ea37077c92c1fba1dc6be9e10d668d93b025784cd15f42f1f5b42b86ce9490fd",
+          "size": 15854
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngineTest.kt",
+          "action": "add",
+          "sha256": "18e27992142d142c3ba8603a155b79218dcb502e3b7944c2d253207d5f4f67fd",
+          "size": 4116
+        },
+        {
+          "path": "app/XDM.Android/tools/run-phase-48-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "3481df4bc44e52c8e84666b4b252ca123408ee026c0c6b43900534d02d25ca19",
+          "size": 839,
+          "source_sha256": "c3af3a16352c5913176a4213acee79eaa014f442c3cd8532abd3b542dbb4e593"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-47-real-shared-media-sniffing-engine.py",
+          "action": "add",
+          "sha256": "8770d8c361609876e1c416ae4da460476d0c7490737e05d23a14457b246c25e4",
+          "size": 5308
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Land real Phase 47 shared media sniffing engine"
+      }
+    },
+    "validation": {
+      "required": true,
+      "reason": "The audit found Phase 47 was claimed but not present; this correction must validate the real shared sniffer and final gate.",
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate_phase47_real_shared_media_sniffing_engine.sh",
+        "runner": "bash",
+        "timeout_seconds": 300,
+        "sha256": "e6c6a73205eabad5cb1118869f3520cdbc530795770d1891d916afee3cb2d450"
+      },
+      "expected": {
+        "restore": "success",
+        "build": "success",
+        "tests": "success",
+        "maximum_warnings": 0
+      }
+    },
+    "compatibility": {
+      "base_commit": "ff77713",
+      "base_overlay": "xdm_android_phase48_final_ux_release_gate_overlay.zip",
+      "room_schema": 14,
+      "version_name": "0.20.0-rc08",
+      "version_code": 21
+    }
+  },
+  "history_id": "90c286bb6b2141ebad93c116b51e1439"
+}

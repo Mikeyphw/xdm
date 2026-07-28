@@ -49,6 +49,9 @@ import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.media.MediaCaptureService
 import com.mikeyphw.xdm.android.media.MediaCaptureIntakePlanner
 import com.mikeyphw.xdm.android.media.MediaBatchIntakePlanner
+import com.mikeyphw.xdm.android.media.MediaSniffingEngine
+import com.mikeyphw.xdm.android.media.MediaSniffingInput
+import com.mikeyphw.xdm.android.media.MediaSniffingSource
 import com.mikeyphw.xdm.android.media.ExternalMediaReviewPlanner
 import com.mikeyphw.xdm.android.media.MediaRequestFacts
 import com.mikeyphw.xdm.android.media.MediaExecutionLibraryPlanner
@@ -258,6 +261,7 @@ class MainViewModel(
     private val capabilitySnapshot = MutableStateFlow<Map<BackendType, BackendCapabilities>>(emptyMap())
     private val externalAddDraft = MutableStateFlow<DownloadIntakeDraft?>(null)
     private val mediaCaptureService = MediaCaptureService()
+    private val mediaSniffingEngine = MediaSniffingEngine(mediaCaptureService)
     private val mediaCaptureIntakePlanner = MediaCaptureIntakePlanner(mediaCaptureService)
     private val mediaBatchIntakePlanner = MediaBatchIntakePlanner(mediaCaptureService)
     private val externalMediaReviewPlanner = ExternalMediaReviewPlanner(mediaCaptureService)
@@ -1453,12 +1457,21 @@ class MainViewModel(
         val text = draft.normalizedUrl ?: return repository.saveAutomationCommand(
             command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing media URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = now),
         )
-        val records = mediaCaptureService.detect(text, draft.pageTitle, draft.pageUrl)
-        if (records.isEmpty()) {
+        val sniffingPlan = mediaSniffingEngine.sniff(
+            MediaSniffingInput(
+                url = text,
+                mimeType = draft.mimeType,
+                contentLength = draft.contentLength,
+                pageUrl = draft.pageUrl,
+                pageTitle = draft.pageTitle,
+                source = MediaSniffingSource.BrowserExtension,
+            ),
+        )
+        if (sniffingPlan.records.isEmpty()) {
             openExternalAddDraft(command, draft, "No media stream was detected; opened Add Download instead")
             return
         }
-        val merged = records.map { record ->
+        val merged = sniffingPlan.records.map { record ->
             val existing = repository.findMediaCapture(record.id)
             if (existing?.downloadId != null) {
                 record.copy(status = existing.status, downloadId = existing.downloadId, createdAtEpochMs = existing.createdAtEpochMs, updatedAtEpochMs = System.currentTimeMillis())
@@ -1467,7 +1480,7 @@ class MainViewModel(
             }
         }
         repository.saveMediaCaptures(merged)
-        repository.saveMediaVariants(merged.mapNotNull { mediaCaptureService.candidateFor(it.sourceUrl)?.variants }.flatten())
+        repository.saveMediaVariants(sniffingPlan.variants)
         repository.saveAutomationCommand(
             command.copy(
                 status = AutomationCommandStatus.Executed,
@@ -1575,10 +1588,18 @@ class MainViewModel(
     }
 
     fun captureSharedText(text: String, pageTitle: String? = null, pageUrl: String? = null) {
-        val records = mediaCaptureService.detect(text, pageTitle, pageUrl)
-        if (records.isEmpty()) return
+        val sniffingPlan = mediaSniffingEngine.sniff(
+            MediaSniffingInput(
+                url = pageUrl,
+                bodyPrefix = text,
+                pageUrl = pageUrl,
+                pageTitle = pageTitle,
+                source = MediaSniffingSource.SharedText,
+            ),
+        )
+        if (sniffingPlan.records.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            val merged = records.map { record ->
+            val merged = sniffingPlan.records.map { record ->
                 val existing = repository.findMediaCapture(record.id)
                 if (existing?.downloadId != null) {
                     record.copy(
@@ -1592,7 +1613,7 @@ class MainViewModel(
                 }
             }
             repository.saveMediaCaptures(merged)
-            repository.saveMediaVariants(merged.mapNotNull { mediaCaptureService.candidateFor(it.sourceUrl)?.variants }.flatten())
+            repository.saveMediaVariants(sniffingPlan.variants)
             navigate(AppRoute.Media)
         }
     }
