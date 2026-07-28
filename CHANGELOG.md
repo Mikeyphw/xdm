@@ -1,5 +1,17 @@
 ## XDM Android Phase 43B - Add Download media recommendation demotion
 
+### XDM Android Debug Workbench D1 r5
+
+- Fixed the D1 redaction model test to assert key-preserving value redaction for both `Authorization` and `Cookie` diagnostics.
+- Kept the D1 recorder foundation, support bundle skeleton, safe hooks, and Debug Workbench roadmap handoff intact.
+
+
+### XDM Android Debug Workbench D1 r4
+
+- Fixed the D1 redaction model test to assert secret value removal while preserving diagnostic key casing.
+- Kept the D1 backend event recorder, Debug Workbench handoff, and Kotlin 2.3 compile-hygiene fixes intact.
+
+
 - Added a pure `MediaInspectionPolicy` with Hidden, Optional, and Recommended visibility weights for Add Download media/page analysis.
 - Kept HLS/DASH and browser-extension direct-media handoffs strongly recommended while demoting ordinary manual page/unknown links back to the normal Add Download path.
 - Preserved a dedicated `BrowserExtension` intake origin so extension-captured media can be promoted without making manual Add Download noisy.
@@ -232,6 +244,10 @@ Adds Phase 8 checksum verification, persisted verification results, trusted bloc
 
 # Changelog
 
+## Debug Workbench D1 r3 compile hygiene
+
+- Rebuilt the D1 event recorder overlay to use `createTempDirectory` in debug recorder tests and named `DownloadIntakePlanner(idFactory = ...)` construction in legacy intake tests so the optional debug recorder parameter remains source-compatible under Kotlin 2.3.
+
 ## 0.12.0-alpha01
 
 - Added durable automation command records for Tasker, browser, share, and view intents.
@@ -366,3 +382,8 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Added a pure parser/planner that trims input, accepts LF/CRLF, extracts HTTP(S) URLs, rejects unsafe schemes, deduplicates normalized URLs, caps large input, and reports accepted/duplicate/invalid/page-inspection counts.
 - Saves only concrete media candidates into the Media Inbox; page/watch URLs are flagged for the later shared sniffing engine instead of being silently misclassified.
 
+## Debug Workbench D1 - Event Recorder Foundation
+
+- Added privacy-first debug event models, redaction, bounded JSONL recording, and support-bundle skeleton.
+- Added optional no-op-by-default instrumentation hooks for Add Download intake, MediaSniffingEngine, media batch intake, external media review, and completed notification fallback.
+- Added D1 contract tests and validator without introducing a Room migration or user-facing UI.

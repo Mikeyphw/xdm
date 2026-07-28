@@ -1,5 +1,7 @@
 package com.mikeyphw.xdm.android.media
 
+import com.mikeyphw.xdm.android.model.DebugArea
+import com.mikeyphw.xdm.android.model.DebugEventRecorder
 import com.mikeyphw.xdm.android.model.DownloadIntakeDraft
 import com.mikeyphw.xdm.android.model.DownloadIntakeKind
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
@@ -7,6 +9,7 @@ import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
+import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
 import com.mikeyphw.xdm.android.util.sanitizeFileName
 import java.net.URI
 import java.util.Locale
@@ -25,6 +28,7 @@ class ExternalMediaReviewPlanner(
     private val captureService: MediaCaptureService = MediaCaptureService(),
     private val sniffingEngine: MediaSniffingEngine = MediaSniffingEngine(captureService),
     private val clock: () -> Long = System::currentTimeMillis,
+    private val debugRecorder: DebugEventRecorder = NoOpDebugEventRecorder,
 ) {
     fun plan(draft: DownloadIntakeDraft): ExternalMediaReviewIntake? {
         if (!draft.canInspectAsMedia) return null
@@ -40,6 +44,17 @@ class ExternalMediaReviewPlanner(
         )
         val sniffedRecord = sniffingPlan.records.firstOrNull()
         if (sniffedRecord != null) {
+            debugRecorder.record(
+                area = DebugArea.AddDownload,
+                action = "external-media-review",
+                result = "sniffed-media-record",
+                safeDetails = mapOf(
+                    "url" to draft.url,
+                    "origin" to draft.origin.name,
+                    "kind" to draft.kind.name,
+                    "recordKind" to sniffedRecord.kind.name,
+                ),
+            )
             return ExternalMediaReviewIntake(
                 record = sniffedRecord,
                 variants = sniffingPlan.variants.filter { it.captureId == sniffedRecord.id },
@@ -57,6 +72,12 @@ class ExternalMediaReviewPlanner(
             ?: "Shared media page"
         val pageUrl = draft.pageUrl?.takeIf(String::isNotBlank) ?: draft.url
         val safeName = sanitizeFileName(title, fallback = "shared-media-page", maxLength = 120)
+        debugRecorder.record(
+            area = DebugArea.AddDownload,
+            action = "external-media-review",
+            result = "page-probe-placeholder",
+            safeDetails = mapOf("url" to draft.url, "pageUrl" to pageUrl, "origin" to draft.origin.name),
+        )
         return ExternalMediaReviewIntake(
             record = MediaCaptureRecord(
                 id = MediaCaptureService.captureIdFor(draft.url),

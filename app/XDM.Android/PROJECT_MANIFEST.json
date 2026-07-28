@@ -137,7 +137,7 @@
       "compare"
     ]
   },
-  "next_phase": "complete",
+  "next_phase": "debug_workbench_phase_d2_shell",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -444,7 +444,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_phase47_real_shared_media_sniffing_engine_overlay.zip",
+  "current_overlay": "xdm_android_debug_workbench_phase_d1_event_recorder_r3_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -2013,5 +2013,61 @@
     "version_code_unchanged": 21,
     "depends_on": "ff77713 Phase 48 clean baseline",
     "next_overlay": "complete"
+  },
+  "debug_workbench_phase_d1_event_recorder": {
+    "status": "implemented",
+    "overlay": "xdm_android_debug_workbench_phase_d1_event_recorder_r5_overlay.zip",
+    "baseline": "ed6259d",
+    "scope": [
+      "debug_event_model",
+      "privacy_redaction",
+      "rolling_jsonl_recorder",
+      "support_bundle_skeleton",
+      "safe_runtime_instrumentation_hooks"
+    ],
+    "privacy": {
+      "redaction": [
+        "authorization",
+        "cookie",
+        "token",
+        "signature",
+        "session",
+        "password",
+        "key"
+      ],
+      "automatic_upload": false,
+      "storage": "app-private rolling JSONL; no Room migration"
+    },
+    "instrumentation": [
+      "Add Download intake draft creation/rejection",
+      "MediaSniffingEngine summaries",
+      "Media batch intake summaries",
+      "External media review planning",
+      "Completed notification open fallback"
+    ],
+    "validation": {
+      "validator": "tools/validate-debug-workbench-d1-event-recorder.py",
+      "tests": [
+        "DebugEventModelsTest",
+        "MediaDebugEventRecorderTest",
+        "CompletedNotificationDebugEventsTest",
+        "DebugWorkbenchD1EventRecorderContractTest"
+      ]
+    },
+    "phase48_release_gate_handoff": "BrowserBridgePhase48FinalReleaseGateContractTest accepts complete or debug_workbench_phase_d2_shell after the final browser bridge seal.",
+    "revision": "r5",
+    "compile_hygiene": {
+      "debug_event_models_test": "uses kotlin.io.path.createTempDirectory and asserts key-preserving redaction",
+      "download_intake_planner_test": "uses named idFactory argument to avoid debugRecorder trailing-lambda capture"
+    },
+    "redaction_test_contract": "value redaction preserves supplied diagnostic key casing for Authorization and Cookie while removing secrets"
+  },
+  "debug_workbench_phase_d1_compile_hygiene": {
+    "status": "included",
+    "source": "xdm_android_debug_workbench_phase_d1_event_recorder_r3_overlay.zip",
+    "fixes": [
+      "createTempDir deprecation treated as error",
+      "DownloadIntakePlannerTest trailing-lambda constructor ambiguity"
+    ]
   }
 }

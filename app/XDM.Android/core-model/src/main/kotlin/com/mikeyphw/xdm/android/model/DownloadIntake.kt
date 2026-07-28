@@ -108,6 +108,7 @@ data class DownloadIntakeDraft(
  * It never persists data, chooses a backend, creates a Download, or starts execution. */
 class DownloadIntakePlanner(
     private val idFactory: (String) -> String = { prefix -> "$prefix-${UUID.randomUUID()}" },
+    private val debugRecorder: DebugEventRecorder = NoOpDebugEventRecorder,
 ) {
     fun fromBuiltInBrowserPage(
         url: String,
@@ -197,12 +198,19 @@ class DownloadIntakePlanner(
         contentLength: Long? = null,
         allowedSchemes: Set<String>,
     ): DownloadIntakeDraft? {
-        val normalizedUrl = ExternalUrlPolicy.normalizedUrl(url) ?: return null
-        val scheme = runCatching { URI(normalizedUrl).scheme?.lowercase(Locale.US) }.getOrNull() ?: return null
-        if (scheme !in allowedSchemes) return null
+        val normalizedUrl = ExternalUrlPolicy.normalizedUrl(url)
+        if (normalizedUrl == null) {
+            recordDebugIntake(prefix, origin, "rejected", mapOf("reason" to "invalid-url", "url" to url))
+            return null
+        }
+        val scheme = runCatching { URI(normalizedUrl).scheme?.lowercase(Locale.US) }.getOrNull()
+        if (scheme == null || scheme !in allowedSchemes) {
+            recordDebugIntake(prefix, origin, "rejected", mapOf("reason" to "unsupported-scheme", "url" to normalizedUrl, "scheme" to scheme.orEmpty()))
+            return null
+        }
         val cleanFileName = fileName.cleanFileName()
         val cleanMimeType = mimeType.cleanMimeType()
-        return DownloadIntakeDraft(
+        val draft = DownloadIntakeDraft(
             id = explicitId?.trim()?.takeIf(String::isNotBlank) ?: idFactory(prefix),
             url = normalizedUrl,
             fileName = cleanFileName,
@@ -213,6 +221,36 @@ class DownloadIntakePlanner(
             mimeType = cleanMimeType,
             contentLength = contentLength?.takeIf { it > 0L },
             kind = DownloadIntakeClassifier.classify(normalizedUrl, cleanFileName, cleanMimeType),
+        )
+        recordDebugIntake(
+            prefix = prefix,
+            origin = origin,
+            result = "draft-created",
+            details = mapOf(
+                "url" to draft.url,
+                "origin" to draft.origin.name,
+                "kind" to draft.kind.name,
+                "sourceLabel" to draft.sourceLabel,
+                "mimeType" to draft.mimeType.orEmpty(),
+                "pageUrl" to draft.pageUrl.orEmpty(),
+            ),
+        )
+        return draft
+    }
+
+
+    private fun recordDebugIntake(
+        prefix: String,
+        origin: DownloadIntakeOrigin,
+        result: String,
+        details: Map<String, String>,
+    ) {
+        debugRecorder.record(
+            area = DebugArea.AddDownload,
+            severity = if (result == "draft-created") DebugSeverity.Info else DebugSeverity.Warning,
+            action = "intake-$prefix",
+            result = result,
+            safeDetails = details + mapOf("origin" to origin.name),
         )
     }
 

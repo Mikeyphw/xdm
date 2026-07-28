@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DownloadIntakePlannerTest {
-    private val planner = DownloadIntakePlanner { prefix -> "$prefix-test-id" }
+    private val planner = DownloadIntakePlanner(idFactory = { prefix -> "$prefix-test-id" })
 
     @Test
     fun builtInBrowserPageCreatesReviewOnlyNeutralDraft() {

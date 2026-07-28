@@ -1,0 +1,174 @@
+{
+  "applied_at": "2026-07-28T17:29:11.465793Z",
+  "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d1_event_recorder_overlay.zip",
+  "artifact_name": "xdm_android_debug_workbench_phase_d1_event_recorder_overlay.zip",
+  "type": "overlay",
+  "sha256": "f9e13e1568bb403ec140c455697e609522e79e498d28a6105ea9f56bd5e7f35d",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Add Debug Workbench D1 event recorder foundation",
+  "commit_hash": "",
+  "file_count": 15,
+  "change_counts": {
+    "add": 8,
+    "modify": 7
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Debug Workbench D1 Event Recorder Foundation",
+    "description": "Adds the backend-only Debug Workbench D1 event recorder foundation: privacy redaction, bounded JSONL storage, support-bundle skeleton, and no-op-by-default safe instrumentation hooks for Add Download intake, media sniffing, media batch, external media review, and completed notification fallback.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "aa0d0d7634bd366bd5f74c56af5c23912379d36e66227b23bda288b2a40d0c00",
+          "size": 73123,
+          "source_sha256": "c6197d7db269abfa0aa8af1b4f797dd9f0a302fab2882965e2c08afb68325e7e"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadIntake.kt",
+          "action": "modify",
+          "sha256": "b0dd83357251f66b606c83a75bd2ae515636895cef1d8d0b26c33f1b4fdd3434",
+          "size": 10245,
+          "source_sha256": "45adf29f443e176d7003aae7fa1e49fb6894a760922db8ae7b0a4ef09e89c73d"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/ExternalMediaReviewIntake.kt",
+          "action": "modify",
+          "sha256": "60573ea82c58afbf233b6c927469329b050fb953a152f05e1b8fbe066ee057bf",
+          "size": 4826,
+          "source_sha256": "07bb612431e141c8f4dbf6d707e10c3ad50fb0e7ac59bac82b7583efd8f267ba"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBatchIntake.kt",
+          "action": "modify",
+          "sha256": "a6c208bcfb313b6ccd9e366480b3546d823c27fc7a31b582780325cf05df644f",
+          "size": 8256,
+          "source_sha256": "f2cc1133d66c351884ef628da5f1aae97f2091f1d1dc54b40ed6ff5b437defba"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngine.kt",
+          "action": "modify",
+          "sha256": "7cbb5a1f5ecf9e525b7f9c6cad62cf31aea82c1be915752c892fb815dd14f591",
+          "size": 18932,
+          "source_sha256": "ea37077c92c1fba1dc6be9e10d668d93b025784cd15f42f1f5b42b86ce9490fd"
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/OpenDownloadedFileActivity.kt",
+          "action": "modify",
+          "sha256": "222abbf9fa1a9569f530aec26bdc92482c9e8b20e72cf1abb233e5adb7164bb8",
+          "size": 4740,
+          "source_sha256": "3cf56aff0f23a8eeeddca53b97ff91db18be52c7246876cd01ae384ec024c2db"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-phase-48-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "ac0a3bf6f7932ad0a03c28daba9f703cbe05472fb03da95cffa1bbf39b8bd962",
+          "size": 899,
+          "source_sha256": "3481df4bc44e52c8e84666b4b252ca123408ee026c0c6b43900534d02d25ca19"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD1EventRecorderContractTest.kt",
+          "action": "add",
+          "sha256": "e3ddb403e5ccae80ac284d70d9a9fba7225931a0b02fa995293f255d52a88da6",
+          "size": 3105
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugEventModels.kt",
+          "action": "add",
+          "sha256": "52a8b92cc34fbb4a7f9fff167c0b9b8e5be39b2f6df13d5d98fbc71fc7f00cb1",
+          "size": 10398
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DebugEventModelsTest.kt",
+          "action": "add",
+          "sha256": "c763039ef3aed8e0cd6ef2c86d587f3cab912d9890559a19b0db8dbf719d617a",
+          "size": 4211
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D1-EVENT-RECORDER.md",
+          "action": "add",
+          "sha256": "b14418819153af931d307486627f2ec5b024e1131304bd3200253159546e3d56",
+          "size": 2060
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaDebugEventRecorderTest.kt",
+          "action": "add",
+          "sha256": "8a9f6e454016e664d8e0e29a57b759d996360d5fdaafe049914f7fd4982fee94",
+          "size": 2113
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/CompletedNotificationDebugEvents.kt",
+          "action": "add",
+          "sha256": "2c2ff7ede081a486fb53964adc0131a992244f5e6dd048e306a46d110ecae79a",
+          "size": 1058
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/CompletedNotificationDebugEventsTest.kt",
+          "action": "add",
+          "sha256": "6a1789c247c2b3c887cacff2950b5b3656de521081be66e15e00806a80a72bdc",
+          "size": 824
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-debug-workbench-d1-event-recorder.py",
+          "action": "add",
+          "sha256": "e8ab0335258c0f8183cd581f7cb9b00eb57be4582b485c77f060469f49d545c3",
+          "size": 4359
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Add Debug Workbench D1 event recorder foundation"
+      }
+    },
+    "validation": {
+      "required": true,
+      "reason": "Debug instrumentation must remain privacy-safe, no-op by default, bounded, and covered by source contracts.",
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate_debug_workbench_d1_event_recorder.sh",
+        "runner": "bash",
+        "timeout_seconds": 300,
+        "sha256": "d7a91a77c5ac38bad91ddeace2da0a9621bc7d4af01cbd2cc1b984c8c53a58be"
+      },
+      "expected": {
+        "restore": "success",
+        "build": "success",
+        "tests": "success",
+        "maximum_warnings": 0
+      }
+    },
+    "compatibility": {
+      "base_commit": "ed6259d",
+      "base_overlay": "xdm_android_phase47_real_shared_media_sniffing_engine_r2_overlay.zip",
+      "room_schema": 14,
+      "version_name": "0.20.0-rc08",
+      "version_code": 21
+    }
+  },
+  "history_id": "fb0a795f8c394039a9ad7805a2efff67"
+}

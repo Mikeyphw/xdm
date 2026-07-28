@@ -1,6 +1,10 @@
 package com.mikeyphw.xdm.android.media
 
+import com.mikeyphw.xdm.android.model.DebugArea
+import com.mikeyphw.xdm.android.model.DebugEventRecorder
+import com.mikeyphw.xdm.android.model.DebugSeverity
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
@@ -69,12 +73,20 @@ data class MediaPageProbePolicy(
 class MediaPageProbe(
     private val engine: MediaSniffingEngine = MediaSniffingEngine(),
     private val policy: MediaPageProbePolicy = MediaPageProbePolicy(),
+    private val debugRecorder: DebugEventRecorder = NoOpDebugEventRecorder,
 ) {
     fun probePage(url: String, pageTitle: String? = null, requestHeaders: Map<String, String> = emptyMap()): MediaSniffingPlan {
         val normalized = url.trim()
         val uri = runCatching { URI(normalized) }.getOrNull()
         val scheme = uri?.scheme?.lowercase(Locale.US)
         if (scheme != "http" && scheme != "https") {
+            debugRecorder.record(
+                area = DebugArea.MediaSniffing,
+                severity = DebugSeverity.Warning,
+                action = "page-probe",
+                result = "rejected",
+                safeDetails = mapOf("url" to normalized, "reason" to "unsupported-scheme"),
+            )
             return MediaSniffingPlan(
                 candidates = emptyList(),
                 records = emptyList(),
@@ -83,6 +95,13 @@ class MediaPageProbe(
             )
         }
         val connection = runCatching { uri.toURL().openConnection() as HttpURLConnection }.getOrElse { error ->
+            debugRecorder.record(
+                area = DebugArea.MediaSniffing,
+                severity = DebugSeverity.Error,
+                action = "page-probe",
+                result = "open-failed",
+                safeDetails = mapOf("url" to normalized, "error" to error.javaClass.simpleName),
+            )
             return MediaSniffingPlan(
                 candidates = emptyList(),
                 records = emptyList(),
@@ -116,12 +135,32 @@ class MediaPageProbe(
                 source = MediaSniffingSource.AppPageProbe,
             )
             val plan = engine.sniff(input)
+            debugRecorder.record(
+                area = DebugArea.MediaSniffing,
+                severity = DebugSeverity.Info,
+                action = "page-probe",
+                result = if (plan.records.isEmpty()) "no-captures" else "captures-created",
+                safeDetails = mapOf(
+                    "url" to normalized,
+                    "finalUrl" to finalUrl,
+                    "candidateCount" to plan.candidates.size.toString(),
+                    "recordCount" to plan.records.size.toString(),
+                    "policy" to "bounded-get-no-js-no-drm",
+                ),
+            )
             plan.copy(
                 diagnostics = plan.diagnostics + listOf(
                     "page-probe bounded GET • timeout=${policy.connectTimeoutMillis}ms • prefix=${policy.bodyPrefixBytes} bytes • no-js=${!policy.executeJavaScript} • no-drm-bypass=${!policy.bypassDrm}",
                 ),
             )
         } catch (error: Exception) {
+            debugRecorder.record(
+                area = DebugArea.MediaSniffing,
+                severity = DebugSeverity.Error,
+                action = "page-probe",
+                result = "failed",
+                safeDetails = mapOf("url" to normalized, "error" to error.javaClass.simpleName),
+            )
             MediaSniffingPlan(
                 candidates = emptyList(),
                 records = emptyList(),
@@ -143,6 +182,7 @@ class MediaPageProbe(
 class MediaSniffingEngine(
     private val captureService: MediaCaptureService = MediaCaptureService(),
     private val classifier: MediaCandidateClassifier = MediaCandidateClassifier(),
+    private val debugRecorder: DebugEventRecorder = NoOpDebugEventRecorder,
 ) {
     private data class RawCandidate(
         val url: String,
@@ -220,11 +260,39 @@ class MediaSniffingEngine(
         val records = captureService.recordsFor(captureCandidates)
         val variants = captureCandidates.flatMap(MediaCaptureCandidate::variants).distinctBy(MediaVariant::id)
         val safeDiagnostics = diagnostics + diagnosticSummary(input, ranked)
+        recordDebugSniff(input, ranked, records, variants, safeDiagnostics)
         return MediaSniffingPlan(
             candidates = ranked,
             records = records,
             variants = variants,
             diagnostics = safeDiagnostics.mapNotNull(PrivacyDiagnosticsRedactor::redactText).distinct(),
+        )
+    }
+
+
+    private fun recordDebugSniff(
+        input: MediaSniffingInput,
+        candidates: List<MediaSniffingCandidate>,
+        records: List<MediaCaptureRecord>,
+        variants: List<MediaVariant>,
+        diagnostics: List<String>,
+    ) {
+        debugRecorder.record(
+            area = DebugArea.MediaSniffing,
+            severity = DebugSeverity.Info,
+            action = "shared-sniff",
+            result = if (records.isEmpty()) "no-captures" else "captures-created",
+            safeDetails = mapOf(
+                "source" to input.source.name,
+                "url" to input.url.orEmpty(),
+                "pageUrl" to (input.pageUrl ?: input.finalUrl).orEmpty(),
+                "mimeType" to input.mimeType.orEmpty(),
+                "candidateCount" to candidates.size.toString(),
+                "recordCount" to records.size.toString(),
+                "variantCount" to variants.size.toString(),
+                "diagnosticCount" to diagnostics.size.toString(),
+                "policy" to "static-no-js-no-drm",
+            ),
         )
     }
 

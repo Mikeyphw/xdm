@@ -1,6 +1,9 @@
 package com.mikeyphw.xdm.android.media
 
+import com.mikeyphw.xdm.android.model.DebugArea
+import com.mikeyphw.xdm.android.model.DebugEventRecorder
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import java.net.URI
@@ -163,6 +166,7 @@ class MediaBatchIntakePlanner(
     private val captureService: MediaCaptureService = MediaCaptureService(),
     private val parser: MediaBatchInputParser = MediaBatchInputParser(),
     private val sniffingEngine: MediaSniffingEngine = MediaSniffingEngine(captureService),
+    private val debugRecorder: DebugEventRecorder = NoOpDebugEventRecorder,
 ) {
     fun plan(input: String, pageTitle: String? = null, pageUrl: String? = null): MediaBatchIntakePlan {
         val parse = parser.parse(input)
@@ -173,6 +177,18 @@ class MediaBatchIntakePlanner(
                 pageUrl = pageUrl,
                 pageTitle = pageTitle,
                 source = MediaSniffingSource.BatchInput,
+            ),
+        )
+        debugRecorder.record(
+            area = DebugArea.MediaSniffing,
+            action = "batch-intake",
+            result = if (sniffingPlan.records.isEmpty()) "review-only" else "captures-created",
+            safeDetails = mapOf(
+                "acceptedCount" to parse.acceptedCount.toString(),
+                "duplicateCount" to parse.duplicateCount.toString(),
+                "invalidCount" to parse.invalidCount.toString(),
+                "pageInspectionCount" to parse.pageInspectionCount.toString(),
+                "recordCount" to sniffingPlan.records.size.toString(),
             ),
         )
         return MediaBatchIntakePlan(

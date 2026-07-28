@@ -8,7 +8,9 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import com.mikeyphw.xdm.android.model.DebugRecorderProvider
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
 import com.mikeyphw.xdm.android.model.DownloadState
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -92,6 +94,8 @@ class OpenDownloadedFileActivity : Activity() {
     )
 
     private fun openXdmDetails(downloadId: String?, reason: String) {
+        val recorder = (application as? DebugRecorderProvider)?.debugEventRecorder ?: NoOpDebugEventRecorder
+        recorder.record(CompletedNotificationDebugEvents.fallback(downloadId = downloadId, reason = reason))
         val fallback = packageManager.getLaunchIntentForPackage(packageName)
             ?: Intent(Intent.ACTION_MAIN).setPackage(packageName)
         fallback.action = TransferNotifications.ACTION_OPEN_DOWNLOAD_DETAILS
