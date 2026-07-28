@@ -57540,6 +57540,114 @@
         }
       },
       "history_id": "1c81d846a42048359193bf50c0e090ab"
+    },
+    {
+      "applied_at": "2026-07-28T16:29:05.695942Z",
+      "artifact": "/home/mike/Downloads/xdm_android_phase48_final_ux_release_gate_overlay.zip",
+      "artifact_name": "xdm_android_phase48_final_ux_release_gate_overlay.zip",
+      "type": "overlay",
+      "sha256": "ab05c4c1a06dc29c24fd17aa5cd1f7dffb89bab83617f16914a696fadaf27cd4",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "Seal Phase 48 final UX release gate",
+      "commit_hash": "",
+      "file_count": 5,
+      "change_counts": {
+        "add": 4,
+        "modify": 1
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 48 Final UX Release Gate",
+        "description": "Final UX and release-gate seal for the Firefox Video AutoDL Android browser-bridge roadmap. Records the Phase 47 r6 green baseline, adds the explicit full validation gate, and adds contract/docs/static validation without runtime behavior changes.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "source_sha256": "8c20d97a9d075ea764b3a351325c9c3d57ff68416c6e7c3da4216d54ff710321",
+              "sha256": "485719392fbbc0f5666a1a37f90ca4393f5601de83550c5ed9a8ba1d8d9924eb",
+              "size": 69952
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-48-FINAL-UX-RELEASE-GATE.md",
+              "action": "add",
+              "sha256": "a216e167a57ad9a5895ac699a4e683e706d265bac06c1d4ba8c0c9f17517f1c0",
+              "size": 3303
+            },
+            {
+              "path": "app/XDM.Android/tools/run-phase-48-final-release-gate.sh",
+              "action": "add",
+              "sha256": "c3af3a16352c5913176a4213acee79eaa014f442c3cd8532abd3b542dbb4e593",
+              "size": 770
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase-48-final-ux-release-gate.py",
+              "action": "add",
+              "sha256": "80728371a4196523fb13428b928101a75b58a14697134dc49b05e22007bed595",
+              "size": 6059
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgePhase48FinalReleaseGateContractTest.kt",
+              "action": "add",
+              "sha256": "7e5002d457ebc32c66adbd0e030f37fbd0bc0265be682f6778ca641b9c61c2af",
+              "size": 4013
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Seal Phase 48 final UX release gate"
+          }
+        },
+        "validation": {
+          "required": true,
+          "reason": "Phase 48 is the final browser-bridge release gate and must keep the zero-warning, zero-error validation contract.",
+          "restore": true,
+          "build": true,
+          "test": true,
+          "rollback_on_failure": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate_phase48_final_ux_release_gate.sh",
+            "runner": "bash",
+            "timeout_seconds": 300,
+            "sha256": "cb0f199d59dffe6fcaf7d7726608dbdd61fc8495a34a9c50a963322177707636"
+          },
+          "expected": {
+            "restore": "success",
+            "build": "success",
+            "tests": "success",
+            "maximum_warnings": 0
+          }
+        },
+        "compatibility": {
+          "base_commit": "6e3ad8d",
+          "base_overlay": "xdm_android_phase47_ui_contract_hotfix_r6_overlay.zip",
+          "room_schema": 14,
+          "version_name": "0.20.0-rc08",
+          "version_code": 21
+        }
+      },
+      "history_id": "e04f4ac3c2654a1a9c0f7da171ab1f66"
     }
   ]
 }

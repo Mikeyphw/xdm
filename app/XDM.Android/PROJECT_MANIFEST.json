@@ -137,7 +137,7 @@
       "compare"
     ]
   },
-  "next_phase": "Phase 47 Shared app-side media sniffing engine",
+  "next_phase": "complete",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -1898,5 +1898,76 @@
     "version_code_unchanged": 21,
     "depends_on": "phase47 shared media sniffing + scheduler compile hotfix + media inbox clipboard hotfix r2 + contract rebaseline hotfix r2",
     "next_overlay": "browser_bridge_phase48_final_ux_release_gate"
+  },
+  "browser_bridge_phase48_final_ux_release_gate": {
+    "program": "android_browser_bridge",
+    "contract_version": 1,
+    "scope": "final UX and release gate seal after Phase 47 shared media intake validation",
+    "contract_document": "docs/architecture/PHASE-48-FINAL-UX-RELEASE-GATE.md",
+    "static_validator": "tools/validate-phase-48-final-ux-release-gate.py",
+    "release_gate_script": "tools/run-phase-48-final-release-gate.sh",
+    "final_phase_complete": true,
+    "baseline_commit": "6e3ad8d",
+    "phase47_validation": {
+      "tests_passed": 358,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "diagnostic_warnings": 0,
+      "diagnostic_errors": 0,
+      "overlay": "xdm_android_phase47_ui_contract_hotfix_r6_overlay.zip"
+    },
+    "full_validation_tasks": [
+      "assembleDebug",
+      ":app:assembleDebugAndroidTest",
+      ":browser-extension:packageFirefoxExtensionDark",
+      ":browser-extension:packageFirefoxExtensionAmoled",
+      ":browser-extension:verifyFirefoxExtensionReleaseArtifacts",
+      ":browser-extension:test",
+      ":browser-extension:jsTest",
+      ":browser-extension:validateFirefoxExtension",
+      ":app:checkBrowserIntegration",
+      ":core-model:test",
+      ":core-utils:test",
+      ":transfer-api:test",
+      ":browser-integration:testDebugUnitTest",
+      ":storage:testDebugUnitTest",
+      ":transfer-native:testDebugUnitTest",
+      ":transfer-aria2:test",
+      ":scheduler:testDebugUnitTest",
+      ":media:test",
+      ":persistence:testDebugUnitTest",
+      ":app:testDebugUnitTest"
+    ],
+    "release_artifact_gates": [
+      "dark_firefox_extension_package",
+      "amoled_firefox_extension_package",
+      "release_artifact_inventory_verification",
+      "android_debug_and_android_test_assembly"
+    ],
+    "ux_exit_gates": [
+      "review_first_add_download_flow",
+      "media_batch_actions_are_real",
+      "completed_notification_tap_uses_trampoline",
+      "shared_text_and_extension_media_use_shared_sniffing_path",
+      "no_placeholder_click_handlers",
+      "no_new_top_level_route"
+    ],
+    "ship_no_ship_gates": {
+      "zero_gradle_failures_required": true,
+      "zero_diagnostics_warnings_required": true,
+      "zero_diagnostics_errors_required": true,
+      "release_extension_inventory_required": true,
+      "browser_runtime_reintroduction_forbidden": true,
+      "raw_secret_diagnostics_forbidden": true,
+      "generated_xpi_source_commit_forbidden": true
+    },
+    "runtime_behavior_changed": false,
+    "browser_runtime_added": false,
+    "top_level_route_added": false,
+    "room_schema_unchanged": 14,
+    "version_name_unchanged": "0.20.0-rc08",
+    "version_code_unchanged": 21,
+    "depends_on": "Phase 47 shared media sniffing engine plus r6 final validation hotfix",
+    "next_overlay": "complete"
   }
 }
