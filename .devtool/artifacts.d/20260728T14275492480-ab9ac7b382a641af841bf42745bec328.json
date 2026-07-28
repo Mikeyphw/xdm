@@ -1,0 +1,92 @@
+{
+  "applied_at": "2026-07-28T14:27:54.924803Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase47_media_inbox_clipboard_compile_hotfix_overlay.zip",
+  "artifact_name": "xdm_android_phase47_media_inbox_clipboard_compile_hotfix_overlay.zip",
+  "type": "overlay",
+  "sha256": "62ce830c5e46c730eddc6972cd0fada3fc745f17de1d9b9b3e2428d222243716",
+  "status": "failed",
+  "validation_status": "not-run",
+  "commit_message": "Fix media inbox clipboard helper compile contract",
+  "commit_hash": "",
+  "file_count": 1,
+  "change_counts": {
+    "modify": 1
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 47 Media Inbox Clipboard Compile Hotfix",
+    "description": "Fixes the Phase 47 app compile failure by removing MediaInboxScreen's duplicate top-level copyTextToClipboard helper and delegating rejected-line copy actions to the shared UI clipboard helper.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt",
+          "action": "modify",
+          "source_sha256": "7cfc0e60095f14265a0f4897d541ebe59d27758a4e8e9b459da2133597e0f911",
+          "sha256": "7ffef259d5c2f717bd3f415379eb2dce823f8a8886dcfd71dde4365bbc0b506d",
+          "size": 11891
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Fix media inbox clipboard helper compile contract"
+      }
+    },
+    "validation": {
+      "required": true,
+      "reason": "Phase 47 hotfix must prove MediaInboxScreen no longer declares a duplicate copyTextToClipboard overload while preserving the rejected-lines copy action.",
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate_phase47_media_inbox_clipboard_hotfix.sh",
+        "runner": "bash",
+        "timeout_seconds": 300,
+        "sha256": "69401bb1d16121da2f71f6cdb432dc93737a55ff0ef48dbabc6bf01ce461a578"
+      },
+      "expected": {
+        "restore": "success",
+        "build": "success",
+        "tests": "success",
+        "maximum_warnings": 0
+      }
+    },
+    "compatibility": {
+      "base_overlay": "xdm_android_phase47_scheduler_compile_hotfix_overlay.zip",
+      "requires": [
+        "post-v9 source snapshot",
+        "Phase 43A r4 applied",
+        "Phase 43B applied",
+        "Phase 44 applied",
+        "Phase 45 applied",
+        "Phase 46 applied",
+        "Phase 47 applied",
+        "Phase 47 scheduler compile hotfix applied"
+      ],
+      "room_schema": 14,
+      "version_name": "0.20.0-rc08",
+      "version_code": 21
+    }
+  },
+  "history_id": "ab9ac7b382a641af841bf42745bec328"
+}
