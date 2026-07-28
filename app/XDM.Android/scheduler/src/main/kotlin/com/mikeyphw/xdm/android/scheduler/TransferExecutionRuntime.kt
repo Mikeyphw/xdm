@@ -372,7 +372,9 @@ class TransferExecutionRuntime(
         store.save(
             current.copy(
                 state = verifiedSnapshot.state,
-                destinationUri = if (verifiedSnapshot.state == DownloadState.Completed && !verifiedSnapshot.completedUri.isNullOrBlank()) verifiedSnapshot.completedUri else current.destinationUri,
+                destinationUri = verifiedSnapshot.completedUri
+                    ?.takeIf { verifiedSnapshot.state == DownloadState.Completed && it.isNotBlank() }
+                    ?: current.destinationUri,
                 backend = backendTaskIds[original.id]?.first ?: current.backend,
                 bytesReceived = verifiedSnapshot.bytesReceived,
                 totalBytes = verifiedSnapshot.totalBytes ?: current.totalBytes,

@@ -1,0 +1,91 @@
+{
+  "applied_at": "2026-07-28T14:09:12.420053Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase47_scheduler_compile_hotfix_overlay.zip",
+  "artifact_name": "xdm_android_phase47_scheduler_compile_hotfix_overlay.zip",
+  "type": "overlay",
+  "sha256": "d6fc3f25f6629ad4d57a2879955fd6447f6035c49b5ab4f73dedd4892b9b2c00",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Fix scheduler completed URI compile contract",
+  "commit_hash": "",
+  "file_count": 1,
+  "change_counts": {
+    "modify": 1
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 47 Scheduler Compile Hotfix",
+    "description": "Fixes the Phase 47 scheduler compile failure by preserving the completed destination URI through a nullable-safe completedUri assignment.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt",
+          "action": "modify",
+          "source_sha256": "a6a9b413fa382cabeab99df153748ec5a8b1ea70730af2b586041f0a6d7fd5d2",
+          "sha256": "801bf2b1c76055909d79986b08f5fe7404fb7d511730882888f93f513c79721a",
+          "size": 20241
+        }
+      ]
+    },
+    "apply": {
+      "atomic": true,
+      "conflict_policy": "fail",
+      "path_policy": "repository-relative",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "strategy": "single",
+        "message": "Fix scheduler completed URI compile contract"
+      }
+    },
+    "validation": {
+      "required": true,
+      "reason": "Phase 47 hotfix must prove the scheduler completedUri assignment is nullable-safe and no longer passes String? into Download.destinationUri.",
+      "restore": true,
+      "build": true,
+      "test": true,
+      "rollback_on_failure": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate_phase47_scheduler_compile_hotfix.sh",
+        "runner": "bash",
+        "timeout_seconds": 300,
+        "sha256": "072fdc7ca14d477c5e88be291d6ba1773354273109c7428165cb821aeda431fa"
+      },
+      "expected": {
+        "restore": "success",
+        "build": "success",
+        "tests": "success",
+        "maximum_warnings": 0
+      }
+    },
+    "compatibility": {
+      "base_overlay": "xdm_android_phase47_shared_media_sniffing_engine_overlay.zip",
+      "requires": [
+        "post-v9 source snapshot",
+        "Phase 43A r4 applied",
+        "Phase 43B applied",
+        "Phase 44 applied",
+        "Phase 45 applied",
+        "Phase 46 applied",
+        "Phase 47 applied"
+      ],
+      "room_schema": 14,
+      "version_name": "0.20.0-rc08",
+      "version_code": 21
+    }
+  },
+  "history_id": "3483a3edb5314e50bef3c78bbdf3498b"
+}
