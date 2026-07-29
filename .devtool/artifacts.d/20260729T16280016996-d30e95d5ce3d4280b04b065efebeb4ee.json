@@ -1,0 +1,105 @@
+{
+  "applied_at": "2026-07-29T16:28:00.169961Z",
+  "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_overlay.zip",
+  "artifact_name": "xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_overlay.zip",
+  "type": "overlay",
+  "sha256": "97917d201a2219d1c786d654cc5887206384db0e4967490996d89c0c3a50d4b9",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 9,
+  "change_counts": {
+    "add": 6,
+    "modify": 3
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Debug Workbench D6 Runtime Self-Test Suite",
+    "description": "Adds a read-only runtime self-test suite panel to Settings > Debug Workbench.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "f164046ed9497a7d58a7f39346e9a11e08f52aeeebab4b09e22b699a3b30f820",
+          "size": 34117,
+          "source_sha256": "24c263597dc877c2f5fbfb02de6d15f9faeb4dad49c5559004c5500b30f72503"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "c44c35f1702a513ba41c96a621388ea1c9382983824d29f1f39ebdfb708a9fa1",
+          "size": 82602,
+          "source_sha256": "2c7636d754be3bd90c904852be64856e60438154724d1116cdfb02d76d26f24b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestModels.kt",
+          "action": "add",
+          "sha256": "2a10d4e8ec7d251dc71ae8796b03a5cb59439d0400fd1e66867854e8ecabc7c6",
+          "size": 9156
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+          "action": "modify",
+          "sha256": "249d3f6080a3eb58e632d7d284c748ea397dff504406582406bf58486dd2c9fb",
+          "size": 5211,
+          "source_sha256": "5fc1de444f5ce4c8f362169d21e081cbcbc164746ede8054f6335cd5b618c8cd"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/RuntimeSelfTestSuiteCard.kt",
+          "action": "add",
+          "sha256": "77f22f04325ddd22a3bcc495cec1c13acf6a692b7f3305d0135f50b6aa6f7214",
+          "size": 3098
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestSuiteTest.kt",
+          "action": "add",
+          "sha256": "ce4eeaef7c1f00159a20b53ed62f827d2fea982d04841afb1bbdd96b7eb62d7b",
+          "size": 2404
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestSuiteContractTest.kt",
+          "action": "add",
+          "sha256": "45b5f9483081065c97168b88227d519412f19ea9a2f8b15d3d46db881d993957",
+          "size": 3967
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D6-RUNTIME-SELF-TEST-SUITE.md",
+          "action": "add",
+          "sha256": "3e7cb0e622340fbfe53874865288837dbdc2b524199304fc790b7554427558aa",
+          "size": 1522
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-debug-workbench-d6-runtime-self-test-suite.py",
+          "action": "add",
+          "sha256": "53b06847fddff3597e791288b9902ab92506c4b67b60bf3293ebcee204268a43",
+          "size": 3277
+        }
+      ]
+    },
+    "validation": {
+      "script": ".devtool-artifact/validate_debug_workbench_d6_runtime_self_test_suite.sh",
+      "sha256": "33f01750145122fce2e29984721b2295659d20185aa173955b0a0a2fadebde6f"
+    },
+    "commit": {
+      "message": "Add Debug Workbench D6 runtime self-test suite"
+    },
+    "notes": [
+      "D6 adds read-only runtime checks for handoff routes, browser scheme readiness, completed-file access, media sniffing, redaction, notification diagnostics, recorder health, support report readiness, and state context.",
+      "The suite does not start downloads, launch viewers, inspect files, open schemes, run network probes, mutate storage, or upload reports.",
+      "Normal UI uses human labels and sanitized copy reports."
+    ]
+  },
+  "history_id": "d30e95d5ce3d4280b04b065efebeb4ee"
+}

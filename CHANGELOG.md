@@ -1,4 +1,17 @@
 
+## XDM Android Debug Workbench D6 Runtime Self-Test Suite r2
+
+- Fixed Runtime self-test suite UI spacing to use the existing `XdmSpacing.TightGap` token instead of a nonexistent `XdmSpacing.sm` alias.
+- Added D6 validator coverage for this compile-safety regression.
+
+
+## Debug Workbench D6 - Runtime self-test suite
+
+- Adds a read-only Runtime self-test suite to Settings > Debug Workbench.
+- Checks manifest route coverage, browser-scheme readiness, completed-file access path, static media sniffer smoke, redaction smoke, notification diagnostics boundary, recorder health, support report readiness, and current app state context.
+- Keeps the suite read-only: no downloads, viewer launches, file probes, browser probes, network probes, database changes, or uploads.
+- Adds D6 model, UI card, tests, docs, and validator.
+
 ## XDM Android Debug Workbench D4 - Browser Bridge + Add Download Debugger
 
 - Added Browser bridge debugger in Settings > Debug Workbench with copy-only redacted status and test URI report.
