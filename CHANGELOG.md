@@ -1,3 +1,39 @@
+
+## XDM Android Debug Workbench D4 - Browser Bridge + Add Download Debugger
+
+- Added Browser bridge debugger in Settings > Debug Workbench with copy-only redacted status and test URI report.
+- Added Add Download debugger that mirrors `DownloadReviewPlanner` for the active external draft without queueing anything.
+- Added human-label-only UI rendering for debugger origins and kinds; no raw enum names or raw URLs are rendered.
+- Added D4 docs, validator, app tests, and affected UI release-seal contract coverage.
+
+## XDM Android Debug Workbench D3 Media Sniffing Lab r4
+
+- Fixed the D3 app contract test string assertion so it compiles.
+- Removed enum `.name` usage from Media Sniffing Lab UI state and rendering paths; the UI now uses private stable source keys plus human labels.
+- Added validator coverage for UI release-seal compatibility.
+
+### XDM Android Debug Workbench D2 Shell r4
+- Fixed the stale Phase 47 shared-sniffer contract assertion so recorder-backed D2 construction is accepted.
+- Added a D2 contract check for this assertion repair and validator coverage before packaging.
+- Re-ran focused app contract tests and core-model D1/D2 tests locally with stubs before zipping.
+
+### XDM Android Debug Workbench D2 Shell r3
+- Fixed D2 app contract-test Kotlin string escaping by using raw strings for nested `next_phase`, `Debug Workbench`, and `debug-sessions` literals.
+- Added validator coverage so future D2 overlays cannot ship these broken nested test strings again.
+
+
+### XDM Android Debug Workbench D2 Shell r2
+- Fixed the Debug Workbench screen import for the shared SettingsPageHeader helper.
+- Added static validator coverage for the root-package SettingsPageHeader import so the UI compile contract matches the actual SettingsScreen package.
+
+
+## XDM Android Debug Workbench D2 — Shell
+
+- Added a Settings → Debug Workbench secondary page with live recorder/redaction/support-bundle status.
+- Installed the app-wide DebugRecorderProvider backed by the bounded D1 rolling JSONL recorder.
+- Wired Add Download and media planners in MainViewModel to the shared debug recorder.
+- Added copyable debug status and support-report controls without automatic upload or top-level routes.
+- Added D2 model/app contract tests, docs, and static validator.
 ## XDM Android Phase 43B - Add Download media recommendation demotion
 
 ### XDM Android Debug Workbench D1 r5
@@ -387,3 +423,23 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Added privacy-first debug event models, redaction, bounded JSONL recording, and support-bundle skeleton.
 - Added optional no-op-by-default instrumentation hooks for Add Download intake, MediaSniffingEngine, media batch intake, external media review, and completed notification fallback.
 - Added D1 contract tests and validator without introducing a Room migration or user-facing UI.
+
+## Debug Workbench D3: Media Sniffing Lab
+
+- Added Settings → Debug Workbench → Media Sniffing Lab.
+- The lab runs the shared Phase 47 `MediaSniffingEngine` in static mode over pasted URLs, HTML, JSON, or script snippets.
+- Added optional base page URL, MIME hint, origin selection, candidate ranking display, and sanitized copy report.
+- Preserved safety boundaries: no network page probe, no arbitrary JavaScript execution, no DRM bypass, no download enqueue, and no automatic upload.
+- Added D3 media/unit tests, app contract tests, docs, manifest entry, and validator.
+
+
+### XDM Android Debug Workbench D3 Media Sniffing Lab r3
+- Fixed Media Sniffing Lab source chips to render human labels instead of raw enum names.
+- Added validator and contract coverage for the UI release-seal raw enum rule.
+
+## XDM Android Debug Workbench D5, Transfer + notification debugger
+
+- Added a read-only Transfer + notification debugger under Settings → Debug Workbench.
+- Explains active transfer summary, selected transfer lifecycle, backend choice, terminal notification path, completed open-file trampoline behavior, and failure labels.
+- Copy report redacts source URLs and fingerprints destination URI; normal UI does not render raw URLs, raw enum names, raw machine values, or secret-bearing details.
+- Preserves safety boundaries: no transfer controls, viewer launch, file probe, custom-scheme opener, Room migration, top-level route, or automatic upload.

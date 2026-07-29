@@ -22,6 +22,10 @@ import com.mikeyphw.xdm.android.scheduler.TransferNotifications
 import com.mikeyphw.xdm.android.scheduler.TransferRuntimeProvider
 import com.mikeyphw.xdm.android.transfer.BackendOwnershipStore
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
+import com.mikeyphw.xdm.android.model.DebugEventRecorder
+import com.mikeyphw.xdm.android.model.DebugRecorderProvider
+import com.mikeyphw.xdm.android.model.RollingJsonlDebugEventRecorder
+import java.io.File
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.transfer.aria2.AndroidAria2CapabilityProbe
 import com.mikeyphw.xdm.android.transfer.aria2.AppPrivateAria2SecretProvider
@@ -40,7 +44,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 
-class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider {
+class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, DebugRecorderProvider {
     lateinit var container: AppContainer
         private set
 
@@ -48,6 +52,9 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         private set
 
     override lateinit var queueIntelligenceCoordinator: QueueIntelligenceCoordinator
+        private set
+
+    override lateinit var debugEventRecorder: DebugEventRecorder
         private set
 
     private lateinit var queueConditionMonitor: QueueConditionMonitor
@@ -72,6 +79,10 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             )
             .build()
         val repository = DownloadRepository(database)
+        debugEventRecorder = RollingJsonlDebugEventRecorder(
+            rootDirectory = File(filesDir, "debug-sessions"),
+            sessionId = "xdm-debug-workbench",
+        )
         val ownershipStore = RoomBackendOwnershipStore(database)
         val migrationStore = RoomBackendMigrationStore(database)
         val aria2MappingStore = RoomAria2TaskMappingStore(database)
@@ -139,6 +150,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             mediaResolverSelectionStore = mediaResolverSelectionStore,
             operationalActivityStore = operationalActivityStore,
             browserExtensionExportManager = browserExtensionExportManager,
+            debugEventRecorder = debugEventRecorder,
         )
         queueConditionMonitor = QueueConditionMonitor(this) {
             QueueIntelligenceWorker.enqueueImmediate(this)
@@ -177,4 +189,5 @@ data class AppContainer(
     val mediaResolverSelectionStore: MediaResolverSelectionStore,
     val operationalActivityStore: OperationalActivityStore,
     val browserExtensionExportManager: BrowserExtensionExportManager,
+    val debugEventRecorder: DebugEventRecorder,
 )

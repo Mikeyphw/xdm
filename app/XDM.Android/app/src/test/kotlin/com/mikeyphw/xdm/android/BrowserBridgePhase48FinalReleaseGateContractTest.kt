@@ -13,7 +13,7 @@ class BrowserBridgePhase48FinalReleaseGateContractTest {
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue(manifest.contains("browser_bridge_phase48_final_ux_release_gate"))
         val phase48StillComplete = manifest.contains("\"next_phase\": \"complete\"")
-        val debugRoadmapContinuesAfterReleaseGate = manifest.contains("\"next_phase\": \"debug_workbench_phase_d2_shell\"")
+        val debugRoadmapContinuesAfterReleaseGate = Regex(""""next_phase"\s*:\s*"debug_workbench_phase_d[0-9a-z_]+""").containsMatchIn(manifest)
         assertTrue("Phase 48 must remain complete or explicitly hand off to the Debug Workbench roadmap", phase48StillComplete || debugRoadmapContinuesAfterReleaseGate)
         assertTrue(manifest.contains("\"final_phase_complete\": true"))
         assertTrue(manifest.contains("\"baseline_commit\": \"6e3ad8d\""))

@@ -27,7 +27,14 @@ class MediaSniffingPhase47ContractTest {
         val viewModel = root.resolve("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val batch = root.resolve("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaBatchIntake.kt").readText()
         val external = root.resolve("media/src/main/kotlin/com/mikeyphw/xdm/android/media/ExternalMediaReviewIntake.kt").readText()
-        assertTrue(viewModel.contains("private val mediaSniffingEngine = MediaSniffingEngine(mediaCaptureService)"))
+        val usesOriginalSharedSniffer = viewModel.contains("private val mediaSniffingEngine = MediaSniffingEngine(mediaCaptureService)")
+        val usesRecorderBackedSharedSniffer = viewModel.contains("private val mediaSniffingEngine = MediaSniffingEngine(") &&
+            viewModel.contains("mediaCaptureService") &&
+            viewModel.contains("debugRecorder = debugEventRecorder")
+        assertTrue(
+            "MainViewModel must keep routing shared/media handoffs through the shared sniffer when debug recording is wired",
+            usesOriginalSharedSniffer || usesRecorderBackedSharedSniffer,
+        )
         assertTrue(viewModel.contains("MediaSniffingSource.SharedText"))
         assertTrue(viewModel.contains("MediaSniffingSource.BrowserExtension"))
         assertTrue(viewModel.contains("sniffingPlan.records"))

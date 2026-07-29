@@ -137,7 +137,7 @@
       "compare"
     ]
   },
-  "next_phase": "debug_workbench_phase_d2_shell",
+  "next_phase": "debug_workbench_phase_d6_runtime_self_test_suite",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -444,7 +444,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_debug_workbench_phase_d1_event_recorder_r3_overlay.zip",
+  "current_overlay": "xdm_android_debug_workbench_phase_d5_transfer_notification_debugger_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -2069,5 +2069,171 @@
       "createTempDir deprecation treated as error",
       "DownloadIntakePlannerTest trailing-lambda constructor ambiguity"
     ]
+  },
+  "debug_workbench_phase_d2_shell": {
+    "status": "implemented",
+    "phase": "D2",
+    "description": "Adds Settings-facing Debug Workbench shell over the D1 recorder foundation with live status, session copy controls, support-bundle readiness, and runtime self-checks.",
+    "baseline_commit": "06f27d4",
+    "runtime_behavior_changed": false,
+    "top_level_route_added": false,
+    "room_schema_unchanged": 14,
+    "automatic_upload": false,
+    "support_bundle_user_shared_only": true,
+    "settings_panel": "DebugWorkbench",
+    "next_phase": "debug_workbench_phase_d3_media_sniffing_lab",
+    "validation": {
+      "required_tasks": [
+        "assembleDebug",
+        ":app:assembleDebugAndroidTest",
+        ":browser-extension:packageFirefoxExtensionDark",
+        ":browser-extension:packageFirefoxExtensionAmoled",
+        ":browser-extension:verifyFirefoxExtensionReleaseArtifacts",
+        ":browser-extension:test",
+        ":browser-extension:jsTest",
+        ":browser-extension:validateFirefoxExtension",
+        ":app:checkBrowserIntegration",
+        ":core-model:test",
+        ":core-utils:test",
+        ":transfer-api:test",
+        ":browser-integration:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-native:testDebugUnitTest",
+        ":transfer-aria2:test",
+        ":scheduler:testDebugUnitTest",
+        ":media:test",
+        ":persistence:testDebugUnitTest",
+        ":app:testDebugUnitTest"
+      ],
+      "static_validator": "tools/validate-debug-workbench-d2-shell.py",
+      "focused_local_checks": [
+        "app contract tests compile and execute with stubs",
+        "core-model tests compile and focused D1/D2 tests execute with stubs",
+        "validator checks Phase47 assertion compatibility before packaging"
+      ]
+    },
+    "revision": "r4",
+    "compile_hotfix": "D2 contract tests use Kotlin raw strings for nested next_phase, Debug Workbench title, and debug-sessions literals.",
+    "contract_test_compile_hotfix": true,
+    "overlay": "xdm_android_debug_workbench_phase_d2_shell_r4_overlay.zip",
+    "contract_assertion_repair": "MediaSniffingPhase47ContractTest accepts either original shared sniffer construction or recorder-backed D2 construction so D2 recorder wiring does not break the Phase 47 shared-sniffer contract."
+  },
+  "debug_workbench_phase_d3_media_sniffing_lab": {
+    "status": "implemented",
+    "phase": "D3",
+    "description": "Adds a Media Sniffing Lab inside Settings \u2192 Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
+    "baseline": "debug_workbench_phase_d2_shell_r4",
+    "uses_shared_media_sniffing_engine": true,
+    "static_sniff_only": true,
+    "network_page_probe": false,
+    "arbitrary_javascript_execution": false,
+    "drm_bypass": false,
+    "starts_downloads": false,
+    "top_level_route_added": false,
+    "room_schema_unchanged": 14,
+    "automatic_upload": false,
+    "support_report_redacted": true,
+    "settings_location": "Settings \u2192 Debug Workbench \u2192 Media Sniffing Lab",
+    "next_phase": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
+    "validation": {
+      "static_validator": "tools/validate-debug-workbench-d3-media-sniffing-lab.py",
+      "tests": [
+        "MediaSniffingLabTest",
+        "DebugWorkbenchD3MediaSniffingLabContractTest"
+      ],
+      "regression_checks": [
+        "D2 shell hosts MediaSniffingLabCard without a top-level route",
+        "lab uses MediaSniffingEngine and MediaSniffingInput instead of a new sniffer",
+        "copy report redacts token/session/signature values",
+        "lab does not call MediaPageProbe, HttpURLConnection, repository.save, or queue start APIs",
+        "Media Sniffing Lab UI renders user-facing source labels instead of raw enum names",
+        "D3 app contract test compiles without nested Kotlin string literal breakage",
+        "Media Sniffing Lab UI contains no option.name usage"
+      ]
+    },
+    "overlay": "xdm_android_debug_workbench_phase_d3_media_sniffing_lab_r4_overlay.zip",
+    "revision": "r4",
+    "compile_hygiene": "MediaSniffingLabCard candidate row uses escaped newline; D3 app contract uses safe substring assertions that compile.",
+    "ui_hygiene": "MediaSniffingLabCard uses private stable source keys and user-facing labels; it does not render or persist UI source choices via enum .name values."
+  },
+  "debug_workbench_phase_d4_browser_bridge_add_download_debugger": {
+    "status": "implemented",
+    "phase": "D4",
+    "description": "Adds Browser Bridge and Add Download debugger panels to Settings > Debug Workbench.",
+    "baseline": "debug_workbench_phase_d3_media_sniffing_lab_r4",
+    "settings_location": "Settings > Debug Workbench",
+    "browser_bridge_debugger": {
+      "copy_only": true,
+      "opens_custom_scheme": false,
+      "runs_probe": false,
+      "starts_downloads": false,
+      "redacted_report": true
+    },
+    "add_download_debugger": {
+      "review_only": true,
+      "starts_downloads": false,
+      "uses_download_review_planner": true,
+      "shows_raw_url": false,
+      "redacts_copy_report": true
+    },
+    "top_level_route_added": false,
+    "room_schema_unchanged": 14,
+    "automatic_upload": false,
+    "next_phase": "debug_workbench_phase_d5_transfer_notification_debugger",
+    "validation": {
+      "static_validator": "tools/validate-debug-workbench-d4-browser-bridge-add-download-debugger.py",
+      "tests": [
+        "DebugWorkbenchD4BridgeAddDownloadDebuggerTest",
+        "DebugWorkbenchD4BridgeAddDownloadDebuggerContractTest"
+      ],
+      "affected_existing_contracts_checked": [
+        "UixR6ReleaseSealContractTest.normalUiCannotRenderArchitectureNoiseSecretsOrRawMachineValues",
+        "DebugWorkbenchD2ShellContractTest",
+        "DebugWorkbenchD3MediaSniffingLabContractTest"
+      ]
+    }
+  },
+  "debug_workbench_phase_d5_transfer_notification_debugger": {
+    "status": "implemented",
+    "phase": "D5",
+    "description": "Adds a read-only Transfer + notification debugger panel to Settings > Debug Workbench.",
+    "baseline": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
+    "settings_location": "Settings > Debug Workbench",
+    "transfer_debugger": {
+      "read_only": true,
+      "controls_transfers": false,
+      "launches_viewer": false,
+      "probes_files": false,
+      "redacted_report": true,
+      "state_derived_timeline": true
+    },
+    "notification_debugger": {
+      "explains_active_notification": true,
+      "explains_terminal_notification": true,
+      "explains_completed_open_file_trampoline": true,
+      "opens_notification": false,
+      "starts_activity": false
+    },
+    "privacy": {
+      "renders_raw_urls": false,
+      "renders_raw_enum_names": false,
+      "copy_report_redacts_urls": true,
+      "destination_uri_fingerprinted": true
+    },
+    "top_level_route_added": false,
+    "room_schema_unchanged": 14,
+    "automatic_upload": false,
+    "next_phase": "debug_workbench_phase_d6_runtime_self_test_suite",
+    "validation": {
+      "static_validator": "tools/validate-debug-workbench-d5-transfer-notification-debugger.py",
+      "tests": [
+        "DebugWorkbenchD5TransferNotificationDebuggerTest",
+        "DebugWorkbenchD5TransferNotificationDebuggerContractTest"
+      ],
+      "affected_existing_contracts_checked": [
+        "UixR6ReleaseSealContractTest.normalUiCannotRenderArchitectureNoiseSecretsOrRawMachineValues",
+        "DebugWorkbenchD4BridgeAddDownloadDebuggerContractTest"
+      ]
+    }
   }
 }

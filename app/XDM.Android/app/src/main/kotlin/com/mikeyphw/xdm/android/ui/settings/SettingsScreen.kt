@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import com.mikeyphw.xdm.android.ui.debug.DebugWorkbenchSettingsScreen
 
 @Composable
 @UiSurface(UiAudience.User, "Configure downloads, appearance, privacy, support, and optional developer tools")
@@ -53,6 +54,7 @@ fun SettingsScreen(
             SettingsPanel.AdvancedDownloads -> AdvancedDownloadSettingsScreen(state, viewModel)
             SettingsPanel.Privacy -> PrivacySettingsScreen(state, viewModel)
             SettingsPanel.BrowserExtension -> BrowserExtensionSettingsScreen(state, viewModel)
+            SettingsPanel.DebugWorkbench -> DebugWorkbenchSettingsScreen(state, viewModel)
             SettingsPanel.DeveloperTools -> DeveloperSettingsScreen(state, viewModel)
         }
     }
@@ -163,6 +165,14 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
                 summary = "Copies a redacted report without cookies, authorization values, tokens, signatures, or credential-bearing URLs.",
                 actionLabel = "Copy",
                 onClick = { copyTextToClipboard(context, "XDM support report", state.supportReportText) },
+            )
+        }
+        item {
+            SettingsActionRow(
+                title = "Debug Workbench",
+                summary = "Open recorder status, redaction checks, session controls, and support-bundle readiness.",
+                actionLabel = "Open",
+                onClick = { viewModel.selectSettingsPanel(SettingsPanel.DebugWorkbench) },
             )
         }
         item {

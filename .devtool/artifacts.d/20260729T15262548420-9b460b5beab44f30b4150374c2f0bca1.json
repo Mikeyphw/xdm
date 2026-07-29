@@ -1,0 +1,106 @@
+{
+  "applied_at": "2026-07-29T15:26:25.484209Z",
+  "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d3_media_sniffing_lab_r4_overlay.zip",
+  "artifact_name": "xdm_android_debug_workbench_phase_d3_media_sniffing_lab_r4_overlay.zip",
+  "type": "overlay",
+  "sha256": "333b23de6493933675d07d3036ae3979694a9a5a48ce7a80dcbcce9dc9e30565",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 9,
+  "change_counts": {
+    "add": 6,
+    "modify": 3
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Debug Workbench D3 Media Sniffing Lab r4",
+    "description": "Adds the D3 Media Sniffing Lab with compile-clean contract tests and UI release-seal safe source labels.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "af07531ea73baed57fbb548f9548b64eabcae823f9409435468d456406abe652",
+          "size": 32393,
+          "source_sha256": "229a63593b35037c0e3477ce2c6ba06015ddd72cf0b19edeb41e370eda7b88fd"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "f519a8532a8d600ece7642d553008b8f30af7763d026349e1f56efcd82125f66",
+          "size": 78459,
+          "source_sha256": "92b876007b2de2f6208bd54c566f2c5869efecb1b482cad029bc015012756f17"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+          "action": "modify",
+          "sha256": "ddbdff56d22c384587f7d135808d828a751ab32f82e336160409293cb3060189",
+          "size": 4756,
+          "source_sha256": "c61e25a62b31755af899d8b3dd811ed4f4d2a3fbdf58e33b89c289011ffc7b44"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/MediaSniffingLabCard.kt",
+          "action": "add",
+          "sha256": "ad18af1fcc838ccb41c96c073eb3ec91002fbbb07109a483150059a8f8b5503d",
+          "size": 6040
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD3MediaSniffingLabContractTest.kt",
+          "action": "add",
+          "sha256": "c2961917c0b8bc9bcd8a5c618a7f5d0e48d4b7b1d07d3ad328a3ce8764ce8db2",
+          "size": 3796
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingLab.kt",
+          "action": "add",
+          "sha256": "5fa7f6ffbd5fc045760e66ef544ac048850823ce6d0e2e2ba6946dbfeb86e81f",
+          "size": 6640
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingLabTest.kt",
+          "action": "add",
+          "sha256": "a5ed8158b62c290d8db891e8b4a8189d9d9815b65e92e81c92c085337969b5c2",
+          "size": 2425
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D3-MEDIA-SNIFFING-LAB.md",
+          "action": "add",
+          "sha256": "48ad94ff229a155ca4bc31ee87afa2568c2c4966395122a4c2bac6d8b5ffac4a",
+          "size": 2441
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-debug-workbench-d3-media-sniffing-lab.py",
+          "action": "add",
+          "sha256": "15408178b525f3803e47c6820a0a3c87b6a4d2d56ce4665e07d77110ad3cfdd7",
+          "size": 5552
+        }
+      ]
+    },
+    "validation": {
+      "script": ".devtool-artifact/validate_debug_workbench_d3_media_sniffing_lab.sh",
+      "sha256": "6405008049a2bd87c0a205e713465f99815cceb21ba65fd55e21fa17c0768af9"
+    },
+    "commit": {
+      "message": "Add Debug Workbench D3 Media Sniffing Lab r4"
+    },
+    "notes": [
+      "D3 extends Settings → Debug Workbench and does not add a top-level route, Room migration, network probe, download enqueue, or upload path.",
+      "The lab uses the shared Phase 47 MediaSniffingEngine with static input only and sanitized copy reports.",
+      "Assertions were checked before packaging: D2 shell, Phase47 shared-sniffer compatibility, D3 app contract tests, and media lab tests were compiled/executed with local stubs.",
+      "r4 fixes the D3 app contract test nested string assertion, removes enum .name usage from the lab UI state/rendering path, and adds validator coverage for the existing UI release seal."
+    ]
+  },
+  "history_id": "9b460b5beab44f30b4150374c2f0bca1"
+}

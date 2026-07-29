@@ -6,5 +6,6 @@ enum class SettingsPanel(val label: String) {
     AdvancedDownloads("Advanced download rules"),
     Privacy("Privacy"),
     BrowserExtension("Browser extension"),
+    DebugWorkbench("Debug Workbench"),
     DeveloperTools("Developer tools"),
 }

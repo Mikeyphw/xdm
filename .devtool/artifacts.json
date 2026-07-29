@@ -59676,6 +59676,1033 @@
         ]
       },
       "history_id": "56310a62f0304effb8cbfc296c6a63ac"
+    },
+    {
+      "applied_at": "2026-07-29T13:46:08.142041Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d2_shell_r4_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d2_shell_r4_overlay.zip",
+      "type": "overlay",
+      "sha256": "1062722ac70017916e99cc3708fe629f21961f1eb11723527702c7d335008a91",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 14,
+      "change_counts": {
+        "add": 6,
+        "modify": 8
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D2 Shell r4",
+        "description": "Adds Settings-facing Debug Workbench shell over the D1 recorder foundation; r4 repairs stale Phase 47 shared-sniffer contract assertions before D2 recorder wiring.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "229a63593b35037c0e3477ce2c6ba06015ddd72cf0b19edeb41e370eda7b88fd",
+              "size": 31256,
+              "source_sha256": "2862cc42edf8b447cccdda4c540280ab845f22424d0239429c9ad7444b0f1832"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "92b876007b2de2f6208bd54c566f2c5869efecb1b482cad029bc015012756f17",
+              "size": 76358,
+              "source_sha256": "ac8e11ca984ccff0b3911eff3f2ef558f438ab21d8cb03b803777cf28bd088a7"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "cb14f62d57853df27cd5e840eebfd09f5abfb39df16a8d9c48d7a81c812ff0ab",
+              "size": 95628,
+              "source_sha256": "a3124967388df5643de009ff9be83b872505018fd3366018f2bfe373ff999c19"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/SettingsPanel.kt",
+              "action": "modify",
+              "sha256": "8bd3744df03358d3fb571d391363eb4254ef948fe324bdd941835dca3c550eca",
+              "size": 366,
+              "source_sha256": "92d7aef865f833880ab00a004db66c14d904811445efee783415a2721142d7da"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "sha256": "a57bbc7cbfd020ef1d427b4bd4b7ed3366157d6131043faff2735cdcc3d78cb8",
+              "size": 9816,
+              "source_sha256": "d159253efe3f8eb71f8c59bdace3ed0794c3c785cb88e5894f8d52a74899c7e8"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "add",
+              "sha256": "c61e25a62b31755af899d8b3dd811ed4f4d2a3fbdf58e33b89c289011ffc7b44",
+              "size": 4660
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt",
+              "action": "modify",
+              "sha256": "6d3c96195ed8f78bae2c99144ba73d5610d5f74a9965913879635999759822cd",
+              "size": 14113,
+              "source_sha256": "d96960d971c2835894b2005849dcf890a5235a74d16e04d20a47b59b478c463f"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgePhase48FinalReleaseGateContractTest.kt",
+              "action": "modify",
+              "sha256": "1eee4f655b2dcf652a4e548d5370e1bc6a0f09a8415d56a2cdda336acefa33a1",
+              "size": 5022,
+              "source_sha256": "f81ba29b4474817b59ea39132d224a1b7216b21e3c8b2f63526b0f37022606c4"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD2ShellContractTest.kt",
+              "action": "add",
+              "sha256": "5f2d6cf780b6e1f733c9e9bc06cd2c7d012797e8f65e30d1665f5224ed28e8e6",
+              "size": 4376
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/MediaSniffingPhase47ContractTest.kt",
+              "action": "modify",
+              "sha256": "2534c7073d17d60c34d9b5c49d29f3872becd4df80d70ce2cf9e7be3cadfb6e1",
+              "size": 3932,
+              "source_sha256": "1d3c138b4991d7b852644f15a496547ce381bc32cb24fe03153c47c9da6884d3"
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugWorkbenchShellModels.kt",
+              "action": "add",
+              "sha256": "1ea2bc76410ad0d17d0d4bf45bd95fabe893250de1f892978684430be2f2e801",
+              "size": 5443
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DebugWorkbenchShellModelsTest.kt",
+              "action": "add",
+              "sha256": "63762314239c710a44d46f45e576c317ff822705c46536a06da57655c1d5733a",
+              "size": 2054
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D2-SHELL.md",
+              "action": "add",
+              "sha256": "3fefaebccdcb91335af68f3eddfaf4be8a9b1e3f0fd4bf72ee47f39191c21338",
+              "size": 2264
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d2-shell.py",
+              "action": "add",
+              "sha256": "eac34135de6dd7145c6b4970bddb103deaa4ec99af4e9fcabe4cd262bb1c3dd1",
+              "size": 5547
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d2_shell.sh",
+          "sha256": "a84f6b2b864273ca6dc1e08ed0a4211e0c29ba105befe171e1a449c5ddae7578"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D2 shell r4"
+        },
+        "notes": [
+          "No top-level route, no Room migration, no automatic upload, and no generated extension artifact payloads.",
+          "r4 updates MediaSniffingPhase47ContractTest to accept the recorder-backed shared-sniffer construction used by D2.",
+          "Focused app contract tests and core-model D1/D2 tests were compiled and executed with local stubs before packaging."
+        ]
+      },
+      "history_id": "5a8a37163f624f03be487b22596dd101"
+    },
+    {
+      "applied_at": "2026-07-29T14:03:38.791056Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d2_shell_r4_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d2_shell_r4_overlay.zip",
+      "type": "overlay",
+      "sha256": "1062722ac70017916e99cc3708fe629f21961f1eb11723527702c7d335008a91",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 14,
+      "change_counts": {
+        "add": 6,
+        "modify": 8
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D2 Shell r4",
+        "description": "Adds Settings-facing Debug Workbench shell over the D1 recorder foundation; r4 repairs stale Phase 47 shared-sniffer contract assertions before D2 recorder wiring.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "229a63593b35037c0e3477ce2c6ba06015ddd72cf0b19edeb41e370eda7b88fd",
+              "size": 31256,
+              "source_sha256": "2862cc42edf8b447cccdda4c540280ab845f22424d0239429c9ad7444b0f1832"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "92b876007b2de2f6208bd54c566f2c5869efecb1b482cad029bc015012756f17",
+              "size": 76358,
+              "source_sha256": "ac8e11ca984ccff0b3911eff3f2ef558f438ab21d8cb03b803777cf28bd088a7"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "cb14f62d57853df27cd5e840eebfd09f5abfb39df16a8d9c48d7a81c812ff0ab",
+              "size": 95628,
+              "source_sha256": "a3124967388df5643de009ff9be83b872505018fd3366018f2bfe373ff999c19"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/SettingsPanel.kt",
+              "action": "modify",
+              "sha256": "8bd3744df03358d3fb571d391363eb4254ef948fe324bdd941835dca3c550eca",
+              "size": 366,
+              "source_sha256": "92d7aef865f833880ab00a004db66c14d904811445efee783415a2721142d7da"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "sha256": "a57bbc7cbfd020ef1d427b4bd4b7ed3366157d6131043faff2735cdcc3d78cb8",
+              "size": 9816,
+              "source_sha256": "d159253efe3f8eb71f8c59bdace3ed0794c3c785cb88e5894f8d52a74899c7e8"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "add",
+              "sha256": "c61e25a62b31755af899d8b3dd811ed4f4d2a3fbdf58e33b89c289011ffc7b44",
+              "size": 4660
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt",
+              "action": "modify",
+              "sha256": "6d3c96195ed8f78bae2c99144ba73d5610d5f74a9965913879635999759822cd",
+              "size": 14113,
+              "source_sha256": "d96960d971c2835894b2005849dcf890a5235a74d16e04d20a47b59b478c463f"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgePhase48FinalReleaseGateContractTest.kt",
+              "action": "modify",
+              "sha256": "1eee4f655b2dcf652a4e548d5370e1bc6a0f09a8415d56a2cdda336acefa33a1",
+              "size": 5022,
+              "source_sha256": "f81ba29b4474817b59ea39132d224a1b7216b21e3c8b2f63526b0f37022606c4"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD2ShellContractTest.kt",
+              "action": "add",
+              "sha256": "5f2d6cf780b6e1f733c9e9bc06cd2c7d012797e8f65e30d1665f5224ed28e8e6",
+              "size": 4376
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/MediaSniffingPhase47ContractTest.kt",
+              "action": "modify",
+              "sha256": "2534c7073d17d60c34d9b5c49d29f3872becd4df80d70ce2cf9e7be3cadfb6e1",
+              "size": 3932,
+              "source_sha256": "1d3c138b4991d7b852644f15a496547ce381bc32cb24fe03153c47c9da6884d3"
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugWorkbenchShellModels.kt",
+              "action": "add",
+              "sha256": "1ea2bc76410ad0d17d0d4bf45bd95fabe893250de1f892978684430be2f2e801",
+              "size": 5443
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DebugWorkbenchShellModelsTest.kt",
+              "action": "add",
+              "sha256": "63762314239c710a44d46f45e576c317ff822705c46536a06da57655c1d5733a",
+              "size": 2054
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D2-SHELL.md",
+              "action": "add",
+              "sha256": "3fefaebccdcb91335af68f3eddfaf4be8a9b1e3f0fd4bf72ee47f39191c21338",
+              "size": 2264
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d2-shell.py",
+              "action": "add",
+              "sha256": "eac34135de6dd7145c6b4970bddb103deaa4ec99af4e9fcabe4cd262bb1c3dd1",
+              "size": 5547
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d2_shell.sh",
+          "sha256": "a84f6b2b864273ca6dc1e08ed0a4211e0c29ba105befe171e1a449c5ddae7578"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D2 shell r4"
+        },
+        "notes": [
+          "No top-level route, no Room migration, no automatic upload, and no generated extension artifact payloads.",
+          "r4 updates MediaSniffingPhase47ContractTest to accept the recorder-backed shared-sniffer construction used by D2.",
+          "Focused app contract tests and core-model D1/D2 tests were compiled and executed with local stubs before packaging."
+        ]
+      },
+      "history_id": "08cf7388744149bcb93eb197de3825b3"
+    },
+    {
+      "applied_at": "2026-07-29T14:48:36.686245Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d3_media_sniffing_lab_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d3_media_sniffing_lab_overlay.zip",
+      "type": "overlay",
+      "sha256": "e03f001a94fa20270af5d23d481501c040b3bfb632a6f4373d44e55b2174e5bd",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 9,
+      "change_counts": {
+        "add": 6,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D3 Media Sniffing Lab",
+        "description": "Adds a static Media Sniffing Lab inside the D2 Debug Workbench shell using the shared Phase 47 MediaSniffingEngine with redacted copy reports.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "9f34ea3d585c8b898f5230dcc01d32ba8e618f2f22c964e0c0f752fbe7879340",
+              "size": 31834,
+              "source_sha256": "229a63593b35037c0e3477ce2c6ba06015ddd72cf0b19edeb41e370eda7b88fd"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "db8a5bac488dad1703da1e6e0b26d5d1d35435ff0bf8c564c8065a6601a865ed",
+              "size": 77884,
+              "source_sha256": "92b876007b2de2f6208bd54c566f2c5869efecb1b482cad029bc015012756f17"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "ddbdff56d22c384587f7d135808d828a751ab32f82e336160409293cb3060189",
+              "size": 4756,
+              "source_sha256": "c61e25a62b31755af899d8b3dd811ed4f4d2a3fbdf58e33b89c289011ffc7b44"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/MediaSniffingLabCard.kt",
+              "action": "add",
+              "sha256": "0256c3f167932007f6b50551c277a7d1c98b1e995a7c8e9d1b4ad21b98665770",
+              "size": 5133
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD3MediaSniffingLabContractTest.kt",
+              "action": "add",
+              "sha256": "2636ef55d4241e8e05f32215f688c18de79e6997c4b4b6bde895fa8511d5923b",
+              "size": 3396
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingLab.kt",
+              "action": "add",
+              "sha256": "5fa7f6ffbd5fc045760e66ef544ac048850823ce6d0e2e2ba6946dbfeb86e81f",
+              "size": 6640
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingLabTest.kt",
+              "action": "add",
+              "sha256": "a5ed8158b62c290d8db891e8b4a8189d9d9815b65e92e81c92c085337969b5c2",
+              "size": 2425
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D3-MEDIA-SNIFFING-LAB.md",
+              "action": "add",
+              "sha256": "f992fe4ff4069ad2554f4613a8db15490b92f68d6e9841a00ae2f301a23e82ea",
+              "size": 1881
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d3-media-sniffing-lab.py",
+              "action": "add",
+              "sha256": "6c832b35c2ec643f846b90240c45c5d6fbe569ff682c76d9e7839336fbc40780",
+              "size": 4893
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d3_media_sniffing_lab.sh",
+          "sha256": "6405008049a2bd87c0a205e713465f99815cceb21ba65fd55e21fa17c0768af9"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D3 Media Sniffing Lab"
+        },
+        "notes": [
+          "D3 extends Settings \u2192 Debug Workbench and does not add a top-level route, Room migration, network probe, download enqueue, or upload path.",
+          "The lab uses the shared Phase 47 MediaSniffingEngine with static input only and sanitized copy reports.",
+          "Assertions were checked before packaging: D2 shell, Phase47 shared-sniffer compatibility, D3 app contract tests, and media lab tests were compiled/executed with local stubs."
+        ]
+      },
+      "history_id": "608eab1ed3a44733bc49e28fb3781143"
+    },
+    {
+      "applied_at": "2026-07-29T14:55:23.888502Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d3_media_sniffing_lab_r2_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d3_media_sniffing_lab_r2_overlay.zip",
+      "type": "overlay",
+      "sha256": "451255363dfde1adc62dc9875910b259bf05e3e8a5f5993b6ac455cf30151895",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 9,
+      "change_counts": {
+        "add": 6,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D3 Media Sniffing Lab",
+        "description": "Adds a static Media Sniffing Lab inside the D2 Debug Workbench shell using the shared Phase 47 MediaSniffingEngine with redacted copy reports.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "9f34ea3d585c8b898f5230dcc01d32ba8e618f2f22c964e0c0f752fbe7879340",
+              "size": 31834,
+              "source_sha256": "229a63593b35037c0e3477ce2c6ba06015ddd72cf0b19edeb41e370eda7b88fd"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "5017cc14fc1df45b6d13280d8d05d41350e033a96771dddf6ec55c007a85cd08",
+              "size": 78013,
+              "source_sha256": "92b876007b2de2f6208bd54c566f2c5869efecb1b482cad029bc015012756f17"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "ddbdff56d22c384587f7d135808d828a751ab32f82e336160409293cb3060189",
+              "size": 4756,
+              "source_sha256": "c61e25a62b31755af899d8b3dd811ed4f4d2a3fbdf58e33b89c289011ffc7b44"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/MediaSniffingLabCard.kt",
+              "action": "add",
+              "sha256": "9ce745e30fa3188b3681f6426045d9e897c923f9a84865eaa918d7fe3a7e8c02",
+              "size": 5134
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD3MediaSniffingLabContractTest.kt",
+              "action": "add",
+              "sha256": "2636ef55d4241e8e05f32215f688c18de79e6997c4b4b6bde895fa8511d5923b",
+              "size": 3396
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingLab.kt",
+              "action": "add",
+              "sha256": "5fa7f6ffbd5fc045760e66ef544ac048850823ce6d0e2e2ba6946dbfeb86e81f",
+              "size": 6640
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingLabTest.kt",
+              "action": "add",
+              "sha256": "a5ed8158b62c290d8db891e8b4a8189d9d9815b65e92e81c92c085337969b5c2",
+              "size": 2425
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D3-MEDIA-SNIFFING-LAB.md",
+              "action": "add",
+              "sha256": "f992fe4ff4069ad2554f4613a8db15490b92f68d6e9841a00ae2f301a23e82ea",
+              "size": 1881
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d3-media-sniffing-lab.py",
+              "action": "add",
+              "sha256": "bd0d790da42a8588b8c744448bf042fa134b9427b282c734abd6375dbe74979b",
+              "size": 4939
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d3_media_sniffing_lab.sh",
+          "sha256": "6405008049a2bd87c0a205e713465f99815cceb21ba65fd55e21fa17c0768af9"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D3 Media Sniffing Lab r2"
+        },
+        "notes": [
+          "D3 extends Settings \u2192 Debug Workbench and does not add a top-level route, Room migration, network probe, download enqueue, or upload path.",
+          "The lab uses the shared Phase 47 MediaSniffingEngine with static input only and sanitized copy reports.",
+          "Assertions were checked before packaging: D2 shell, Phase47 shared-sniffer compatibility, D3 app contract tests, and media lab tests were compiled/executed with local stubs.",
+          "r2 fixes MediaSniffingLabCard Kotlin string escaping and was compile-smoked with Compose stubs."
+        ]
+      },
+      "history_id": "3af8fc7d3f664eb897bc1c6621952ad3"
+    },
+    {
+      "applied_at": "2026-07-29T14:57:37.155544Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d3_media_sniffing_lab_r2_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d3_media_sniffing_lab_r2_overlay.zip",
+      "type": "overlay",
+      "sha256": "451255363dfde1adc62dc9875910b259bf05e3e8a5f5993b6ac455cf30151895",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 9,
+      "change_counts": {
+        "add": 6,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D3 Media Sniffing Lab",
+        "description": "Adds a static Media Sniffing Lab inside the D2 Debug Workbench shell using the shared Phase 47 MediaSniffingEngine with redacted copy reports.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "9f34ea3d585c8b898f5230dcc01d32ba8e618f2f22c964e0c0f752fbe7879340",
+              "size": 31834,
+              "source_sha256": "229a63593b35037c0e3477ce2c6ba06015ddd72cf0b19edeb41e370eda7b88fd"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "5017cc14fc1df45b6d13280d8d05d41350e033a96771dddf6ec55c007a85cd08",
+              "size": 78013,
+              "source_sha256": "92b876007b2de2f6208bd54c566f2c5869efecb1b482cad029bc015012756f17"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "ddbdff56d22c384587f7d135808d828a751ab32f82e336160409293cb3060189",
+              "size": 4756,
+              "source_sha256": "c61e25a62b31755af899d8b3dd811ed4f4d2a3fbdf58e33b89c289011ffc7b44"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/MediaSniffingLabCard.kt",
+              "action": "add",
+              "sha256": "9ce745e30fa3188b3681f6426045d9e897c923f9a84865eaa918d7fe3a7e8c02",
+              "size": 5134
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD3MediaSniffingLabContractTest.kt",
+              "action": "add",
+              "sha256": "2636ef55d4241e8e05f32215f688c18de79e6997c4b4b6bde895fa8511d5923b",
+              "size": 3396
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingLab.kt",
+              "action": "add",
+              "sha256": "5fa7f6ffbd5fc045760e66ef544ac048850823ce6d0e2e2ba6946dbfeb86e81f",
+              "size": 6640
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingLabTest.kt",
+              "action": "add",
+              "sha256": "a5ed8158b62c290d8db891e8b4a8189d9d9815b65e92e81c92c085337969b5c2",
+              "size": 2425
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D3-MEDIA-SNIFFING-LAB.md",
+              "action": "add",
+              "sha256": "f992fe4ff4069ad2554f4613a8db15490b92f68d6e9841a00ae2f301a23e82ea",
+              "size": 1881
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d3-media-sniffing-lab.py",
+              "action": "add",
+              "sha256": "bd0d790da42a8588b8c744448bf042fa134b9427b282c734abd6375dbe74979b",
+              "size": 4939
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d3_media_sniffing_lab.sh",
+          "sha256": "6405008049a2bd87c0a205e713465f99815cceb21ba65fd55e21fa17c0768af9"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D3 Media Sniffing Lab r2"
+        },
+        "notes": [
+          "D3 extends Settings \u2192 Debug Workbench and does not add a top-level route, Room migration, network probe, download enqueue, or upload path.",
+          "The lab uses the shared Phase 47 MediaSniffingEngine with static input only and sanitized copy reports.",
+          "Assertions were checked before packaging: D2 shell, Phase47 shared-sniffer compatibility, D3 app contract tests, and media lab tests were compiled/executed with local stubs.",
+          "r2 fixes MediaSniffingLabCard Kotlin string escaping and was compile-smoked with Compose stubs."
+        ]
+      },
+      "history_id": "7ad1039f2200416c8de34ba212e14a11"
+    },
+    {
+      "applied_at": "2026-07-29T15:12:37.557830Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d3_media_sniffing_lab_r3_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d3_media_sniffing_lab_r3_overlay.zip",
+      "type": "overlay",
+      "sha256": "351f3df5d4624558707025085129e2e681534cc109ee7b729f3f1f5c28ff21c5",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 9,
+      "change_counts": {
+        "add": 6,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D3 Media Sniffing Lab r3",
+        "description": "Adds the D3 Media Sniffing Lab and fixes source chips to use user-facing labels instead of raw enum names.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "ff68aba9f4766194eb5e49772d3f6af66f47521983ec26b74390aa7870200a58",
+              "size": 32062,
+              "source_sha256": "229a63593b35037c0e3477ce2c6ba06015ddd72cf0b19edeb41e370eda7b88fd"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "7a4c3c242113d98b4a6c8cfb47bff20996b85dbe707a211ee35b7f176b81f83c",
+              "size": 78222,
+              "source_sha256": "92b876007b2de2f6208bd54c566f2c5869efecb1b482cad029bc015012756f17"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "ddbdff56d22c384587f7d135808d828a751ab32f82e336160409293cb3060189",
+              "size": 4756,
+              "source_sha256": "c61e25a62b31755af899d8b3dd811ed4f4d2a3fbdf58e33b89c289011ffc7b44"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/MediaSniffingLabCard.kt",
+              "action": "add",
+              "sha256": "e1a85836c9628598254643d92034799dcb64e5c8a40d412ff32dad37841a3f8f",
+              "size": 5595
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD3MediaSniffingLabContractTest.kt",
+              "action": "add",
+              "sha256": "a012728d9a0cb6a5b226760eb81cbdaa785e75af674ebd16e38c098fe70ec6cc",
+              "size": 3750
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingLab.kt",
+              "action": "add",
+              "sha256": "5fa7f6ffbd5fc045760e66ef544ac048850823ce6d0e2e2ba6946dbfeb86e81f",
+              "size": 6640
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingLabTest.kt",
+              "action": "add",
+              "sha256": "a5ed8158b62c290d8db891e8b4a8189d9d9815b65e92e81c92c085337969b5c2",
+              "size": 2425
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D3-MEDIA-SNIFFING-LAB.md",
+              "action": "add",
+              "sha256": "c846a2c1726a3aeb3d63e7b17e9da219f0051b451f8eb38624eaebfd5c04c4e1",
+              "size": 2160
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d3-media-sniffing-lab.py",
+              "action": "add",
+              "sha256": "4f5486e920f86f92512be7bbcb4c907b54fccaaaf5df405c6dc08f0a8e30b81c",
+              "size": 5419
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d3_media_sniffing_lab.sh",
+          "sha256": "6405008049a2bd87c0a205e713465f99815cceb21ba65fd55e21fa17c0768af9"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D3 Media Sniffing Lab r3"
+        },
+        "notes": [
+          "D3 extends Settings \u2192 Debug Workbench and does not add a top-level route, Room migration, network probe, download enqueue, or upload path.",
+          "The lab uses the shared Phase 47 MediaSniffingEngine with static input only and sanitized copy reports.",
+          "Assertions were checked before packaging: D2 shell, Phase47 shared-sniffer compatibility, D3 app contract tests, and media lab tests were compiled/executed with local stubs.",
+          "r3 fixes MediaSniffingLabCard UI release-seal hygiene by using human labels instead of rendering option.name values."
+        ]
+      },
+      "history_id": "3b1bb6bba5ce4f09893fe46a3ed21171"
+    },
+    {
+      "applied_at": "2026-07-29T15:26:25.484209Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d3_media_sniffing_lab_r4_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d3_media_sniffing_lab_r4_overlay.zip",
+      "type": "overlay",
+      "sha256": "333b23de6493933675d07d3036ae3979694a9a5a48ce7a80dcbcce9dc9e30565",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 9,
+      "change_counts": {
+        "add": 6,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D3 Media Sniffing Lab r4",
+        "description": "Adds the D3 Media Sniffing Lab with compile-clean contract tests and UI release-seal safe source labels.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "af07531ea73baed57fbb548f9548b64eabcae823f9409435468d456406abe652",
+              "size": 32393,
+              "source_sha256": "229a63593b35037c0e3477ce2c6ba06015ddd72cf0b19edeb41e370eda7b88fd"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "f519a8532a8d600ece7642d553008b8f30af7763d026349e1f56efcd82125f66",
+              "size": 78459,
+              "source_sha256": "92b876007b2de2f6208bd54c566f2c5869efecb1b482cad029bc015012756f17"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "ddbdff56d22c384587f7d135808d828a751ab32f82e336160409293cb3060189",
+              "size": 4756,
+              "source_sha256": "c61e25a62b31755af899d8b3dd811ed4f4d2a3fbdf58e33b89c289011ffc7b44"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/MediaSniffingLabCard.kt",
+              "action": "add",
+              "sha256": "ad18af1fcc838ccb41c96c073eb3ec91002fbbb07109a483150059a8f8b5503d",
+              "size": 6040
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD3MediaSniffingLabContractTest.kt",
+              "action": "add",
+              "sha256": "c2961917c0b8bc9bcd8a5c618a7f5d0e48d4b7b1d07d3ad328a3ce8764ce8db2",
+              "size": 3796
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingLab.kt",
+              "action": "add",
+              "sha256": "5fa7f6ffbd5fc045760e66ef544ac048850823ce6d0e2e2ba6946dbfeb86e81f",
+              "size": 6640
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingLabTest.kt",
+              "action": "add",
+              "sha256": "a5ed8158b62c290d8db891e8b4a8189d9d9815b65e92e81c92c085337969b5c2",
+              "size": 2425
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D3-MEDIA-SNIFFING-LAB.md",
+              "action": "add",
+              "sha256": "48ad94ff229a155ca4bc31ee87afa2568c2c4966395122a4c2bac6d8b5ffac4a",
+              "size": 2441
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d3-media-sniffing-lab.py",
+              "action": "add",
+              "sha256": "15408178b525f3803e47c6820a0a3c87b6a4d2d56ce4665e07d77110ad3cfdd7",
+              "size": 5552
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d3_media_sniffing_lab.sh",
+          "sha256": "6405008049a2bd87c0a205e713465f99815cceb21ba65fd55e21fa17c0768af9"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D3 Media Sniffing Lab r4"
+        },
+        "notes": [
+          "D3 extends Settings \u2192 Debug Workbench and does not add a top-level route, Room migration, network probe, download enqueue, or upload path.",
+          "The lab uses the shared Phase 47 MediaSniffingEngine with static input only and sanitized copy reports.",
+          "Assertions were checked before packaging: D2 shell, Phase47 shared-sniffer compatibility, D3 app contract tests, and media lab tests were compiled/executed with local stubs.",
+          "r4 fixes the D3 app contract test nested string assertion, removes enum .name usage from the lab UI state/rendering path, and adds validator coverage for the existing UI release seal."
+        ]
+      },
+      "history_id": "9b460b5beab44f30b4150374c2f0bca1"
+    },
+    {
+      "applied_at": "2026-07-29T15:52:18.301682Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d4_browser_bridge_add_download_debugger_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d4_browser_bridge_add_download_debugger_overlay.zip",
+      "type": "overlay",
+      "sha256": "416b235b852466a5b03e4ef8fba661eb28178e4d7b5e3e4b22376f43e8c449b6",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 10,
+      "change_counts": {
+        "add": 6,
+        "modify": 4
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D4 Browser Bridge + Add Download Debugger",
+        "description": "Adds copy-only Browser Bridge diagnostics and review-only Add Download debugger panels to Settings > Debug Workbench.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "b55b409ec5b79cd0ffedb3d881b824bef7a73407d68e81627db9f3f19f85a218",
+              "size": 32910,
+              "source_sha256": "af07531ea73baed57fbb548f9548b64eabcae823f9409435468d456406abe652"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "7f8f7e8b0a520aaea25f4d2fe04a09c409fcef357797c9f069521e78db27af94",
+              "size": 79934,
+              "source_sha256": "f519a8532a8d600ece7642d553008b8f30af7763d026349e1f56efcd82125f66"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD4DebuggerModels.kt",
+              "action": "add",
+              "sha256": "19b81b206bc0e0105c6a827a71e0f14db91b2213df1125d3d5656a6af5974383",
+              "size": 8115
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/BridgeAndAddDownloadDebuggerCard.kt",
+              "action": "add",
+              "sha256": "e24445a0fa31fd30536ffbf95a549f0a1865fd73eafb9742e2ff178f06e45ade",
+              "size": 3962
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "4193bc07293c55b4a7dd414139c2b07bef5ab38eb838be2b6ba5c3326996c07f",
+              "size": 4974,
+              "source_sha256": "ddbdff56d22c384587f7d135808d828a751ab32f82e336160409293cb3060189"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD4BridgeAddDownloadDebuggerTest.kt",
+              "action": "add",
+              "sha256": "dd9e3c08a318e5ee08f371b7ae6f6e362c8d77cdf737002724623d80cb743bab",
+              "size": 2656
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD4BridgeAddDownloadDebuggerContractTest.kt",
+              "action": "add",
+              "sha256": "a9572ca267633103a00636bfbd46126560a9002d4650243e2f08b16507ad7ccf",
+              "size": 3615
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugWorkbenchShellModels.kt",
+              "action": "modify",
+              "sha256": "e2bc47d4ee33c6bc92defd62a8354ef2499a55edb4092898020c503b5da5dc08",
+              "size": 5459,
+              "source_sha256": "1ea2bc76410ad0d17d0d4bf45bd95fabe893250de1f892978684430be2f2e801"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D4-BROWSER-BRIDGE-ADD-DOWNLOAD-DEBUGGER.md",
+              "action": "add",
+              "sha256": "5828814c90c39372b1bbf4f6e7942f44961657696d5b3d8b0e706ad82df8d130",
+              "size": 1496
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d4-browser-bridge-add-download-debugger.py",
+              "action": "add",
+              "sha256": "f0a36504540da3a20019c7cad1e79f3024607818c4df389fab1e06b9a76ac81b",
+              "size": 4203
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d4_browser_bridge_add_download_debugger.sh",
+          "sha256": "169c8b24e2a031ef0de135cff139973659ede7f679b6d0b806c49e693dddac48"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D4 browser bridge and Add Download debugger"
+        },
+        "notes": [
+          "D4 extends Settings > Debug Workbench and does not add a top-level route, Room migration, network probe, custom-scheme opener, download enqueue, or upload path.",
+          "Browser bridge debugger copies a redacted report and safe example test URIs for external verification only.",
+          "Add Download debugger mirrors DownloadReviewPlanner for the active external draft and keeps the normal review-confirmation gate intact.",
+          "Affected assertions were checked before packaging: D2/D3 debug contracts, D4 model tests, D4 contract tests, and the UixR6 normal UI release-seal source rule."
+        ]
+      },
+      "history_id": "5db47dd6c5b244c4a26f9c94dc6972ab"
+    },
+    {
+      "applied_at": "2026-07-29T16:14:19.460085Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d5_transfer_notification_debugger_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d5_transfer_notification_debugger_overlay.zip",
+      "type": "overlay",
+      "sha256": "07162f4f6435be234e4df8b8cf1253ff0685f0250c650ce43904d95d7e92c54f",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 9,
+      "change_counts": {
+        "add": 6,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D5 Transfer + Notification Debugger",
+        "description": "Adds a read-only Transfer + notification debugger panel to Settings > Debug Workbench.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "24c263597dc877c2f5fbfb02de6d15f9faeb4dad49c5559004c5500b30f72503",
+              "size": 33562,
+              "source_sha256": "b55b409ec5b79cd0ffedb3d881b824bef7a73407d68e81627db9f3f19f85a218"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "2c7636d754be3bd90c904852be64856e60438154724d1116cdfb02d76d26f24b",
+              "size": 81602,
+              "source_sha256": "7f8f7e8b0a520aaea25f4d2fe04a09c409fcef357797c9f069521e78db27af94"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD5TransferNotificationModels.kt",
+              "action": "add",
+              "sha256": "bda20fbf121cba10426cf6b4c8d787b35bb142bcb4f57b9606228d64456ce5a8",
+              "size": 11296
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "5fc1de444f5ce4c8f362169d21e081cbcbc164746ede8054f6335cd5b618c8cd",
+              "size": 5101,
+              "source_sha256": "4193bc07293c55b4a7dd414139c2b07bef5ab38eb838be2b6ba5c3326996c07f"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/TransferNotificationDebuggerCard.kt",
+              "action": "add",
+              "sha256": "57a9065401a98a05de6d05b68035a85ed82fb22a184d9b4d60a39c14f7212e0d",
+              "size": 2877
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD5TransferNotificationDebuggerTest.kt",
+              "action": "add",
+              "sha256": "957348e34c83ba576d59ecc5c6fc515dee1215d05fa8bce16b6d7ae10e7d11fa",
+              "size": 4527
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD5TransferNotificationDebuggerContractTest.kt",
+              "action": "add",
+              "sha256": "a25409eec31cbf3f3b482e8ba70166eb1063b768dff51bad554345d13114854e",
+              "size": 4380
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D5-TRANSFER-NOTIFICATION-DEBUGGER.md",
+              "action": "add",
+              "sha256": "eb76445b15c0e26f713e8a600c9cf7a7336be3e4d16c179f9764cc1b730cc085",
+              "size": 1629
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d5-transfer-notification-debugger.py",
+              "action": "add",
+              "sha256": "b1c61c5d5821df1d746ab02ae2ae9b90ba8e3b759481e915156284c983704e2e",
+              "size": 5970
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d5_transfer_notification_debugger.sh",
+          "sha256": "084bb8817d22c9964757102581f56842209910206428cd94ef0875a7acf26af5"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D5 transfer and notification debugger"
+        },
+        "notes": [
+          "D5 adds a state-derived transfer lifecycle, backend, notification, completed open-file, and failure-label debugger under Settings > Debug Workbench.",
+          "The debugger is read-only and does not pause, resume, cancel, retry, enqueue, start activities, launch viewers, probe files, open schemes, or upload reports.",
+          "Normal UI uses human labels and the copy report redacts URLs and fingerprints destination URI."
+        ]
+      },
+      "history_id": "be0c30d0e81140b084035dfe1f28195c"
     }
   ]
 }

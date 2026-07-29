@@ -34,6 +34,9 @@ import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.BackendCapabilities
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.BackendMigrationRecord
+import com.mikeyphw.xdm.android.model.DebugEventRecorder
+import com.mikeyphw.xdm.android.model.DebugWorkbenchShellPolicy
+import com.mikeyphw.xdm.android.model.DebugWorkbenchShellReport
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.DestinationRule
 import com.mikeyphw.xdm.android.model.DestinationRuleMatch
@@ -151,6 +154,17 @@ data class MainUiState(
     val activitySummary: OperationalActivitySummary = OperationalActivitySummary(),
     val activityDiagnosticsExport: String = "",
     val supportReportText: String = "",
+    val debugWorkbenchReport: DebugWorkbenchShellReport = DebugWorkbenchShellPolicy.evaluate(
+        recorderInstalled = true,
+        redactionReady = true,
+        supportBundleReady = true,
+        instrumentationHooksReady = true,
+        supportReportAvailable = false,
+        developerOptionsEnabled = false,
+        activeDownloads = 0,
+        mediaCaptures = 0,
+        automationHandoffs = 0,
+    ),
     val destinationUri: String = DestinationUris.PUBLIC_DOWNLOADS,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val externalAddDraft: DownloadIntakeDraft? = null,
@@ -240,6 +254,7 @@ class MainViewModel(
     private val mediaResolverSelectionStore: MediaResolverSelectionStore,
     private val operationalActivityStore: OperationalActivityStore,
     private val browserExtensionExportManager: BrowserExtensionExportManager,
+    private val debugEventRecorder: DebugEventRecorder,
 ) : ViewModel() {
     private data class NavigationOverride(
         val route: AppRoute? = null,
@@ -261,11 +276,11 @@ class MainViewModel(
     private val capabilitySnapshot = MutableStateFlow<Map<BackendType, BackendCapabilities>>(emptyMap())
     private val externalAddDraft = MutableStateFlow<DownloadIntakeDraft?>(null)
     private val mediaCaptureService = MediaCaptureService()
-    private val mediaSniffingEngine = MediaSniffingEngine(mediaCaptureService)
+    private val mediaSniffingEngine = MediaSniffingEngine(mediaCaptureService, debugRecorder = debugEventRecorder)
     private val mediaCaptureIntakePlanner = MediaCaptureIntakePlanner(mediaCaptureService)
-    private val mediaBatchIntakePlanner = MediaBatchIntakePlanner(mediaCaptureService)
-    private val externalMediaReviewPlanner = ExternalMediaReviewPlanner(mediaCaptureService)
-    private val downloadIntakePlanner = DownloadIntakePlanner()
+    private val mediaBatchIntakePlanner = MediaBatchIntakePlanner(mediaCaptureService, sniffingEngine = mediaSniffingEngine, debugRecorder = debugEventRecorder)
+    private val externalMediaReviewPlanner = ExternalMediaReviewPlanner(mediaCaptureService, sniffingEngine = mediaSniffingEngine, debugRecorder = debugEventRecorder)
+    private val downloadIntakePlanner = DownloadIntakePlanner(debugRecorder = debugEventRecorder)
     private val mediaExecutionPlanner = MediaExecutionLibraryPlanner()
 
     private data class RepositorySnapshot(
@@ -574,6 +589,17 @@ class MainViewModel(
             activitySummary = activitySummary,
             activityDiagnosticsExport = activityDiagnosticsExport,
             supportReportText = supportReportText,
+            debugWorkbenchReport = DebugWorkbenchShellPolicy.evaluate(
+                recorderInstalled = true,
+                redactionReady = true,
+                supportBundleReady = true,
+                instrumentationHooksReady = true,
+                supportReportAvailable = supportReportText.isNotBlank(),
+                developerOptionsEnabled = prefs.developerOptionsEnabled,
+                activeDownloads = snapshot.downloads.count { it.state == DownloadState.Downloading },
+                mediaCaptures = snapshot.mediaCaptures.size,
+                automationHandoffs = snapshot.automationCommands.size,
+            ),
             destinationUri = prefs.destinationUri,
             conflictPolicy = prefs.conflictPolicy,
             externalAddDraft = review.externalAddDraft,
@@ -1936,6 +1962,7 @@ class MainViewModel(
             container.mediaResolverSelectionStore,
             container.operationalActivityStore,
             container.browserExtensionExportManager,
+            container.debugEventRecorder,
         ) as T
     }
 }

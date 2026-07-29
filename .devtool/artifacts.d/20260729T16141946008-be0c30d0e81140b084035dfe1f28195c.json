@@ -1,0 +1,105 @@
+{
+  "applied_at": "2026-07-29T16:14:19.460085Z",
+  "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d5_transfer_notification_debugger_overlay.zip",
+  "artifact_name": "xdm_android_debug_workbench_phase_d5_transfer_notification_debugger_overlay.zip",
+  "type": "overlay",
+  "sha256": "07162f4f6435be234e4df8b8cf1253ff0685f0250c650ce43904d95d7e92c54f",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 9,
+  "change_counts": {
+    "add": 6,
+    "modify": 3
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Debug Workbench D5 Transfer + Notification Debugger",
+    "description": "Adds a read-only Transfer + notification debugger panel to Settings > Debug Workbench.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "24c263597dc877c2f5fbfb02de6d15f9faeb4dad49c5559004c5500b30f72503",
+          "size": 33562,
+          "source_sha256": "b55b409ec5b79cd0ffedb3d881b824bef7a73407d68e81627db9f3f19f85a218"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "2c7636d754be3bd90c904852be64856e60438154724d1116cdfb02d76d26f24b",
+          "size": 81602,
+          "source_sha256": "7f8f7e8b0a520aaea25f4d2fe04a09c409fcef357797c9f069521e78db27af94"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD5TransferNotificationModels.kt",
+          "action": "add",
+          "sha256": "bda20fbf121cba10426cf6b4c8d787b35bb142bcb4f57b9606228d64456ce5a8",
+          "size": 11296
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+          "action": "modify",
+          "sha256": "5fc1de444f5ce4c8f362169d21e081cbcbc164746ede8054f6335cd5b618c8cd",
+          "size": 5101,
+          "source_sha256": "4193bc07293c55b4a7dd414139c2b07bef5ab38eb838be2b6ba5c3326996c07f"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/TransferNotificationDebuggerCard.kt",
+          "action": "add",
+          "sha256": "57a9065401a98a05de6d05b68035a85ed82fb22a184d9b4d60a39c14f7212e0d",
+          "size": 2877
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD5TransferNotificationDebuggerTest.kt",
+          "action": "add",
+          "sha256": "957348e34c83ba576d59ecc5c6fc515dee1215d05fa8bce16b6d7ae10e7d11fa",
+          "size": 4527
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD5TransferNotificationDebuggerContractTest.kt",
+          "action": "add",
+          "sha256": "a25409eec31cbf3f3b482e8ba70166eb1063b768dff51bad554345d13114854e",
+          "size": 4380
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D5-TRANSFER-NOTIFICATION-DEBUGGER.md",
+          "action": "add",
+          "sha256": "eb76445b15c0e26f713e8a600c9cf7a7336be3e4d16c179f9764cc1b730cc085",
+          "size": 1629
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-debug-workbench-d5-transfer-notification-debugger.py",
+          "action": "add",
+          "sha256": "b1c61c5d5821df1d746ab02ae2ae9b90ba8e3b759481e915156284c983704e2e",
+          "size": 5970
+        }
+      ]
+    },
+    "validation": {
+      "script": ".devtool-artifact/validate_debug_workbench_d5_transfer_notification_debugger.sh",
+      "sha256": "084bb8817d22c9964757102581f56842209910206428cd94ef0875a7acf26af5"
+    },
+    "commit": {
+      "message": "Add Debug Workbench D5 transfer and notification debugger"
+    },
+    "notes": [
+      "D5 adds a state-derived transfer lifecycle, backend, notification, completed open-file, and failure-label debugger under Settings > Debug Workbench.",
+      "The debugger is read-only and does not pause, resume, cancel, retry, enqueue, start activities, launch viewers, probe files, open schemes, or upload reports.",
+      "Normal UI uses human labels and the copy report redacts URLs and fingerprints destination URI."
+    ]
+  },
+  "history_id": "be0c30d0e81140b084035dfe1f28195c"
+}

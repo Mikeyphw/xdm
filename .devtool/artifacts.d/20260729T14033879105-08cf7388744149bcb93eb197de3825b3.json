@@ -1,0 +1,140 @@
+{
+  "applied_at": "2026-07-29T14:03:38.791056Z",
+  "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d2_shell_r4_overlay.zip",
+  "artifact_name": "xdm_android_debug_workbench_phase_d2_shell_r4_overlay.zip",
+  "type": "overlay",
+  "sha256": "1062722ac70017916e99cc3708fe629f21961f1eb11723527702c7d335008a91",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 14,
+  "change_counts": {
+    "add": 6,
+    "modify": 8
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Debug Workbench D2 Shell r4",
+    "description": "Adds Settings-facing Debug Workbench shell over the D1 recorder foundation; r4 repairs stale Phase 47 shared-sniffer contract assertions before D2 recorder wiring.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "229a63593b35037c0e3477ce2c6ba06015ddd72cf0b19edeb41e370eda7b88fd",
+          "size": 31256,
+          "source_sha256": "2862cc42edf8b447cccdda4c540280ab845f22424d0239429c9ad7444b0f1832"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "92b876007b2de2f6208bd54c566f2c5869efecb1b482cad029bc015012756f17",
+          "size": 76358,
+          "source_sha256": "ac8e11ca984ccff0b3911eff3f2ef558f438ab21d8cb03b803777cf28bd088a7"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "cb14f62d57853df27cd5e840eebfd09f5abfb39df16a8d9c48d7a81c812ff0ab",
+          "size": 95628,
+          "source_sha256": "a3124967388df5643de009ff9be83b872505018fd3366018f2bfe373ff999c19"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/SettingsPanel.kt",
+          "action": "modify",
+          "sha256": "8bd3744df03358d3fb571d391363eb4254ef948fe324bdd941835dca3c550eca",
+          "size": 366,
+          "source_sha256": "92d7aef865f833880ab00a004db66c14d904811445efee783415a2721142d7da"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+          "action": "modify",
+          "sha256": "a57bbc7cbfd020ef1d427b4bd4b7ed3366157d6131043faff2735cdcc3d78cb8",
+          "size": 9816,
+          "source_sha256": "d159253efe3f8eb71f8c59bdace3ed0794c3c785cb88e5894f8d52a74899c7e8"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+          "action": "add",
+          "sha256": "c61e25a62b31755af899d8b3dd811ed4f4d2a3fbdf58e33b89c289011ffc7b44",
+          "size": 4660
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt",
+          "action": "modify",
+          "sha256": "6d3c96195ed8f78bae2c99144ba73d5610d5f74a9965913879635999759822cd",
+          "size": 14113,
+          "source_sha256": "d96960d971c2835894b2005849dcf890a5235a74d16e04d20a47b59b478c463f"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgePhase48FinalReleaseGateContractTest.kt",
+          "action": "modify",
+          "sha256": "1eee4f655b2dcf652a4e548d5370e1bc6a0f09a8415d56a2cdda336acefa33a1",
+          "size": 5022,
+          "source_sha256": "f81ba29b4474817b59ea39132d224a1b7216b21e3c8b2f63526b0f37022606c4"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD2ShellContractTest.kt",
+          "action": "add",
+          "sha256": "5f2d6cf780b6e1f733c9e9bc06cd2c7d012797e8f65e30d1665f5224ed28e8e6",
+          "size": 4376
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/MediaSniffingPhase47ContractTest.kt",
+          "action": "modify",
+          "sha256": "2534c7073d17d60c34d9b5c49d29f3872becd4df80d70ce2cf9e7be3cadfb6e1",
+          "size": 3932,
+          "source_sha256": "1d3c138b4991d7b852644f15a496547ce381bc32cb24fe03153c47c9da6884d3"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugWorkbenchShellModels.kt",
+          "action": "add",
+          "sha256": "1ea2bc76410ad0d17d0d4bf45bd95fabe893250de1f892978684430be2f2e801",
+          "size": 5443
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DebugWorkbenchShellModelsTest.kt",
+          "action": "add",
+          "sha256": "63762314239c710a44d46f45e576c317ff822705c46536a06da57655c1d5733a",
+          "size": 2054
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D2-SHELL.md",
+          "action": "add",
+          "sha256": "3fefaebccdcb91335af68f3eddfaf4be8a9b1e3f0fd4bf72ee47f39191c21338",
+          "size": 2264
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-debug-workbench-d2-shell.py",
+          "action": "add",
+          "sha256": "eac34135de6dd7145c6b4970bddb103deaa4ec99af4e9fcabe4cd262bb1c3dd1",
+          "size": 5547
+        }
+      ]
+    },
+    "validation": {
+      "script": ".devtool-artifact/validate_debug_workbench_d2_shell.sh",
+      "sha256": "a84f6b2b864273ca6dc1e08ed0a4211e0c29ba105befe171e1a449c5ddae7578"
+    },
+    "commit": {
+      "message": "Add Debug Workbench D2 shell r4"
+    },
+    "notes": [
+      "No top-level route, no Room migration, no automatic upload, and no generated extension artifact payloads.",
+      "r4 updates MediaSniffingPhase47ContractTest to accept the recorder-backed shared-sniffer construction used by D2.",
+      "Focused app contract tests and core-model D1/D2 tests were compiled and executed with local stubs before packaging."
+    ]
+  },
+  "history_id": "08cf7388744149bcb93eb197de3825b3"
+}

@@ -1,0 +1,113 @@
+{
+  "applied_at": "2026-07-29T15:52:18.301682Z",
+  "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d4_browser_bridge_add_download_debugger_overlay.zip",
+  "artifact_name": "xdm_android_debug_workbench_phase_d4_browser_bridge_add_download_debugger_overlay.zip",
+  "type": "overlay",
+  "sha256": "416b235b852466a5b03e4ef8fba661eb28178e4d7b5e3e4b22376f43e8c449b6",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 10,
+  "change_counts": {
+    "add": 6,
+    "modify": 4
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Debug Workbench D4 Browser Bridge + Add Download Debugger",
+    "description": "Adds copy-only Browser Bridge diagnostics and review-only Add Download debugger panels to Settings > Debug Workbench.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "b55b409ec5b79cd0ffedb3d881b824bef7a73407d68e81627db9f3f19f85a218",
+          "size": 32910,
+          "source_sha256": "af07531ea73baed57fbb548f9548b64eabcae823f9409435468d456406abe652"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "7f8f7e8b0a520aaea25f4d2fe04a09c409fcef357797c9f069521e78db27af94",
+          "size": 79934,
+          "source_sha256": "f519a8532a8d600ece7642d553008b8f30af7763d026349e1f56efcd82125f66"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD4DebuggerModels.kt",
+          "action": "add",
+          "sha256": "19b81b206bc0e0105c6a827a71e0f14db91b2213df1125d3d5656a6af5974383",
+          "size": 8115
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/BridgeAndAddDownloadDebuggerCard.kt",
+          "action": "add",
+          "sha256": "e24445a0fa31fd30536ffbf95a549f0a1865fd73eafb9742e2ff178f06e45ade",
+          "size": 3962
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+          "action": "modify",
+          "sha256": "4193bc07293c55b4a7dd414139c2b07bef5ab38eb838be2b6ba5c3326996c07f",
+          "size": 4974,
+          "source_sha256": "ddbdff56d22c384587f7d135808d828a751ab32f82e336160409293cb3060189"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD4BridgeAddDownloadDebuggerTest.kt",
+          "action": "add",
+          "sha256": "dd9e3c08a318e5ee08f371b7ae6f6e362c8d77cdf737002724623d80cb743bab",
+          "size": 2656
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD4BridgeAddDownloadDebuggerContractTest.kt",
+          "action": "add",
+          "sha256": "a9572ca267633103a00636bfbd46126560a9002d4650243e2f08b16507ad7ccf",
+          "size": 3615
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugWorkbenchShellModels.kt",
+          "action": "modify",
+          "sha256": "e2bc47d4ee33c6bc92defd62a8354ef2499a55edb4092898020c503b5da5dc08",
+          "size": 5459,
+          "source_sha256": "1ea2bc76410ad0d17d0d4bf45bd95fabe893250de1f892978684430be2f2e801"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D4-BROWSER-BRIDGE-ADD-DOWNLOAD-DEBUGGER.md",
+          "action": "add",
+          "sha256": "5828814c90c39372b1bbf4f6e7942f44961657696d5b3d8b0e706ad82df8d130",
+          "size": 1496
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-debug-workbench-d4-browser-bridge-add-download-debugger.py",
+          "action": "add",
+          "sha256": "f0a36504540da3a20019c7cad1e79f3024607818c4df389fab1e06b9a76ac81b",
+          "size": 4203
+        }
+      ]
+    },
+    "validation": {
+      "script": ".devtool-artifact/validate_debug_workbench_d4_browser_bridge_add_download_debugger.sh",
+      "sha256": "169c8b24e2a031ef0de135cff139973659ede7f679b6d0b806c49e693dddac48"
+    },
+    "commit": {
+      "message": "Add Debug Workbench D4 browser bridge and Add Download debugger"
+    },
+    "notes": [
+      "D4 extends Settings > Debug Workbench and does not add a top-level route, Room migration, network probe, custom-scheme opener, download enqueue, or upload path.",
+      "Browser bridge debugger copies a redacted report and safe example test URIs for external verification only.",
+      "Add Download debugger mirrors DownloadReviewPlanner for the active external draft and keeps the normal review-confirmation gate intact.",
+      "Affected assertions were checked before packaging: D2/D3 debug contracts, D4 model tests, D4 contract tests, and the UixR6 normal UI release-seal source rule."
+    ]
+  },
+  "history_id": "5db47dd6c5b244c4a26f9c94dc6972ab"
+}
