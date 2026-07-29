@@ -26,4 +26,4 @@ The panel uses human labels and short fix hints. It does not render raw enum nam
 
 ## Next
 
-D7 should seal the complete Debug Workbench roadmap with support-bundle privacy contracts, docs, and final release gate coverage.
+D7 seals the complete Debug Workbench roadmap with support-bundle privacy contracts, docs, and final release gate coverage.

@@ -204,16 +204,28 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
             throw DestinationConflictException("A media item named $name already exists")
         }
         if (existing != null) return CommitTarget(existing, name) { _ -> Unit }
+        val createdAtSeconds = System.currentTimeMillis() / 1000
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType ?: guessMimeType(name))
             root.relativePath?.let { put(MediaStore.MediaColumns.RELATIVE_PATH, it) }
+            put(MediaStore.MediaColumns.DATE_ADDED, createdAtSeconds)
+            put(MediaStore.MediaColumns.DATE_MODIFIED, createdAtSeconds)
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val uri = requireNotNull(resolver.insert(root.uri, values)) { "MediaStore could not create $name" }
         return CommitTarget(uri, name) { success ->
-            if (success) resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
-            else resolver.delete(uri, null, null)
+            if (success) {
+                resolver.update(
+                    uri,
+                    ContentValues().apply {
+                        put(MediaStore.MediaColumns.IS_PENDING, 0)
+                        put(MediaStore.MediaColumns.DATE_MODIFIED, System.currentTimeMillis() / 1000)
+                    },
+                    null,
+                    null,
+                )
+            } else resolver.delete(uri, null, null)
         }
     }
 

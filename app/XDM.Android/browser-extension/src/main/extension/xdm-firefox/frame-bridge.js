@@ -106,7 +106,7 @@
     if (!url || AD_RE.test(url) || isSegment(url)) return false;
     const trusted = metadata && metadata.trusted === true;
     const contentType = String(metadata.contentType || "").toLowerCase();
-    if (!trusted && !MEDIA_RE.test(url) && !STREAM_HINT_RE.test(url) && !MEDIA_MIME_RE.test(contentType) && !MANIFEST_MIME_RE.test(contentType)) return false;
+    if (!trusted && !MEDIA_RE.test(url) && !MEDIA_MIME_RE.test(contentType) && !MANIFEST_MIME_RE.test(contentType)) return false;
     const previous = candidates.get(url) || {};
     candidates.set(url, {
       url,
@@ -387,7 +387,7 @@ ${location.href}`;
     const observation = event.data.observation && typeof event.data.observation === "object" ? event.data.observation : {};
     const responseUrl = observation.responseUrl || observation.requestUrl || "";
     const contentType = String(observation.contentType || "");
-    const trusted = MEDIA_MIME_RE.test(contentType) || MANIFEST_MIME_RE.test(contentType) || MEDIA_RE.test(responseUrl) || STREAM_HINT_RE.test(responseUrl);
+    const trusted = MEDIA_MIME_RE.test(contentType) || MANIFEST_MIME_RE.test(contentType) || MEDIA_RE.test(responseUrl);
     if (trusted) {
       recordCandidate(responseUrl, observation.source || "page-response", 720, {
         trusted: true,

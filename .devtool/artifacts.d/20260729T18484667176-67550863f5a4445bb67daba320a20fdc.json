@@ -1,0 +1,164 @@
+{
+  "applied_at": "2026-07-29T18:48:46.671764Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase49_field_bugfix_download_actions_storage_sniffer_overlay.zip",
+  "artifact_name": "xdm_android_phase49_field_bugfix_download_actions_storage_sniffer_overlay.zip",
+  "type": "overlay",
+  "sha256": "310fcc12e4810bfe302ba41b4855e729570b78cc518c28d370942c57d6ccdd72",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 17,
+  "change_counts": {
+    "add": 6,
+    "modify": 11
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 49 Field Bugfix: Download Actions, Storage Visibility, and Media Sniffing",
+    "description": "Fixes field issues after the sealed Debug Workbench: download row menu actions dispatch to their real operations, MediaStore destinations use human labels and visibility metadata, app-side page probes handle HTTP blocks cleanly, and the Firefox detector is stricter about real video candidates.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "e05e991047c77deaabdfe20bda335809a071d6f0d5e370d983fb2e96154bb330",
+          "size": 36730,
+          "source_sha256": "88f749793bdcf8432e98ff6dd6cebc5a3774db8f1e9cd088f375827ea2d970e9"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "f6657016e1fd401af74f96e673c77c66dc7913e3898e9771a7e9796fcd5c5595",
+          "size": 87199,
+          "source_sha256": "c1e3b7898bce7c3e7990cfe372f92b0cbca9db49e7299db2ea72c19127233c0d"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase49-field-bugfix.py",
+          "action": "add",
+          "sha256": "3ced01d342a4c3db98955f8756a12f034e11cea490108364c0d7c40d5ef0e063",
+          "size": 7656
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-49-FIELD-BUGFIX-DOWNLOAD-ACTIONS-STORAGE-SNIFFER.md",
+          "action": "add",
+          "sha256": "860b31ddd10f96c28c3ba265da67c99b3bafa3d0ee082757c56cceda0a11b079",
+          "size": 2432
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngine.kt",
+          "action": "modify",
+          "sha256": "4fa8c39360df71ee13d9838549645d2167de6cadebe63e1032d5e2f745051fbf",
+          "size": 22053,
+          "source_sha256": "7cbb5a1f5ecf9e525b7f9c6cad62cf31aea82c1be915752c892fb815dd14f591"
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaProbeFieldBugfixContractTest.kt",
+          "action": "add",
+          "sha256": "937564384893399342e7180ebaf5039711a0ebd3b7df13e370c591c221152e4c",
+          "size": 1337
+        },
+        {
+          "path": "app/XDM.Android/storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/AndroidDestinationWriter.kt",
+          "action": "modify",
+          "sha256": "fa1c5628cc5f7a09309a375c884d951bba23a57af0f84a0209733cd2865db9ff",
+          "size": 18906,
+          "source_sha256": "eba9885c1dbe3a0a107881260627bc4514d14cfe75f6ba85e0b707ac4ac25d5c"
+        },
+        {
+          "path": "app/XDM.Android/storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+          "action": "add",
+          "sha256": "762094addcc2c4d1dfb6be5842aa3167dbccfe91cd8ade59434fce9ac9957f8c",
+          "size": 1160
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/detector-core.js",
+          "action": "modify",
+          "sha256": "fd3d1125a4c8085ebe738f9b607fa543b5cee9a3643c8416429921ff284ab002",
+          "size": 9604,
+          "source_sha256": "7f4c9da99a5a9584b7dae04fd4bcb94a68b21cf457cbbf545edfd477d1b7d225"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/frame-bridge.js",
+          "action": "modify",
+          "sha256": "21197b84f0516d94555f03206fe6ea9ff1fa037d0f04129e4cebd34d50b84c56",
+          "size": 23885,
+          "source_sha256": "39f3473fa8ffe1ceb0cf1a686f84d771ab0f37afe4f604104c0b953ba80df3c7"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/tests/test_detector.js",
+          "action": "modify",
+          "sha256": "f7033f6ac1618abd6226ddb29b26597743ef494ba94c2ae3438a9868dde26064",
+          "size": 2310,
+          "source_sha256": "d5895c222e6bfa84cba15f1296976c782a967afbcaf9b09681c7fdc7e39f60ce"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "971113ef0bf090fb6898808480a7050e57f788a4bfe1e65181a57885eb55b314",
+          "size": 99357,
+          "source_sha256": "cb14f62d57853df27cd5e840eebfd09f5abfb39df16a8d9c48d7a81c812ff0ab"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "807db0b6fe032e8af618597156e323dab87e413a1da451b6c21abba14361c85f",
+          "size": 12960,
+          "source_sha256": "c4f223ac039ae0fa9d9674f5158f41ea320ff7c6298fdd6096adf16b1e5b6813"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDetails.kt",
+          "action": "modify",
+          "sha256": "430f9db8791cbca1d4b717b7fc106a20494ff77dd3092b98e1073b1dfe7f7b4b",
+          "size": 13902,
+          "source_sha256": "1d036957dd4d482ec6c142eb1183dc3e19b9f59decef8af7d9b6122059856bf6"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDestinationUi.kt",
+          "action": "add",
+          "sha256": "08cb228fb272d73d6597101ea4d9a6bcfc62711fc1094711b0430d772e632ae2",
+          "size": 2048
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+          "action": "modify",
+          "sha256": "6f29b65134f8ba90f55d38c6dbbef10b785c550a16bfdc3c22d2b82d721217a5",
+          "size": 35448,
+          "source_sha256": "552f30fe704bfbb40533e263ca83e367748089c81b761dfd64aab4771cd5c5cb"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/FieldBugfixDownloadActionsStorageContractTest.kt",
+          "action": "add",
+          "sha256": "b74cc612f042cb71daf3715948b09f143d3ec573db41b7d2d6cbd0793b6553fc",
+          "size": 3329
+        }
+      ]
+    },
+    "validation": {
+      "script": ".devtool-artifact/validate_phase49_field_bugfix.sh",
+      "sha256": "b32b18a6aa853628fac13e4d2f889d9ad481a3d82df3b12f8c0d9728ce4d8270"
+    },
+    "commit": {
+      "message": "Fix XDM Android field download actions storage and sniffing"
+    },
+    "notes": [
+      "This is a post-D7 field bugfix overlay, not a new Debug Workbench D-series phase.",
+      "Download item actions now dispatch explicitly instead of collapsing to the details sheet.",
+      "Normal UI explains Android shared-storage handles with human labels rather than raw destination values.",
+      "Media page probes attach safe browser-like headers and return a clear blocked-site diagnostic for HTTP 401/403 instead of throwing opaque failures.",
+      "Firefox extension detection now requires stronger media evidence and filters JSON/API false positives inspired by behavioral signals observed in the supplied 1DM APK string scan, without copying implementation code.",
+      "No Room migration, new top-level route, background upload, all-files permission, or Debug Workbench expansion is included."
+    ]
+  },
+  "history_id": "67550863f5a4445bb67daba320a20fdc"
+}

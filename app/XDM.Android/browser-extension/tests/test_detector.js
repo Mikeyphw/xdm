@@ -13,8 +13,16 @@ const core = context.XdmDetectorCoreV1;
 assert(core.classifyResponse({ url: "https://cdn.example/video", type: "xmlhttprequest", contentType: "video/mp4" }).accept);
 assert(core.classifyResponse({ url: "https://cdn.example/master", type: "fetch", contentType: "application/vnd.apple.mpegurl" }).manifest);
 assert(!core.classifyResponse({ url: "https://cdn.example/chunk-3.m4s", type: "media", contentType: "video/mp4" }).accept);
+assert(!core.classifyResponse({ url: "https://api.example/video/metadata", type: "xmlhttprequest", contentType: "application/json", contentLength: 512 }).accept);
+assert(!core.classifyResponse({ url: "https://site.example/api/stream", type: "fetch", contentType: "application/json", contentLength: 4096 }).accept);
 const body = core.analyzeBody({ responseUrl: "https://site.example/api", contentType: "application/json", text: '{"manifestUrl":"\\u0068ttps:\\/\\/cdn.example\\/master.m3u8"}' });
 assert(body.candidates.some(item => item.url === "https://cdn.example/master.m3u8"));
+const noisy = core.analyzeBody({
+  responseUrl: "https://site.example/api",
+  contentType: "application/json",
+  text: '{"posterUrl":"https://cdn.example/poster.jpg","url":"https://api.example/video/metadata","src":"https://cdn.example/thumb.webp"}'
+});
+assert.strictEqual(noisy.candidates.length, 0);
 const Store = context.XdmCandidateStoreV1;
 const store = new Store({ maxPerTab: 4, ttlMs: 100000 });
 assert(store.merge(7, { url: "https://cdn.example/video", confidence: 800, frameId: 4 }));

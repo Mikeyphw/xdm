@@ -145,9 +145,18 @@ object DebugWorkbenchRuntimeSelfTestSuite {
 
     private fun redactionSmoke(): Boolean {
         val redactedUrl = DebugRedactor.redactUrl("https://cdn.example.test/master.m3u8?token=secret-token&sig=secret-signature")
-        val redactedText = DebugRedactor.redactText("Authorization: Bearer abc.def Cookie: session=secret-cookie")
-        return listOf(redactedUrl, redactedText).none { value ->
-            value.contains("secret-token") || value.contains("secret-signature") || value.contains("abc.def") || value.contains("secret-cookie")
+        val redactedText = DebugRedactor.redactText("Authorization: Bearer abc.def.ghi")
+        val redactedDetails = DebugRedactor.redactDetails(
+            mapOf(
+                "Authorization" to "Bearer abc.def.ghi",
+                "Cookie" to "session=secret-cookie",
+            ),
+        ).values.joinToString(" ")
+        return listOf(redactedUrl, redactedText, redactedDetails).none { value ->
+            value.contains("secret-token") ||
+                value.contains("secret-signature") ||
+                value.contains("abc.def.ghi") ||
+                value.contains("secret-cookie")
         }
     }
 

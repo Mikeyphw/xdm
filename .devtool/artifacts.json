@@ -60913,6 +60913,876 @@
         ]
       },
       "history_id": "7c1c3fa5770b4b588ef0529475280799"
+    },
+    {
+      "applied_at": "2026-07-29T16:39:20.564968Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r2_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r2_overlay.zip",
+      "type": "overlay",
+      "sha256": "8423597d500e4ae56a7f317f69b6eb4fa8855a5feab15463e82721b8c7842594",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 9,
+      "change_counts": {
+        "add": 6,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D6 Runtime Self-Test Suite r2",
+        "description": "Adds a read-only runtime self-test suite panel to Settings > Debug Workbench, with compile-safe spacing fix.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "d0c7d8e10c27c9f1c2621851106abadae3e2fd4bafb7e2f77ed4c450135933ae",
+              "size": 34386,
+              "source_sha256": "24c263597dc877c2f5fbfb02de6d15f9faeb4dad49c5559004c5500b30f72503"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "5e907447c9927b2e56671155db4d816a1d43036a2a5350c71e945d29997b1913",
+              "size": 82608,
+              "source_sha256": "2c7636d754be3bd90c904852be64856e60438154724d1116cdfb02d76d26f24b"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestModels.kt",
+              "action": "add",
+              "sha256": "2a10d4e8ec7d251dc71ae8796b03a5cb59439d0400fd1e66867854e8ecabc7c6",
+              "size": 9156
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "249d3f6080a3eb58e632d7d284c748ea397dff504406582406bf58486dd2c9fb",
+              "size": 5211,
+              "source_sha256": "5fc1de444f5ce4c8f362169d21e081cbcbc164746ede8054f6335cd5b618c8cd"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/RuntimeSelfTestSuiteCard.kt",
+              "action": "add",
+              "sha256": "498ee397ed86ee281451ab076e883c9dc782e37df2465ee38d0491b9c373a9a1",
+              "size": 3122
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestSuiteTest.kt",
+              "action": "add",
+              "sha256": "ce4eeaef7c1f00159a20b53ed62f827d2fea982d04841afb1bbdd96b7eb62d7b",
+              "size": 2404
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestSuiteContractTest.kt",
+              "action": "add",
+              "sha256": "45b5f9483081065c97168b88227d519412f19ea9a2f8b15d3d46db881d993957",
+              "size": 3967
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D6-RUNTIME-SELF-TEST-SUITE.md",
+              "action": "add",
+              "sha256": "3e7cb0e622340fbfe53874865288837dbdc2b524199304fc790b7554427558aa",
+              "size": 1522
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d6-runtime-self-test-suite.py",
+              "action": "add",
+              "sha256": "00e7b2f1bd217a68eb762e4012aa7b726a37e6cbe12e4ddd623626b2528cac76",
+              "size": 3438
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d6_runtime_self_test_suite.sh",
+          "sha256": "33f01750145122fce2e29984721b2295659d20185aa173955b0a0a2fadebde6f"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D6 runtime self-test suite r2"
+        },
+        "notes": [
+          "D6 adds read-only runtime checks for handoff routes, browser scheme readiness, completed-file access, media sniffing, redaction, notification diagnostics, recorder health, support report readiness, and state context.",
+          "The suite does not start downloads, launch viewers, inspect files, open schemes, run network probes, mutate storage, or upload reports.",
+          "Normal UI uses human labels and sanitized copy reports.",
+          "r2 fixes RuntimeSelfTestSuiteCard spacing to use XdmSpacing.TightGap instead of a nonexistent XdmSpacing.sm alias."
+        ]
+      },
+      "history_id": "8d61e96f7ac9477b80a1f16c42c3b7af"
+    },
+    {
+      "applied_at": "2026-07-29T17:16:29.388241Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r2_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r2_overlay.zip",
+      "type": "overlay",
+      "sha256": "8423597d500e4ae56a7f317f69b6eb4fa8855a5feab15463e82721b8c7842594",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 9,
+      "change_counts": {
+        "add": 6,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D6 Runtime Self-Test Suite r2",
+        "description": "Adds a read-only runtime self-test suite panel to Settings > Debug Workbench, with compile-safe spacing fix.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "d0c7d8e10c27c9f1c2621851106abadae3e2fd4bafb7e2f77ed4c450135933ae",
+              "size": 34386,
+              "source_sha256": "24c263597dc877c2f5fbfb02de6d15f9faeb4dad49c5559004c5500b30f72503"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "5e907447c9927b2e56671155db4d816a1d43036a2a5350c71e945d29997b1913",
+              "size": 82608,
+              "source_sha256": "2c7636d754be3bd90c904852be64856e60438154724d1116cdfb02d76d26f24b"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestModels.kt",
+              "action": "add",
+              "sha256": "2a10d4e8ec7d251dc71ae8796b03a5cb59439d0400fd1e66867854e8ecabc7c6",
+              "size": 9156
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "249d3f6080a3eb58e632d7d284c748ea397dff504406582406bf58486dd2c9fb",
+              "size": 5211,
+              "source_sha256": "5fc1de444f5ce4c8f362169d21e081cbcbc164746ede8054f6335cd5b618c8cd"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/RuntimeSelfTestSuiteCard.kt",
+              "action": "add",
+              "sha256": "498ee397ed86ee281451ab076e883c9dc782e37df2465ee38d0491b9c373a9a1",
+              "size": 3122
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestSuiteTest.kt",
+              "action": "add",
+              "sha256": "ce4eeaef7c1f00159a20b53ed62f827d2fea982d04841afb1bbdd96b7eb62d7b",
+              "size": 2404
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestSuiteContractTest.kt",
+              "action": "add",
+              "sha256": "45b5f9483081065c97168b88227d519412f19ea9a2f8b15d3d46db881d993957",
+              "size": 3967
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D6-RUNTIME-SELF-TEST-SUITE.md",
+              "action": "add",
+              "sha256": "3e7cb0e622340fbfe53874865288837dbdc2b524199304fc790b7554427558aa",
+              "size": 1522
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d6-runtime-self-test-suite.py",
+              "action": "add",
+              "sha256": "00e7b2f1bd217a68eb762e4012aa7b726a37e6cbe12e4ddd623626b2528cac76",
+              "size": 3438
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d6_runtime_self_test_suite.sh",
+          "sha256": "33f01750145122fce2e29984721b2295659d20185aa173955b0a0a2fadebde6f"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D6 runtime self-test suite r2"
+        },
+        "notes": [
+          "D6 adds read-only runtime checks for handoff routes, browser scheme readiness, completed-file access, media sniffing, redaction, notification diagnostics, recorder health, support report readiness, and state context.",
+          "The suite does not start downloads, launch viewers, inspect files, open schemes, run network probes, mutate storage, or upload reports.",
+          "Normal UI uses human labels and sanitized copy reports.",
+          "r2 fixes RuntimeSelfTestSuiteCard spacing to use XdmSpacing.TightGap instead of a nonexistent XdmSpacing.sm alias."
+        ]
+      },
+      "history_id": "bea46e5bdf5840929c612469e06d0bfc"
+    },
+    {
+      "applied_at": "2026-07-29T17:18:28.576464Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r2_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r2_overlay.zip",
+      "type": "overlay",
+      "sha256": "8423597d500e4ae56a7f317f69b6eb4fa8855a5feab15463e82721b8c7842594",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 9,
+      "change_counts": {
+        "add": 6,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D6 Runtime Self-Test Suite r2",
+        "description": "Adds a read-only runtime self-test suite panel to Settings > Debug Workbench, with compile-safe spacing fix.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "d0c7d8e10c27c9f1c2621851106abadae3e2fd4bafb7e2f77ed4c450135933ae",
+              "size": 34386,
+              "source_sha256": "24c263597dc877c2f5fbfb02de6d15f9faeb4dad49c5559004c5500b30f72503"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "5e907447c9927b2e56671155db4d816a1d43036a2a5350c71e945d29997b1913",
+              "size": 82608,
+              "source_sha256": "2c7636d754be3bd90c904852be64856e60438154724d1116cdfb02d76d26f24b"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestModels.kt",
+              "action": "add",
+              "sha256": "2a10d4e8ec7d251dc71ae8796b03a5cb59439d0400fd1e66867854e8ecabc7c6",
+              "size": 9156
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "249d3f6080a3eb58e632d7d284c748ea397dff504406582406bf58486dd2c9fb",
+              "size": 5211,
+              "source_sha256": "5fc1de444f5ce4c8f362169d21e081cbcbc164746ede8054f6335cd5b618c8cd"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/RuntimeSelfTestSuiteCard.kt",
+              "action": "add",
+              "sha256": "498ee397ed86ee281451ab076e883c9dc782e37df2465ee38d0491b9c373a9a1",
+              "size": 3122
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestSuiteTest.kt",
+              "action": "add",
+              "sha256": "ce4eeaef7c1f00159a20b53ed62f827d2fea982d04841afb1bbdd96b7eb62d7b",
+              "size": 2404
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestSuiteContractTest.kt",
+              "action": "add",
+              "sha256": "45b5f9483081065c97168b88227d519412f19ea9a2f8b15d3d46db881d993957",
+              "size": 3967
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D6-RUNTIME-SELF-TEST-SUITE.md",
+              "action": "add",
+              "sha256": "3e7cb0e622340fbfe53874865288837dbdc2b524199304fc790b7554427558aa",
+              "size": 1522
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d6-runtime-self-test-suite.py",
+              "action": "add",
+              "sha256": "00e7b2f1bd217a68eb762e4012aa7b726a37e6cbe12e4ddd623626b2528cac76",
+              "size": 3438
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d6_runtime_self_test_suite.sh",
+          "sha256": "33f01750145122fce2e29984721b2295659d20185aa173955b0a0a2fadebde6f"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D6 runtime self-test suite r2"
+        },
+        "notes": [
+          "D6 adds read-only runtime checks for handoff routes, browser scheme readiness, completed-file access, media sniffing, redaction, notification diagnostics, recorder health, support report readiness, and state context.",
+          "The suite does not start downloads, launch viewers, inspect files, open schemes, run network probes, mutate storage, or upload reports.",
+          "Normal UI uses human labels and sanitized copy reports.",
+          "r2 fixes RuntimeSelfTestSuiteCard spacing to use XdmSpacing.TightGap instead of a nonexistent XdmSpacing.sm alias."
+        ]
+      },
+      "history_id": "14710527735e406880ff97df411c566f"
+    },
+    {
+      "applied_at": "2026-07-29T17:39:12.071675Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r3_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r3_overlay.zip",
+      "type": "overlay",
+      "sha256": "b4791fb09c651efe2d021b67f8a4c0838665982454d0810b254156a7f992ce4f",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 9,
+      "change_counts": {
+        "add": 6,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D6 Runtime Self-Test Suite r3",
+        "description": "Adds a read-only runtime self-test suite panel to Settings > Debug Workbench, with redaction-smoke runtime test fix.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "2ee1f46435da63c4f31f053e8a962f1016fc4ab8dab3ec5a466a686fafb79443",
+              "size": 34803,
+              "source_sha256": "24c263597dc877c2f5fbfb02de6d15f9faeb4dad49c5559004c5500b30f72503"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "b16e830915c8e3a2e1154ea2728154f70c61f6ade6d9d3bcecd5e9ce5e6d5ee3",
+              "size": 83343,
+              "source_sha256": "2c7636d754be3bd90c904852be64856e60438154724d1116cdfb02d76d26f24b"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestModels.kt",
+              "action": "add",
+              "sha256": "a373628a04c7721fbbd0810c27ccc4366ad28ddfbf7f4facbf617bb43d1d8a8e",
+              "size": 9437
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "249d3f6080a3eb58e632d7d284c748ea397dff504406582406bf58486dd2c9fb",
+              "size": 5211,
+              "source_sha256": "5fc1de444f5ce4c8f362169d21e081cbcbc164746ede8054f6335cd5b618c8cd"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/RuntimeSelfTestSuiteCard.kt",
+              "action": "add",
+              "sha256": "498ee397ed86ee281451ab076e883c9dc782e37df2465ee38d0491b9c373a9a1",
+              "size": 3122
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestSuiteTest.kt",
+              "action": "add",
+              "sha256": "ce4eeaef7c1f00159a20b53ed62f827d2fea982d04841afb1bbdd96b7eb62d7b",
+              "size": 2404
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestSuiteContractTest.kt",
+              "action": "add",
+              "sha256": "45b5f9483081065c97168b88227d519412f19ea9a2f8b15d3d46db881d993957",
+              "size": 3967
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D6-RUNTIME-SELF-TEST-SUITE.md",
+              "action": "add",
+              "sha256": "3e7cb0e622340fbfe53874865288837dbdc2b524199304fc790b7554427558aa",
+              "size": 1522
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d6-runtime-self-test-suite.py",
+              "action": "add",
+              "sha256": "12b9c8325d5be863569c3a03d671092ee6622a63bc4348e2e8f94f1b8b97dec1",
+              "size": 3612
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d6_runtime_self_test_suite.sh",
+          "sha256": "33f01750145122fce2e29984721b2295659d20185aa173955b0a0a2fadebde6f"
+        },
+        "commit": {
+          "message": "Add Debug Workbench D6 runtime self-test suite r3"
+        },
+        "notes": [
+          "D6 adds read-only runtime checks for handoff routes, browser scheme readiness, completed-file access, media sniffing, redaction, notification diagnostics, recorder health, support report readiness, and state context.",
+          "r3 fixes the D6 r2 unit-test failure by using DebugRedactor.redactDetails for Authorization/Cookie smoke values and a bearer sample that matches the existing text redactor.",
+          "The suite does not start downloads, launch viewers, inspect files, open schemes, run network probes, mutate storage, or upload reports.",
+          "Normal UI uses human labels and sanitized copy reports; it does not render raw enum names, raw URLs, machine values, or secrets.",
+          "Artifact validation works from Devtool temp-root layout and .devtool-artifact layout."
+        ]
+      },
+      "history_id": "a0dd795664de4096ab2ec3c964c12d98"
+    },
+    {
+      "applied_at": "2026-07-29T18:05:45.147160Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip",
+      "artifact_name": "xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip",
+      "type": "overlay",
+      "sha256": "d0c0bcceb3436285b54e90ccecd4e03528c547dd62fdc907bb32ecfc479239f8",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 10,
+      "change_counts": {
+        "add": 3,
+        "modify": 7
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Workbench D7 Final Debug Seal",
+        "description": "Seals the Debug Workbench roadmap with support-bundle privacy contracts, human-readable diagnostic labels, docs, and final release-gate coverage.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "88f749793bdcf8432e98ff6dd6cebc5a3774db8f1e9cd088f375827ea2d970e9",
+              "size": 35416,
+              "source_sha256": "2ee1f46435da63c4f31f053e8a962f1016fc4ab8dab3ec5a466a686fafb79443"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "c1e3b7898bce7c3e7990cfe372f92b0cbca9db49e7299db2ea72c19127233c0d",
+              "size": 85175,
+              "source_sha256": "b16e830915c8e3a2e1154ea2728154f70c61f6ade6d9d3bcecd5e9ce5e6d5ee3"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-debug-workbench-d7-final-debug-seal.py",
+              "action": "add",
+              "sha256": "701d10e9da36313a7bf10c84037bc9ecdb87a8872080e46f924609a3665e868e",
+              "size": 6247
+            },
+            {
+              "path": "app/XDM.Android/tools/run-phase-48-final-release-gate.sh",
+              "action": "modify",
+              "sha256": "62088e32b31f1622f65dad82747beae49368ab1d636189386f94836fb32bd855",
+              "size": 901,
+              "source_sha256": "ac0a3bf6f7932ad0a03c28daba9f703cbe05472fb03da95cffa1bbf39b8bd962"
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D7-FINAL-DEBUG-SEAL.md",
+              "action": "add",
+              "sha256": "e2663bab88d669307809a8469dd9aa756020f2cf520a706964a658322ac3bb8d",
+              "size": 1873
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D6-RUNTIME-SELF-TEST-SUITE.md",
+              "action": "modify",
+              "sha256": "3879e9d604d3c41587861a1ed8d7d01e434a9c3ed5f5f8ec813f612643b44e1c",
+              "size": 1516,
+              "source_sha256": "3e7cb0e622340fbfe53874865288837dbdc2b524199304fc790b7554427558aa"
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugWorkbenchShellModels.kt",
+              "action": "modify",
+              "sha256": "c719b9aebafafae129304b588dc2fb3159565ddf246f82f416ac4fae58bf2f23",
+              "size": 6225,
+              "source_sha256": "e2bc47d4ee33c6bc92defd62a8354ef2499a55edb4092898020c503b5da5dc08"
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DebugWorkbenchShellModelsTest.kt",
+              "action": "modify",
+              "sha256": "73ff71e921d9a7b2f99c73a77362c596ffd26f269ab026826e6c2331c8372e9e",
+              "size": 3021,
+              "source_sha256": "63762314239c710a44d46f45e576c317ff822705c46536a06da57655c1d5733a"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "08d671a8d5420a513b3a6862b4b0ff3800c976741b0de517d788e0fec81aa968",
+              "size": 5272,
+              "source_sha256": "249d3f6080a3eb58e632d7d284c748ea397dff504406582406bf58486dd2c9fb"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD7FinalDebugSealContractTest.kt",
+              "action": "add",
+              "sha256": "3b22566164442787635e265ebd2ea584dc2069ce76c50a917227320d5c8debf5",
+              "size": 5009
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_debug_workbench_d7_final_debug_seal.sh",
+          "sha256": "403ded930894e3bf830896202c8db5647df60f6d0f09681988a7d21007663a8d"
+        },
+        "commit": {
+          "message": "Seal XDM Android Debug Workbench D7"
+        },
+        "notes": [
+          "D7 is a final seal only; it does not add a new runtime debugger panel, top-level route, Room migration, automatic upload, transfer control, foreground service, viewer launch, browser-scheme launch, or probe.",
+          "Debug Workbench shell UI and copy reports now use human support labels instead of raw enum names for check states and debug areas.",
+          "The Phase 48 release-gate script now runs the D7 final-seal validator instead of the stale D1-only validator.",
+          "D7 records the D6 green baseline: 414 passed, 0 failed, 0 skipped; diagnostics 0 warnings, 0 errors.",
+          "Artifact validation works from Devtool temp-root layout and from the Android root."
+        ]
+      },
+      "history_id": "48f4d1c82a514d31b7f5b24027e9878a"
+    },
+    {
+      "applied_at": "2026-07-29T18:39:23.177453Z",
+      "artifact": "/home/mike/Downloads/xdm_android_phase49_field_bugfix_download_actions_storage_sniffer_overlay.zip",
+      "artifact_name": "xdm_android_phase49_field_bugfix_download_actions_storage_sniffer_overlay.zip",
+      "type": "overlay",
+      "sha256": "310fcc12e4810bfe302ba41b4855e729570b78cc518c28d370942c57d6ccdd72",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 17,
+      "change_counts": {
+        "add": 6,
+        "modify": 11
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 49 Field Bugfix: Download Actions, Storage Visibility, and Media Sniffing",
+        "description": "Fixes field issues after the sealed Debug Workbench: download row menu actions dispatch to their real operations, MediaStore destinations use human labels and visibility metadata, app-side page probes handle HTTP blocks cleanly, and the Firefox detector is stricter about real video candidates.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "e05e991047c77deaabdfe20bda335809a071d6f0d5e370d983fb2e96154bb330",
+              "size": 36730,
+              "source_sha256": "88f749793bdcf8432e98ff6dd6cebc5a3774db8f1e9cd088f375827ea2d970e9"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "f6657016e1fd401af74f96e673c77c66dc7913e3898e9771a7e9796fcd5c5595",
+              "size": 87199,
+              "source_sha256": "c1e3b7898bce7c3e7990cfe372f92b0cbca9db49e7299db2ea72c19127233c0d"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase49-field-bugfix.py",
+              "action": "add",
+              "sha256": "3ced01d342a4c3db98955f8756a12f034e11cea490108364c0d7c40d5ef0e063",
+              "size": 7656
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-49-FIELD-BUGFIX-DOWNLOAD-ACTIONS-STORAGE-SNIFFER.md",
+              "action": "add",
+              "sha256": "860b31ddd10f96c28c3ba265da67c99b3bafa3d0ee082757c56cceda0a11b079",
+              "size": 2432
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngine.kt",
+              "action": "modify",
+              "sha256": "4fa8c39360df71ee13d9838549645d2167de6cadebe63e1032d5e2f745051fbf",
+              "size": 22053,
+              "source_sha256": "7cbb5a1f5ecf9e525b7f9c6cad62cf31aea82c1be915752c892fb815dd14f591"
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaProbeFieldBugfixContractTest.kt",
+              "action": "add",
+              "sha256": "937564384893399342e7180ebaf5039711a0ebd3b7df13e370c591c221152e4c",
+              "size": 1337
+            },
+            {
+              "path": "app/XDM.Android/storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/AndroidDestinationWriter.kt",
+              "action": "modify",
+              "sha256": "fa1c5628cc5f7a09309a375c884d951bba23a57af0f84a0209733cd2865db9ff",
+              "size": 18906,
+              "source_sha256": "eba9885c1dbe3a0a107881260627bc4514d14cfe75f6ba85e0b707ac4ac25d5c"
+            },
+            {
+              "path": "app/XDM.Android/storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+              "action": "add",
+              "sha256": "762094addcc2c4d1dfb6be5842aa3167dbccfe91cd8ade59434fce9ac9957f8c",
+              "size": 1160
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/detector-core.js",
+              "action": "modify",
+              "sha256": "fd3d1125a4c8085ebe738f9b607fa543b5cee9a3643c8416429921ff284ab002",
+              "size": 9604,
+              "source_sha256": "7f4c9da99a5a9584b7dae04fd4bcb94a68b21cf457cbbf545edfd477d1b7d225"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/frame-bridge.js",
+              "action": "modify",
+              "sha256": "21197b84f0516d94555f03206fe6ea9ff1fa037d0f04129e4cebd34d50b84c56",
+              "size": 23885,
+              "source_sha256": "39f3473fa8ffe1ceb0cf1a686f84d771ab0f37afe4f604104c0b953ba80df3c7"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_detector.js",
+              "action": "modify",
+              "sha256": "f7033f6ac1618abd6226ddb29b26597743ef494ba94c2ae3438a9868dde26064",
+              "size": 2310,
+              "source_sha256": "d5895c222e6bfa84cba15f1296976c782a967afbcaf9b09681c7fdc7e39f60ce"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "971113ef0bf090fb6898808480a7050e57f788a4bfe1e65181a57885eb55b314",
+              "size": 99357,
+              "source_sha256": "cb14f62d57853df27cd5e840eebfd09f5abfb39df16a8d9c48d7a81c812ff0ab"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "807db0b6fe032e8af618597156e323dab87e413a1da451b6c21abba14361c85f",
+              "size": 12960,
+              "source_sha256": "c4f223ac039ae0fa9d9674f5158f41ea320ff7c6298fdd6096adf16b1e5b6813"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDetails.kt",
+              "action": "modify",
+              "sha256": "430f9db8791cbca1d4b717b7fc106a20494ff77dd3092b98e1073b1dfe7f7b4b",
+              "size": 13902,
+              "source_sha256": "1d036957dd4d482ec6c142eb1183dc3e19b9f59decef8af7d9b6122059856bf6"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDestinationUi.kt",
+              "action": "add",
+              "sha256": "08cb228fb272d73d6597101ea4d9a6bcfc62711fc1094711b0430d772e632ae2",
+              "size": 2048
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+              "action": "modify",
+              "sha256": "6f29b65134f8ba90f55d38c6dbbef10b785c550a16bfdc3c22d2b82d721217a5",
+              "size": 35448,
+              "source_sha256": "552f30fe704bfbb40533e263ca83e367748089c81b761dfd64aab4771cd5c5cb"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/FieldBugfixDownloadActionsStorageContractTest.kt",
+              "action": "add",
+              "sha256": "b74cc612f042cb71daf3715948b09f143d3ec573db41b7d2d6cbd0793b6553fc",
+              "size": 3329
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_phase49_field_bugfix.sh",
+          "sha256": "b32b18a6aa853628fac13e4d2f889d9ad481a3d82df3b12f8c0d9728ce4d8270"
+        },
+        "commit": {
+          "message": "Fix XDM Android field download actions storage and sniffing"
+        },
+        "notes": [
+          "This is a post-D7 field bugfix overlay, not a new Debug Workbench D-series phase.",
+          "Download item actions now dispatch explicitly instead of collapsing to the details sheet.",
+          "Normal UI explains Android shared-storage handles with human labels rather than raw destination values.",
+          "Media page probes attach safe browser-like headers and return a clear blocked-site diagnostic for HTTP 401/403 instead of throwing opaque failures.",
+          "Firefox extension detection now requires stronger media evidence and filters JSON/API false positives inspired by behavioral signals observed in the supplied 1DM APK string scan, without copying implementation code.",
+          "No Room migration, new top-level route, background upload, all-files permission, or Debug Workbench expansion is included."
+        ]
+      },
+      "history_id": "54a3e19cc4f64784a63241d292c7a16b"
+    },
+    {
+      "applied_at": "2026-07-29T18:48:46.671764Z",
+      "artifact": "/home/mike/Downloads/xdm_android_phase49_field_bugfix_download_actions_storage_sniffer_overlay.zip",
+      "artifact_name": "xdm_android_phase49_field_bugfix_download_actions_storage_sniffer_overlay.zip",
+      "type": "overlay",
+      "sha256": "310fcc12e4810bfe302ba41b4855e729570b78cc518c28d370942c57d6ccdd72",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 17,
+      "change_counts": {
+        "add": 6,
+        "modify": 11
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 49 Field Bugfix: Download Actions, Storage Visibility, and Media Sniffing",
+        "description": "Fixes field issues after the sealed Debug Workbench: download row menu actions dispatch to their real operations, MediaStore destinations use human labels and visibility metadata, app-side page probes handle HTTP blocks cleanly, and the Firefox detector is stricter about real video candidates.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "sha256": "e05e991047c77deaabdfe20bda335809a071d6f0d5e370d983fb2e96154bb330",
+              "size": 36730,
+              "source_sha256": "88f749793bdcf8432e98ff6dd6cebc5a3774db8f1e9cd088f375827ea2d970e9"
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "f6657016e1fd401af74f96e673c77c66dc7913e3898e9771a7e9796fcd5c5595",
+              "size": 87199,
+              "source_sha256": "c1e3b7898bce7c3e7990cfe372f92b0cbca9db49e7299db2ea72c19127233c0d"
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase49-field-bugfix.py",
+              "action": "add",
+              "sha256": "3ced01d342a4c3db98955f8756a12f034e11cea490108364c0d7c40d5ef0e063",
+              "size": 7656
+            },
+            {
+              "path": "app/XDM.Android/docs/architecture/PHASE-49-FIELD-BUGFIX-DOWNLOAD-ACTIONS-STORAGE-SNIFFER.md",
+              "action": "add",
+              "sha256": "860b31ddd10f96c28c3ba265da67c99b3bafa3d0ee082757c56cceda0a11b079",
+              "size": 2432
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngine.kt",
+              "action": "modify",
+              "sha256": "4fa8c39360df71ee13d9838549645d2167de6cadebe63e1032d5e2f745051fbf",
+              "size": 22053,
+              "source_sha256": "7cbb5a1f5ecf9e525b7f9c6cad62cf31aea82c1be915752c892fb815dd14f591"
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaProbeFieldBugfixContractTest.kt",
+              "action": "add",
+              "sha256": "937564384893399342e7180ebaf5039711a0ebd3b7df13e370c591c221152e4c",
+              "size": 1337
+            },
+            {
+              "path": "app/XDM.Android/storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/AndroidDestinationWriter.kt",
+              "action": "modify",
+              "sha256": "fa1c5628cc5f7a09309a375c884d951bba23a57af0f84a0209733cd2865db9ff",
+              "size": 18906,
+              "source_sha256": "eba9885c1dbe3a0a107881260627bc4514d14cfe75f6ba85e0b707ac4ac25d5c"
+            },
+            {
+              "path": "app/XDM.Android/storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+              "action": "add",
+              "sha256": "762094addcc2c4d1dfb6be5842aa3167dbccfe91cd8ade59434fce9ac9957f8c",
+              "size": 1160
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/detector-core.js",
+              "action": "modify",
+              "sha256": "fd3d1125a4c8085ebe738f9b607fa543b5cee9a3643c8416429921ff284ab002",
+              "size": 9604,
+              "source_sha256": "7f4c9da99a5a9584b7dae04fd4bcb94a68b21cf457cbbf545edfd477d1b7d225"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/frame-bridge.js",
+              "action": "modify",
+              "sha256": "21197b84f0516d94555f03206fe6ea9ff1fa037d0f04129e4cebd34d50b84c56",
+              "size": 23885,
+              "source_sha256": "39f3473fa8ffe1ceb0cf1a686f84d771ab0f37afe4f604104c0b953ba80df3c7"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_detector.js",
+              "action": "modify",
+              "sha256": "f7033f6ac1618abd6226ddb29b26597743ef494ba94c2ae3438a9868dde26064",
+              "size": 2310,
+              "source_sha256": "d5895c222e6bfa84cba15f1296976c782a967afbcaf9b09681c7fdc7e39f60ce"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "971113ef0bf090fb6898808480a7050e57f788a4bfe1e65181a57885eb55b314",
+              "size": 99357,
+              "source_sha256": "cb14f62d57853df27cd5e840eebfd09f5abfb39df16a8d9c48d7a81c812ff0ab"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "807db0b6fe032e8af618597156e323dab87e413a1da451b6c21abba14361c85f",
+              "size": 12960,
+              "source_sha256": "c4f223ac039ae0fa9d9674f5158f41ea320ff7c6298fdd6096adf16b1e5b6813"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDetails.kt",
+              "action": "modify",
+              "sha256": "430f9db8791cbca1d4b717b7fc106a20494ff77dd3092b98e1073b1dfe7f7b4b",
+              "size": 13902,
+              "source_sha256": "1d036957dd4d482ec6c142eb1183dc3e19b9f59decef8af7d9b6122059856bf6"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDestinationUi.kt",
+              "action": "add",
+              "sha256": "08cb228fb272d73d6597101ea4d9a6bcfc62711fc1094711b0430d772e632ae2",
+              "size": 2048
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+              "action": "modify",
+              "sha256": "6f29b65134f8ba90f55d38c6dbbef10b785c550a16bfdc3c22d2b82d721217a5",
+              "size": 35448,
+              "source_sha256": "552f30fe704bfbb40533e263ca83e367748089c81b761dfd64aab4771cd5c5cb"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/FieldBugfixDownloadActionsStorageContractTest.kt",
+              "action": "add",
+              "sha256": "b74cc612f042cb71daf3715948b09f143d3ec573db41b7d2d6cbd0793b6553fc",
+              "size": 3329
+            }
+          ]
+        },
+        "validation": {
+          "script": ".devtool-artifact/validate_phase49_field_bugfix.sh",
+          "sha256": "b32b18a6aa853628fac13e4d2f889d9ad481a3d82df3b12f8c0d9728ce4d8270"
+        },
+        "commit": {
+          "message": "Fix XDM Android field download actions storage and sniffing"
+        },
+        "notes": [
+          "This is a post-D7 field bugfix overlay, not a new Debug Workbench D-series phase.",
+          "Download item actions now dispatch explicitly instead of collapsing to the details sheet.",
+          "Normal UI explains Android shared-storage handles with human labels rather than raw destination values.",
+          "Media page probes attach safe browser-like headers and return a clear blocked-site diagnostic for HTTP 401/403 instead of throwing opaque failures.",
+          "Firefox extension detection now requires stronger media evidence and filters JSON/API false positives inspired by behavioral signals observed in the supplied 1DM APK string scan, without copying implementation code.",
+          "No Room migration, new top-level route, background upload, all-files permission, or Debug Workbench expansion is included."
+        ]
+      },
+      "history_id": "67550863f5a4445bb67daba320a20fdc"
     }
   ]
 }

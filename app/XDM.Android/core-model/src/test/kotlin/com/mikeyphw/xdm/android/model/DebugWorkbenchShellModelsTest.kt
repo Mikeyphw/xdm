@@ -50,4 +50,30 @@ class DebugWorkbenchShellModelsTest {
         assertTrue(text.contains("Redaction"))
         assertFalse(text.contains("onClick = {}"))
     }
+    @Test
+    fun clipboardReportUsesHumanLabelsForAreasAndCheckStates() {
+        val report = DebugWorkbenchShellPolicy.evaluate(
+            recorderInstalled = true,
+            redactionReady = true,
+            supportBundleReady = false,
+            instrumentationHooksReady = true,
+            supportReportAvailable = false,
+            developerOptionsEnabled = false,
+            activeDownloads = 0,
+            mediaCaptures = 0,
+            automationHandoffs = 0,
+        )
+
+        val text = report.toClipboardReport()
+
+        assertTrue(text.contains("Browser bridge"))
+        assertTrue(text.contains("External handoff"))
+        assertTrue(text.contains("Media sniffing"))
+        assertTrue(text.contains("Note"))
+        assertFalse(text.contains("BrowserBridge"))
+        assertFalse(text.contains("ExternalIntent"))
+        assertFalse(text.contains("TransferPlanner"))
+        assertFalse(text.contains("DebugWorkbenchCheckState"))
+    }
+
 }

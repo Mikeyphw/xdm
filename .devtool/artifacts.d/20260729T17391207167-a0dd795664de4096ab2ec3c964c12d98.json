@@ -1,0 +1,107 @@
+{
+  "applied_at": "2026-07-29T17:39:12.071675Z",
+  "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r3_overlay.zip",
+  "artifact_name": "xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r3_overlay.zip",
+  "type": "overlay",
+  "sha256": "b4791fb09c651efe2d021b67f8a4c0838665982454d0810b254156a7f992ce4f",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 9,
+  "change_counts": {
+    "add": 6,
+    "modify": 3
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Debug Workbench D6 Runtime Self-Test Suite r3",
+    "description": "Adds a read-only runtime self-test suite panel to Settings > Debug Workbench, with redaction-smoke runtime test fix.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "2ee1f46435da63c4f31f053e8a962f1016fc4ab8dab3ec5a466a686fafb79443",
+          "size": 34803,
+          "source_sha256": "24c263597dc877c2f5fbfb02de6d15f9faeb4dad49c5559004c5500b30f72503"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "b16e830915c8e3a2e1154ea2728154f70c61f6ade6d9d3bcecd5e9ce5e6d5ee3",
+          "size": 83343,
+          "source_sha256": "2c7636d754be3bd90c904852be64856e60438154724d1116cdfb02d76d26f24b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestModels.kt",
+          "action": "add",
+          "sha256": "a373628a04c7721fbbd0810c27ccc4366ad28ddfbf7f4facbf617bb43d1d8a8e",
+          "size": 9437
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+          "action": "modify",
+          "sha256": "249d3f6080a3eb58e632d7d284c748ea397dff504406582406bf58486dd2c9fb",
+          "size": 5211,
+          "source_sha256": "5fc1de444f5ce4c8f362169d21e081cbcbc164746ede8054f6335cd5b618c8cd"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/RuntimeSelfTestSuiteCard.kt",
+          "action": "add",
+          "sha256": "498ee397ed86ee281451ab076e883c9dc782e37df2465ee38d0491b9c373a9a1",
+          "size": 3122
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestSuiteTest.kt",
+          "action": "add",
+          "sha256": "ce4eeaef7c1f00159a20b53ed62f827d2fea982d04841afb1bbdd96b7eb62d7b",
+          "size": 2404
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestSuiteContractTest.kt",
+          "action": "add",
+          "sha256": "45b5f9483081065c97168b88227d519412f19ea9a2f8b15d3d46db881d993957",
+          "size": 3967
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D6-RUNTIME-SELF-TEST-SUITE.md",
+          "action": "add",
+          "sha256": "3e7cb0e622340fbfe53874865288837dbdc2b524199304fc790b7554427558aa",
+          "size": 1522
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-debug-workbench-d6-runtime-self-test-suite.py",
+          "action": "add",
+          "sha256": "12b9c8325d5be863569c3a03d671092ee6622a63bc4348e2e8f94f1b8b97dec1",
+          "size": 3612
+        }
+      ]
+    },
+    "validation": {
+      "script": ".devtool-artifact/validate_debug_workbench_d6_runtime_self_test_suite.sh",
+      "sha256": "33f01750145122fce2e29984721b2295659d20185aa173955b0a0a2fadebde6f"
+    },
+    "commit": {
+      "message": "Add Debug Workbench D6 runtime self-test suite r3"
+    },
+    "notes": [
+      "D6 adds read-only runtime checks for handoff routes, browser scheme readiness, completed-file access, media sniffing, redaction, notification diagnostics, recorder health, support report readiness, and state context.",
+      "r3 fixes the D6 r2 unit-test failure by using DebugRedactor.redactDetails for Authorization/Cookie smoke values and a bearer sample that matches the existing text redactor.",
+      "The suite does not start downloads, launch viewers, inspect files, open schemes, run network probes, mutate storage, or upload reports.",
+      "Normal UI uses human labels and sanitized copy reports; it does not render raw enum names, raw URLs, machine values, or secrets.",
+      "Artifact validation works from Devtool temp-root layout and .devtool-artifact layout."
+    ]
+  },
+  "history_id": "a0dd795664de4096ab2ec3c964c12d98"
+}

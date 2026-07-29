@@ -1,0 +1,117 @@
+{
+  "applied_at": "2026-07-29T18:05:45.147160Z",
+  "artifact": "/home/mike/Downloads/xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip",
+  "artifact_name": "xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip",
+  "type": "overlay",
+  "sha256": "d0c0bcceb3436285b54e90ccecd4e03528c547dd62fdc907bb32ecfc479239f8",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 10,
+  "change_counts": {
+    "add": 3,
+    "modify": 7
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Debug Workbench D7 Final Debug Seal",
+    "description": "Seals the Debug Workbench roadmap with support-bundle privacy contracts, human-readable diagnostic labels, docs, and final release-gate coverage.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "88f749793bdcf8432e98ff6dd6cebc5a3774db8f1e9cd088f375827ea2d970e9",
+          "size": 35416,
+          "source_sha256": "2ee1f46435da63c4f31f053e8a962f1016fc4ab8dab3ec5a466a686fafb79443"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "c1e3b7898bce7c3e7990cfe372f92b0cbca9db49e7299db2ea72c19127233c0d",
+          "size": 85175,
+          "source_sha256": "b16e830915c8e3a2e1154ea2728154f70c61f6ade6d9d3bcecd5e9ce5e6d5ee3"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-debug-workbench-d7-final-debug-seal.py",
+          "action": "add",
+          "sha256": "701d10e9da36313a7bf10c84037bc9ecdb87a8872080e46f924609a3665e868e",
+          "size": 6247
+        },
+        {
+          "path": "app/XDM.Android/tools/run-phase-48-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "62088e32b31f1622f65dad82747beae49368ab1d636189386f94836fb32bd855",
+          "size": 901,
+          "source_sha256": "ac0a3bf6f7932ad0a03c28daba9f703cbe05472fb03da95cffa1bbf39b8bd962"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D7-FINAL-DEBUG-SEAL.md",
+          "action": "add",
+          "sha256": "e2663bab88d669307809a8469dd9aa756020f2cf520a706964a658322ac3bb8d",
+          "size": 1873
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/DEBUG-WORKBENCH-D6-RUNTIME-SELF-TEST-SUITE.md",
+          "action": "modify",
+          "sha256": "3879e9d604d3c41587861a1ed8d7d01e434a9c3ed5f5f8ec813f612643b44e1c",
+          "size": 1516,
+          "source_sha256": "3e7cb0e622340fbfe53874865288837dbdc2b524199304fc790b7554427558aa"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugWorkbenchShellModels.kt",
+          "action": "modify",
+          "sha256": "c719b9aebafafae129304b588dc2fb3159565ddf246f82f416ac4fae58bf2f23",
+          "size": 6225,
+          "source_sha256": "e2bc47d4ee33c6bc92defd62a8354ef2499a55edb4092898020c503b5da5dc08"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DebugWorkbenchShellModelsTest.kt",
+          "action": "modify",
+          "sha256": "73ff71e921d9a7b2f99c73a77362c596ffd26f269ab026826e6c2331c8372e9e",
+          "size": 3021,
+          "source_sha256": "63762314239c710a44d46f45e576c317ff822705c46536a06da57655c1d5733a"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+          "action": "modify",
+          "sha256": "08d671a8d5420a513b3a6862b4b0ff3800c976741b0de517d788e0fec81aa968",
+          "size": 5272,
+          "source_sha256": "249d3f6080a3eb58e632d7d284c748ea397dff504406582406bf58486dd2c9fb"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD7FinalDebugSealContractTest.kt",
+          "action": "add",
+          "sha256": "3b22566164442787635e265ebd2ea584dc2069ce76c50a917227320d5c8debf5",
+          "size": 5009
+        }
+      ]
+    },
+    "validation": {
+      "script": ".devtool-artifact/validate_debug_workbench_d7_final_debug_seal.sh",
+      "sha256": "403ded930894e3bf830896202c8db5647df60f6d0f09681988a7d21007663a8d"
+    },
+    "commit": {
+      "message": "Seal XDM Android Debug Workbench D7"
+    },
+    "notes": [
+      "D7 is a final seal only; it does not add a new runtime debugger panel, top-level route, Room migration, automatic upload, transfer control, foreground service, viewer launch, browser-scheme launch, or probe.",
+      "Debug Workbench shell UI and copy reports now use human support labels instead of raw enum names for check states and debug areas.",
+      "The Phase 48 release-gate script now runs the D7 final-seal validator instead of the stale D1-only validator.",
+      "D7 records the D6 green baseline: 414 passed, 0 failed, 0 skipped; diagnostics 0 warnings, 0 errors.",
+      "Artifact validation works from Devtool temp-root layout and from the Android root."
+    ]
+  },
+  "history_id": "48f4d1c82a514d31b7f5b24027e9878a"
+}

@@ -114,15 +114,35 @@ class MediaPageProbe(
             connection.connectTimeout = policy.connectTimeoutMillis
             connection.readTimeout = policy.readTimeoutMillis
             connection.requestMethod = "GET"
-            requestHeaders
-                .filterKeys { !PrivacyDiagnosticsRedactor.isSensitiveHeaderName(it) }
-                .forEach { (name, value) -> connection.setRequestProperty(name, value) }
+            applyDefaultProbeHeaders(connection, normalized, requestHeaders)
+            val statusCode = runCatching { connection.responseCode }.getOrDefault(-1)
+            val finalUrl = connection.url?.toString() ?: normalized
+            if (statusCode in 400..599) {
+                val diagnostic = pageProbeStatusDiagnostic(statusCode)
+                debugRecorder.record(
+                    area = DebugArea.MediaSniffing,
+                    severity = if (statusCode == 403) DebugSeverity.Warning else DebugSeverity.Error,
+                    action = "page-probe",
+                    result = "http-blocked",
+                    safeDetails = mapOf(
+                        "url" to normalized,
+                        "finalUrl" to finalUrl,
+                        "status" to statusCode.toString(),
+                        "policy" to "browser-like-bounded-get-no-js-no-drm",
+                    ),
+                )
+                return MediaSniffingPlan(
+                    candidates = emptyList(),
+                    records = emptyList(),
+                    variants = emptyList(),
+                    diagnostics = listOf(diagnostic),
+                )
+            }
             val body = BufferedInputStream(connection.inputStream).use { stream ->
                 val buffer = ByteArray(policy.bodyPrefixBytes)
                 val read = stream.read(buffer)
                 if (read <= 0) "" else buffer.decodeToString(endIndex = read)
             }
-            val finalUrl = connection.url?.toString() ?: normalized
             val input = MediaSniffingInput(
                 url = normalized,
                 finalUrl = finalUrl,
@@ -143,14 +163,15 @@ class MediaPageProbe(
                 safeDetails = mapOf(
                     "url" to normalized,
                     "finalUrl" to finalUrl,
+                    "status" to statusCode.toString(),
                     "candidateCount" to plan.candidates.size.toString(),
                     "recordCount" to plan.records.size.toString(),
-                    "policy" to "bounded-get-no-js-no-drm",
+                    "policy" to "browser-like-bounded-get-no-js-no-drm",
                 ),
             )
             plan.copy(
                 diagnostics = plan.diagnostics + listOf(
-                    "page-probe bounded GET • timeout=${policy.connectTimeoutMillis}ms • prefix=${policy.bodyPrefixBytes} bytes • no-js=${!policy.executeJavaScript} • no-drm-bypass=${!policy.bypassDrm}",
+                    "page-probe browser-like bounded GET • timeout=${policy.connectTimeoutMillis}ms • prefix=${policy.bodyPrefixBytes} bytes • no-js=${!policy.executeJavaScript} • no-drm-bypass=${!policy.bypassDrm}",
                 ),
             )
         } catch (error: Exception) {
@@ -172,6 +193,41 @@ class MediaPageProbe(
         }
     }
 }
+
+private fun applyDefaultProbeHeaders(connection: HttpURLConnection, url: String, requestHeaders: Map<String, String>) {
+    fun supplied(name: String) = requestHeaders.keys.any { it.equals(name, ignoreCase = true) }
+    if (!supplied("User-Agent")) connection.setRequestProperty("User-Agent", DEFAULT_MEDIA_PROBE_USER_AGENT)
+    if (!supplied("Accept")) {
+        connection.setRequestProperty(
+            "Accept",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,application/vnd.apple.mpegurl;q=0.9,application/dash+xml;q=0.9,*/*;q=0.8",
+        )
+    }
+    if (!supplied("Accept-Language")) connection.setRequestProperty("Accept-Language", "en-US,en;q=0.8")
+    if (!supplied("Accept-Encoding")) connection.setRequestProperty("Accept-Encoding", "identity")
+    sameOriginReferer(url)?.takeIf { !supplied("Referer") }?.let { connection.setRequestProperty("Referer", it) }
+    requestHeaders
+        .filterKeys { !PrivacyDiagnosticsRedactor.isSensitiveHeaderName(it) }
+        .forEach { (name, value) -> connection.setRequestProperty(name, value) }
+}
+
+private fun sameOriginReferer(url: String): String? = runCatching {
+    val parsed = URI(url)
+    val scheme = parsed.scheme?.lowercase(Locale.US)?.takeIf { it == "http" || it == "https" } ?: return@runCatching null
+    val host = parsed.host?.takeIf { it.isNotBlank() } ?: return@runCatching null
+    val port = parsed.port.takeIf { it > 0 }?.let { ":$it" }.orEmpty()
+    "$scheme://$host$port/"
+}.getOrNull()
+
+private fun pageProbeStatusDiagnostic(statusCode: Int): String = when (statusCode) {
+    401, 403 -> "page-probe blocked by the site (HTTP $statusCode); use the browser extension capture so cookies, referer, and the active session stay in the browser"
+    404 -> "page-probe could not find the page (HTTP 404)"
+    in 500..599 -> "page-probe reached the site but the server failed (HTTP $statusCode)"
+    else -> "page-probe stopped at HTTP $statusCode"
+}
+
+private const val DEFAULT_MEDIA_PROBE_USER_AGENT =
+    "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36"
 
 /**
  * 1DM-style shared app-side media sniffing engine for Add Download, media batch input, shares,

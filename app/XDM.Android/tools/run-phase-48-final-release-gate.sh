@@ -8,4 +8,4 @@ cd "$ROOT"
 
 python3 tools/validate-phase-47-real-shared-media-sniffing-engine.py
 python3 tools/validate-phase-48-final-ux-release-gate.py
-python3 tools/validate-debug-workbench-d1-event-recorder.py
+python3 tools/validate-debug-workbench-d7-final-debug-seal.py

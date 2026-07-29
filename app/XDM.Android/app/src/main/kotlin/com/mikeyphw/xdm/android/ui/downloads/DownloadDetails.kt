@@ -140,7 +140,9 @@ internal fun DownloadDetails(
             XdmListSeparator()
             DownloadDetailRow("Progress", download.progressSummary())
             XdmListSeparator()
-            DownloadDetailRow("Save to", download.destinationUri)
+            DownloadDetailRow("Save to", destinationUiLabel(download.destinationUri))
+            XdmListSeparator()
+            DownloadDetailRow("Storage", destinationUiHint(download.destinationUri))
             XdmListSeparator()
             DownloadDetailRow("Source", hostFromUrl(download.sourceUrl))
             if (latestVerification != null || latestChecksum != null || download.state in setOf(DownloadState.Verifying, DownloadState.Repairing)) {

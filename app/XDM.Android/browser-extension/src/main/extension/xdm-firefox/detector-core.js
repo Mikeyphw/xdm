@@ -8,7 +8,6 @@
   const TEXT_MIME_RE = /^(?:text\/|application\/(?:json|ld\+json|javascript|x-javascript|xml|xhtml\+xml|rss\+xml|atom\+xml|vnd\.apple\.mpegurl|x-mpegurl|dash\+xml))/i;
   const MANIFEST_KEY_RE = /(?:^|["'\s{,])(?:manifest|playlist|hls|dash|m3u8|mpd)(?:url|src)?["'\s]*[:=]/i;
   const STRONG_MEDIA_KEY_RE = /(?:^|["'\s{,])(?:file|video|audio|media|stream|mp4)(?:url|src)?["'\s]*[:=]/i;
-  const GENERIC_URL_KEY_RE = /(?:^|["'\s{,])(?:url|src)(?:url|src)?["'\s]*[:=]/i;
   const MAX_BODY_CHARS = 786_432;
   const MAX_EXTRACTED = 80;
 
@@ -83,7 +82,7 @@
       accept = true;
       confidence = streamHint ? 810 : (mediaRequest ? 760 : 700);
       reason = "media-octet";
-    } else if (streamHint && (mediaRequest || xhrLike)) {
+    } else if (streamHint && mediaRequest) {
       accept = true;
       confidence = 680;
       reason = "stream-hint";
@@ -130,10 +129,9 @@
   function candidateConfidence(url, context) {
     if (isManifest(url, "")) return 1050;
     if (MEDIA_EXT_RE.test(url)) return 880;
-    if (STREAM_HINT_RE.test(url)) return 820;
     if (MANIFEST_KEY_RE.test(context || "")) return 980;
-    if (STRONG_MEDIA_KEY_RE.test(context || "")) return 860;
-    if (GENERIC_URL_KEY_RE.test(context || "")) return 700;
+    if (STRONG_MEDIA_KEY_RE.test(context || "") && STREAM_HINT_RE.test(url)) return 860;
+    if (STRONG_MEDIA_KEY_RE.test(context || "") && MEDIA_EXT_RE.test(url)) return 840;
     return 0;
   }
 
@@ -158,7 +156,7 @@
     }
 
     // Player configuration keys often contain extensionless or relative URLs.
-    const keyedValueRe = /["'`](manifest|playlist|hls|dash|m3u8|mpd|file|video|audio|media|stream|mp4|url|src)(?:Url|URL|_url|_src|url|src)?["'`]\s*[:=]\s*["'`]([^"'`\r\n]{1,2200})["'`]/gi;
+    const keyedValueRe = /["'`](manifest|playlist|hls|dash|m3u8|mpd|file|video|audio|media|stream|mp4)(?:Url|URL|_url|_src|url|src)?["'`]\s*[:=]\s*["'`]([^"'`\r\n]{1,2200})["'`]/gi;
     let match;
     while ((match = keyedValueRe.exec(body)) && results.size < MAX_EXTRACTED) {
       const start = Math.max(0, match.index - 40);

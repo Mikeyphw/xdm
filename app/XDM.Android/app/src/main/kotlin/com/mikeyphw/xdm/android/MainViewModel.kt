@@ -41,6 +41,7 @@ import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.DestinationRule
 import com.mikeyphw.xdm.android.model.DestinationRuleMatch
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.DownloadActionKind
 import com.mikeyphw.xdm.android.model.DownloadTag
 import com.mikeyphw.xdm.android.model.DownloadTagAssignment
 import com.mikeyphw.xdm.android.model.DownloadState
@@ -1285,6 +1286,73 @@ class MainViewModel(
     fun removeDownloadFromHistory(download: Download) {
         if (!HistoryManagementPolicy.isSafeToRemoveFromHistory(download)) return
         viewModelScope.launch(Dispatchers.IO) { repository.deleteDownload(download.id) }
+    }
+
+    fun cancelDownload(download: Download) {
+        if (download.state == DownloadState.Completed) return
+        viewModelScope.launch(Dispatchers.IO) { transferRuntime.cancel(download.id) }
+    }
+
+    fun redownload(download: Download) {
+        if (download.sourceUrl.isBlank()) return
+        val now = System.currentTimeMillis()
+        val safeName = resolveFileName(download.sourceUrl, download.fileName)
+        val destination = uiState.value.destinationUri.ifBlank { DestinationUris.PUBLIC_DOWNLOADS }
+        val mediaCandidate = mediaCaptureService.candidateFor(download.sourceUrl)
+        val resolvedDestination = OrganizationPowerTools.destinationFor(download.sourceUrl, safeName, mediaCandidate?.mimeType, uiState.value.destinationRules, destination)
+        val request = previewRequest(download.sourceUrl, safeName, BackendType.Automatic, resolvedDestination, FilenameConflictPolicy.Rename, allowFallback = true, isMediaRequest = mediaCandidate != null)
+        val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
+        if (!recommendation.compatible) return
+        val retry = Download(
+            id = UUID.randomUUID().toString(),
+            fileName = safeName,
+            sourceUrl = download.sourceUrl.trim(),
+            destinationUri = resolvedDestination,
+            state = DownloadState.Queued,
+            backend = recommendation.backend,
+            bytesReceived = 0,
+            totalBytes = null,
+            speedBytesPerSecond = 0,
+            queueId = download.queueId ?: "default",
+            priority = download.priority,
+            createdAtEpochMs = now,
+            updatedAtEpochMs = now,
+            conflictPolicy = FilenameConflictPolicy.Rename,
+            mimeType = mediaCandidate?.mimeType ?: download.mimeType,
+            requestedBackend = BackendType.Automatic,
+            backendSelectionReason = recommendation.reason,
+            backendSelectionExplanation = recommendation.explanation,
+            allowBackendFallback = true,
+        )
+        viewModelScope.launch {
+            repository.save(retry)
+            queueIntelligenceCoordinator.requestStart(retry.id, userVisible = true, manual = true)
+            navigate(AppRoute.Downloads)
+        }
+    }
+
+    fun moveDownloadInQueue(download: Download, kind: DownloadActionKind) {
+        val queueId = download.queueId ?: "default"
+        val movableStates = setOf(DownloadState.Created, DownloadState.Queued, DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)
+        val current = uiState.value.downloads
+            .filter { (it.queueId ?: "default") == queueId && it.state in movableStates }
+            .sortedWith(compareByDescending<Download> { it.priority }.thenBy { it.createdAtEpochMs })
+        val from = current.indexOfFirst { it.id == download.id }
+        if (from < 0) return
+        val to = when (kind) {
+            DownloadActionKind.MoveToTop -> 0
+            DownloadActionKind.MoveUp -> (from - 1).coerceAtLeast(0)
+            DownloadActionKind.MoveDown -> (from + 1).coerceAtMost(current.lastIndex)
+            DownloadActionKind.MoveToBottom -> current.lastIndex
+            else -> from
+        }
+        if (from == to) return
+        val reordered = current.toMutableList().apply { add(to, removeAt(from)) }
+        val now = System.currentTimeMillis()
+        val reprioritized = reordered.mapIndexed { index, item ->
+            item.copy(priority = (reordered.size - index) * 10, updatedAtEpochMs = now)
+        }
+        viewModelScope.launch(Dispatchers.IO) { repository.saveAll(reprioritized) }
     }
 
     fun addDownload(

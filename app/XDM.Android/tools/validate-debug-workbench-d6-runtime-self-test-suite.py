@@ -32,6 +32,8 @@ for token in ["manifest-routes", "browser-scheme", "file-open-path", "media-snif
 require("uses shared sniffer", "MediaSniffingEngine" in model and "MediaSniffingSource.SharedText" in model)
 require("uses redactor url", "DebugRedactor.redactUrl" in model)
 require("uses redactor text", "DebugRedactor.redactText" in model)
+require("uses key-aware redactor details", "DebugRedactor.redactDetails" in model)
+require("redaction smoke bearer token is long enough for pattern", "abc.def.ghi" in model)
 require("no page probe", "MediaPageProbe(" not in model)
 require("no foreground service", "TransferForegroundService" not in model)
 require("no open-file construction", "OpenDownloadedFileActivity(" not in model)

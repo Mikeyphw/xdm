@@ -50,7 +50,8 @@
       43,
       46,
       47,
-      48
+      48,
+      49
     ]
   },
   "database": {
@@ -137,7 +138,7 @@
       "compare"
     ]
   },
-  "next_phase": "debug_workbench_phase_d7_final_debug_seal",
+  "next_phase": "complete",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -444,7 +445,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r2_overlay.zip",
+  "current_overlay": "xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -2121,7 +2122,7 @@
   "debug_workbench_phase_d3_media_sniffing_lab": {
     "status": "implemented",
     "phase": "D3",
-    "description": "Adds a Media Sniffing Lab inside Settings → Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
+    "description": "Adds a Media Sniffing Lab inside Settings \u2192 Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
     "baseline": "debug_workbench_phase_d2_shell_r4",
     "uses_shared_media_sniffing_engine": true,
     "static_sniff_only": true,
@@ -2133,7 +2134,7 @@
     "room_schema_unchanged": 14,
     "automatic_upload": false,
     "support_report_redacted": true,
-    "settings_location": "Settings → Debug Workbench → Media Sniffing Lab",
+    "settings_location": "Settings \u2192 Debug Workbench \u2192 Media Sniffing Lab",
     "next_phase": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
     "validation": {
       "static_validator": "tools/validate-debug-workbench-d3-media-sniffing-lab.py",
@@ -2238,7 +2239,7 @@
   },
   "debug_workbench_phase_d6_runtime_self_test_suite": {
     "status": "implemented",
-    "overlay": "xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r2_overlay.zip",
+    "overlay": "xdm_android_debug_workbench_phase_d6_runtime_self_test_suite_r3_overlay.zip",
     "baseline": "debug_workbench_phase_d5_transfer_notification_debugger",
     "screens": [
       "Settings > Debug Workbench > Runtime self-test suite"
@@ -2268,6 +2269,102 @@
       "no upload",
       "no database migration"
     ],
-    "next": "debug_workbench_phase_d7_final_debug_seal"
+    "next": "debug_workbench_phase_d7_final_debug_seal",
+    "revision": "r3",
+    "r3_fix": "Redaction smoke uses key-aware DebugRedactor.redactDetails for Authorization/Cookie and a bearer value long enough for the existing text redactor, so missing device state remains a note instead of causing suite failure.",
+    "validation": {
+      "regression_checked": [
+        "DebugWorkbenchD6RuntimeSelfTestSuiteTest.suiteRunsStaticSelfTestsWithoutStartingWork",
+        "DebugWorkbenchD6RuntimeSelfTestSuiteTest.suiteUsesNotesForMissingDeviceStateInsteadOfFailing",
+        "DebugWorkbenchD6RuntimeSelfTestSuiteContractTest.d6UiDoesNotRenderRawEnumNamesUrlsOrMachineValues",
+        "UixR6ReleaseSealContractTest.normalUiCannotRenderArchitectureNoiseSecretsOrRawMachineValues"
+      ]
+    }
+  },
+  "debug_workbench_phase_d7_final_debug_seal": {
+    "status": "implemented",
+    "phase": "D7",
+    "description": "Seals the complete Debug Workbench roadmap with support-bundle privacy contracts, human-readable diagnostic labels, docs, and final release-gate coverage.",
+    "baseline": "debug_workbench_phase_d6_runtime_self_test_suite_r3",
+    "overlay": "xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip",
+    "final_phase_complete": true,
+    "d6_tests_passed": 414,
+    "d6_tests_failed": 0,
+    "d6_tests_skipped": 0,
+    "diagnostic_warnings": 0,
+    "diagnostic_errors": 0,
+    "support_bundle_user_shared_only": true,
+    "automatic_upload": false,
+    "top_level_route_added": false,
+    "room_schema_unchanged": 14,
+    "runtime_behavior_changed": false,
+    "privacy": {
+      "normal_ui_human_labels": true,
+      "copy_reports_human_labels": true,
+      "raw_enum_names_in_normal_ui": false,
+      "raw_urls_in_normal_ui": false,
+      "raw_json_in_normal_ui": false,
+      "headers_cookies_authorization_redacted": true,
+      "metadata_redacted_before_export": true
+    },
+    "sealed_workbench": [
+      "debug_workbench_phase_d1_event_recorder",
+      "debug_workbench_phase_d2_shell",
+      "debug_workbench_phase_d3_media_sniffing_lab",
+      "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
+      "debug_workbench_phase_d5_transfer_notification_debugger",
+      "debug_workbench_phase_d6_runtime_self_test_suite"
+    ],
+    "release_gate": {
+      "script": "tools/run-phase-48-final-release-gate.sh",
+      "static_validator": "tools/validate-debug-workbench-d7-final-debug-seal.py",
+      "app_contract_test": "DebugWorkbenchD7FinalDebugSealContractTest",
+      "core_model_test": "DebugWorkbenchShellModelsTest.clipboardReportUsesHumanLabelsForAreasAndCheckStates"
+    },
+    "next_phase": "complete"
+  },
+  "field_bugfix_phase_49": {
+    "status": "implemented",
+    "phase": 49,
+    "description": "Field repair for download item menu actions, MediaStore visibility hints, app-side page-probe HTTP 403 handling, and browser-extension false-positive reduction.",
+    "baseline": "debug_workbench_phase_d7_final_debug_seal",
+    "overlay": "xdm_android_phase49_field_bugfix_download_actions_storage_sniffer_overlay.zip",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "extension_detector": "requires MIME, manifest/media extension, media request, or strong body key; generic url/src JSON keys no longer create video candidates",
+    "media_probe": "uses safe browser-like headers, reads HTTP status before body, and explains 401/403 as session/cookie/referer blocks",
+    "download_actions": "menu actions dispatch to cancel, redownload, queue movement, open/share file, and delete handlers instead of the details fallback",
+    "storage": "normal UI shows human destination labels; MediaStore commits clear IS_PENDING and refresh DATE_MODIFIED",
+    "privacy": {
+      "normal_ui_raw_content_uri": false,
+      "normal_ui_raw_urls": false,
+      "automatic_upload": false,
+      "secrets_copied_or_rendered": false
+    },
+    "reference_inspection": {
+      "one_dm_apk_strings_only": true,
+      "signals_used": [
+        "XHR/fetch observation headers",
+        "content type/disposition/length/range",
+        "referer/user-agent awareness",
+        "strict media/manifest extensions"
+      ]
+    },
+    "validation": {
+      "browser_extension_js": [
+        "test_detector.js",
+        "test_background.js",
+        "test_fab.js",
+        "test_handoff.js",
+        "test_phase43a_bridge.js",
+        "test_release_gate.js"
+      ],
+      "contract_tests": [
+        "FieldBugfixDownloadActionsStorageContractTest",
+        "MediaProbeFieldBugfixContractTest",
+        "MediaStoreVisibilityContractTest"
+      ]
+    },
+    "next_phase": "field validation or targeted follow-up only"
   }
 }

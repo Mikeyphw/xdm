@@ -1,7 +1,26 @@
 package com.mikeyphw.xdm.android.model
 
-/** User-visible health for the Debug Workbench shell. D2 is UI-only and does not change downloader behavior. */
+/** User-visible health for the Debug Workbench shell. This policy is UI-only and does not change downloader behavior. */
 enum class DebugWorkbenchCheckState { Pass, Warning, Fail }
+
+fun DebugArea.supportLabel(): String = when (this) {
+    DebugArea.BrowserBridge -> "Browser bridge"
+    DebugArea.ExternalIntent -> "External handoff"
+    DebugArea.AddDownload -> "Add Download"
+    DebugArea.MediaSniffing -> "Media sniffing"
+    DebugArea.TransferPlanner -> "Transfer planner"
+    DebugArea.Scheduler -> "Scheduler"
+    DebugArea.Notification -> "Notifications"
+    DebugArea.FileOpen -> "Completed-file open"
+    DebugArea.Extension -> "Browser extension"
+    DebugArea.Validation -> "Validation"
+}
+
+fun DebugWorkbenchCheckState.displayLabel(): String = when (this) {
+    DebugWorkbenchCheckState.Pass -> "Pass"
+    DebugWorkbenchCheckState.Warning -> "Note"
+    DebugWorkbenchCheckState.Fail -> "Needs attention"
+}
 
 data class DebugWorkbenchCheck(
     val id: String,
@@ -31,8 +50,8 @@ data class DebugWorkbenchShellReport(
         appendLine("Retention: $retentionLabel")
         appendLine("Support bundle: $supportBundleLabel")
         appendLine("Checks: $passingChecks passing, $warningChecks warnings, $failingChecks failing")
-        appendLine("Areas: ${debugAreas.joinToString { it.name }}")
-        checks.forEach { check -> appendLine("- ${check.title}: ${check.state.name} - ${check.detail}") }
+        appendLine("Areas: ${debugAreas.joinToString { it.supportLabel() }}")
+        checks.forEach { check -> appendLine("- ${check.title}: ${check.state.displayLabel()} - ${check.detail}") }
     }.trimEnd()
 }
 

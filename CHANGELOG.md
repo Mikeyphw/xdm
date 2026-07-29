@@ -1,3 +1,20 @@
+## XDM Android Phase 49 Field Bugfix - Download actions, storage labels, and media sniffing
+
+- Fixed the download item action sheet so actions no longer collapse into the download details fallback: cancel, redownload, queue movement, open/share file, delete record, and delete file plus record now have explicit dispatch paths and destructive actions stay behind confirmation.
+- Made normal download details show human storage labels and hints instead of raw `content://`/`xdm://` destination values.
+- Kept Android scoped-storage behavior: public MediaStore saves still use access-safe content links internally, while the UI explains the visible Downloads/Movies/Documents destination.
+- Refreshed MediaStore commit metadata when clearing `IS_PENDING`, improving file-manager visibility after successful promotion.
+- Hardened app-side media page probing for HTTP 401/403 by setting safe browser-like headers, checking HTTP status before reading the body, and telling the user to use extension capture when the site requires the live browser session.
+- Tightened Firefox extension detection using the same high-level signals observed in the 1DM APK string scan: MIME/manifest/media extension and strong media keys count; generic JSON `url`/`src` fields and small API endpoints no longer produce video candidates.
+
+## XDM Android Debug Workbench D7 Final Debug Seal
+
+- Seals the complete Debug Workbench roadmap after the D6 green baseline of 414 passed, 0 failed, 0 skipped.
+- Converts Debug Workbench shell UI/copy state labels from raw enum names to human-readable support labels.
+- Adds a final Debug Workbench seal contract test, architecture document, and static validator.
+- Wires the Phase 48 release-gate script to run the D7 final-seal validator instead of the stale D1-only validator.
+- Keeps the boundary unchanged: no new route, no Room migration, no automatic upload, no runtime probes, and no transfer controls.
+
 
 ## XDM Android Debug Workbench D6 Runtime Self-Test Suite r2
 
@@ -456,3 +473,8 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Explains active transfer summary, selected transfer lifecycle, backend choice, terminal notification path, completed open-file trampoline behavior, and failure labels.
 - Copy report redacts source URLs and fingerprints destination URI; normal UI does not render raw URLs, raw enum names, raw machine values, or secret-bearing details.
 - Preserves safety boundaries: no transfer controls, viewer launch, file probe, custom-scheme opener, Room migration, top-level route, or automatic upload.
+
+### XDM Android Debug Workbench D6 Runtime Self-Test Suite r3
+- Fixed the runtime self-test redaction smoke so it uses the existing key-aware DebugRedactor path for Authorization and Cookie values.
+- Preserved the D6 read-only boundary and kept missing browser/device/session state as notes instead of failures.
+- Added validator coverage for the redaction-smoke regression that caused the r2 app unit-test failure.
