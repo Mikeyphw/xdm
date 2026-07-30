@@ -89,7 +89,7 @@ def main() -> int:
 
     require('put(MediaStore.MediaColumns.IS_PENDING, 1)' in storage, 'MediaStore insert must mark pending')
     require('put(MediaStore.MediaColumns.IS_PENDING, 0)' in storage, 'MediaStore commit must clear pending')
-    require('put(MediaStore.MediaColumns.DATE_MODIFIED, System.currentTimeMillis() / 1000)' in storage, 'MediaStore commit must refresh modified date')
+    require(('put(MediaStore.MediaColumns.DATE_MODIFIED, System.currentTimeMillis() / 1000)' in storage) or ('put(MediaStore.MediaColumns.DATE_MODIFIED, modifiedAtSeconds)' in storage), 'MediaStore commit must refresh modified date')
 
     require('GENERIC_URL_KEY_RE' not in detector, 'Generic JSON url/src keys must not create candidates')
     require('streamHint && mediaRequest' in detector, 'Stream hints must not accept arbitrary XHR/fetch JSON')

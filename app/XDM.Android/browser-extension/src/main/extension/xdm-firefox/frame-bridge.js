@@ -40,6 +40,7 @@
     siteMode: "all",
     blacklist: [],
     whitelist: [],
+    showPossibleMediaCandidates: false,
     defaultTarget: (globalThis.XdmExtensionConfig && globalThis.XdmExtensionConfig.defaultTarget) || "xdm"
   };
   const candidates = new Map();
@@ -329,12 +330,14 @@ ${location.href}`;
 
     diagnostics.networkCandidatesSeen += 1;
     const playback = evaluateAllVideos();
-    const highConfidence = Boolean(input.manifest || input.playbackObserved || Number(input.rank || input.confidence || 0) >= 850);
-    if (!playback.offered && input.displayFallback && (input.autoOffer || highConfidence) && document.visibilityState !== "hidden") {
+    const possible = input.quality === "possible";
+    const highConfidence = Boolean(!possible && (input.manifest || input.playbackObserved || Number(input.rank || input.confidence || 0) >= 850));
+    const possibleAllowed = Boolean(possible && settings.showPossibleMediaCandidates === true && Number(input.rank || input.confidence || 0) >= 700);
+    if (!playback.offered && input.displayFallback && (input.autoOffer || highConfidence || possibleAllowed) && document.visibilityState !== "hidden") {
       return showLauncher({
         url,
         title: input.title || document.title,
-        label: input.manifest ? "Video manifest detected" : (input.bodyDerived ? "Video URL found in player response" : "Video stream detected"),
+        label: possible ? "Possible media found" : (input.manifest ? "Video manifest detected" : (input.bodyDerived ? "Video URL found in player response" : "Video stream detected")),
         headers: input.headers || {},
         contentType: input.contentType || "",
         candidateCount: Math.max(1, Number(input.candidateCount || candidates.size || 1)),

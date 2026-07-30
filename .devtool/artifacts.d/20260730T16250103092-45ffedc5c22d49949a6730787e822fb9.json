@@ -1,0 +1,149 @@
+{
+  "applied_at": "2026-07-30T16:25:01.030928Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase53_extension_detection_quality_gate_overlay.zip",
+  "artifact_name": "xdm_android_phase53_extension_detection_quality_gate_overlay.zip",
+  "type": "overlay",
+  "sha256": "5c6ea502175e935bde25d0599149ec2a02571e2ada9660fd7f66c0e90f728526",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 13,
+  "change_counts": {
+    "add": 3,
+    "modify": 10
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 53 Extension Detection Quality Gate",
+    "description": "Adds strong/possible/rejected quality buckets to the Firefox extension detector, hides possible media behind an advanced popup toggle, and folds in the Phase52 nullable contract-test warning cleanup.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "639cd3f1b7c5b82d47fd7dafc9787d139a9906b398b79d24418da7fd26937fa3",
+          "size": 40410,
+          "source_sha256": "42b8d543fd5f2835ccb7aa245ec15ccea482037dba87acb231e907a8164f71db"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "83143ee963901cfa33085b3725bd632a57b9d6f9250fa5c9c2eaeaeded73120d",
+          "size": 93731,
+          "source_sha256": "6a59c83bd425af1a23ac6b59e7b006c123016bc0a5435cae21bc91aafee16701"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/detector-core.js",
+          "action": "modify",
+          "sha256": "2e94ca244cbdd698c91c20ba695c32c9c0f158d9f0367cfaea76e01b0861eb00",
+          "size": 11734,
+          "source_sha256": "fd3d1125a4c8085ebe738f9b607fa543b5cee9a3643c8416429921ff284ab002"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/network-observer.js",
+          "action": "modify",
+          "sha256": "d3ef8869fffa1f8b021e3233017f3a98d488100077621461673092168012e14a",
+          "size": 18352,
+          "source_sha256": "0d46792eae4b9882d0796d79e9a480bdfe62718d094a64f92edbc0b08e93f3bc"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/candidate-store.js",
+          "action": "modify",
+          "sha256": "695929c17ba2046570934b2aa2b5fb8c8bdfd524d99729355f23e503877ac06d",
+          "size": 3456,
+          "source_sha256": "67e472abb167c81b77437e8295fbcc5f8833ff79b41ecb834ba3997cb0204ab3"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/frame-bridge.js",
+          "action": "modify",
+          "sha256": "6950fa45b9d07471f541097bf9de99e6fe4df1e919f149a2347815cd06defe2d",
+          "size": 24198,
+          "source_sha256": "21197b84f0516d94555f03206fe6ea9ff1fa037d0f04129e4cebd34d50b84c56"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/popup.html",
+          "action": "modify",
+          "sha256": "32e5fc61a6d17ac0c0893604a3ea30f1d08335297ff7c1e8e9c7a55ea4c6f697",
+          "size": 2908,
+          "source_sha256": "a3aebbbbf5b7080736ada2db5d66afd2932eb1ac45672a2d51545f2e84c1310c"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/popup.js",
+          "action": "modify",
+          "sha256": "560e061f5cb298cd7aad7e6297768a0e70dfddac81306ec13de60256e6ee0e2e",
+          "size": 12923,
+          "source_sha256": "67f84c8fffb64176456ae02cd11b15f09e31d426e65df869f4367ad3c67791f2"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/tests/test_detector.js",
+          "action": "modify",
+          "sha256": "2a5d93b9ed30986668b2ad91860925aa8c56d5a306006d36082a3f53afdf7e69",
+          "size": 3578,
+          "source_sha256": "f7033f6ac1618abd6226ddb29b26597743ef494ba94c2ae3438a9868dde26064"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase52BrowserSessionHealthContractTest.kt",
+          "action": "modify",
+          "sha256": "8c810a539bd216ba2dceb2824e144a6af8b51fdd9f026c619a90d5bfd5eee8fd",
+          "size": 3231,
+          "source_sha256": "37e6aaf4c606ecb385368d6b37376d7b75a1dec035e5094ac7280f8fc3df2c24"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase53ExtensionDetectionQualityGateContractTest.kt",
+          "action": "add",
+          "sha256": "1073ca207077fbfda79a2b00bc1d97407f575edc208e424f5076d83ad33df976",
+          "size": 3626
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-53-EXTENSION-DETECTION-QUALITY-GATE.md",
+          "action": "add",
+          "sha256": "7436c87beabc9d1f7841ebaed583d0a2b3b0fc5194a73ca27382fa7658f24587",
+          "size": 1522
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase53-extension-detection-quality-gate.py",
+          "action": "add",
+          "sha256": "963fe5957e362837d9bcc34c60007a72ca88d0878a13b657e643d213b36d0642",
+          "size": 7436
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "passed",
+        "diagnostics": "passed"
+      },
+      "local_checks": [
+        "python3 app/XDM.Android/tools/validate-phase53-extension-detection-quality-gate.py",
+        ".devtool-artifact/validate_phase53_extension_detection_quality_gate.sh",
+        "python3 app/XDM.Android/tools/validate-phase52-browser-session-health.py",
+        "python3 app/XDM.Android/tools/validate-phase51-recovery-storage-doctor.py",
+        "python3 app/XDM.Android/tools/validate-phase50-operational-repair.py",
+        "python3 app/XDM.Android/tools/validate-phase49-field-bugfix.py",
+        "node --check detector-core.js/network-observer.js/frame-bridge.js/popup.js",
+        "browser-extension/tests/test_*.js",
+        "focused kotlinc -Werror runner for Phase52 and Phase53 contract tests",
+        "archive inventory/hash/hygiene verification"
+      ]
+    },
+    "notes": [
+      "No D8 or Debug Workbench reopening.",
+      "No Room migration; schema remains 14.",
+      "Possible media stays hidden unless the extension popup toggle is enabled.",
+      "Normal UI does not show Cookie, Authorization, bearer token, raw header values, or full raw URLs.",
+      "Reserved .devtool-artifact validator wrapper is shipped as metadata only, not as an inventory target."
+    ]
+  },
+  "history_id": "45ffedc5c22d49949a6730787e822fb9"
+}

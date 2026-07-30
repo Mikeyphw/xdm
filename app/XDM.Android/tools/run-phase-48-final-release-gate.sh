@@ -9,3 +9,12 @@ cd "$ROOT"
 python3 tools/validate-phase-47-real-shared-media-sniffing-engine.py
 python3 tools/validate-phase-48-final-ux-release-gate.py
 python3 tools/validate-debug-workbench-d7-final-debug-seal.py
+python3 tools/validate-phase49-field-bugfix.py
+python3 tools/validate-phase50-operational-repair.py
+python3 tools/validate-phase51-recovery-storage-doctor.py
+python3 tools/validate-phase52-browser-session-health.py
+python3 tools/validate-phase53-extension-detection-quality-gate.py
+python3 tools/validate-phase54-engine-escalation-planner.py
+python3 tools/validate-phase55-final-release-warning-explainer.py
+python3 tools/validate-phase56-stale-copy-architecture-noise-sweep.py
+python3 tools/validate-phase57-runtime-failure-recovery-ux.py

@@ -50,9 +50,10 @@ manifest_text = read("PROJECT_MANIFEST.json")
 manifest = json.loads(manifest_text)
 d7 = manifest.get("debug_workbench_phase_d7_final_debug_seal") or {}
 
-require("current overlay", manifest.get("current_overlay") == "xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip")
-require("next phase complete", manifest.get("next_phase") == "complete")
 require("d7 manifest block", bool(d7))
+require("d7 overlay recorded", d7.get("overlay") == "xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip")
+require("d7 next phase complete", d7.get("next_phase") == "complete")
+require("current product overlay can advance after D7", manifest.get("current_overlay") != "xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip" or d7.get("final_phase_complete") is True)
 require("final phase complete", d7.get("final_phase_complete") is True)
 require("d6 green baseline", d7.get("d6_tests_passed") == 414 and d7.get("d6_tests_failed") == 0)
 require("diagnostics green", d7.get("diagnostic_warnings") == 0 and d7.get("diagnostic_errors") == 0)

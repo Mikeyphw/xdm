@@ -51,7 +51,15 @@
       46,
       47,
       48,
-      49
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57
     ]
   },
   "database": {
@@ -138,7 +146,7 @@
       "compare"
     ]
   },
-  "next_phase": "complete",
+  "next_phase": "field_bugfix_phase_58_targeted_follow_up_or_complete",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -445,7 +453,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip",
+  "current_overlay": "xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -644,7 +652,11 @@
     33,
     34,
     35,
-    36
+    36,
+    51,
+    54,
+    55,
+    56
   ],
   "media_termux_runtime_adapter": {
     "schema_version_unchanged": 14,
@@ -2366,5 +2378,284 @@
       ]
     },
     "next_phase": "field validation or targeted follow-up only"
+  },
+  "field_bugfix_phase_50": {
+    "status": "implemented",
+    "phase": 50,
+    "description": "Operational repair for native checkpoint parsing, transient browser-session handoff, authenticated metadata probe diagnostics, and MediaStore visibility refresh.",
+    "baseline": "field_bugfix_phase_49_or_debug_workbench_phase_d7_final_debug_seal",
+    "overlay": "xdm_android_phase50_operational_repair_session_recovery_storage_overlay.zip",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "debug_workbench_reopened": false,
+    "native_checkpoint": "escapes both segment-object braces so Android runtime regex parsing no longer throws malformed checkpoint errors.",
+    "native_metadata_probe": "adds browser-like default request headers and clearer 401/403 session-required diagnostics without bypassing authentication.",
+    "browser_session_handoff": "uses process-local header handoff for browser intents and media captures when headers are actually available; normal UI and Room keep only redacted summaries.",
+    "storage_visibility": "MediaStore completion clears pending state, refreshes modified time, notifies the resolver, and asks the media scanner to publish the final public file.",
+    "privacy": {
+      "raw_headers_persisted": false,
+      "cookies_or_authorization_in_normal_ui": false,
+      "automatic_upload": false,
+      "raw_content_uri_in_normal_ui": false
+    },
+    "validation": {
+      "contract_tests": [
+        "FieldBugfixDownloadActionsStorageContractTest",
+        "NativeCheckpointStoreTest",
+        "MediaStoreVisibilityContractTest"
+      ],
+      "static_validator": "tools/validate-phase50-operational-repair.py"
+    },
+    "next_phase": "field validation or targeted follow-up only"
+  },
+  "field_bugfix_phase_51": {
+    "status": "implemented",
+    "phase": 51,
+    "description": "Recovery + Storage Doctor for unresolved recovery records, orphaned artifacts, completed-file visibility warnings, and safe redacted recovery exports.",
+    "baseline": "field_bugfix_phase_50",
+    "overlay": "xdm_android_phase51_recovery_storage_doctor_overlay.zip",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "debug_workbench_reopened": false,
+    "automatic_deletion": false,
+    "recovery_ui": "adds a Storage Doctor summary, validate-all flow, per-record guidance, and a redacted copy report for recovery triage.",
+    "normal_ui_privacy": {
+      "raw_artifact_paths_rendered": false,
+      "raw_download_ids_rendered": false,
+      "raw_urls_rendered": false,
+      "secrets_rendered": false
+    },
+    "actions": {
+      "forget_record_only": "removes the recovery warning without deleting files or partial data.",
+      "validate_all_safely": "queues only linked downloads for existing validation and retry handling.",
+      "delete_files_automatically": false
+    },
+    "validation": {
+      "contract_tests": [
+        "RecoveryStorageDoctorTest",
+        "Phase51RecoveryStorageDoctorContractTest"
+      ],
+      "static_validator": "tools/validate-phase51-recovery-storage-doctor.py"
+    },
+    "next_phase": "browser-session health follow-up landed in phase 52"
+  },
+  "field_bugfix_phase_52": {
+    "status": "implemented",
+    "phase": 52,
+    "description": "Browser Session Health for external Add Download handoffs, exposing safe yes/no session context, expiry risk, and recommended next action without rendering raw headers, URLs, or secrets.",
+    "baseline": "field_bugfix_phase_51",
+    "overlay": "xdm_android_phase52_browser_session_health_overlay.zip",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "debug_workbench_reopened": false,
+    "browser_session_health": {
+      "source_site_only": true,
+      "shows_cookie_values": false,
+      "shows_authorization_values": false,
+      "shows_raw_urls": false,
+      "shows_raw_header_names_in_normal_ui": false,
+      "expiry_risk": "low_medium_high human labels",
+      "recommended_actions": [
+        "Refresh from browser",
+        "Use captured session",
+        "Inspect media first",
+        "Add reviewed request"
+      ]
+    },
+    "ui": "Add Download shows a Browser session health card for external handoffs before queueing, with human labels for context, sign-in, page context, browser identity, expiry risk, and method guidance.",
+    "validation": {
+      "contract_tests": [
+        "BrowserSessionHealthPlannerTest",
+        "Phase52BrowserSessionHealthContractTest"
+      ],
+      "static_validator": "tools/validate-phase52-browser-session-health.py"
+    },
+    "next_phase": "extension detection quality gate landed in phase 53"
+  },
+  "field_bugfix_phase_53": {
+    "status": "implemented",
+    "phase": 53,
+    "description": "Firefox extension detection quality gate for strong/possible/rejected media candidates, with possible media hidden behind an explicit advanced popup toggle and the Phase52 nullable contract warning folded in.",
+    "baseline": "field_bugfix_phase_52",
+    "overlay": "xdm_android_phase53_extension_detection_quality_gate_overlay.zip",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "debug_workbench_reopened": false,
+    "detector_quality_gate": {
+      "strong_media_default": true,
+      "possible_media_advanced_toggle": true,
+      "generic_json_url_src_rejected": true,
+      "segments_and_ads_rejected": true,
+      "content_disposition_media_filename_supported": true,
+      "range_and_length_context_supported": true
+    },
+    "popup": "adds an explicit Show possible media after rescan option; disabled by default so API calls, thumbnails, and player metadata do not become fake video offers.",
+    "privacy": {
+      "cookies_or_authorization_in_normal_ui": false,
+      "bearer_tokens_in_normal_ui": false,
+      "full_raw_urls_in_normal_ui": false,
+      "raw_headers_persisted": false,
+      "automatic_upload": false
+    },
+    "warning_cleanup": "fixes Phase52BrowserSessionHealthContractTest nullable File? receiver warning by using a non-null repoRoot helper.",
+    "validation": {
+      "contract_tests": [
+        "Phase53ExtensionDetectionQualityGateContractTest",
+        "Phase52BrowserSessionHealthContractTest"
+      ],
+      "browser_extension_tests": [
+        "test_detector.js",
+        "test_release_gate.js"
+      ],
+      "static_validator": "tools/validate-phase53-extension-detection-quality-gate.py"
+    },
+    "next_phase": "field validation or engine escalation planner follow-up only"
+  },
+  "field_bugfix_phase_54": {
+    "status": "implemented",
+    "phase": 54,
+    "description": "Review-only Engine Escalation Planner for external Add Download handoffs, explaining when to use XDM Native with captured session, media resolver/yt-dlp, aria2, or browser recapture before queueing.",
+    "baseline": "field_bugfix_phase_53",
+    "overlay": "xdm_android_phase54_engine_escalation_planner_overlay.zip",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "debug_workbench_reopened": false,
+    "automatic_transfer_start": false,
+    "all_files_permission_added": false,
+    "automatic_upload": false,
+    "planner": {
+      "native_with_captured_session": true,
+      "media_resolver_or_ytdlp_for_pages_and_playlists": true,
+      "aria2_for_large_direct_files": true,
+      "browser_recapture_for_401_403": true,
+      "blind_retry_discouraged": true
+    },
+    "privacy": {
+      "shows_raw_urls": false,
+      "shows_raw_header_names": false,
+      "shows_cookie_values": false,
+      "shows_authorization_values": false,
+      "shows_bearer_tokens": false,
+      "shows_credential_query_values": false,
+      "normal_ui_human_labels_only": true
+    },
+    "ui": "Add Download shows a Suggested method card for external handoffs after Browser session health, with method, reason, next action, request shape, session context, fallback path, and safe alternatives.",
+    "validation": [
+      "EngineEscalationPlannerTest",
+      "Phase54EngineEscalationPlannerContractTest",
+      "validate-phase54-engine-escalation-planner.py"
+    ]
+  },
+  "field_bugfix_phase_55": {
+    "status": "implemented",
+    "phase": 55,
+    "description": "Final Release Warning Explainer that translates release warning counts into impact, safe-to-ignore guidance, fix actions, and owning validator/test without changing release criteria.",
+    "baseline": "field_bugfix_phase_54",
+    "overlay": "xdm_android_phase55_final_release_warning_explainer_overlay.zip",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "debug_workbench_reopened": false,
+    "automatic_transfer_start": false,
+    "all_files_permission_added": false,
+    "automatic_upload": false,
+    "release_criteria_changed": false,
+    "explainer": {
+      "impact": true,
+      "safe_to_ignore": true,
+      "fix_action": true,
+      "owning_validator_or_test": true,
+      "redacted_support_summary": true,
+      "raw_check_ids_in_normal_ui": false
+    },
+    "privacy": {
+      "shows_raw_urls": false,
+      "shows_cookie_values": false,
+      "shows_authorization_values": false,
+      "shows_bearer_tokens": false,
+      "shows_credential_query_values": false,
+      "normal_ui_human_labels_only": true
+    },
+    "ui": "Developer release readiness card becomes a Release warning explainer with impact, safe-to-ignore guidance, fix action, and owning check for each actionable warning.",
+    "validation": [
+      "FinalReleaseGateModelsTest",
+      "Phase55FinalReleaseWarningExplainerContractTest",
+      "validate-phase55-final-release-warning-explainer.py"
+    ]
+  },
+  "field_bugfix_phase_56": {
+    "status": "implemented",
+    "phase": 56,
+    "description": "Stale copy and architecture-noise sweep for runtime errors, operational diagnostics, and media/recovery copy.",
+    "baseline": "Phase55 final release warning explainer",
+    "overlay": "xdm_android_phase56_stale_copy_architecture_noise_sweep_overlay.zip",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "debug_workbench_reopened": false,
+    "automatic_transfer_start": false,
+    "all_files_permission_added": false,
+    "automatic_upload": false,
+    "release_criteria_changed": false,
+    "sweep": {
+      "runtime_phase_copy_removed": true,
+      "native_error_copy_humanized": true,
+      "operational_diagnostics_human_labels": true,
+      "media_copy_human_labels": true,
+      "validators_forward_compatible": true
+    },
+    "privacy": {
+      "shows_raw_urls": false,
+      "shows_cookie_values": false,
+      "shows_authorization_values": false,
+      "shows_bearer_tokens": false,
+      "shows_credential_query_values": false,
+      "normal_ui_human_labels_only": true
+    },
+    "validation": [
+      "validate-phase56-stale-copy-architecture-noise-sweep.py",
+      "Phase56StaleCopyArchitectureNoiseContractTest",
+      "OperationalActivityTest human-label regressions",
+      "MediaResolverWorkspaceTest human-label regressions"
+    ]
+  },
+  "field_bugfix_phase_57": {
+    "status": "implemented",
+    "phase": 57,
+    "description": "Runtime Failure Recovery UX for failed/recovery-required downloads, translating server-access, stale-session, media-resolver, storage-visibility, partial-recovery, and backend-fallback failures into safe next actions.",
+    "baseline": "field_bugfix_phase_56",
+    "overlay": "xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "debug_workbench_reopened": false,
+    "automatic_transfer_start": false,
+    "automatic_deletion": false,
+    "all_files_permission_added": false,
+    "automatic_upload": false,
+    "release_criteria_changed": false,
+    "ux": {
+      "download_details_recovery_card": true,
+      "server_access_refresh_guidance": true,
+      "captured_session_retry_guidance": true,
+      "yt_dlp_media_fallback_guidance": true,
+      "aria2_native_method_switch_guidance": true,
+      "storage_visibility_recheck_guidance": true,
+      "recovery_doctor_bridge": true,
+      "redacted_failure_report": true
+    },
+    "privacy": {
+      "shows_raw_urls": false,
+      "shows_cookie_values": false,
+      "shows_authorization_values": false,
+      "shows_bearer_tokens": false,
+      "shows_credential_query_values": false,
+      "persists_session_values": false
+    },
+    "validation": [
+      "RuntimeFailureRecoveryPlannerTest",
+      "Phase57RuntimeFailureRecoveryUxContractTest",
+      "validate-phase57-runtime-failure-recovery-ux.py",
+      "DebugWorkbenchD7FinalDebugSealContractTest",
+      "validate-debug-workbench-d7-final-debug-seal.py"
+    ],
+    "repair_note": "r2 keeps the Debug Workbench D7 seal contract forward-compatible with later product overlays."
   }
 }

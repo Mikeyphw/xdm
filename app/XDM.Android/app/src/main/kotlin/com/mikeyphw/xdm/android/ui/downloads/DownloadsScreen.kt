@@ -294,6 +294,7 @@ fun DownloadsScreen(
                                 onPreviewPostProcessing = onPreviewPostProcessing,
                                 onRunPostProcessing = onRunPostProcessing,
                                 onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
+                                onOpenActivityAttention = onOpenActivityAttention,
                             )
                         }
                     }
@@ -446,6 +447,7 @@ fun DownloadsScreen(
                     onPreviewPostProcessing = onPreviewPostProcessing,
                     onRunPostProcessing = onRunPostProcessing,
                     onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
+                    onOpenActivityAttention = onOpenActivityAttention,
                 )
             }
         }

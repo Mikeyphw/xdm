@@ -1,0 +1,138 @@
+{
+  "applied_at": "2026-07-30T18:17:04.293158Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase57_runtime_failure_recovery_ux_overlay.zip",
+  "artifact_name": "xdm_android_phase57_runtime_failure_recovery_ux_overlay.zip",
+  "type": "overlay",
+  "sha256": "54ee5d673757cd8cc41bbb279694b670065e5573655b5052ae2ec86676cc635d",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 14,
+  "change_counts": {
+    "add": 5,
+    "modify": 9
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 57 Runtime Failure Recovery UX",
+    "description": "Adds a safe runtime failure recovery card and pure planner for failed/recovery-required downloads with redacted reports and existing recovery/fallback actions.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "e2631e4126683b06475647aec0f3f93852b1464520bb311e745467758ac8c12a",
+          "size": 43131,
+          "source_sha256": "1eb546f5f3c833adba443dde9532832db8bfc441d99e93acb81646764fd188fa"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "538f0eb0fbf1e54ac9684575fa774e6b05fb78e2fea2d9879bd40b220deec8ce",
+          "size": 99835,
+          "source_sha256": "d5b220b9952d5b361446b1fab764bb6819cb307d751d7d2ee06b0b807ec8da69"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDetails.kt",
+          "action": "modify",
+          "sha256": "33c20fdf72dd37622febc9c0ff39aaec0f6d034c9138bd583afb4e845851341c",
+          "size": 19649,
+          "source_sha256": "430f9db8791cbca1d4b717b7fc106a20494ff77dd3092b98e1073b1dfe7f7b4b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+          "action": "modify",
+          "sha256": "f87faaf71fbdca48ccd75aca58d7be7a937288fa6ccdf8f33edae1d4e918e744",
+          "size": 35602,
+          "source_sha256": "6f29b65134f8ba90f55d38c6dbbef10b785c550a16bfdc3c22d2b82d721217a5"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase57RuntimeFailureRecoveryUxContractTest.kt",
+          "action": "add",
+          "sha256": "3962dcf04fa17572c04790806cc91d3e1c5584f856db231b901db2a44337ff3a",
+          "size": 4785
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/RuntimeFailureRecovery.kt",
+          "action": "add",
+          "sha256": "96b080610dd083ae22642278bc90a5f80e315b82f89e1c8ae7d23287f57fd667",
+          "size": 20569
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeFailureRecoveryPlannerTest.kt",
+          "action": "add",
+          "sha256": "95d43931fc32b1d2bd4834d4d506f3c1628780fb81438a371f985517ccdcd58f",
+          "size": 5027
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-57-RUNTIME-FAILURE-RECOVERY-UX.md",
+          "action": "add",
+          "sha256": "90c923a8c4db92276a12282c7c6a17c37a926da5216b599acc88fea5c75efdd2",
+          "size": 1183
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "a230a911dc0d6d0f106ed1027b2d215155c0d601cf675f20bb36707529739b52",
+          "size": 5116,
+          "source_sha256": "a5f54a550fc827bfab5b8f56d544450a74c905ba4582ebfd6332ad3ea07ccbd1"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-phase-48-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "cb668979b8172e7f601c786d26cf8833c21f937f121bd0975f8eb5d2834dad07",
+          "size": 1441,
+          "source_sha256": "e6a13ddcb98bbba08fa7d3ee8c41f5708f4339e22d1ced642e3cf525671f2cb9"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase54-engine-escalation-planner.py",
+          "action": "modify",
+          "sha256": "9d1e97df7602b1b71bcde1645f307ae7a96da75474637836cb9b98af14e6a8f2",
+          "size": 8394,
+          "source_sha256": "b56088a61360d2876f5d4eda376502d6dc0d0ce4bebe99825129476e3e0abc53"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase55-final-release-warning-explainer.py",
+          "action": "modify",
+          "sha256": "674f8daae39357b755f6c266efdc637b65498ed9c51e57395f4dc575ea5b5090",
+          "size": 8217,
+          "source_sha256": "f83d8fe8000b5d4f08987a81cac91e19c9c28a57bb94f236618dbab48c7b0359"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase56-stale-copy-architecture-noise-sweep.py",
+          "action": "modify",
+          "sha256": "1aeb192cbb949127c7789c11f23650474e3f3da2f591de2ec47b98609fb014ee",
+          "size": 8607,
+          "source_sha256": "3105d0f14ccf4ce214e194d3c29f8de93bb2af5ac9be3098ea030ce21812be50"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase57-runtime-failure-recovery-ux.py",
+          "action": "add",
+          "sha256": "69e874159400042050f727406654cd14a89f317e6aa642a3e4aac6881c17d052",
+          "size": 7670
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "diagnostics": "pass"
+      },
+      "commands": [
+        "./.devtool-artifact/validate_phase57_runtime_failure_recovery_ux.sh"
+      ]
+    }
+  },
+  "history_id": "077c9f1695284a119595386a6440b8b0"
+}

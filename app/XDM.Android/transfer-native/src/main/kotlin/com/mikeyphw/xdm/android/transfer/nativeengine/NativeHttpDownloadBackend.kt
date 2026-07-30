@@ -532,7 +532,10 @@ class NativeHttpDownloadBackend(
     }
 
     private fun probe(control: TaskControl, request: DownloadRequest): RemoteMetadata {
-        val headBuilder = Request.Builder().url(request.sourceUrl).head()
+        val headBuilder = Request.Builder()
+            .url(request.sourceUrl)
+            .head()
+            .applyBrowserLikeDefaults(request)
         request.headers.forEach { (name, value) -> headBuilder.header(name, value) }
         val head = execute(control, headBuilder.build())
         head.use { response ->
@@ -548,12 +551,45 @@ class NativeHttpDownloadBackend(
     }
 
     private fun rangeProbe(control: TaskControl, request: DownloadRequest, url: String): RemoteMetadata {
-        val builder = Request.Builder().url(url).header("Range", "bytes=0-0")
+        val builder = Request.Builder()
+            .url(url)
+            .header("Range", "bytes=0-0")
+            .applyBrowserLikeDefaults(request)
         request.headers.forEach { (name, value) -> builder.header(name, value) }
         execute(control, builder.build()).use { response ->
-            if (!response.isSuccessful) throw HttpTransferException(response.code, "Metadata probe failed with HTTP ${response.code}")
+            if (!response.isSuccessful) throw HttpTransferException(response.code, metadataProbeFailureMessage(response.code, request))
             val total = if (response.code == 206) parseContentRange(response.header("Content-Range")).third else response.header("Content-Length")?.toLongOrNull()
             return metadataFrom(response, total, response.code == 206)
+        }
+    }
+
+    private fun Request.Builder.applyBrowserLikeDefaults(request: DownloadRequest): Request.Builder = apply {
+        val supplied = request.headers.keys.map { it.lowercase() }.toSet()
+        if ("user-agent" !in supplied) header("User-Agent", DEFAULT_USER_AGENT)
+        if ("accept" !in supplied) header("Accept", defaultAcceptHeader(request))
+        if ("accept-language" !in supplied) header("Accept-Language", "en-US,en;q=0.9")
+        if ("accept-encoding" !in supplied) header("Accept-Encoding", "identity")
+        if (request.isMediaRequest && "sec-fetch-mode" !in supplied) header("Sec-Fetch-Mode", "cors")
+        if (request.isMediaRequest && "sec-fetch-site" !in supplied) header("Sec-Fetch-Site", "cross-site")
+    }
+
+    private fun defaultAcceptHeader(request: DownloadRequest): String = when {
+        request.mimeType?.startsWith("video/", ignoreCase = true) == true -> "video/*,*/*;q=0.8"
+        request.mimeType?.startsWith("audio/", ignoreCase = true) == true -> "audio/*,*/*;q=0.8"
+        request.isMediaRequest -> "video/*,audio/*,application/vnd.apple.mpegurl,application/dash+xml,*/*;q=0.8"
+        else -> "*/*"
+    }
+
+    private fun metadataProbeFailureMessage(statusCode: Int, request: DownloadRequest): String {
+        val sessionHint = if (request.headers.keys.any { it.equals("Cookie", ignoreCase = true) || it.equals("Authorization", ignoreCase = true) }) {
+            "The server rejected the supplied browser session; refresh the source page and hand it off again."
+        } else {
+            "The server requires browser session context such as cookies, authorization, or a valid referer; refresh the source page and share the media again from the active browser."
+        }
+        return if (statusCode == 401 || statusCode == 403) {
+            "Server access was denied (HTTP $statusCode). Authentication required. $sessionHint"
+        } else {
+            "The server rejected the download probe (HTTP $statusCode). Try a refreshed browser handoff or another engine."
         }
     }
 
@@ -661,6 +697,7 @@ class NativeHttpDownloadBackend(
 
     private companion object {
         const val NATIVE_ARTIFACT_FORMAT = "xdm-native-v1"
+        const val DEFAULT_USER_AGENT = "Mozilla/5.0 (Android 16; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0 Mobile Safari/537.36"
         val CONTENT_RANGE = Regex("bytes (\\d+)-(\\d+)/(\\d+|\\*)")
         val TERMINAL_STATES = setOf(DownloadState.Completed, DownloadState.Cancelled)
     }

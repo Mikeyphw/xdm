@@ -39,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.model.BackendRecommendation
+import com.mikeyphw.xdm.android.model.BrowserSessionHealthReport
+import com.mikeyphw.xdm.android.model.EngineEscalationPlan
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
 import com.mikeyphw.xdm.android.model.DestinationPermission
@@ -66,6 +68,8 @@ fun AddDownloadScreen(
     externalMimeType: String? = null,
     externalContentLength: Long? = null,
     externalCanInspectMedia: Boolean = false,
+    externalSessionHealth: BrowserSessionHealthReport? = null,
+    externalEngineEscalationPlan: EngineEscalationPlan? = null,
     onInspectMedia: (String, String) -> Unit = { _, _ -> },
     onCancel: () -> Unit,
     onDestinationChanged: (String) -> Unit,
@@ -113,6 +117,8 @@ fun AddDownloadScreen(
     val canInspectMedia = review.canInspectAsMedia && (externalDraftId == null || externalCanInspectMedia || url != initialUrl)
     val methodLabel = recommendation?.let { recommendationSummary(it, allowFallback) } ?: "Automatic • resumable"
     val fileLabel = name.ifBlank { inferredFileName(url) }
+    val visibleSessionHealth = externalSessionHealth.takeIf { externalDraftId != null && url == initialUrl }
+    val visibleEngineEscalation = externalEngineEscalationPlan.takeIf { externalDraftId != null && url == initialUrl }
 
     Column(Modifier.fillMaxSize().imePadding().xdmScreen(XdmScreenTags.AddDownload, "New download")) {
         LazyColumn(
@@ -141,6 +147,19 @@ fun AddDownloadScreen(
                             leading = { Icon(Icons.Rounded.Link, contentDescription = null) },
                         )
                     }
+                }
+            }
+
+
+            visibleSessionHealth?.let { health ->
+                item {
+                    BrowserSessionHealthCard(health)
+                }
+            }
+
+            visibleEngineEscalation?.let { plan ->
+                item {
+                    EngineEscalationCard(plan)
                 }
             }
 
@@ -310,7 +329,7 @@ fun AddDownloadScreen(
                                     )
                                 }
                             }
-                            XdmMetadataText("Cookies, headers, backend probes, and fallback internals are intentionally hidden from the normal Add flow.")
+                            XdmMetadataText("Private browser context, backend probes, and fallback internals are intentionally hidden from the normal Add flow.")
                         }
                     }
                 }
@@ -397,6 +416,69 @@ fun AddDownloadScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BrowserSessionHealthCard(health: BrowserSessionHealthReport) {
+    XdmGroupedList(
+        modifier = Modifier.xdmScreen(XdmScreenTags.AddReview, "Browser session health"),
+    ) {
+        XdmListRow(
+            headline = "Browser session health",
+            supporting = health.guidance,
+            leading = { Icon(Icons.Rounded.CheckCircle, contentDescription = null) },
+            trailing = { Text(health.primaryActionLabel, color = MaterialTheme.colorScheme.primary) },
+        )
+        XdmListSeparator()
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            XdmMetricStrip(
+                listOf(
+                    XdmMetric("Context", health.browserContextLabel),
+                    XdmMetric("Sign-in", health.protectedRequestLabel),
+                    XdmMetric("Expiry risk", health.expiryRiskLabel),
+                    XdmMetric("Method", health.suggestedMethodLabel),
+                ),
+            )
+            health.signals.forEach { signal ->
+                ReviewSummaryRow(signal.label, "${signal.value} • ${signal.guidance}")
+            }
+            XdmMetadataText("Private browser values are never shown here. Refresh from the browser if the server asks for sign-in again.")
+        }
+    }
+}
+
+
+@Composable
+private fun EngineEscalationCard(plan: EngineEscalationPlan) {
+    XdmGroupedList(
+        modifier = Modifier.xdmScreen(XdmScreenTags.AddReview, "Engine escalation planner"),
+    ) {
+        XdmListRow(
+            headline = plan.title,
+            supporting = plan.guidance,
+            leading = { Icon(Icons.Rounded.CheckCircle, contentDescription = null) },
+            trailing = { Text(plan.nextActionLabel, color = MaterialTheme.colorScheme.primary) },
+        )
+        XdmListSeparator()
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            XdmMetricStrip(
+                listOf(
+                    XdmMetric("Method", plan.recommendedMethodLabel),
+                    XdmMetric("Reason", plan.reasonLabel),
+                ),
+            )
+            plan.steps.forEach { step ->
+                ReviewSummaryRow(step.label, "${step.status} • ${step.guidance}")
+            }
+            if (plan.hasAlternatives) {
+                XdmSectionLabel("Safe alternatives")
+                plan.alternatives.forEach { alternative ->
+                    ReviewSummaryRow(alternative.methodLabel, alternative.whenToUse)
+                }
+            }
+            XdmMetadataText("This planner chooses only the next review action. It does not start a transfer or expose private browser values.")
         }
     }
 }

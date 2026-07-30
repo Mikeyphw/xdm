@@ -332,8 +332,27 @@ class MediaDownloadPlanner {
             session.needsSession.takeIf { it }?.let { "session handoff ready" },
             capture.pageUrl?.let { "probe page available" },
         ).joinToString("; ")
-        return "$base Kind: ${kind.name}; intent: ${intent.name}.${extras.takeIf { it.isNotBlank() }?.let { " $it." }.orEmpty()}"
+        return "$base Source type: ${kind.humanLabel()}; request: ${intent.humanLabel()}.${extras.takeIf { it.isNotBlank() }?.let { " $it." }.orEmpty()}"
     }
+
+private fun MediaSourceKind.humanLabel(): String = when (this) {
+    MediaSourceKind.DirectFile -> "direct file"
+    MediaSourceKind.ProgressiveMedia -> "progressive media"
+    MediaSourceKind.HlsPlaylist -> "HLS playlist"
+    MediaSourceKind.DashManifest -> "DASH manifest"
+    MediaSourceKind.AudioStream -> "audio stream"
+    MediaSourceKind.VideoStream -> "video stream"
+    MediaSourceKind.Unknown -> "media"
+}
+
+private fun MediaDownloadIntent.humanLabel(): String = when (this) {
+    MediaDownloadIntent.BestVideo -> "best video"
+    MediaDownloadIntent.AudioOnly -> "audio only"
+    MediaDownloadIntent.VideoOnly -> "video only"
+    MediaDownloadIntent.Subtitles -> "subtitles"
+    MediaDownloadIntent.Thumbnail -> "thumbnail"
+    MediaDownloadIntent.LiveRecording -> "live recording"
+}
 
     private fun variantRank(kind: MediaVariantKind): Int = when (kind) {
         MediaVariantKind.Video -> 5

@@ -158,7 +158,7 @@ class MediaResolverWorkspacePlanner(
             capture.pageUrl != null -> "Page extractor"
             capture.kind == MediaSourceKind.HlsPlaylist -> "HLS manifest"
             capture.kind == MediaSourceKind.DashManifest -> "DASH manifest"
-            else -> capture.kind.name.replace(Regex("([a-z])([A-Z])"), "$1 $2")
+            else -> capture.kind.humanLabel()
         }
         val comparisonNotes = comparisonNotes(formatRows)
         return MediaResolverWorkspace(
@@ -217,7 +217,7 @@ class MediaResolverWorkspacePlanner(
                 captureId = capture.id,
                 title = capture.title.ifBlank { capture.fileName },
                 sourceHost = hostOf(capture.pageUrl ?: capture.sourceUrl),
-                kindLabel = capture.kind.name.replace(Regex("([a-z])([A-Z])"), "$1 $2"),
+                kindLabel = capture.kind.humanLabel(),
                 selectionSummary = selectionSummary(captureVariants, plan.trackSelection),
                 statusLabel = when {
                     plan.protectedDiagnostic.protected -> "Protected"
@@ -294,7 +294,7 @@ class MediaResolverWorkspacePlanner(
             variant.codecs,
             variant.bitrateBitsPerSecond?.takeIf { it > 0 }?.let(::bitrateLabel),
             variant.mimeType,
-        ).joinToString(" • ").ifBlank { variant.kind.name }
+        ).joinToString(" • ").ifBlank { variant.kind.humanLabel() }
         return MediaResolverTrackRow(
             variantId = variant.id,
             title = label,
@@ -358,6 +358,24 @@ class MediaResolverWorkspacePlanner(
             "dash" in mime -> "DASH"
             else -> variant.url.substringBefore('?').substringAfterLast('.', "").takeIf { it.length in 2..5 }?.uppercase(Locale.US)
         }
+    }
+
+    private fun MediaSourceKind.humanLabel(): String = when (this) {
+        MediaSourceKind.DirectFile -> "File"
+        MediaSourceKind.ProgressiveMedia -> "Progressive media"
+        MediaSourceKind.HlsPlaylist -> "HLS manifest"
+        MediaSourceKind.DashManifest -> "DASH manifest"
+        MediaSourceKind.AudioStream -> "Audio stream"
+        MediaSourceKind.VideoStream -> "Video stream"
+        MediaSourceKind.Unknown -> "Media"
+    }
+
+    private fun MediaVariantKind.humanLabel(): String = when (this) {
+        MediaVariantKind.Primary -> "Primary stream"
+        MediaVariantKind.Video -> "Video stream"
+        MediaVariantKind.Audio -> "Audio track"
+        MediaVariantKind.Subtitle -> "Subtitle track"
+        MediaVariantKind.Thumbnail -> "Thumbnail"
     }
 
     private fun hostOf(url: String): String = runCatching { URI(url).host }.getOrNull()?.removePrefix("www.")?.takeIf { it.isNotBlank() } ?: "external source"

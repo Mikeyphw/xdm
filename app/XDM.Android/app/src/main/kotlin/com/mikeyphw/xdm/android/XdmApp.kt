@@ -21,6 +21,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mikeyphw.xdm.android.model.BackendType
+import com.mikeyphw.xdm.android.model.BrowserSessionHealthPlanner
+import com.mikeyphw.xdm.android.model.EngineEscalationPlanner
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.OperationalActivityEvent
 
@@ -71,6 +74,21 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
                 onDismissRequest = { viewModel.navigate(previousPrimaryRoute) },
                 title = "New download",
             ) {
+                val externalSessionHealth = BrowserSessionHealthPlanner.evaluate(state.externalAddDraft)
+                val externalEngineEscalation = state.externalAddDraft?.let { draft ->
+                    EngineEscalationPlanner.evaluate(
+                        draft = draft,
+                        recommendation = viewModel.backendRecommendation(
+                            draft.url,
+                            draft.fileName,
+                            BackendType.Automatic,
+                            state.destinationUri,
+                            state.conflictPolicy,
+                            true,
+                        ),
+                        sessionHealth = externalSessionHealth,
+                    )
+                }
                 AddDownloadScreen(
                     destinationUri = state.destinationUri,
                     conflictPolicy = state.conflictPolicy,
@@ -86,6 +104,8 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
                     externalMimeType = state.externalAddDraft?.mimeType,
                     externalContentLength = state.externalAddDraft?.contentLength,
                     externalCanInspectMedia = state.externalAddDraft?.canInspectAsMedia == true,
+                    externalSessionHealth = externalSessionHealth,
+                    externalEngineEscalationPlan = externalEngineEscalation,
                     onInspectMedia = { url, fileName ->
                         state.externalAddDraft?.let(viewModel::inspectExternalMedia)
                             ?: viewModel.inspectManualMedia(url, fileName)
@@ -264,6 +284,7 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
                         state.recovery,
                         viewModel::validateRecoveryRecord,
                         viewModel::removeRecoveryRecord,
+                        viewModel::validateAllRecoveryRecords,
                     )
                     else -> Unit
                 }

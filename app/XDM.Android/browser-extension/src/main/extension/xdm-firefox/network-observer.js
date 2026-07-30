@@ -13,6 +13,7 @@
   const CANDIDATE_TTL_MS = 5 * 60 * 1000;
   const SAME_URL_SUPPRESS_MS = 90 * 1000;
   const AUTO_OFFER_THRESHOLD = 850;
+  const POSSIBLE_OFFER_THRESHOLD = 700;
 
   const capturedHeaders = new Map();
   const candidateStore = new globalThis.XdmCandidateStoreV1({ maxPerTab: MAX_CANDIDATES_PER_TAB, ttlMs: CANDIDATE_TTL_MS });
@@ -25,7 +26,8 @@
     autoDetectPlayingVideos: true,
     siteMode: "all",
     blacklist: [],
-    whitelist: []
+    whitelist: [],
+    showPossibleMediaCandidates: false
   };
 
   function updateSettings(next) {
@@ -155,6 +157,7 @@
         title: payload.title || "",
         frameId: Number.isFinite(Number(payload.frameId)) ? Number(payload.frameId) : 0,
         source: payload.source || counter.lastSource || "",
+        quality: payload.quality === "possible" ? "possible" : "strong",
         webResponses: counter.webResponses,
         pageResponses: counter.pageResponses,
         bodyCandidates: counter.bodyCandidates,
@@ -193,7 +196,12 @@
     candidateStore.trim(tabId);
   }
 
+  function allowsQuality(quality) {
+    return quality !== "possible" || settings.showPossibleMediaCandidates === true;
+  }
+
   function mergeCandidate(tabId, candidate) {
+    if (!allowsQuality(candidate && candidate.quality)) return false;
     const safe = Object.assign({}, candidate, { headers: sanitizeHeaderObject(candidate && candidate.headers || {}) });
     return candidateStore.merge(tabId, safe);
   }
@@ -225,7 +233,9 @@
     if (!tab || !/^https?:/i.test(tab.url || "") || !tabAllowed(tab.url)) return;
 
     const rank = CORE.rankCandidate(candidate);
-    if (!candidate.playbackObserved && !candidate.autoOffer && rank < AUTO_OFFER_THRESHOLD) return;
+    if (candidate.quality === "possible" && settings.showPossibleMediaCandidates !== true) return;
+    if (candidate.quality === "possible" && !candidate.playbackObserved && rank < POSSIBLE_OFFER_THRESHOLD) return;
+    if (candidate.quality !== "possible" && !candidate.playbackObserved && !candidate.autoOffer && rank < AUTO_OFFER_THRESHOLD) return;
 
     const previous = lastDispatchedByTab.get(tabId);
     if (previous && previous.url === candidate.url && Date.now() - previous.at < SAME_URL_SUPPRESS_MS) return;
@@ -249,9 +259,11 @@
       url: details.url,
       type: details.requestType || details.type,
       contentType,
-      contentLength: details.contentLength
+      contentLength: details.contentLength,
+      contentDisposition: details.contentDisposition || "",
+      contentRange: details.contentRange || ""
     });
-    if (!classification.accept) return false;
+    if (!classification.accept || !allowsQuality(classification.quality)) return false;
 
     const counter = counterFor(tabId);
     counter.lastSource = source;
@@ -270,6 +282,7 @@
       confidence: classification.confidence,
       reason: classification.reason,
       manifest: classification.manifest,
+      quality: classification.quality,
       autoOffer: classification.autoOffer,
       at: Date.now()
     });
@@ -298,6 +311,8 @@
         contentType: observation.contentType || "",
         contentLength: Number(observation.contentLength || 0),
         requestType: observation.requestType || observation.source || "xmlhttprequest",
+        contentDisposition: observation.contentDisposition || "",
+        contentRange: observation.contentRange || "",
         frameId,
         frameUrl
       }, headers, `page:${observation.source || "response"}`) || added;
@@ -324,6 +339,7 @@
           confidence: 1180,
           reason: manifestReason,
           manifest: true,
+          quality: "strong",
           bodyDerived: true,
           autoOffer: true,
           at: Date.now()
@@ -331,6 +347,7 @@
       }
 
       for (const extracted of analysis.candidates) {
+        if (!allowsQuality(extracted.quality)) continue;
         counter.bodyCandidates += 1;
         added = mergeCandidate(tabId, {
           url: extracted.url,
@@ -343,8 +360,9 @@
           confidence: extracted.confidence,
           reason: extracted.reason,
           manifest: CORE.isManifest(extracted.url, ""),
+          quality: extracted.quality || (extracted.confidence >= 850 ? "strong" : "possible"),
           bodyDerived: true,
-          autoOffer: extracted.confidence >= 850,
+          autoOffer: extracted.quality !== "possible" && extracted.confidence >= 850,
           at: Date.now()
         }) || added;
       }
@@ -373,6 +391,7 @@
       confidence: Math.max(930, Number(value.confidence || value.bonus || 0)),
       reason: value.reason || "frame-playback",
       manifest: Boolean(value.manifest || CORE.isManifest(value.url, value.contentType)),
+      quality: "strong",
       playbackObserved: true,
       autoOffer: true,
       at: Date.now()
@@ -414,6 +433,8 @@
           url: details.url,
           contentType: headerValue(details.responseHeaders, "content-type"),
           contentLength: Number(headerValue(details.responseHeaders, "content-length") || 0),
+          contentDisposition: headerValue(details.responseHeaders, "content-disposition"),
+          contentRange: headerValue(details.responseHeaders, "content-range"),
           requestType: details.type || "",
           frameId: details.frameId,
           frameUrl: details.originUrl || details.documentUrl || ""

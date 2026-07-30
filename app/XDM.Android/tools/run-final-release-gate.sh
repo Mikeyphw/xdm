@@ -71,6 +71,15 @@ validators=(
   tools/validate-downloader-experience-phase-8d.py
   tools/validate-downloader-experience-phase-8e.py
   tools/validate-phase-8e-compose-storage-hotfix.py
+  tools/validate-phase49-field-bugfix.py
+  tools/validate-phase50-operational-repair.py
+  tools/validate-phase51-recovery-storage-doctor.py
+  tools/validate-phase52-browser-session-health.py
+  tools/validate-phase53-extension-detection-quality-gate.py
+  tools/validate-phase54-engine-escalation-planner.py
+  tools/validate-phase55-final-release-warning-explainer.py
+  tools/validate-phase56-stale-copy-architecture-noise-sweep.py
+  tools/validate-phase57-runtime-failure-recovery-ux.py
 )
 
 for validator in "${validators[@]}"; do

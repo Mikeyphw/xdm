@@ -93,6 +93,8 @@ data class DownloadIntakeDraft(
     val pageUrl: String? = null,
     val mimeType: String? = null,
     val contentLength: Long? = null,
+    val requestHeaders: Map<String, String> = emptyMap(),
+    val redactedHeaderSummary: String? = null,
     val kind: DownloadIntakeKind = DownloadIntakeClassifier.classify(url, fileName, mimeType),
 ) {
     val host: String?
@@ -131,6 +133,8 @@ class DownloadIntakePlanner(
         pageUrl: String? = null,
         mimeType: String? = null,
         contentLength: Long? = null,
+        requestHeaders: Map<String, String> = emptyMap(),
+        redactedHeaderSummary: String? = null,
     ): DownloadIntakeDraft? = create(
         prefix = "detected-download",
         url = url,
@@ -141,6 +145,8 @@ class DownloadIntakePlanner(
         pageUrl = pageUrl,
         mimeType = mimeType,
         contentLength = contentLength,
+        requestHeaders = requestHeaders,
+        redactedHeaderSummary = redactedHeaderSummary,
         allowedSchemes = HttpSchemes,
     )
 
@@ -171,6 +177,8 @@ class DownloadIntakePlanner(
         pageUrl: String? = null,
         mimeType: String? = null,
         contentLength: Long? = null,
+        requestHeaders: Map<String, String> = emptyMap(),
+        redactedHeaderSummary: String? = null,
     ): DownloadIntakeDraft? = create(
         prefix = "external-review",
         explicitId = id,
@@ -182,6 +190,8 @@ class DownloadIntakePlanner(
         pageUrl = pageUrl,
         mimeType = mimeType,
         contentLength = contentLength,
+        requestHeaders = requestHeaders,
+        redactedHeaderSummary = redactedHeaderSummary,
         allowedSchemes = DownloadSchemes,
     )
 
@@ -196,6 +206,8 @@ class DownloadIntakePlanner(
         pageUrl: String?,
         mimeType: String? = null,
         contentLength: Long? = null,
+        requestHeaders: Map<String, String> = emptyMap(),
+        redactedHeaderSummary: String? = null,
         allowedSchemes: Set<String>,
     ): DownloadIntakeDraft? {
         val normalizedUrl = ExternalUrlPolicy.normalizedUrl(url)
@@ -220,6 +232,8 @@ class DownloadIntakePlanner(
             pageUrl = ExternalUrlPolicy.normalizedUrl(pageUrl),
             mimeType = cleanMimeType,
             contentLength = contentLength?.takeIf { it > 0L },
+            requestHeaders = requestHeaders.cleanRequestHeaders(),
+            redactedHeaderSummary = redactedHeaderSummary.cleanText(500),
             kind = DownloadIntakeClassifier.classify(normalizedUrl, cleanFileName, cleanMimeType),
         )
         recordDebugIntake(
@@ -233,6 +247,7 @@ class DownloadIntakePlanner(
                 "sourceLabel" to draft.sourceLabel,
                 "mimeType" to draft.mimeType.orEmpty(),
                 "pageUrl" to draft.pageUrl.orEmpty(),
+                "sessionHeaders" to if (draft.requestHeaders.isEmpty()) "none" else "available-redacted",
             ),
         )
         return draft
@@ -267,6 +282,15 @@ class DownloadIntakePlanner(
         ?.trim()
         ?.takeIf(String::isNotBlank)
         ?.take(maxLength)
+
+    private fun Map<String, String>.cleanRequestHeaders(): Map<String, String> = entries
+        .asSequence()
+        .mapNotNull { (rawName, rawValue) ->
+            val name = rawName.trim().take(64).takeIf { it.isNotBlank() && it.none { char -> char == '\r' || char == '\n' } } ?: return@mapNotNull null
+            val value = rawValue.trim().take(8192).takeIf { it.isNotBlank() && it.none { char -> char == '\r' || char == '\n' } } ?: return@mapNotNull null
+            name to value
+        }
+        .toMap()
 
     private fun String?.cleanMimeType(): String? = this
         ?.substringBefore(';')

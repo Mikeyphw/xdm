@@ -2,6 +2,7 @@ const defaults = {
   enabled: true,
   autoDetectPlayingVideos: true,
   defaultTarget: (globalThis.XdmExtensionConfig && globalThis.XdmExtensionConfig.defaultTarget) || "xdm",
+  showPossibleMediaCandidates: false,
   siteMode: "all",
   blacklist: [],
   whitelist: []
@@ -41,6 +42,7 @@ async function saveSettings() {
   const next = Object.assign({}, current, {
     enabled: document.getElementById("enabled").checked,
     autoDetectPlayingVideos: document.getElementById("autoDetect").checked,
+    showPossibleMediaCandidates: document.getElementById("showPossible").checked,
     defaultTarget: document.getElementById("defaultTarget").value,
     siteMode: mode
   });
@@ -196,7 +198,8 @@ async function refreshDiagnostics() {
     if (diagnostic && diagnostic.url) {
       const age = Math.max(0, Math.round((Date.now() - Number(diagnostic.at || 0)) / 1000));
       const stats = `${Number(diagnostic.webResponses || 0)} net · ${Number(diagnostic.pageResponses || 0)} page · ${Number(diagnostic.bodyCandidates || 0)} body · ${Number(diagnostic.frameCount || 0)} frame(s)`;
-      mediaNode.textContent = `${diagnostic.reason || "media"} · ${age}s ago · ${stats} · ${diagnostic.url}`;
+      const quality = diagnostic.quality === "possible" ? "Possible media" : "High confidence";
+      mediaNode.textContent = `${quality} · ${diagnostic.reason || "media"} · ${age}s ago · ${stats} · ${diagnostic.url}`;
       mediaNode.title = `${diagnostic.url}\n${stats}`;
     } else {
       mediaNode.textContent = "No media response captured on this tab yet";
@@ -214,6 +217,7 @@ async function refreshDiagnostics() {
     const settings = await getSettings();
     document.getElementById("enabled").checked = settings.enabled !== false;
     document.getElementById("autoDetect").checked = settings.autoDetectPlayingVideos !== false;
+    document.getElementById("showPossible").checked = settings.showPossibleMediaCandidates === true;
     document.getElementById("defaultTarget").value = settings.defaultTarget || "xdm";
     document.getElementById("siteMode").value = settings.siteMode || "all";
     updateList(settings);

@@ -1,0 +1,117 @@
+{
+  "applied_at": "2026-07-30T16:59:52.670872Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase54_engine_escalation_planner_overlay.zip",
+  "artifact_name": "xdm_android_phase54_engine_escalation_planner_overlay.zip",
+  "type": "overlay",
+  "sha256": "9a32d41b29e972bb0816e923f08f9bf64835c40b6fd93a970035c9b2cf99af2e",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 9,
+  "change_counts": {
+    "add": 5,
+    "modify": 4
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 54 Engine Escalation Planner",
+    "description": "Adds a review-only engine escalation planner to external Add Download handoffs, explaining when to use Native with captured session, media resolver/yt-dlp, aria2, or browser recapture before queueing.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "17a8601ef6862557f82bca2a835038b0c56e40b1a1f5be9cc39567a998f6ba33",
+          "size": 41356,
+          "source_sha256": "639cd3f1b7c5b82d47fd7dafc9787d139a9906b398b79d24418da7fd26937fa3"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "aae334c2ed9bafa330a03d14b8c8aae2f86c788785ab8403293dc3eb5f6e39d7",
+          "size": 95344,
+          "source_sha256": "83143ee963901cfa33085b3725bd632a57b9d6f9250fa5c9c2eaeaeded73120d"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/EngineEscalationPlanner.kt",
+          "action": "add",
+          "sha256": "b2ba1a865d2c27818bae7e9b8a136edd88fdfb3972c5d84e38b80d5f702f8665",
+          "size": 12615
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/EngineEscalationPlannerTest.kt",
+          "action": "add",
+          "sha256": "93f7d841e7a679c6bfe4e1a231dfdf75d3de19764ef5ae8df1dfa3d6b49ded9a",
+          "size": 4235
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "c3276eff87513b7416ee867f22efe234d19ae62fdb850c193bd353303264c348",
+          "size": 14101,
+          "source_sha256": "964b6c4dff406da7b93abf5fc44d654988bb447807bfd991f3bdf7be27bdc450"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt",
+          "action": "modify",
+          "sha256": "9004987f1ec54edf153300d541d04c26f99f445824cbddaefd27271259e6dc85",
+          "size": 25897,
+          "source_sha256": "7c625602ea6f98dc2dc2d7f5aad59759b4a395a54784776ebb7a168deb94633a"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase54EngineEscalationPlannerContractTest.kt",
+          "action": "add",
+          "sha256": "971246a79ce5b5bc81d4c7b73744a5f4eb1a1933cb444ad30e1d1cbef93f1c24",
+          "size": 3833
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-54-ENGINE-ESCALATION-PLANNER.md",
+          "action": "add",
+          "sha256": "99fe34090818e27497c339de393d22f04e3dfc32c6014efe1b216c0efcc1dc96",
+          "size": 1365
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase54-engine-escalation-planner.py",
+          "action": "add",
+          "sha256": "970a38be90bd4d3baf046cfa91502793a1a4ddea2ddb80a3a5015befe4adb938",
+          "size": 8162
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "passed",
+        "diagnostics": "passed"
+      },
+      "local_checks": [
+        "python3 app/XDM.Android/tools/validate-phase54-engine-escalation-planner.py",
+        ".devtool-artifact/validate_phase54_engine_escalation_planner.sh",
+        "python3 app/XDM.Android/tools/validate-phase53-extension-detection-quality-gate.py",
+        "python3 app/XDM.Android/tools/validate-phase52-browser-session-health.py",
+        "python3 app/XDM.Android/tools/validate-phase51-recovery-storage-doctor.py",
+        "python3 app/XDM.Android/tools/validate-phase50-operational-repair.py",
+        "python3 app/XDM.Android/tools/validate-phase49-field-bugfix.py",
+        "focused kotlinc compile/run for EngineEscalationPlanner model behavior",
+        "archive inventory/hash/hygiene verification"
+      ]
+    },
+    "notes": [
+      "No D8 or Debug Workbench reopening.",
+      "No Room migration; schema remains 14.",
+      "No automatic transfer start, automatic upload, or all-files permission.",
+      "Normal UI uses human method labels only; raw URLs, raw headers, cookies, Authorization values, bearer tokens, and credential query values stay hidden."
+    ]
+  },
+  "history_id": "ebd9e52472b44bc58b861e0d2ae7eefb"
+}

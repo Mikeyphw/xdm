@@ -1,0 +1,128 @@
+{
+  "applied_at": "2026-07-30T15:21:26.323768Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase51_recovery_storage_doctor_overlay.zip",
+  "artifact_name": "xdm_android_phase51_recovery_storage_doctor_overlay.zip",
+  "type": "overlay",
+  "sha256": "dd64bda0f8203aff40527ee98c820752e5927698bd9f5a66146cb5ec2545196d",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 10,
+  "change_counts": {
+    "add": 5,
+    "modify": 5
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 51 Recovery + Storage Doctor",
+    "description": "Adds a safe recovery/storage doctor over the Phase50 operational baseline, with grouped unresolved recovery states, validate-all triage, redacted recovery report export, and no automatic deletion or schema change.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "1930c7de9a538f61e1719ef21afd797eae529a7a018881e95f5cdd9e26c552b9",
+          "size": 38765,
+          "source_sha256": "622efef303100794a6e1404d05078af755fb00760c9556f355347c06f998d19e"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "21ef610a6c83624521980a95067e6c0e2301e57147a144cb4dde64e93d82bde3",
+          "size": 90404,
+          "source_sha256": "5c050344ed2b5d527b4b50dbb7cd3cc80c97eef28381bdce23e2fdb408e0e5f7"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/RecoveryStorageDoctor.kt",
+          "action": "add",
+          "sha256": "07b938c280dfa99d7a7e8e2b0e3458e4e41b02a58ac3123930749895b8ef0a32",
+          "size": 8543
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RecoveryStorageDoctorTest.kt",
+          "action": "add",
+          "sha256": "c5ece232ab4dea341a222e4325738d33abfe2a8e8f5e3775660d155fc9461723",
+          "size": 2487
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/recovery/RecoveryScreen.kt",
+          "action": "modify",
+          "sha256": "1201e1e83796ce1097f5926e9d0e9ff7af0b8af7cce5dbdb09a51256971900f9",
+          "size": 16019,
+          "source_sha256": "a9ded67e6bd0857ebe9701513e3c7b50f2286a6a36910a987cd8b50dd46761f1"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "c4cff100cba0456a409675e573be1c849a5a3640dd694e4921974175805f0a02",
+          "size": 105190,
+          "source_sha256": "961320f9a555056ded151278875a178e49addd5600fe7a302515d1e187812427"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "d5fe6dc45ac981c750a825bbfd29a71df6ebbea532d2997ff553cf69e805ee08",
+          "size": 13023,
+          "source_sha256": "807db0b6fe032e8af618597156e323dab87e413a1da451b6c21abba14361c85f"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase51RecoveryStorageDoctorContractTest.kt",
+          "action": "add",
+          "sha256": "56de18ef5bafb88776fe5828150065dffee463f2053ab625cee51b2a1e65746b",
+          "size": 3235
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-51-RECOVERY-STORAGE-DOCTOR.md",
+          "action": "add",
+          "sha256": "7d105cd1e8fd7b2b09089d13964ac9d26228441388eb14e21ec2690933940f27",
+          "size": 1321
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase51-recovery-storage-doctor.py",
+          "action": "add",
+          "sha256": "e0d539c013301c47d7da3192a2004183c5cca321803bbf35f3af9f11a58243ae",
+          "size": 5836
+        },
+        {
+          "path": ".devtool-artifact/validate_phase51_recovery_storage_doctor.sh",
+          "action": "add",
+          "sha256": "fc56a73587920a6ae3742503bc2aa337cfebc7a7bfbdbcd796c39868a4d121f6",
+          "size": 445
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "passed",
+        "diagnostics": "passed"
+      },
+      "local_checks": [
+        "python3 app/XDM.Android/tools/validate-phase51-recovery-storage-doctor.py",
+        ".devtool-artifact/validate_phase51_recovery_storage_doctor.sh",
+        "python3 app/XDM.Android/tools/validate-phase50-operational-repair.py",
+        "python3 app/XDM.Android/tools/validate-phase49-field-bugfix.py",
+        "focused kotlinc compile for RecoveryStorageDoctor model",
+        "focused kotlinc runners for RecoveryStorageDoctorTest and Phase51RecoveryStorageDoctorContractTest",
+        "archive inventory/hash/hygiene verification"
+      ]
+    },
+    "notes": [
+      "No D8 or Debug Workbench reopening.",
+      "No Room migration; schema remains 14.",
+      "No automatic file deletion or orphan adoption.",
+      "Recovery reports omit raw paths, URLs, cookies, tokens, signatures, and Authorization values."
+    ]
+  },
+  "history_id": "93c7a919d20041a088e26a8010bec916"
+}

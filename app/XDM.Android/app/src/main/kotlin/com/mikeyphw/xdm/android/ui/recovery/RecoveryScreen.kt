@@ -163,6 +163,7 @@ import com.mikeyphw.xdm.android.model.QueueRetryStrategy
 import com.mikeyphw.xdm.android.model.RecoveryAction
 import com.mikeyphw.xdm.android.model.RecoveryClassification
 import com.mikeyphw.xdm.android.model.RecoveryRecord
+import com.mikeyphw.xdm.android.model.RecoveryStorageDoctor
 import com.mikeyphw.xdm.android.model.ScheduleRule
 import com.mikeyphw.xdm.android.model.SavedSearch
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
@@ -191,20 +192,67 @@ import com.mikeyphw.xdm.android.termux.PostProcessingAutomationEventStatus
 
 @Composable
 @UiSurface(UiAudience.Advanced, "Recover interrupted downloads safely")
-fun RecoveryScreen(records: List<RecoveryRecord>, onValidate: (RecoveryRecord) -> Unit, onRemove: (RecoveryRecord) -> Unit) {
+fun RecoveryScreen(
+    records: List<RecoveryRecord>,
+    onValidate: (RecoveryRecord) -> Unit,
+    onRemove: (RecoveryRecord) -> Unit,
+    onValidateAll: (List<RecoveryRecord>) -> Unit = {},
+) {
+    val context = LocalContext.current
     if (records.isEmpty()) {
-        EmptyFeatureScreen("Recovery is clear", "No orphaned or interrupted artifacts were detected.")
+        EmptyFeatureScreen("Recovery is clear", "No orphaned, interrupted, or hidden storage items were detected.")
         return
     }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            RecoveryStorageDoctorCard(
+                records = records,
+                onValidateAll = onValidateAll,
+                onCopyReport = { copyRecoveryDoctorReport(context, records) },
+            )
+        }
         items(records, key = RecoveryRecord::id) { record ->
             RecoveryRecordCard(record, onValidate, onRemove)
         }
     }
 }
+
+@Composable
+internal fun RecoveryStorageDoctorCard(
+    records: List<RecoveryRecord>,
+    onValidateAll: (List<RecoveryRecord>) -> Unit,
+    onCopyReport: () -> Unit,
+) {
+    val doctor = remember(records) { RecoveryStorageDoctor.summarize(records) }
+    XdmListCard {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                XdmCardTitle("Recovery + Storage Doctor")
+                XdmSupportingText(doctor.headline)
+            }
+            StatusPill("${doctor.unresolvedRecords} to review", if (doctor.hasUnresolvedWork) XdmStatusTone.Warning else XdmStatusTone.Success)
+        }
+        XdmMetadataText(doctor.explanation, maxLines = 3)
+        XdmActionFlowRow {
+            StatusPill("${doctor.safeResumeRecords} resumable", XdmStatusTone.Success)
+            StatusPill("${doctor.missingPartialRecords} missing", if (doctor.missingPartialRecords > 0) XdmStatusTone.Error else XdmStatusTone.Neutral)
+            StatusPill("${doctor.orphanedArtifactRecords} untracked", if (doctor.orphanedArtifactRecords > 0) XdmStatusTone.Warning else XdmStatusTone.Neutral)
+            StatusPill("${doctor.completedVisibilityRecords} visibility", if (doctor.completedVisibilityRecords > 0) XdmStatusTone.Warning else XdmStatusTone.Neutral)
+        }
+        doctor.actionItems.take(4).forEach { action ->
+            XdmMetadataText("${action.label}: ${action.description}", maxLines = 2)
+        }
+        XdmActionFlowRow {
+            Button(onClick = { onValidateAll(records) }) { Text("Validate all safely") }
+            TextButton(onClick = onCopyReport) { Text("Copy recovery report") }
+        }
+        XdmMetadataText("Storage Doctor never deletes files automatically and its report omits raw paths, URLs, cookies, tokens, and authorization values.")
+    }
+}
 @Composable
 internal fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryRecord) -> Unit, onRemove: (RecoveryRecord) -> Unit) {
     var technicalExpanded by remember(record.id) { mutableStateOf(false) }
+    val guidance = RecoveryStorageDoctor.itemGuidance(record)
     XdmListCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
@@ -214,6 +262,7 @@ internal fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryRec
             StatusPill(record.classification.uiLabel(), record.classification.statusTone())
         }
         XdmMetadataText(recoveryRecommendedExplanation(record), maxLines = 3)
+        XdmMetadataText("${guidance.label}: ${guidance.description}", maxLines = 2)
         XdmActionFlowRow {
             StatusPill(record.recommendedAction.uiLabel(), record.classification.statusTone())
             StatusPill(if (record.safeToResume) "Safe to resume" else "Needs review", if (record.safeToResume) XdmStatusTone.Success else XdmStatusTone.Warning)
@@ -221,14 +270,27 @@ internal fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryRec
         XdmActionFlowRow {
             Button(onClick = { onValidate(record) }) { Text(recoveryPrimaryActionLabel(record)) }
             TextButton(onClick = { technicalExpanded = !technicalExpanded }) { Text(if (technicalExpanded) "Hide technical details" else "Technical details") }
-            TextButton(onClick = { onRemove(record) }) { Text("Remove record only") }
+            TextButton(onClick = { onRemove(record) }) { Text("Forget record") }
         }
-        XdmMetadataText("Remove record only hides this recovery item; it does not delete downloaded files or partial data.")
+        XdmMetadataText("Forget record only hides this recovery item; it does not delete downloaded files or partial data.")
         if (technicalExpanded) {
             XdmListCard(compact = true) {
-                XdmMetadataText("Artifact path: ${record.artifactPath}", maxLines = 3)
-                XdmMetadataText(record.downloadId?.let { "Download ID: $it" } ?: "No linked download")
+                XdmMetadataText("Artifact: ${RecoveryStorageDoctor.safeArtifactLabel(record)}", maxLines = 3)
+                XdmMetadataText(record.downloadId?.let { "Linked download is available" } ?: "No linked download")
             }
         }
     }
+}
+
+private fun copyRecoveryDoctorReport(context: Context, records: List<RecoveryRecord>) {
+    val doctor = RecoveryStorageDoctor.summarize(records)
+    val report = buildString {
+        appendLine(doctor.exportReport())
+        if (records.isNotEmpty()) {
+            appendLine("Items:")
+            records.forEach { record -> appendLine("- ${RecoveryStorageDoctor.reportLine(record)}") }
+        }
+    }.trimEnd()
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("XDM recovery report", report))
 }

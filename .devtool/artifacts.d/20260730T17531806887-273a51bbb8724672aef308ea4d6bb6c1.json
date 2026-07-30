@@ -1,0 +1,189 @@
+{
+  "applied_at": "2026-07-30T17:53:18.068877Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase56_stale_copy_architecture_noise_sweep_overlay.zip",
+  "artifact_name": "xdm_android_phase56_stale_copy_architecture_noise_sweep_overlay.zip",
+  "type": "overlay",
+  "sha256": "820004c5c8d0e32b9d3aedc4c8bba5c85843629fb63c5d1f6f5633524e8c292b",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 21,
+  "change_counts": {
+    "add": 3,
+    "modify": 18
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 56 Stale Copy / Architecture Noise Sweep",
+    "description": "Removes stale implementation-phase wording and raw machine labels from runtime-facing errors, operational diagnostics, and media/recovery copy while preserving release criteria and schema.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "1eb546f5f3c833adba443dde9532832db8bfc441d99e93acb81646764fd188fa",
+          "size": 42396,
+          "source_sha256": "3583f4b0b50b895855fdeca096146b13331f6d9079d2f2660b236b0a8d1cd851"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "d5b220b9952d5b361446b1fab764bb6819cb307d751d7d2ee06b0b807ec8da69",
+          "size": 98296,
+          "source_sha256": "889c04c1ad18a1ea48cd9ab10070d1764a545e7cd697ec58ba7cc61d98bb8a57"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase56StaleCopyArchitectureNoiseContractTest.kt",
+          "action": "add",
+          "sha256": "34b98c1c0cf46fbb22c0c89678d9ff9833eccc38879b74015cb24c423f3678fa",
+          "size": 5579
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModels.kt",
+          "action": "modify",
+          "sha256": "ed7d05aee65c97235388a7105286541001e0c046500757fff196cb8f5b0954d2",
+          "size": 18978,
+          "source_sha256": "ec9229f0047a096ed314b02f9a48a2e2c7388659a69dd5923ce810f2242cd9ca"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/OperationalActivity.kt",
+          "action": "modify",
+          "sha256": "0a5ea79a968e5e391f6ed36f9afa6d92b82dd593362504c7aa8a8067b6266dc3",
+          "size": 21262,
+          "source_sha256": "4dccf0edfc580a370711f34e6828dcb367d3b43aa041abbed1233fadaf35cb53"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt",
+          "action": "modify",
+          "sha256": "7f5426460e7151750c18d824d5bc39c218a364f1c7f68984865b6eacfa83a0fc",
+          "size": 7750,
+          "source_sha256": "97ded8d8d04837dfd2d3108fd2dd49d1e002f450113c1c98520418465eff74d6"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/OperationalActivityTest.kt",
+          "action": "modify",
+          "sha256": "f26ece0162346c05eada882d72f10f3f1584583b344f5ad35142072e6680734f",
+          "size": 8388,
+          "source_sha256": "67c6ee0a4332a930fde8394b8d85a8981b78ef76ed44a5b7a060f4855df14c43"
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-56-STALE-COPY-ARCHITECTURE-NOISE-SWEEP.md",
+          "action": "add",
+          "sha256": "d3ff7eb63c4eb32b783ff204b8bc4bbdadbfd6f00d60284fb5baecf10f6f0366",
+          "size": 1250
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt",
+          "action": "modify",
+          "sha256": "62e2f78ff3f554d00a0af04c1ac87418aa6fd7ffb789011c02bf4980451e63fe",
+          "size": 22430,
+          "source_sha256": "7ecf1df3309b5a3dfc827d94c4c7ad1ed168c45744f31f04e0c686afbe888ff4"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaResolverWorkspace.kt",
+          "action": "modify",
+          "sha256": "167402ef6f4039416059044f1423c39c4c3aedd719da5ca8fc2eabed7583dd56",
+          "size": 19788,
+          "source_sha256": "e19022f4ab24284c4a1fd29e6c1bf86088bf4fefd2e25cd88b82afe533b98dd2"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngine.kt",
+          "action": "modify",
+          "sha256": "f8927755e2a2fdffba02e4b9a3aa58b12ef8e255eaf32c0373de748d99b822bf",
+          "size": 22518,
+          "source_sha256": "4fa8c39360df71ee13d9838549645d2167de6cadebe63e1032d5e2f745051fbf"
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaResolverWorkspaceTest.kt",
+          "action": "modify",
+          "sha256": "667042b0022018026d8dd3238169c1a1a7a0a581ed4b272d47e73de4b5b3d9ca",
+          "size": 8806,
+          "source_sha256": "18db80437b74cc18db8db750e60dd7b5e607776ccc2554e165b23f720cd09ccb"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "a5f54a550fc827bfab5b8f56d544450a74c905ba4582ebfd6332ad3ea07ccbd1",
+          "size": 5060,
+          "source_sha256": "105886d2232ecf02b6fdb4cc032ec000495a07b77dc7e1e806c70dd1389fdd2c"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-phase-48-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "e6a13ddcb98bbba08fa7d3ee8c41f5708f4339e22d1ced642e3cf525671f2cb9",
+          "size": 1379,
+          "source_sha256": "8bd21a805b421995236eba0f31cfd2d1bc0a3202e6ae3bdba9aa7010e2a3c05f"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase50-operational-repair.py",
+          "action": "modify",
+          "sha256": "4b9bffee3b97dd7f367721ccf210eb5f55a8417d47bfb379ec6a5435ca6952a2",
+          "size": 6168,
+          "source_sha256": "02aea0b2032018ed90f995f8afcbca430f4270328479743dde324e2d397b7607"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase54-engine-escalation-planner.py",
+          "action": "modify",
+          "sha256": "b56088a61360d2876f5d4eda376502d6dc0d0ce4bebe99825129476e3e0abc53",
+          "size": 8331,
+          "source_sha256": "3fef7c0de63169527a6c274fee74106300472a818f934f8dd609d3019a226bad"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase55-final-release-warning-explainer.py",
+          "action": "modify",
+          "sha256": "f83d8fe8000b5d4f08987a81cac91e19c9c28a57bb94f236618dbab48c7b0359",
+          "size": 8098,
+          "source_sha256": "99c2ccdd2998b64495a1ff6b6a23b1ecebb2c14db46f18ebb21157ef2379e44b"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase56-stale-copy-architecture-noise-sweep.py",
+          "action": "add",
+          "sha256": "3105d0f14ccf4ce214e194d3c29f8de93bb2af5ac9be3098ea030ce21812be50",
+          "size": 8397
+        },
+        {
+          "path": "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeBackendMarker.kt",
+          "action": "modify",
+          "sha256": "32939d7b93d2f042fbb47364e365a9e0bd28758bfdae3ca7c2c3cc35b21d2768",
+          "size": 195,
+          "source_sha256": "7b696e9f2e98cf50a8e661cb646efa612cd81fe397f63ce4bfa2132454d86e95"
+        },
+        {
+          "path": "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt",
+          "action": "modify",
+          "sha256": "1f075f23046e37dc1934415c0a39619a296654fbd69a9e7e2e8021d1caf37c50",
+          "size": 38796,
+          "source_sha256": "8176574fec6b72c9245ae0557f070297f902576eaef6d2d28a7c35b5fa16b16d"
+        },
+        {
+          "path": "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeTransferModels.kt",
+          "action": "modify",
+          "sha256": "37076e56d12153e9009122b398c54294213db2c7934dbc6c05cc82f02f2fdd40",
+          "size": 2613,
+          "source_sha256": "563dc0806e91dc8e918c705f1347ed4085f66fad0a5c26720601cf929540b827"
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "diagnostics": "pass"
+      },
+      "commands": [
+        "./.devtool-artifact/validate_phase56_stale_copy_architecture_noise_sweep.sh"
+      ]
+    }
+  },
+  "history_id": "273a51bbb8724672aef308ea4d6bb6c1"
+}

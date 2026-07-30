@@ -174,7 +174,6 @@ import androidx.compose.ui.platform.LocalContext
 import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
 import com.mikeyphw.xdm.android.model.redactedDiagnosticLine
 import com.mikeyphw.xdm.android.model.ReleaseReadinessSeverity
-import com.mikeyphw.xdm.android.model.FinalReleaseGateSeverity
 import com.mikeyphw.xdm.android.model.ReleaseSecuritySeverity
 import com.mikeyphw.xdm.android.util.formatBytes
 import com.mikeyphw.xdm.android.util.formatSpeed
@@ -786,18 +785,21 @@ fun DiagnosticsScreen(
             }
         }
         item {
-            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Final release gate ${state.finalReleaseGateReport.summary}" }) {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "Final release warning explainer ${state.finalReleaseGateReport.summary}" }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    XdmCardTitle("Release readiness")
+                    XdmCardTitle("Release warning explainer")
                     XdmSupportingText(state.finalReleaseGateReport.summary)
-                    state.finalReleaseGateReport.checks.take(4).forEach { check ->
-                        val severity = when (check.severity) {
-                            FinalReleaseGateSeverity.Info -> "Info"
-                            FinalReleaseGateSeverity.Warning -> "Warning"
-                            FinalReleaseGateSeverity.Blocking -> "Blocked"
-                        }
-                        XdmMetadataText("$severity: ${check.title}")
+                    val explanations = state.finalReleaseGateReport.actionableExplanations.ifEmpty {
+                        state.finalReleaseGateReport.explanations.take(1)
                     }
+                    explanations.take(4).forEach { explanation ->
+                        XdmMetadataText("${explanation.severityLabel}: ${explanation.title}")
+                        XdmMetadataText("Impact: ${explanation.impact}")
+                        XdmMetadataText("Safe to ignore: ${explanation.safeToIgnore}")
+                        XdmMetadataText("Fix action: ${explanation.fixAction}")
+                        XdmMetadataText("Owning check: ${explanation.owner.validator} • ${explanation.owner.test}")
+                    }
+                    XdmSupportingText("Release warnings are engineering signals. They stay readable here without exposing raw request data, credential-bearing links, cookies, or authorization values.")
                 }
             }
         }

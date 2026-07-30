@@ -7,6 +7,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.database.Cursor
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Environment
 import android.os.StatFs
@@ -215,17 +216,28 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         }
         val uri = requireNotNull(resolver.insert(root.uri, values)) { "MediaStore could not create $name" }
         return CommitTarget(uri, name) { success ->
-            if (success) {
-                resolver.update(
-                    uri,
-                    ContentValues().apply {
-                        put(MediaStore.MediaColumns.IS_PENDING, 0)
-                        put(MediaStore.MediaColumns.DATE_MODIFIED, System.currentTimeMillis() / 1000)
-                    },
-                    null,
-                    null,
-                )
-            } else resolver.delete(uri, null, null)
+            if (success) publishMediaItem(uri, root, name, mimeType ?: guessMimeType(name)) else resolver.delete(uri, null, null)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    @SuppressLint("NewApi")
+    private fun publishMediaItem(uri: Uri, root: DestinationRoot, name: String, mimeType: String) {
+        val modifiedAtSeconds = System.currentTimeMillis() / 1000
+        resolver.update(
+            uri,
+            ContentValues().apply {
+                put(MediaStore.MediaColumns.IS_PENDING, 0)
+                put(MediaStore.MediaColumns.DATE_MODIFIED, modifiedAtSeconds)
+            },
+            null,
+            null,
+        )
+        resolver.notifyChange(uri, null)
+        val relativePath = root.relativePath ?: return
+        val publicFile = File(Environment.getExternalStoragePublicDirectory(relativePath), name)
+        MediaScannerConnection.scanFile(context, arrayOf(publicFile.absolutePath), arrayOf(mimeType)) { _, scannedUri ->
+            scannedUri?.let { resolver.notifyChange(it, null) }
         }
     }
 

@@ -52,7 +52,7 @@ data class NativeArtifactPaths(val destinationIdentity: String, val partial: Pat
             val destination = when {
                 uri == null || uri.scheme == null -> Paths.get(destinationUri)
                 uri.scheme.equals("file", ignoreCase = true) -> Paths.get(uri)
-                else -> throw UnsupportedOperationException("Phase 3 native engine supports file destinations; SAF arrives in Phase 5")
+                else -> throw UnsupportedOperationException("This destination type is not available to the native transfer engine. Choose an Android shared-storage destination or retry with a browser-aware method.")
             }.toAbsolutePath().normalize()
             val partial = destination.resolveSibling(destination.fileName.toString() + ".xdm.part")
             return NativeArtifactPaths(

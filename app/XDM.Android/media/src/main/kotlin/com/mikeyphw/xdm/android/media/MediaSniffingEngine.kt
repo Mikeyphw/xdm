@@ -339,7 +339,7 @@ class MediaSniffingEngine(
             action = "shared-sniff",
             result = if (records.isEmpty()) "no-captures" else "captures-created",
             safeDetails = mapOf(
-                "source" to input.source.name,
+                "source" to input.source.humanLabel(),
                 "url" to input.url.orEmpty(),
                 "pageUrl" to (input.pageUrl ?: input.finalUrl).orEmpty(),
                 "mimeType" to input.mimeType.orEmpty(),
@@ -448,9 +448,18 @@ class MediaSniffingEngine(
         MediaSourceKind.Unknown -> null
     }
 
+    private fun MediaSniffingSource.humanLabel(): String = when (this) {
+        MediaSniffingSource.ManualPage -> "Manual page"
+        MediaSniffingSource.BatchInput -> "Batch input"
+        MediaSniffingSource.SharedText -> "Shared text"
+        MediaSniffingSource.BrowserExtension -> "Browser extension"
+        MediaSniffingSource.NetworkObservation -> "Network observation"
+        MediaSniffingSource.AppPageProbe -> "App page probe"
+    }
+
     private fun diagnosticSummary(input: MediaSniffingInput, candidates: List<MediaSniffingCandidate>): String = listOfNotNull(
         "shared app-side media sniffing engine",
-        "source=${input.source.name}",
+        "source=${input.source.humanLabel()}",
         "url=${PrivacyDiagnosticsRedactor.redactUrl(input.url)}",
         "page=${PrivacyDiagnosticsRedactor.redactUrl(input.pageUrl ?: input.finalUrl)}",
         "candidates=${candidates.size}",

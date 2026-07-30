@@ -118,6 +118,32 @@ class MediaResolverWorkspaceTest {
         assertEquals("Resolved", history.first().statusLabel)
     }
 
+    @Test
+    fun mediaPlannerExplanationUsesHumanLabels() {
+        val plan = MediaDownloadPlanner().plan(
+            capture(kind = MediaSourceKind.HlsPlaylist),
+            emptyList(),
+            intent = MediaDownloadIntent.AudioOnly,
+        )
+        assertTrue(plan.explanation.contains("Source type: HLS playlist"))
+        assertTrue(plan.explanation.contains("request: audio only"))
+        assertFalse(plan.explanation.contains("Kind:"))
+        assertFalse(plan.explanation.contains("HlsPlaylist"))
+        assertFalse(plan.explanation.contains("AudioOnly"))
+    }
+
+    @Test
+    fun resolverWorkspaceFallbacksUseHumanKindLabels() {
+        val workspace = MediaResolverWorkspacePlanner().workspace(
+            capture(kind = MediaSourceKind.VideoStream, pageUrl = null),
+            listOf(variant("video", MediaVariantKind.Video)),
+        )
+        assertEquals("Video stream", workspace.probe.extractorLabel)
+        assertTrue(workspace.formats.first().detail.contains("Video stream"))
+        assertFalse(workspace.probe.extractorLabel.contains("VideoStream"))
+        assertFalse(workspace.formats.first().detail == "Video")
+    }
+
     private fun capture(
         id: String = "capture",
         title: String = "Resolver sample",
@@ -126,10 +152,11 @@ class MediaResolverWorkspaceTest {
         resolution: MediaResolutionStatus = MediaResolutionStatus.Resolved,
         container: String? = "mp4",
         updated: Long = 2L,
+        pageUrl: String? = "https://video.example.test/watch/item?session=secret",
     ) = MediaCaptureRecord(
         id = id,
         sourceUrl = "https://cdn.example.test/video/master.m3u8?token=secret",
-        pageUrl = "https://video.example.test/watch/item?session=secret",
+        pageUrl = pageUrl,
         title = title,
         status = MediaCaptureStatus.MetadataReady,
         kind = kind,

@@ -1,0 +1,117 @@
+{
+  "applied_at": "2026-07-30T16:09:48.253136Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase52_browser_session_health_overlay.zip",
+  "artifact_name": "xdm_android_phase52_browser_session_health_overlay.zip",
+  "type": "overlay",
+  "sha256": "c1407bb2a70d75e78e84b828d78318f7b2a6c1b1a745cb47eface43cb6f2fff8",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 9,
+  "change_counts": {
+    "add": 5,
+    "modify": 4
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 52 Browser Session Health",
+    "description": "Adds a safe Browser Session Health card to external Add Download handoffs with source site, captured context, expiry risk, method guidance, and no raw session values or schema changes.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "42b8d543fd5f2835ccb7aa245ec15ccea482037dba87acb231e907a8164f71db",
+          "size": 39482,
+          "source_sha256": "1930c7de9a538f61e1719ef21afd797eae529a7a018881e95f5cdd9e26c552b9"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "6a59c83bd425af1a23ac6b59e7b006c123016bc0a5435cae21bc91aafee16701",
+          "size": 91881,
+          "source_sha256": "21ef610a6c83624521980a95067e6c0e2301e57147a144cb4dde64e93d82bde3"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/BrowserSessionHealth.kt",
+          "action": "add",
+          "sha256": "a0f92631563716c4e628a48a4db08686fc950396c9f9a111a375238ed339ce8c",
+          "size": 6944
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/BrowserSessionHealthPlannerTest.kt",
+          "action": "add",
+          "sha256": "1d2758b0af9ec44970682080fe3687480308095d6eea285031eebd7ffd13d1ec",
+          "size": 2549
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "964b6c4dff406da7b93abf5fc44d654988bb447807bfd991f3bdf7be27bdc450",
+          "size": 13195,
+          "source_sha256": "d5fe6dc45ac981c750a825bbfd29a71df6ebbea532d2997ff553cf69e805ee08"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt",
+          "action": "modify",
+          "sha256": "7c625602ea6f98dc2dc2d7f5aad59759b4a395a54784776ebb7a168deb94633a",
+          "size": 24095,
+          "source_sha256": "3c1cebf402843a51bba6fada35b82fa7b7766fafc9d9bbb7f4d6cd33ef915e07"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase52BrowserSessionHealthContractTest.kt",
+          "action": "add",
+          "sha256": "37e6aaf4c606ecb385368d6b37376d7b75a1dec035e5094ac7280f8fc3df2c24",
+          "size": 3145
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-52-BROWSER-SESSION-HEALTH.md",
+          "action": "add",
+          "sha256": "568435fbdc3df0dc4530d93865735d44aae937234bda567cad20b2e9ec71536e",
+          "size": 1262
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase52-browser-session-health.py",
+          "action": "add",
+          "sha256": "5dcfb68e6df0e082b199e43167062fd336ad8becd8f0554c9d3e057f416faa5b",
+          "size": 5199
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "passed",
+        "diagnostics": "passed"
+      },
+      "local_checks": [
+        "python3 app/XDM.Android/tools/validate-phase52-browser-session-health.py",
+        ".devtool-artifact/validate_phase52_browser_session_health.sh",
+        "python3 app/XDM.Android/tools/validate-phase51-recovery-storage-doctor.py",
+        "python3 app/XDM.Android/tools/validate-phase50-operational-repair.py",
+        "python3 app/XDM.Android/tools/validate-phase49-field-bugfix.py",
+        "focused kotlinc compile for core-model sources",
+        "focused Kotlin runner for BrowserSessionHealthPlanner behavior",
+        "archive inventory/hash/hygiene verification"
+      ]
+    },
+    "notes": [
+      "No D8 or Debug Workbench reopening.",
+      "No Room migration; schema remains 14.",
+      "No top-level route or all-files permission.",
+      "Normal UI shows human yes/no labels only; raw Cookie, Authorization, bearer, token, signature, and full URL values remain hidden.",
+      "Reserved .devtool-artifact validator wrapper is shipped as metadata only, not as an inventory target."
+    ]
+  },
+  "history_id": "1fc8e6cbdd874c449b7cd0a150b18c62"
+}

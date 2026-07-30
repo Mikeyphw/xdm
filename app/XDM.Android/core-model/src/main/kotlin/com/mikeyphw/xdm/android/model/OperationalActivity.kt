@@ -159,7 +159,7 @@ object OperationalActivityPlanner {
         appendLine("App: ${safeText(context.appVersion)} (${context.versionCode})")
         appendLine("Android: ${safeText(context.androidVersion)}")
         appendLine("Room schema: ${context.schemaVersion}")
-        appendLine("Engines: ${context.enabledEngines.joinToString().ifBlank { "none reported" }}")
+        appendLine("Methods: ${context.enabledEngines.map(::engineLabel).joinToString().ifBlank { "none reported" }}")
         appendLine("Product: downloader-only; external browser handoff enabled; built-in browser absent")
         appendLine("Summary: ${summary.total} events, ${summary.unresolved} unresolved, ${summary.policyHolds} policy holds, ${summary.recentFailures} errors")
         appendLine("Secrets: cookies, authorization values, tokens, signatures, and credential-bearing query values are <redacted>")
@@ -169,7 +169,7 @@ object OperationalActivityPlanner {
             append(" | ").append(event.severity.label)
             append(" | ").append(event.category.label)
             event.fileName?.takeIf(String::isNotBlank)?.let { append(" | ").append(safeText(it)) }
-            event.engine?.takeIf(String::isNotBlank)?.let { append(" | engine=").append(safeText(it)) }
+            event.engine?.takeIf(String::isNotBlank)?.let { append(" | Method: ").append(engineLabel(it)) }
             append(" | ").append(safeText(event.title))
             append(" | ").append(safeText(event.detail))
             if (event.unresolved) append(" | unresolved")
@@ -221,8 +221,8 @@ object OperationalActivityPlanner {
         category = OperationalActivityCategory.Recovery,
         severity = OperationalActivitySeverity.Error,
         title = "Recovery required",
-        detail = "${record.classification.name}: ${record.reason}",
-        engine = download?.backend?.name,
+        detail = "${recoveryClassificationLabel(record.classification)}: ${record.reason}",
+        engine = download?.backend?.name?.let(::engineLabel),
         actionLabel = recoveryActionLabel(record.recommendedAction),
         createdAtEpochMs = record.createdAtEpochMs,
         unresolved = download?.state == DownloadState.RecoveryRequired || download == null,
@@ -253,7 +253,7 @@ object OperationalActivityPlanner {
                 VerificationStatus.NoExpectation -> "No checksum expectation"
             },
             detail = record.message,
-            engine = download?.backend?.name,
+            engine = download?.backend?.name?.let(::engineLabel),
             actionLabel = if (record.status == VerificationStatus.Failed) "Verify or redownload" else null,
             createdAtEpochMs = record.updatedAtEpochMs,
             unresolved = record.status == VerificationStatus.Failed || record.status == VerificationStatus.MissingFile,
@@ -269,7 +269,7 @@ object OperationalActivityPlanner {
         severity = if (journal.needsRecovery) OperationalActivitySeverity.Warning else OperationalActivitySeverity.Success,
         title = if (journal.needsRecovery) "Finalization needs recovery" else "Finalization complete",
         detail = journal.message,
-        engine = download?.backend?.name,
+        engine = download?.backend?.name?.let(::engineLabel),
         actionLabel = if (journal.needsRecovery) "Open recovery" else null,
         createdAtEpochMs = journal.updatedAtEpochMs,
         unresolved = journal.needsRecovery,
@@ -290,7 +290,7 @@ object OperationalActivityPlanner {
             fileName = record.fileName,
             category = OperationalActivityCategory.Handoff,
             severity = severity,
-            title = "${record.source.name} ${record.status.name.lowercase(Locale.US)}",
+            title = "${handoffSourceLabel(record.source)} ${handoffStatusLabel(record.status)}",
             detail = listOfNotNull(record.originHost, record.resultMessage).joinToString(" • "),
             actionLabel = if (record.status == AutomationCommandStatus.Rejected || record.status == AutomationCommandStatus.Failed) "Review intake" else null,
             createdAtEpochMs = record.updatedAtEpochMs,
@@ -318,7 +318,7 @@ object OperationalActivityPlanner {
             severity = OperationalActivitySeverity.Error,
             title = attention.label,
             detail = attention.guidance,
-            engine = download.backend.name,
+            engine = engineLabel(download.backend.name),
             actionLabel = when (attention.kind) {
                 DownloadAttentionKind.Authentication -> "Review request context"
                 DownloadAttentionKind.Storage,
@@ -364,6 +364,51 @@ object OperationalActivityPlanner {
         RecoveryAction.LocateFile -> "Locate file"
         RecoveryAction.RemoveRecord -> "Remove record"
     }
+
+    private fun recoveryClassificationLabel(classification: RecoveryClassification): String = when (classification) {
+        RecoveryClassification.ReadyToResume -> "Ready to resume"
+        RecoveryClassification.NeedsRemoteValidation -> "Needs remote validation"
+        RecoveryClassification.NeedsRepair -> "Needs repair"
+        RecoveryClassification.MissingPartialFile -> "Partial file missing"
+        RecoveryClassification.RemoteFileChanged -> "Remote file changed"
+        RecoveryClassification.CompletionRecovered -> "Completed file recovered"
+        RecoveryClassification.FinalizationInterrupted -> "Finalization interrupted"
+        RecoveryClassification.BackendTaskOrphaned -> "Backend task orphaned"
+        RecoveryClassification.OrphanedArtifact -> "Untracked artifact"
+    }
+
+    private fun handoffSourceLabel(source: AutomationCommandSource): String = when (source) {
+        AutomationCommandSource.ShareSheet -> "Android share"
+        AutomationCommandSource.ViewIntent -> "Android view intent"
+        AutomationCommandSource.Tasker -> "Tasker"
+        AutomationCommandSource.BrowserExtension -> "Browser extension"
+        AutomationCommandSource.DeepLink -> "XDM link"
+        AutomationCommandSource.Internal -> "XDM"
+    }
+
+    private fun handoffStatusLabel(status: AutomationCommandStatus): String = when (status) {
+        AutomationCommandStatus.Accepted -> "accepted"
+        AutomationCommandStatus.Executed -> "executed"
+        AutomationCommandStatus.Duplicate -> "already added"
+        AutomationCommandStatus.Rejected -> "needs review"
+        AutomationCommandStatus.Failed -> "failed"
+    }
+
+    private fun engineLabel(value: String): String = when (value.trim().lowercase(Locale.US)) {
+        "native", "xdm native" -> "XDM Native"
+        "aria2" -> "aria2"
+        "termux" -> "Termux"
+        "yt-dlp", "ytdlp" -> "yt-dlp"
+        "automatic", "auto" -> "Automatic"
+        else -> humanizeValue(value)
+    }
+
+    private fun humanizeValue(value: String): String = value
+        .replace('_', ' ')
+        .replace('-', ' ')
+        .replace(Regex("([a-z])([A-Z])"), "$1 $2")
+        .trim()
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString() }
 
     private fun sanitize(event: OperationalActivityEvent): OperationalActivityEvent = event.copy(
         fileName = event.fileName?.let(::safeText),

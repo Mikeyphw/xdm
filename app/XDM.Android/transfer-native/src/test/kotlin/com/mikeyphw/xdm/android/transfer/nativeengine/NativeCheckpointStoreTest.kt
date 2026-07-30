@@ -1,10 +1,20 @@
 package com.mikeyphw.xdm.android.transfer.nativeengine
 
+import java.io.File
 import java.nio.file.Files
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NativeCheckpointStoreTest {
+    @Test
+    fun segmentObjectRegexEscapesClosingBraceForAndroidRuntime() {
+        val root = androidRoot()
+        val source = File(root, "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeCheckpointStore.kt").readText()
+        assertTrue(source.contains("Regex(\"\\\\{([^{}]+)\\\\}\")"))
+        assertTrue(!source.contains("Regex(\"\\\\{([^{}]+)}\")"))
+    }
+
     @Test
     fun checkpointRoundTripPreservesValidatorsAndSegments() {
         val directory = Files.createTempDirectory("xdm-checkpoint")
@@ -28,5 +38,14 @@ class NativeCheckpointStoreTest {
         val store = NativeCheckpointStore()
         store.save(path, original)
         assertEquals(original, store.load(path))
+    }
+
+    private fun androidRoot(): File {
+        var cursor = File(System.getProperty("user.dir") ?: ".").canonicalFile
+        repeat(8) {
+            if (File(cursor, "settings.gradle.kts").isFile && File(cursor, "transfer-native/src/main").isDirectory) return cursor
+            cursor = cursor.parentFile ?: cursor
+        }
+        error("Android root not found")
     }
 }

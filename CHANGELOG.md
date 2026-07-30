@@ -1,3 +1,74 @@
+# XDM Android Phase 56 Stale Copy / Architecture Noise Sweep
+
+
+### Phase57 r2 Debug Workbench seal contract compatibility
+- Rebased the Phase57 overlay so the D7 final-seal unit contract checks the D7 manifest block instead of pinning the global current overlay to D7.
+- Updated the D7 static validator to allow later product overlays while preserving the sealed Debug Workbench boundary.
+
+## XDM Android Phase 57 Runtime Failure Recovery UX
+
+- Added a download-details recovery options card for failed, recovery-required, queue-held, and storage-visibility problem states.
+- Added a pure RuntimeFailureRecoveryPlanner that classifies server-access, stale-session, media-resolver, storage, partial-recovery, backend-fallback, queue-policy, and generic retry cases without starting work.
+- Added safe actions for refresh from browser, retry with captured session, yt-dlp/media inspection, aria2/native method switch, storage re-check, Recovery Doctor, and redacted report copy.
+- Kept Room schema 14, no top-level route, no automatic deletion, no all-files permission, no automatic upload, and no Debug Workbench reopening.
+
+
+- Removed stale implementation-phase wording from runtime errors and release-gate details that can surface in diagnostics.
+- Replaced machine-style operational diagnostics labels such as `engine=` with human method labels.
+- Humanized recovery classifications, external handoff sources/statuses, media source kinds, media intents, and sniffing sources in normal copy.
+- Kept support exports redacted and actionable without changing release criteria, Room schema, top-level routes, or Debug Workbench status.
+
+
+## XDM Android Phase 55 Final Release Warning Explainer
+
+- Added a human-readable release warning explainer for final-release gate diagnostics.
+- Release warnings now include impact, safe-to-ignore guidance, fix action, and owning validator/test.
+- Updated support export text to include the redacted warning explanation instead of only a bare warning count.
+- Preserved release criteria, Room schema 14, route topology, Debug Workbench seal, and privacy boundaries.
+
+## XDM Android Phase 54 Engine Escalation Planner
+
+- Added a review-only Engine Escalation Planner to external Add Download handoffs so XDM explains whether Native, aria2, or media resolver/yt-dlp is the safest next method before queueing.
+- Recommends browser recapture instead of blind retry when a server requires browser access, and recommends media inspection for pages, HLS, DASH, and uncertain media handoffs.
+- Recommends aria2 for large direct files without browser-session signals, while keeping Native preferred for fresh captured sign-in or expiring links.
+- Shows only human method labels, reason labels, next action, and safe alternatives; raw URLs, header names, cookies, Authorization values, bearer tokens, and credential query values stay out of normal UI.
+- Keeps the Debug Workbench D-series sealed: no D8, no Room migration, no top-level route, no all-files permission, no automatic upload, and no automatic transfer start.
+
+## XDM Android Phase 53 Extension Detection Quality Gate
+
+- Added explicit strong/possible/rejected quality buckets to the Firefox media detector so only high-confidence media is offered by default.
+- Put extensionless and stream-shaped possible media behind an advanced popup toggle instead of treating generic API/player responses as videos.
+- Added detection support for media filenames in `Content-Disposition`, range/length context, and stronger body-derived candidate classification.
+- Updated detector diagnostics to label high-confidence versus possible media without showing cookies, Authorization values, bearer tokens, or full raw URLs in normal UI.
+- Folded in the Phase52 nullable contract-test warning cleanup so the next validated baseline can return to zero diagnostics.
+- Kept the Debug Workbench D-series sealed: no D8, no Room migration, no top-level route, no all-files permission, and no automatic upload.
+
+## XDM Android Phase 52 Browser Session Health
+
+- Added a safe Browser Session Health report for external Add Download handoffs so users can see whether browser context was captured before queueing.
+- Shows source site, sign-in context, page context, browser identity, expiry risk, suggested method, and the safest next action using human labels only.
+- Keeps Cookie, Authorization, token, signature, and full URL values out of normal UI, Room, sidecars, and copy reports.
+- Adds model tests, UI/source contracts, documentation, and a Devtool temp-root-compatible validator.
+- Keeps the Debug Workbench D-series sealed: no D8, no Room migration, no top-level route, no all-files permission, and no automatic upload.
+
+## XDM Android Phase 51 Recovery + Storage Doctor
+
+- Added a Recovery + Storage Doctor summary to Activity → Recovery so unresolved recovery records are grouped into resumable, missing-partial, orphaned-artifact, completed-visibility, and interrupted-finalization buckets.
+- Added a validate-all-safe action that reuses the existing recovery validation path for linked downloads without deleting files or adopting orphaned artifacts automatically.
+- Added a redacted recovery report export that omits raw paths, raw URLs, cookies, tokens, and Authorization values.
+- Replaced expanded recovery technical details that previously exposed raw artifact paths and download IDs with human-safe artifact labels.
+- Added Phase51 model, UI, contract tests, documentation, and a Devtool temp-root-compatible validator.
+- Kept the Debug Workbench D-series sealed: no D8, no Room migration, no top-level route, no automatic deletion, and no automatic upload.
+
+## XDM Android Phase 50 Operational Repair - session handoff, checkpoint recovery, and storage visibility
+
+- Fixed the native checkpoint segment parser by escaping the closing brace in the Android runtime regex, addressing malformed-checkpoint recovery errors.
+- Added process-local browser session handoff for external Add Download and media captures when Android intents provide headers, while keeping cookies and Authorization values out of Room, sidecars, normal UI, and support bundles.
+- Added Referer handoff from page context and browser-like default headers for native metadata probes so ordinary servers behave more like a browser request.
+- Improved HTTP 401/403 native metadata failures with a user-facing authentication/session explanation instead of only a raw probe failure.
+- Strengthened MediaStore public-file visibility after completion by clearing pending state, updating modified time, notifying the resolver, and requesting a media scan.
+- Kept the Debug Workbench D-series sealed: no new D phase, no Room migration, no top-level route, and no automatic upload.
+
 ## XDM Android Phase 49 Field Bugfix - Download actions, storage labels, and media sniffing
 
 - Fixed the download item action sheet so actions no longer collapse into the download details fallback: cancel, redownload, queue movement, open/share file, delete record, and delete file plus record now have explicit dispatch paths and destructive actions stay behind confirmation.

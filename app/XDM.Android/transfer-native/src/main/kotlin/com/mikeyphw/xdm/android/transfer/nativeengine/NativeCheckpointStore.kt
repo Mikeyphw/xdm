@@ -90,7 +90,7 @@ private fun String.requiredSegments(): List<NativeSegmentCheckpoint> {
     val body = Regex("\\\"segments\\\":\\[(.*?)]").find(this)?.groupValues?.get(1)
         ?: error("Missing checkpoint segments")
     if (body.isBlank()) return emptyList()
-    return Regex("\\{([^{}]+)}").findAll(body).map { match ->
+    return Regex("\\{([^{}]+)\\}").findAll(body).map { match ->
         val item = match.value
         NativeSegmentCheckpoint(
             index = item.requiredLong("index").toInt(),

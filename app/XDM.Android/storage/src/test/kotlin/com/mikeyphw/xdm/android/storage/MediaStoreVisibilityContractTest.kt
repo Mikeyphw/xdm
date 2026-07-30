@@ -13,7 +13,9 @@ class MediaStoreVisibilityContractTest {
         assertTrue(source.contains("put(MediaStore.MediaColumns.IS_PENDING, 1)"))
         assertTrue(source.contains("put(MediaStore.MediaColumns.IS_PENDING, 0)"))
         assertTrue(source.contains("put(MediaStore.MediaColumns.DATE_ADDED, createdAtSeconds)"))
-        assertTrue(source.contains("put(MediaStore.MediaColumns.DATE_MODIFIED, System.currentTimeMillis() / 1000)"))
+        assertTrue(source.contains("put(MediaStore.MediaColumns.DATE_MODIFIED, modifiedAtSeconds)"))
+        assertTrue(source.contains("resolver.notifyChange(uri, null)"))
+        assertTrue(source.contains("MediaScannerConnection.scanFile"))
     }
 
     private fun androidRoot(): File {

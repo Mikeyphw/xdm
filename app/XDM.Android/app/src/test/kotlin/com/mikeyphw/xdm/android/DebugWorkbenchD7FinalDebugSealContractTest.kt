@@ -13,7 +13,7 @@ class DebugWorkbenchD7FinalDebugSealContractTest {
         val manifest = source("PROJECT_MANIFEST.json")
 
         assertTrue(manifest.contains("debug_workbench_phase_d7_final_debug_seal"))
-        assertTrue(manifest.contains("\"current_overlay\": \"xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip\""))
+        assertTrue(manifest.contains("\"overlay\": \"xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip\""))
         assertTrue(manifest.contains("\"next_phase\": \"complete\""))
         assertTrue(manifest.contains("\"final_phase_complete\": true"))
         assertTrue(manifest.contains("\"d6_tests_passed\": 414"))

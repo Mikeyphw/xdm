@@ -39,6 +39,7 @@ class ExternalMediaReviewPlanner(
                 contentLength = draft.contentLength,
                 pageUrl = draft.pageUrl,
                 pageTitle = draft.pageTitle,
+                requestHeaders = draft.requestHeaders,
                 source = MediaSniffingSource.ManualPage,
             ),
         )

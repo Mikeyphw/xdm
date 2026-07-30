@@ -1,0 +1,157 @@
+{
+  "applied_at": "2026-07-30T14:37:41.000964Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase50_operational_repair_session_recovery_storage_r2_overlay.zip",
+  "artifact_name": "xdm_android_phase50_operational_repair_session_recovery_storage_r2_overlay.zip",
+  "type": "overlay",
+  "sha256": "706dbb49a17e79f954d023204bf64ed51e01f98845a6f38c7f116388af5d37f7",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 15,
+  "change_counts": {
+    "add": 2,
+    "modify": 13
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 50 Operational Repair r2: Rebased Session, Recovery, and Storage Visibility",
+    "description": "Rebased Phase 50 operational repair over the post-Phase49 current snapshot; preserves Phase49 landed files and applies only the remaining session handoff, checkpoint recovery, and MediaStore visibility deltas.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "622efef303100794a6e1404d05078af755fb00760c9556f355347c06f998d19e",
+          "size": 37815,
+          "source_sha256": "e05e991047c77deaabdfe20bda335809a071d6f0d5e370d983fb2e96154bb330"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "5c050344ed2b5d527b4b50dbb7cd3cc80c97eef28381bdce23e2fdb408e0e5f7",
+          "size": 88964,
+          "source_sha256": "f6657016e1fd401af74f96e673c77c66dc7913e3898e9771a7e9796fcd5c5595"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase49-field-bugfix.py",
+          "action": "modify",
+          "sha256": "348c5fd86952c69de54555298b8e4f31885453294cd6e4b7450cc7fbe3ba8367",
+          "size": 7738,
+          "source_sha256": "3ced01d342a4c3db98955f8756a12f034e11cea490108364c0d7c40d5ef0e063"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase50-operational-repair.py",
+          "action": "add",
+          "sha256": "02aea0b2032018ed90f995f8afcbca430f4270328479743dde324e2d397b7607",
+          "size": 6168
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-50-OPERATIONAL-REPAIR.md",
+          "action": "add",
+          "sha256": "55511ddd955d03b1448172ba840d10a05f4f9947b11b252bcd8c3d3358858f29",
+          "size": 1171
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/ExternalMediaReviewIntake.kt",
+          "action": "modify",
+          "sha256": "743bc6d6be04cd137839f1d59820c2757ea42eeb8074635b0fbdcccc686d176b",
+          "size": 4881,
+          "source_sha256": "60573ea82c58afbf233b6c927469329b050fb953a152f05e1b8fbe066ee057bf"
+        },
+        {
+          "path": "app/XDM.Android/storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/AndroidDestinationWriter.kt",
+          "action": "modify",
+          "sha256": "2c350c41d9d558096754449e2041aac55bff22a3696ce3d097808705152fbe59",
+          "size": 19531,
+          "source_sha256": "fa1c5628cc5f7a09309a375c884d951bba23a57af0f84a0209733cd2865db9ff"
+        },
+        {
+          "path": "app/XDM.Android/storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+          "action": "modify",
+          "sha256": "9956add0f2dd0707517e05a769828bfdb4de4334896b3b0605b2cf39738c1373",
+          "size": 1287,
+          "source_sha256": "762094addcc2c4d1dfb6be5842aa3167dbccfe91cd8ade59434fce9ac9957f8c"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "961320f9a555056ded151278875a178e49addd5600fe7a302515d1e187812427",
+          "size": 104467,
+          "source_sha256": "971113ef0bf090fb6898808480a7050e57f788a4bfe1e65181a57885eb55b314"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/FieldBugfixDownloadActionsStorageContractTest.kt",
+          "action": "modify",
+          "sha256": "5714eb6473ba335d46807af6e2d6475df9606287515755af1a1c32e02b454505",
+          "size": 4752,
+          "source_sha256": "b74cc612f042cb71daf3715948b09f143d3ec573db41b7d2d6cbd0793b6553fc"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadIntake.kt",
+          "action": "modify",
+          "sha256": "c8b75d89c69d9b76ce744f344b32d38f04a39b5c04b0e2f5debb8ddc44345500",
+          "size": 11622,
+          "source_sha256": "b0dd83357251f66b606c83a75bd2ae515636895cef1d8d0b26c33f1b4fdd3434"
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/MediaRequestHandoffStore.kt",
+          "action": "modify",
+          "sha256": "c64ceeaf170890dba01e370ef268b128182f9acecd5a1b5c8d48a4d01bfd7efb",
+          "size": 3069,
+          "source_sha256": "97aafe5f9461488f3932fc05e97ef6a23935c2eb0e434f090cc29040b830116e"
+        },
+        {
+          "path": "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeCheckpointStore.kt",
+          "action": "modify",
+          "sha256": "e01affd2e4d364e7f1e90582c855a58f35ebad57b7a8b2d3f073b28aa882c575",
+          "size": 6962,
+          "source_sha256": "7b78b7aa89c2962ae2c5604388e48f04dc2a54ec421295d1cc803bfe5c6f3a0b"
+        },
+        {
+          "path": "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt",
+          "action": "modify",
+          "sha256": "8176574fec6b72c9245ae0557f070297f902576eaef6d2d28a7c35b5fa16b16d",
+          "size": 38730,
+          "source_sha256": "238762916f464e0856b76916dbd6c94b9608012c83715a4b556d38ef7ff77f69"
+        },
+        {
+          "path": "app/XDM.Android/transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeCheckpointStoreTest.kt",
+          "action": "modify",
+          "sha256": "a7e86b5224df537fa5fd06ce9c1191eb71c08a33fefa295e9ae27a095df6fae9",
+          "size": 2092,
+          "source_sha256": "f5199e6b0b70410da02fffd6afbed1f2869f9de98babf3a784598982051f0b1c"
+        }
+      ]
+    },
+    "validation": {
+      "script": ".devtool-artifact/validate_phase50_operational_repair.sh",
+      "sha256": "3c8922e3acef611041712463d9f27de9d580d15e8582fe78ff3fd1b3a4492169"
+    },
+    "commit": {
+      "message": "Repair XDM Android field session recovery and storage visibility"
+    },
+    "notes": [
+      "This is a post-D7 operational repair and not a Debug Workbench D-series phase.",
+      "It supersedes the Phase 49 field-fix overlay for users still on the clean D7 baseline.",
+      "Download item actions dispatch explicitly, media detector false positives are reduced, and normal UI avoids raw shared-storage handles.",
+      "External browser session headers are carried only in process memory when supplied by handoff/extension flows; raw Cookie and Authorization values are not written to persistent storage, sidecars, or normal UI.",
+      "The native metadata probe uses browser-like defaults and returns explicit 401/403 authentication diagnostics instead of opaque page-probe failures.",
+      "The native checkpoint segment regex escapes both braces to avoid Android runtime regexp failure during recovery.",
+      "MediaStore completion clears pending state, refreshes modified time, notifies the resolver, and requests a media scan for public visibility.",
+      "No Room migration, all-files permission, new top-level route, automatic upload, or built-in browser reintroduction is included.",
+      "Rebased after Phase49 had already landed to avoid add conflicts and stale source hashes."
+    ]
+  },
+  "history_id": "b50192d11dbd49bf86814372590918f0"
+}

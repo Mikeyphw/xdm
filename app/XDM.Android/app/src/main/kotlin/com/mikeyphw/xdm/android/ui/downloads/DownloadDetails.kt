@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +33,9 @@ import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.ChecksumResult
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.RuntimeFailureRecoveryActionKind
+import com.mikeyphw.xdm.android.model.RuntimeFailureRecoveryPlan
+import com.mikeyphw.xdm.android.model.RuntimeFailureRecoveryPlanner
 import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.model.VerificationStatus
 import com.mikeyphw.xdm.android.util.formatBytes
@@ -48,6 +52,7 @@ internal fun DownloadDetails(
     onPreviewPostProcessing: (Download) -> Unit,
     onRunPostProcessing: (Download) -> Unit,
     onStartIgnoringQueuePolicy: (Download) -> Unit,
+    onOpenActivityAttention: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -55,6 +60,7 @@ internal fun DownloadDetails(
     val latestChecksum = checksumResults.firstOrNull { it.downloadId == download.id }
     val queuePolicyHeld = download.errorMessage.orEmpty().startsWith("Queue policy:") &&
         download.state !in setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Completed, DownloadState.Cancelled)
+    val recoveryPlan = RuntimeFailureRecoveryPlanner.evaluate(download)
 
     Column(modifier.fillMaxWidth().xdmScreen(XdmScreenTags.DownloadsDetail, "Download details"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Surface(
@@ -160,6 +166,17 @@ internal fun DownloadDetails(
             )
         }
 
+        recoveryPlan?.let { plan ->
+            RuntimeFailureRecoveryCard(
+                download = download,
+                plan = plan,
+                onTogglePause = onTogglePause,
+                onMigrateBackend = onMigrateBackend,
+                onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
+                onOpenActivityAttention = onOpenActivityAttention,
+            )
+        }
+
         XdmTechnicalDetails {
             DownloadDetailRow("Engine", download.backend.uiLabel())
             DownloadDetailRow("Requested method", download.requestedBackend.uiLabel())
@@ -207,6 +224,108 @@ internal fun DownloadDetails(
             }
         }
     }
+}
+
+@Composable
+private fun RuntimeFailureRecoveryCard(
+    download: Download,
+    plan: RuntimeFailureRecoveryPlan,
+    onTogglePause: (Download) -> Unit,
+    onMigrateBackend: (Download) -> Unit,
+    onStartIgnoringQueuePolicy: (Download) -> Unit,
+    onOpenActivityAttention: () -> Unit,
+) {
+    val context = LocalContext.current
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = XdmTheme.extendedColors.groupedSurface,
+        shape = MaterialTheme.shapes.large,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Icon(Icons.Rounded.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(plan.title, style = MaterialTheme.typography.titleMedium)
+                    Text(plan.guidance, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Recommended: ${plan.recommendedActionLabel}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            XdmGroupedList {
+                DownloadDetailRow("Cause", plan.causeLabel)
+                XdmListSeparator()
+                DownloadDetailRow("Impact", plan.impactLabel)
+                XdmListSeparator()
+                DownloadDetailRow("Source site", plan.sourceSiteLabel)
+            }
+            XdmActionFlowRow {
+                plan.actions.forEach { action ->
+                    if (action.primary) {
+                        Button(onClick = {
+                            runRuntimeRecoveryAction(
+                                context = context,
+                                download = download,
+                                action = action.kind,
+                                report = plan.redactedReport,
+                                onTogglePause = onTogglePause,
+                                onMigrateBackend = onMigrateBackend,
+                                onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
+                                onOpenActivityAttention = onOpenActivityAttention,
+                            )
+                        }) { Text(action.label) }
+                    } else {
+                        TextButton(onClick = {
+                            runRuntimeRecoveryAction(
+                                context = context,
+                                download = download,
+                                action = action.kind,
+                                report = plan.redactedReport,
+                                onTogglePause = onTogglePause,
+                                onMigrateBackend = onMigrateBackend,
+                                onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
+                                onOpenActivityAttention = onOpenActivityAttention,
+                            )
+                        }) { Text(action.label) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun runRuntimeRecoveryAction(
+    context: android.content.Context,
+    download: Download,
+    action: RuntimeFailureRecoveryActionKind,
+    report: String,
+    onTogglePause: (Download) -> Unit,
+    onMigrateBackend: (Download) -> Unit,
+    onStartIgnoringQueuePolicy: (Download) -> Unit,
+    onOpenActivityAttention: () -> Unit,
+) {
+    when (action) {
+        RuntimeFailureRecoveryActionKind.RetryWithCurrentSetup,
+        RuntimeFailureRecoveryActionKind.RetryWithCapturedSession,
+        -> if (download.errorMessage.orEmpty().startsWith("Queue policy:")) onStartIgnoringQueuePolicy(download) else onTogglePause(download)
+        RuntimeFailureRecoveryActionKind.RefreshFromBrowser -> showRuntimeRecoveryToast(context, "Open the source page in your browser, then share or capture it to XDM again.")
+        RuntimeFailureRecoveryActionKind.TryYtDlp -> showRuntimeRecoveryToast(context, "Open Media, inspect this source, then choose the yt-dlp path when available.")
+        RuntimeFailureRecoveryActionKind.TryAria2,
+        RuntimeFailureRecoveryActionKind.TryNative,
+        -> onMigrateBackend(download)
+        RuntimeFailureRecoveryActionKind.RecheckStorageVisibility,
+        RuntimeFailureRecoveryActionKind.OpenRecoveryDoctor,
+        -> onOpenActivityAttention()
+        RuntimeFailureRecoveryActionKind.CopyRedactedReport -> copyTextToClipboard(context, "XDM recovery report", report)
+    }
+}
+
+private fun showRuntimeRecoveryToast(context: android.content.Context, message: String) {
+    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 }
 
 @Composable

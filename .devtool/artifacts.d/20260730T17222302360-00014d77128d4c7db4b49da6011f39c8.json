@@ -1,0 +1,141 @@
+{
+  "applied_at": "2026-07-30T17:22:23.023602Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase55_final_release_warning_explainer_overlay.zip",
+  "artifact_name": "xdm_android_phase55_final_release_warning_explainer_overlay.zip",
+  "type": "overlay",
+  "sha256": "14da41ee3ba7ec044755aa74cf29cf01078c5bb4b63a8902726556e5b783c99e",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 12,
+  "change_counts": {
+    "add": 3,
+    "modify": 9
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 55 Final Release Warning Explainer",
+    "description": "Adds a human-readable final-release warning explainer with impact, safe-to-ignore guidance, fix actions, and owning validator/test while preserving the release gate criteria.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "3583f4b0b50b895855fdeca096146b13331f6d9079d2f2660b236b0a8d1cd851",
+          "size": 41825,
+          "source_sha256": "17a8601ef6862557f82bca2a835038b0c56e40b1a1f5be9cc39567a998f6ba33"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "889c04c1ad18a1ea48cd9ab10070d1764a545e7cd697ec58ba7cc61d98bb8a57",
+          "size": 96894,
+          "source_sha256": "aae334c2ed9bafa330a03d14b8c8aae2f86c788785ab8403293dc3eb5f6e39d7"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModels.kt",
+          "action": "modify",
+          "sha256": "ec9229f0047a096ed314b02f9a48a2e2c7388659a69dd5923ce810f2242cd9ca",
+          "size": 18960,
+          "source_sha256": "020155382ee87fbbfc598dc85b9af4cde070942149ca6cafc7064ba2822d057d"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModelsTest.kt",
+          "action": "modify",
+          "sha256": "13b5977c809200576766800328bdc20d9020c55d7b7c843eb74b6c289e9eba98",
+          "size": 5024,
+          "source_sha256": "54d5fa1868c2e5e228fea3ea054ea9b65044d1b6182aafbe4b5b249dfa9b64da"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "ab57c8c8d16e755847ce167f730677517c943cc95ea1e5de2772661f6e88b848",
+          "size": 105201,
+          "source_sha256": "c4cff100cba0456a409675e573be1c849a5a3640dd694e4921974175805f0a02"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsScreen.kt",
+          "action": "modify",
+          "sha256": "0b34d9736bad4a21c9f4f955942cbfbf7b55f7465819a278d217ddf72980fbeb",
+          "size": 92292,
+          "source_sha256": "e2ed1063e22a981369f2a609f17ee60e8c6020973eb75aa3460067faafb7f912"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase55FinalReleaseWarningExplainerContractTest.kt",
+          "action": "add",
+          "sha256": "aa5d7b2bc6d48ce2202301a3015853b8f7fc66eea30bff3d07bfcb48f3e32e29",
+          "size": 4252
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-55-FINAL-RELEASE-WARNING-EXPLAINER.md",
+          "action": "add",
+          "sha256": "9a01a44b7eeb9815a3a24f239880318fd7be5f26e9ed4dd6e59e8e16125a0458",
+          "size": 1276
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase55-final-release-warning-explainer.py",
+          "action": "add",
+          "sha256": "99c2ccdd2998b64495a1ff6b6a23b1ecebb2c14db46f18ebb21157ef2379e44b",
+          "size": 7913
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase54-engine-escalation-planner.py",
+          "action": "modify",
+          "sha256": "3fef7c0de63169527a6c274fee74106300472a818f934f8dd609d3019a226bad",
+          "size": 8260,
+          "source_sha256": "970a38be90bd4d3baf046cfa91502793a1a4ddea2ddb80a3a5015befe4adb938"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-phase-48-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "8bd21a805b421995236eba0f31cfd2d1bc0a3202e6ae3bdba9aa7010e2a3c05f",
+          "size": 1309,
+          "source_sha256": "62088e32b31f1622f65dad82747beae49368ab1d636189386f94836fb32bd855"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "105886d2232ecf02b6fdb4cc032ec000495a07b77dc7e1e806c70dd1389fdd2c",
+          "size": 4996,
+          "source_sha256": "243da2a942578f32225ba9df8e8a2a4227d1edf32bc2576e4675f06b32f775b0"
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "passed",
+        "diagnostics": "passed"
+      },
+      "local_checks": [
+        "python3 app/XDM.Android/tools/validate-phase55-final-release-warning-explainer.py",
+        ".devtool-artifact/validate_phase55_final_release_warning_explainer.sh",
+        "python3 app/XDM.Android/tools/validate-phase54-engine-escalation-planner.py",
+        "python3 app/XDM.Android/tools/validate-phase53-extension-detection-quality-gate.py",
+        "python3 app/XDM.Android/tools/validate-phase52-browser-session-health.py",
+        "python3 app/XDM.Android/tools/validate-phase51-recovery-storage-doctor.py",
+        "python3 app/XDM.Android/tools/validate-phase50-operational-repair.py",
+        "python3 app/XDM.Android/tools/validate-phase49-field-bugfix.py",
+        "focused kotlinc compile/run for FinalReleaseGateModelsTest and Phase55 contract test",
+        "archive inventory/hash/hygiene verification"
+      ]
+    },
+    "notes": [
+      "No D8 or Debug Workbench reopening.",
+      "No Room migration; schema remains 14.",
+      "No release criteria changes; this is an explanatory layer only.",
+      "Normal UI uses human labels and hides raw final-gate ids, raw URLs, cookies, Authorization values, bearer tokens, and credential query values."
+    ]
+  },
+  "history_id": "00014d77128d4c7db4b49da6011f39c8"
+}

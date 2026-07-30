@@ -78,4 +78,46 @@ class FinalReleaseGateModelsTest {
         assertTrue(report.checks.any { it.id == "full.validation" && it.severity == FinalReleaseGateSeverity.Warning })
     }
 
+    @Test
+    fun debugWarningsIncludeActionableReleaseExplanations() {
+        val report = FinalPublicReleaseGate.evaluate(
+            versionName = "0.18.0-rc01",
+            versionCode = 19,
+            packageId = "com.mikeyphw.xdm.android",
+            schemaVersion = 14,
+            buildType = "debug",
+            releaseSafetyReady = true,
+            installUpdateReady = true,
+            diagnosticsRedacted = true,
+            aria2PayloadVerified = false,
+            staticValidatorsComplete = true,
+            releaseDocsComplete = true,
+            noNewTopLevelRoutes = true,
+            fullValidationPassed = false,
+            releaseSigningConfigured = false,
+        )
+
+        val explanations = report.actionableExplanations
+        assertEquals(2, explanations.size)
+        assertTrue(explanations.any { explanation ->
+            explanation.title == "aria2 payload verification is pending" &&
+                explanation.safeToIgnore.contains("Native-only") &&
+                explanation.fixAction.contains("aria2 payload verification") &&
+                explanation.owner.validator == "tools/verify-aria2-runtime.py"
+        })
+        assertTrue(explanations.any { explanation ->
+            explanation.title == "Full validation pending for release builds" &&
+                explanation.safeToIgnore.contains("debug diagnostics") &&
+                explanation.fixAction.contains("full Devtool selected-task validation") &&
+                explanation.owner.validator == "tools/run-final-release-gate.sh"
+        })
+
+        val redacted = report.redactedExplanationSummary()
+        assertTrue(redacted.contains("Release warnings explained"))
+        assertTrue(redacted.contains("Safe to ignore"))
+        assertTrue(redacted.contains("Owning check"))
+        assertFalse(redacted.contains("aria2.payload"))
+        assertFalse(redacted.contains("full.validation"))
+    }
+
 }

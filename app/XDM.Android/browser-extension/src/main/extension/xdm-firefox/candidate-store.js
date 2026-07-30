@@ -28,6 +28,7 @@
         frameUrl: candidate.frameUrl || previous.frameUrl || "",
         source: candidate.source || previous.source || "network",
         headers: Object.assign({}, previous.headers || {}, candidate.headers || {}),
+        quality: candidate.quality || previous.quality || "strong",
         confidence: Math.max(nextConfidence, previousConfidence),
         reason: nextConfidence >= previousConfidence
           ? (candidate.reason || previous.reason || "media")

@@ -65,7 +65,7 @@ object ReleaseInstallReadinessGate {
                         id = "version.phase16",
                         severity = ReleaseReadinessSeverity.Blocking,
                         title = "Version metadata is stale",
-                        detail = "Phase 16 install/update readiness requires a 0.16.x version.",
+                        detail = "Install/update readiness requires a 0.16.x or newer version.",
                     ),
                 )
             }
@@ -95,7 +95,7 @@ object ReleaseInstallReadinessGate {
                         id = "database.schema",
                         severity = ReleaseReadinessSeverity.Blocking,
                         title = "Unexpected schema migration",
-                        detail = "Phase 16 must not migrate Room; updates must preserve schema v14.",
+                        detail = "Install/update readiness must preserve Room schema v14 unless a reviewed migration is included.",
                     ),
                 )
             }

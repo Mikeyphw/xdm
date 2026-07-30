@@ -10,6 +10,9 @@
   const STRONG_MEDIA_KEY_RE = /(?:^|["'\s{,])(?:file|video|audio|media|stream|mp4)(?:url|src)?["'\s]*[:=]/i;
   const MAX_BODY_CHARS = 786_432;
   const MAX_EXTRACTED = 80;
+  const QUALITY_STRONG = "strong";
+  const QUALITY_POSSIBLE = "possible";
+  const QUALITY_REJECTED = "rejected";
 
   function normalizeMime(value) {
     return String(value || "").split(";", 1)[0].trim().toLowerCase();
@@ -37,6 +40,29 @@
     return SEGMENT_EXT_RE.test(value) || SEGMENT_PATH_RE.test(pathname);
   }
 
+  function hasMediaDisposition(value) {
+    return /(?:^|;|\s)filename\*?\s*=.*\.(?:m3u8|mpd|mp4|m4v|webm|mkv|mov|avi|flv|mpeg|mpg|ogv|mp3|m4a|aac|flac|wav|ogg|opus)(?:["'\s;]|$)/i.test(String(value || ""));
+  }
+
+  function hasRangeContext(range, length) {
+    return /bytes\s+\d+-\d+\/\d+/i.test(String(range || "")) || Number(length || 0) >= 1024 * 1024;
+  }
+
+  function makeRejected(reason) {
+    return { accept: false, reason: reason || "none", quality: QUALITY_REJECTED, autoOffer: false };
+  }
+
+  function makeAccepted(reason, confidence, quality, extra = {}) {
+    const bucket = quality || (confidence >= 830 ? QUALITY_STRONG : QUALITY_POSSIBLE);
+    return Object.assign({
+      accept: true,
+      reason,
+      confidence,
+      quality: bucket,
+      autoOffer: bucket === QUALITY_STRONG && confidence >= 830
+    }, extra);
+  }
+
   function isInspectableTextMime(mime) {
     const type = normalizeMime(mime);
     return !type || TEXT_MIME_RE.test(type);
@@ -47,10 +73,12 @@
     const type = String(input && input.type || "").toLowerCase();
     const mime = normalizeMime(input && input.contentType);
     const length = Number(input && input.contentLength || 0);
+    const disposition = String(input && input.contentDisposition || "");
+    const range = String(input && input.contentRange || "");
 
-    if (!/^https?:/i.test(url)) return { accept: false, reason: "scheme" };
-    if (isLikelyAd(url)) return { accept: false, reason: "ad" };
-    if (isLikelySegment(url)) return { accept: false, reason: "segment" };
+    if (!/^https?:/i.test(url)) return makeRejected("scheme");
+    if (isLikelyAd(url)) return makeRejected("ad");
+    if (isLikelySegment(url)) return makeRejected("segment");
 
     const manifest = isManifest(url, mime);
     const mediaMime = mime.startsWith("video/") || mime.startsWith("audio/");
@@ -59,47 +87,34 @@
     const mediaRequest = type === "media";
     const xhrLike = type === "xmlhttprequest" || type === "other" || type === "fetch";
     const octet = mime === "application/octet-stream" || mime === "binary/octet-stream";
+    const dispositionMedia = hasMediaDisposition(disposition);
+    const rangeContext = hasRangeContext(range, length);
 
-    let accept = false;
-    let confidence = 0;
-    let reason = "none";
+    let result = null;
 
     if (manifest) {
-      accept = true;
-      confidence = 1100;
-      reason = "manifest";
+      result = makeAccepted("manifest", 1100, QUALITY_STRONG, { manifest: true, mediaMime: false });
     } else if (mediaMime) {
-      // 1DM+ treats MIME as authoritative regardless of whether the player used
-      // media, fetch, XHR, or an extensionless endpoint.
-      accept = true;
-      confidence = mediaRequest ? 980 : 930;
-      reason = mediaRequest ? "media-mime" : "xhr-media-mime";
+      // MIME remains authoritative, but the quality bucket makes later UI and
+      // dispatch decisions explicit instead of trusting every stream-shaped URL.
+      result = makeAccepted(mediaRequest ? "media-mime" : "xhr-media-mime", mediaRequest ? 980 : 930, QUALITY_STRONG, { manifest: false, mediaMime: true });
     } else if (extension) {
-      accept = true;
-      confidence = mediaRequest ? 880 : (xhrLike ? 820 : 760);
-      reason = "media-extension";
-    } else if (octet && (mediaRequest || streamHint || length >= 1024 * 1024)) {
-      accept = true;
-      confidence = streamHint ? 810 : (mediaRequest ? 760 : 700);
-      reason = "media-octet";
+      result = makeAccepted("media-extension", mediaRequest ? 900 : (xhrLike ? 860 : 830), QUALITY_STRONG, { manifest: false, mediaMime: false });
+    } else if (dispositionMedia) {
+      result = makeAccepted("media-disposition", rangeContext ? 880 : 840, QUALITY_STRONG, { manifest: false, mediaMime: false });
+    } else if (octet && mediaRequest && rangeContext) {
+      result = makeAccepted("media-octet", 820, QUALITY_STRONG, { manifest: false, mediaMime: false });
+    } else if (octet && (streamHint || mediaRequest || rangeContext)) {
+      result = makeAccepted("possible-octet", streamHint ? 720 : 680, QUALITY_POSSIBLE, { manifest: false, mediaMime: false });
     } else if (streamHint && mediaRequest) {
-      accept = true;
-      confidence = 680;
-      reason = "stream-hint";
+      result = makeAccepted("possible-stream-hint", 660, QUALITY_POSSIBLE, { manifest: false, mediaMime: false });
     }
 
-    if (!accept) return { accept: false, reason };
-    if (length > 1024 * 1024) confidence += 20;
-    if (length > 8 * 1024 * 1024) confidence += 20;
-
-    return {
-      accept: true,
-      reason,
-      confidence,
-      manifest,
-      mediaMime,
-      autoOffer: manifest || mediaMime || mediaRequest || confidence >= 830
-    };
+    if (!result) return makeRejected("none");
+    if (length > 1024 * 1024) result.confidence += 20;
+    if (length > 8 * 1024 * 1024) result.confidence += 20;
+    result.autoOffer = result.quality === QUALITY_STRONG && (result.manifest || result.mediaMime || mediaRequest || result.confidence >= 830);
+    return result;
   }
 
   function decodeEscapes(value) {
@@ -126,13 +141,18 @@
     }
   }
 
+  function candidateSignal(url, context) {
+    const sample = String(context || "");
+    if (isManifest(url, "")) return { confidence: 1050, quality: QUALITY_STRONG, reason: "body-manifest-url" };
+    if (MANIFEST_KEY_RE.test(sample) && STREAM_HINT_RE.test(url)) return { confidence: 980, quality: QUALITY_STRONG, reason: "body-manifest-url" };
+    if (MEDIA_EXT_RE.test(url)) return { confidence: 880, quality: QUALITY_STRONG, reason: "body-media-url" };
+    if (STRONG_MEDIA_KEY_RE.test(sample) && STREAM_HINT_RE.test(url)) return { confidence: 720, quality: QUALITY_POSSIBLE, reason: "body-possible-media-url" };
+    return null;
+  }
+
   function candidateConfidence(url, context) {
-    if (isManifest(url, "")) return 1050;
-    if (MEDIA_EXT_RE.test(url)) return 880;
-    if (MANIFEST_KEY_RE.test(context || "")) return 980;
-    if (STRONG_MEDIA_KEY_RE.test(context || "") && STREAM_HINT_RE.test(url)) return 860;
-    if (STRONG_MEDIA_KEY_RE.test(context || "") && MEDIA_EXT_RE.test(url)) return 840;
-    return 0;
+    const signal = candidateSignal(url, context);
+    return signal ? signal.confidence : 0;
   }
 
   function extractCandidatesFromText(text, baseUrl) {
@@ -143,14 +163,15 @@
       if (results.size >= MAX_EXTRACTED) return;
       const url = resolveUrl(raw, baseUrl);
       if (!url || isLikelyAd(url) || isLikelySegment(url)) return;
-      const confidence = candidateConfidence(url, context);
-      if (!confidence) return;
+      const signal = candidateSignal(url, context);
+      if (!signal) return;
       const previous = results.get(url);
-      if (!previous || confidence > previous.confidence) {
+      if (!previous || signal.confidence > previous.confidence) {
         results.set(url, {
           url,
-          confidence,
-          reason: isManifest(url, "") ? "body-manifest-url" : "body-media-url"
+          confidence: signal.confidence,
+          quality: signal.quality,
+          reason: signal.reason
         });
       }
     }
@@ -215,6 +236,7 @@
     if (candidate && candidate.manifest) score += 180;
     if (candidate && candidate.bodyDerived) score += 70;
     if (candidate && candidate.playbackObserved) score += 90;
+    if (candidate && candidate.quality === QUALITY_POSSIBLE) score -= 120;
     if (isManifest(url, candidate && candidate.contentType)) score += 120;
     if (MEDIA_EXT_RE.test(url)) score += 40;
     const age = Math.max(0, Date.now() - Number(candidate && candidate.at || 0));
@@ -232,6 +254,9 @@
     extractCandidatesFromText,
     analyzeBody,
     rankCandidate,
-    resolveUrl
+    resolveUrl,
+    candidateConfidence,
+    hasMediaDisposition,
+    hasRangeContext
   });
 })();

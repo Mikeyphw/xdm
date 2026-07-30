@@ -128,6 +128,71 @@ class OperationalActivityTest {
         assertTrue("cookie=<redacted>" in export)
     }
 
+    @Test
+    fun `diagnostics export uses human method labels instead of engine keys`() {
+        val export = OperationalActivityPlanner.diagnosticsExport(
+            OperationalDiagnosticsContext("0.20.0-rc08", 21, "Android 16", 14, listOf("Native", "aria2"), now),
+            listOf(
+                OperationalActivityEvent(
+                    id = "method",
+                    category = OperationalActivityCategory.Transfer,
+                    severity = OperationalActivitySeverity.Info,
+                    title = "Connecting",
+                    detail = "Preparing request",
+                    engine = "Native",
+                    createdAtEpochMs = now,
+                ),
+            ),
+        )
+        assertTrue(export.contains("Methods: XDM Native, aria2"))
+        assertTrue(export.contains("Method: XDM Native"))
+        assertFalse(export.contains("Engines:"))
+        assertFalse(export.contains("engine=Native"))
+    }
+
+    @Test
+    fun `recovery and handoff events use human labels`() {
+        val recovery = RecoveryRecord(
+            id = "r1",
+            downloadId = "d1",
+            artifactPath = "/data/user/0/app/cache/file.part",
+            classification = RecoveryClassification.MissingPartialFile,
+            reason = "The managed partial file could not be found.",
+            createdAtEpochMs = now,
+            recommendedAction = RecoveryAction.LocateFile,
+        )
+        val handoff = AutomationCommandRecord(
+            id = "h1",
+            idempotencyKey = "h1",
+            source = AutomationCommandSource.BrowserExtension,
+            action = AutomationCommandAction.CaptureMedia,
+            url = null,
+            fileName = "video.mp4",
+            pageTitle = null,
+            pageUrl = null,
+            mediaCaptureId = null,
+            downloadId = null,
+            status = AutomationCommandStatus.Executed,
+            resultMessage = "Captured media",
+            createdAtEpochMs = now,
+            updatedAtEpochMs = now,
+        )
+        val events = OperationalActivityPlanner.timeline(
+            storedEvents = emptyList(),
+            queueDecisions = emptyList(),
+            downloads = listOf(download(DownloadState.RecoveryRequired)),
+            recoveryRecords = listOf(recovery),
+            verificationRecords = emptyList(),
+            finalizationJournals = emptyList(),
+            automationCommands = listOf(handoff),
+            nowEpochMs = now,
+        )
+        assertTrue(events.any { it.detail.startsWith("Partial file missing:") })
+        assertTrue(events.any { it.title == "Browser extension executed" })
+        assertFalse(events.any { it.detail.contains("MissingPartialFile") })
+        assertFalse(events.any { it.title.contains("BrowserExtension") })
+    }
+
     private fun download(state: DownloadState, error: String? = null) = Download(
         id = "d1",
         fileName = "file.bin",
