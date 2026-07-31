@@ -1,0 +1,51 @@
+{
+  "applied_at": "2026-07-31T18:37:07.504657Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase65_diagnostic_export_download_action_fix_r2_overlay.zip",
+  "artifact_name": "xdm_android_phase65_diagnostic_export_download_action_fix_r2_overlay.zip",
+  "type": "overlay",
+  "sha256": "d5aac6985e3f03d7dbbde0d19b08bc7461dd84ac6f8eddb643da12785f0c8da9",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 1,
+  "change_counts": {
+    "modify": 1
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase65 Diagnostic Export and Download Action Fix r2",
+    "description": "Repairs the Phase65 contract test project-root resolver so Gradle unit tests read files from app/XDM.Android when validation runs from the repository root.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase65DiagnosticExportDownloadActionContractTest.kt",
+          "action": "modify",
+          "sha256": "23bad6fcc8509f99d743cba4cd539b74a0951e4ddd15b8a25c154d94dba05116",
+          "size": 3996,
+          "source_sha256": "ee6240d63fe58ebb347244cd7e1524f3a83442c07b1e72655d58f2dcb24bc16f"
+        }
+      ]
+    },
+    "validation": {
+      "mode": "disabled",
+      "commands": []
+    },
+    "notes": [
+      "Apply with --no-validate per deferred final validation workflow.",
+      "Hotfix only changes Phase65DiagnosticExportDownloadActionContractTest project-root resolution.",
+      "No runtime behavior, Room schema, route, storage permission, upload, deletion, or Debug Workbench changes."
+    ]
+  },
+  "history_id": "47db272522994ba0a1a9778b4d519539"
+}

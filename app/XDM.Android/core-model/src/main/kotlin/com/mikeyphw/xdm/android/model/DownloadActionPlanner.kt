@@ -67,6 +67,7 @@ object DownloadActionPlanner {
             copyLink(download),
             shareLink(download),
             cancel(download),
+            deleteRecord(download, label = "Remove from list"),
         )
 
         DownloadState.Queued,
@@ -80,6 +81,7 @@ object DownloadActionPlanner {
             details(),
             copyLink(download),
             cancel(download),
+            deleteRecord(download, label = "Remove from list"),
         )
 
         DownloadState.Paused,
@@ -165,7 +167,7 @@ object DownloadActionPlanner {
         DownloadState.WaitingForNetwork,
         DownloadState.WaitingForPower,
     )
-    private val terminalStates = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)
+    private val terminalStates = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired)
 
     private fun details(label: String = "Details", primary: Boolean = false) = DownloadAction(
         kind = DownloadActionKind.OpenDetails,
@@ -311,10 +313,22 @@ object DownloadActionPlanner {
         kind = DownloadActionKind.DeleteRecord,
         label = label,
         icon = DownloadActionIcon.Delete,
-        enabled = download.state in terminalStates || download.state == DownloadState.RecoveryRequired,
+        enabled = true,
         destructive = true,
         requiresConfirmation = true,
-        supportingText = "Remove the history record without deleting the file.",
+        supportingText = when (download.state) {
+            DownloadState.Completed -> "Remove the history record without deleting the saved file."
+            DownloadState.Downloading,
+            DownloadState.Connecting,
+            DownloadState.Finalizing,
+            DownloadState.Verifying,
+            DownloadState.Repairing,
+            DownloadState.Queued,
+            DownloadState.Created,
+            -> "Cancel the transfer if needed, then remove the list record without deleting saved files."
+            DownloadState.RecoveryRequired -> "Remove the recovery/list record without deleting user files."
+            else -> "Remove the list record without deleting saved files."
+        },
     )
 
     private fun deleteRecord(label: String) = DownloadAction(

@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-07-31T16:49:31.261850Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip",
+  "artifact_name": "xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "44e9af46b07e4cfe8b1891ffbcf4bf91"
+}

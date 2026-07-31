@@ -34,7 +34,7 @@ def require(condition: bool, message: str) -> None:
 
 manifest = json.loads((ROOT / 'PROJECT_MANIFEST.json').read_text())
 phase = manifest.get('field_bugfix_phase_59', {})
-require(manifest.get('current_overlay') in {'xdm_android_phase59_runtime_recovery_action_transparency_overlay.zip', 'xdm_android_phase60_runtime_recovery_flow_seal_overlay.zip', 'xdm_android_phase61_final_gate_validator_harmony_overlay.zip', 'xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip', 'xdm_android_phase63_release_readiness_support_bundle_seal_overlay.zip'}, 'current overlay must point to Phase59 or a later accepted field-fix overlay')
+require(manifest.get('current_overlay') in {'xdm_android_phase59_runtime_recovery_action_transparency_overlay.zip', 'xdm_android_phase60_runtime_recovery_flow_seal_overlay.zip', 'xdm_android_phase61_final_gate_validator_harmony_overlay.zip', 'xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip', 'xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip', 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip', 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip'}, 'current overlay must point to Phase59 or a later accepted field-fix overlay')
 require(59 in manifest.get('project', {}).get('implemented_phases', []), 'Phase59 must be recorded as implemented')
 require(phase.get('room_schema_unchanged') == 14, 'Phase59 must keep Room schema 14')
 require(phase.get('top_level_route_added') is False, 'Phase59 must not add a top-level route')

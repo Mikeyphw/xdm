@@ -65,7 +65,8 @@
       60,
       61,
       62,
-      63
+      63,
+      64
     ]
   },
   "database": {
@@ -152,7 +153,7 @@
       "compare"
     ]
   },
-  "next_phase": "phase64_final_android_downloader_rc_seal",
+  "next_phase": "complete",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -459,7 +460,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_phase63_release_readiness_support_bundle_seal_overlay.zip",
+  "current_overlay": "xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -662,7 +663,8 @@
     51,
     54,
     55,
-    56
+    56,
+    65
   ],
   "media_termux_runtime_adapter": {
     "schema_version_unchanged": 14,
@@ -2818,7 +2820,7 @@
   },
   "field_bugfix_phase_63": {
     "name": "Release Readiness / Support Bundle Seal",
-    "overlay": "xdm_android_phase63_release_readiness_support_bundle_seal_overlay.zip",
+    "overlay": "xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip",
     "base": "Phase62 Real-device Operational Smoke Seal clean baseline",
     "status": "implemented",
     "room_schema_unchanged": 14,
@@ -2847,6 +2849,75 @@
       "SupportBundleReleaseReadinessPlannerTest",
       "Phase63ReleaseReadinessSupportBundleSealContractTest",
       "validate-phase63-release-readiness-support-bundle-seal.py"
+    ],
+    "r2_fix": "streams BrowserRemovalPhase7 browser-free source scan instead of joining production files into one heap-sized string"
+  },
+  "field_bugfix_phase_64": {
+    "name": "Final Android Downloader RC Seal",
+    "overlay": "xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip",
+    "base": "Phase63 Release Readiness / Support Bundle Seal r2 clean baseline",
+    "status": "implemented",
+    "final_android_downloader_rc_sealed": true,
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "automatic_transfer_start": false,
+    "automatic_deletion": false,
+    "automatic_upload": false,
+    "all_files_permission_added": false,
+    "debug_workbench_reopened": false,
+    "release_criteria_changed": false,
+    "built_in_browser_resurrected": false,
+    "persisted_session_values": false,
+    "requires_deferred_full_validation": true,
+    "summary": "Seals the downloader-only Android RC track after Debug Workbench D1-D7 and Phases49-63, keeping runtime behavior unchanged while aligning final validators, RC manifest state, redacted support/readiness reporting, and manual-device smoke evidence.",
+    "sealed_tracks": [
+      "debug_workbench_d1_d7",
+      "field_bugfix_phase49_56_operational_hardening",
+      "runtime_recovery_phase57_60",
+      "validator_harmony_phase61",
+      "real_device_smoke_phase62",
+      "support_bundle_readiness_phase63"
+    ],
+    "ship_gate_requires": [
+      "deferred_devtool_full_validation",
+      "manual_real_device_smoke_run",
+      "signed_release_artifact_verification",
+      "artifact_checksum_recording",
+      "aria2_runtime_payload_verification_for_publishable_artifacts",
+      "privacy_redaction_gate"
+    ],
+    "tests": [
+      "FinalAndroidDownloaderRcSealPlannerTest",
+      "Phase64FinalAndroidDownloaderRcSealContractTest",
+      "validate-phase64-final-android-downloader-rc-seal.py"
+    ]
+  },
+  "field_bugfix_phase_65": {
+    "name": "Diagnostic Export and Download Action Fix",
+    "overlay": "xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip",
+    "base": "Phase64 Final Android Downloader RC Seal r2 baseline",
+    "status": "implemented",
+    "diagnostic_share_export_added": true,
+    "runtime_self_test_check_ids_exported": true,
+    "download_three_dot_actions_audited": true,
+    "list_cancel_supported": true,
+    "list_delete_record_supported": true,
+    "active_delete_record_cancels_first": true,
+    "record_delete_does_not_delete_saved_file": true,
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "automatic_transfer_start": false,
+    "automatic_deletion": false,
+    "automatic_upload": false,
+    "all_files_permission_added": false,
+    "debug_workbench_reopened": false,
+    "persisted_session_values": false,
+    "summary": "Adds Android share-sheet export for redacted diagnostics/self-test reports with check IDs and fixes download list three-dot actions so Cancel and Delete record/Remove from list work from the list, including active, queued, failed, cancelled, and recovery-required downloads.",
+    "tests": [
+      "DownloadActionPlannerTest",
+      "DebugWorkbenchD6RuntimeSelfTestSuiteTest",
+      "Phase65DiagnosticExportDownloadActionContractTest",
+      "validate-phase65-diagnostic-export-download-action-fix.py"
     ]
   }
 }

@@ -1,61 +1,152 @@
 {
-  "schema_version": 1,
-  "session_id": "20260727T033927Z-0060b4e24b",
-  "status": "aborted",
+  "schema_version": 5,
+  "session_id": "20260731T182448Z-904936e5a2",
+  "status": "completed",
   "validation_mode": "standalone",
   "artifact": "",
-  "resource_profile": "standard",
+  "resource_profile": "automatic",
   "transaction_path": "",
   "recovery_available": false,
+  "revision": 64,
+  "failure_action": "pause",
+  "required_checkpoint_name": "finalize",
+  "required_checkpoint_keys": [
+    "android-resumable:finalize:1"
+  ],
+  "required_checkpoint_satisfied": true,
+  "plan_fingerprint": "c2e1dc5de3d24bae6aa50bbb6d9b33ee2b5acdcd9a4c26845129574b6e85c176",
+  "plan_drift_status": "",
   "phases": [
     {
-      "key": "xdm_android:preflight:1",
+      "key": "android-resumable:preflight:1",
       "name": "preflight",
-      "label": "xdm_android: preflight",
-      "status": "succeeded"
+      "label": "android-resumable: preflight",
+      "status": "passed",
+      "depends_on": [],
+      "input_domains": [
+        "config"
+      ],
+      "required": true,
+      "scope": "android-resumable"
     },
     {
-      "key": "xdm_android:dependencies:1",
+      "key": "android-resumable:dependencies:1",
       "name": "dependencies",
-      "label": "xdm_android: dependencies",
-      "status": "cancelled"
+      "label": "android-resumable: dependencies",
+      "status": "passed",
+      "depends_on": [
+        "android-resumable:preflight:1"
+      ],
+      "input_domains": [
+        "config"
+      ],
+      "required": true,
+      "scope": "android-resumable"
     },
     {
-      "key": "xdm_android:compile:1",
+      "key": "android-resumable:compile:1",
       "name": "compile",
-      "label": "xdm_android: compile",
-      "status": "cancelled"
+      "label": "android-resumable: compile",
+      "status": "passed",
+      "depends_on": [
+        "android-resumable:dependencies:1"
+      ],
+      "input_domains": [
+        "config",
+        "source",
+        "resources"
+      ],
+      "required": true,
+      "scope": "android-resumable"
     },
     {
-      "key": "xdm_android:resources:1",
+      "key": "android-resumable:resources:1",
       "name": "resources",
-      "label": "xdm_android: resources",
-      "status": "cancelled"
+      "label": "android-resumable: resources",
+      "status": "passed",
+      "depends_on": [
+        "android-resumable:compile:1"
+      ],
+      "input_domains": [
+        "config",
+        "resources"
+      ],
+      "required": true,
+      "scope": "android-resumable"
     },
     {
-      "key": "xdm_android:unit-test:1",
+      "key": "android-resumable:unit-test:1",
       "name": "unit-test",
-      "label": "xdm_android: unit-test",
-      "status": "cancelled"
+      "label": "android-resumable: unit-test",
+      "status": "passed",
+      "depends_on": [
+        "android-resumable:compile:1"
+      ],
+      "input_domains": [
+        "config",
+        "source",
+        "resources",
+        "tests"
+      ],
+      "required": true,
+      "scope": "android-resumable"
     },
     {
-      "key": "xdm_android:package:1",
+      "key": "android-resumable:package:1",
       "name": "package",
-      "label": "xdm_android: package",
-      "status": "cancelled"
+      "label": "android-resumable: package",
+      "status": "passed",
+      "depends_on": [
+        "android-resumable:compile:1",
+        "android-resumable:unit-test:1"
+      ],
+      "input_domains": [
+        "config",
+        "source",
+        "resources"
+      ],
+      "required": true,
+      "scope": "android-resumable"
     },
     {
-      "key": "xdm_android:lint:1",
+      "key": "android-resumable:lint:1",
       "name": "lint",
-      "label": "xdm_android: lint",
-      "status": "cancelled"
+      "label": "android-resumable: lint",
+      "status": "passed",
+      "depends_on": [
+        "android-resumable:compile:1"
+      ],
+      "input_domains": [
+        "config",
+        "source",
+        "resources"
+      ],
+      "required": true,
+      "scope": "android-resumable"
     },
     {
-      "key": "xdm_android:finalize:1",
+      "key": "android-resumable:finalize:1",
       "name": "finalize",
-      "label": "xdm_android: finalize",
-      "status": "cancelled"
+      "label": "android-resumable: finalize",
+      "status": "passed",
+      "depends_on": [
+        "android-resumable:preflight:1",
+        "android-resumable:dependencies:1",
+        "android-resumable:compile:1",
+        "android-resumable:resources:1",
+        "android-resumable:unit-test:1",
+        "android-resumable:package:1",
+        "android-resumable:lint:1"
+      ],
+      "input_domains": [
+        "config",
+        "source",
+        "resources",
+        "tests"
+      ],
+      "required": true,
+      "scope": "android-resumable"
     }
   ],
-  "updated_at": "2026-07-27T04:16:19.041023Z"
+  "updated_at": "2026-07-31T18:48:00.437798Z"
 }

@@ -1,9 +1,30 @@
+
+## XDM Android Phase 65 Diagnostic Export / Download Action Fix
+
+- Added Android share-sheet export actions for redacted support and runtime self-test reports.
+- Runtime self-test exports now include the check IDs that actually ran, such as `media-sniffer`, `redaction`, and `support-report`.
+- Fixed download list three-dot actions so Cancel and Delete record / Remove from list work from the list.
+- Removing an active/queued record is explicit and confirmation-gated: XDM cancels the transfer first, cleans owned backend/recovery/finalization records, then removes the list record without deleting saved files.
+- Kept Room schema 14, no all-files permission, no automatic upload, no automatic transfer start, and no Debug Workbench reopening.
+
+## XDM Android Phase64 — Final Android Downloader RC Seal
+
+- Sealed the downloader-only Android RC track after Debug Workbench D1-D7 and Phases49-63 without changing runtime behavior, Room schema, top-level routes, storage permissions, transfer start behavior, deletion behavior, upload behavior, release criteria, or browser-removal status.
+- Added a pure final RC seal planner and contract tests covering operational hardening, runtime recovery, validator harmony, real-device smoke evidence, support-bundle readiness, redacted diagnostics, signed-artifact/checksum expectations, and deferred full validation.
+- Wired the Phase64 validator into the final release gates and made older overlay-pinning validators accept the final RC overlay as the current product overlay.
+
 ## XDM Android Phase63 — Release Readiness / Support Bundle Seal
 
 - Added a support-bundle readiness seal that verifies copied diagnostics include operational context, release-security status, install/update readiness, final-release warning explanations, real-device smoke status, and privacy redaction guarantees.
 - Wired the support-bundle seal into the generated support report without adding routes, schema changes, storage permissions, uploads, automatic transfer actions, or persisted browser/session/header values.
 - Added Phase63 validator coverage and final-gate wiring while keeping older Phase54–Phase62 validators forward-compatible with the new current overlay.
 
+
+## XDM Android Phase63 Release Readiness Support Bundle Seal r2
+
+- Repacked Phase63 as r2 after Gradle exposed an older BrowserRemovalPhase7 contract test that loaded the full production source tree into one heap-sized string.
+- Streams bounded source files during the browser-free runtime check so unit tests stay memory-safe on constrained validation workers.
+- Keeps the Phase63 support-bundle release-readiness behavior unchanged.
 ## XDM Android Phase62 — Real-device Operational Smoke Seal
 
 - Added a pure real-device operational smoke checklist covering browser handoff, extension media capture, authenticated 403 recovery, completed storage visibility, and Recovery Doctor partial/orphan review.

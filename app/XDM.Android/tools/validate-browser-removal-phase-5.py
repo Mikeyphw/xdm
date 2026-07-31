@@ -42,7 +42,7 @@ for key in required_flags:
         errors.append(f"browser_removal_phase5.{key} must be true")
 expected_overlay = "xdm_android_browser_removal_phase5_persistence_contract_cleanup_overlay.zip"
 current_overlay = str(manifest_data.get("current_overlay", ""))
-if current_overlay not in {"xdm_android_phase61_final_gate_validator_harmony_overlay.zip", "xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip"} and current_overlay != expected_overlay and not current_overlay.startswith(("xdm_android_browser_removal_phase6_", "xdm_android_browser_removal_phase7_", "xdm_android_browser_removal_phase8")):
+if current_overlay not in {"xdm_android_phase61_final_gate_validator_harmony_overlay.zip", "xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip", "xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip", "xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip"} and current_overlay != expected_overlay and not current_overlay.startswith(("xdm_android_browser_removal_phase6_", "xdm_android_browser_removal_phase7_", "xdm_android_browser_removal_phase8")):
     errors.append("current_overlay must identify Phase 5 or an approved later successor")
 if manifest_data.get("next_phase") != "complete":
     errors.append("top-level next_phase must remain complete for legacy release gates")
@@ -52,7 +52,7 @@ for key in ("built_in_browser_media_downloader",):
     if key in manifest_data:
         errors.append(f"Retired active manifest section remains: {key}")
 for key in manifest_data:
-    if current_overlay not in {"xdm_android_phase61_final_gate_validator_harmony_overlay.zip", "xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip"} and re.match(r"phase(?:37a|37b|3[89]|4[0-9]|50)_", key):
+    if current_overlay not in {"xdm_android_phase61_final_gate_validator_harmony_overlay.zip", "xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip", "xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip", "xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip"} and re.match(r"phase(?:37a|37b|3[89]|4[0-9]|50)_", key):
         errors.append(f"Retired browser phase remains active in PROJECT_MANIFEST: {key}")
 for phase_number in (40, 41, 42, 49, 50):
     if phase_number in manifest_data.get("implemented_phases", []):

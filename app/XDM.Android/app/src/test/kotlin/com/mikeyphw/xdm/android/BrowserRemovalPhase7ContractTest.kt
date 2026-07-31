@@ -55,7 +55,7 @@ class BrowserRemovalPhase7ContractTest {
     @Test
     fun productionAndPersistenceRemainBrowserFree() {
         val root = androidRoot()
-        val production = listOf(
+        val productionRoots = listOf(
             File(root, "app/src/main"),
             File(root, "core-model/src/main"),
             File(root, "media/src/main"),
@@ -65,19 +65,31 @@ class BrowserRemovalPhase7ContractTest {
             File(root, "transfer-api/src/main"),
             File(root, "transfer-native/src/main"),
             File(root, "transfer-aria2/src/main"),
-        ).flatMap { directory ->
-            if (!directory.exists()) emptyList() else directory.walkTopDown().filter { it.isFile }.toList()
-        }.joinToString("\n") { it.readText() }
-
-        listOf("BrowserActivity", "BrowserScreen", "AppRoute.Browser", "android.webkit", "WebViewClient", "WebChromeClient").forEach {
-            assertFalse("Forbidden browser runtime token returned: $it", production.contains(it))
-        }
+        )
+        val forbiddenRuntimeTokens = listOf(
+            "BrowserActivity",
+            "BrowserScreen",
+            "AppRoute.Browser",
+            "android.webkit",
+            "WebViewClient",
+            "WebChromeClient",
+        )
+        productionRoots.asSequence()
+            .filter(File::exists)
+            .flatMap { directory -> directory.walkTopDown().filter { it.isSourceTextFile() } }
+            .forEach { source ->
+                val text = source.readText()
+                forbiddenRuntimeTokens.forEach { token ->
+                    assertFalse("Forbidden browser runtime token returned in ${source.relativeTo(root)}: $token", text.contains(token))
+                }
+            }
 
         val database = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt").readText()
         val preferences = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferencesStore.kt").readText()
         assertTrue(database.contains("version = 14"))
-        listOf("browser_tab", "browser_history", "bookmark", "private_session", "browser_profile").forEach {
-            assertFalse("Browser persistence returned: $it", (database + preferences).lowercase().contains(it))
+        val persistenceSources = sequenceOf(database, preferences).map(String::lowercase)
+        listOf("browser_tab", "browser_history", "bookmark", "private_session", "browser_profile").forEach { token ->
+            assertFalse("Browser persistence returned: $token", persistenceSources.any { it.contains(token) })
         }
     }
 
@@ -110,6 +122,9 @@ class BrowserRemovalPhase7ContractTest {
 
     private fun Element.androidAttribute(name: String): String =
         getAttributeNS("http://schemas.android.com/apk/res/android", name)
+
+    private fun File.isSourceTextFile(): Boolean =
+        isFile && extension in setOf("kt", "java", "xml", "json", "toml", "gradle", "kts") && length() <= 1_048_576L
 
     private fun androidRoot(): File {
         var current = File(System.getProperty("user.dir") ?: ".").canonicalFile

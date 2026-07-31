@@ -126,6 +126,9 @@ interface RecoveryDao {
 
     @Query("DELETE FROM recovery_records WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("DELETE FROM recovery_records WHERE downloadId = :downloadId")
+    suspend fun deleteByDownload(downloadId: String)
 }
 
 @Dao

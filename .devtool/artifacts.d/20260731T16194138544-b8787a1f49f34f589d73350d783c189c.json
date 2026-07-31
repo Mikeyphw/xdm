@@ -1,0 +1,186 @@
+{
+  "applied_at": "2026-07-31T16:19:41.385446Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase63_release_readiness_support_bundle_seal_overlay.zip",
+  "artifact_name": "xdm_android_phase63_release_readiness_support_bundle_seal_overlay.zip",
+  "type": "overlay",
+  "sha256": "a804eb5349d474d889a83a896a4c675d307c12a9f93379981280fa1eebc785f8",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 19,
+  "change_counts": {
+    "add": 5,
+    "modify": 14
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase63 Release Readiness Support Bundle Seal",
+    "description": "Adds a release-readiness/support-bundle seal that verifies operational diagnostics, install/update readiness, final-release warning explanations, real-device smoke status, and privacy redaction are included in copied support reports.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "5a0eef91d1083630a14ca35aecaf49c3fcdf56f4b34cecb12274d730bd1e8431",
+          "size": 47325,
+          "source_sha256": "6b6024d599f27a2252b467719dae58ec57c9ba0b53f4d8aab9619ff1e79c77c4"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "f501826d05dac2b7f13f730cbc94373b31f012b759723c5e3025abb624909c39",
+          "size": 108059,
+          "source_sha256": "1732bdec3c7e8cc1a92271dcc0115af7245a08443a4d057ff056c0b69bb12f25"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "d1cec953dd01d47a185443161d5eabe6eb96e861f444ef5f54dccb5fae8f7ded",
+          "size": 105929,
+          "source_sha256": "ab57c8c8d16e755847ce167f730677517c943cc95ea1e5de2772661f6e88b848"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase63ReleaseReadinessSupportBundleSealContractTest.kt",
+          "action": "add",
+          "sha256": "a8f47cc3e695bb2c69398aa65e1c1f6cb9b091da2bc7510d28856b635c56a208",
+          "size": 4414
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/SupportBundleReleaseReadinessSeal.kt",
+          "action": "add",
+          "sha256": "003deb7b82ecb5ccbacb523654831d5fed274f856795ff254c8b96fbb575c890",
+          "size": 6078
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/SupportBundleReleaseReadinessPlannerTest.kt",
+          "action": "add",
+          "sha256": "2fa3514408b7ffa96fe8084ec69e0788e3553a228aea1696a25fbb366e127f0d",
+          "size": 2591
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-63-RELEASE-READINESS-SUPPORT-BUNDLE-SEAL.md",
+          "action": "add",
+          "sha256": "59f5f0d478652673ecda3a659de24069274b9c8b427106a1d446073e8f33dc10",
+          "size": 1070
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "07debba2a0eee0e7bd05dbeb36b16b510d686286aa35731772aa348e737b030b",
+          "size": 5483,
+          "source_sha256": "e8323f69474ed6a6f3c114531d2ae8fda3490386cefd095b499162fb3ffe0289"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-phase-48-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "67885687f50d81b90b3ffd463eec23e6197bf6c28b94b29358bd16ba890a085d",
+          "size": 1844,
+          "source_sha256": "0f31a9e595e1948c509d7cdad1daf4e5bf15dec17635977293d404334417bbf9"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase54-engine-escalation-planner.py",
+          "action": "modify",
+          "sha256": "aa904dcc907e205c476cc36dad5a0a52e716e7ca427f26582bc4094a7a623642",
+          "size": 9025,
+          "source_sha256": "8dbaf4a5da3b68322ab070aa8049f5060ba156e10271db2ba3ef49524dad07e5"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase55-final-release-warning-explainer.py",
+          "action": "modify",
+          "sha256": "78974527978be71b9e9a705f42652f2a622d15c57a85539c0df565fd3c207d06",
+          "size": 9121,
+          "source_sha256": "07d92d8ab23c011bbc8c1d3c7a772ab2a33cf9ba7264d7c7c84d66de24b0d099"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase56-stale-copy-architecture-noise-sweep.py",
+          "action": "modify",
+          "sha256": "233b32896b81b04a16099fa9107f6465ed6ff4663bda1e32f48b61bea8e345b0",
+          "size": 10124,
+          "source_sha256": "aff807d337b623459842f85d01b5b9fd76f53ee3abae0dfe991723f2bef5861b"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase57-runtime-failure-recovery-ux.py",
+          "action": "modify",
+          "sha256": "7a04528ba8328874eded1072e6e3ab7ec893dae06c3305747de3f5deb5efd22a",
+          "size": 11356,
+          "source_sha256": "c4e86a66f6747d64eb011372766b6baaafbe1b997947e3f73a4abc81f648c759"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase58-runtime-recovery-execution-guard.py",
+          "action": "modify",
+          "sha256": "947041968fb49c8d964b70e4c91112e8d998481bd1f9579a33ccc5332ee7b188",
+          "size": 4943,
+          "source_sha256": "e1df4595d1d9e81f5915a1b50319982f361eac7418e4da872e8fb4e9599d796f"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase59-runtime-recovery-action-transparency.py",
+          "action": "modify",
+          "sha256": "450cfb915a3a987931b1837c26684c6a7b7c95b569c55068516f7cc20c215f9a",
+          "size": 5376,
+          "source_sha256": "c92616551a83e0171bae80857ee8d18de93cceaada872129b247c2b79a061d41"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase60-runtime-recovery-flow-seal.py",
+          "action": "modify",
+          "sha256": "3af69b4753aa3b3dce0c70f836c95d49b364a9acd0b755d5902ba93ecf55ab6e",
+          "size": 5707,
+          "source_sha256": "e8525aad1e2181fb5863ed64fcf9f69bc2dcddf641706e4ca33fab594874401f"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase61-final-gate-validator-harmony.py",
+          "action": "modify",
+          "sha256": "f692fb6007fa3a0a4b1b11232f9d01f13413cf8825eb59ea5bf8a0a9c819b1aa",
+          "size": 5592,
+          "source_sha256": "e1e9fea90f1209598e150b67f515a9842e0d13be9c90c7acdee199d146e26adb"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase62-real-device-operational-smoke-seal.py",
+          "action": "modify",
+          "sha256": "7d5d4d69d0e301076c4cd81a7d47b4a5bf404d54001a32b41a1937609f2cccbd",
+          "size": 6925,
+          "source_sha256": "68698ece877eb6a2122be0f5122c9c859bd5f52d6bc7fbc63284b9af4cba2c0a"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase63-release-readiness-support-bundle-seal.py",
+          "action": "add",
+          "sha256": "97d0ebee8d2a707dc559e2d3b746cb3b079d205e93b63f39ae2df4ef85206552",
+          "size": 7095
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "diagnostics": "pass"
+      },
+      "commands": [
+        "./.devtool-artifact/validate_phase63_release_readiness_support_bundle_seal.sh"
+      ],
+      "local_checks": [
+        "python3 app/XDM.Android/tools/validate-phase63-release-readiness-support-bundle-seal.py",
+        ".devtool-artifact/validate_phase63_release_readiness_support_bundle_seal.sh from repo root and Android root",
+        "Phase49 through Phase63 validators",
+        "focused kotlinc -Werror compile/run for SupportBundleReleaseReadinessPlannerTest",
+        "focused kotlinc -Werror compile/run for Phase63ReleaseReadinessSupportBundleSealContractTest",
+        "archive inventory/hash/hygiene verification"
+      ]
+    },
+    "notes": [
+      "No Room migration; schema remains 14.",
+      "No top-level route, all-files permission, automatic transfer start, automatic deletion, upload, release criteria change, or Debug Workbench reopening.",
+      "The wrapper under .devtool-artifact is metadata-only and intentionally excluded from inventory."
+    ]
+  },
+  "history_id": "b8787a1f49f34f589d73350d783c189c"
+}

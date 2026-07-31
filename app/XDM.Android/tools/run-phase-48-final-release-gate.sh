@@ -24,3 +24,6 @@ python3 tools/validate-phase60-runtime-recovery-flow-seal.py
 python3 tools/validate-phase61-final-gate-validator-harmony.py
 python3 tools/validate-phase62-real-device-operational-smoke-seal.py
 python3 tools/validate-phase63-release-readiness-support-bundle-seal.py
+
+python3 tools/validate-phase64-final-android-downloader-rc-seal.py
+python3 tools/validate-phase65-diagnostic-export-download-action-fix.py

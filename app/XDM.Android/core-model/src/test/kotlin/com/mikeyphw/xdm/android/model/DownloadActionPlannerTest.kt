@@ -18,6 +18,7 @@ class DownloadActionPlannerTest {
                 DownloadActionKind.CopyLink,
                 DownloadActionKind.ShareLink,
                 DownloadActionKind.Cancel,
+                DownloadActionKind.DeleteRecord,
             ),
             actions.map { it.kind },
         )
@@ -37,6 +38,9 @@ class DownloadActionPlannerTest {
             DownloadActionKind.MoveToBottom,
         )))
         assertTrue(actions.first { it.kind == DownloadActionKind.MoveUp }.enabled)
+        assertTrue(actions.map { it.kind }.contains(DownloadActionKind.Cancel))
+        assertTrue(actions.map { it.kind }.contains(DownloadActionKind.DeleteRecord))
+        assertEquals("Remove from list", actions.first { it.kind == DownloadActionKind.DeleteRecord }.label)
     }
 
     @Test
@@ -80,6 +84,7 @@ class DownloadActionPlannerTest {
         assertEquals("Review recovery", actions.first().label)
         assertTrue(actions.map { it.kind }.contains(DownloadActionKind.OpenFolder))
         assertTrue(actions.map { it.kind }.contains(DownloadActionKind.Redownload))
+        assertEquals("Remove record", actions.first { it.kind == DownloadActionKind.DeleteRecord }.label)
     }
 
     @Test

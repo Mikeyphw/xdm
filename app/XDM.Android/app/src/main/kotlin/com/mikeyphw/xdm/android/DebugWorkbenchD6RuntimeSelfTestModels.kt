@@ -131,7 +131,8 @@ object DebugWorkbenchRuntimeSelfTestSuite {
             appendLine("XDM Runtime Self-Test Suite")
             appendLine("Status: $status")
             appendLine("Checks: ${checks.count { it.statusLabel == RuntimeSelfTestLabels.Pass }} pass, $notes note, $failing fail")
-            checks.forEach { check -> appendLine("${check.title}: ${check.statusLabel} - ${DebugRedactor.redactText(check.detail)}") }
+            appendLine("Ran check IDs: ${checks.joinToString(", ") { it.id }}")
+            checks.forEach { check -> appendLine("[${check.id}] ${check.title}: ${check.statusLabel} - ${DebugRedactor.redactText(check.detail)}") }
             appendLine("Boundary: read-only checks only; no downloads, viewers, file probes, browser probes, or uploads are started.")
         }.trimEnd()
         return RuntimeSelfTestSuiteReport(

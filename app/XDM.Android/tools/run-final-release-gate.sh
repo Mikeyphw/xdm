@@ -86,6 +86,8 @@ validators=(
   tools/validate-phase61-final-gate-validator-harmony.py
   tools/validate-phase62-real-device-operational-smoke-seal.py
   tools/validate-phase63-release-readiness-support-bundle-seal.py
+  tools/validate-phase64-final-android-downloader-rc-seal.py
+  tools/validate-phase65-diagnostic-export-download-action-fix.py
 )
 
 for validator in "${validators[@]}"; do

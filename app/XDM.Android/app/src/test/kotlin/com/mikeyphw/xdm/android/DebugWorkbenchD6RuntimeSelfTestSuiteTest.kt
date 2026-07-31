@@ -51,4 +51,15 @@ class DebugWorkbenchD6RuntimeSelfTestSuiteTest {
         assertFalse(report.copyText.contains("Bearer secret"))
         assertFalse(report.copyText.contains("RuntimeSelfTestLabels"))
     }
+
+
+    @Test
+    fun exportedSuiteReportIncludesCheckIds() {
+        val report = DebugWorkbenchRuntimeSelfTestSuite.run(shellReport = shell, supportReportText = "ready")
+
+        assertTrue(report.copyText.contains("Ran check IDs:"))
+        assertTrue(report.copyText.contains("[media-sniffer]"))
+        assertTrue(report.copyText.contains("[redaction]"))
+        assertFalse(report.copyText.contains("RuntimeSelfTestLabels"))
+    }
 }

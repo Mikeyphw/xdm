@@ -3,6 +3,7 @@ package com.mikeyphw.xdm.android
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import org.json.JSONArray
 import org.json.JSONObject
@@ -210,6 +211,14 @@ internal fun firstDownloadUrlFromClipboard(context: Context): String? {
 internal fun copyTextToClipboard(context: Context, label: String, value: String) {
     val clipboard = context.getSystemService(ClipboardManager::class.java)
     clipboard?.setPrimaryClip(ClipData.newPlainText(label, value))
+}
+
+internal fun shareTextReport(context: Context, title: String, value: String) {
+    val intent = Intent(Intent.ACTION_SEND)
+        .setType("text/plain")
+        .putExtra(Intent.EXTRA_SUBJECT, title)
+        .putExtra(Intent.EXTRA_TEXT, value)
+    context.startActivity(Intent.createChooser(intent, title))
 }
 internal fun Download.accessibilitySummary(): String = buildString {
     append(fileName)

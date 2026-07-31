@@ -44,7 +44,7 @@ checks = [
         'sniffingPlan.records.firstOrNull',
     ]),
     (ROOT / 'app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt', [
-        'private val mediaSniffingEngine = MediaSniffingEngine(mediaCaptureService)',
+        'private val mediaSniffingEngine = MediaSniffingEngine(mediaCaptureService',
         'MediaSniffingSource.SharedText',
         'MediaSniffingSource.BrowserExtension',
         'sniffingPlan.records',
@@ -120,8 +120,8 @@ for key, value in expected.items():
         errors.append(f'manifest {key} expected {value!r}, got {phase.get(key)!r}')
 if not manifest.get('phase48_corrected_after_audit'):
     errors.append('manifest missing phase48_corrected_after_audit')
-if manifest.get('current_overlay') != 'xdm_android_phase47_real_shared_media_sniffing_engine_overlay.zip':
-    errors.append('current_overlay does not point at real Phase 47 correction overlay')
+if manifest.get('current_overlay') not in {'xdm_android_phase47_real_shared_media_sniffing_engine_overlay.zip', 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip'}:
+    errors.append('current_overlay does not point at real Phase 47 correction overlay or final RC seal')
 if errors:
     print('Phase 47 real shared media sniffing engine validation failed:')
     for error in errors:

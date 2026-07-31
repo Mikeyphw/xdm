@@ -1303,13 +1303,37 @@ class MainViewModel(
     }
 
     fun removeDownloadFromHistory(download: Download) {
-        if (!HistoryManagementPolicy.isSafeToRemoveFromHistory(download)) return
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteDownload(download.id) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val current = repository.findDownload(download.id) ?: download
+            if (current.state != DownloadState.Completed) {
+                runCatching { transferRuntime.cancel(current.id) }
+            }
+            removeDownloadRecord(current.id)
+        }
     }
 
     fun cancelDownload(download: Download) {
         if (download.state == DownloadState.Completed) return
-        viewModelScope.launch(Dispatchers.IO) { transferRuntime.cancel(download.id) }
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { transferRuntime.cancel(download.id) }
+            val current = repository.findDownload(download.id) ?: download
+            if (current.state != DownloadState.Completed) {
+                repository.save(
+                    current.copy(
+                        state = DownloadState.Cancelled,
+                        speedBytesPerSecond = 0,
+                        updatedAtEpochMs = System.currentTimeMillis(),
+                    ),
+                )
+            }
+        }
+    }
+
+    private suspend fun removeDownloadRecord(downloadId: String) {
+        repository.deleteBackendTask(downloadId)
+        repository.deleteRecoveryForDownload(downloadId)
+        repository.deleteFinalizationForDownload(downloadId)
+        repository.deleteDownload(downloadId)
     }
 
     fun redownload(download: Download) {

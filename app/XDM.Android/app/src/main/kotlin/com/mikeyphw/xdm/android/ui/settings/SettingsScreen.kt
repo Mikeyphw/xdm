@@ -169,6 +169,14 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
         }
         item {
             SettingsActionRow(
+                title = "Export support report",
+                summary = "Shares the same redacted diagnostics through Android's share sheet; no automatic upload is performed.",
+                actionLabel = "Export",
+                onClick = { shareTextReport(context, "XDM support report", state.supportReportText) },
+            )
+        }
+        item {
+            SettingsActionRow(
                 title = "Debug Workbench",
                 summary = "Open recorder status, redaction checks, session controls, and support-bundle readiness.",
                 actionLabel = "Open",

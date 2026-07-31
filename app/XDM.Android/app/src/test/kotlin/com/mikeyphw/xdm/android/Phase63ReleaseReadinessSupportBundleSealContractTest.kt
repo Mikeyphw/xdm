@@ -65,7 +65,7 @@ class Phase63ReleaseReadinessSupportBundleSealContractTest {
 
         assertTrue(finalGate.contains("validate-phase63-release-readiness-support-bundle-seal.py"))
         assertTrue(phase48Gate.contains("validate-phase63-release-readiness-support-bundle-seal.py"))
-        assertTrue(phase62Validator.contains("xdm_android_phase63_release_readiness_support_bundle_seal_overlay.zip"))
+        assertTrue(phase62Validator.contains("xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip"))
         assertTrue(phase63Validator.contains("Phase63 release readiness support bundle seal validator passed"))
     }
 

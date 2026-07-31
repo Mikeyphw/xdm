@@ -31,7 +31,7 @@ def require(condition: bool, message: str) -> None:
 
 manifest = json.loads((ROOT / 'PROJECT_MANIFEST.json').read_text())
 phase = manifest.get('field_bugfix_phase_58', {})
-require(manifest.get('current_overlay') in {'xdm_android_phase58_runtime_recovery_execution_guard_r2_overlay.zip', 'xdm_android_phase59_runtime_recovery_action_transparency_overlay.zip', 'xdm_android_phase60_runtime_recovery_flow_seal_overlay.zip', 'xdm_android_phase61_final_gate_validator_harmony_overlay.zip', 'xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip', 'xdm_android_phase63_release_readiness_support_bundle_seal_overlay.zip'}, 'current overlay must point to Phase58 or a later accepted field-fix overlay')
+require(manifest.get('current_overlay') in {'xdm_android_phase58_runtime_recovery_execution_guard_r2_overlay.zip', 'xdm_android_phase59_runtime_recovery_action_transparency_overlay.zip', 'xdm_android_phase60_runtime_recovery_flow_seal_overlay.zip', 'xdm_android_phase61_final_gate_validator_harmony_overlay.zip', 'xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip', 'xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip', 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip', 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip'}, 'current overlay must point to Phase58 or a later accepted field-fix overlay')
 require(phase.get('room_schema_unchanged') == 14, 'Phase58 must keep Room schema 14')
 require(phase.get('top_level_route_added') is False, 'Phase58 must not add top-level route')
 require(phase.get('automatic_transfer_start') is False, 'Phase58 must not auto-start transfers')
