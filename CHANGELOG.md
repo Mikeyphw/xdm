@@ -1,3 +1,41 @@
+## XDM Android Phase63 — Release Readiness / Support Bundle Seal
+
+- Added a support-bundle readiness seal that verifies copied diagnostics include operational context, release-security status, install/update readiness, final-release warning explanations, real-device smoke status, and privacy redaction guarantees.
+- Wired the support-bundle seal into the generated support report without adding routes, schema changes, storage permissions, uploads, automatic transfer actions, or persisted browser/session/header values.
+- Added Phase63 validator coverage and final-gate wiring while keeping older Phase54–Phase62 validators forward-compatible with the new current overlay.
+
+## XDM Android Phase62 — Real-device Operational Smoke Seal
+
+- Added a pure real-device operational smoke checklist covering browser handoff, extension media capture, authenticated 403 recovery, completed storage visibility, and Recovery Doctor partial/orphan review.
+- Wired the Phase62 validator into the final release gates and made Phase54–Phase61 validators tolerate Phase62 as the later current overlay.
+- Kept the seal manual and redacted: no automatic retry, no file deletion, no all-files permission, no persisted browser/session/header values, no Room migration, and no Debug Workbench reopening.
+
+## XDM Android Phase61 — Final Gate Validator Harmony
+
+- Updated the older UIX R3 downloads/add validator so it accepts the current Phase44 planner-backed download row instead of requiring the retired row-local `primaryRowAction` implementation.
+- Preserved the Phase44 contract that forbids reviving private row-local action planning in `DownloadRow.kt`.
+- Wired the Phase61 validator into the final release gates and made Phase54–Phase60 validators tolerate Phase61 as the later current overlay.
+- Kept the runtime/product boundary unchanged: no Room migration, no top-level route, no all-files permission, no automatic transfer start, no deletion, no upload, and no Debug Workbench reopening.
+
+## XDM Android Phase60 — Runtime Recovery Flow Seal
+
+- Added a pure runtime recovery flow seal that summarizes whether recovery planning, execution guarding, action previews, and redacted reporting are all present before users act.
+- Wired the Phase60 validator into the final release gates and made Phase54–Phase59 validators tolerate Phase60 as the later current overlay.
+- Preserved the Phase57–Phase59 safety boundaries: no automatic retry, no automatic deletion, no all-files permission, no Room migration, no persisted session values, and no Debug Workbench reopening.
+
+## XDM Android Phase59 — Runtime Recovery Action Transparency
+
+- Added a redacted action-preview layer to the runtime recovery card so retry, method switch, Recovery Doctor, guidance, and report actions explain what will happen before a tap.
+- Recovery reports now include a safe action-preview summary without full links, cookies, authorization values, bearer tokens, or credential-bearing query values.
+- Preserved Phase58 execution-guard boundaries: no automatic retry, no automatic deletion, no all-files permission, no Room migration, and no Debug Workbench reopening.
+
+## XDM Android Phase58 — Runtime Recovery Execution Guard
+
+- Added a pure runtime recovery execution guard between Phase57 recovery recommendations and retry/method/recovery callbacks.
+- Download details now show an Action safety summary so partial data, captured-session retry, method switching, guidance-only actions, and redacted reports have explicit reviewed behavior.
+- Partial and recovery-required retries route through Recovery Doctor first; browser refresh and yt-dlp remain guidance-only; report copy stays redacted and copy-only.
+- No Room migration, top-level route, all-files permission, automatic transfer start, automatic deletion, upload, release-criteria change, or Debug Workbench reopening.
+
 # XDM Android Phase 56 Stale Copy / Architecture Noise Sweep
 
 

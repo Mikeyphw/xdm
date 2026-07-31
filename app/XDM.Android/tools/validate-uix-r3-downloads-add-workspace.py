@@ -36,8 +36,15 @@ screen = require(
 )
 row = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt",
-    "combinedClickable(", "onLongClick", "XdmFileTypeIcon(", "XdmProgressLine(", "primaryRowAction",
+    "combinedClickable(", "onLongClick", "XdmFileTypeIcon(", "XdmProgressLine(",
+    "DownloadActionPlanner.primaryActionFor(download)", "DownloadAction.iconVector()",
 )
+
+# Phase61: UIX R3 originally required the old row-local primaryRowAction symbol.
+# Phase44 intentionally retired that local planner; the current contract is planner-backed.
+if "private fun Download.primaryRowAction" in row or "private data class DownloadRowAction" in row:
+    ERRORS.append("Download rows must keep using DownloadActionPlanner instead of reviving row-local action planning")
+
 if 'label = { Text("Select") }' in row + screen:
     ERRORS.append("Downloads must use long-press selection instead of permanent Select chips")
 if "tonalElevation = 0.dp" not in row or "shadowElevation = 0.dp" not in row:

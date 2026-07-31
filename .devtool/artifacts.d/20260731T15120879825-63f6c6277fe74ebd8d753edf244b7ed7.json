@@ -1,0 +1,261 @@
+{
+  "applied_at": "2026-07-31T15:12:08.798251Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase61_final_gate_validator_harmony_overlay.zip",
+  "artifact_name": "xdm_android_phase61_final_gate_validator_harmony_overlay.zip",
+  "type": "overlay",
+  "sha256": "73bc32d55a157eabcfba7a64372cddc673b0574386653d4553f95ed9b1030e91",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 29,
+  "change_counts": {
+    "add": 3,
+    "modify": 26
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase61 Final Gate Validator Harmony",
+    "description": "Reconciles stale final static gate validators with current planner-backed download row contracts and marks the field-fix arc complete without runtime behavior changes.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "c5c98fd611cc03807b7fb84107c97a240f77f4e730c161ebc7f3c81c4f4bb639",
+          "size": 46033,
+          "source_sha256": "d612177e0cf1b95cad1e6f2308fb4ed8e06f85f7cf1b16a7675ee0297b09d7e7"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "348d47bcd97cd9103b3e3c57289a0262d6e881708451d10f0298db842c3b9e1a",
+          "size": 105097,
+          "source_sha256": "8af63a99cf94d55d6819d3539b6f57af3d6f3818606f0706575f1503c5ffd282"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase61FinalGateValidatorHarmonyContractTest.kt",
+          "action": "add",
+          "sha256": "65ec75b583e6f5698a02e09bc446110f643ae69f73b28bad12f0a97fffffa96f",
+          "size": 3508
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-61-FINAL-GATE-VALIDATOR-HARMONY.md",
+          "action": "add",
+          "sha256": "a16d67053941eb05d2d974ce240f7688359f9609d53bcd3142373b7080cf1318",
+          "size": 1306
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "636652c3310ec437f4d383f28e141de5369060e191855743a405d2a6405a7bc1",
+          "size": 5354,
+          "source_sha256": "62d926cac48a6b56ec364f86e6a9570aa362af332949c38cb683cced70f73070"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-phase-48-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "43db86c7b17a37e42ab4917dea906a330cac73247ab71dd7ed037dfbccfd777b",
+          "size": 1703,
+          "source_sha256": "74b2ceeb7da7e48933cc58b7ddec7b2d71ae32bda2412343ef79dda1b853e29b"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-0-1.py",
+          "action": "modify",
+          "sha256": "e4afa11a05f6eb555054ede9aebfffe0eb9b1da597adf371cfec46ff30e7cf03",
+          "size": 5755,
+          "source_sha256": "af7d5a91e5c8a6b1563b62ed456519d6538e46fc2addc554226fec9d1ba92b4b"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-2.py",
+          "action": "modify",
+          "sha256": "ff83d6c4bcd5517bf535f0833867cf3453b1ca3ea358f747706b000cf5d7795c",
+          "size": 3817,
+          "source_sha256": "d4414ffac70e9f8305a829636b4feec837178aafcd504d6b15817a821657e89a"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-4.py",
+          "action": "modify",
+          "sha256": "c159c14051c167a19b6211506eba97dafecdf17ccc2f739cc38dd7a264ff9e63",
+          "size": 8418,
+          "source_sha256": "0dc44a145e43fa5a53de43a3457795f4e3db0cd2b3100d197486e0d96e186693"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-5.py",
+          "action": "modify",
+          "sha256": "79eaa675cc089227cfa985461baa9a92d77e0e79f8efceab605fd88836fd094e",
+          "size": 10690,
+          "source_sha256": "99cbaf8b3199852c7be3b8cb670d21d79728fbf1aac2baf144dbdf75b51a0eb1"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-6.py",
+          "action": "modify",
+          "sha256": "ce9dca7896d9070da633bac3ec64003dadd3ead3814f4328807d419e8d0b24d6",
+          "size": 6996,
+          "source_sha256": "1d77eacd5eaa1bea5d57b25f63ecaa51bbb4130ef558241b20a0c2012f867f8f"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-7.py",
+          "action": "modify",
+          "sha256": "ea2a5ab2d236184a944fcc50c328891b48180845ebe2c9e8e9fae1c6ac8bcffb",
+          "size": 11475,
+          "source_sha256": "239f2ab42dfb0909ddfe49d56faee39393125adb07a9407f0957974e40cf7b4c"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8ab.py",
+          "action": "modify",
+          "sha256": "bc36a7a1177787fb82e9ca0ee7720dbc4298852c9a7357e78071afe36a6fb810",
+          "size": 7657,
+          "source_sha256": "e929e7693a7dd12890f7bbfe442ee5e3f24caee4e5f25e8c4f06b928a3d4874d"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8c.py",
+          "action": "modify",
+          "sha256": "acebaffe516b257906c3fd8f9c20926341f327f958346236b06f94fe4f356936",
+          "size": 9374,
+          "source_sha256": "08e96f59ccc525732762e0bfdcfc5e21f1758f6e9370a06203d219753d1569e8"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8d.py",
+          "action": "modify",
+          "sha256": "90f02edbd2b93793f823a59931a84cf9e68071b2163905487c7ecabfb0247b32",
+          "size": 8003,
+          "source_sha256": "ca9b1efb52e9c5c5078740e9565da55809757e3d5756b10699b26126a3bdfe26"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8e.py",
+          "action": "modify",
+          "sha256": "964f6b5ff8733034b71fbc982692b857b8de4522e756765f4e1075faf164948e",
+          "size": 10332,
+          "source_sha256": "2c1a06f9ebcb9be223b1ba8c213565236ffe302c5f520e93f6ad11b3abb1b53f"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+          "action": "modify",
+          "sha256": "25a3b69e6d812af0a7c5c245594ee7f411858b672ecc25ec2977eab18352efeb",
+          "size": 7983,
+          "source_sha256": "ff6087a9abd5ac33f9a753697d14e6cf65034e3522838cfdb65bdbbdc755c117"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+          "action": "modify",
+          "sha256": "204e11febb48cb1dd3cc68197aef6b074c5724be6b6fe50489f67e1a6f8ca50e",
+          "size": 10952,
+          "source_sha256": "3f45758f06d56370feece1b6a0411da7ebaf543bb0feda2b2781e47eadab7f18"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+          "action": "modify",
+          "sha256": "ceae003d940fdc950b7ea04272bbc507d2e0759ec11b14456b5a104231da700b",
+          "size": 9469,
+          "source_sha256": "93dc85ca0193ea142385a391053b91c13a7410154b062c05e584bf0cd0854458"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-8e-compose-storage-hotfix.py",
+          "action": "modify",
+          "sha256": "5e1fffbb79c71ca62c1425672763a5f6e6ff20dd404226e5eb920dbf84fd7841",
+          "size": 6677,
+          "source_sha256": "89ca03a9eb951fb581c162cdd7bcf6738345eccd8180c0b531aad8675306f0eb"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase54-engine-escalation-planner.py",
+          "action": "modify",
+          "sha256": "18f0fdd087bed689f537eab45118abf185399b0ad986de1e19c5e68d58da5831",
+          "size": 8882,
+          "source_sha256": "1377ee219c32d04b6fc8422b728d93017e696025ab4d406fd4af2bcbe06916dc"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase55-final-release-warning-explainer.py",
+          "action": "modify",
+          "sha256": "87162655d221c5937a5536cffbdcf3cededd37d734108d58cc423fc26e5e0f80",
+          "size": 8885,
+          "source_sha256": "81417d87c43aeb761fe39a75c47f1b43a58608d73093055337f8430f4c541e53"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase56-stale-copy-architecture-noise-sweep.py",
+          "action": "modify",
+          "sha256": "e82fe3286fca5dcb7987d7797774100440be8856c527d42610248bdd3d73f129",
+          "size": 9888,
+          "source_sha256": "17817ab3580b69fe3b606ec6a4a96439ab78fcd68a19bdd1ddd6dcbdeeb914fe"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase57-runtime-failure-recovery-ux.py",
+          "action": "modify",
+          "sha256": "6cb4a1ba428b2caaab1bc179b014858a6b37d2b8abe44c227d060956282438bd",
+          "size": 11120,
+          "source_sha256": "f6739587682d77ead7f8f68a97095d31bda09d79c9e0d63f8c283d3bd30e9df7"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase58-runtime-recovery-execution-guard.py",
+          "action": "modify",
+          "sha256": "faab5be72f1416244db9988c7478314a6325e111735cab345a3e09d9f57c5a44",
+          "size": 4800,
+          "source_sha256": "3c14fd084b2fe3ace2afe692cd797b2f2f9e8e8fa0058742412ab5fadfe207ed"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase59-runtime-recovery-action-transparency.py",
+          "action": "modify",
+          "sha256": "215507773abfe0c5cf9ad5c1d7c8b02f4fc3b738482349cbf397534df6cd02fc",
+          "size": 5233,
+          "source_sha256": "6fce5c0dd35c19fbc12ee5583df12012a77e0dcf14126fbc73b1905c4b855c7b"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase60-runtime-recovery-flow-seal.py",
+          "action": "modify",
+          "sha256": "f87e1ba162b80fcfebd925715f58a5c46f012e36686d33d456295c4cd813fc01",
+          "size": 5564,
+          "source_sha256": "41fcf9c02d21821fb523cccb47d2233ffd9ad434d4e0ad279a07d2510483035b"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase61-final-gate-validator-harmony.py",
+          "action": "add",
+          "sha256": "bd56da969e4a7d485759c5be22736c11beb09ea6884a95548d145e21dec87195",
+          "size": 5247
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-uix-r3-downloads-add-workspace.py",
+          "action": "modify",
+          "sha256": "144d54458871507dd5a5d0a75261b71a38191a51fd9072747db79a08c2b5b5d0",
+          "size": 5856,
+          "source_sha256": "6d071799d163c4b480546bf267f87a09fc7dc70b18ec26cd7cf9fdddeae64604"
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "diagnostics": "pass"
+      },
+      "commands": [
+        "./.devtool-artifact/validate_phase61_final_gate_validator_harmony.sh"
+      ],
+      "local_checks": [
+        "python3 app/XDM.Android/tools/validate-phase61-final-gate-validator-harmony.py",
+        ".devtool-artifact/validate_phase61_final_gate_validator_harmony.sh from repo root and Android root",
+        "python3 app/XDM.Android/tools/validate-uix-r3-downloads-add-workspace.py",
+        "python3 app/XDM.Android/tools/validate-phase-44-download-list-actions.py",
+        "tools/run-final-release-gate.sh --ci validator sequence run in chunks through Phase61",
+        "Phase49 through Phase60 validators",
+        "focused kotlinc -Werror compile for Phase61FinalGateValidatorHarmonyContractTest",
+        "focused Phase61 contract runner",
+        "archive inventory/hash/hygiene verification"
+      ]
+    },
+    "notes": [
+      "No Room migration; schema remains 14.",
+      "No top-level route, all-files permission, automatic transfer start, automatic deletion, upload, release criteria change, or Debug Workbench reopening.",
+      "The wrapper under .devtool-artifact is metadata-only and intentionally excluded from inventory."
+    ]
+  },
+  "history_id": "63f6c6277fe74ebd8d753edf244b7ed7"
+}

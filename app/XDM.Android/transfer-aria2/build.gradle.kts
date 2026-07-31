@@ -6,6 +6,14 @@ val requireAlignedAria2Runtime = providers.gradleProperty("xdm.requireAria2Runti
     .map(String::toBoolean)
     .orElse(false)
 
+val installOfficialAria2Runtime by tasks.registering(Exec::class) {
+    group = "build setup"
+    description = "Downloads and installs the official ARM64 aria2 runtime payload."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/install-aria2-runtime.py", "--download-official")
+    outputs.upToDateWhen { false }
+}
+
 android {
     namespace = "com.mikeyphw.xdm.android.transfer.aria2"
     compileSdk = 36

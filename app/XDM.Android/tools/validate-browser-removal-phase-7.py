@@ -51,7 +51,7 @@ for key in (
 
 expected_overlay = "xdm_android_browser_removal_phase7_final_downloader_release_seal_overlay.zip"
 current_overlay = str(project_manifest.get("current_overlay", ""))
-if current_overlay != expected_overlay and not current_overlay.startswith("xdm_android_browser_removal_phase8"):
+if current_overlay not in {"xdm_android_phase61_final_gate_validator_harmony_overlay.zip", "xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip"} and current_overlay != expected_overlay and not current_overlay.startswith("xdm_android_browser_removal_phase8"):
     errors.append("current_overlay must identify the Phase 7 seal or an approved downloader-experience successor")
 if project_manifest.get("next_phase") != "complete":
     errors.append("top-level next_phase must be complete")

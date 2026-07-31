@@ -1,0 +1,159 @@
+{
+  "applied_at": "2026-07-31T13:43:11.447686Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase58_runtime_recovery_execution_guard_r2_overlay.zip",
+  "artifact_name": "xdm_android_phase58_runtime_recovery_execution_guard_r2_overlay.zip",
+  "type": "overlay",
+  "sha256": "0744ec16808f2038b50b558c4761a2634a35462ffc777e00660a2f4523687686",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 14,
+  "change_counts": {
+    "add": 5,
+    "modify": 9
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 58 Runtime Recovery Execution Guard r2",
+    "description": "Fixes the Phase58 contract-test Kotlin string escaping failure while preserving the runtime recovery execution guard behavior.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "b8aeedc53f462beaab1cc67b05aa870c6d16d387fe96d9f80dcf50e0ed7b5925",
+          "size": 44173,
+          "source_sha256": "7627a6b9d11b0a22c3d721a9fb184a64f0df1b02e017246c09146d36615139f6"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "0dd4fd8c20b5f79267df9ac6c6dd87a1e209618c7a949149d971cd556ca27394",
+          "size": 101015,
+          "source_sha256": "c46579d2dabe7ec43f14ea3d9c68857a9aef2218c175276c489aa42e7253c5c5"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDetails.kt",
+          "action": "modify",
+          "sha256": "9658f2f3de852bc5c1d037be9e0f5755beed37b97d205a5ed680eb0bfd3be5d3",
+          "size": 20917,
+          "source_sha256": "33c20fdf72dd37622febc9c0ff39aaec0f6d034c9138bd583afb4e845851341c"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase58RuntimeRecoveryExecutionGuardContractTest.kt",
+          "action": "add",
+          "sha256": "bf7d5bd5d0c04ec9e4d9ce9fe46a03d5f57bd2fb53d7f3c9bce2ad1cb51071ea",
+          "size": 3631
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryExecutionGuard.kt",
+          "action": "add",
+          "sha256": "d451ae00b3fa1dbefdccab5f7b03ffd2323dfed8438d9c181345ad9b20eda184",
+          "size": 8166
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryExecutionGuardTest.kt",
+          "action": "add",
+          "sha256": "fe84f683cfa9b01a9ee04b8bf14221eb6de377fbc12f0be465a3b06ce12216ec",
+          "size": 3979
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-58-RUNTIME-RECOVERY-EXECUTION-GUARD.md",
+          "action": "add",
+          "sha256": "cd6e9041c253812881af0ba44860f54e9d3f46ac1a701045de6e21c216d0b9b3",
+          "size": 1043
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "7a351b01380108e2ef8e6dcc53b2e85808b2a3873aed1ccc894e93c91a04a019",
+          "size": 5177,
+          "source_sha256": "a230a911dc0d6d0f106ed1027b2d215155c0d601cf675f20bb36707529739b52"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-phase-48-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "8a708e5d1b8cf56fa56fd53de9621a858058579d9030ebceaee6587e5b73ff08",
+          "size": 1508,
+          "source_sha256": "cb668979b8172e7f601c786d26cf8833c21f937f121bd0975f8eb5d2834dad07"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase54-engine-escalation-planner.py",
+          "action": "modify",
+          "sha256": "eb50d31da070b3189b4149c931c727a9cf23876105030b990859fa661a58f84d",
+          "size": 8599,
+          "source_sha256": "58bce122cc5031b0ae0918517df8b7e38a137c9e5abdbb6bca7a21457aa02cb2"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase55-final-release-warning-explainer.py",
+          "action": "modify",
+          "sha256": "421e8e2ef6382f5277da8cec977747c59ca73079559b4b7532d991fce96bd899",
+          "size": 8478,
+          "source_sha256": "198bed626d6d9b799e51b0e14d76408bdffa851b3e61f188e8ce5613e8dbb0a6"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase56-stale-copy-architecture-noise-sweep.py",
+          "action": "modify",
+          "sha256": "3e261041cb6cc21ae492b4605a1f4b3b969fa4638b2e7963ba860cc50cdb94a4",
+          "size": 9211,
+          "source_sha256": "7a19adb57ce2214e4f81c0701afacafa262e14e3ef76bfef3a850bef53ddf802"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase57-runtime-failure-recovery-ux.py",
+          "action": "modify",
+          "sha256": "0c55628654a7ff01ece178653ca483f2acd89768fe553a03f524cd299bc27791",
+          "size": 9828,
+          "source_sha256": "6fe7159a0403c38c27276a354fbb27e9f4d81ed4752cf36571fc14d03562bd60"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase58-runtime-recovery-execution-guard.py",
+          "action": "add",
+          "sha256": "878b1b9953f8f7509acef20db5c17797bb0f1987179e8e62d37b61a95c5bf868",
+          "size": 4477
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "diagnostics": "pass"
+      },
+      "commands": [
+        "./.devtool-artifact/validate_phase58_runtime_recovery_execution_guard.sh"
+      ],
+      "local_checks": [
+        "python3 app/XDM.Android/tools/validate-phase58-runtime-recovery-execution-guard.py",
+        ".devtool-artifact/validate_phase58_runtime_recovery_execution_guard.sh",
+        "python3 app/XDM.Android/tools/validate-phase57-runtime-failure-recovery-ux.py",
+        "python3 app/XDM.Android/tools/validate-phase56-stale-copy-architecture-noise-sweep.py",
+        "python3 app/XDM.Android/tools/validate-phase55-final-release-warning-explainer.py",
+        "python3 app/XDM.Android/tools/validate-phase54-engine-escalation-planner.py",
+        "python3 app/XDM.Android/tools/validate-phase53-extension-detection-quality-gate.py",
+        "python3 app/XDM.Android/tools/validate-phase52-browser-session-health.py",
+        "python3 app/XDM.Android/tools/validate-phase51-recovery-storage-doctor.py",
+        "python3 app/XDM.Android/tools/validate-phase50-operational-repair.py",
+        "python3 app/XDM.Android/tools/validate-phase49-field-bugfix.py",
+        "focused kotlinc compile for core-model sources",
+        "focused RuntimeRecoveryExecutionGuard runner",
+        "archive inventory/hash/hygiene verification"
+      ]
+    },
+    "notes": [
+      "No Room migration; schema remains 14.",
+      "No top-level route, all-files permission, automatic transfer start, automatic deletion, upload, or Debug Workbench reopening.",
+      "Recovered action execution remains user-triggered and redacted."
+    ]
+  },
+  "history_id": "ab62a3b3131843118dd2bc31005f980f"
+}

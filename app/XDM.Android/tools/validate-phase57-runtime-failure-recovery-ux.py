@@ -79,7 +79,7 @@ require('RuntimeFailureRecoveryPlanner.evaluate(download)' in details, 'Download
 require('RuntimeFailureRecoveryCard' in details, 'Download details recovery card missing')
 require('runRuntimeRecoveryAction' in details, 'Recovery action dispatcher missing')
 require('onOpenActivityAttention = onOpenActivityAttention' in details and 'onOpenActivityAttention = onOpenActivityAttention' in downloads, 'Recovery Doctor bridge must be wired')
-require('copyTextToClipboard(context, "XDM recovery report", report)' in details, 'redacted report copy action missing')
+require('copyTextToClipboard(' in details and '"XDM recovery report"' in details and 'RuntimeRecoveryActionPreviewPlanner.redactedReportSection' in details, 'redacted report copy action missing')
 require('Open the source page in your browser' in details, 'refresh-from-browser guidance missing')
 require('Open Media, inspect this source' in details, 'yt-dlp/media guidance missing')
 
@@ -98,9 +98,9 @@ require('XDM Android Phase 57 Runtime Failure Recovery UX' in changelog, 'change
 require('does not start transfers automatically' in doc, 'Phase57 doc must state no automatic transfer start')
 require('validate-phase57-runtime-failure-recovery-ux.py' in phase48_gate, 'Phase48 final gate must include Phase57 validator')
 require('tools/validate-phase57-runtime-failure-recovery-ux.py' in final_gate, 'Final release gate must include Phase57 validator')
-require('xdm_android_phase57_runtime_failure_recovery_ux_overlay.zip' in phase54_validator and 'xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip' in phase54_validator, 'Phase54 validator must tolerate Phase57/r2')
-require('xdm_android_phase57_runtime_failure_recovery_ux_overlay.zip' in phase55_validator and 'xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip' in phase55_validator, 'Phase55 validator must tolerate Phase57/r2')
-require('xdm_android_phase57_runtime_failure_recovery_ux_overlay.zip' in phase56_validator and 'xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip' in phase56_validator, 'Phase56 validator must tolerate Phase57/r2')
+require('xdm_android_phase57_runtime_failure_recovery_ux_overlay.zip' in phase54_validator and 'xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip' in phase54_validator and 'xdm_android_phase58_runtime_recovery_execution_guard_overlay.zip' in phase54_validator and 'xdm_android_phase58_runtime_recovery_execution_guard_r2_overlay.zip' in phase54_validator and 'xdm_android_phase59_runtime_recovery_action_transparency_overlay.zip' in phase54_validator and 'xdm_android_phase60_runtime_recovery_flow_seal_overlay.zip' in phase54_validator and 'xdm_android_phase61_final_gate_validator_harmony_overlay.zip' in phase54_validator, 'Phase54 validator must tolerate Phase57/r2 and later accepted overlays')
+require('xdm_android_phase57_runtime_failure_recovery_ux_overlay.zip' in phase55_validator and 'xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip' in phase55_validator and 'xdm_android_phase58_runtime_recovery_execution_guard_overlay.zip' in phase55_validator and 'xdm_android_phase58_runtime_recovery_execution_guard_r2_overlay.zip' in phase55_validator and 'xdm_android_phase59_runtime_recovery_action_transparency_overlay.zip' in phase55_validator and 'xdm_android_phase60_runtime_recovery_flow_seal_overlay.zip' in phase55_validator and 'xdm_android_phase61_final_gate_validator_harmony_overlay.zip' in phase55_validator, 'Phase55 validator must tolerate Phase57/r2 and later accepted overlays')
+require('xdm_android_phase57_runtime_failure_recovery_ux_overlay.zip' in phase56_validator and 'xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip' in phase56_validator and 'xdm_android_phase58_runtime_recovery_execution_guard_overlay.zip' in phase56_validator and 'xdm_android_phase58_runtime_recovery_execution_guard_r2_overlay.zip' in phase56_validator and 'xdm_android_phase59_runtime_recovery_action_transparency_overlay.zip' in phase56_validator and 'xdm_android_phase60_runtime_recovery_flow_seal_overlay.zip' in phase56_validator and 'xdm_android_phase61_final_gate_validator_harmony_overlay.zip' in phase56_validator, 'Phase56 validator must tolerate Phase57/r2 and later accepted overlays')
 require('\\"overlay\\": \\"xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip\\"' in d7_contract, 'D7 contract must check sealed D7 manifest block overlay')
 require('\\"current_overlay\\": \\"xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip\\"' not in d7_contract, 'D7 contract must not pin global current overlay to D7')
 require('d7.get("overlay") == "xdm_android_debug_workbench_phase_d7_final_debug_seal_overlay.zip"' in d7_validator, 'D7 validator must check D7 block overlay')
@@ -110,8 +110,8 @@ try:
     manifest = json.loads(manifest_text)
     implemented = manifest.get('project', {}).get('implemented_phases', [])
     require(57 in implemented, 'implemented phases must include 57')
-    require(manifest.get('current_overlay') in {'xdm_android_phase57_runtime_failure_recovery_ux_overlay.zip', 'xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip'}, 'current overlay must point to Phase57/r2')
-    require(manifest.get('next_phase') == 'field_bugfix_phase_58_targeted_follow_up_or_complete', 'next phase must point to targeted follow-up or complete')
+    require(manifest.get('current_overlay') in {'xdm_android_phase57_runtime_failure_recovery_ux_overlay.zip', 'xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip', 'xdm_android_phase58_runtime_recovery_execution_guard_overlay.zip', 'xdm_android_phase58_runtime_recovery_execution_guard_r2_overlay.zip', 'xdm_android_phase59_runtime_recovery_action_transparency_overlay.zip', 'xdm_android_phase60_runtime_recovery_flow_seal_overlay.zip', 'xdm_android_phase61_final_gate_validator_harmony_overlay.zip', 'xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip', 'xdm_android_phase63_release_readiness_support_bundle_seal_overlay.zip'}, 'current overlay must point to Phase57/r2 or a later accepted field-fix overlay')
+    require(manifest.get('next_phase') in {'field_bugfix_phase_58_targeted_follow_up_or_complete', 'field_bugfix_phase_59_targeted_follow_up_or_complete', 'field_bugfix_phase_60_targeted_follow_up_or_complete', 'field_bugfix_phase_61_targeted_follow_up_or_complete', 'phase63_release_readiness_support_bundle_seal', 'complete', 'phase64_final_android_downloader_rc_seal'}, 'next phase must point to targeted follow-up or complete')
     p57 = manifest.get('field_bugfix_phase_57', {})
     require(p57.get('room_schema_unchanged') == 14, 'Phase57 must keep Room schema 14')
     for key in ['top_level_route_added', 'debug_workbench_reopened', 'automatic_transfer_start', 'automatic_deletion', 'all_files_permission_added', 'automatic_upload', 'release_criteria_changed']:
@@ -131,3 +131,4 @@ if errors:
         print(f'- {error}')
     sys.exit(1)
 print('Phase 57 runtime failure recovery UX validator passed')
+# later accepted overlay: xdm_android_phase60_runtime_recovery_flow_seal_overlay.zip

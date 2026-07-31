@@ -18,3 +18,9 @@ python3 tools/validate-phase54-engine-escalation-planner.py
 python3 tools/validate-phase55-final-release-warning-explainer.py
 python3 tools/validate-phase56-stale-copy-architecture-noise-sweep.py
 python3 tools/validate-phase57-runtime-failure-recovery-ux.py
+python3 tools/validate-phase58-runtime-recovery-execution-guard.py
+python3 tools/validate-phase59-runtime-recovery-action-transparency.py
+python3 tools/validate-phase60-runtime-recovery-flow-seal.py
+python3 tools/validate-phase61-final-gate-validator-harmony.py
+python3 tools/validate-phase62-real-device-operational-smoke-seal.py
+python3 tools/validate-phase63-release-readiness-support-bundle-seal.py

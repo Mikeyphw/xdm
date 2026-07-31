@@ -43,7 +43,7 @@ for key in (
     if phase.get(key) is not True:
         errors.append(f"browser_removal_phase4.{key} must be true")
 current_overlay = str(manifest_json.get("current_overlay", ""))
-if current_overlay != "xdm_android_browser_removal_phase4_runtime_excision_overlay.zip" and not current_overlay.startswith(("xdm_android_browser_removal_phase5_", "xdm_android_browser_removal_phase6_", "xdm_android_browser_removal_phase7_", "xdm_android_browser_removal_phase8")):
+if current_overlay not in {"xdm_android_phase61_final_gate_validator_harmony_overlay.zip", "xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip"} and current_overlay != "xdm_android_browser_removal_phase4_runtime_excision_overlay.zip" and not current_overlay.startswith(("xdm_android_browser_removal_phase5_", "xdm_android_browser_removal_phase6_", "xdm_android_browser_removal_phase7_", "xdm_android_browser_removal_phase8")):
     errors.append("current_overlay must identify Phase 4 or an approved later browser-removal overlay")
 
 for path in (

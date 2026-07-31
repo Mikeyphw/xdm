@@ -56,6 +56,7 @@ args = [
 [targets.xdm_android.tasks]
 restore = ["help"]
 build = [
+  ":transfer-aria2:installOfficialAria2Runtime",
   "assembleDebug",
   ":app:assembleDebugAndroidTest",
   ":browser-extension:packageFirefoxExtensionDark",

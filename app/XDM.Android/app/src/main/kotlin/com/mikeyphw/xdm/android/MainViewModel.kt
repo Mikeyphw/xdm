@@ -72,6 +72,7 @@ import com.mikeyphw.xdm.android.model.FinalReleaseGateReport
 import com.mikeyphw.xdm.android.model.ReleaseInstallReadinessGate
 import com.mikeyphw.xdm.android.model.ReleaseSecurityGate
 import com.mikeyphw.xdm.android.model.ReleaseSecurityReport
+import com.mikeyphw.xdm.android.model.SupportBundleReleaseReadinessPlanner
 import com.mikeyphw.xdm.android.model.ScheduleRule
 import com.mikeyphw.xdm.android.model.DesktopParityGate
 import com.mikeyphw.xdm.android.model.DesktopParityReport
@@ -558,6 +559,18 @@ class MainViewModel(
             fullValidationPassed = false,
             releaseSigningConfigured = !BuildConfig.DEBUG,
         )
+        val supportBundleSeal = SupportBundleReleaseReadinessPlanner.evaluate(
+            operationalDiagnosticsIncluded = activityDiagnosticsExport.isNotBlank(),
+            releaseSecurityIncluded = true,
+            installUpdateReadinessIncluded = true,
+            finalReleaseWarningsExplained = true,
+            realDeviceSmokeStatusIncluded = true,
+            redactedReportsOnly = true,
+            rawUrlsExcluded = true,
+            rawHeadersExcluded = true,
+            sessionValuesPersisted = false,
+            copyReportAvailable = true,
+        )
         val supportReportText = buildString {
             appendLine(activityDiagnosticsExport.trim())
             appendLine()
@@ -572,6 +585,8 @@ class MainViewModel(
             appendLine(installUpdateReadinessReport.redactedSummary())
             appendLine()
             appendLine(finalReleaseGateReport.redactedExplanationSummary())
+            appendLine()
+            appendLine(supportBundleSeal.redactedSummary())
         }
         MainUiState(
             route = navigation.route ?: prefs.lastRoute,

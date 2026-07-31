@@ -1,0 +1,272 @@
+{
+  "applied_at": "2026-07-31T15:57:37.735941Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip",
+  "artifact_name": "xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip",
+  "type": "overlay",
+  "sha256": "edbf494735e40b760b40f77b5975fddec64879979acff2f4831f20cc3adc4fbe",
+  "status": "ok",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 31,
+  "change_counts": {
+    "add": 5,
+    "modify": 26
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase62 Real-device Operational Smoke Seal",
+    "description": "Adds a manual real-device smoke checklist for external browser handoff, extension media capture, authenticated recovery, storage visibility, and Recovery Doctor review while keeping all actions manual and redacted.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "6b6024d599f27a2252b467719dae58ec57c9ba0b53f4d8aab9619ff1e79c77c4",
+          "size": 46645,
+          "source_sha256": "c5c98fd611cc03807b7fb84107c97a240f77f4e730c161ebc7f3c81c4f4bb639"
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "1732bdec3c7e8cc1a92271dcc0115af7245a08443a4d057ff056c0b69bb12f25",
+          "size": 106556,
+          "source_sha256": "348d47bcd97cd9103b3e3c57289a0262d6e881708451d10f0298db842c3b9e1a"
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase62RealDeviceOperationalSmokeSealContractTest.kt",
+          "action": "add",
+          "sha256": "be920d195f411b1a7d8013d24714bbac2ef40dcd5b47f22d140a56bdb7d42aea",
+          "size": 3563
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/RealDeviceOperationalSmokeSeal.kt",
+          "action": "add",
+          "sha256": "6011e63873c18f903513878d540e9c6abfbd60c69563b4f4f0de334ad15dc07a",
+          "size": 5823
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RealDeviceOperationalSmokeSealPlannerTest.kt",
+          "action": "add",
+          "sha256": "188436d54e53d8c6140c58bcdeafd7a486e7fe6813ace8e37f65820d4112e5cc",
+          "size": 1828
+        },
+        {
+          "path": "app/XDM.Android/docs/architecture/PHASE-62-REAL-DEVICE-OPERATIONAL-SMOKE-SEAL.md",
+          "action": "add",
+          "sha256": "9c6ee16336bdbcfa5367beee93be899088974942e30896ddeac73d351e0156c8",
+          "size": 1060
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "e8323f69474ed6a6f3c114531d2ae8fda3490386cefd095b499162fb3ffe0289",
+          "size": 5417,
+          "source_sha256": "636652c3310ec437f4d383f28e141de5369060e191855743a405d2a6405a7bc1"
+        },
+        {
+          "path": "app/XDM.Android/tools/run-phase-48-final-release-gate.sh",
+          "action": "modify",
+          "sha256": "0f31a9e595e1948c509d7cdad1daf4e5bf15dec17635977293d404334417bbf9",
+          "size": 1772,
+          "source_sha256": "43db86c7b17a37e42ab4917dea906a330cac73247ab71dd7ed037dfbccfd777b"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-0-1.py",
+          "action": "modify",
+          "sha256": "931b24fccbcfc397268814dbfacd3c3fbd1a18de9fc704c6bdf69b308d038086",
+          "size": 5831,
+          "source_sha256": "e4afa11a05f6eb555054ede9aebfffe0eb9b1da597adf371cfec46ff30e7cf03"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-2.py",
+          "action": "modify",
+          "sha256": "c41ffb08a87c1e10239694e7072c86c4141bde189571c80fc09f338019e96cf7",
+          "size": 3893,
+          "source_sha256": "ff83d6c4bcd5517bf535f0833867cf3453b1ca3ea358f747706b000cf5d7795c"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-4.py",
+          "action": "modify",
+          "sha256": "877f5f51442ce73a1ac3b6b4c7ccd92ba4b41a386211340f550e7ef5515d1bb9",
+          "size": 8494,
+          "source_sha256": "c159c14051c167a19b6211506eba97dafecdf17ccc2f739cc38dd7a264ff9e63"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-5.py",
+          "action": "modify",
+          "sha256": "cf7e7e00fab93b103a9ee86a14aa2c69fadd0a3c197040c1f5bd12978cf254d2",
+          "size": 10842,
+          "source_sha256": "79eaa675cc089227cfa985461baa9a92d77e0e79f8efceab605fd88836fd094e"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-6.py",
+          "action": "modify",
+          "sha256": "9bc7802adc4782414c9c76ae29de934d8fa6de2e583ff94a23d098c8388dfa3a",
+          "size": 7072,
+          "source_sha256": "ce9dca7896d9070da633bac3ec64003dadd3ead3814f4328807d419e8d0b24d6"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-browser-removal-phase-7.py",
+          "action": "modify",
+          "sha256": "7ffd885b9f6dcdab9c11e5fdec32cad6ad97f070b5df4f95606c0a5458716dba",
+          "size": 11551,
+          "source_sha256": "ea2a5ab2d236184a944fcc50c328891b48180845ebe2c9e8e9fae1c6ac8bcffb"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8ab.py",
+          "action": "modify",
+          "sha256": "f33b2601c40d0ff44a2452730fbb57686e2fbeb21a61daa1eeb8bf2da5634dc2",
+          "size": 7733,
+          "source_sha256": "bc36a7a1177787fb82e9ca0ee7720dbc4298852c9a7357e78071afe36a6fb810"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8c.py",
+          "action": "modify",
+          "sha256": "409a405f213bd23cd09c82c4b909a63dfc8afa2888779024dca213c3f0dfdeaf",
+          "size": 9450,
+          "source_sha256": "acebaffe516b257906c3fd8f9c20926341f327f958346236b06f94fe4f356936"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8d.py",
+          "action": "modify",
+          "sha256": "79b6cbec271bf5a7595822f4059e8ff1fb0c63b24028d4b21ac909ae0652f4f7",
+          "size": 8079,
+          "source_sha256": "90f02edbd2b93793f823a59931a84cf9e68071b2163905487c7ecabfb0247b32"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-downloader-experience-phase-8e.py",
+          "action": "modify",
+          "sha256": "bf0795277a6e52288ebea9d49e28c81aa34200d96b6efce01b4019a2bd0e48d3",
+          "size": 10408,
+          "source_sha256": "964f6b5ff8733034b71fbc982692b857b8de4522e756765f4e1075faf164948e"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-34-release-handoff.py",
+          "action": "modify",
+          "sha256": "003b1e2813ad7fdb314c6de920961036d2b523aba0971eac498e1ed0f6146db6",
+          "size": 8053,
+          "source_sha256": "25a3b69e6d812af0a7c5c245594ee7f411858b672ecc25ec2977eab18352efeb"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-35-release-candidate-polish.py",
+          "action": "modify",
+          "sha256": "51dd112bec0af8d085579e219a5626afdf8698fb748a01121a018ad9b685af86",
+          "size": 11022,
+          "source_sha256": "204e11febb48cb1dd3cc68197aef6b074c5724be6b6fe50489f67e1a6f8ca50e"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-36-external-download-handoff.py",
+          "action": "modify",
+          "sha256": "a8c2c21becdad32ca831024869d290be337322bc0f6afb7bcef64830057bef50",
+          "size": 9539,
+          "source_sha256": "ceae003d940fdc950b7ea04272bbc507d2e0759ec11b14456b5a104231da700b"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase-8e-compose-storage-hotfix.py",
+          "action": "modify",
+          "sha256": "0da8aeab7c58d7276c0a28390bc0bf28bde61baded1b5f10d1e18c5109312e14",
+          "size": 6753,
+          "source_sha256": "5e1fffbb79c71ca62c1425672763a5f6e6ff20dd404226e5eb920dbf84fd7841"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase54-engine-escalation-planner.py",
+          "action": "modify",
+          "sha256": "8dbaf4a5da3b68322ab070aa8049f5060ba156e10271db2ba3ef49524dad07e5",
+          "size": 8952,
+          "source_sha256": "18f0fdd087bed689f537eab45118abf185399b0ad986de1e19c5e68d58da5831"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase55-final-release-warning-explainer.py",
+          "action": "modify",
+          "sha256": "07d92d8ab23c011bbc8c1d3c7a772ab2a33cf9ba7264d7c7c84d66de24b0d099",
+          "size": 9004,
+          "source_sha256": "87162655d221c5937a5536cffbdcf3cededd37d734108d58cc423fc26e5e0f80"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase56-stale-copy-architecture-noise-sweep.py",
+          "action": "modify",
+          "sha256": "aff807d337b623459842f85d01b5b9fd76f53ee3abae0dfe991723f2bef5861b",
+          "size": 10007,
+          "source_sha256": "e82fe3286fca5dcb7987d7797774100440be8856c527d42610248bdd3d73f129"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase57-runtime-failure-recovery-ux.py",
+          "action": "modify",
+          "sha256": "c4e86a66f6747d64eb011372766b6baaafbe1b997947e3f73a4abc81f648c759",
+          "size": 11239,
+          "source_sha256": "6cb4a1ba428b2caaab1bc179b014858a6b37d2b8abe44c227d060956282438bd"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase58-runtime-recovery-execution-guard.py",
+          "action": "modify",
+          "sha256": "e1df4595d1d9e81f5915a1b50319982f361eac7418e4da872e8fb4e9599d796f",
+          "size": 4870,
+          "source_sha256": "faab5be72f1416244db9988c7478314a6325e111735cab345a3e09d9f57c5a44"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase59-runtime-recovery-action-transparency.py",
+          "action": "modify",
+          "sha256": "c92616551a83e0171bae80857ee8d18de93cceaada872129b247c2b79a061d41",
+          "size": 5303,
+          "source_sha256": "215507773abfe0c5cf9ad5c1d7c8b02f4fc3b738482349cbf397534df6cd02fc"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase60-runtime-recovery-flow-seal.py",
+          "action": "modify",
+          "sha256": "e8525aad1e2181fb5863ed64fcf9f69bc2dcddf641706e4ca33fab594874401f",
+          "size": 5634,
+          "source_sha256": "f87e1ba162b80fcfebd925715f58a5c46f012e36686d33d456295c4cd813fc01"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase61-final-gate-validator-harmony.py",
+          "action": "modify",
+          "sha256": "e1e9fea90f1209598e150b67f515a9842e0d13be9c90c7acdee199d146e26adb",
+          "size": 5475,
+          "source_sha256": "bd56da969e4a7d485759c5be22736c11beb09ea6884a95548d145e21dec87195"
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-phase62-real-device-operational-smoke-seal.py",
+          "action": "add",
+          "sha256": "68698ece877eb6a2122be0f5122c9c859bd5f52d6bc7fbc63284b9af4cba2c0a",
+          "size": 6769
+        }
+      ]
+    },
+    "validation": {
+      "expected": {
+        "build": "pass",
+        "diagnostics": "pass"
+      },
+      "commands": [
+        "./.devtool-artifact/validate_phase62_real_device_operational_smoke_seal.sh"
+      ],
+      "local_checks": [
+        "python3 app/XDM.Android/tools/validate-phase62-real-device-operational-smoke-seal.py",
+        ".devtool-artifact/validate_phase62_real_device_operational_smoke_seal.sh from repo root and Android root",
+        "Phase49 through Phase61 validators",
+        "browser-removal and downloader-experience validator chunks after final gate sweep timeout",
+        "tools/run-final-release-gate.sh --ci attempted; it progressed through Phase42/retired channel before timeout, then remaining validators passed individually",
+        "focused kotlinc -Werror compile/run for RealDeviceOperationalSmokeSealPlannerTest",
+        "focused kotlinc -Werror compile/run for Phase62RealDeviceOperationalSmokeSealContractTest",
+        "archive inventory/hash/hygiene verification"
+      ]
+    },
+    "notes": [
+      "No Room migration; schema remains 14.",
+      "No top-level route, all-files permission, automatic transfer start, automatic deletion, upload, release criteria change, or Debug Workbench reopening.",
+      "The wrapper under .devtool-artifact is metadata-only and intentionally excluded from inventory."
+    ]
+  },
+  "history_id": "e52c0c6da20746488e0d91ad80e0be9a"
+}

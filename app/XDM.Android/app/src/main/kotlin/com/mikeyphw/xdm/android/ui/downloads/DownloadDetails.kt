@@ -34,11 +34,18 @@ import com.mikeyphw.xdm.android.model.ChecksumResult
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.RuntimeFailureRecoveryActionKind
+import com.mikeyphw.xdm.android.model.RuntimeRecoveryExecutionDecision
+import com.mikeyphw.xdm.android.model.RuntimeRecoveryExecutionGuard
+import com.mikeyphw.xdm.android.model.RuntimeRecoveryExecutionMode
+import com.mikeyphw.xdm.android.model.RuntimeRecoveryActionPreviewPlanner
 import com.mikeyphw.xdm.android.model.RuntimeFailureRecoveryPlan
 import com.mikeyphw.xdm.android.model.RuntimeFailureRecoveryPlanner
 import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.model.VerificationStatus
 import com.mikeyphw.xdm.android.util.formatBytes
+
+private const val RefreshFromBrowserGuidance = "Open the source page in your browser, then share or capture it to XDM again."
+private const val YtDlpMediaGuidance = "Open Media, inspect this source, then choose the yt-dlp path when available."
 
 @Composable
 internal fun DownloadDetails(
@@ -263,34 +270,47 @@ private fun RuntimeFailureRecoveryCard(
                 XdmListSeparator()
                 DownloadDetailRow("Source site", plan.sourceSiteLabel)
             }
+            val guardedActions = plan.actions.map { action -> action to RuntimeRecoveryExecutionGuard.decide(download, action.kind) }
+            val actionPreviews = RuntimeRecoveryActionPreviewPlanner.build(download, plan, guardedActions.map { it.second })
+            XdmGroupedList {
+                DownloadDetailRow("Action safety", RuntimeRecoveryExecutionGuard.summary(guardedActions.map { it.second }))
+                XdmListSeparator()
+                DownloadDetailRow("Action preview", RuntimeRecoveryActionPreviewPlanner.summary(actionPreviews))
+                actionPreviews.take(3).forEach { preview ->
+                    XdmListSeparator()
+                    DownloadDetailRow("What happens", "${preview.actionLabel}: ${preview.outcomeLabel}. ${preview.reviewLabel}.")
+                }
+            }
             XdmActionFlowRow {
-                plan.actions.forEach { action ->
+                guardedActions.forEach { (action, decision) ->
                     if (action.primary) {
                         Button(onClick = {
                             runRuntimeRecoveryAction(
                                 context = context,
                                 download = download,
                                 action = action.kind,
+                                decision = decision,
                                 report = plan.redactedReport,
                                 onTogglePause = onTogglePause,
                                 onMigrateBackend = onMigrateBackend,
                                 onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
                                 onOpenActivityAttention = onOpenActivityAttention,
                             )
-                        }) { Text(action.label) }
+                        }) { Text(decision.buttonLabel) }
                     } else {
                         TextButton(onClick = {
                             runRuntimeRecoveryAction(
                                 context = context,
                                 download = download,
                                 action = action.kind,
+                                decision = decision,
                                 report = plan.redactedReport,
                                 onTogglePause = onTogglePause,
                                 onMigrateBackend = onMigrateBackend,
                                 onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
                                 onOpenActivityAttention = onOpenActivityAttention,
                             )
-                        }) { Text(action.label) }
+                        }) { Text(decision.buttonLabel) }
                     }
                 }
             }
@@ -302,25 +322,51 @@ private fun runRuntimeRecoveryAction(
     context: android.content.Context,
     download: Download,
     action: RuntimeFailureRecoveryActionKind,
+    decision: RuntimeRecoveryExecutionDecision,
     report: String,
     onTogglePause: (Download) -> Unit,
     onMigrateBackend: (Download) -> Unit,
     onStartIgnoringQueuePolicy: (Download) -> Unit,
     onOpenActivityAttention: () -> Unit,
 ) {
+    if (!decision.allowsImmediateCallback) {
+        when (decision.mode) {
+            RuntimeRecoveryExecutionMode.OpenRecoveryFirst -> onOpenActivityAttention()
+            RuntimeRecoveryExecutionMode.ReviewFirst,
+            RuntimeRecoveryExecutionMode.GuidanceOnly,
+            -> showRuntimeRecoveryToast(context, decision.safetyNote)
+            RuntimeRecoveryExecutionMode.ExecuteNow,
+            RuntimeRecoveryExecutionMode.CopyOnly,
+            -> Unit
+        }
+        return
+    }
     when (action) {
         RuntimeFailureRecoveryActionKind.RetryWithCurrentSetup,
         RuntimeFailureRecoveryActionKind.RetryWithCapturedSession,
         -> if (download.errorMessage.orEmpty().startsWith("Queue policy:")) onStartIgnoringQueuePolicy(download) else onTogglePause(download)
-        RuntimeFailureRecoveryActionKind.RefreshFromBrowser -> showRuntimeRecoveryToast(context, "Open the source page in your browser, then share or capture it to XDM again.")
-        RuntimeFailureRecoveryActionKind.TryYtDlp -> showRuntimeRecoveryToast(context, "Open Media, inspect this source, then choose the yt-dlp path when available.")
+        RuntimeFailureRecoveryActionKind.RefreshFromBrowser,
+        RuntimeFailureRecoveryActionKind.TryYtDlp,
+        -> showRuntimeRecoveryToast(context, decision.safetyNote)
         RuntimeFailureRecoveryActionKind.TryAria2,
         RuntimeFailureRecoveryActionKind.TryNative,
         -> onMigrateBackend(download)
         RuntimeFailureRecoveryActionKind.RecheckStorageVisibility,
         RuntimeFailureRecoveryActionKind.OpenRecoveryDoctor,
         -> onOpenActivityAttention()
-        RuntimeFailureRecoveryActionKind.CopyRedactedReport -> copyTextToClipboard(context, "XDM recovery report", report)
+        RuntimeFailureRecoveryActionKind.CopyRedactedReport -> copyTextToClipboard(
+            context,
+            "XDM recovery report",
+            listOf(
+                report,
+                RuntimeRecoveryActionPreviewPlanner.redactedReportSection(
+                    RuntimeRecoveryActionPreviewPlanner.build(
+                        download,
+                        RuntimeFailureRecoveryPlanner.evaluate(download) ?: return,
+                    ),
+                ),
+            ).joinToString("\n\n"),
+        )
     }
 }
 

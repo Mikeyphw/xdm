@@ -59,7 +59,13 @@
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63
     ]
   },
   "database": {
@@ -146,7 +152,7 @@
       "compare"
     ]
   },
-  "next_phase": "field_bugfix_phase_58_targeted_follow_up_or_complete",
+  "next_phase": "phase64_final_android_downloader_rc_seal",
   "backend_ownership": {
     "physical_artifact_identity": true,
     "persistent_backend_instance_identity": true,
@@ -453,7 +459,7 @@
     "copyable_diagnostics": true,
     "top_level_route_added": false
   },
-  "current_overlay": "xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip",
+  "current_overlay": "xdm_android_phase63_release_readiness_support_bundle_seal_overlay.zip",
   "media_resolver_player": {
     "schema_version_unchanged": 14,
     "clean_room_feature_map": "super-video-downloader-inspired-without-code-copy",
@@ -2657,5 +2663,190 @@
       "validate-debug-workbench-d7-final-debug-seal.py"
     ],
     "repair_note": "r2 keeps the Debug Workbench D7 seal contract forward-compatible with later product overlays."
+  },
+  "field_bugfix_phase_58": {
+    "name": "Runtime Recovery Execution Guard",
+    "overlay": "xdm_android_phase58_runtime_recovery_execution_guard_r2_overlay.zip",
+    "base": "Phase57 Runtime Failure Recovery UX r2 clean baseline",
+    "status": "implemented",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "automatic_transfer_start": false,
+    "automatic_deletion": false,
+    "automatic_upload": false,
+    "all_files_permission_added": false,
+    "debug_workbench_reopened": false,
+    "release_criteria_changed": false,
+    "summary": "Adds a pure execution guard for Phase57 recovery actions so partial retries, captured-session retries, method switches, guidance, and report-copy actions route through safe reviewed paths.",
+    "tests": [
+      "RuntimeRecoveryExecutionGuardTest",
+      "Phase58RuntimeRecoveryExecutionGuardContractTest",
+      "validate-phase58-runtime-recovery-execution-guard.py"
+    ]
+  },
+  "field_bugfix_phase_59": {
+    "name": "Runtime Recovery Action Transparency",
+    "overlay": "xdm_android_phase59_runtime_recovery_action_transparency_overlay.zip",
+    "base": "Phase58 Runtime Recovery Execution Guard r2 clean baseline",
+    "status": "implemented",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "automatic_transfer_start": false,
+    "automatic_deletion": false,
+    "automatic_upload": false,
+    "all_files_permission_added": false,
+    "debug_workbench_reopened": false,
+    "release_criteria_changed": false,
+    "summary": "Adds a redacted action-preview layer for runtime recovery cards so users can see what each retry, review, guidance, or report action will do before tapping.",
+    "ux": {
+      "action_preview_rows": true,
+      "copy_report_includes_preview_summary": true,
+      "review_required_actions_explained_before_callback": true,
+      "guidance_only_actions_labelled": true,
+      "recovery_doctor_first_actions_labelled": true
+    },
+    "privacy": {
+      "shows_raw_urls": false,
+      "shows_cookie_values": false,
+      "shows_authorization_values": false,
+      "shows_bearer_tokens": false,
+      "shows_credential_query_values": false,
+      "persists_session_values": false
+    },
+    "tests": [
+      "RuntimeRecoveryActionPreviewPlannerTest",
+      "Phase59RuntimeRecoveryActionTransparencyContractTest",
+      "validate-phase59-runtime-recovery-action-transparency.py"
+    ]
+  },
+  "field_bugfix_phase_60": {
+    "name": "Runtime Recovery Flow Seal",
+    "overlay": "xdm_android_phase60_runtime_recovery_flow_seal_overlay.zip",
+    "base": "Phase59 Runtime Recovery Action Transparency clean baseline",
+    "status": "implemented",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "automatic_transfer_start": false,
+    "automatic_deletion": false,
+    "automatic_upload": false,
+    "all_files_permission_added": false,
+    "debug_workbench_reopened": false,
+    "release_criteria_changed": false,
+    "summary": "Seals the runtime recovery flow across planning, execution guard, action transparency, redacted reports, and release-gate coverage without adding new runtime side effects.",
+    "seal": {
+      "failure_planner_present": true,
+      "execution_guard_present": true,
+      "action_preview_present": true,
+      "redacted_report_summary": true,
+      "release_gate_wired": true,
+      "validators_forward_compatible": true
+    },
+    "privacy": {
+      "shows_raw_urls": false,
+      "shows_cookie_values": false,
+      "shows_authorization_values": false,
+      "shows_bearer_tokens": false,
+      "shows_credential_query_values": false,
+      "persists_session_values": false
+    },
+    "tests": [
+      "RuntimeRecoveryFlowSealPlannerTest",
+      "Phase60RuntimeRecoveryFlowSealContractTest",
+      "validate-phase60-runtime-recovery-flow-seal.py"
+    ]
+  },
+  "field_bugfix_phase_61": {
+    "name": "Final Gate Validator Harmony",
+    "overlay": "xdm_android_phase61_final_gate_validator_harmony_overlay.zip",
+    "base": "Phase60 Runtime Recovery Flow Seal clean baseline",
+    "status": "implemented",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "automatic_transfer_start": false,
+    "automatic_deletion": false,
+    "automatic_upload": false,
+    "all_files_permission_added": false,
+    "debug_workbench_reopened": false,
+    "release_criteria_changed": false,
+    "summary": "Reconciles stale final static gate assertions with the Phase44 planner-backed download row so the UIX R3 validator checks current contracts without reviving old row-local action code.",
+    "validator_harmony": {
+      "uix_r3_primary_action_assertion_updated": true,
+      "phase44_row_local_primary_action_forbidden": true,
+      "final_static_gate_runs_phase61": true,
+      "phase60_validator_forward_compatible": true,
+      "phase48_gate_runs_phase61": true
+    },
+    "tests": [
+      "Phase61FinalGateValidatorHarmonyContractTest",
+      "validate-phase61-final-gate-validator-harmony.py",
+      "tools/run-final-release-gate.sh --ci"
+    ]
+  },
+  "field_bugfix_phase_62": {
+    "name": "Real-device Operational Smoke Seal",
+    "overlay": "xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip",
+    "base": "Phase61 Final Gate Validator Harmony clean baseline",
+    "status": "implemented",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "automatic_transfer_start": false,
+    "automatic_deletion": false,
+    "automatic_upload": false,
+    "all_files_permission_added": false,
+    "debug_workbench_reopened": false,
+    "release_criteria_changed": false,
+    "requires_real_device_manual_run": true,
+    "summary": "Adds a contract-backed real-device smoke checklist for the downloader-only operational flows: browser handoff, extension media capture, authenticated 403 recovery, storage visibility, and Recovery Doctor review.",
+    "smoke_flows": [
+      "external_browser_handoff_review",
+      "extension_media_capture_reviewed_add",
+      "authenticated_failure_recovery",
+      "completed_storage_visibility",
+      "recovery_doctor_partial_orphan_review"
+    ],
+    "privacy": {
+      "redacted_reports_only": true,
+      "persists_session_values": false,
+      "raw_urls_in_normal_ui": false,
+      "raw_headers_in_normal_ui": false
+    },
+    "tests": [
+      "RealDeviceOperationalSmokeSealPlannerTest",
+      "Phase62RealDeviceOperationalSmokeSealContractTest",
+      "validate-phase62-real-device-operational-smoke-seal.py"
+    ]
+  },
+  "field_bugfix_phase_63": {
+    "name": "Release Readiness / Support Bundle Seal",
+    "overlay": "xdm_android_phase63_release_readiness_support_bundle_seal_overlay.zip",
+    "base": "Phase62 Real-device Operational Smoke Seal clean baseline",
+    "status": "implemented",
+    "room_schema_unchanged": 14,
+    "top_level_route_added": false,
+    "automatic_transfer_start": false,
+    "automatic_deletion": false,
+    "automatic_upload": false,
+    "all_files_permission_added": false,
+    "debug_workbench_reopened": false,
+    "release_criteria_changed": false,
+    "support_bundle_sealed": true,
+    "redacted_reports_only": true,
+    "raw_urls_in_normal_ui": false,
+    "raw_headers_in_normal_ui": false,
+    "persists_session_values": false,
+    "summary": "Adds a release-readiness/support-bundle seal that verifies diagnostics, install/update readiness, final-release warning explanations, real-device smoke evidence, and privacy redaction are represented in copied support reports.",
+    "support_bundle_sections": [
+      "operational_diagnostics_summary",
+      "release_security_summary",
+      "install_update_readiness",
+      "final_release_warning_explainer",
+      "real_device_smoke_status",
+      "privacy_redaction_guarantees"
+    ],
+    "tests": [
+      "SupportBundleReleaseReadinessPlannerTest",
+      "Phase63ReleaseReadinessSupportBundleSealContractTest",
+      "validate-phase63-release-readiness-support-bundle-seal.py"
+    ]
   }
 }

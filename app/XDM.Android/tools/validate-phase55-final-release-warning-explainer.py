@@ -85,8 +85,8 @@ require('tools/validate-phase55-final-release-warning-explainer.py' in final_gat
 try:
     manifest = json.loads(manifest_text)
     require(55 in manifest.get('project', {}).get('implemented_phases', []), 'implemented phases must include 55')
-    require(manifest.get('current_overlay') in {'xdm_android_phase55_final_release_warning_explainer_overlay.zip', 'xdm_android_phase56_stale_copy_architecture_noise_sweep_overlay.zip', 'xdm_android_phase57_runtime_failure_recovery_ux_overlay.zip', 'xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip'}, 'current overlay must point to Phase55 or a later accepted field-fix overlay')
-    require(manifest.get('next_phase') in {'field_bugfix_phase_56_stale_copy_architecture_noise_sweep', 'field_bugfix_phase_57_release_prep_or_complete', 'field_bugfix_phase_58_targeted_follow_up_or_complete'}, 'next phase must point to Phase56 stale copy sweep or later release prep')
+    require(manifest.get('current_overlay') in {'xdm_android_phase55_final_release_warning_explainer_overlay.zip', 'xdm_android_phase56_stale_copy_architecture_noise_sweep_overlay.zip', 'xdm_android_phase57_runtime_failure_recovery_ux_overlay.zip', 'xdm_android_phase57_runtime_failure_recovery_ux_r2_overlay.zip', 'xdm_android_phase58_runtime_recovery_execution_guard_overlay.zip', 'xdm_android_phase58_runtime_recovery_execution_guard_r2_overlay.zip', 'xdm_android_phase59_runtime_recovery_action_transparency_overlay.zip', 'xdm_android_phase60_runtime_recovery_flow_seal_overlay.zip', 'xdm_android_phase61_final_gate_validator_harmony_overlay.zip', 'xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip', 'xdm_android_phase63_release_readiness_support_bundle_seal_overlay.zip'}, 'current overlay must point to Phase55 or a later accepted field-fix overlay')
+    require(manifest.get('next_phase') in {'field_bugfix_phase_56_stale_copy_architecture_noise_sweep', 'field_bugfix_phase_57_release_prep_or_complete', 'field_bugfix_phase_58_targeted_follow_up_or_complete', 'field_bugfix_phase_59_targeted_follow_up_or_complete', 'field_bugfix_phase_60_targeted_follow_up_or_complete', 'field_bugfix_phase_61_targeted_follow_up_or_complete', 'phase63_release_readiness_support_bundle_seal', 'complete', 'phase64_final_android_downloader_rc_seal'}, 'next phase must point to Phase56 stale copy sweep or later release prep')
     p55 = manifest.get('field_bugfix_phase_55', {})
     require(p55.get('room_schema_unchanged') == 14, 'Phase55 must keep Room schema 14')
     require(p55.get('top_level_route_added') is False, 'Phase55 must not add a top-level route')
@@ -112,3 +112,4 @@ if errors:
         print(f'- {error}')
     sys.exit(1)
 print('Phase 55 final release warning explainer validator passed')
+# later accepted overlay: xdm_android_phase60_runtime_recovery_flow_seal_overlay.zip

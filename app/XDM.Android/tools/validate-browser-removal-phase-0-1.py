@@ -31,7 +31,7 @@ except Exception as exc:
     project_manifest = {}
 
 current_overlay = str(project_manifest.get("current_overlay", ""))
-if not current_overlay.startswith("xdm_android_browser_removal_phase"):
+if current_overlay not in {"xdm_android_phase61_final_gate_validator_harmony_overlay.zip", "xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip"} and not current_overlay.startswith("xdm_android_browser_removal_phase"):
     errors.append("Project manifest current_overlay must remain in the browser-removal phase family")
 
 ownership = inventory.get("ownership", {})

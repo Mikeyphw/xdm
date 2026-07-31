@@ -80,6 +80,12 @@ validators=(
   tools/validate-phase55-final-release-warning-explainer.py
   tools/validate-phase56-stale-copy-architecture-noise-sweep.py
   tools/validate-phase57-runtime-failure-recovery-ux.py
+  tools/validate-phase58-runtime-recovery-execution-guard.py
+  tools/validate-phase59-runtime-recovery-action-transparency.py
+  tools/validate-phase60-runtime-recovery-flow-seal.py
+  tools/validate-phase61-final-gate-validator-harmony.py
+  tools/validate-phase62-real-device-operational-smoke-seal.py
+  tools/validate-phase63-release-readiness-support-bundle-seal.py
 )
 
 for validator in "${validators[@]}"; do
