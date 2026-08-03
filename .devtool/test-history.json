@@ -1,3 +1,23 @@
 {
-  "failed": []
+  "failed": [
+    "com.mikeyphw.xdm.android.ArchitectureContractTest.browserAndShareHandoffsOpenDownloadWorkflows",
+    "com.mikeyphw.xdm.android.ArchitectureContractTest.browserRemovalPhaseFourRuntimeExcisionContractsArePresent",
+    "com.mikeyphw.xdm.android.ArchitectureContractTest.phaseThirtySixExternalDownloadHandoffContractsArePresent",
+    "com.mikeyphw.xdm.android.ArchitectureContractTest.phasesTwelveToFourteenPowerToolsArePresent",
+    "com.mikeyphw.xdm.android.ArchitectureContractTest.mediaExecutionLibraryOverlayContractsArePresent",
+    "com.mikeyphw.xdm.android.BrowserExtensionPhase41ContractTest.customSchemeRejectionsDoNotFallThroughToGenericViewIntake",
+    "com.mikeyphw.xdm.android.BrowserRemovalPhase3ContractTest.externalHandoffCarriesClassificationMetadataIntoReview",
+    "com.mikeyphw.xdm.android.BrowserRemovalPhase4ContractTest.externalDownloaderHandoffRemainsReviewFirst",
+    "com.mikeyphw.xdm.android.BrowserRemovalPhase4ContractTest.routeAndStartupStateNoLongerExposeBrowser",
+    "com.mikeyphw.xdm.android.BrowserRemovalPhase7ContractTest.productionAndPersistenceRemainBrowserFree",
+    "com.mikeyphw.xdm.android.BrowserRemovalPreservationContractTest.dedicatedExternalReceiverRemainsReviewFirst",
+    "com.mikeyphw.xdm.android.BrowserRemovalPreservationContractTest.sharesheetIntakeInspectsTextSubjectAndClipData",
+    "com.mikeyphw.xdm.android.BrowserSchemePhase37ContractTest.customSchemeIsParsedBeforeGenericExternalReceiverRouting",
+    "com.mikeyphw.xdm.android.CompletedNotificationPhase45ContractTest.completedOpenHandlerIsPrivateAndRevalidatesBeforeGrantingAccess",
+    "com.mikeyphw.xdm.android.DownloaderExperiencePhase8CContractTest.browserFreeDownloaderBoundaryAndStableStorageRemainSealed",
+    "com.mikeyphw.xdm.android.DownloaderExperiencePhase8DContractTest.queueEnginesSchemaRoutesAndBrowserBoundaryRemainStable",
+    "com.mikeyphw.xdm.android.DownloaderExperiencePhase8EContractTest.enginesSchemaRoutesAndMediaResolverRemainStable",
+    "com.mikeyphw.xdm.android.FieldBugfixDownloadActionsStorageContractTest.externalBrowserSessionHandoffStaysTransientAndFeedsRuntimeRequests",
+    "com.mikeyphw.xdm.android.UixR6ReleaseSealContractTest.developerDiagnosticsStayLazyAndTheProductBoundaryDoesNotMove"
+  ]
 }
