@@ -72169,6 +72169,88 @@
         }
       },
       "history_id": "9e0de015ecfb4022af4de689c4a6ce57"
+    },
+    {
+      "applied_at": "2026-08-04T18:30:13.950751Z",
+      "artifact": "/home/mike/Downloads/xdm_android_phase11_persistence_checksum_mapper_hotfix_overlay.zip",
+      "artifact_name": "xdm_android_phase11_persistence_checksum_mapper_hotfix_overlay.zip",
+      "type": "overlay",
+      "sha256": "0d1092cb31eb414841847878ada799ec3ab5b5f7442482251501a3972b7bc1ad",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Fix XDM persistence checksum expectation mapper conflict",
+      "commit_hash": "",
+      "file_count": 1,
+      "change_counts": {
+        "modify": 1
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Phase 11 Persistence Checksum Mapper Hotfix Overlay",
+        "description": "Fixes persistence Kotlin compilation by removing a stale duplicate ChecksumExpectationEntity mapper from DownloadRepository.",
+        "target": "xdm_android",
+        "workspace": {
+          "root": "app/XDM.Android"
+        },
+        "apply": {
+          "atomic": true,
+          "path_policy": "repository-relative",
+          "conflict_policy": "fail",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "message": "Fix XDM persistence checksum expectation mapper conflict",
+            "strategy": "single"
+          }
+        },
+        "validation": {
+          "mode": "required",
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "rollback_on_failure": true,
+          "failure_action": "rollback",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate.sh",
+            "runner": "bash",
+            "sha256": "5316ead91b2478776e9096a3fac63102ee264d784e4e5a2d3f4aae9474486392",
+            "timeout_seconds": 120
+          },
+          "expected": {
+            "restore": "pass",
+            "build": "pass",
+            "tests": "pass"
+          }
+        },
+        "inventory": {
+          "format": 1,
+          "exhaustive": true,
+          "entries": [
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+              "action": "modify",
+              "source_sha256": "4241b2cd36573db4193218757b610cadffbbe926221996d6162142814ee3067d",
+              "sha256": "947148546b8c82d47f1d40eb3e57b6642fa9541ce071909e53d7b394f60f1404",
+              "size": 29313
+            }
+          ]
+        },
+        "metadata": {
+          "source_commit": "post-dcb6261-operational-activity-hotfix",
+          "roadmap_phase": "11",
+          "hotfix": true,
+          "failure": ":persistence:compileDebugKotlin duplicate ChecksumExpectationEntity.toModel and nonexistent createdAtEpochMs",
+          "payload_files": 1,
+          "room_schema": 17,
+          "version_name": "0.21.0"
+        }
+      },
+      "history_id": "ab81e9514b1144eca100ad51c8d31d0a"
     }
   ]
 }

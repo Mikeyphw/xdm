@@ -324,15 +324,6 @@ private fun AutomationCommandRecord.toEntity() = AutomationCommandEntity(
     rejectionReason = rejectionReason.name,
 )
 
-private fun ChecksumExpectationEntity.toModel() = ChecksumExpectation(
-    id = id,
-    downloadId = downloadId,
-    algorithm = safeEnum(algorithm, com.mikeyphw.xdm.android.model.ChecksumAlgorithm.Sha256),
-    expectedHex = expectedHex,
-    source = safeEnum(source, com.mikeyphw.xdm.android.model.ChecksumSource.UserInput),
-    createdAtEpochMs = createdAtEpochMs,
-)
-
 private fun DownloadEntity.toModel() = Download(
     id = id,
     fileName = fileName,
