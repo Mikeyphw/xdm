@@ -21,6 +21,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.media.MediaConsumerCaptureSummary
 import com.mikeyphw.xdm.android.media.MediaConsumerState
@@ -199,6 +205,7 @@ private fun MediaTrackPickerSheet(
         windowClass = LocalXdmWindowClass.current,
         onDismissRequest = onDismiss,
         title = "Media options",
+        scrollContent = false,
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth().xdmScreen(XdmScreenTags.MediaTrackSheet, "Media track selection"),
@@ -233,6 +240,11 @@ private fun MediaTrackPickerSheet(
                             selected = selection.subtitleVariantId == null,
                             onClick = { onSelectionChanged(selection.copy(subtitleVariantId = null)) },
                             label = { Text("None") },
+                            modifier = Modifier.clearAndSetSemantics {
+                                role = Role.RadioButton
+                                selected = selection.subtitleVariantId == null
+                                stateDescription = if (selection.subtitleVariantId == null) "No subtitle selected" else "No subtitle not selected"
+                            },
                         )
                     }
                 }
@@ -287,9 +299,15 @@ internal fun VariantSelectorRow(variant: MediaVariant, selected: Boolean, onSele
                     selected = selected,
                     onClick = onSelect,
                     label = { Text(if (selected) "Selected" else "Select") },
+                    modifier = Modifier.clearAndSetSemantics { },
                 )
             },
             onClick = onSelect,
+            modifier = Modifier.semantics(mergeDescendants = true) {
+                role = Role.RadioButton
+                this.selected = selected
+                stateDescription = if (selected) "${variant.qualityLabel} selected" else "${variant.qualityLabel} not selected"
+            },
         )
     }
 }

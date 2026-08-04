@@ -1,0 +1,241 @@
+{
+  "applied_at": "2026-08-04T16:22:02.174806Z",
+  "artifact": "/home/mike/Downloads/xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_r2_gap_closure_overlay.zip",
+  "artifact_name": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_r2_gap_closure_overlay.zip",
+  "type": "overlay",
+  "sha256": "9e1e5271be67e349516f3a60dd5b445bc9ed97372ccb7f9b4a3ac6f269e18ef6",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Implement XDM Android bug hunt Phase 9 r2 accessibility gap closure",
+  "commit_hash": "",
+  "file_count": 23,
+  "change_counts": {
+    "add": 8,
+    "modify": 15
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Bug Hunt Phase 9 Accessibility Adaptive Layout Full r2 Gap Closure",
+    "description": "Full Phase 9 r2 overlay closing fold posture, measured pane width, focus restoration, traversal, large-font, screenshot/semantics matrix, and contrast coverage gaps.",
+    "target": "xdm_android",
+    "workspace": {
+      "root": "app/XDM.Android"
+    },
+    "apply": {
+      "atomic": true,
+      "path_policy": "repository-relative",
+      "conflict_policy": "fail",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "message": "Implement XDM Android bug hunt Phase 9 r2 accessibility gap closure",
+        "strategy": "single"
+      }
+    },
+    "validation": {
+      "mode": "required",
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "rollback_on_failure": true,
+      "failure_action": "rollback",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate.sh",
+        "runner": "bash",
+        "sha256": "f6d8ab15a765df02adb2d8d9dd91b16459b4be600a98dcb494327d24f9c0d322",
+        "timeout_seconds": 300
+      },
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass"
+      }
+    },
+    "inventory": {
+      "format": 1,
+      "exhaustive": true,
+      "entries": [
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "source_sha256": "dca50fb9eef60fd974a6e49a045b96e67e6c055486e4fe0c9cc0097dc63e2217",
+          "sha256": "d324a6ef3020a881aa88f7672c3878f9d60b6726f2a50a1a4510cebd4fcf9a7a",
+          "size": 122878
+        },
+        {
+          "path": "app/XDM.Android/app/build.gradle.kts",
+          "action": "modify",
+          "source_sha256": "865e99b37696bda88897988f8791c082cdbc8dfd80cbe47739d0efea643f5c6b",
+          "sha256": "3e5386af0f8dc3195aaa6363518bb85d03a719a7679e294089102ec88ae1e636",
+          "size": 6953
+        },
+        {
+          "path": "app/XDM.Android/app/src/androidTest/kotlin/com/mikeyphw/xdm/android/Phase9AccessibilityAdaptiveLayoutInstrumentedTest.kt",
+          "action": "add",
+          "sha256": "0b07e57edc453805dd3aaeb7f55939f2094a924b1feeb944b5cb5ed5087fa743",
+          "size": 6398
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt",
+          "action": "modify",
+          "source_sha256": "0ffe4c5f9f8341f39fe30a2bffe19787907aea97f0e4310f46cef6f2f4bfd2d0",
+          "sha256": "84cb79117043b42309bffc2afa532f162d45b12a4210327defc3bd7798d8cdd0",
+          "size": 6050
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Phase9AccessibilityRegressionContracts.kt",
+          "action": "add",
+          "sha256": "100949227dcb4bfb11259d154a30a92aeb847892c75424fdccebc6000f929d9b",
+          "size": 825
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAccessibility.kt",
+          "action": "modify",
+          "source_sha256": "d103c106018d3c437e1a28523d445252c6efb3757d4f350f4d526d36bae40e61",
+          "sha256": "f1959f9449a8ee36ba1ea287d085486a0fbf7be4a667d0dda586b930006e086a",
+          "size": 7631
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAdaptiveShell.kt",
+          "action": "modify",
+          "source_sha256": "75420f5239219c02c444afa7232349a027fb0f8da69f7b474b9f32f1cd60206e",
+          "sha256": "a44bf49551d7f92ad21471de8d09319edee42b94d2388e2de287b89094e04100",
+          "size": 15963
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "source_sha256": "b43e2eed1c7e866b68694a61989b6e527cd25eedf5d232e1ddb94c0ca69a7f0e",
+          "sha256": "72c212bc6e6f9988bbc928affe4368947035b4b2639d48b1b20a9b04d47615ee",
+          "size": 16317
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmDesignSystem.kt",
+          "action": "modify",
+          "source_sha256": "5358863e90f7958160a3d5ed3382dd4eb89aa4cdd870ff827d4157e6c1e6b3cc",
+          "sha256": "ef921384d92c9cf590abfa6bff6e1fef2398e2b65d0e8de4db4d3d16935e9f70",
+          "size": 7086
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmFoldPostureSource.kt",
+          "action": "add",
+          "sha256": "cfa388275ed96910788b4c8fcf696e0e2f395172cec41d1a57d4c6a4987374e7",
+          "size": 1625
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmPrimitives.kt",
+          "action": "modify",
+          "source_sha256": "d2a30a8aeeac59f6f511f92eb3c6a41c61362eb91bf2c272a9f0081d13ba3008",
+          "sha256": "d91632803a2f865549349d4fa8dd89660d168e504e32d8b7cef4d0afed2c1873",
+          "size": 23702
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmWindowClass.kt",
+          "action": "modify",
+          "source_sha256": "ff986a955b14032adb83bae9e71e2920bb02db2231aec8e13be0732962ed27ae",
+          "sha256": "16721fd229566dec1eda7da86d6830382f88d3f89fbfb19566b9c2d54da78239",
+          "size": 5148
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+          "action": "modify",
+          "source_sha256": "532879a7b918d4e06426cdec6b993324ebefb815ae046cebcfa80aaba5c56c2c",
+          "sha256": "217b39b785bb0e94e172af02b097cd2d986f66b4b4c21ed96c16730844d48dde",
+          "size": 43534
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaCaptureCard.kt",
+          "action": "modify",
+          "source_sha256": "e172aac2ae4a85c8d3c2b036e109314a01278f7a75297a0dbe93490cbb5ec5c3",
+          "sha256": "c904c0aa2bc92d759aa79b50dd76975f689dc0c8116dcd6ea13bb27bee70e968",
+          "size": 14463
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt",
+          "action": "modify",
+          "source_sha256": "208bd820973166da2aa78703faf40de1e5ff1d187b6b3f6e0ddcf694d09d7e85",
+          "sha256": "0e0258304e7ea2f9daacc0098243cc8439375f6cdb3f2d5bb3021bb40686a575",
+          "size": 16966
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase9AccessibilityGapClosurePolicyTest.kt",
+          "action": "add",
+          "sha256": "bde13f7ab9a02b2f908fafb626a966764f6cff172480b2eb22e6604469651a92",
+          "size": 2048
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/Phase9AdaptiveAccessibilityPolicyTest.kt",
+          "action": "add",
+          "sha256": "d7c2f3ac5909fae56740aa7e39d58c85127875275e3b8108250eb8ed41667881",
+          "size": 1488
+        },
+        {
+          "path": "app/XDM.Android/docs/ui/BUG-HUNT-REMEDIATION-PHASE-9-R2.md",
+          "action": "add",
+          "sha256": "ce5638e4b6f0a0785560c282c7e922fc0d771da9a34b7826196fc50d5bc1eec7",
+          "size": 1504
+        },
+        {
+          "path": "app/XDM.Android/docs/ui/phase9-accessibility-adaptive-layout.md",
+          "action": "add",
+          "sha256": "124a251df2bd5586b43769c4eae7bcb55320af2dda607752358ea7713f12a37f",
+          "size": 1428
+        },
+        {
+          "path": "app/XDM.Android/gradle/libs.versions.toml",
+          "action": "modify",
+          "source_sha256": "c1d04f8a91e7aa828d8a36179b47626e8ae2524ea38b0eb6cdfaecbf7514b9c2",
+          "sha256": "f2820b64e054aae2f77ac43affa5e05c7dcdcb54a2baae0659182c48eef98bd2",
+          "size": 3855
+        },
+        {
+          "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+          "action": "modify",
+          "source_sha256": "2575f3c9f5a6a3e4033e8a3e31be0282b7f8bd022726eb9c82a03fcabbb0b76a",
+          "sha256": "8020a865464cded79cf2f9d0e6c8a651eb0f035d22457be29fce606591d8c5a5",
+          "size": 5745
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-bug-hunt-phase9-accessibility-adaptive-layout.py",
+          "action": "add",
+          "sha256": "1177851604aef18fe3425ccca5d2f08f628e9327ac3083711c0f58f322d8aba3",
+          "size": 4455
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-uix-r6-accessibility-performance-release-seal.py",
+          "action": "modify",
+          "source_sha256": "083f7a37a0c71dd97cb0e07097cfced6770048c02a77aab6f073f4c53fb4950a",
+          "sha256": "ad6e8c05913ec436ea51dc032167f12ad96700efd60506a7b8f4348daf432f29",
+          "size": 12703
+        }
+      ]
+    },
+    "metadata": {
+      "roadmap_phase": "9",
+      "full_phase": true,
+      "gap_closure": true,
+      "supersedes": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
+      "source_commit": "53c2ccf",
+      "room_schema": 17,
+      "payload_files": 23,
+      "modified_files": 15,
+      "added_files": 8,
+      "phase9_r2_contracts": [
+        "windowmanager fold posture source",
+        "measured pane width two pane policy",
+        "focus requester restoration",
+        "keyboard dpad switch traversal order",
+        "compose screenshot semantics matrix",
+        "large font risky surface instrumentation",
+        "high contrast policy and tests",
+        "strong validator requiring executable test files"
+      ]
+    }
+  },
+  "history_id": "c00137d8cb5b4ff3a147265b9f764933"
+}

@@ -6,6 +6,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -124,6 +126,7 @@ fun DownloadsScreen(
 ) {
     val context = LocalContext.current
     val windowClass = LocalXdmWindowClass.current
+    val windowProfile = LocalXdmWindowProfile.current
     var filter by rememberSaveable { mutableStateOf(DownloadWorkspaceFilter.Active) }
     var query by rememberSaveable { mutableStateOf("") }
     var searchVisible by rememberSaveable { mutableStateOf(false) }
@@ -156,6 +159,7 @@ fun DownloadsScreen(
     val heldDownload = DownloadsWorkspacePlanner.firstPolicyHeldDownload(downloads)
     val copy = DownloadsWorkspacePlanner.copyFor(filter)
     val selectionMode = selectedIds.isNotEmpty()
+    val profileTwoPaneDefault = windowProfile.allowsTwoPaneDownloads
     fun actionContext(download: Download): DownloadActionContext = DownloadUiTruthPlanner.contextFor(
         download = download,
         downloads = downloads,
@@ -222,12 +226,12 @@ fun DownloadsScreen(
         durableResumeCapabilities = resumable.associate { it.id to onInspectResumeCapability(it) }
     }
 
-    LaunchedEffect(downloads, visibleDownloads, detailDownloadId, windowClass) {
+    LaunchedEffect(downloads, visibleDownloads, detailDownloadId, windowProfile) {
         val visibleIds = visibleDownloads.mapTo(mutableSetOf()) { it.id }
-        selectedIds = selectedIds.intersect(downloads.mapTo(mutableSetOf()) { it.id })
+        selectedIds = selectedIds.intersect(visibleIds)
         if (detailDownloadId != null && detailDownloadId !in visibleIds) {
-            detailDownloadId = if (windowClass == XdmWindowClass.Expanded) visibleDownloads.firstOrNull()?.id else null
-        } else if (windowClass == XdmWindowClass.Expanded && detailDownloadId == null) {
+            detailDownloadId = if (profileTwoPaneDefault) visibleDownloads.firstOrNull()?.id else null
+        } else if (profileTwoPaneDefault && detailDownloadId == null) {
             detailDownloadId = visibleDownloads.firstOrNull()?.id
         }
     }
@@ -286,7 +290,7 @@ fun DownloadsScreen(
             label = DownloadWorkspaceFilter::label,
             onSelected = {
                 filter = it
-                if (windowClass == XdmWindowClass.Expanded) detailDownloadId = null
+                if (windowProfile.allowsTwoPaneDownloads) detailDownloadId = null
             },
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
         )
@@ -304,11 +308,80 @@ fun DownloadsScreen(
             onOpenOrganize = { organizeVisible = true },
         )
 
-        if (windowClass == XdmWindowClass.Expanded) {
-            Row(
-                Modifier.fillMaxWidth().weight(1f).padding(horizontal = 20.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+            val measuredWindowProfile = windowProfile.withAvailablePaneWidth(maxWidth)
+            val measuredTwoPaneDownloads = measuredWindowProfile.allowsTwoPaneDownloadsFor(maxWidth)
+            if (measuredTwoPaneDownloads) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    DownloadWorkspaceList(
+                        downloads = visibleDownloads,
+                        actionContextFor = ::actionContext,
+                        compact = compact,
+                        selectionMode = selectionMode,
+                        selectedIds = selectedIds,
+                        emptyTitle = if (query.isBlank()) copy.emptyTitle else "No matching downloads",
+                        emptyDescription = if (query.isBlank()) copy.emptyDescription else "Try a broader search or another filter.",
+                        onDownloadClick = { download ->
+                            if (selectionMode) {
+                                selectedIds = selectedIds.toggle(download.id)
+                            } else {
+                                detailDownloadId = download.id
+                            }
+                        },
+                        onDownloadLongClick = { download -> selectedIds = selectedIds.toggle(download.id) },
+                        onPrimaryAction = { download ->
+                            val action = DownloadActionPlanner.primaryActionFor(download, actionContext(download))
+                            runDownloadAction(download, action)
+                        },
+                        onMoreActions = { download -> actionDownloadId = download.id },
+                        modifier = Modifier
+                            .weight(0.58f)
+                            .fillMaxHeight()
+                            .widthIn(min = measuredWindowProfile.downloadsListMinWidth)
+                            .xdmTraversalOrder(XdmTraversalOrder.List),
+                    )
+                    Box(
+                        Modifier
+                            .weight(0.42f)
+                            .fillMaxHeight()
+                            .widthIn(min = measuredWindowProfile.downloadsDetailMinWidth)
+                            .xdmPane("Download details pane", traversal = XdmTraversalOrder.Detail),
+                    ) {
+                        if (detailDownload == null) {
+                            XdmEmptyState(
+                                title = "Select a download",
+                                description = "Useful status, destination, verification, and actions appear here.",
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        } else {
+                            Column(
+                                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
+                            ) {
+                                DownloadDetails(
+                                    download = detailDownload,
+                                    actionContext = actionContext(detailDownload),
+                                    capabilities = capabilities,
+                                    checksumResults = checksumResults,
+                                    verificationRecords = verificationRecords,
+                                    postProcessingAutomation = postProcessingAutomation,
+                                    termuxBridge = termuxBridge,
+                                    onTogglePause = onTogglePause,
+                                    onMigrateBackend = onMigrateBackend,
+                                    onRemoveHistory = onRemoveHistory,
+                                    onPreviewPostProcessing = onPreviewPostProcessing,
+                                    onRunPostProcessing = onRunPostProcessing,
+                                    onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
+                                    onOpenActivityAttention = onOpenActivityAttention,
+                                    onDownloadAction = { action -> runDownloadAction(detailDownload, action) },
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
                 DownloadWorkspaceList(
                     downloads = visibleDownloads,
                     actionContextFor = ::actionContext,
@@ -318,11 +391,7 @@ fun DownloadsScreen(
                     emptyTitle = if (query.isBlank()) copy.emptyTitle else "No matching downloads",
                     emptyDescription = if (query.isBlank()) copy.emptyDescription else "Try a broader search or another filter.",
                     onDownloadClick = { download ->
-                        if (selectionMode) {
-                            selectedIds = selectedIds.toggle(download.id)
-                        } else {
-                            detailDownloadId = download.id
-                        }
+                        if (selectionMode) selectedIds = selectedIds.toggle(download.id) else detailDownloadId = download.id
                     },
                     onDownloadLongClick = { download -> selectedIds = selectedIds.toggle(download.id) },
                     onPrimaryAction = { download ->
@@ -330,62 +399,12 @@ fun DownloadsScreen(
                         runDownloadAction(download, action)
                     },
                     onMoreActions = { download -> actionDownloadId = download.id },
-                    modifier = Modifier.weight(0.58f).fillMaxHeight(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .xdmTraversalOrder(XdmTraversalOrder.List),
                 )
-                Box(
-                    Modifier.weight(0.42f).fillMaxHeight().widthIn(min = 340.dp),
-                ) {
-                    if (detailDownload == null) {
-                        XdmEmptyState(
-                            title = "Select a download",
-                            description = "Useful status, destination, verification, and actions appear here.",
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    } else {
-                        Column(
-                            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
-                        ) {
-                            DownloadDetails(
-                                download = detailDownload,
-                                actionContext = actionContext(detailDownload),
-                                capabilities = capabilities,
-                                checksumResults = checksumResults,
-                                verificationRecords = verificationRecords,
-                                postProcessingAutomation = postProcessingAutomation,
-                                termuxBridge = termuxBridge,
-                                onTogglePause = onTogglePause,
-                                onMigrateBackend = onMigrateBackend,
-                                onRemoveHistory = onRemoveHistory,
-                                onPreviewPostProcessing = onPreviewPostProcessing,
-                                onRunPostProcessing = onRunPostProcessing,
-                                onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
-                                onOpenActivityAttention = onOpenActivityAttention,
-                                onDownloadAction = { action -> runDownloadAction(detailDownload, action) },
-                            )
-                        }
-                    }
-                }
             }
-        } else {
-            DownloadWorkspaceList(
-                downloads = visibleDownloads,
-                actionContextFor = ::actionContext,
-                compact = compact,
-                selectionMode = selectionMode,
-                selectedIds = selectedIds,
-                emptyTitle = if (query.isBlank()) copy.emptyTitle else "No matching downloads",
-                emptyDescription = if (query.isBlank()) copy.emptyDescription else "Try a broader search or another filter.",
-                onDownloadClick = { download ->
-                    if (selectionMode) selectedIds = selectedIds.toggle(download.id) else detailDownloadId = download.id
-                },
-                onDownloadLongClick = { download -> selectedIds = selectedIds.toggle(download.id) },
-                onPrimaryAction = { download ->
-                    val action = DownloadActionPlanner.primaryActionFor(download, actionContext(download))
-                        runDownloadAction(download, action)
-                },
-                onMoreActions = { download -> actionDownloadId = download.id },
-                modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 6.dp),
-            )
         }
     }
 
@@ -532,7 +551,7 @@ fun DownloadsScreen(
     }
 
     XdmAdaptiveSheet(
-        visible = windowClass != XdmWindowClass.Expanded && detailDownload != null,
+        visible = !windowProfile.allowsTwoPaneDownloads && detailDownload != null,
         windowClass = windowClass,
         onDismissRequest = { detailDownloadId = null },
         title = "Download details",
@@ -680,7 +699,7 @@ private fun DownloadWorkspaceList(
         return
     }
     LazyColumn(
-        modifier = modifier.xdmScreen(XdmScreenTags.DownloadsList, "Downloads list"),
+        modifier = modifier.xdmScreen(XdmScreenTags.DownloadsList, "Downloads list").semantics { isTraversalGroup = true },
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 8.dp),
     ) {

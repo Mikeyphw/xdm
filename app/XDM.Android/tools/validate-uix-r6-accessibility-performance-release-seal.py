@@ -41,8 +41,8 @@ primitives = require(
     "BoxWithConstraints",
     "sizeIn(minWidth = XdmMinimumTouchTarget, minHeight = XdmMinimumTouchTarget)",
     'stateDescription = if (expanded) "$label expanded" else "$label collapsed"',
-    'contentDescription = "$title bottom sheet"',
-    'contentDescription = "$title dialog"',
+    'xdmPane("$title bottom sheet", traversal = XdmTraversalOrder.Sheet)',
+    'xdmPane("$title dialog", traversal = XdmTraversalOrder.Dialog)',
 )
 shell = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAdaptiveShell.kt",
@@ -214,8 +214,8 @@ for route in ("Downloads", "Add", "Media", "Library", "Activity", "Settings"):
 if len(re.findall(r'^    [A-Z][A-Za-z]+\("', routes, re.MULTILINE)) != 6:
     ERRORS.append("UIX R6 must not add a top-level route")
 database = read("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt")
-if not re.search(r"version\s*=\s*14\b", database):
-    ERRORS.append("Room schema must remain 14")
+if not re.search(r"version\s*=\s*17\b", database):
+    ERRORS.append("Room schema must remain 17 after Phase 7 publication journaling")
 build = read("app/build.gradle.kts")
 if 'versionName = "0.20.0-rc08"' not in build or not re.search(r"versionCode\s*=\s*21\b", build):
     ERRORS.append("App version must remain 0.20.0-rc08 / 21")
@@ -236,7 +236,7 @@ expected = {
     "manual_clean_install_upgrade_checklist": True,
     "external_handoff_manual_gate": True,
     "full_validation_required": True,
-    "room_schema_unchanged": 14,
+    "room_schema_current": 17,
     "version_name_unchanged": "0.20.0-rc08",
     "version_code_unchanged": 21,
     "depends_on": "uix_r5_activity_settings_developer_boundary",
@@ -245,8 +245,8 @@ expected = {
 for key, value in expected.items():
     if r6.get(key) != value:
         ERRORS.append(f"PROJECT_MANIFEST uix_r6_accessibility_performance_release_seal.{key} must equal {value!r}")
-if manifest.get("current_uix_overlay") != "xdm_android_uix_r6_accessibility_performance_release_seal_overlay.zip":
-    ERRORS.append("current_uix_overlay must identify UIX R6")
+if manifest.get("current_uix_overlay") not in {"xdm_android_uix_r6_accessibility_performance_release_seal_overlay.zip", "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip"}:
+    ERRORS.append("current_uix_overlay must identify UIX R6 or the Phase 9 accessibility closure")
 
 require(
     "docs/architecture/UIX-R6-ACCESSIBILITY-PERFORMANCE-RELEASE-SEAL.md",

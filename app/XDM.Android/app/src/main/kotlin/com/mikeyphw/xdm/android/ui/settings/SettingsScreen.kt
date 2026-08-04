@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,9 +30,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.ui.debug.DebugWorkbenchSettingsScreen
 
@@ -351,7 +354,12 @@ private fun SettingsSwitchRow(
             Modifier
                 .fillMaxWidth()
                 .xdmMinimumTouchTarget()
-                .semantics { stateDescription = if (checked) "$title enabled" else "$title disabled" },
+                .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = "$title. $summary"
+                    stateDescription = if (checked) "$title enabled" else "$title disabled"
+                    role = Role.Switch
+                },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
@@ -360,8 +368,8 @@ private fun SettingsSwitchRow(
             }
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
-                modifier = Modifier.semantics { stateDescription = if (checked) "$title enabled" else "$title disabled" },
+                onCheckedChange = null,
+                modifier = Modifier.clearAndSetSemantics { },
             )
         }
     }

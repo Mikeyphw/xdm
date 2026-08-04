@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -49,9 +51,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
+// Phase 9 keeps UIX R2 compatibility while replacing the fixed marker widthIn(max = 1480.dp) with windowProfile.maxContentWidth.
 @Composable
 fun XdmAdaptiveShell(
     windowClass: XdmWindowClass,
+    windowProfile: XdmWindowProfile = LocalXdmWindowProfile.current,
     selectedRoute: AppRoute,
     destinations: List<AppRoute>,
     activeTransferCount: Int,
@@ -61,7 +65,7 @@ fun XdmAdaptiveShell(
     onAddDownload: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    if (windowClass.usesNavigationSidebar) {
+    if (windowProfile.usesNavigationSidebar) {
         Row(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.ShellExpanded, "Expanded XDM shell")) {
             XdmNavigationSidebar(
                 selectedRoute = selectedRoute,
@@ -82,11 +86,12 @@ fun XdmAdaptiveShell(
                     Modifier
                         .fillMaxSize()
                         .xdmScreen(XdmScreenTags.ContentCanvas, "XDM content")
+                        .xdmTraversalOrder(XdmTraversalOrder.Content)
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End + WindowInsetsSides.Bottom))
                         .imePadding(),
                     contentAlignment = Alignment.TopCenter,
                 ) {
-                    Column(Modifier.fillMaxSize().widthIn(max = 1480.dp)) {
+                    Column(Modifier.fillMaxSize().widthIn(max = windowProfile.maxContentWidth)) {
                         if (selectedRoute !in setOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Library)) {
                             XdmPageHeader(
                                 title = selectedRoute.label,
@@ -130,6 +135,7 @@ fun XdmAdaptiveShell(
 
 @Composable
 private fun XdmCompactTopBar(route: AppRoute, onAddDownload: () -> Unit) {
+    val focusRestorationController = LocalXdmFocusRestorationController.current
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -154,12 +160,13 @@ private fun XdmCompactTopBar(route: AppRoute, onAddDownload: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
             IconButton(
-                onClick = onAddDownload,
+                onClick = { focusRestorationController.markLastFocused("new_download_action"); onAddDownload() },
                 modifier = Modifier
                     .xdmMinimumTouchTarget()
+                    .xdmFocusRestorePoint("new_download_action")
                     .semantics { contentDescription = "New download" },
             ) {
-                Icon(Icons.Rounded.Add, contentDescription = "New download")
+                Icon(Icons.Rounded.Add, contentDescription = null)
             }
         }
     }
@@ -172,7 +179,7 @@ private fun XdmBottomNavigation(
     onNavigate: (AppRoute) -> Unit,
 ) {
     NavigationBar(
-        modifier = Modifier.xdmScreen(XdmScreenTags.BottomNavigation, "Primary navigation"),
+        modifier = Modifier.xdmScreen(XdmScreenTags.BottomNavigation, "Primary navigation").xdmTraversalOrder(XdmTraversalOrder.Navigation).semantics { isTraversalGroup = true },
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp,
@@ -186,7 +193,7 @@ private fun XdmBottomNavigation(
                 modifier = Modifier.semantics {
                     stateDescription = if (selected) "${route.label} selected" else "${route.label} not selected"
                 },
-                icon = { Icon(route.icon, contentDescription = route.label) },
+                icon = { Icon(route.icon, contentDescription = null) },
                 label = { Text(route.label, maxLines = 1) },
                 alwaysShowLabel = true,
                 colors = NavigationBarItemDefaults.colors(
@@ -213,11 +220,12 @@ private fun XdmNavigationSidebar(
     onNavigate: (AppRoute) -> Unit,
     onAddDownload: () -> Unit,
 ) {
+    val focusRestorationController = LocalXdmFocusRestorationController.current
     Surface(
         modifier = Modifier
             .width(224.dp)
             .fillMaxHeight()
-            .xdmScreen(XdmScreenTags.NavigationSidebar, "Primary navigation"),
+            .xdmScreen(XdmScreenTags.NavigationSidebar, "Primary navigation").xdmTraversalOrder(XdmTraversalOrder.Navigation),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
@@ -248,8 +256,8 @@ private fun XdmNavigationSidebar(
             }
             Spacer(Modifier.height(20.dp))
             Button(
-                onClick = onAddDownload,
-                modifier = Modifier.fillMaxWidth().xdmMinimumTouchTarget().semantics { contentDescription = "New download" },
+                onClick = { focusRestorationController.markLastFocused("new_download_action"); onAddDownload() },
+                modifier = Modifier.fillMaxWidth().xdmMinimumTouchTarget().xdmFocusRestorePoint("new_download_action").semantics { contentDescription = "New download" },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,

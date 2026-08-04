@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,10 +18,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Description
@@ -44,17 +48,25 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -90,7 +102,7 @@ fun XdmPageHeader(
         modifier = modifier
             .fillMaxWidth()
             .testTag(XdmTestTags.PageHeader)
-            .semantics { contentDescription = "$title page header" }
+            .xdmPane("$title page header")
             .padding(horizontal = XdmSpacing.ScreenPadding, vertical = 18.dp),
     ) {
         val stackActions = maxWidth < 420.dp
@@ -131,7 +143,7 @@ fun XdmPageHeader(
 fun XdmMetricStrip(metrics: List<XdmMetric>, modifier: Modifier = Modifier) {
     if (metrics.isEmpty()) return
     Surface(
-        modifier = modifier.fillMaxWidth().testTag(XdmTestTags.MetricStrip).semantics { contentDescription = metrics.joinToString { "${it.label}: ${it.value}" } },
+        modifier = modifier.fillMaxWidth().testTag(XdmTestTags.MetricStrip).semantics { stateDescription = metrics.joinToString { "${it.label}: ${it.value}" } },
         color = XdmTheme.extendedColors.groupedSurface,
         shape = MaterialTheme.shapes.medium,
         tonalElevation = 0.dp,
@@ -170,7 +182,7 @@ fun XdmNoticeRow(
 ) {
     val colors = xdmToneColors(tone)
     Surface(
-        modifier = modifier.fillMaxWidth().testTag(XdmTestTags.NoticeRow).semantics { contentDescription = text },
+        modifier = modifier.fillMaxWidth().xdmMinimumTouchTarget().testTag(XdmTestTags.NoticeRow).semantics { contentDescription = text },
         color = colors.container,
         contentColor = colors.content,
         shape = MaterialTheme.shapes.medium,
@@ -196,7 +208,7 @@ fun XdmGroupedList(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth().testTag(XdmTestTags.GroupedList).semantics { contentDescription = "Grouped list" },
+        modifier = modifier.fillMaxWidth().testTag(XdmTestTags.GroupedList).semantics { isTraversalGroup = true },
         color = XdmTheme.extendedColors.groupedSurface,
         shape = MaterialTheme.shapes.large,
         tonalElevation = 0.dp,
@@ -234,8 +246,8 @@ fun XdmListRow(
             .then(interactionModifier)
             .defaultMinSize(minHeight = 56.dp)
             .padding(horizontal = 14.dp, vertical = 10.dp)
-            .semantics {
-                contentDescription = listOfNotNull(headline, supporting).joinToString(". ")
+            .semantics(mergeDescendants = onClick != null) {
+                if (supporting?.isNotBlank() == true) stateDescription = supporting
                 if (onClick != null) role = Role.Button
             },
         verticalAlignment = Alignment.CenterVertically,
@@ -262,7 +274,7 @@ fun <T> XdmSegmentedControl(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth().testTag(XdmTestTags.SegmentedControl).semantics { contentDescription = "Segmented control" },
+        modifier = modifier.fillMaxWidth().testTag(XdmTestTags.SegmentedControl).xdmPane("Segmented control"),
         color = XdmTheme.extendedColors.groupedSurface,
         shape = MaterialTheme.shapes.medium,
         tonalElevation = 0.dp,
@@ -337,7 +349,8 @@ fun XdmProgressLine(
     stateLabel: String? = null,
 ) {
     val semanticModifier = modifier.fillMaxWidth().testTag(XdmTestTags.ProgressLine).semantics {
-        stateDescription = stateLabel ?: progress?.let { "${(it.coerceIn(0f, 1f) * 100).toInt()} percent" } ?: "Progress unknown"
+        stateDescription = stateLabel ?: "Transfer progress available visually"
+        if (stateLabel != null) liveRegion = LiveRegionMode.Polite
     }
     if (progress == null) {
         LinearProgressIndicator(modifier = semanticModifier.height(3.dp), color = MaterialTheme.colorScheme.primary, trackColor = XdmTheme.extendedColors.groupedSurfaceStrong)
@@ -392,12 +405,22 @@ fun XdmAdaptiveSheet(
     windowClass: XdmWindowClass,
     onDismissRequest: () -> Unit,
     title: String,
+    scrollContent: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     if (!visible) return
+    val focusRestorationController = LocalXdmFocusRestorationController.current
+    val sheetFocusRequester = remember { FocusRequester() }
+    fun dismissAndRestoreFocus() {
+        onDismissRequest()
+        focusRestorationController.restoreLastFocus()
+    }
+    LaunchedEffect(title, visible) {
+        runCatching { sheetFocusRequester.requestFocus() }
+    }
     if (windowClass == XdmWindowClass.Expanded) {
         Dialog(
-            onDismissRequest = onDismissRequest,
+            onDismissRequest = { dismissAndRestoreFocus() },
             properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = true, dismissOnClickOutside = true),
         ) {
             Surface(
@@ -405,8 +428,9 @@ fun XdmAdaptiveSheet(
                     .fillMaxWidth(0.76f)
                     .sizeIn(maxWidth = 760.dp, maxHeight = 820.dp)
                     .testTag(XdmTestTags.AdaptiveSheet)
-                    .semantics {
-                        contentDescription = "$title dialog"
+                    .focusRequester(sheetFocusRequester)
+                    .focusable()
+                    .xdmPane("$title dialog", traversal = XdmTraversalOrder.Dialog).semantics {
                         stateDescription = "Open"
                     },
                 color = MaterialTheme.colorScheme.surface,
@@ -416,13 +440,18 @@ fun XdmAdaptiveSheet(
             ) {
                 Column {
                     XdmPageHeader(title = title)
-                    Column(Modifier.weight(1f, fill = false), content = content)
+                    val bodyModifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = LocalXdmWindowProfile.current.sheetMaxHeight)
+                        .padding(bottom = 8.dp)
+                        .let { if (scrollContent) it.verticalScroll(rememberScrollState()) else it }
+                    Column(bodyModifier, content = content)
                 }
             }
         }
     } else {
         ModalBottomSheet(
-            onDismissRequest = onDismissRequest,
+            onDismissRequest = { dismissAndRestoreFocus() },
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
             tonalElevation = 0.dp,
@@ -432,13 +461,19 @@ fun XdmAdaptiveSheet(
                 Modifier
                     .fillMaxWidth()
                     .testTag(XdmTestTags.AdaptiveSheet)
-                    .semantics {
-                        contentDescription = "$title bottom sheet"
+                    .focusRequester(sheetFocusRequester)
+                    .focusable()
+                    .xdmPane("$title bottom sheet", traversal = XdmTraversalOrder.Sheet).semantics {
                         stateDescription = "Open"
                     },
             ) {
                 XdmPageHeader(title = title)
-                content()
+                val bodyModifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = LocalXdmWindowProfile.current.sheetMaxHeight)
+                    .padding(bottom = 8.dp)
+                    .let { if (scrollContent) it.verticalScroll(rememberScrollState()) else it }
+                Column(bodyModifier, content = content)
             }
         }
     }
@@ -500,11 +535,20 @@ private data class XdmToneColors(val container: Color, val content: Color)
 private fun xdmToneColors(tone: XdmStatusTone): XdmToneColors {
     val extended = XdmTheme.extendedColors
     val scheme = MaterialTheme.colorScheme
-    return when (tone) {
-        XdmStatusTone.Success -> XdmToneColors(extended.successContainer, extended.onSuccessContainer)
-        XdmStatusTone.Warning -> XdmToneColors(extended.warningContainer, extended.onWarningContainer)
-        XdmStatusTone.Error -> XdmToneColors(scheme.errorContainer, scheme.onErrorContainer)
-        XdmStatusTone.Info -> XdmToneColors(scheme.primaryContainer, scheme.onPrimaryContainer)
-        XdmStatusTone.Neutral -> XdmToneColors(extended.groupedSurfaceStrong, scheme.onSurfaceVariant)
+    val container = when (tone) {
+        XdmStatusTone.Success -> extended.successContainer
+        XdmStatusTone.Warning -> extended.warningContainer
+        XdmStatusTone.Error -> scheme.errorContainer
+        XdmStatusTone.Info -> scheme.primaryContainer
+        XdmStatusTone.Neutral -> extended.groupedSurfaceStrong
     }
+    val preferredContent = when (tone) {
+        XdmStatusTone.Success -> extended.onSuccessContainer
+        XdmStatusTone.Warning -> extended.onWarningContainer
+        XdmStatusTone.Error -> scheme.onErrorContainer
+        XdmStatusTone.Info -> scheme.onPrimaryContainer
+        XdmStatusTone.Neutral -> scheme.onSurfaceVariant
+    }
+    val content = XdmContrastPolicy.ensureReadableContentColor(container, preferredContent, scheme.onSurface)
+    return XdmToneColors(container, content)
 }

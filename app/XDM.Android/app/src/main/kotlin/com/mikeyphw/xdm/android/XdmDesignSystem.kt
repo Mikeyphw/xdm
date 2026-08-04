@@ -113,13 +113,14 @@ fun XdmStatusBadge(text: String, modifier: Modifier = Modifier, tone: XdmStatusT
         XdmStatusTone.Info -> scheme.primaryContainer
         XdmStatusTone.Neutral -> extended.groupedSurfaceStrong
     }
-    val foreground = when (tone) {
+    val preferredForeground = when (tone) {
         XdmStatusTone.Success -> extended.onSuccessContainer
         XdmStatusTone.Warning -> extended.onWarningContainer
         XdmStatusTone.Error -> scheme.onErrorContainer
         XdmStatusTone.Info -> scheme.onPrimaryContainer
         XdmStatusTone.Neutral -> scheme.onSurfaceVariant
     }
+    val foreground = XdmContrastPolicy.ensureReadableContentColor(background, preferredForeground, scheme.onSurface)
     Surface(
         modifier = modifier,
         color = background,

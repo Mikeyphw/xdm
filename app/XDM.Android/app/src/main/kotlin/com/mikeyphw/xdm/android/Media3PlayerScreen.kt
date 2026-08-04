@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -18,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -34,7 +36,8 @@ import com.mikeyphw.xdm.android.media.MediaPlayerErrorSnapshot
 @OptIn(UnstableApi::class)
 @Composable
 fun Media3DirectPlayerCard(candidate: MediaPlaybackCandidate, modifier: Modifier = Modifier) {
-    XdmFlatCard(modifier.fillMaxWidth().semantics { contentDescription = "Player for ${candidate.title}" }) {
+    val windowProfile = LocalXdmWindowProfile.current
+    XdmFlatCard(modifier.fillMaxWidth().xdmPane("Media player pane").semantics { contentDescription = "Player for ${candidate.title}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             XdmCardTitle(candidate.title, maxLines = 2)
             if (candidate.needsExternalResolver) {
@@ -80,12 +83,13 @@ fun Media3DirectPlayerCard(candidate: MediaPlaybackCandidate, modifier: Modifier
             }
 
             AndroidView(
-                modifier = Modifier.fillMaxWidth().height(220.dp),
+                modifier = Modifier.fillMaxWidth().height(windowProfile.playerHeight).heightIn(min = 160.dp).xdmScreen(XdmScreenTags.Player, "Media player").semantics { isTraversalGroup = true },
                 factory = { viewContext ->
                     PlayerView(viewContext).apply {
                         this.player = player
                         useController = true
-                        contentDescription = "Media player"
+                        contentDescription = "Media player controls for ${candidate.title}"
+                        controllerShowTimeoutMs = 0
                     }
                 },
                 update = { it.player = player },
@@ -116,7 +120,7 @@ fun Media3DirectPlayerCard(candidate: MediaPlaybackCandidate, modifier: Modifier
                 }
             }
 
-            TextButton(onClick = { player.seekTo(0L) }) { Text("Restart from beginning") }
+            TextButton(onClick = { player.seekTo(0L) }, modifier = Modifier.xdmMinimumTouchTarget()) { Text("Restart from beginning") }
         }
     }
 }

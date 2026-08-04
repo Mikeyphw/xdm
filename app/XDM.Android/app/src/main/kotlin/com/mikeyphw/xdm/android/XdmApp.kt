@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -50,10 +51,25 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        val foldPosture = rememberXdmFoldPosture()
+        val focusRestorationController = rememberXdmFocusRestorationController()
         val windowClass = XdmWindowClass.fromWidth(maxWidth)
-        CompositionLocalProvider(LocalXdmWindowClass provides windowClass) {
+        val windowProfile = XdmWindowProfile(
+            width = maxWidth,
+            height = maxHeight,
+            windowClass = windowClass,
+            fontScale = density.fontScale,
+            foldPosture = foldPosture,
+        )
+        CompositionLocalProvider(
+            LocalXdmWindowClass provides windowClass,
+            LocalXdmWindowProfile provides windowProfile,
+            LocalXdmFocusRestorationController provides focusRestorationController,
+        ) {
             XdmAdaptiveShell(
                 windowClass = windowClass,
+                windowProfile = windowProfile,
                 selectedRoute = visibleRoute,
                 destinations = primaryRoutes,
                 activeTransferCount = state.activeTransfers.activeCount,

@@ -813,6 +813,11 @@
     "phase": "Phase 2",
     "revision": 1
   },
+  "bug_hunt_remediation": {
+    "phases": {
+      "9": "Accessibility and Adaptive Layout r2 gap closure: real fold posture source, focus restoration, Compose screenshot/semantics matrix, large-font risky surfaces, traversal order, and contrast gates."
+    }
+  },
   "bug_hunt_remediation_phase_1": {
     "all_files_permission_added": false,
     "automatic_transfer_start_from_untrusted_input": false,
@@ -1049,8 +1054,22 @@
     "revision": 1,
     "validation_mode": "disabled"
   },
+  "bug_hunt_remediation_phase_6_r2": {
+    "baseline": "Phase 1 r5 + Phase 2 r2 + Phase 3 r2 + Phase 4 r2 + Phase 5 r2",
+    "commit_message": "Phase 6 r2: wire database integrity guards into runtime writers",
+    "delivered": [
+      "DownloadRepository.save uses stale-write guarded transactional insert/update",
+      "Automation commands are claimed and marked executing before MainViewModel side effects",
+      "Queue reassignment delete uses DownloadRepository.reassignQueueThenDelete",
+      "Malformed stored enum values fail closed during model conversion",
+      "Validator rejects marker-only Phase 6 implementations",
+      "Backend ownership and migration store enum parsing is guarded"
+    ],
+    "name": "Database Integrity And Migrations Runtime Wiring",
+    "revision": 2
+  },
   "current_overlay": "xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip",
-  "current_uix_overlay": "xdm_android_uix_r6_accessibility_performance_release_seal_overlay.zip",
+  "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
     "clipboard_inbox": true,
@@ -1182,7 +1201,7 @@
     "automatic_upload": false,
     "baseline": "debug_workbench_phase_d2_shell_r4",
     "compile_hygiene": "MediaSniffingLabCard candidate row uses escaped newline; D3 app contract uses safe substring assertions that compile.",
-    "description": "Adds a Media Sniffing Lab inside Settings → Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
+    "description": "Adds a Media Sniffing Lab inside Settings \u2192 Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
     "drm_bypass": false,
     "network_page_probe": false,
     "next_phase": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
@@ -1190,7 +1209,7 @@
     "phase": "D3",
     "revision": "r4",
     "room_schema_unchanged": 14,
-    "settings_location": "Settings → Debug Workbench → Media Sniffing Lab",
+    "settings_location": "Settings \u2192 Debug Workbench \u2192 Media Sniffing Lab",
     "starts_downloads": false,
     "static_sniff_only": true,
     "status": "implemented",
@@ -3146,7 +3165,7 @@
     "normal_ui_debug_language_banned": true,
     "normal_ui_raw_machine_values_banned": true,
     "program": "android_uix_redesign",
-    "room_schema_unchanged": 14,
+    "room_schema_current": 17,
     "semantics_layout_contracts": true,
     "static_validator": "tools/validate-uix-r6-accessibility-performance-release-seal.py",
     "version_code_unchanged": 21,
@@ -3177,19 +3196,5 @@
     "native_selective_repair_planner": true,
     "repeat_verification_without_network": true,
     "trusted_block_manifest": true
-  },
-  "bug_hunt_remediation_phase_6_r2": {
-    "name": "Database Integrity And Migrations Runtime Wiring",
-    "revision": 2,
-    "commit_message": "Phase 6 r2: wire database integrity guards into runtime writers",
-    "baseline": "Phase 1 r5 + Phase 2 r2 + Phase 3 r2 + Phase 4 r2 + Phase 5 r2",
-    "delivered": [
-      "DownloadRepository.save uses stale-write guarded transactional insert/update",
-      "Automation commands are claimed and marked executing before MainViewModel side effects",
-      "Queue reassignment delete uses DownloadRepository.reassignQueueThenDelete",
-      "Malformed stored enum values fail closed during model conversion",
-      "Validator rejects marker-only Phase 6 implementations",
-      "Backend ownership and migration store enum parsing is guarded"
-    ]
   }
 }
