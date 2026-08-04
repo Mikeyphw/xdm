@@ -34,8 +34,10 @@ import androidx.room.RoomDatabase
         BackendMigrationEntity::class,
         DestinationClaimEntity::class,
         OwnershipCounterEntity::class,
+        PostProcessingJobEntity::class,
+        PostProcessingClaimEntity::class,
     ],
-    version = 14,
+    version = 17,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -54,4 +56,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun automationCommandDao(): AutomationCommandDao
     abstract fun organizationDao(): OrganizationDao
     abstract fun downloadGraphTransactionDao(): DownloadGraphTransactionDao
+    abstract fun postProcessingDao(): PostProcessingDao
 }

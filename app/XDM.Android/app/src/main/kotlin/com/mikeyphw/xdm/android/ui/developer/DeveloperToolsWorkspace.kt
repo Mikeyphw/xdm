@@ -58,6 +58,13 @@ fun DeveloperToolsWorkspace(
     onSaveTermuxAria2Session: () -> Unit,
     onRetryPostProcessing: () -> Unit,
     onClearPostProcessingEvents: () -> Unit,
+    onClearTermuxMediaJobs: () -> Unit,
+    onPauseTermuxMediaJob: (String) -> Unit,
+    onResumeTermuxMediaJob: (String) -> Unit,
+    onCancelTermuxMediaJob: (String) -> Unit,
+    onForceCancelTermuxMediaJob: (String) -> Unit,
+    onRetryTermuxMediaJob: (String) -> Unit,
+    onRecoverTermuxMediaPublication: (String) -> Unit,
     onScanClipboardText: (String) -> Unit,
     onAcceptClipboardItem: (ClipboardInboxItem) -> Unit,
     onDismissClipboardItem: (ClipboardInboxItem) -> Unit,
@@ -108,6 +115,13 @@ fun DeveloperToolsWorkspace(
                 onSaveTermuxAria2Session = onSaveTermuxAria2Session,
                 onRetryPostProcessing = onRetryPostProcessing,
                 onClearPostProcessingEvents = onClearPostProcessingEvents,
+                onClearTermuxMediaJobs = onClearTermuxMediaJobs,
+                onPauseTermuxMediaJob = onPauseTermuxMediaJob,
+                onResumeTermuxMediaJob = onResumeTermuxMediaJob,
+                onCancelTermuxMediaJob = onCancelTermuxMediaJob,
+                onForceCancelTermuxMediaJob = onForceCancelTermuxMediaJob,
+                onRetryTermuxMediaJob = onRetryTermuxMediaJob,
+                onRecoverTermuxMediaPublication = onRecoverTermuxMediaPublication,
             )
             DeveloperToolSection.MediaPipeline,
             DeveloperToolSection.DispatchWorkers,
@@ -199,6 +213,13 @@ private fun TermuxAndAria2Section(
     onSaveTermuxAria2Session: () -> Unit,
     onRetryPostProcessing: () -> Unit,
     onClearPostProcessingEvents: () -> Unit,
+    onClearTermuxMediaJobs: () -> Unit,
+    onPauseTermuxMediaJob: (String) -> Unit,
+    onResumeTermuxMediaJob: (String) -> Unit,
+    onCancelTermuxMediaJob: (String) -> Unit,
+    onForceCancelTermuxMediaJob: (String) -> Unit,
+    onRetryTermuxMediaJob: (String) -> Unit,
+    onRecoverTermuxMediaPublication: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -224,6 +245,18 @@ private fun TermuxAndAria2Section(
                 onPauseAll = onPauseAllTermuxAria2Tasks,
                 onResumeAll = onResumeAllTermuxAria2Tasks,
                 onSaveSession = onSaveTermuxAria2Session,
+            )
+        }
+        item {
+            TermuxMediaPipelineCard(
+                pipeline = state.termuxMediaPipeline,
+                onClearCompleted = onClearTermuxMediaJobs,
+                onPause = onPauseTermuxMediaJob,
+                onResume = onResumeTermuxMediaJob,
+                onCancel = onCancelTermuxMediaJob,
+                onForceCancel = onForceCancelTermuxMediaJob,
+                onRetry = onRetryTermuxMediaJob,
+                onRecoverPublication = onRecoverTermuxMediaPublication,
             )
         }
         item {

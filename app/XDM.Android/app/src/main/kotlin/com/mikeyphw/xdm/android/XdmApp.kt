@@ -147,6 +147,8 @@ private fun XdmRouteContent(
                 state.tags,
                 state.tagAssignments,
                 state.savedSearches,
+                state.postProcessingAutomation,
+                state.termuxBridge,
                 viewModel::togglePause,
                 viewModel::cancelDownload,
                 viewModel::redownload,

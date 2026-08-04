@@ -3,6 +3,7 @@ package com.mikeyphw.xdm.android.termux
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -108,7 +109,7 @@ object TermuxRunStore {
             startedAtEpochMs = now,
             finishedAtEpochMs = now,
             exitCode = -1,
-            error = error,
+            error = error.safePreview(),
         )
         statusFlow.update {
             it.copy(
@@ -130,13 +131,17 @@ object TermuxRunStore {
             startedAtEpochMs = statusFlow.value.recentRuns.firstOrNull { it.runId == runId }?.startedAtEpochMs ?: now,
             finishedAtEpochMs = now,
             exitCode = exitCode,
-            stdoutPreview = stdout.preview(),
-            stderrPreview = stderr.preview(),
-            error = error.preview(),
+            stdoutPreview = stdout.safePreview(),
+            stderrPreview = stderr.safePreview(),
+            error = error.safePreview(),
         )
         val parsedTools = parseProbe(stdout)
+        val ffmpegMuxers = parseCapabilitySet(stdout, "XDM_FFMPEG_MUXER")
+        val ffmpegEncoders = parseCapabilitySet(stdout, "XDM_FFMPEG_ENCODER")
+        val ffmpegDecoders = parseCapabilitySet(stdout, "XDM_FFMPEG_DECODER")
+        val successfulFullProbe = operation == XdmTermuxCommand.ProbeAllTools.operation && !failed && parsedTools.isNotEmpty()
         val rootAvailableFromProbe = stdout.lineSequence().any { it.trim() == "XDM_ROOT	available" || it.trim() == "XDM_ROOT_PROBE	ready" }
-        val rootActionOutput = stdout.lineSequence().filter { it.startsWith("XDM_ROOT_ACTION") || it.startsWith("XDM_ROOT_DIAGNOSTICS") || it.startsWith("XDM_ROOT_PROBE") }.joinToString("; ").preview()
+        val rootActionOutput = stdout.lineSequence().filter { it.startsWith("XDM_ROOT_ACTION") || it.startsWith("XDM_ROOT_DIAGNOSTICS") || it.startsWith("XDM_ROOT_PROBE") }.joinToString("; ").safePreview()
         statusFlow.update { current ->
             val existingRoot = current.rootAudit.firstOrNull { it.runId == runId }
             val updatedRootAudit = if (existingRoot != null || operation.startsWith("root_")) {
@@ -150,7 +155,7 @@ object TermuxRunStore {
                 )
                 val rootRecord = base.copy(
                     status = if (failed) TermuxRunStatus.Failed else TermuxRunStatus.Succeeded,
-                    message = rootActionOutput.ifBlank { if (failed) stderr.preview().ifBlank { error.preview() } else "Root action completed." },
+                    message = rootActionOutput.ifBlank { if (failed) stderr.safePreview().ifBlank { error.safePreview() } else "Root action completed." },
                     finishedAtEpochMs = now,
                 )
                 (listOf(rootRecord) + current.rootAudit.filterNot { it.runId == runId }).take(MaxRootAudit)
@@ -159,6 +164,10 @@ object TermuxRunStore {
             }
             current.copy(
                 toolRows = if (parsedTools.isEmpty()) current.toolRows else parsedTools,
+                lastSuccessfulToolProbeAtEpochMs = if (successfulFullProbe) now else current.lastSuccessfulToolProbeAtEpochMs,
+                ffmpegMuxers = if (successfulFullProbe) ffmpegMuxers else current.ffmpegMuxers,
+                ffmpegEncoders = if (successfulFullProbe) ffmpegEncoders else current.ffmpegEncoders,
+                ffmpegDecoders = if (successfulFullProbe) ffmpegDecoders else current.ffmpegDecoders,
                 rootAvailable = when {
                     operation.startsWith("root_") && !failed -> true
                     parsedTools.isNotEmpty() -> rootAvailableFromProbe
@@ -167,7 +176,7 @@ object TermuxRunStore {
                 rootAudit = updatedRootAudit,
                 lastRootMessage = updatedRootAudit.firstOrNull()?.summary ?: current.lastRootMessage,
                 recentRuns = (listOf(updatedRecord) + current.recentRuns.filterNot { it.runId == runId }).take(MaxRecentRuns),
-                lastMessage = if (failed) error.ifBlank { stderr.preview().ifBlank { "Termux command failed with exit $exitCode." } } else "Termux $operation completed.",
+                lastMessage = if (failed) error.safePreview().ifBlank { stderr.safePreview().ifBlank { "Termux command failed with exit $exitCode." } } else "Termux $operation completed.",
                 updatedAtEpochMs = now,
             )
         }
@@ -188,13 +197,21 @@ object TermuxRunStore {
                     available = parts[2] == "available",
                     executablePath = parts[3],
                     versionLine = parts[4].ifBlank { if (parts[2] == "available") "Installed" else "Missing" },
+                    probedAtEpochMs = System.currentTimeMillis(),
                 )
             }
         if (parsed.isEmpty()) return emptyList()
         return ExternalTool.entries.map { tool -> parsed[tool.binaryName] ?: TermuxToolProbeRow(tool) }
     }
 
-    private fun String.preview(): String = trim().take(MaxPreviewCharacters)
+    private fun parseCapabilitySet(stdout: String, marker: String): Set<String> = stdout.lineSequence()
+        .map { it.split('\t') }
+        .filter { it.size >= 2 && it[0] == marker }
+        .map { it[1].trim().lowercase() }
+        .filter(String::isNotBlank)
+        .toSet()
+
+    private fun String.safePreview(): String = PrivacyDiagnosticsRedactor.redactText(this).orEmpty().take(MaxPreviewCharacters)
 
     private fun isPackageInstalled(context: Context, packageName: String): Boolean = runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

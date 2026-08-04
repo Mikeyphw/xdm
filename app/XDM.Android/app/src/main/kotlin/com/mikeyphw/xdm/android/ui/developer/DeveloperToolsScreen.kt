@@ -1519,29 +1519,87 @@ internal fun ProtectedMediaDiagnosticsCard(plan: MediaDownloadPlan) {
 }
 
 @Composable
-internal fun TermuxMediaPipelineCard(pipeline: TermuxMediaPipelineStatus, onClearCompleted: () -> Unit) {
+internal fun TermuxMediaPipelineCard(
+    pipeline: TermuxMediaPipelineStatus,
+    onClearCompleted: () -> Unit,
+    onPause: (String) -> Unit,
+    onResume: (String) -> Unit,
+    onCancel: (String) -> Unit,
+    onForceCancel: (String) -> Unit,
+    onRetry: (String) -> Unit,
+    onRecoverPublication: (String) -> Unit,
+) {
     Card(Modifier.fillMaxWidth().semantics { contentDescription = "Termux media pipeline ${pipeline.readinessLabel}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    XdmCardTitle("Termux media pipeline")
+                    XdmCardTitle("Durable Termux post-processing")
                     XdmMetricText(pipeline.readinessLabel)
                 }
-                if (pipeline.jobs.any { it.status == TermuxMediaJobStatus.Completed || it.status == TermuxMediaJobStatus.Failed }) {
-                    TextButton(onClick = onClearCompleted) { Text("Clear done") }
+                if (pipeline.jobs.any { it.status.terminal }) {
+                    TextButton(onClick = onClearCompleted) { Text("Clear manual history") }
                 }
             }
-            XdmSupportingText("yt-dlp discovers variants and downloads media; FFprobe inspects streams; FFmpeg remuxes, fast-starts, and extracts audio inside Termux.")
-            XdmMetadataText(pipeline.lastAction, maxLines = 2)
-            pipeline.recentJobs.take(4).forEach { job ->
+            XdmSupportingText(
+                "Automatic claims, immutable retry attempts, exact process ownership, timeout, progress, bridge artifacts, and transactional output publication survive app process death.",
+                maxLines = 4,
+            )
+            XdmMetadataText(pipeline.lastAction, maxLines = 3)
+            pipeline.recentJobs.take(8).forEach { job ->
                 XdmListCard(compact = true) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                         Column(Modifier.weight(1f)) {
                             XdmCardTitle(job.kind.label, maxLines = 1)
-                            XdmMetadataText(job.title, maxLines = 1)
-                            XdmMetadataText(job.message.ifBlank { job.output }, maxLines = 2)
+                            XdmMetadataText("${job.title} • attempt ${job.attemptGeneration}", maxLines = 1)
+                            XdmMetadataText(job.message.ifBlank { job.output }, maxLines = 3)
                         }
-                        StatusPill(job.status.label, if (job.status == TermuxMediaJobStatus.Failed) XdmStatusTone.Warning else XdmStatusTone.Info)
+                        val tone = when (job.status) {
+                            TermuxMediaJobStatus.Completed -> XdmStatusTone.Success
+                            TermuxMediaJobStatus.Failed, TermuxMediaJobStatus.TimedOut, TermuxMediaJobStatus.RecoveryRequired -> XdmStatusTone.Warning
+                            TermuxMediaJobStatus.Cancelled -> XdmStatusTone.Neutral
+                            else -> XdmStatusTone.Info
+                        }
+                        StatusPill(job.status.label, tone)
+                    }
+                    if (!job.status.terminal && job.status != TermuxMediaJobStatus.RecoveryRequired) {
+                        LinearProgressIndicator(
+                            progress = { job.progressPercent.coerceIn(0, 100) / 100f },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        XdmMetadataText(job.progressLabel)
+                    }
+                    val ownership = buildList {
+                        job.processId?.let { add("PID $it") }
+                        job.runId.takeIf(String::isNotBlank)?.let { add("run $it") }
+                        job.processToken.takeIf(String::isNotBlank)?.let { add("owner ${it.take(8)}…") }
+                    }
+                    if (ownership.isNotEmpty()) XdmMetadataText(ownership.joinToString(" • "), maxLines = 2)
+                    XdmActionFlowRow {
+                        when (job.status) {
+                            TermuxMediaJobStatus.Running -> {
+                                TextButton(onClick = { onPause(job.id) }) { Text("Pause") }
+                                TextButton(onClick = { onCancel(job.id) }) { Text("Cancel") }
+                            }
+                            TermuxMediaJobStatus.WaitingForPrerequisites,
+                            TermuxMediaJobStatus.Preparing,
+                            TermuxMediaJobStatus.Queued ->
+                                TextButton(onClick = { onCancel(job.id) }) { Text("Cancel") }
+                            TermuxMediaJobStatus.Paused -> {
+                                Button(onClick = { onResume(job.id) }) { Text("Resume") }
+                                TextButton(onClick = { onCancel(job.id) }) { Text("Cancel") }
+                            }
+                            TermuxMediaJobStatus.Publishing ->
+                                XdmMetadataText("Destination commit is in progress; controls resume after reconciliation.")
+                            TermuxMediaJobStatus.Cancelling ->
+                                TextButton(onClick = { onForceCancel(job.id) }) { Text("Force owned process") }
+                            TermuxMediaJobStatus.Failed, TermuxMediaJobStatus.Cancelled, TermuxMediaJobStatus.TimedOut ->
+                                Button(onClick = { onRetry(job.id) }) { Text("New attempt") }
+                            TermuxMediaJobStatus.RecoveryRequired -> {
+                                Button(onClick = { onRecoverPublication(job.id) }) { Text("Publish staged output") }
+                                TextButton(onClick = { onRetry(job.id) }) { Text("New attempt") }
+                            }
+                            TermuxMediaJobStatus.Completed -> Unit
+                        }
                     }
                 }
             }

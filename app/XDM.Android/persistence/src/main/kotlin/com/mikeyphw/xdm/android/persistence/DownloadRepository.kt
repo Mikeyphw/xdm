@@ -5,6 +5,7 @@ import com.mikeyphw.xdm.android.model.AutomationCommandRecord
 import com.mikeyphw.xdm.android.model.AutomationCommandSource
 import com.mikeyphw.xdm.android.model.AutomationCommandStatus
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import com.mikeyphw.xdm.android.model.ExternalCommandAuthorization
 import com.mikeyphw.xdm.android.model.AutomationRejectionReason
 import com.mikeyphw.xdm.android.model.ClipboardInboxItem
 import com.mikeyphw.xdm.android.model.BackendOwnership
@@ -114,6 +115,14 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun findDownloadsByStates(states: Set<DownloadState>): List<Download> =
         if (states.isEmpty()) emptyList() else database.downloadDao().findByStates(states.map { it.name }).map { it.toModel() }
 
+    suspend fun attemptGenerationForDownload(downloadId: String): Long? =
+        database.backendTaskDao().findByDownload(downloadId)?.ownershipGeneration?.takeIf { it > 0L }
+
+    suspend fun recoveryArtifactForDownload(downloadId: String): String? =
+        database.recoveryDao().listAll()
+            .firstOrNull { it.downloadId == downloadId && it.artifactPath.isNotBlank() }
+            ?.artifactPath
+
     suspend fun saveBackendTask(downloadId: String, backend: BackendType, backendTaskId: String, ownership: BackendOwnership) {
         database.backendTaskDao().upsert(
             BackendTaskEntity(
@@ -180,6 +189,11 @@ private fun AutomationCommandEntity.toModel() = AutomationCommandRecord(
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
     originPackage = originPackage,
+    claimedOriginPackage = claimedOriginPackage,
+    verifiedIntegrationId = verifiedIntegrationId,
+    authorization = safeEnum(authorization, ExternalCommandAuthorization.Untrusted),
+    privateNetworkApproved = privateNetworkApproved,
+    cleartextCredentialsApproved = cleartextCredentialsApproved,
     originHost = originHost,
     sanitizedHeaders = sanitizedHeaders,
     rejectionReason = safeEnum(rejectionReason, AutomationRejectionReason.None),
@@ -201,6 +215,11 @@ private fun AutomationCommandRecord.toEntity() = AutomationCommandEntity(
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
     originPackage = originPackage,
+    claimedOriginPackage = claimedOriginPackage,
+    verifiedIntegrationId = verifiedIntegrationId,
+    authorization = authorization.name,
+    privateNetworkApproved = privateNetworkApproved,
+    cleartextCredentialsApproved = cleartextCredentialsApproved,
     originHost = originHost,
     sanitizedHeaders = sanitizedHeaders,
     rejectionReason = rejectionReason.name,

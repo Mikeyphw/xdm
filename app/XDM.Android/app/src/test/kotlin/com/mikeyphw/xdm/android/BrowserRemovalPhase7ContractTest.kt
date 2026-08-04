@@ -86,7 +86,7 @@ class BrowserRemovalPhase7ContractTest {
 
         val database = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt").readText()
         val preferences = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferencesStore.kt").readText()
-        assertTrue(database.contains("version = 14"))
+        assertTrue(database.contains("version = 17"))
         val persistenceSources = sequenceOf(database, preferences).map(String::lowercase)
         listOf("browser_tab", "browser_history", "bookmark", "private_session", "browser_profile").forEach { token ->
             assertFalse("Browser persistence returned: $token", persistenceSources.any { it.contains(token) })

@@ -350,4 +350,113 @@ object Migrations {
         }
     }
 
+
+    val Migration14To15 = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE automation_commands ADD COLUMN claimedOriginPackage TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE automation_commands ADD COLUMN verifiedIntegrationId TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE automation_commands ADD COLUMN authorization TEXT NOT NULL DEFAULT 'Untrusted'")
+            db.execSQL("ALTER TABLE automation_commands ADD COLUMN privateNetworkApproved INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE automation_commands ADD COLUMN cleartextCredentialsApproved INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    val Migration15To16 = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS post_processing_jobs (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    rootJobId TEXT NOT NULL,
+                    parentJobId TEXT,
+                    attemptGeneration INTEGER NOT NULL,
+                    claimKey TEXT,
+                    subjectId TEXT NOT NULL,
+                    subjectType TEXT NOT NULL,
+                    subjectGeneration INTEGER NOT NULL,
+                    downloadId TEXT,
+                    captureId TEXT,
+                    ruleId TEXT,
+                    actionId TEXT NOT NULL,
+                    trigger TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    inputUri TEXT NOT NULL,
+                    stagedInputPath TEXT,
+                    inputBridgeUri TEXT,
+                    outputDisplayName TEXT NOT NULL,
+                    outputMimeType TEXT NOT NULL,
+                    outputDestinationUri TEXT,
+                    stagedOutputPath TEXT,
+                    outputBridgeUri TEXT,
+                    ownerBridgeUri TEXT,
+                    progressBridgeUri TEXT,
+                    metadataBridgeUri TEXT,
+                    payloadBridgeUri TEXT,
+                    finalOutputUri TEXT,
+                    immutableSpecJson TEXT NOT NULL,
+                    expectedSha256 TEXT,
+                    actualSha256 TEXT,
+                    requiredTools TEXT NOT NULL,
+                    toolVersionsJson TEXT NOT NULL,
+                    runId TEXT,
+                    executionId INTEGER,
+                    processToken TEXT,
+                    processId INTEGER,
+                    controlGeneration INTEGER NOT NULL,
+                    requestedControl TEXT,
+                    progressPercent INTEGER NOT NULL,
+                    progressBytes INTEGER NOT NULL,
+                    progressTotalBytes INTEGER,
+                    timeoutAtEpochMs INTEGER,
+                    resultStdoutLength INTEGER NOT NULL,
+                    resultStderrLength INTEGER NOT NULL,
+                    metadataJson TEXT,
+                    message TEXT NOT NULL,
+                    createdAtEpochMs INTEGER NOT NULL,
+                    updatedAtEpochMs INTEGER NOT NULL,
+                    startedAtEpochMs INTEGER,
+                    finishedAtEpochMs INTEGER
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_post_processing_jobs_rootJobId ON post_processing_jobs(rootJobId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_post_processing_jobs_subjectId ON post_processing_jobs(subjectId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_post_processing_jobs_downloadId ON post_processing_jobs(downloadId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_post_processing_jobs_captureId ON post_processing_jobs(captureId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_post_processing_jobs_status ON post_processing_jobs(status)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_post_processing_jobs_updatedAtEpochMs ON post_processing_jobs(updatedAtEpochMs)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_post_processing_jobs_runId ON post_processing_jobs(runId)")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS post_processing_claims (
+                    claimKey TEXT NOT NULL PRIMARY KEY,
+                    subjectId TEXT NOT NULL,
+                    subjectType TEXT NOT NULL,
+                    subjectGeneration INTEGER NOT NULL,
+                    trigger TEXT NOT NULL,
+                    ruleId TEXT NOT NULL,
+                    actionId TEXT NOT NULL,
+                    jobId TEXT NOT NULL,
+                    createdAtEpochMs INTEGER NOT NULL,
+                    FOREIGN KEY(jobId) REFERENCES post_processing_jobs(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_post_processing_claims_jobId ON post_processing_claims(jobId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_post_processing_claims_subjectId ON post_processing_claims(subjectId)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_post_processing_claims_subjectId_subjectGeneration_trigger_ruleId_actionId ON post_processing_claims(subjectId, subjectGeneration, trigger, ruleId, actionId)")
+        }
+    }
+
+    val Migration16To17 = object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE post_processing_jobs ADD COLUMN publicationState TEXT NOT NULL DEFAULT 'None'")
+            db.execSQL("ALTER TABLE post_processing_jobs ADD COLUMN publicationDisplayName TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE post_processing_jobs ADD COLUMN publicationExpectedBytes INTEGER DEFAULT NULL")
+            db.execSQL("ALTER TABLE post_processing_jobs ADD COLUMN publicationExpectedSha256 TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE post_processing_jobs ADD COLUMN committedOutputUri TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE post_processing_jobs ADD COLUMN committedBytes INTEGER DEFAULT NULL")
+            db.execSQL("ALTER TABLE post_processing_jobs ADD COLUMN committedSha256 TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE post_processing_jobs ADD COLUMN sideEffectOutcome TEXT DEFAULT NULL")
+        }
+    }
+
 }

@@ -42,6 +42,9 @@ import com.mikeyphw.xdm.android.model.RuntimeFailureRecoveryPlan
 import com.mikeyphw.xdm.android.model.RuntimeFailureRecoveryPlanner
 import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.model.VerificationStatus
+import com.mikeyphw.xdm.android.termux.PostProcessingAutomationPolicy
+import com.mikeyphw.xdm.android.termux.PostProcessingAutomationStatus
+import com.mikeyphw.xdm.android.termux.TermuxBridgeStatus
 import com.mikeyphw.xdm.android.util.formatBytes
 
 private const val RefreshFromBrowserGuidance = "Open the source page in your browser, then share or capture it to XDM again."
@@ -53,6 +56,8 @@ internal fun DownloadDetails(
     capabilities: List<BackendCapabilityRow>,
     checksumResults: List<ChecksumResult>,
     verificationRecords: List<VerificationRecord>,
+    postProcessingAutomation: PostProcessingAutomationStatus,
+    termuxBridge: TermuxBridgeStatus,
     onTogglePause: (Download) -> Unit,
     onMigrateBackend: (Download) -> Unit,
     onRemoveHistory: (Download) -> Unit,
@@ -68,6 +73,7 @@ internal fun DownloadDetails(
     val queuePolicyHeld = download.errorMessage.orEmpty().startsWith("Queue policy:") &&
         download.state !in setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Completed, DownloadState.Cancelled)
     val recoveryPlan = RuntimeFailureRecoveryPlanner.evaluate(download)
+    val postProcessingAvailability = PostProcessingAutomationPolicy.availabilityFor(download, postProcessingAutomation, termuxBridge)
 
     Column(modifier.fillMaxWidth().xdmScreen(XdmScreenTags.DownloadsDetail, "Download details"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Surface(
@@ -219,7 +225,8 @@ internal fun DownloadDetails(
                 XdmListSeparator()
                 XdmListRow(
                     headline = "Run post-processing",
-                    supporting = "Runs typed actions through approved templates.",
+                    supporting = postProcessingAvailability.reason,
+                    enabled = postProcessingAvailability.canRun,
                     onClick = { onRunPostProcessing(download) },
                 )
                 XdmListSeparator()

@@ -937,6 +937,17 @@ class MainViewModel(
         termuxMediaPipelineManager.clearCompleted()
     }
 
+    fun pauseTermuxMediaJob(jobId: String) = termuxMediaPipelineManager.pause(jobId)
+
+    fun resumeTermuxMediaJob(jobId: String) = termuxMediaPipelineManager.resume(jobId)
+
+    fun cancelTermuxMediaJob(jobId: String) = termuxMediaPipelineManager.cancel(jobId)
+
+    fun forceCancelTermuxMediaJob(jobId: String) = termuxMediaPipelineManager.forceCancel(jobId)
+
+    fun retryTermuxMediaJob(jobId: String) = termuxMediaPipelineManager.retry(jobId)
+
+    fun recoverTermuxMediaPublication(jobId: String) = termuxMediaPipelineManager.recoverPublication(jobId)
 
     fun setPostProcessingAutomationEnabled(enabled: Boolean) {
         postProcessingAutomationManager.setEnabled(enabled)

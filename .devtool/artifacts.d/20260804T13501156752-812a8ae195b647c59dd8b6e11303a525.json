@@ -1,0 +1,366 @@
+{
+  "applied_at": "2026-08-04T13:50:11.567524Z",
+  "artifact": "/home/mike/Downloads/xdm_android_bug_hunt_phase7_full_gap_closure_r2_overlay.zip",
+  "artifact_name": "xdm_android_bug_hunt_phase7_full_gap_closure_r2_overlay.zip",
+  "type": "overlay",
+  "sha256": "a5e493a96435e26df1262117cfdf920913e4f25b1829e7314615fc6dea84178b",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Complete XDM Android bug hunt Phase 7 gap closure",
+  "commit_hash": "",
+  "file_count": 43,
+  "change_counts": {
+    "add": 10,
+    "modify": 33
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Bug Hunt Phase 7 Full Gap Closure r2",
+    "description": "Complete Phase 7 replacement with all promise-audit gaps closed, schema 17 publication durability, exact recovery, protected Termux stdin delivery, capability gates, and executable regression contracts.",
+    "target": "xdm_android",
+    "workspace": {
+      "root": "app/XDM.Android"
+    },
+    "apply": {
+      "atomic": true,
+      "path_policy": "repository-relative",
+      "conflict_policy": "fail",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "message": "Complete XDM Android bug hunt Phase 7 gap closure",
+        "strategy": "single"
+      }
+    },
+    "validation": {
+      "mode": "required",
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "rollback_on_failure": true,
+      "failure_action": "rollback",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate.sh",
+        "runner": "bash",
+        "sha256": "535abde2a6ca0ff0d40623ea7b3b189ce8e923211f6a55a65bf9a6fbbadfbb30",
+        "timeout_seconds": 300
+      },
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass"
+      }
+    },
+    "inventory": {
+      "format": 1,
+      "exhaustive": true,
+      "entries": [
+        {
+          "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+          "action": "modify",
+          "source_sha256": "954e571cd6919ee759187de27cd4d9873ffd80e4bceaafe2d3851de64f0de260",
+          "sha256": "45e1ebba17a25f627d124853f484631f8b35b91bf95a637ecd0be6266c9fe08e",
+          "size": 16138
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+          "action": "modify",
+          "source_sha256": "e34d3cd525225cc48dbaeb0bbd0c0070662485c398058503ff3c1140fd9b000b",
+          "sha256": "ddaab916a1c5385dce24d102d4fe61b18dbbdfb56fcb9c22fa97411c307414e4",
+          "size": 17792
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "source_sha256": "fc72417e39c3a247170e1481cfaf9a799a5ff7d45579f0c1f6ff603ec785a334",
+          "sha256": "a3fa17aa2cb291145b1eb20aad98a6d5d586269d8e05e2cffce77bdfe6b17802",
+          "size": 118031
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "source_sha256": "420af20cc8ecb17b2061bf91315950aac4dd0b328f6f4fc74c4cc0b3a297283e",
+          "sha256": "61e159a4d9773e076b74d88dbfec37e8411113deac8a23d56741d8e544fe2ef4",
+          "size": 14174
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+          "action": "modify",
+          "source_sha256": "97c08fc5e66fd2ada3adb2ac5d27b5f6077bf36d64da205bf3d12db124ab3040",
+          "sha256": "9cf368899dc2aeb16692332645fedf81a88080ad21e3fe7e9539fbf635923c05",
+          "size": 12530
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/AndroidPostProcessingArtifactBridge.kt",
+          "action": "add",
+          "sha256": "c645479756501938541667721c5ce042f767303ba9967a09e23106337b39d5bb",
+          "size": 34337
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingAutomationManager.kt",
+          "action": "modify",
+          "source_sha256": "43c12c89d952ccce54523265b558619c3729e61987902fe872e4eed780196ab2",
+          "sha256": "c8f1172aff710aa7f707dc2ccac59c16ed82aa0e3b22857d869c1a59296cf990",
+          "size": 26688
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingAutomationModels.kt",
+          "action": "modify",
+          "source_sha256": "ee1dce5bffefc24064bfed4c948df8792d3dc3d83f58350e811b544c30565e55",
+          "sha256": "40d0c20a4596e842151ecf28af04c752cf14beb571c444a47b83cba863ed6651",
+          "size": 13867
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingExecutionModels.kt",
+          "action": "add",
+          "sha256": "c04b87cbf54bf005ff8ac6959967536b93a210f566390c6d1501a8909d38872f",
+          "size": 24015
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeManager.kt",
+          "action": "modify",
+          "source_sha256": "c09ce1c97f3f3be76e47bc701c2962d18c7a34e47f9bbe39ce01f31ab2adb14f",
+          "sha256": "7ec66161712f44fe9c974688e9e18d081dba2aba73d1e1c6366d1b26d9eb52e7",
+          "size": 3383
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxBridgeModels.kt",
+          "action": "modify",
+          "source_sha256": "ce6116d89e3d23196fd3baf2b5a66ae605c954a0229ae29f942e86587785ce3f",
+          "sha256": "b6bcb79804427368d53f4a93c5303febb9add00f5f52b5fa2817db6c6565f034",
+          "size": 8099
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxCommandRunner.kt",
+          "action": "modify",
+          "source_sha256": "5e3abe8c43b50b9eae0ec4bb6f15bdc6682ea324251af9c575df843cf97e6cd4",
+          "sha256": "885e4f60327e2f95da1ecab161c2b3564b8f661571f5e5fd3d3843dddc757d7d",
+          "size": 4766
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt",
+          "action": "modify",
+          "source_sha256": "d1d486f857746035ed30c06edb4eb705ccc8a84e9f3edab168abb81edf2c3fc5",
+          "sha256": "64d01a5b3e6a27c294a07ed409d06f9d621b9266c2d242945b3b817c622a70a3",
+          "size": 80303
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineModels.kt",
+          "action": "modify",
+          "source_sha256": "844aaf27da3d846c8b045b422b7af0636697767ae5bd9c51271593dd7c72c00b",
+          "sha256": "b764c29c427f71d564f0e5030c8ccfd2eaf7f7a286227c71234aae109fe16748",
+          "size": 5224
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxResultService.kt",
+          "action": "modify",
+          "source_sha256": "ea28bbc1fae12c645771447a0ef41c52a3bf163ba345f3343b9a3c0f08010352",
+          "sha256": "864ea50acabc4cda7fbfa97f708819f91ff1ce365a18fe76e27693506e623387",
+          "size": 3658
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxRunStore.kt",
+          "action": "modify",
+          "source_sha256": "558ef60825e04772ef1df70211281c6375f418ece3f75a7b2d5a57e05f96b4c3",
+          "sha256": "a324b3500570ae6bf6fb65dbcabc141e3030d523ded217367e8ccfe64252e8de",
+          "size": 10981
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt",
+          "action": "modify",
+          "source_sha256": "263665c7903c5fa37dee2e16c7a4df81741ed2e167a2ef1834c2de60acc8da4d",
+          "sha256": "970b850c2ce452d58a688d2f306d0bad32b0a8fcea03345e9c733d483a00a7d9",
+          "size": 35926
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperSettingsScreen.kt",
+          "action": "modify",
+          "source_sha256": "08ce6b70b866103a3c480948f24a28322e47e201625791ce82c1151bddda805a",
+          "sha256": "269ddd0f325a76b894c7fe1f73c366af472ca3144cc81000d2469adc370f5cb9",
+          "size": 4153
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsScreen.kt",
+          "action": "modify",
+          "source_sha256": "0b34d9736bad4a21c9f4f955942cbfbf7b55f7465819a278d217ddf72980fbeb",
+          "sha256": "415dbf36d96eda83a9684cbb6fc0b07594984dc8a4943adc342d9542c4c2513f",
+          "size": 95742
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsWorkspace.kt",
+          "action": "modify",
+          "source_sha256": "a449d88e3c170c27baea800cb229bb59ce93077644cd98147e62eecb27553bbb",
+          "sha256": "99bf0fe7a2fc0f16726466786285640fe06978922b36f67154188ade3522f26b",
+          "size": 18181
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDetails.kt",
+          "action": "modify",
+          "source_sha256": "85e2340f57220b6a29f44299f849221a24cfef3789d75f77e1eb12d0f60a8ce7",
+          "sha256": "ea075fc707dc0849aaa3ba62b4a9c1e0a12fe888607bbd1a8d8e334130cba3cb",
+          "size": 22398
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+          "action": "modify",
+          "source_sha256": "6175cf48540a80ee126682b782d421c69c5d29812783330c6665a7dbbcdf06af",
+          "sha256": "f41f8cd838b01356d2d4387befa21d5b8194485953478dd1522040f23a30def1",
+          "size": 35424
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/ArchitectureContractTest.kt",
+          "action": "modify",
+          "source_sha256": "302e055ed6a8847243a3ac77a47b02b8b9073e1a15c7368318d97a8a5b0f1b12",
+          "sha256": "22a6f41bfbf0d088bb15f421d6fd0f7e554ea065d3783e44981be2d499379fd5",
+          "size": 89671
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserRemovalPhase7ContractTest.kt",
+          "action": "modify",
+          "source_sha256": "4edd7f54ea0ee6614fe7a659edf87a716819add27f3275b00f7b3c0486043414",
+          "sha256": "d634699998d09ff1d71221dab4769af49cc031b9fd03495f8026884d83885726",
+          "size": 6894
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8CContractTest.kt",
+          "action": "modify",
+          "source_sha256": "d4eb356781347a8e74d96896e083a9c1c74ea46a7406fbd211f803f2fcaa73e0",
+          "sha256": "8e8a4c8984fe4eaf155f736896acd0e91cef918bb6993264c9df8f9576cbcc8a",
+          "size": 5383
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8DContractTest.kt",
+          "action": "modify",
+          "source_sha256": "a36e8921eb8bc4af20c152684b45aac03ec2ff982bd08e188a3c70d1490c7934",
+          "sha256": "77fca63bc3149f966909ca42219ea76ec121134c0a95b700bdee91fda38e89ec",
+          "size": 3079
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DownloaderExperiencePhase8EContractTest.kt",
+          "action": "modify",
+          "source_sha256": "d2f6571a39bd0e636a653d7e292a35196075e12f0d51f1e4524c6540d841bc38",
+          "sha256": "746afa346c4949cba34f4899a9fff0232bbffccb6e6e181ea69117b2221579de",
+          "size": 4093
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/PostProcessingPhase7ContractTest.kt",
+          "action": "add",
+          "sha256": "82222589f95007cd70360929edb548d4203d7f2d52fb5a2a489d3baad3179362",
+          "size": 11853
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/PostProcessingPhase7GapClosureContractTest.kt",
+          "action": "add",
+          "sha256": "bebc702ee8b8a217b894ad2d5f0557da5d55802e9a8d03fcbc65c27df8f1f0de",
+          "size": 815
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/UixR6ReleaseSealContractTest.kt",
+          "action": "modify",
+          "source_sha256": "2242bac8b25058255816e628d2f0156f5121865e70beba0aa17957684c2279b3",
+          "sha256": "fa074c38319ea2b4ab5623c19e55a30a12195d1f4bc5fb84b311398961077748",
+          "size": 9187
+        },
+        {
+          "path": "app/XDM.Android/docs/audits/BUG-HUNT-REMEDIATION-PHASE-7.md",
+          "action": "add",
+          "sha256": "9704960d0974e0187195f1026fc06823dbf2b3a1fc805efc9a033aee93f1b0de",
+          "size": 5970
+        },
+        {
+          "path": "app/XDM.Android/persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/16.json",
+          "action": "add",
+          "sha256": "1cac7fee6414ea2b97f2e9824947bd61665685b96f6a629e2740ea14baa2c63c",
+          "size": 100422
+        },
+        {
+          "path": "app/XDM.Android/persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/17.json",
+          "action": "add",
+          "sha256": "01b5d6dc8c00af5ff7ace4167577b2416c5eef2d95ff8a3312f081e942b2a49b",
+          "size": 101970
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/androidTest/kotlin/com/mikeyphw/xdm/android/persistence/PostProcessingMigrationTest.kt",
+          "action": "add",
+          "sha256": "e7ae58ac73120e601a03c4bb2eda059823e8c03ae9ae74369408d5dcec703d56",
+          "size": 3819
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt",
+          "action": "modify",
+          "source_sha256": "77d06d620fb8282d8fbfa5a1bfce91de20fc40c1af5337dbb59231847c798c52",
+          "sha256": "f915479440426d369be58544e0dc3044d02e452ad4e284e808003042941d20ba",
+          "size": 2262
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadGraphTransactionDao.kt",
+          "action": "modify",
+          "source_sha256": "2c040b9d95ee4fb495bf6268fa9ef242ff2910645caedbd175b1a94b6a9ece39",
+          "sha256": "c2a6473c276c8babbada7f5e34e6e55f40b488151931131ad11ab1f44898139a",
+          "size": 14546
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+          "action": "modify",
+          "source_sha256": "6f66b13c5bdf2841f3c6904709a67c48264cdb7ad5430239c10afd01dbec85df",
+          "sha256": "7d9aa8da7605f9e2aa25965f706053df60fba81e570ed04b3db6e11c95472a0f",
+          "size": 24545
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt",
+          "action": "modify",
+          "source_sha256": "87c5d5f50c25d90a49c62a90fce72b3207c3db67184f556b6c9f89ef2d4ec922",
+          "sha256": "abe99b72199e5fc1c977c2576303199f118aac826557740bf67de235b6e291d4",
+          "size": 17306
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+          "action": "modify",
+          "source_sha256": "948f76b15499dbfae3fa3c0640017fbd09bea357bf950507f3ac35922b974b64",
+          "sha256": "474497f7074bb54020aacef09b81627959bf8e6ed1b0a11b50c9ceb788efd6e2",
+          "size": 26134
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/PostProcessingDao.kt",
+          "action": "add",
+          "sha256": "93217a2362e77b3faecbbd98101cb07ab3c2c0fd0b43a4b0da40fae8160c554b",
+          "size": 11112
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt",
+          "action": "modify",
+          "source_sha256": "85b812ac80634cdb3274db5bb26b2d7a9db808d102a99a94f8ab898f92d638e9",
+          "sha256": "c4a461154966d0f7813fc0b14d455034d03db711731bccea056305a0721a8af2",
+          "size": 26638
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/CompletedNotificationOpenFileContractTest.kt",
+          "action": "modify",
+          "source_sha256": "54b6a7b8aac9a8d1b090c104e2440d07ece25ba784f2e69243effd2e54ac6ca0",
+          "sha256": "f4bee5a928115594dd05360efe3ef684c2e27a54bcf1de9d39fd140371bc245d",
+          "size": 3375
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-bug-hunt-phase7-post-processing-termux.py",
+          "action": "add",
+          "sha256": "8d44d87d1c042daa0e50fcbc8f4c6a0a3eeae3dda05c04b34ccd7f554ade1ffa",
+          "size": 11431
+        }
+      ]
+    },
+    "metadata": {
+      "roadmap_phase": "7",
+      "supersedes": "xdm_android_bug_hunt_phase7_post_processing_termux_full_overlay.zip",
+      "source_commit": "9c41133b",
+      "payload_file_count": 43,
+      "room_schema_version": 17,
+      "gap_closure": true
+    }
+  },
+  "history_id": "812a8ae195b647c59dd8b6e11303a525"
+}

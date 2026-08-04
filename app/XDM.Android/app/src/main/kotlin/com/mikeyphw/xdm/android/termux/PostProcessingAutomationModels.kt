@@ -23,14 +23,17 @@ enum class PostProcessingConditionKind(val label: String) {
 }
 
 enum class PostProcessingActionKind(val label: String, val requiresTermux: Boolean = true, val requiresRoot: Boolean = false) {
-    MoveToFolder("Move to folder"),
-    RenameByPattern("Rename by pattern"),
-    VerifySha256("Verify SHA-256"),
+    MoveToFolder("Move to folder", requiresTermux = false),
+    RenameByPattern("Rename by pattern", requiresTermux = false),
+    VerifySha256("Verify SHA-256", requiresTermux = false),
     FfprobeInspect("FFprobe inspect"),
     RemuxFastStart("Fast-start MP4"),
     ExtractAudio("Extract audio"),
-    CleanupPartials("Clean partials"),
+    CleanupPartials("Clean partials", requiresTermux = false),
     FixPermissionsWithRoot("Fix permissions", requiresRoot = true),
+    YtDlpMetadata("yt-dlp metadata"),
+    YtDlpDownload("yt-dlp download"),
+    FfmpegRemux("FFmpeg remux"),
 }
 
 enum class PostProcessingAutomationEventStatus(val label: String) {
@@ -77,6 +80,8 @@ data class TermuxPostProcessingPlan(
     val inputPath: String,
     val outputPath: String = "",
     val expectedSha256: String = "",
+    val formatSelector: String = "",
+    val extraArguments: List<String> = emptyList(),
 ) {
     val summary: String get() = listOf(kind.label, inputPath, outputPath.ifBlank { null }).filterNotNull().joinToString(" • ")
 }
@@ -96,6 +101,12 @@ data class PostProcessingAutomationEvent(
 ) {
     val summary: String get() = "${status.label} • $ruleName • $subjectLabel"
 }
+
+
+data class PostProcessingActionAvailability(
+    val canRun: Boolean,
+    val reason: String,
+)
 
 data class PostProcessingAutomationStatus(
     val enabled: Boolean = true,
@@ -147,7 +158,7 @@ object PostProcessingAutomationPolicy {
         PostProcessingAutomationRule(
             id = "rule-clean-partials",
             name = "Clean failed partial markers",
-            enabled = true,
+            enabled = false,
             trigger = PostProcessingAutomationTrigger.DownloadFailed,
             actions = listOf(PostProcessingAutomationAction(PostProcessingActionKind.CleanupPartials)),
         ),
@@ -178,6 +189,54 @@ object PostProcessingAutomationPolicy {
     fun preview(capture: MediaCaptureRecord, status: PostProcessingAutomationStatus): String {
         val rules = matchingRules(status, capture)
         return if (rules.isEmpty()) "No media post-processing rule matches ${capture.title}." else rules.joinToString(separator = "\n") { rule -> "${rule.name}: ${rule.actions.joinToString { it.summary }}" }
+    }
+
+    fun availabilityFor(
+        download: Download,
+        status: PostProcessingAutomationStatus,
+        bridge: TermuxBridgeStatus,
+    ): PostProcessingActionAvailability {
+        val rules = matchingRules(status, download)
+        if (rules.isEmpty()) return PostProcessingActionAvailability(false, "No enabled post-processing rule matches this download.")
+        val actions = rules.flatMap(PostProcessingAutomationRule::actions)
+        val termuxActions = actions.filter { it.kind.requiresTermux }
+        if (termuxActions.isEmpty()) return PostProcessingActionAvailability(true, "Configured Android-owned actions are ready.")
+        if (!bridge.termuxInstalled) return PostProcessingActionAvailability(false, "Install Termux before running the configured actions.")
+        if (!bridge.runCommandPermissionGranted) return PostProcessingActionAvailability(false, "Grant Termux RUN_COMMAND permission before running the configured actions.")
+        if (termuxActions.any { it.kind.requiresRoot } && !bridge.canRunRootAction) {
+            return PostProcessingActionAvailability(false, "Run a successful root probe and enable a reviewed root mode first.")
+        }
+        if (!bridge.hasFreshSuccessfulToolProbe()) {
+            return PostProcessingActionAvailability(false, "Run a fresh Termux tool and capability probe first.")
+        }
+        val required = termuxActions.flatMap { requiredToolsFor(it.kind) }.toSet()
+        val unavailable = required.filter { tool ->
+            bridge.toolRows.none { row ->
+                row.tool == tool && row.available && row.executablePath.isNotBlank() && row.versionLine.isNotBlank() && row.versionLine != "Not probed yet"
+            }
+        }
+        if (unavailable.isNotEmpty()) {
+            return PostProcessingActionAvailability(false, "Unavailable or unverified tools: ${unavailable.joinToString { it.displayName }}.")
+        }
+        val unsupportedMuxer = termuxActions.firstNotNullOfOrNull { action ->
+            val extension = action.value.substringAfterLast('.', "").lowercase(Locale.US)
+            extension.takeIf {
+                action.kind in setOf(PostProcessingActionKind.RemuxFastStart, PostProcessingActionKind.ExtractAudio, PostProcessingActionKind.FfmpegRemux) &&
+                    it.isNotBlank() && bridge.ffmpegMuxers.isNotEmpty() && it !in bridge.ffmpegMuxers
+            }
+        }
+        if (unsupportedMuxer != null) {
+            return PostProcessingActionAvailability(false, "The probed FFmpeg build does not advertise the $unsupportedMuxer output muxer.")
+        }
+        return PostProcessingActionAvailability(true, "Configured tools and capabilities were verified by a fresh probe.")
+    }
+
+    fun requiredToolsFor(kind: PostProcessingActionKind): Set<ExternalTool> = when (kind) {
+        PostProcessingActionKind.FfprobeInspect -> setOf(ExternalTool.Ffprobe)
+        PostProcessingActionKind.RemuxFastStart, PostProcessingActionKind.ExtractAudio, PostProcessingActionKind.FfmpegRemux -> setOf(ExternalTool.Ffmpeg, ExternalTool.Ffprobe)
+        PostProcessingActionKind.YtDlpMetadata -> setOf(ExternalTool.YtDlp)
+        PostProcessingActionKind.YtDlpDownload -> setOf(ExternalTool.YtDlp, ExternalTool.Ffmpeg, ExternalTool.Ffprobe)
+        else -> emptySet()
     }
 
     private fun PostProcessingAutomationCondition.matches(download: Download): Boolean = when (kind) {

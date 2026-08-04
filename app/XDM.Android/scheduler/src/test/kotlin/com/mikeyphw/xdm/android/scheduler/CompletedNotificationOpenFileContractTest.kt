@@ -47,7 +47,7 @@ class CompletedNotificationOpenFileContractTest {
     @Test fun runtimePersistsConcreteCompletedUriForLaterNotificationTap() {
         assertTrue(runtime.contains("destinationUri = if (verifiedSnapshot.state == DownloadState.Completed"))
         assertTrue(runtime.contains("verifiedSnapshot.completedUri"))
-        assertTrue(runtime.contains("TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage, storedDestination, storedMimeType)"))
+        assertTrue(runtime.contains("TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage, storedDestination, storedMimeType, attemptGenerations[download.id]"))
     }
 }
 

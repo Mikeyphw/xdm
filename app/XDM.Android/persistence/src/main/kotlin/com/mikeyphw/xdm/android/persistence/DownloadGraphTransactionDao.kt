@@ -11,6 +11,7 @@ import androidx.room.Upsert
 interface DownloadGraphTransactionDao {
     @Transaction
     suspend fun deleteDownloadGraph(downloadId: String) {
+        deletePostProcessingForDownload(downloadId)
         deleteMediaVariantsForDownload(downloadId)
         deleteMediaCapturesForDownload(downloadId)
         deleteAutomationCommandsForDownload(downloadId)
@@ -33,6 +34,8 @@ interface DownloadGraphTransactionDao {
         deleteDownloadRow(downloadId)
     }
 
+    @Query("DELETE FROM post_processing_jobs WHERE downloadId = :downloadId OR captureId IN (SELECT id FROM media_captures WHERE downloadId = :downloadId)")
+    suspend fun deletePostProcessingForDownload(downloadId: String)
     @Query("DELETE FROM media_variants WHERE captureId IN (SELECT id FROM media_captures WHERE downloadId = :downloadId)")
     suspend fun deleteMediaVariantsForDownload(downloadId: String)
     @Query("DELETE FROM media_captures WHERE downloadId = :downloadId")

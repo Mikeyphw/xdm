@@ -52,6 +52,12 @@ sealed class XdmTermuxCommand(val operation: String) {
     data class FfprobeInspect(val path: String) : XdmTermuxCommand("ffprobe_inspect")
     data class FfmpegConvert(val input: String, val output: String, val preset: String) : XdmTermuxCommand("ffmpeg_convert")
     data class PostProcess(val plan: TermuxPostProcessingPlan) : XdmTermuxCommand("post_process_${plan.kind.name.lowercase(Locale.US)}")
+    data class OwnedProcessControl(
+        val ownerFilePath: String,
+        val jobId: String,
+        val processToken: String,
+        val action: TermuxProcessControlAction,
+    ) : XdmTermuxCommand("post_process_control_${action.name.lowercase(Locale.US)}")
     data class Aria2StartDaemon(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_daemon_start")
     data class Aria2StopDaemon(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_daemon_stop")
     data class Aria2ProbeDaemon(val config: TermuxAria2RpcConfig) : XdmTermuxCommand("aria2_daemon_probe")
@@ -68,6 +74,7 @@ data class TermuxToolProbeRow(
     val available: Boolean = false,
     val executablePath: String = "",
     val versionLine: String = "Not probed yet",
+    val probedAtEpochMs: Long = 0L,
 ) {
     val statusLabel: String get() = if (available) "Available" else "Missing"
 }
@@ -102,6 +109,10 @@ data class TermuxBridgeStatus(
     val rootMode: TermuxRootMode = TermuxRootMode.Off,
     val rootAvailable: Boolean = false,
     val toolRows: List<TermuxToolProbeRow> = ExternalTool.entries.map { TermuxToolProbeRow(it) },
+    val lastSuccessfulToolProbeAtEpochMs: Long = 0L,
+    val ffmpegMuxers: Set<String> = emptySet(),
+    val ffmpegEncoders: Set<String> = emptySet(),
+    val ffmpegDecoders: Set<String> = emptySet(),
     val recentRuns: List<TermuxRunRecord> = emptyList(),
     val rootAudit: List<RootActionAuditRecord> = emptyList(),
     val lastRootMessage: String = "Root actions have not run yet.",
@@ -109,6 +120,8 @@ data class TermuxBridgeStatus(
     val updatedAtEpochMs: Long = 0L,
 ) {
     val canRunProbe: Boolean get() = termuxInstalled && runCommandPermissionGranted
+    fun hasFreshSuccessfulToolProbe(nowEpochMs: Long = System.currentTimeMillis()): Boolean =
+        lastSuccessfulToolProbeAtEpochMs > 0L && nowEpochMs - lastSuccessfulToolProbeAtEpochMs in 0..PostProcessingExecutionPolicy.ToolProbeFreshnessMs
     val rootProbeSucceeded: Boolean get() = rootAudit.any { it.actionLabel == "Probe root" && it.status == TermuxRunStatus.Succeeded }
     val canRunRootProbe: Boolean get() = canRunProbe
     val canRunRootAction: Boolean get() = canRunProbe && rootMode != TermuxRootMode.Off && rootAvailable && rootProbeSucceeded
@@ -133,6 +146,7 @@ data class TermuxBridgeStatus(
         appendLine("Root mode: ${rootMode.label}")
         appendLine("Root available: $rootAvailable")
         appendLine("Last root action: $lastRootMessage")
+        appendLine("Tool probe fresh: ${hasFreshSuccessfulToolProbe()}")
         toolRows.forEach { row ->
             appendLine("${row.tool.displayName}: ${row.statusLabel} ${row.versionLine}".trim())
         }

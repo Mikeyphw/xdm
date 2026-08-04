@@ -63,6 +63,7 @@ class TransferExecutionRuntime(
     private val jobs = ConcurrentHashMap<String, Job>()
     private val commandControls = ConcurrentHashMap<String, DownloadCommandControl>()
     private val backendTaskIds = ConcurrentHashMap<String, Pair<BackendType, String>>()
+    private val attemptGenerations = ConcurrentHashMap<String, Long>()
     private val snapshots = MutableStateFlow<Map<String, BackendSnapshot>>(emptyMap())
     private val fileNames = ConcurrentHashMap<String, String>()
     private val _summary = MutableStateFlow(ActiveTransferSummary())
@@ -256,6 +257,7 @@ class TransferExecutionRuntime(
             ) {
                 val mapping = existingOwnership.backend to reconciledTaskId
                 backendTaskIds[download.id] = mapping
+                attemptGenerations[download.id] = existingOwnership.generation
                 observeExistingTask(download, mapping)
                 return
             }
@@ -269,7 +271,7 @@ class TransferExecutionRuntime(
                         updatedAtEpochMs = System.currentTimeMillis(),
                     ),
                 )
-                _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, DownloadState.RecoveryRequired, message, download.destinationUri, download.mimeType))
+                _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, DownloadState.RecoveryRequired, message, download.destinationUri, download.mimeType, existingOwnership.generation))
                 return
             }
         }
@@ -295,6 +297,7 @@ class TransferExecutionRuntime(
             requestSecurityGuard.validate(request)
             fileNames[download.id] = download.fileName
             val coordinated = coordinator.add(request)
+            attemptGenerations[download.id] = coordinated.ownership.generation
             val selected = (store.find(download.id) ?: download).copy(
                 backend = coordinated.task.backend,
                 backendSelectionReason = coordinated.recommendation.reason,
@@ -390,7 +393,7 @@ class TransferExecutionRuntime(
             ),
         )
         if (state == DownloadState.Paused || state == DownloadState.Failed || state == DownloadState.RecoveryRequired) {
-            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, state, storedMessage, current.destinationUri, current.mimeType))
+            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, state, storedMessage, current.destinationUri, current.mimeType, attemptGenerations[download.id] ?: requestGeneration(download.id)))
         }
     }
 
@@ -405,9 +408,14 @@ class TransferExecutionRuntime(
         if (finalState in TERMINAL_STATES || finalState == DownloadState.Paused || finalState == DownloadState.RecoveryRequired) {
             val storedDestination = storedAfterCompletion?.destinationUri ?: download.destinationUri
             val storedMimeType = storedAfterCompletion?.mimeType ?: download.mimeType
-            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage, storedDestination, storedMimeType))
+            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage, storedDestination, storedMimeType, attemptGenerations[download.id] ?: requestGeneration(download.id)))
         }
     }
+
+    private suspend fun requestGeneration(downloadId: String): Long =
+        ownershipStore.findByDownload(downloadId)?.generation
+            ?: MediaRequestHandoffStore.forDownload(downloadId)?.attemptGeneration?.takeIf { it > 0L }
+            ?: 0L
 
     private suspend fun cleanUpFinishedTask(downloadId: String) {
         val state = store.find(downloadId)?.state
@@ -425,6 +433,7 @@ class TransferExecutionRuntime(
             MediaRequestHandoffStore.forget(downloadId)
             snapshots.value = snapshots.value - downloadId
             fileNames.remove(downloadId)
+            attemptGenerations.remove(downloadId)
             updateSummary()
         } else if (state !in ACTIVE_STATES) {
             // Paused, failed, and recovery-required attempts retain their encrypted request

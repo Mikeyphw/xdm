@@ -4,15 +4,29 @@ import android.content.Context
 import kotlinx.coroutines.flow.StateFlow
 
 class TermuxBridgeManager(context: Context) {
+    @Volatile private var toolProbeRequestedAtEpochMs: Long = 0L
     private val appContext = context.applicationContext
     private val runner = TermuxCommandRunner(appContext)
     val status: StateFlow<TermuxBridgeStatus> = TermuxRunStore.status
 
     fun refreshStatus() {
         runner.refreshStatus()
+        val current = status.value
+        val now = System.currentTimeMillis()
+        if (current.hasFreshSuccessfulToolProbe(now)) {
+            toolProbeRequestedAtEpochMs = 0L
+        } else if (
+            current.termuxInstalled &&
+            current.runCommandPermissionGranted &&
+            now - toolProbeRequestedAtEpochMs >= TOOL_PROBE_RETRY_GUARD_MS
+        ) {
+            toolProbeRequestedAtEpochMs = now
+            runToolProbe()
+        }
     }
 
     fun runToolProbe() {
+        toolProbeRequestedAtEpochMs = System.currentTimeMillis()
         val result = runner.run(XdmTermuxCommand.ProbeAllTools)
         if (!result.started) {
             TermuxRunStore.recordLaunchFailure(appContext, XdmTermuxCommand.ProbeAllTools.operation, result.error)
@@ -64,5 +78,9 @@ class TermuxBridgeManager(context: Context) {
 
     fun setRootMode(mode: TermuxRootMode) {
         TermuxRunStore.setRootMode(appContext, mode)
+    }
+
+    private companion object {
+        const val TOOL_PROBE_RETRY_GUARD_MS = 60_000L
     }
 }

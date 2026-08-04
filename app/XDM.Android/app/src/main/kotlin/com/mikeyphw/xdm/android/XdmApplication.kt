@@ -47,6 +47,8 @@ import com.mikeyphw.xdm.android.termux.TermuxBridgeManager
 import com.mikeyphw.xdm.android.termux.TermuxAria2CockpitManager
 import com.mikeyphw.xdm.android.termux.TermuxMediaPipelineManager
 import com.mikeyphw.xdm.android.termux.PostProcessingAutomationManager
+import com.mikeyphw.xdm.android.termux.TermuxResultRouter
+import com.mikeyphw.xdm.android.termux.TermuxResultRouterProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -54,7 +56,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.collectLatest
 
-class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, DebugRecorderProvider {
+class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, DebugRecorderProvider, TermuxResultRouterProvider {
     lateinit var container: AppContainer
         private set
 
@@ -71,6 +73,9 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         private set
 
     private lateinit var queueConditionMonitor: QueueConditionMonitor
+
+    override val termuxResultRouter: TermuxResultRouter
+        get() = container.termuxMediaPipelineManager
 
     override fun onCreate() {
         super.onCreate()
@@ -90,6 +95,8 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
                 Migrations.Migration12To13,
                 Migrations.Migration13To14,
                 Migrations.Migration14To15,
+                Migrations.Migration15To16,
+                Migrations.Migration16To17,
             )
             .build()
         val repository = DownloadRepository(database)
@@ -110,8 +117,9 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val aria2SessionStore = Aria2SessionStore(this)
         val termuxBridgeManager = TermuxBridgeManager(this)
         val termuxAria2CockpitManager = TermuxAria2CockpitManager(this)
-        val termuxMediaPipelineManager = TermuxMediaPipelineManager(this)
-        val postProcessingAutomationManager = PostProcessingAutomationManager(this, termuxMediaPipelineManager, termuxBridgeManager)
+        val preferences = UserPreferencesStore(this)
+        val termuxMediaPipelineManager = TermuxMediaPipelineManager(this, database, repository, destinationWriter)
+        val postProcessingAutomationManager = PostProcessingAutomationManager(preferences, repository, termuxMediaPipelineManager)
         val mediaResolverSelectionStore = MediaResolverSelectionStore(this)
         val operationalActivityStore = OperationalActivityStore(this)
         val browserExtensionExportManager = BrowserExtensionExportManager(this)
@@ -160,7 +168,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         )
         container = AppContainer(
             repository = repository,
-            preferences = UserPreferencesStore(this),
+            preferences = preferences,
             ownershipStore = ownershipStore,
             backendSelectionPolicy = BackendSelectionPolicy(),
             transferRuntime = transferRuntime,
@@ -179,6 +187,8 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             browserHandoffMediaCoordinator = browserHandoffMediaCoordinator,
             debugEventRecorder = debugEventRecorder,
         )
+        termuxMediaPipelineManager.recoverInterruptedJobs()
+        postProcessingAutomationManager.startAutomaticProcessing()
         queueConditionMonitor = QueueConditionMonitor(this) {
             QueueIntelligenceWorker.enqueueImmediate(this)
         }
@@ -193,6 +203,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             transferRuntime.terminalEvents.collectLatest { event ->
                 queueIntelligenceCoordinator.recordTerminalEvent(event)
+                postProcessingAutomationManager.handleTransferTerminalEvent(event)
                 QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)
             }
         }

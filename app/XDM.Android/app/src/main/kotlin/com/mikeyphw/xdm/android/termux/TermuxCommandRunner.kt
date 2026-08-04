@@ -16,6 +16,7 @@ class TermuxCommandRunner(private val context: Context) {
         private const val ActionRunCommand: String = "com.termux.RUN_COMMAND"
         private const val ExtraPath: String = "com.termux.RUN_COMMAND_PATH"
         private const val ExtraArguments: String = "com.termux.RUN_COMMAND_ARGUMENTS"
+        private const val ExtraStdin: String = "com.termux.RUN_COMMAND_STDIN"
         private const val ExtraWorkdir: String = "com.termux.RUN_COMMAND_WORKDIR"
         private const val ExtraBackground: String = "com.termux.RUN_COMMAND_BACKGROUND"
         private const val ExtraPendingIntent: String = "com.termux.RUN_COMMAND_PENDING_INTENT"
@@ -32,12 +33,17 @@ class TermuxCommandRunner(private val context: Context) {
         return runCatching { context.startActivity(launch) }.isSuccess
     }
 
-    fun run(command: XdmTermuxCommand, workdir: String? = null, background: Boolean = true): LaunchResult {
+    fun run(
+        command: XdmTermuxCommand,
+        workdir: String? = null,
+        background: Boolean = true,
+        owner: TermuxRunOwner? = null,
+    ): LaunchResult {
         TermuxRunStore.refreshLocalStatus(context)
         val current = TermuxRunStore.status.value
         if (!current.termuxInstalled) return LaunchResult(false, "", -1, "Termux is not installed")
         if (!current.runCommandPermissionGranted) return LaunchResult(false, "", -1, "RUN_COMMAND permission is not granted")
-        val script = TermuxShellTemplates.scriptFor(command).trim()
+        val script = TermuxShellTemplates.scriptFor(command, owner).trim()
         if (script.isBlank()) return LaunchResult(false, "", -1, "Generated Termux command is empty")
         if (script.length > 80_000) return LaunchResult(false, "", -1, "Generated Termux command is too long")
 
@@ -47,6 +53,8 @@ class TermuxCommandRunner(private val context: Context) {
             .putExtra(TermuxResultService.ExtraRunId, runId)
             .putExtra(TermuxResultService.ExtraExecutionId, executionId)
             .putExtra(TermuxResultService.ExtraOperation, command.operation)
+            .putExtra(TermuxResultService.ExtraJobId, owner?.jobId)
+            .putExtra(TermuxResultService.ExtraProcessToken, owner?.processToken)
         var flags = PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_CANCEL_CURRENT
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) flags = flags or PendingIntent.FLAG_MUTABLE
         val pendingResult = PendingIntent.getService(context, executionId, resultIntent, flags)
@@ -55,7 +63,8 @@ class TermuxCommandRunner(private val context: Context) {
             .setClassName(TermuxPackage, ServiceClass)
             .setAction(ActionRunCommand)
             .putExtra(ExtraPath, shell)
-            .putExtra(ExtraArguments, shellArguments(shell, script))
+            .putExtra(ExtraArguments, shellArguments(shell))
+            .putExtra(ExtraStdin, script)
             .putExtra(ExtraWorkdir, TermuxPaths.normalizeWorkdir(context, workdir))
             .putExtra(ExtraBackground, background)
             .putExtra(ExtraPendingIntent, pendingResult)
@@ -72,7 +81,7 @@ class TermuxCommandRunner(private val context: Context) {
 
     private fun resolveShell(): String = "${TermuxPaths.prefix(context)}/bin/sh"
 
-    private fun shellArguments(@Suppress("UNUSED_PARAMETER") shell: String, script: String): Array<String> = arrayOf("-c", script)
+    private fun shellArguments(@Suppress("UNUSED_PARAMETER") shell: String): Array<String> = arrayOf("-s")
 
     private fun nextExecutionId(): Int {
         var value: Int

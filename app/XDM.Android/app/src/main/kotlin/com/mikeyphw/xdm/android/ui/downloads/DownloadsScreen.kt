@@ -64,6 +64,8 @@ import com.mikeyphw.xdm.android.model.SavedSearch
 import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
 import com.mikeyphw.xdm.android.scheduler.CompletedFileGrantPolicy
+import com.mikeyphw.xdm.android.termux.PostProcessingAutomationStatus
+import com.mikeyphw.xdm.android.termux.TermuxBridgeStatus
 import com.mikeyphw.xdm.android.util.formatSpeed
 import androidx.core.net.toUri
 import java.io.File
@@ -84,6 +86,8 @@ fun DownloadsScreen(
     tags: List<DownloadTag>,
     tagAssignments: List<DownloadTagAssignment>,
     savedSearches: List<SavedSearch>,
+    postProcessingAutomation: PostProcessingAutomationStatus,
+    termuxBridge: TermuxBridgeStatus,
     onTogglePause: (Download) -> Unit,
     onCancelDownload: (Download) -> Unit,
     onRedownload: (Download) -> Unit,
@@ -288,6 +292,8 @@ fun DownloadsScreen(
                                 capabilities = capabilities,
                                 checksumResults = checksumResults,
                                 verificationRecords = verificationRecords,
+                                postProcessingAutomation = postProcessingAutomation,
+                                termuxBridge = termuxBridge,
                                 onTogglePause = onTogglePause,
                                 onMigrateBackend = onMigrateBackend,
                                 onRemoveHistory = onRemoveHistory,
@@ -441,6 +447,8 @@ fun DownloadsScreen(
                     capabilities = capabilities,
                     checksumResults = checksumResults,
                     verificationRecords = verificationRecords,
+                    postProcessingAutomation = postProcessingAutomation,
+                    termuxBridge = termuxBridge,
                     onTogglePause = onTogglePause,
                     onMigrateBackend = onMigrateBackend,
                     onRemoveHistory = onRemoveHistory,

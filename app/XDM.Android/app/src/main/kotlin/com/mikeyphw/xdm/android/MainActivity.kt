@@ -31,6 +31,7 @@ open class MainActivity : ComponentActivity() {
         MainViewModel.Factory((application as XdmApplication).container)
     }
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    private val legacyStoragePermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,7 +45,16 @@ open class MainActivity : ComponentActivity() {
                 XdmApp(viewModel, requestNotifications = ::requestNotificationPermissionIfNeeded)
             }
         }
+        requestLegacyStoragePermissionsIfNeeded()
         handleExternalIntent(intent)
+    }
+
+    private fun requestLegacyStoragePermissionsIfNeeded() {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) return
+        val missing = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            .filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
+            .toTypedArray()
+        if (missing.isNotEmpty()) legacyStoragePermissions.launch(missing)
     }
 
     override fun onNewIntent(intent: Intent) {

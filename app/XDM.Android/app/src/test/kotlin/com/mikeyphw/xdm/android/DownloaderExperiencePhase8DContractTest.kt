@@ -41,7 +41,7 @@ class DownloaderExperiencePhase8DContractTest {
         for (route in listOf("Downloads", "Add", "Media", "Library", "Activity", "Settings")) {
             assertTrue(routes.contains("$route(\"$route\""))
         }
-        assertTrue(database.contains("version = 14"))
+        assertTrue(database.contains("version = 17"))
         assertFalse(routes.contains("Browser("))
         assertFalse(manifest.contains("BrowserActivity"))
         assertTrue(root.resolve("transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt").isFile)
