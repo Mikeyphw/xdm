@@ -16,10 +16,10 @@ class Phase61FinalGateValidatorHarmonyContractTest {
 
         assertFalse("UIX R3 must not require the retired row-local primaryRowAction symbol", uixR3Validator.contains("\"primaryRowAction\""))
         assertFalse("UIX R3 must not require the retired row-local primaryRowAction symbol", uixR3Validator.contains("'primaryRowAction'"))
-        assertTrue("UIX R3 must require the current planner-backed row action", uixR3Validator.contains("DownloadActionPlanner.primaryActionFor(download)"))
+        assertTrue("UIX R3 must require the current planner-backed row action", uixR3Validator.contains("DownloadActionPlanner.primaryActionFor(download, actionContext)"))
         assertTrue("UIX R3 must keep the row action icon contract", uixR3Validator.contains("DownloadAction.iconVector()"))
         assertTrue("Phase44 must still forbid the old row-local action planner", phase44Validator.contains("private fun Download.primaryRowAction"))
-        assertTrue("DownloadRow must use the shared action planner", row.contains("DownloadActionPlanner.primaryActionFor(download)"))
+        assertTrue("DownloadRow must use the shared action planner", row.contains("DownloadActionPlanner.primaryActionFor(download, actionContext)"))
         assertFalse("DownloadRow must not revive row-local action planning", row.contains("private fun Download.primaryRowAction"))
         assertFalse("DownloadRow must not revive row-local action data", row.contains("private data class DownloadRowAction"))
     }

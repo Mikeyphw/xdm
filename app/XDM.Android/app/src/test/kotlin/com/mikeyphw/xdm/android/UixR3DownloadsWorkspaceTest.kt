@@ -21,7 +21,8 @@ class UixR3DownloadsWorkspaceTest {
         )
 
         assertEquals(listOf("running"), visible(downloads, DownloadWorkspaceFilter.Active).map { it.id })
-        assertEquals(listOf("paused", "queued"), visible(downloads, DownloadWorkspaceFilter.Queued).map { it.id }.sorted())
+        assertEquals(listOf("queued"), visible(downloads, DownloadWorkspaceFilter.Queued).map { it.id })
+        assertEquals(listOf("paused"), visible(downloads, DownloadWorkspaceFilter.Paused).map { it.id })
         assertEquals(listOf("done"), visible(downloads, DownloadWorkspaceFilter.Finished).map { it.id })
         assertEquals(4, visible(downloads, DownloadWorkspaceFilter.All).size)
         assertEquals(5, DownloadsWorkspacePlanner.visibleDownloads(downloads, DownloadWorkspaceFilter.All, "", true, DownloadDashboardOrdering.Smart).size)

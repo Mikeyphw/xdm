@@ -7,122 +7,79 @@ import org.junit.Test
 
 class DownloadActionPlannerTest {
     @Test
-    fun activeDownloadsExposePausePrimaryAndSafeMoreActions() {
-        val actions = DownloadActionPlanner.actionsFor(download(DownloadState.Downloading))
-
-        assertEquals(DownloadActionKind.Pause, actions.primaryKind())
-        assertEquals(
-            listOf(
-                DownloadActionKind.Pause,
-                DownloadActionKind.OpenDetails,
-                DownloadActionKind.CopyLink,
-                DownloadActionKind.ShareLink,
-                DownloadActionKind.Cancel,
-                DownloadActionKind.DeleteRecord,
-            ),
-            actions.map { it.kind },
-        )
-        assertTrue(actions.last().destructive)
-        assertTrue(actions.last().requiresConfirmation)
+    fun verifyingAndRepairingNeverAdvertisePauseButAlwaysOfferCancel() {
+        listOf(DownloadState.Verifying, DownloadState.Repairing).forEach { state ->
+            val actions = DownloadActionPlanner.actionsFor(download(state))
+            assertFalse(actions.any { it.kind == DownloadActionKind.Pause })
+            assertTrue(actions.any { it.kind == DownloadActionKind.Cancel })
+            assertEquals(DownloadActionKind.OpenDetails, actions.first { it.primary }.kind)
+        }
     }
 
     @Test
-    fun queuedDownloadsExposeStartAndReorderActions() {
-        val actions = DownloadActionPlanner.actionsFor(download(DownloadState.Queued, queueId = "main"))
-
-        assertEquals(DownloadActionKind.StartNow, actions.primaryKind())
-        assertTrue(actions.map { it.kind }.containsAll(listOf(
-            DownloadActionKind.MoveToTop,
-            DownloadActionKind.MoveUp,
-            DownloadActionKind.MoveDown,
-            DownloadActionKind.MoveToBottom,
-        )))
+    fun queuedStartNowIsDirectPrimaryAndMovementReflectsRealPosition() {
+        val context = DownloadActionContext(queuePosition = 2, queueSize = 3, publicSourceUrl = "https://example.test/file.bin")
+        val actions = DownloadActionPlanner.actionsFor(download(DownloadState.Queued), context)
+        assertEquals(DownloadActionKind.StartNow, actions.first { it.primary }.kind)
         assertTrue(actions.first { it.kind == DownloadActionKind.MoveUp }.enabled)
-        assertTrue(actions.map { it.kind }.contains(DownloadActionKind.Cancel))
-        assertTrue(actions.map { it.kind }.contains(DownloadActionKind.DeleteRecord))
-        assertEquals("Remove from list", actions.first { it.kind == DownloadActionKind.DeleteRecord }.label)
+        assertTrue(actions.first { it.kind == DownloadActionKind.MoveDown }.enabled)
+        assertTrue(actions.first { it.kind == DownloadActionKind.StartNow }.supportingText.contains("never routes through Pause"))
     }
 
     @Test
-    fun pausedAndFailedDownloadsExposeResumeRetryAndRefresh() {
-        val paused = DownloadActionPlanner.actionsFor(download(DownloadState.Paused))
-        val failed = DownloadActionPlanner.actionsFor(download(DownloadState.Failed, error = "404"))
-
-        assertEquals(DownloadActionKind.Resume, paused.primaryKind())
-        assertTrue(paused.map { it.kind }.contains(DownloadActionKind.RefreshLink))
-        assertTrue(paused.map { it.kind }.contains(DownloadActionKind.Redownload))
-        assertEquals(DownloadActionKind.Retry, failed.primaryKind())
-        assertTrue(failed.map { it.kind }.contains(DownloadActionKind.CopyLink))
+    fun completedActionsAreCapabilityAwareAndUseTruthfulLabels() {
+        val artifact = CompletedArtifactCapabilities(
+            health = CompletedArtifactHealth.Present,
+            readable = true,
+            shareable = true,
+            renameable = true,
+            deletable = true,
+            locationBrowsable = false,
+            friendlyLocation = "Android Downloads provider · Downloads folder",
+            androidUri = "content://downloads/public_downloads/42",
+        )
+        val actions = DownloadActionPlanner.actionsFor(download(DownloadState.Completed), DownloadActionContext(artifact = artifact))
+        assertEquals(DownloadActionKind.OpenFile, actions.first { it.primary }.kind)
+        assertTrue(actions.any { it.kind == DownloadActionKind.CopyFriendlyLocation })
+        assertTrue(actions.any { it.kind == DownloadActionKind.CopyDestination && it.label == "Copy Android URI" })
+        assertTrue(actions.any { it.kind == DownloadActionKind.DeleteFile })
+        assertTrue(actions.any { it.kind == DownloadActionKind.DeleteFileAndRecord })
+        assertFalse(actions.any { it.kind == DownloadActionKind.OpenFolder })
+        assertFalse(actions.any { it.label.contains("record", ignoreCase = true) })
     }
 
     @Test
-    fun completedDownloadsPreferOpenFileAndKeepDestructiveDeleteSeparated() {
-        val actions = DownloadActionPlanner.actionsFor(download(DownloadState.Completed, destination = "content://downloads/video.mp4"))
-
-        assertEquals(DownloadActionKind.OpenFile, actions.primaryKind())
-        assertEquals("Open file", actions.first().label)
-        assertTrue(actions.map { it.kind }.containsAll(listOf(
-            DownloadActionKind.OpenDetails,
-            DownloadActionKind.OpenFolder,
-            DownloadActionKind.ShareFile,
-            DownloadActionKind.CopyLink,
-            DownloadActionKind.Rename,
-            DownloadActionKind.Redownload,
-            DownloadActionKind.DeleteRecord,
-            DownloadActionKind.DeleteFileAndRecord,
-        )))
-        val deleteFile = actions.first { it.kind == DownloadActionKind.DeleteFileAndRecord }
-        assertTrue(deleteFile.destructive)
-        assertTrue(deleteFile.requiresConfirmation)
+    fun completedUnsupportedProviderDisablesMutatingActions() {
+        val actions = DownloadActionPlanner.actionsFor(
+            download(DownloadState.Completed),
+            DownloadActionContext(artifact = CompletedArtifactCapabilities(health = CompletedArtifactHealth.PermissionLost)),
+        )
+        assertFalse(actions.first { it.kind == DownloadActionKind.OpenFile }.enabled)
+        assertFalse(actions.first { it.kind == DownloadActionKind.Rename }.enabled)
+        assertFalse(actions.first { it.kind == DownloadActionKind.DeleteFile }.enabled)
     }
 
     @Test
-    fun recoveryDownloadsRoutePrimaryActionToReviewRecovery() {
+    fun recoveryActionsPreserveExactItemContext() {
         val actions = DownloadActionPlanner.actionsFor(download(DownloadState.RecoveryRequired))
-
-        assertEquals(DownloadActionKind.ReviewRecovery, actions.primaryKind())
-        assertEquals("Review recovery", actions.first().label)
-        assertTrue(actions.map { it.kind }.contains(DownloadActionKind.OpenFolder))
-        assertTrue(actions.map { it.kind }.contains(DownloadActionKind.Redownload))
-        assertEquals("Remove record", actions.first { it.kind == DownloadActionKind.DeleteRecord }.label)
+        assertEquals(DownloadActionKind.ReviewRecovery, actions.first { it.primary }.kind)
+        assertTrue(actions.any { it.kind == DownloadActionKind.LocateFile })
+        assertTrue(actions.any { it.kind == DownloadActionKind.RestartFromZero })
     }
 
-    @Test
-    fun batchActionsAreDerivedFromSelectedStateMix() {
-        val actions = DownloadActionPlanner.batchActionsFor(listOf(
-            download(DownloadState.Downloading, id = "a"),
-            download(DownloadState.Paused, id = "b"),
-            download(DownloadState.Completed, id = "c"),
-        ))
-
-        assertTrue(actions.map { it.kind }.contains(DownloadActionKind.Pause))
-        assertTrue(actions.map { it.kind }.contains(DownloadActionKind.Resume))
-        assertTrue(actions.map { it.kind }.contains(DownloadActionKind.CopyLink))
-        assertFalse(actions.map { it.kind }.contains(DownloadActionKind.DeleteRecord))
-    }
-
-    private fun List<DownloadAction>.primaryKind(): DownloadActionKind = first { it.primary }.kind
-
-    private fun download(
-        state: DownloadState,
-        id: String = "download-id",
-        queueId: String? = null,
-        destination: String = "xdm://downloads/file.bin",
-        error: String? = null,
-    ) = Download(
-        id = id,
-        fileName = "$id.bin",
-        sourceUrl = "https://example.test/$id.bin",
-        destinationUri = destination,
+    private fun download(state: DownloadState) = Download(
+        id = "download-id",
+        fileName = "file.bin",
+        sourceUrl = "https://example.test/file.bin",
+        destinationUri = "content://downloads/public_downloads/42",
         state = state,
         backend = BackendType.Native,
         bytesReceived = if (state == DownloadState.Completed) 1024 else 128,
         totalBytes = 1024,
         speedBytesPerSecond = if (state == DownloadState.Downloading) 2048 else 0,
-        queueId = queueId,
+        queueId = "default",
         priority = 0,
         createdAtEpochMs = 1,
         updatedAtEpochMs = 2,
-        errorMessage = error,
     )
 }

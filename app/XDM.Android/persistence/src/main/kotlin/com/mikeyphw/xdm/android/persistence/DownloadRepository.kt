@@ -41,6 +41,8 @@ import com.mikeyphw.xdm.android.model.ScheduleRule
 import com.mikeyphw.xdm.android.model.SavedSearch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import org.json.JSONObject
+import java.util.UUID
 
 class DownloadRepository(private val database: AppDatabase) {
     val downloads: Flow<List<Download>> = database.downloadDao().observeAll().map { rows -> rows.map { it.toModel() } }
@@ -78,8 +80,10 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun deleteRecovery(id: String) = database.recoveryDao().delete(id)
     suspend fun deleteRecoveryForDownload(downloadId: String) = database.recoveryDao().deleteByDownload(downloadId)
     suspend fun saveFinalizationJournal(journal: FinalizationJournal) = database.finalizationDao().upsert(journal.toEntity())
+    suspend fun finalizationForDownload(downloadId: String): FinalizationJournal? = database.finalizationDao().findByDownload(downloadId)?.toModel()
     suspend fun deleteFinalizationForDownload(downloadId: String) = database.finalizationDao().deleteByDownload(downloadId)
     suspend fun saveChecksumExpectation(expectation: ChecksumExpectation) = database.checksumDao().upsertExpectation(expectation.toEntity())
+    suspend fun checksumExpectations(downloadId: String): List<ChecksumExpectation> = database.checksumDao().expectations(downloadId).map(ChecksumExpectationEntity::toModel)
     suspend fun saveChecksumResult(result: ChecksumResult) = database.checksumDao().upsertResult(result.toEntity())
     suspend fun saveVerificationRecord(record: VerificationRecord) = database.checksumDao().upsertVerification(record.toEntity())
     suspend fun saveTrustedManifest(manifest: TrustedBlockManifest) = database.checksumDao().upsertTrustedManifest(manifest.toEntity())
@@ -99,6 +103,76 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun markAutomationCommandExecuting(id: String): Boolean = database.downloadGraphTransactionDao().markAutomationCommandExecuting(id, System.currentTimeMillis())
     suspend fun findDownload(id: String): Download? = database.downloadDao().findById(id)?.toModel()
     suspend fun deleteDownload(id: String) = database.downloadGraphTransactionDao().deleteDownloadGraph(id)
+    suspend fun deleteDownloadEntryIfTerminal(download: Download, terminalStates: Set<DownloadState>): Boolean =
+        database.downloadGraphTransactionDao().deleteDownloadGraphIfTerminal(
+            download.id,
+            download.updatedAtEpochMs,
+            terminalStates.map { it.name },
+        )
+
+    suspend fun clonePostProcessingJobsForRedownload(sourceDownloadId: String, targetDownloadId: String, now: Long): Int {
+        val rows = database.postProcessingDao().jobsForDownload(sourceDownloadId)
+        var cloned = 0
+        rows.forEach { source ->
+            val specJson = rewritePostProcessingSpecForRedownload(source.immutableSpecJson, targetDownloadId, now)
+            val jobId = "post-${UUID.randomUUID()}"
+            database.postProcessingDao().insertJob(
+                source.copy(
+                    id = jobId,
+                    rootJobId = jobId,
+                    parentJobId = source.id,
+                    attemptGeneration = 1,
+                    claimKey = null,
+                    subjectId = targetDownloadId,
+                    subjectGeneration = now,
+                    downloadId = targetDownloadId,
+                    captureId = null,
+                    status = "WaitingForPrerequisites",
+                    inputUri = "xdm://downloads/$targetDownloadId/completed-artifact",
+                    stagedInputPath = null,
+                    inputBridgeUri = null,
+                    stagedOutputPath = null,
+                    outputBridgeUri = null,
+                    ownerBridgeUri = null,
+                    progressBridgeUri = null,
+                    metadataBridgeUri = null,
+                    payloadBridgeUri = null,
+                    finalOutputUri = null,
+                    publicationState = "None",
+                    publicationDisplayName = null,
+                    publicationExpectedBytes = null,
+                    publicationExpectedSha256 = null,
+                    committedOutputUri = null,
+                    committedBytes = null,
+                    committedSha256 = null,
+                    sideEffectOutcome = null,
+                    immutableSpecJson = specJson,
+                    actualSha256 = null,
+                    runId = null,
+                    executionId = null,
+                    processToken = null,
+                    processId = null,
+                    controlGeneration = 0L,
+                    requestedControl = null,
+                    progressPercent = 0,
+                    progressBytes = 0L,
+                    progressTotalBytes = null,
+                    timeoutAtEpochMs = null,
+                    resultStdoutLength = 0,
+                    resultStderrLength = 0,
+                    metadataJson = null,
+                    message = "Cloned from ${source.id}; waiting for redownload $targetDownloadId to commit before post-processing starts.",
+                    createdAtEpochMs = now,
+                    updatedAtEpochMs = now,
+                    startedAtEpochMs = null,
+                    finishedAtEpochMs = null,
+                ),
+            )
+            cloned += 1
+        }
+        return cloned
+    }
+
     suspend fun updateDownloadCompareAndSwap(download: Download, expectedUpdatedAtEpochMs: Long): Boolean = database.downloadGraphTransactionDao().updateDownloadCompareAndSwap(download.id, expectedUpdatedAtEpochMs, download.state.name, download.bytesReceived, download.totalBytes, download.speedBytesPerSecond, download.errorMessage, download.updatedAtEpochMs) == 1
     suspend fun setArchived(ids: List<String>, archived: Boolean) {
         if (ids.isNotEmpty()) database.downloadDao().setArchived(ids, archived, System.currentTimeMillis())
@@ -122,6 +196,19 @@ class DownloadRepository(private val database: AppDatabase) {
         database.recoveryDao().listAll()
             .firstOrNull { it.downloadId == downloadId && it.artifactPath.isNotBlank() }
             ?.artifactPath
+
+    suspend fun hasDurableResumeEvidence(downloadId: String): Boolean {
+        val recoveryReady = database.recoveryDao().listAll().any {
+            it.downloadId == downloadId && it.safeToResume && it.artifactPath.isNotBlank()
+        }
+        if (recoveryReady) return true
+        if (database.downloadDao().countDurableCheckpoints(downloadId) > 0) return true
+        val backendTask = database.backendTaskDao().findByDownload(downloadId)
+        return backendTask != null &&
+            backendTask.partialIdentity.isNotBlank() &&
+            backendTask.ownershipGeneration > 0L &&
+            backendTask.ownershipStatus !in setOf("Released", "Cancelled", "Completed")
+    }
 
     suspend fun saveBackendTask(downloadId: String, backend: BackendType, backendTaskId: String, ownership: BackendOwnership) {
         database.backendTaskDao().upsert(
@@ -151,6 +238,18 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun deleteDestinationPermission(uri: String) = database.destinationPermissionDao().delete(uri)
 }
 
+
+private fun rewritePostProcessingSpecForRedownload(rawJson: String, targetDownloadId: String, now: Long): String = runCatching {
+    val json = JSONObject(rawJson)
+    json.put("subjectId", targetDownloadId)
+    json.put("subjectType", "Download")
+    json.put("subjectGeneration", now)
+    json.put("downloadId", targetDownloadId)
+    json.remove("captureId")
+    json.put("trigger", "DownloadCompleted")
+    json.put("inputUri", "xdm://downloads/$targetDownloadId/completed-artifact")
+    json.toString()
+}.getOrDefault(rawJson)
 
 private fun Download.redactedForPersistence(): Download = copy(
     sourceUrl = ExternalUrlPolicy.persistableUrl(sourceUrl) ?: sourceUrl.substringBefore('?'),
@@ -223,6 +322,15 @@ private fun AutomationCommandRecord.toEntity() = AutomationCommandEntity(
     originHost = originHost,
     sanitizedHeaders = sanitizedHeaders,
     rejectionReason = rejectionReason.name,
+)
+
+private fun ChecksumExpectationEntity.toModel() = ChecksumExpectation(
+    id = id,
+    downloadId = downloadId,
+    algorithm = safeEnum(algorithm, com.mikeyphw.xdm.android.model.ChecksumAlgorithm.Sha256),
+    expectedHex = expectedHex,
+    source = safeEnum(source, com.mikeyphw.xdm.android.model.ChecksumSource.UserInput),
+    createdAtEpochMs = createdAtEpochMs,
 )
 
 private fun DownloadEntity.toModel() = Download(

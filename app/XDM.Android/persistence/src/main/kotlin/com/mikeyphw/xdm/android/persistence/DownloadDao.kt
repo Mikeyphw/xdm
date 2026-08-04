@@ -30,6 +30,9 @@ interface DownloadDao {
 
     @Query("UPDATE downloads SET archived = :archived, updatedAtEpochMs = :updatedAtEpochMs WHERE id IN (:ids)")
     suspend fun setArchived(ids: List<String>, archived: Boolean, updatedAtEpochMs: Long)
+
+    @Query("SELECT COUNT(*) FROM checkpoints WHERE downloadId = :downloadId AND length(trim(checkpointJson)) > 2")
+    suspend fun countDurableCheckpoints(downloadId: String): Int
 }
 
 @Dao

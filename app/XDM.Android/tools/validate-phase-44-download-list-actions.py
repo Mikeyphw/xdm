@@ -41,17 +41,17 @@ for marker in [
     "destructive: Boolean = false",
     "requiresConfirmation: Boolean = false",
     "object DownloadActionPlanner",
-    "fun actionsFor(download: Download): List<DownloadAction>",
-    "fun primaryActionFor(download: Download): DownloadAction",
+    "fun actionsFor(download: Download, context: DownloadActionContext = DownloadActionContext()): List<DownloadAction>",
+    "fun primaryActionFor(download: Download, context: DownloadActionContext = DownloadActionContext()): DownloadAction",
     "fun batchActionsFor(downloads: List<Download>): List<DownloadAction>",
-    "DownloadState.Completed -> listOf(",
-    "openFile(download, primary = true)",
+    "DownloadState.Completed -> buildList {",
+    "add(openFile(context, primary = true))",
     "reviewRecovery(primary = true)",
     "startNow(primary = true)",
 ]:
     require(planner, marker)
 
-require(row, "DownloadActionPlanner.primaryActionFor(download)")
+require(row, "DownloadActionPlanner.primaryActionFor(download, actionContext)")
 require(row, "onMoreActions: () -> Unit")
 require(row, "More actions for")
 require(row, "DownloadAction.iconVector()")
@@ -61,7 +61,7 @@ reject(row, "private fun Download.primaryRowAction", "old row-local action plann
 for marker in [
     "var actionDownloadId by rememberSaveable",
     "DownloadActionsContent",
-    "DownloadActionPlanner.actionsFor(download)",
+    "DownloadActionPlanner.actionsFor(download, actionContext)",
     "performDownloadAction",
     "XdmListRow(",
     "Requires confirmation",
@@ -71,10 +71,10 @@ for marker in [
     require(screen, marker)
 
 for marker in [
-    "completedDownloadsPreferOpenFileAndKeepDestructiveDeleteSeparated",
-    "queuedDownloadsExposeStartAndReorderActions",
-    "recoveryDownloadsRoutePrimaryActionToReviewRecovery",
-    "batchActionsAreDerivedFromSelectedStateMix",
+    "verifyingAndRepairingNeverAdvertisePauseButAlwaysOfferCancel",
+    "queuedStartNowIsDirectPrimaryAndMovementReflectsRealPosition",
+    "completedActionsAreCapabilityAwareAndUseTruthfulLabels",
+    "recoveryActionsPreserveExactItemContext",
 ]:
     require(core_test, marker)
 

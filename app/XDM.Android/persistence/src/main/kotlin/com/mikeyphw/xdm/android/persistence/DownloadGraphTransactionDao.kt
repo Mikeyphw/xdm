@@ -10,6 +10,14 @@ import androidx.room.Upsert
 @Dao
 interface DownloadGraphTransactionDao {
     @Transaction
+    suspend fun deleteDownloadGraphIfTerminal(downloadId: String, expectedUpdatedAtEpochMs: Long, terminalStates: List<String>): Boolean {
+        val row = findDownloadRowForGraphDeletion(downloadId) ?: return true
+        if (row.updatedAtEpochMs != expectedUpdatedAtEpochMs || row.state !in terminalStates) return false
+        deleteDownloadGraph(downloadId)
+        return findDownloadRowForGraphDeletion(downloadId) == null
+    }
+
+    @Transaction
     suspend fun deleteDownloadGraph(downloadId: String) {
         deletePostProcessingForDownload(downloadId)
         deleteMediaVariantsForDownload(downloadId)
@@ -76,6 +84,9 @@ interface DownloadGraphTransactionDao {
     suspend fun deleteSourcesForDownload(downloadId: String)
     @Query("DELETE FROM downloads WHERE id = :downloadId")
     suspend fun deleteDownloadRow(downloadId: String)
+
+    @Query("SELECT * FROM downloads WHERE id = :downloadId LIMIT 1")
+    suspend fun findDownloadRowForGraphDeletion(downloadId: String): DownloadEntity?
 
 
 

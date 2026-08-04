@@ -119,6 +119,44 @@ object MediaRequestHandoffStore {
         cleartextCredentialsApproved = cleartextCredentialsApproved,
     )
 
+    fun cloneDownload(sourceDownloadId: String, targetDownloadId: String, replacementExactUrl: String? = null): Boolean {
+        val source = forDownload(sourceDownloadId) ?: return false
+        remember(
+            downloadId = targetDownloadId,
+            headers = source.headers,
+            redactedSummary = source.redactedSummary,
+            isExpiringUrl = source.isExpiringUrl || replacementExactUrl != null,
+            exactUrl = replacementExactUrl ?: source.exactUrl,
+            pageUrl = source.pageUrl,
+            expiresAtEpochMs = source.expiresAtEpochMs,
+            attemptGeneration = 0L,
+            privateNetworkApproved = source.privateNetworkApproved,
+            cleartextCredentialsApproved = source.cleartextCredentialsApproved,
+            cleanupActions = source.cleanupActions,
+            tempCookieFileName = source.tempCookieFileName,
+        )
+        return true
+    }
+
+    fun replaceDownloadUrl(downloadId: String, exactUrl: String): Boolean {
+        val source = forDownload(downloadId)
+        remember(
+            downloadId = downloadId,
+            headers = source?.headers.orEmpty().takeIf { source?.boundHost == ExternalUrlPolicy.originHost(exactUrl) }.orEmpty(),
+            redactedSummary = source?.redactedSummary.orEmpty(),
+            isExpiringUrl = source?.isExpiringUrl == true || ExternalUrlPolicy.hasCredentialBearingQuery(exactUrl),
+            exactUrl = exactUrl,
+            pageUrl = source?.pageUrl,
+            expiresAtEpochMs = source?.expiresAtEpochMs ?: defaultExpiry(true),
+            attemptGeneration = source?.attemptGeneration ?: 0L,
+            privateNetworkApproved = source?.privateNetworkApproved == true,
+            cleartextCredentialsApproved = source?.cleartextCredentialsApproved == true,
+            cleanupActions = source?.cleanupActions.orEmpty(),
+            tempCookieFileName = source?.tempCookieFileName,
+        )
+        return true
+    }
+
     fun forDownload(downloadId: String): MediaRequestHandoff? = readSubject(subject(DOWNLOAD_PREFIX, downloadId))
     fun forCapture(captureId: String): MediaRequestHandoff? = readSubject(subject(CAPTURE_PREFIX, captureId))
     fun forVariant(variantId: String): MediaRequestHandoff? = readSubject(subject(VARIANT_PREFIX, variantId))

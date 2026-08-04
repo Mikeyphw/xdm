@@ -88,6 +88,7 @@ validators=(
   tools/validate-phase63-release-readiness-support-bundle-seal.py
   tools/validate-phase64-final-android-downloader-rc-seal.py
   tools/validate-phase65-diagnostic-export-download-action-fix.py
+  tools/validate-bug-hunt-phase8-download-actions-ui-truthfulness.py
 )
 
 for validator in "${validators[@]}"; do

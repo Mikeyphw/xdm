@@ -120,6 +120,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val preferences = UserPreferencesStore(this)
         val termuxMediaPipelineManager = TermuxMediaPipelineManager(this, database, repository, destinationWriter)
         val postProcessingAutomationManager = PostProcessingAutomationManager(preferences, repository, termuxMediaPipelineManager)
+        val downloadArtifactActionManager = DownloadArtifactActionManager(this)
         val mediaResolverSelectionStore = MediaResolverSelectionStore(this)
         val operationalActivityStore = OperationalActivityStore(this)
         val browserExtensionExportManager = BrowserExtensionExportManager(this)
@@ -181,6 +182,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             termuxAria2CockpitManager = termuxAria2CockpitManager,
             termuxMediaPipelineManager = termuxMediaPipelineManager,
             postProcessingAutomationManager = postProcessingAutomationManager,
+            downloadArtifactActionManager = downloadArtifactActionManager,
             mediaResolverSelectionStore = mediaResolverSelectionStore,
             operationalActivityStore = operationalActivityStore,
             browserExtensionExportManager = browserExtensionExportManager,
@@ -225,6 +227,7 @@ data class AppContainer(
     val termuxAria2CockpitManager: TermuxAria2CockpitManager,
     val termuxMediaPipelineManager: TermuxMediaPipelineManager,
     val postProcessingAutomationManager: PostProcessingAutomationManager,
+    val downloadArtifactActionManager: DownloadArtifactActionManager,
     val mediaResolverSelectionStore: MediaResolverSelectionStore,
     val operationalActivityStore: OperationalActivityStore,
     val browserExtensionExportManager: BrowserExtensionExportManager,

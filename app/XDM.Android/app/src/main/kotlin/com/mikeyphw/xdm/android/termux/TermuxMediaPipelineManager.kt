@@ -341,7 +341,8 @@ class TermuxMediaPipelineManager(
         issue.startsWith("This action requires a successful root probe") ||
         issue.startsWith("Run a successful Termux tool and capability probe") ||
         issue.startsWith("Required Termux tools are unavailable or unverified") ||
-        issue.startsWith("The probed FFmpeg build does not advertise")
+        issue.startsWith("The probed FFmpeg build does not advertise") ||
+        issue.startsWith("Waiting for the redownloaded artifact")
 
     private fun enqueueAsync(spec: PostProcessingJobSpec): TermuxMediaPipelineJob {
         val now = System.currentTimeMillis()

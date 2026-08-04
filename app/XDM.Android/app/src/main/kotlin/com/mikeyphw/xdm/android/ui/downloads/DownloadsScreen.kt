@@ -1,7 +1,6 @@
 package com.mikeyphw.xdm.android
 
 import android.content.ActivityNotFoundException
-import android.content.ContentResolver
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -52,6 +51,9 @@ import com.mikeyphw.xdm.android.model.DownloadAction
 import com.mikeyphw.xdm.android.model.DownloadActionKind
 import com.mikeyphw.xdm.android.model.DownloadActionPlanner
 import com.mikeyphw.xdm.android.model.DownloadDashboardOrdering
+import com.mikeyphw.xdm.android.model.DownloadActionContext
+import com.mikeyphw.xdm.android.model.DownloadUiTruthPlanner
+import com.mikeyphw.xdm.android.model.CompletedArtifactCapabilities
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.DownloadTag
 import com.mikeyphw.xdm.android.model.DownloadTagAssignment
@@ -64,11 +66,11 @@ import com.mikeyphw.xdm.android.model.SavedSearch
 import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
 import com.mikeyphw.xdm.android.scheduler.CompletedFileGrantPolicy
+import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
 import com.mikeyphw.xdm.android.termux.PostProcessingAutomationStatus
 import com.mikeyphw.xdm.android.termux.TermuxBridgeStatus
 import com.mikeyphw.xdm.android.util.formatSpeed
 import androidx.core.net.toUri
-import java.io.File
 
 @Composable
 @UiSurface(UiAudience.User, "Manage downloads and transfer state")
@@ -88,6 +90,8 @@ fun DownloadsScreen(
     savedSearches: List<SavedSearch>,
     postProcessingAutomation: PostProcessingAutomationStatus,
     termuxBridge: TermuxBridgeStatus,
+    onInspectArtifact: suspend (Download) -> CompletedArtifactCapabilities,
+    onInspectResumeCapability: suspend (Download) -> Boolean,
     onTogglePause: (Download) -> Unit,
     onCancelDownload: (Download) -> Unit,
     onRedownload: (Download) -> Unit,
@@ -108,6 +112,13 @@ fun DownloadsScreen(
     onRunPostProcessing: (Download) -> Unit,
     onEvaluateQueueIntelligence: () -> Unit,
     onStartIgnoringQueuePolicy: (Download) -> Unit,
+    onStartNow: (Download) -> Unit,
+    onRenameCompleted: (Download, String, (String) -> Unit) -> Unit,
+    onRefreshLink: (Download, String, (String) -> Unit) -> Unit,
+    onDeleteEntry: (Download, (String) -> Unit) -> Unit,
+    onDeleteSavedFile: (Download, Boolean, (String) -> Unit) -> Unit,
+    onRestartFromZero: (Download, (String) -> Unit) -> Unit,
+    onOpenRecovery: (Download, DownloadActionKind) -> Unit,
     onOpenActivityAttention: () -> Unit,
     onOpenActivityDecisions: () -> Unit,
 ) {
@@ -124,6 +135,11 @@ fun DownloadsScreen(
     var actionDownloadId by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmationDownloadId by remember { mutableStateOf<String?>(null) }
     var confirmationAction by remember { mutableStateOf<DownloadAction?>(null) }
+    var textActionDownloadId by remember { mutableStateOf<String?>(null) }
+    var textAction by remember { mutableStateOf<DownloadAction?>(null) }
+    var textActionValue by remember { mutableStateOf("") }
+    var artifactCapabilities by remember { mutableStateOf<Map<String, CompletedArtifactCapabilities>>(emptyMap()) }
+    var durableResumeCapabilities by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
 
     val metrics = DownloadsWorkspacePlanner.metrics(downloads.filterNot { it.archived })
     val visibleDownloads = DownloadsWorkspacePlanner.visibleDownloads(
@@ -140,24 +156,51 @@ fun DownloadsScreen(
     val heldDownload = DownloadsWorkspacePlanner.firstPolicyHeldDownload(downloads)
     val copy = DownloadsWorkspacePlanner.copyFor(filter)
     val selectionMode = selectedIds.isNotEmpty()
+    fun actionContext(download: Download): DownloadActionContext = DownloadUiTruthPlanner.contextFor(
+        download = download,
+        downloads = downloads,
+        verificationRecords = verificationRecords,
+        checksumResults = checksumResults,
+        artifact = artifactCapabilities[download.id] ?: CompletedArtifactCapabilities(
+            friendlyLocation = destinationUiLabel(download.destinationUri),
+        ),
+        backendMigrationAvailable = backendMigrationAvailable(download, capabilities),
+        postProcessingInputAvailable = artifactCapabilities[download.id]?.readable == true,
+        validatedPartialAvailable = durableResumeCapabilities[download.id] == true,
+    )
     val executeDownloadAction: (Download, DownloadAction) -> Unit = { download, action ->
         performDownloadAction(
             context = context,
             download = download,
             action = action,
+            actionContext = actionContext(download),
             onTogglePause = onTogglePause,
             onCancelDownload = onCancelDownload,
             onRedownload = onRedownload,
             onMoveDownloadInQueue = onMoveDownloadInQueue,
-            onDeleteRecord = onRemoveHistory,
-            onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
+            onDeleteRecord = { item -> onDeleteEntry(item) { showActionToast(context, it) } },
+            onDeleteSavedFile = { item, removeEntry -> onDeleteSavedFile(item, removeEntry) { showActionToast(context, it) } },
+            onStartNow = onStartNow,
+            onRename = { item ->
+                textActionDownloadId = item.id
+                textAction = action
+                textActionValue = item.fileName
+            },
+            onRefreshLink = { item ->
+                textActionDownloadId = item.id
+                textAction = action
+                textActionValue = MediaRequestHandoffStore.forDownload(item.id)?.exactUrl ?: item.sourceUrl
+            },
+            onRestartFromZero = { item -> onRestartFromZero(item) { showActionToast(context, it) } },
+            onOpenRecovery = onOpenRecovery,
             onOpenDetails = { detailDownloadId = download.id },
-            onOpenActivityAttention = onOpenActivityAttention,
         )
     }
     val runDownloadAction: (Download, DownloadAction) -> Unit = { download, action ->
         if (!action.enabled) {
             Unit
+        } else if (action.kind in setOf(DownloadActionKind.Rename, DownloadActionKind.RefreshLink)) {
+            executeDownloadAction(download, action)
         } else if (action.requiresConfirmation) {
             confirmationDownloadId = download.id
             confirmationAction = action
@@ -166,11 +209,25 @@ fun DownloadsScreen(
         }
     }
 
-    LaunchedEffect(downloads, detailDownloadId) {
-        if (detailDownloadId != null && downloads.none { it.id == detailDownloadId }) detailDownloadId = null
+    LaunchedEffect(downloads) {
+        val completed = downloads.filter { it.state == DownloadState.Completed }
+        artifactCapabilities = completed.associate { it.id to onInspectArtifact(it) }
+        val resumable = downloads.filter { it.state in setOf(
+            DownloadState.Paused,
+            DownloadState.WaitingForNetwork,
+            DownloadState.WaitingForPower,
+            DownloadState.Failed,
+            DownloadState.RecoveryRequired,
+        ) }
+        durableResumeCapabilities = resumable.associate { it.id to onInspectResumeCapability(it) }
     }
-    LaunchedEffect(visibleDownloads, windowClass) {
-        if (windowClass == XdmWindowClass.Expanded && detailDownloadId == null) {
+
+    LaunchedEffect(downloads, visibleDownloads, detailDownloadId, windowClass) {
+        val visibleIds = visibleDownloads.mapTo(mutableSetOf()) { it.id }
+        selectedIds = selectedIds.intersect(downloads.mapTo(mutableSetOf()) { it.id })
+        if (detailDownloadId != null && detailDownloadId !in visibleIds) {
+            detailDownloadId = if (windowClass == XdmWindowClass.Expanded) visibleDownloads.firstOrNull()?.id else null
+        } else if (windowClass == XdmWindowClass.Expanded && detailDownloadId == null) {
             detailDownloadId = visibleDownloads.firstOrNull()?.id
         }
     }
@@ -254,6 +311,7 @@ fun DownloadsScreen(
             ) {
                 DownloadWorkspaceList(
                     downloads = visibleDownloads,
+                    actionContextFor = ::actionContext,
                     compact = compact,
                     selectionMode = selectionMode,
                     selectedIds = selectedIds,
@@ -268,7 +326,7 @@ fun DownloadsScreen(
                     },
                     onDownloadLongClick = { download -> selectedIds = selectedIds.toggle(download.id) },
                     onPrimaryAction = { download ->
-                        val action = DownloadActionPlanner.primaryActionFor(download)
+                        val action = DownloadActionPlanner.primaryActionFor(download, actionContext(download))
                         runDownloadAction(download, action)
                     },
                     onMoreActions = { download -> actionDownloadId = download.id },
@@ -289,6 +347,7 @@ fun DownloadsScreen(
                         ) {
                             DownloadDetails(
                                 download = detailDownload,
+                                actionContext = actionContext(detailDownload),
                                 capabilities = capabilities,
                                 checksumResults = checksumResults,
                                 verificationRecords = verificationRecords,
@@ -301,6 +360,7 @@ fun DownloadsScreen(
                                 onRunPostProcessing = onRunPostProcessing,
                                 onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
                                 onOpenActivityAttention = onOpenActivityAttention,
+                                onDownloadAction = { action -> runDownloadAction(detailDownload, action) },
                             )
                         }
                     }
@@ -309,6 +369,7 @@ fun DownloadsScreen(
         } else {
             DownloadWorkspaceList(
                 downloads = visibleDownloads,
+                actionContextFor = ::actionContext,
                 compact = compact,
                 selectionMode = selectionMode,
                 selectedIds = selectedIds,
@@ -319,7 +380,7 @@ fun DownloadsScreen(
                 },
                 onDownloadLongClick = { download -> selectedIds = selectedIds.toggle(download.id) },
                 onPrimaryAction = { download ->
-                    val action = DownloadActionPlanner.primaryActionFor(download)
+                    val action = DownloadActionPlanner.primaryActionFor(download, actionContext(download))
                         runDownloadAction(download, action)
                 },
                 onMoreActions = { download -> actionDownloadId = download.id },
@@ -337,6 +398,7 @@ fun DownloadsScreen(
         ) {
             DownloadActionsContent(
                 download = download,
+                actionContext = actionContext(download),
                 onAction = { action ->
                     actionDownloadId = null
                     runDownloadAction(download, action)
@@ -382,6 +444,43 @@ fun DownloadsScreen(
                         confirmationAction = null
                         executeDownloadAction(confirmedDownload, confirmedAction)
                     }) { Text("Confirm") }
+                }
+            }
+        }
+    }
+
+    val textSheetDownload = downloads.firstOrNull { it.id == textActionDownloadId }
+    val textSheetAction = textAction
+    if (textSheetDownload != null && textSheetAction != null) {
+        XdmAdaptiveSheet(
+            visible = true,
+            windowClass = windowClass,
+            onDismissRequest = { textActionDownloadId = null; textAction = null },
+            title = textSheetAction.label,
+        ) {
+            Column(Modifier.fillMaxWidth().padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                OutlinedTextField(
+                    value = textActionValue,
+                    onValueChange = { textActionValue = it },
+                    label = { Text(if (textSheetAction.kind == DownloadActionKind.Rename) "New file name" else "Fresh source URL") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(textSheetAction.supportingText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End)) {
+                    TextButton(onClick = { textActionDownloadId = null; textAction = null }) { Text("Cancel") }
+                    Button(onClick = {
+                        val item = textSheetDownload
+                        val value = textActionValue
+                        val kind = textSheetAction.kind
+                        textActionDownloadId = null
+                        textAction = null
+                        if (kind == DownloadActionKind.Rename) {
+                            onRenameCompleted(item, value) { showActionToast(context, it) }
+                        } else {
+                            onRefreshLink(item, value) { showActionToast(context, it) }
+                        }
+                    }) { Text("Apply") }
                 }
             }
         }
@@ -444,6 +543,7 @@ fun DownloadsScreen(
             ) {
                 DownloadDetails(
                     download = download,
+                    actionContext = actionContext(download),
                     capabilities = capabilities,
                     checksumResults = checksumResults,
                     verificationRecords = verificationRecords,
@@ -456,6 +556,7 @@ fun DownloadsScreen(
                     onRunPostProcessing = onRunPostProcessing,
                     onStartIgnoringQueuePolicy = onStartIgnoringQueuePolicy,
                     onOpenActivityAttention = onOpenActivityAttention,
+                    onDownloadAction = { action -> runDownloadAction(download, action) },
                 )
             }
         }
@@ -557,6 +658,7 @@ private fun DownloadSectionHeader(
 @Composable
 private fun DownloadWorkspaceList(
     downloads: List<Download>,
+    actionContextFor: (Download) -> DownloadActionContext,
     compact: Boolean,
     selectionMode: Boolean,
     selectedIds: Set<String>,
@@ -585,6 +687,7 @@ private fun DownloadWorkspaceList(
         items(downloads, key = Download::id) { download ->
             DownloadRow(
                 download = download,
+                actionContext = actionContextFor(download),
                 compact = compact,
                 selected = download.id in selectedIds,
                 selectionMode = selectionMode,
@@ -601,11 +704,12 @@ private fun DownloadWorkspaceList(
 @Composable
 private fun DownloadActionsContent(
     download: Download,
+    actionContext: DownloadActionContext,
     onAction: (DownloadAction) -> Unit,
 ) {
-    val actions = DownloadActionPlanner.actionsFor(download)
+    val actions = DownloadActionPlanner.actionsFor(download, actionContext)
     Column(Modifier.fillMaxWidth().padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        XdmMetadataText("Tap the row for details. Use the primary row button for ${DownloadActionPlanner.primaryActionFor(download).label.lowercase()}.")
+        XdmMetadataText("Tap the row for details. Use the primary row button for ${DownloadActionPlanner.primaryActionFor(download, actionContext).label.lowercase()}.")
         XdmGroupedList {
             actions.forEachIndexed { index, action ->
                 if (index > 0) XdmListSeparator()
@@ -633,33 +737,34 @@ private fun performDownloadAction(
     context: android.content.Context,
     download: Download,
     action: DownloadAction,
+    actionContext: DownloadActionContext,
     onTogglePause: (Download) -> Unit,
     onCancelDownload: (Download) -> Unit,
     onRedownload: (Download) -> Unit,
     onMoveDownloadInQueue: (Download, DownloadActionKind) -> Unit,
     onDeleteRecord: (Download) -> Unit,
-    onStartIgnoringQueuePolicy: (Download) -> Unit,
+    onDeleteSavedFile: (Download, Boolean) -> Unit,
+    onStartNow: (Download) -> Unit,
+    onRename: (Download) -> Unit,
+    onRefreshLink: (Download) -> Unit,
+    onRestartFromZero: (Download) -> Unit,
+    onOpenRecovery: (Download, DownloadActionKind) -> Unit,
     onOpenDetails: () -> Unit,
-    onOpenActivityAttention: () -> Unit,
 ) {
     when (action.kind) {
         DownloadActionKind.Pause,
         DownloadActionKind.Resume,
         DownloadActionKind.Retry,
         -> onTogglePause(download)
-
-        DownloadActionKind.StartNow -> {
-            if (download.errorMessage.orEmpty().startsWith("Queue policy:")) onStartIgnoringQueuePolicy(download) else onTogglePause(download)
-        }
-
-        DownloadActionKind.CopyLink -> copySensitiveTextToClipboard(context, "XDM source URL", download.sourceUrl)
+        DownloadActionKind.StartNow -> onStartNow(download)
+        DownloadActionKind.CopyLink -> actionContext.publicSourceUrl?.let { copySensitiveTextToClipboard(context, "XDM redacted source URL", it) }
         DownloadActionKind.CopyFileName -> copyTextToClipboard(context, "XDM file name", download.fileName)
-        DownloadActionKind.CopyDestination -> copySensitiveTextToClipboard(context, "XDM destination", download.destinationUri)
-        DownloadActionKind.ShareLink -> shareText(context, "XDM source URL", download.sourceUrl)
-
+        DownloadActionKind.CopyDestination -> actionContext.artifact.androidUri?.let { copySensitiveTextToClipboard(context, "XDM Android URI", it) }
+        DownloadActionKind.CopyFriendlyLocation -> copyTextToClipboard(context, "XDM saved location", actionContext.artifact.friendlyLocation)
+        DownloadActionKind.ShareLink -> actionContext.publicSourceUrl?.let { shareText(context, "XDM redacted source URL", it) }
         DownloadActionKind.OpenFile -> openCompletedFile(context, download)
         DownloadActionKind.OpenDetails -> onOpenDetails()
-        DownloadActionKind.ReviewRecovery -> onOpenActivityAttention()
+        DownloadActionKind.ReviewRecovery, DownloadActionKind.LocateFile -> onOpenRecovery(download, action.kind)
         DownloadActionKind.Cancel -> onCancelDownload(download)
         DownloadActionKind.MoveToTop,
         DownloadActionKind.MoveUp,
@@ -667,12 +772,14 @@ private fun performDownloadAction(
         DownloadActionKind.MoveToBottom,
         -> onMoveDownloadInQueue(download, action.kind)
         DownloadActionKind.ShareFile -> shareCompletedFile(context, download)
-        DownloadActionKind.OpenFolder -> openCompletedLocation(context, download)
-        DownloadActionKind.Rename -> showActionToast(context, "Rename is not available yet; the saved file stays untouched.")
+        DownloadActionKind.OpenFolder -> openCompletedLocation(context, download, actionContext)
+        DownloadActionKind.Rename -> onRename(download)
         DownloadActionKind.Redownload -> onRedownload(download)
-        DownloadActionKind.RefreshLink -> showActionToast(context, "Refresh link needs a site-specific fresh URL. Use Redownload when the current link still works.")
+        DownloadActionKind.RefreshLink -> onRefreshLink(download)
+        DownloadActionKind.RestartFromZero -> onRestartFromZero(download)
+        DownloadActionKind.DeleteFile -> onDeleteSavedFile(download, false)
         DownloadActionKind.DeleteRecord -> onDeleteRecord(download)
-        DownloadActionKind.DeleteFileAndRecord -> deleteSavedFileAndRecord(context, download, onDeleteRecord)
+        DownloadActionKind.DeleteFileAndRecord -> onDeleteSavedFile(download, true)
     }
 }
 
@@ -715,38 +822,25 @@ private fun shareCompletedFile(context: android.content.Context, download: Downl
     }
 }
 
-private fun openCompletedLocation(context: android.content.Context, download: Download) {
-    val uri = completedDownloadUri(context, download)
-    if (uri != null) {
-        openCompletedFile(context, download)
-    } else {
-        showActionToast(context, "${destinationUiLabel(download.destinationUri)} is the saved location.")
+private fun openCompletedLocation(
+    context: android.content.Context,
+    download: Download,
+    actionContext: DownloadActionContext,
+) {
+    val raw = actionContext.artifact.androidUri?.let { runCatching { Uri.parse(it) }.getOrNull() }
+    if (raw == null || !actionContext.artifact.locationBrowsable) {
+        showActionToast(context, "This provider does not expose a containing-folder action. Use Open file instead.")
+        return
     }
-}
-
-private fun deleteSavedFileAndRecord(context: android.content.Context, download: Download, onDeleteRecord: (Download) -> Unit) {
-    val deleted = deleteSavedFile(context, download)
-    if (deleted) {
-        onDeleteRecord(download)
-        showActionToast(context, "Deleted saved file and history record.")
-    } else {
-        showActionToast(context, "Android did not grant deletion for the saved file. Use Delete record to keep the file.")
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, raw).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+    } catch (_: Exception) {
+        showActionToast(context, "No installed app can open this provider location.")
     }
 }
 
 private fun completedDownloadUri(context: android.content.Context, download: Download): Uri? =
     CompletedFileGrantPolicy.resolve(context, download)
-
-private fun deleteSavedFile(context: android.content.Context, download: Download): Boolean {
-    val raw = download.destinationUri.trim().takeIf { it.isNotBlank() } ?: return false
-    val parsed = runCatching { raw.toUri() }.getOrNull()
-    return when (parsed?.scheme?.lowercase()) {
-        ContentResolver.SCHEME_CONTENT -> runCatching { context.contentResolver.delete(parsed, null, null) > 0 }.getOrDefault(false)
-        ContentResolver.SCHEME_FILE -> parsed.path?.let(::File)?.let { runCatching { it.isFile && it.delete() }.getOrDefault(false) } ?: false
-        null, "" -> runCatching { File(raw).let { it.isFile && it.delete() } }.getOrDefault(false)
-        else -> runCatching { File(raw).let { it.isFile && it.delete() } }.getOrDefault(false)
-    }
-}
 
 private fun showActionToast(context: android.content.Context, message: String) {
     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -760,3 +854,16 @@ private fun shareText(context: android.content.Context, title: String, value: St
 }
 
 private fun Set<String>.toggle(id: String): Set<String> = if (id in this) this - id else this + id
+
+private fun backendMigrationAvailable(download: Download, capabilities: List<BackendCapabilityRow>): Boolean {
+    if (download.state in setOf(DownloadState.Completed, DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing)) return false
+    val target = when (download.backend) {
+        com.mikeyphw.xdm.android.model.BackendType.Native -> com.mikeyphw.xdm.android.model.BackendType.Aria2
+        com.mikeyphw.xdm.android.model.BackendType.Aria2 -> com.mikeyphw.xdm.android.model.BackendType.Native
+        com.mikeyphw.xdm.android.model.BackendType.Automatic -> return false
+    }
+    val capability = capabilities.firstOrNull { it.backend == target } ?: return false
+    val scheme = runCatching { Uri.parse(download.sourceUrl).scheme.orEmpty().lowercase() }.getOrDefault("")
+    val destinationScheme = runCatching { Uri.parse(download.destinationUri).scheme.orEmpty().lowercase() }.getOrDefault("")
+    return capability.available && scheme in capability.protocols && (destinationScheme != "content" || capability.saf)
+}

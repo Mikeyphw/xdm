@@ -367,6 +367,7 @@ private fun LogsAndExportsSection(
     onClearActivityHistory: () -> Unit,
 ) {
     val context = LocalContext.current
+    val selfTestReport = DebugWorkbenchRuntimeSelfTestSuite.fromState(state)
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -376,7 +377,11 @@ private fun LogsAndExportsSection(
             XdmListCard {
                 XdmCardTitle("Redacted support report")
                 XdmSupportingText("Safe to copy for troubleshooting. Credential-like headers, cookies, tokens, signatures, and sensitive query values are removed.", maxLines = 4)
-                Button(onClick = { copyTextToClipboard(context, "XDM support report", state.supportReportText) }) { Text("Copy support report") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { copyTextToClipboard(context, "XDM support report", state.supportReportText) }) { Text("Copy support report") }
+                    Button(onClick = { shareTextReport(context, "XDM support report", state.supportReportText) }) { Text("Export support report") }
+                }
+                Button(onClick = { shareTextReport(context, "XDM runtime self-test report", selfTestReport.copyText) }) { Text("Export self-test report") }
             }
         }
         item {

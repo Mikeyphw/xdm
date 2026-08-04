@@ -32,6 +32,9 @@ interface PostProcessingDao {
     @Query("SELECT * FROM post_processing_jobs WHERE status = 'WaitingForPrerequisites' ORDER BY createdAtEpochMs")
     suspend fun waitingJobs(): List<PostProcessingJobEntity>
 
+    @Query("SELECT * FROM post_processing_jobs WHERE downloadId = :downloadId ORDER BY createdAtEpochMs")
+    suspend fun jobsForDownload(downloadId: String): List<PostProcessingJobEntity>
+
 
     @Query("""UPDATE post_processing_jobs
         SET status = 'Preparing',

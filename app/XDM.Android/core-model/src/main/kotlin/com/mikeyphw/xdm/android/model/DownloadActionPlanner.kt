@@ -4,6 +4,7 @@ enum class DownloadActionKind {
     OpenFile,
     OpenDetails,
     ReviewRecovery,
+    LocateFile,
     Pause,
     Resume,
     Retry,
@@ -16,12 +17,15 @@ enum class DownloadActionKind {
     CopyLink,
     CopyFileName,
     CopyDestination,
+    CopyFriendlyLocation,
     ShareLink,
     ShareFile,
     OpenFolder,
     Rename,
     Redownload,
     RefreshLink,
+    RestartFromZero,
+    DeleteFile,
     DeleteRecord,
     DeleteFileAndRecord,
 }
@@ -55,314 +59,352 @@ data class DownloadAction(
 )
 
 object DownloadActionPlanner {
-    fun actionsFor(download: Download): List<DownloadAction> = when (download.state) {
+    fun actionsFor(download: Download, context: DownloadActionContext = DownloadActionContext()): List<DownloadAction> = when (download.state) {
         DownloadState.Downloading,
         DownloadState.Connecting,
         DownloadState.Finalizing,
+        -> listOf(
+            pause(primary = true),
+            cancel(download),
+            details(),
+            copyLink(context),
+        )
+
         DownloadState.Verifying,
         DownloadState.Repairing,
         -> listOf(
-            pause(primary = true),
-            details(),
-            copyLink(download),
-            shareLink(download),
-            cancel(download),
-            deleteRecord(download, label = "Remove from list"),
+            details(primary = true),
+            cancel(download, supporting = "Cancel is durable and must win before a file can be published."),
+            copyLink(context),
         )
 
         DownloadState.Queued,
         DownloadState.Created,
         -> listOf(
             startNow(primary = true),
-            moveToTop(download),
-            moveUp(download),
-            moveDown(download),
-            moveToBottom(download),
+            moveToTop(download, context),
+            moveUp(download, context),
+            moveDown(download, context),
+            moveToBottom(download, context),
             details(),
-            copyLink(download),
+            copyLink(context),
             cancel(download),
-            deleteRecord(download, label = "Remove from list"),
+            deleteHistory(download, label = "Delete download entry"),
         )
 
         DownloadState.Paused,
         DownloadState.WaitingForNetwork,
         DownloadState.WaitingForPower,
         -> listOf(
-            resume(primary = true),
+            resume(primary = true, validated = context.validatedPartialAvailable),
             details(),
             refreshLink(download),
             redownload(download),
-            copyLink(download),
-            deleteRecord(download),
+            copyLink(context),
+            deleteHistory(download),
         )
 
         DownloadState.Failed -> listOf(
             retry(primary = true),
             details(),
             refreshLink(download),
-            copyLink(download),
+            copyLink(context),
             redownload(download),
-            deleteRecord(download),
+            deleteHistory(download),
         )
 
-        DownloadState.Completed -> listOf(
-            openFile(download, primary = true),
-            details(label = "Open details"),
-            openFolder(download),
-            shareFile(download),
-            copyLink(download),
-            copyFileName(download),
-            copyDestination(download),
-            rename(download),
-            redownload(download),
-            deleteRecord(download),
-            deleteFileAndRecord(download),
-        )
+        DownloadState.Completed -> buildList {
+            add(openFile(context, primary = true))
+            add(shareFile(context))
+            if (context.artifact.locationBrowsable) add(openLocation(context))
+            add(details(label = "Open details"))
+            add(copyFileName(download))
+            add(copyFriendlyLocation(context))
+            add(copyDestination(context))
+            add(rename(context))
+            add(redownload(download))
+            add(deleteFile(context))
+            add(deleteHistory(download))
+            add(deleteFileAndHistory(context))
+        }
 
         DownloadState.RecoveryRequired -> listOf(
             reviewRecovery(primary = true),
+            locateFile(),
+            restartFromZero(download),
             details(),
-            openFolder(download, label = "Locate file"),
-            redownload(download, label = "Restart"),
-            deleteRecord(download, label = "Remove record"),
+            deleteHistory(download),
         )
 
         DownloadState.Cancelled -> listOf(
             details(primary = true),
-            copyLink(download),
+            refreshLink(download),
+            copyLink(context),
             redownload(download),
-            deleteRecord(download),
+            deleteHistory(download),
         )
     }
 
-    fun primaryActionFor(download: Download): DownloadAction = actionsFor(download).firstOrNull { it.primary }
-        ?: details(primary = true)
+    fun primaryActionFor(download: Download, context: DownloadActionContext = DownloadActionContext()): DownloadAction =
+        actionsFor(download, context).firstOrNull { it.primary } ?: details(primary = true)
 
     fun batchActionsFor(downloads: List<Download>): List<DownloadAction> {
         if (downloads.isEmpty()) return emptyList()
         val states = downloads.mapTo(linkedSetOf()) { it.state }
         return buildList {
-            if (states.any { it in activeStates }) add(pause(label = "Pause selected"))
-            if (states.any { it in resumableStates || it == DownloadState.Failed }) add(resume(label = "Resume selected"))
-            add(DownloadAction(
-                kind = DownloadActionKind.CopyLink,
-                label = "Copy selected links",
-                icon = DownloadActionIcon.Copy,
-                enabled = downloads.any { it.sourceUrl.isNotBlank() },
-                requiresConfirmation = true,
-                supportingText = "Copy ${downloads.size} full source link${if (downloads.size == 1) "" else "s"}. Links may contain private access parameters.",
-            ))
-            if (states.all { it in terminalStates }) add(deleteRecord(label = "Delete selected records"))
+            if (states.any { it in pausableStates }) add(pause(label = "Pause selected"))
+            if (states.any { it in resumableStates || it == DownloadState.Failed }) add(resume(label = "Resume selected", validated = false))
+            add(
+                DownloadAction(
+                    kind = DownloadActionKind.CopyLink,
+                    label = "Copy redacted source links",
+                    icon = DownloadActionIcon.Copy,
+                    enabled = downloads.any { ExternalUrlPolicy.persistableUrl(it.sourceUrl) != null },
+                    supportingText = "Copies only persistence-safe URLs. Credential-bearing query values remain redacted.",
+                ),
+            )
+            if (states.all { it in terminalStates }) add(deleteHistory(label = "Delete selected download entries"))
         }
     }
 
-    private val activeStates = setOf(
-        DownloadState.Downloading,
-        DownloadState.Connecting,
-        DownloadState.Finalizing,
-        DownloadState.Verifying,
-        DownloadState.Repairing,
-    )
-    private val resumableStates = setOf(
-        DownloadState.Paused,
-        DownloadState.WaitingForNetwork,
-        DownloadState.WaitingForPower,
-    )
+    private val pausableStates = setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Finalizing)
+    private val resumableStates = setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)
     private val terminalStates = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired)
+    private val queueStates = setOf(DownloadState.Created, DownloadState.Queued, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)
 
     private fun details(label: String = "Details", primary: Boolean = false) = DownloadAction(
-        kind = DownloadActionKind.OpenDetails,
-        label = label,
-        icon = DownloadActionIcon.Details,
+        DownloadActionKind.OpenDetails,
+        label,
+        DownloadActionIcon.Details,
         primary = primary,
-        supportingText = "Open status, destination, verification, and technical details.",
+        supportingText = "Open truthful transfer, storage, verification, and recovery details.",
     )
 
     private fun reviewRecovery(primary: Boolean = false) = DownloadAction(
-        kind = DownloadActionKind.ReviewRecovery,
-        label = "Review recovery",
-        icon = DownloadActionIcon.Recovery,
+        DownloadActionKind.ReviewRecovery,
+        "Review recovery",
+        DownloadActionIcon.Recovery,
         primary = primary,
-        supportingText = "Choose whether to resume, validate, locate, or restart safely.",
+        supportingText = "Open Recovery with this exact download selected.",
+    )
+
+    private fun locateFile() = DownloadAction(
+        DownloadActionKind.LocateFile,
+        "Locate file",
+        DownloadActionIcon.Folder,
+        supportingText = "Choose the missing artifact and validate it before reassociation.",
+    )
+
+    private fun restartFromZero(download: Download) = DownloadAction(
+        DownloadActionKind.RestartFromZero,
+        "Restart from zero",
+        DownloadActionIcon.Refresh,
+        enabled = download.sourceUrl.isNotBlank(),
+        destructive = true,
+        requiresConfirmation = true,
+        supportingText = "Discard stale attempt ownership and create a fresh generation while preserving request settings.",
     )
 
     private fun pause(label: String = "Pause", primary: Boolean = false) = DownloadAction(
-        kind = DownloadActionKind.Pause,
-        label = label,
-        icon = DownloadActionIcon.Pause,
+        DownloadActionKind.Pause,
+        label,
+        DownloadActionIcon.Pause,
         primary = primary,
-        supportingText = "Pause transfer activity without deleting partial data.",
+        supportingText = "Pause the active transfer without deleting validated partial data.",
     )
 
-    private fun resume(label: String = "Resume", primary: Boolean = false) = DownloadAction(
-        kind = DownloadActionKind.Resume,
-        label = label,
-        icon = DownloadActionIcon.Play,
+    private fun resume(label: String = "Resume", primary: Boolean = false, validated: Boolean) = DownloadAction(
+        DownloadActionKind.Resume,
+        label,
+        DownloadActionIcon.Play,
         primary = primary,
-        supportingText = "Continue using the saved partial file when possible.",
+        supportingText = if (validated) {
+            "Continue from partial data whose durable validators are still available."
+        } else {
+            "XDM will validate the current partial artifact before deciding whether bytes can be reused."
+        },
     )
 
     private fun retry(primary: Boolean = false) = DownloadAction(
-        kind = DownloadActionKind.Retry,
-        label = "Retry",
-        icon = DownloadActionIcon.Refresh,
+        DownloadActionKind.Retry,
+        "Retry",
+        DownloadActionIcon.Refresh,
         primary = primary,
-        supportingText = "Retry the last failed transfer with the current configuration.",
+        supportingText = "Create a real new network attempt with the preserved request configuration.",
     )
 
     private fun startNow(primary: Boolean = false) = DownloadAction(
-        kind = DownloadActionKind.StartNow,
-        label = "Start now",
-        icon = DownloadActionIcon.Play,
+        DownloadActionKind.StartNow,
+        "Start now",
+        DownloadActionIcon.Play,
         primary = primary,
-        supportingText = "Move this queued item into active transfer consideration.",
+        supportingText = "Request an immediate queue claim. This never routes through Pause.",
     )
 
-    private fun openFile(download: Download, primary: Boolean = false) = DownloadAction(
-        kind = DownloadActionKind.OpenFile,
-        label = "Open file",
-        icon = DownloadActionIcon.Open,
+    private fun openFile(context: DownloadActionContext, primary: Boolean = false) = DownloadAction(
+        DownloadActionKind.OpenFile,
+        "Open file",
+        DownloadActionIcon.Open,
+        enabled = context.artifact.readable,
         primary = primary,
-        enabled = download.destinationUri.isNotBlank(),
-        supportingText = "Open the completed file from its saved destination when Android grants access.",
+        supportingText = context.artifact.detail,
     )
 
-    private fun openFolder(download: Download, label: String = "Open location") = DownloadAction(
-        kind = DownloadActionKind.OpenFolder,
-        label = label,
-        icon = DownloadActionIcon.Folder,
-        enabled = download.destinationUri.isNotBlank(),
-        supportingText = "Open or review the saved destination.",
+    private fun openLocation(context: DownloadActionContext) = DownloadAction(
+        DownloadActionKind.OpenFolder,
+        "Open provider location",
+        DownloadActionIcon.Folder,
+        enabled = context.artifact.locationBrowsable,
+        supportingText = "Open the provider location that actually contains the completed artifact.",
     )
 
-    private fun copyLink(download: Download) = DownloadAction(
-        kind = DownloadActionKind.CopyLink,
-        label = "Copy link",
-        icon = DownloadActionIcon.Copy,
-        enabled = download.sourceUrl.isNotBlank(),
-        requiresConfirmation = true,
-        supportingText = "Copy the full source URL. It may contain private access parameters and will be marked sensitive on the clipboard.",
+    private fun copyLink(context: DownloadActionContext) = DownloadAction(
+        DownloadActionKind.CopyLink,
+        "Copy redacted source URL",
+        DownloadActionIcon.Copy,
+        enabled = !context.publicSourceUrl.isNullOrBlank(),
+        supportingText = "Copies a persistence-safe URL. Tokens, signatures, cookies, and credential query values are not copied.",
     )
 
     private fun copyFileName(download: Download) = DownloadAction(
-        kind = DownloadActionKind.CopyFileName,
-        label = "Copy file name",
-        icon = DownloadActionIcon.Copy,
+        DownloadActionKind.CopyFileName,
+        "Copy file name",
+        DownloadActionIcon.Copy,
         enabled = download.fileName.isNotBlank(),
         supportingText = "Copy the display file name.",
     )
 
-    private fun copyDestination(download: Download) = DownloadAction(
-        kind = DownloadActionKind.CopyDestination,
-        label = "Copy path",
-        icon = DownloadActionIcon.Copy,
-        enabled = download.destinationUri.isNotBlank(),
-        supportingText = "Copy the saved Android URI or verified path. Provider identifiers can be private.",
+    private fun copyFriendlyLocation(context: DownloadActionContext) = DownloadAction(
+        DownloadActionKind.CopyFriendlyLocation,
+        "Copy friendly location",
+        DownloadActionIcon.Copy,
+        enabled = context.artifact.friendlyLocation.isNotBlank(),
+        supportingText = "Copy the human-readable provider and folder description.",
     )
 
-    private fun shareLink(download: Download) = DownloadAction(
-        kind = DownloadActionKind.ShareLink,
-        label = "Share link",
-        icon = DownloadActionIcon.Share,
-        enabled = download.sourceUrl.isNotBlank(),
-        requiresConfirmation = true,
-        supportingText = "Share the full source URL with another app. It may contain private access parameters.",
+    private fun copyDestination(context: DownloadActionContext) = DownloadAction(
+        DownloadActionKind.CopyDestination,
+        "Copy Android URI",
+        DownloadActionIcon.Copy,
+        enabled = !context.artifact.androidUri.isNullOrBlank(),
+        supportingText = "Copy the canonical Android content URI. The clipboard entry is marked sensitive.",
     )
 
-    private fun shareFile(download: Download) = DownloadAction(
-        kind = DownloadActionKind.ShareFile,
-        label = "Share file",
-        icon = DownloadActionIcon.Share,
-        enabled = download.destinationUri.isNotBlank(),
-        supportingText = "Share the completed file when Android grants access.",
+    private fun shareFile(context: DownloadActionContext) = DownloadAction(
+        DownloadActionKind.ShareFile,
+        "Share file",
+        DownloadActionIcon.Share,
+        enabled = context.artifact.shareable,
+        supportingText = "Share the completed artifact with a temporary read grant.",
     )
 
     private fun refreshLink(download: Download) = DownloadAction(
-        kind = DownloadActionKind.RefreshLink,
-        label = "Refresh link",
-        icon = DownloadActionIcon.Refresh,
-        enabled = download.sourceUrl.isNotBlank(),
-        supportingText = "Ask for a fresh URL before redownloading or retrying.",
+        DownloadActionKind.RefreshLink,
+        "Replace source URL",
+        DownloadActionIcon.Refresh,
+        enabled = download.state !in pausableStates && download.state !in setOf(DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing),
+        supportingText = "Enter a fresh URL while retaining destination, queue, checksum, backend preference, and post-processing links.",
     )
 
     private fun redownload(download: Download, label: String = "Redownload") = DownloadAction(
-        kind = DownloadActionKind.Redownload,
-        label = label,
-        icon = DownloadActionIcon.Refresh,
+        DownloadActionKind.Redownload,
+        label,
+        DownloadActionIcon.Refresh,
         enabled = download.sourceUrl.isNotBlank(),
         requiresConfirmation = true,
-        supportingText = "Create a fresh attempt from the same source.",
+        supportingText = "Create a fresh entry preserving the original destination, queue, conflict policy, backend preference, checksum, request session, and post-processing rules where still valid.",
     )
 
-    private fun rename(download: Download) = DownloadAction(
-        kind = DownloadActionKind.Rename,
-        label = "Rename",
-        icon = DownloadActionIcon.Rename,
-        enabled = download.fileName.isNotBlank(),
-        supportingText = "Rename or move the saved file through a safe destination flow.",
+    private fun rename(context: DownloadActionContext) = DownloadAction(
+        DownloadActionKind.Rename,
+        "Rename file",
+        DownloadActionIcon.Rename,
+        enabled = context.artifact.renameable,
+        supportingText = if (context.artifact.renameable) "Rename through the owning Android provider and update the canonical URI." else "The current provider does not expose a safe rename operation.",
     )
 
-    private fun cancel(download: Download) = DownloadAction(
-        kind = DownloadActionKind.Cancel,
-        label = "Cancel",
-        icon = DownloadActionIcon.Cancel,
-        enabled = download.state != DownloadState.Completed,
+    private fun deleteFile(context: DownloadActionContext) = DownloadAction(
+        DownloadActionKind.DeleteFile,
+        "Delete saved file",
+        DownloadActionIcon.Delete,
+        enabled = context.artifact.deletable,
         destructive = true,
         requiresConfirmation = true,
-        supportingText = "Stop this transfer and keep destructive choices behind confirmation.",
+        supportingText = "Delete the completed artifact only. The download entry remains and will show the file as missing.",
     )
 
-    private fun deleteRecord(download: Download, label: String = "Delete record") = DownloadAction(
-        kind = DownloadActionKind.DeleteRecord,
-        label = label,
-        icon = DownloadActionIcon.Delete,
-        enabled = true,
+    private fun deleteHistory(download: Download, label: String = "Delete download entry") = DownloadAction(
+        DownloadActionKind.DeleteRecord,
+        label,
+        DownloadActionIcon.Delete,
+        enabled = download.state !in pausableStates && download.state !in setOf(DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing),
         destructive = true,
         requiresConfirmation = true,
-        supportingText = when (download.state) {
-            DownloadState.Completed -> "Remove the history record without deleting the saved file."
-            DownloadState.Downloading,
-            DownloadState.Connecting,
-            DownloadState.Finalizing,
-            DownloadState.Verifying,
-            DownloadState.Repairing,
-            DownloadState.Queued,
-            DownloadState.Created,
-            -> "Cancel the transfer if needed, then remove the list record without deleting saved files."
-            DownloadState.RecoveryRequired -> "Remove the recovery/list record without deleting user files."
-            else -> "Remove the list record without deleting saved files."
-        },
+        supportingText = "Delete the complete XDM history graph while keeping the saved file.",
     )
 
-    private fun deleteRecord(label: String) = DownloadAction(
-        kind = DownloadActionKind.DeleteRecord,
-        label = label,
-        icon = DownloadActionIcon.Delete,
+    private fun deleteHistory(label: String) = DownloadAction(
+        DownloadActionKind.DeleteRecord,
+        label,
+        DownloadActionIcon.Delete,
         destructive = true,
         requiresConfirmation = true,
-        supportingText = "Remove history records without deleting saved files.",
+        supportingText = "Delete the selected complete download history graphs after active ownership has stopped.",
     )
 
-    private fun deleteFileAndRecord(download: Download) = DownloadAction(
-        kind = DownloadActionKind.DeleteFileAndRecord,
-        label = "Delete file + record",
-        icon = DownloadActionIcon.Delete,
-        enabled = download.destinationUri.isNotBlank(),
+    private fun deleteFileAndHistory(context: DownloadActionContext) = DownloadAction(
+        DownloadActionKind.DeleteFileAndRecord,
+        "Delete file and download entry",
+        DownloadActionIcon.Delete,
+        enabled = context.artifact.deletable,
         destructive = true,
         requiresConfirmation = true,
-        supportingText = "Delete the saved file as well as the history record after confirmation.",
+        supportingText = "Delete the exact completed artifact first, then delete the complete XDM history graph only after storage deletion succeeds.",
     )
 
-    private fun moveToTop(download: Download) = move(download, DownloadActionKind.MoveToTop, "Move to top")
-    private fun moveUp(download: Download) = move(download, DownloadActionKind.MoveUp, "Move up")
-    private fun moveDown(download: Download) = move(download, DownloadActionKind.MoveDown, "Move down")
-    private fun moveToBottom(download: Download) = move(download, DownloadActionKind.MoveToBottom, "Move to bottom")
+    private fun cancel(download: Download, supporting: String = "Stop this transfer and keep its download entry.") = DownloadAction(
+        DownloadActionKind.Cancel,
+        "Cancel transfer",
+        DownloadActionIcon.Cancel,
+        enabled = download.state !in terminalStates,
+        destructive = true,
+        requiresConfirmation = true,
+        supportingText = supporting,
+    )
 
-    private fun move(download: Download, kind: DownloadActionKind, label: String) = DownloadAction(
-        kind = kind,
-        label = label,
-        icon = DownloadActionIcon.Move,
-        enabled = download.queueId != null || download.state in setOf(DownloadState.Queued, DownloadState.Created),
-        supportingText = "Reorder this item inside the waiting queue.",
+    private fun moveToTop(download: Download, context: DownloadActionContext) = move(
+        DownloadActionKind.MoveToTop,
+        "Move to top",
+        download.state in queueStates && context.canMoveUp(),
+        "Place this item first in its queue.",
+    )
+
+    private fun moveUp(download: Download, context: DownloadActionContext) = move(
+        DownloadActionKind.MoveUp,
+        "Move up",
+        download.state in queueStates && context.canMoveUp(),
+        "Move this item one place earlier.",
+    )
+
+    private fun moveDown(download: Download, context: DownloadActionContext) = move(
+        DownloadActionKind.MoveDown,
+        "Move down",
+        download.state in queueStates && context.canMoveDown(),
+        "Move this item one place later.",
+    )
+
+    private fun moveToBottom(download: Download, context: DownloadActionContext) = move(
+        DownloadActionKind.MoveToBottom,
+        "Move to bottom",
+        download.state in queueStates && context.canMoveDown(),
+        "Place this item last in its queue.",
+    )
+
+    private fun move(kind: DownloadActionKind, label: String, enabled: Boolean, supporting: String) = DownloadAction(
+        kind,
+        label,
+        DownloadActionIcon.Move,
+        enabled = enabled,
+        supportingText = supporting,
     )
 }

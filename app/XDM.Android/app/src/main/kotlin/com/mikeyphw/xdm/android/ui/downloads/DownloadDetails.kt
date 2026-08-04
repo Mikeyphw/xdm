@@ -32,6 +32,12 @@ import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.ChecksumResult
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.DownloadAction
+import com.mikeyphw.xdm.android.model.DownloadActionContext
+import com.mikeyphw.xdm.android.model.DownloadActionKind
+import com.mikeyphw.xdm.android.model.DownloadActionPlanner
+import com.mikeyphw.xdm.android.model.DownloadUiTruthPlanner
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.RuntimeFailureRecoveryActionKind
 import com.mikeyphw.xdm.android.model.RuntimeRecoveryExecutionDecision
@@ -53,6 +59,7 @@ private const val YtDlpMediaGuidance = "Open Media, inspect this source, then ch
 @Composable
 internal fun DownloadDetails(
     download: Download,
+    actionContext: DownloadActionContext,
     capabilities: List<BackendCapabilityRow>,
     checksumResults: List<ChecksumResult>,
     verificationRecords: List<VerificationRecord>,
@@ -65,15 +72,19 @@ internal fun DownloadDetails(
     onRunPostProcessing: (Download) -> Unit,
     onStartIgnoringQueuePolicy: (Download) -> Unit,
     onOpenActivityAttention: () -> Unit,
+    onDownloadAction: (DownloadAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val latestVerification = verificationRecords.firstOrNull { it.downloadId == download.id }
-    val latestChecksum = checksumResults.firstOrNull { it.downloadId == download.id }
+    val truth = DownloadUiTruthPlanner.truth(download, actionContext)
+    val primaryAction = DownloadActionPlanner.primaryActionFor(download, actionContext)
+    val latestVerification = verificationRecords.filter { it.downloadId == download.id }.maxByOrNull { it.updatedAtEpochMs }
+    val latestChecksum = checksumResults.filter { it.downloadId == download.id }.maxByOrNull { it.verifiedAtEpochMs }
     val queuePolicyHeld = download.errorMessage.orEmpty().startsWith("Queue policy:") &&
         download.state !in setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Completed, DownloadState.Cancelled)
     val recoveryPlan = RuntimeFailureRecoveryPlanner.evaluate(download)
     val postProcessingAvailability = PostProcessingAutomationPolicy.availabilityFor(download, postProcessingAutomation, termuxBridge)
+    val actions = DownloadActionPlanner.actionsFor(download, actionContext)
 
     Column(modifier.fillMaxWidth().xdmScreen(XdmScreenTags.DownloadsDetail, "Download details"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Surface(
@@ -83,11 +94,7 @@ internal fun DownloadDetails(
             tonalElevation = 0.dp,
             shadowElevation = 0.dp,
         ) {
-            Column(
-                Modifier.fillMaxWidth().padding(18.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -101,73 +108,43 @@ internal fun DownloadDetails(
                         modifier = Modifier.padding(14.dp).size(28.dp),
                     )
                 }
-                Text(
-                    download.fileName,
-                    style = MaterialTheme.typography.titleLarge,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.semantics { heading() },
-                )
-                Text(
-                    hostFromUrl(download.sourceUrl),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                download.totalBytes?.let {
-                    XdmProgressLine(
-                        progress = download.progressFraction,
-                        stateLabel = download.progressAccessibilitySummary(),
-                    )
-                }
+                Text(download.fileName, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
+                Text(hostFromUrl(download.sourceUrl), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                download.totalBytes?.let { XdmProgressLine(download.progressFraction, truth.overallProgressText) }
                 XdmActionFlowRow {
-                    if (download.primaryActionUsesToggle()) {
-                        Button(
-                            onClick = { onTogglePause(download) },
-                            modifier = Modifier.sizeIn(minHeight = 48.dp),
-                        ) {
-                            val resume = download.state in setOf(
-                                DownloadState.Paused,
-                                DownloadState.WaitingForNetwork,
-                                DownloadState.WaitingForPower,
-                                DownloadState.Failed,
-                            )
-                            Icon(
-                                if (download.state == DownloadState.Failed) Icons.Rounded.Refresh
-                                else if (resume) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
-                                contentDescription = null,
-                            )
-                            Text(
-                                when {
-                                    download.state == DownloadState.Failed -> "Retry"
-                                    resume -> "Resume"
-                                    else -> "Pause"
-                                },
-                            )
-                        }
+                    Button(
+                        onClick = { onDownloadAction(primaryAction) },
+                        enabled = primaryAction.enabled,
+                        modifier = Modifier.sizeIn(minHeight = 48.dp),
+                    ) {
+                        Icon(primaryAction.iconVector(), contentDescription = null)
+                        Text(primaryAction.label)
                     }
-                    if (queuePolicyHeld) {
-                        Button(onClick = { onStartIgnoringQueuePolicy(download) }) { Text("Start now") }
+                    if (download.state in setOf(DownloadState.Connecting, DownloadState.Downloading, DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing)) {
+                        TextButton(onClick = { onDownloadAction(actions.first { it.kind == DownloadActionKind.Cancel }) }) { Text("Cancel") }
                     }
                 }
             }
         }
 
         XdmGroupedList {
-            DownloadDetailRow("Status", download.plainStatus())
+            DownloadDetailRow("Status", truth.status)
             XdmListSeparator()
-            DownloadDetailRow("Progress", download.progressSummary())
+            DownloadDetailRow("Payload bytes", truth.byteProgressText)
             XdmListSeparator()
-            DownloadDetailRow("Save to", destinationUiLabel(download.destinationUri))
+            DownloadDetailRow("Overall completion", truth.overallProgressText)
             XdmListSeparator()
-            DownloadDetailRow("Storage", destinationUiHint(download.destinationUri))
+            DownloadDetailRow("Saved location", actionContext.artifact.friendlyLocation)
             XdmListSeparator()
-            DownloadDetailRow("Source", hostFromUrl(download.sourceUrl))
-            if (latestVerification != null || latestChecksum != null || download.state in setOf(DownloadState.Verifying, DownloadState.Repairing)) {
-                XdmListSeparator()
-                DownloadDetailRow("Verification", verificationSummary(download, latestVerification, latestChecksum))
-            }
+            DownloadDetailRow("Provider", actionContext.artifact.providerLabel)
+            XdmListSeparator()
+            DownloadDetailRow("Artifact health", actionContext.artifact.health.name.replace(Regex("([a-z])([A-Z])"), "$1 $2"))
+            XdmListSeparator()
+            DownloadDetailRow("Provider detail", actionContext.artifact.detail)
+            XdmListSeparator()
+            DownloadDetailRow("Source site", hostFromUrl(download.sourceUrl))
+            XdmListSeparator()
+            DownloadDetailRow("Verification", truth.verificationText)
         }
 
         download.errorMessage?.takeIf(String::isNotBlank)?.let { error ->
@@ -175,7 +152,7 @@ internal fun DownloadDetails(
                 text = error.removePrefix("Queue policy:").trim(),
                 tone = if (queuePolicyHeld) XdmStatusTone.Warning else XdmStatusTone.Error,
                 actionLabel = if (queuePolicyHeld) "Start now" else null,
-                onAction = if (queuePolicyHeld) ({ onStartIgnoringQueuePolicy(download) }) else null,
+                onAction = if (queuePolicyHeld) ({ actions.firstOrNull { it.kind in setOf(DownloadActionKind.StartNow, DownloadActionKind.Resume) }?.let(onDownloadAction) }) else null,
             )
         }
 
@@ -193,52 +170,75 @@ internal fun DownloadDetails(
         XdmTechnicalDetails {
             DownloadDetailRow("Engine", download.backend.uiLabel())
             DownloadDetailRow("Requested method", download.requestedBackend.uiLabel())
-            DownloadDetailRow("Resume", if (download.bytesReceived > 0L) "Partial data preserved" else "Available when supported")
+            DownloadDetailRow("Resume", truth.resumeText)
             DownloadDetailRow("Queue", download.queueId ?: "Default queue")
-            DownloadDetailRow("Request data", "Protected and redacted")
+            DownloadDetailRow("Request session", if (actionContext.publicSourceUrl != null) "A redacted public source is available; exact host-bound request data is resolved only at execution time." else "No copy-safe source URL is available.")
             DownloadDetailRow("Conflict policy", download.conflictPolicy.uiLabel())
-            if (download.backendSelectionExplanation.isNotBlank()) {
-                DownloadDetailRow("Method choice", download.backendSelectionExplanation)
-            }
-            BackendMigrationAction(download, capabilities, onMigrateBackend)
+            if (download.backendSelectionExplanation.isNotBlank()) DownloadDetailRow("Method choice", download.backendSelectionExplanation)
+            if (actionContext.backendMigrationAvailable) BackendMigrationAction(download, capabilities, onMigrateBackend)
+            else DownloadDetailRow("Backend migration", "No compatible migration target is currently available for this source and destination.")
         }
 
-        if (download.state in setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)) {
+        XdmGroupedList {
+            actions.filter { it.kind !in setOf(DownloadActionKind.OpenDetails) }.forEachIndexed { index, action ->
+                if (index > 0) XdmListSeparator()
+                XdmListRow(
+                    headline = action.label,
+                    supporting = action.supportingText,
+                    enabled = action.enabled,
+                    leading = { Icon(action.iconVector(), contentDescription = null) },
+                    onClick = if (action.enabled) ({ onDownloadAction(action) }) else null,
+                )
+            }
+        }
+
+        if (actionContext.publicSourceUrl != null || actionContext.postProcessingInputAvailable) {
             XdmGroupedList {
-                XdmListRow(
-                    headline = "Copy source link",
-                    supporting = "Copies the public URL only.",
-                    onClick = { copyTextToClipboard(context, "XDM source URL", download.sourceUrl) },
-                )
-                XdmListSeparator()
-                XdmListRow(
-                    headline = "Copy file information",
-                    supporting = "Creates a human-readable summary for support.",
-                    onClick = { copyTextToClipboard(context, "XDM file info", download.fileManagementSummary()) },
-                )
-                XdmListSeparator()
-                XdmListRow(
-                    headline = "Preview post-processing",
-                    supporting = "Shows the safe rules that would run.",
-                    onClick = { onPreviewPostProcessing(download) },
-                )
-                XdmListSeparator()
-                XdmListRow(
-                    headline = "Run post-processing",
-                    supporting = postProcessingAvailability.reason,
-                    enabled = postProcessingAvailability.canRun,
-                    onClick = { onRunPostProcessing(download) },
-                )
-                XdmListSeparator()
-                XdmListRow(
-                    headline = "Remove from history",
-                    supporting = "Keeps the downloaded file in its destination.",
-                    onClick = { onRemoveHistory(download) },
-                )
+                if (actionContext.publicSourceUrl != null) {
+                    XdmListRow(
+                        headline = "Copy redacted source URL",
+                        supporting = "Credential-bearing query values are removed or redacted before copying.",
+                        onClick = { copySensitiveTextToClipboard(context, "XDM redacted source URL", actionContext.publicSourceUrl) },
+                    )
+                }
+                if (actionContext.publicSourceUrl != null && actionContext.postProcessingInputAvailable) XdmListSeparator()
+                if (actionContext.postProcessingInputAvailable) {
+                    XdmListRow(
+                        headline = "Copy redacted file information",
+                        supporting = "Uses friendly provider information and omits raw URLs, tokens, cookies, authorization values, and filesystem paths.",
+                        onClick = { copyTextToClipboard(context, "XDM file info", download.redactedFileManagementSummary(actionContext)) },
+                    )
+                    XdmListSeparator()
+                    XdmListRow(
+                        headline = "Preview post-processing",
+                        supporting = "Shows the safe rules that would run against the validated input artifact.",
+                        onClick = { onPreviewPostProcessing(download) },
+                    )
+                    XdmListSeparator()
+                    XdmListRow(
+                        headline = "Run post-processing",
+                        supporting = postProcessingAvailability.reason,
+                        enabled = postProcessingAvailability.canRun,
+                        onClick = { onRunPostProcessing(download) },
+                    )
+                }
             }
         }
     }
 }
+
+private fun Download.redactedFileManagementSummary(context: DownloadActionContext): String = buildString {
+    appendLine("File: $fileName")
+    appendLine("State: ${state.uiLabel()}")
+    appendLine("Backend: ${backend.uiLabel()}")
+    appendLine("Source site: ${hostFromUrl(sourceUrl)}")
+    appendLine("Saved location: ${context.artifact.friendlyLocation}")
+    appendLine("Provider: ${context.artifact.providerLabel}")
+    appendLine("Artifact health: ${context.artifact.health}")
+    appendLine("Payload: ${bytesReceived.formatBytes()}${totalBytes?.let { " / ${it.formatBytes()}" } ?: ""}")
+    appendLine("Verification: ${DownloadUiTruthPlanner.truth(this@redactedFileManagementSummary, context).verificationText}")
+    mimeType?.takeIf(String::isNotBlank)?.let { appendLine("MIME type: $it") }
+}.trimEnd()
 
 @Composable
 private fun RuntimeFailureRecoveryCard(
@@ -428,50 +428,4 @@ private fun BackendMigrationAction(
             Text(if (download.bytesReceived > 0L) "Restart with ${targetBackend.uiLabel()}" else "Switch to ${targetBackend.uiLabel()}")
         }
     }
-}
-
-private fun Download.plainStatus(): String = when (state) {
-    DownloadState.Created -> "Ready to enter the queue"
-    DownloadState.Queued -> "Waiting for its turn"
-    DownloadState.Connecting -> "Connecting to the source"
-    DownloadState.Downloading -> "Downloading normally"
-    DownloadState.Paused -> "Paused by you"
-    DownloadState.WaitingForNetwork -> "Waiting for an allowed network"
-    DownloadState.WaitingForPower -> "Waiting for power conditions"
-    DownloadState.Verifying -> "Checking file integrity"
-    DownloadState.Repairing -> "Repairing damaged ranges"
-    DownloadState.Finalizing -> "Finishing the file"
-    DownloadState.Completed -> "Verified and ready"
-    DownloadState.Failed -> "Needs a retry"
-    DownloadState.RecoveryRequired -> "Needs a safe recovery decision"
-    DownloadState.Cancelled -> "Cancelled"
-}
-
-private fun Download.progressSummary(): String {
-    val total = totalBytes
-    return when {
-        total != null -> "${(progressFraction * 100).toInt()}% • ${bytesReceived.formatBytes()} of ${total.formatBytes()}"
-        bytesReceived > 0L -> bytesReceived.formatBytes()
-        else -> state.uiLabel()
-    }
-}
-
-private fun verificationSummary(
-    download: Download,
-    verification: VerificationRecord?,
-    checksum: ChecksumResult?,
-): String {
-    val stateLabel = verification?.status?.uiLabel() ?: when (download.state) {
-        DownloadState.Verifying -> VerificationStatus.Running.uiLabel()
-        DownloadState.Repairing -> "Repair in progress"
-        else -> "Pending"
-    }
-    val checksumLabel = checksum?.let {
-        when (it.matchesExpectation) {
-            true -> "${it.algorithm.uiLabel()} matched"
-            false -> "${it.algorithm.uiLabel()} mismatch"
-            null -> "${it.algorithm.uiLabel()} recorded"
-        }
-    }
-    return listOfNotNull(stateLabel, checksumLabel, verification?.message?.takeIf(String::isNotBlank)).joinToString(" • ")
 }

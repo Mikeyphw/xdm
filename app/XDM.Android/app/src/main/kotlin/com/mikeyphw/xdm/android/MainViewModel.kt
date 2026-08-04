@@ -42,6 +42,7 @@ import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.DestinationRule
 import com.mikeyphw.xdm.android.model.DestinationRuleMatch
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.CompletedArtifactCapabilities
 import com.mikeyphw.xdm.android.model.DownloadActionKind
 import com.mikeyphw.xdm.android.model.DownloadTag
 import com.mikeyphw.xdm.android.model.DownloadTagAssignment
@@ -159,6 +160,8 @@ data class MainUiState(
     val activeTransfers: ActiveTransferSummary = ActiveTransferSummary(),
     val queueIntelligence: QueueIntelligenceSummary = QueueIntelligenceSummary(),
     val activityPanel: ActivityPanel = ActivityPanel.Attention,
+    val selectedRecoveryDownloadId: String? = null,
+    val selectedRecoveryAction: String? = null,
     val settingsPanel: SettingsPanel = SettingsPanel.Overview,
     val activityEvents: List<OperationalActivityEvent> = emptyList(),
     val activitySummary: OperationalActivitySummary = OperationalActivitySummary(),
@@ -261,6 +264,7 @@ class MainViewModel(
     private val termuxAria2CockpitManager: TermuxAria2CockpitManager,
     private val termuxMediaPipelineManager: TermuxMediaPipelineManager,
     private val postProcessingAutomationManager: PostProcessingAutomationManager,
+    private val downloadArtifactActionManager: DownloadArtifactActionManager,
     private val mediaResolverSelectionStore: MediaResolverSelectionStore,
     private val operationalActivityStore: OperationalActivityStore,
     private val browserExtensionExportManager: BrowserExtensionExportManager,
@@ -271,6 +275,8 @@ class MainViewModel(
         val route: AppRoute? = null,
         val activityPanel: ActivityPanel = ActivityPanel.Attention,
         val settingsPanel: SettingsPanel = SettingsPanel.Overview,
+        val selectedRecoveryDownloadId: String? = null,
+        val selectedRecoveryAction: String? = null,
     )
 
     private val navigationOverride = MutableStateFlow(NavigationOverride())
@@ -609,6 +615,8 @@ class MainViewModel(
             activeTransfers = runtime.activeTransfers,
             queueIntelligence = runtime.queueIntelligence,
             activityPanel = navigation.activityPanel.normalized(prefs.developerOptionsEnabled),
+            selectedRecoveryDownloadId = navigation.selectedRecoveryDownloadId,
+            selectedRecoveryAction = navigation.selectedRecoveryAction,
             settingsPanel = navigation.settingsPanel,
             activityEvents = activityEvents,
             activitySummary = activitySummary,
@@ -712,6 +720,16 @@ class MainViewModel(
 
     fun selectActivityPanel(panel: ActivityPanel) {
         navigationOverride.value = navigationOverride.value.copy(activityPanel = panel.normalized(uiState.value.developerOptionsEnabled))
+    }
+
+    fun openRecoveryFor(download: Download, action: DownloadActionKind = DownloadActionKind.ReviewRecovery) {
+        navigationOverride.value = NavigationOverride(
+            route = AppRoute.Activity,
+            activityPanel = ActivityPanel.Recovery,
+            selectedRecoveryDownloadId = download.id,
+            selectedRecoveryAction = action.name,
+        )
+        viewModelScope.launch { preferences.setRoute(AppRoute.Activity) }
     }
 
     fun selectSettingsPanel(panel: SettingsPanel) {
@@ -1323,75 +1341,205 @@ class MainViewModel(
         viewModelScope.launch(Dispatchers.IO) { candidates.forEach { repository.deleteDownload(it.id) } }
     }
 
+    suspend fun inspectCompletedArtifact(download: Download): CompletedArtifactCapabilities =
+        downloadArtifactActionManager.inspect(download)
+
+    suspend fun inspectResumeCapability(download: Download): Boolean =
+        repository.hasDurableResumeEvidence(download.id)
+
+    fun startNow(download: Download) {
+        viewModelScope.launch(Dispatchers.IO) {
+            queueIntelligenceCoordinator.requestStart(
+                downloadId = download.id,
+                userVisible = true,
+                manual = true,
+                policyOverride = download.errorMessage.orEmpty().startsWith("Queue policy:"),
+            )
+        }
+    }
+
     fun removeDownloadFromHistory(download: Download) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val current = repository.findDownload(download.id) ?: download
-            if (current.state != DownloadState.Completed) {
-                runCatching { transferRuntime.cancel(current.id) }
+        deleteDownloadEntry(download) { }
+    }
+
+    fun deleteDownloadEntry(download: Download, onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val message = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                val current = repository.findDownload(download.id) ?: return@withContext "This download entry was already removed."
+                if (current.state !in setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired)) {
+                    runCatching { transferRuntime.cancel(current.id) }.getOrElse {
+                        return@withContext "The active transfer could not be stopped, so its entry was not removed."
+                    }
+                    val afterCancel = repository.findDownload(current.id)
+                    if (afterCancel != null && afterCancel.state !in setOf(DownloadState.Cancelled, DownloadState.Failed, DownloadState.RecoveryRequired)) {
+                        return@withContext "The transfer is still active. Its entry was not removed."
+                    }
+                }
+                val terminalStates = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired)
+                val terminalCurrent = repository.findDownload(current.id) ?: return@withContext "This download entry was already removed."
+                val deleted = repository.deleteDownloadEntryIfTerminal(terminalCurrent, terminalStates)
+                if (!deleted) return@withContext "The transfer changed while deletion was being committed. Its entry was not removed."
+                MediaRequestHandoffStore.forget(current.id)
+                if (repository.findDownload(current.id) == null) "Deleted the download entry and its complete database graph after an atomic terminal-state check."
+                else "The database did not confirm deletion of the download entry."
             }
-            removeDownloadRecord(current.id)
+            onResult(message)
         }
     }
 
-    fun cancelDownload(download: Download) {
-        if (download.state == DownloadState.Completed) return
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { transferRuntime.cancel(download.id) }
-            val current = repository.findDownload(download.id) ?: download
-            if (current.state != DownloadState.Completed) {
-                repository.save(
-                    current.copy(
-                        state = DownloadState.Cancelled,
-                        speedBytesPerSecond = 0,
-                        updatedAtEpochMs = System.currentTimeMillis(),
-                    ),
-                )
+    fun deleteSavedFile(download: Download, removeEntry: Boolean, onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val outcome = downloadArtifactActionManager.delete(download)
+            if (!outcome.success) {
+                onResult(outcome.message)
+                return@launch
             }
+            val message = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                val current = repository.findDownload(download.id) ?: download
+                if (removeEntry) {
+                    val terminalStates = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired)
+                    val terminalCurrent = repository.findDownload(current.id) ?: current
+                    val deleted = repository.deleteDownloadEntryIfTerminal(terminalCurrent, terminalStates)
+                    if (!deleted) return@withContext "The saved file was deleted, but the entry changed before atomic graph deletion and was retained for review."
+                    MediaRequestHandoffStore.forget(current.id)
+                    if (repository.findDownload(current.id) == null) "Deleted the saved file and download entry after an atomic terminal-state check."
+                    else "The file was deleted, but the download entry could not be removed."
+                } else {
+                    repository.save(
+                        current.copy(
+                            state = DownloadState.RecoveryRequired,
+                            speedBytesPerSecond = 0L,
+                            errorMessage = "Saved artifact deleted; the download entry was retained.",
+                            updatedAtEpochMs = System.currentTimeMillis(),
+                        ),
+                    )
+                    "Deleted the saved file. The retained entry now opens Recovery."
+                }
+            }
+            onResult(message)
         }
     }
 
-    private suspend fun removeDownloadRecord(downloadId: String) {
-        repository.deleteBackendTask(downloadId)
-        repository.deleteRecoveryForDownload(downloadId)
-        repository.deleteFinalizationForDownload(downloadId)
-        repository.deleteDownload(downloadId)
+    fun renameCompletedFile(download: Download, requestedName: String, onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val outcome = downloadArtifactActionManager.rename(download, requestedName)
+            if (outcome.success) {
+                kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    val current = repository.findDownload(download.id) ?: download
+                    repository.save(
+                        current.copy(
+                            fileName = outcome.displayName ?: current.fileName,
+                            destinationUri = outcome.canonicalUri ?: current.destinationUri,
+                            updatedAtEpochMs = System.currentTimeMillis(),
+                        ),
+                    )
+                }
+            }
+            onResult(outcome.message)
+        }
+    }
+
+    fun refreshDownloadLink(download: Download, replacementUrl: String, onResult: (String) -> Unit) {
+        val normalized = ExternalUrlPolicy.normalizedUrl(replacementUrl)
+        if (normalized == null) {
+            onResult("Enter a valid HTTP or HTTPS URL.")
+            return
+        }
+        viewModelScope.launch {
+            val message = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                val current = repository.findDownload(download.id) ?: return@withContext "The download entry no longer exists."
+                if (current.state in setOf(DownloadState.Connecting, DownloadState.Downloading, DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing)) {
+                    return@withContext "Stop the active operation before replacing its source URL."
+                }
+                MediaRequestHandoffStore.replaceDownloadUrl(current.id, normalized)
+                val persisted = ExternalUrlPolicy.persistableUrl(normalized) ?: normalized.substringBefore('?')
+                repository.save(current.copy(sourceUrl = persisted, errorMessage = null, updatedAtEpochMs = System.currentTimeMillis()))
+                "Replaced the source URL while preserving destination, queue, checksum, backend preference, and request context allowed for the new host."
+            }
+            onResult(message)
+        }
     }
 
     fun redownload(download: Download) {
-        if (download.sourceUrl.isBlank()) return
-        val now = System.currentTimeMillis()
-        val safeName = resolveFileName(download.sourceUrl, download.fileName)
-        val destination = uiState.value.destinationUri.ifBlank { DestinationUris.PUBLIC_DOWNLOADS }
-        val mediaCandidate = mediaCaptureService.candidateFor(download.sourceUrl)
-        val resolvedDestination = OrganizationPowerTools.destinationFor(download.sourceUrl, safeName, mediaCandidate?.mimeType, uiState.value.destinationRules, destination)
-        val request = previewRequest(download.sourceUrl, safeName, BackendType.Automatic, resolvedDestination, FilenameConflictPolicy.Rename, allowFallback = true, isMediaRequest = mediaCandidate != null)
-        val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
-        if (!recommendation.compatible) return
-        val retry = Download(
-            id = UUID.randomUUID().toString(),
-            fileName = safeName,
-            sourceUrl = download.sourceUrl.trim(),
-            destinationUri = resolvedDestination,
-            state = DownloadState.Queued,
-            backend = recommendation.backend,
-            bytesReceived = 0,
-            totalBytes = null,
-            speedBytesPerSecond = 0,
-            queueId = download.queueId ?: "default",
-            priority = download.priority,
-            createdAtEpochMs = now,
-            updatedAtEpochMs = now,
-            conflictPolicy = FilenameConflictPolicy.Rename,
-            mimeType = mediaCandidate?.mimeType ?: download.mimeType,
-            requestedBackend = BackendType.Automatic,
-            backendSelectionReason = recommendation.reason,
-            backendSelectionExplanation = recommendation.explanation,
-            allowBackendFallback = true,
-        )
+        redownloadPreserving(download) { }
+    }
+
+    fun redownloadPreserving(download: Download, onResult: (String) -> Unit) {
+        if (download.sourceUrl.isBlank()) {
+            onResult("This entry has no reusable source URL.")
+            return
+        }
         viewModelScope.launch {
-            repository.save(retry)
-            queueIntelligenceCoordinator.requestStart(retry.id, userVisible = true, manual = true)
+            val message = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                val current = repository.findDownload(download.id) ?: download
+                val now = System.currentTimeMillis()
+                val newId = UUID.randomUUID().toString()
+                val exactUrl = MediaRequestHandoffStore.forDownload(current.id)?.exactUrl ?: current.sourceUrl
+                val originalDestination = repository.finalizationForDownload(current.id)
+                    ?.destinationUri
+                    ?.takeIf(String::isNotBlank)
+                    ?: current.destinationUri
+                val request = previewRequest(
+                    exactUrl,
+                    current.fileName,
+                    current.requestedBackend,
+                    originalDestination,
+                    current.conflictPolicy,
+                    current.allowBackendFallback,
+                    isMediaRequest = current.mimeType?.startsWith("video/") == true || current.mimeType?.startsWith("audio/") == true,
+                    headers = MediaRequestHandoffStore.forDownload(current.id)?.headers.orEmpty(),
+                    mimeType = current.mimeType,
+                    isExpiringUrl = MediaRequestHandoffStore.forDownload(current.id)?.isExpiringUrl == true,
+                )
+                val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
+                if (!recommendation.compatible) return@withContext "No compatible backend can preserve this download's current requirements."
+                val retry = current.copy(
+                    id = newId,
+                    sourceUrl = ExternalUrlPolicy.persistableUrl(exactUrl) ?: exactUrl.substringBefore('?'),
+                    destinationUri = originalDestination,
+                    state = DownloadState.Queued,
+                    backend = recommendation.backend,
+                    bytesReceived = 0L,
+                    totalBytes = null,
+                    speedBytesPerSecond = 0L,
+                    createdAtEpochMs = now,
+                    updatedAtEpochMs = now,
+                    errorMessage = null,
+                    backendSelectionReason = recommendation.reason,
+                    backendSelectionExplanation = recommendation.explanation,
+                    archived = false,
+                )
+                repository.save(retry)
+                MediaRequestHandoffStore.cloneDownload(current.id, newId, exactUrl)
+                repository.checksumExpectations(current.id).forEach { expectation ->
+                    repository.saveChecksumExpectation(
+                        expectation.copy(
+                            id = newChecksumExpectationId(newId, expectation.algorithm),
+                            downloadId = newId,
+                            createdAtEpochMs = now,
+                        ),
+                    )
+                }
+                uiState.value.tagAssignments.filter { it.downloadId == current.id }.forEach { assignment ->
+                    repository.assignTag(newId, assignment.tagId)
+                }
+                val clonedPostProcessingJobs = repository.clonePostProcessingJobsForRedownload(current.id, newId, now)
+                queueIntelligenceCoordinator.requestStart(newId, userVisible = true, manual = true)
+                "Created a fresh download generation with the original destination, queue, conflict policy, backend preference, checksums, request session, tags, global post-processing rules, and $clonedPostProcessingJobs explicit post-processing job/rule record(s)."
+            }
             navigate(AppRoute.Downloads)
+            onResult(message)
+        }
+    }
+
+    fun restartFromZero(download: Download, onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            kotlinx.coroutines.withContext(Dispatchers.IO) {
+                runCatching { transferRuntime.cancel(download.id) }
+                repository.deleteBackendTask(download.id)
+                repository.deleteFinalizationForDownload(download.id)
+            }
+            redownloadPreserving(download, onResult)
         }
     }
 
@@ -2306,6 +2454,23 @@ class MainViewModel(
         }
     }
 
+    fun cancelDownload(download: Download) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { transferRuntime.cancel(download.id) }
+                .onFailure { error ->
+                    val current = repository.findDownload(download.id) ?: return@onFailure
+                    repository.save(
+                        current.copy(
+                            state = DownloadState.RecoveryRequired,
+                            speedBytesPerSecond = 0L,
+                            errorMessage = "Cancellation could not be confirmed: ${error.message ?: error::class.java.simpleName}",
+                            updatedAtEpochMs = System.currentTimeMillis(),
+                        ),
+                    )
+                }
+        }
+    }
+
     fun togglePause(download: Download) {
         viewModelScope.launch {
             when (download.state) {
@@ -2378,6 +2543,7 @@ class MainViewModel(
             container.termuxAria2CockpitManager,
             container.termuxMediaPipelineManager,
             container.postProcessingAutomationManager,
+            container.downloadArtifactActionManager,
             container.mediaResolverSelectionStore,
             container.operationalActivityStore,
             container.browserExtensionExportManager,

@@ -9,8 +9,8 @@ class Phase65DiagnosticExportDownloadActionContractTest {
     @Test
     fun diagnosticsCanBeExportedThroughAndroidShareSheet() {
         val helper = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/common/UiTextHelpers.kt")
-        val debugCard = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/RuntimeSelfTestSuiteCard.kt")
-        val debugScreen = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt")
+        val debugCard = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsWorkspace.kt")
+        val debugScreen = debugCard
         val settings = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt")
         val model = source("app/src/main/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestModels.kt")
 
@@ -31,15 +31,14 @@ class Phase65DiagnosticExportDownloadActionContractTest {
         val repository = source("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt")
         val dao = source("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadDao.kt")
 
-        assertTrue(planner.contains("deleteRecord(download, label = \"Remove from list\")"))
+        assertTrue(planner.contains("deleteHistory(download, label = \"Delete download entry\")"))
         assertTrue(planner.contains("DownloadActionKind.Cancel"))
         assertTrue(screen.contains("DownloadActionKind.Cancel -> onCancelDownload(download)"))
         assertTrue(screen.contains("DownloadActionKind.DeleteRecord -> onDeleteRecord(download)"))
         assertTrue(viewModel.contains("fun cancelDownload(download: Download)"))
         assertTrue(viewModel.contains("runCatching { transferRuntime.cancel(download.id) }"))
-        assertTrue(viewModel.contains("removeDownloadRecord(current.id)"))
-        assertTrue(repository.contains("deleteRecoveryForDownload"))
-        assertTrue(repository.contains("deleteFinalizationForDownload"))
+        assertTrue(viewModel.contains("repository.deleteDownload(current.id)"))
+        assertTrue(repository.contains("database.downloadGraphTransactionDao().deleteDownloadGraph(id)"))
         assertTrue(dao.contains("DELETE FROM recovery_records WHERE downloadId = :downloadId"))
     }
 

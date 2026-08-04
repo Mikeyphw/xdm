@@ -197,13 +197,26 @@ fun RecoveryScreen(
     onValidate: (RecoveryRecord) -> Unit,
     onRemove: (RecoveryRecord) -> Unit,
     onValidateAll: (List<RecoveryRecord>) -> Unit = {},
+    selectedDownloadId: String? = null,
+    selectedAction: String? = null,
 ) {
     val context = LocalContext.current
     if (records.isEmpty()) {
         EmptyFeatureScreen("Recovery is clear", "No orphaned, interrupted, or hidden storage items were detected.")
         return
     }
+    val orderedRecords = remember(records, selectedDownloadId) {
+        records.sortedByDescending { it.downloadId == selectedDownloadId }
+    }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (selectedDownloadId != null) {
+            item {
+                XdmNoticeRow(
+                    text = "Opened for the selected download${selectedAction?.let { " · ${it.replace('_', ' ').lowercase()}" }.orEmpty()}.",
+                    tone = XdmStatusTone.Info,
+                )
+            }
+        }
         item {
             RecoveryStorageDoctorCard(
                 records = records,
@@ -211,8 +224,8 @@ fun RecoveryScreen(
                 onCopyReport = { copyRecoveryDoctorReport(context, records) },
             )
         }
-        items(records, key = RecoveryRecord::id) { record ->
-            RecoveryRecordCard(record, onValidate, onRemove)
+        items(orderedRecords, key = RecoveryRecord::id) { record ->
+            RecoveryRecordCard(record, onValidate, onRemove, selected = record.downloadId == selectedDownloadId)
         }
     }
 }
@@ -250,13 +263,13 @@ internal fun RecoveryStorageDoctorCard(
     }
 }
 @Composable
-internal fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryRecord) -> Unit, onRemove: (RecoveryRecord) -> Unit) {
+internal fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryRecord) -> Unit, onRemove: (RecoveryRecord) -> Unit, selected: Boolean = false) {
     var technicalExpanded by remember(record.id) { mutableStateOf(false) }
     val guidance = RecoveryStorageDoctor.itemGuidance(record)
     XdmListCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
-                XdmCardTitle(recoveryProblemTitle(record))
+                XdmCardTitle(if (selected) "Selected · ${recoveryProblemTitle(record)}" else recoveryProblemTitle(record))
                 XdmSupportingText(record.reason)
             }
             StatusPill(record.classification.uiLabel(), record.classification.statusTone())

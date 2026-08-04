@@ -1,12 +1,13 @@
 package com.mikeyphw.xdm.android
 
 import com.mikeyphw.xdm.android.model.Download
-import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.DownloadDashboardOrdering
+import com.mikeyphw.xdm.android.model.DownloadState
 
 internal enum class DownloadWorkspaceFilter(val label: String) {
     Active("Active"),
     Queued("Queued"),
+    Paused("Paused"),
     Finished("Finished"),
     All("All"),
 }
@@ -32,40 +33,48 @@ internal object DownloadsWorkspacePlanner {
         DownloadState.Verifying,
         DownloadState.Repairing,
         DownloadState.Finalizing,
-        DownloadState.Failed,
-        DownloadState.RecoveryRequired,
     )
-
     private val queuedStates = setOf(
         DownloadState.Created,
         DownloadState.Queued,
-        DownloadState.Paused,
         DownloadState.WaitingForNetwork,
         DownloadState.WaitingForPower,
+    )
+    private val finishedStates = setOf(
+        DownloadState.Completed,
+        DownloadState.Failed,
+        DownloadState.Cancelled,
+        DownloadState.RecoveryRequired,
     )
 
     fun copyFor(filter: DownloadWorkspaceFilter): DownloadWorkspaceCopy = when (filter) {
         DownloadWorkspaceFilter.Active -> DownloadWorkspaceCopy(
-            title = "In progress",
-            subtitle = "Live progress and the next useful action.",
-            emptyTitle = "Nothing is moving",
-            emptyDescription = "Active downloads and items needing a retry will appear here.",
+            title = "Active transfers",
+            subtitle = "Transfers currently connecting, receiving bytes, verifying, repairing, or committing.",
+            emptyTitle = "No active transfers",
+            emptyDescription = "Only work currently consuming an execution owner appears here.",
         )
         DownloadWorkspaceFilter.Queued -> DownloadWorkspaceCopy(
-            title = "Up next",
-            subtitle = "Downloads waiting for a slot, connection, schedule, or user action.",
+            title = "Queued and policy-held",
+            subtitle = "Downloads waiting for a queue slot, network rule, power rule, or schedule.",
             emptyTitle = "The queue is clear",
-            emptyDescription = "Downloads waiting to start will appear here.",
+            emptyDescription = "Downloads waiting to start will appear here. Paused items have their own filter.",
+        )
+        DownloadWorkspaceFilter.Paused -> DownloadWorkspaceCopy(
+            title = "Paused",
+            subtitle = "Downloads explicitly paused by you and awaiting a resume decision.",
+            emptyTitle = "Nothing is paused",
+            emptyDescription = "Paused transfers will appear here without being mislabeled as up next.",
         )
         DownloadWorkspaceFilter.Finished -> DownloadWorkspaceCopy(
-            title = "Finished",
-            subtitle = "Completed files, ready to open or manage.",
+            title = "Finished and needs attention",
+            subtitle = "Completed, failed, cancelled, and recovery-required entries.",
             emptyTitle = "No finished downloads",
-            emptyDescription = "Completed files will collect here without crowding active work.",
+            emptyDescription = "Terminal outcomes will collect here with truthful next actions.",
         )
         DownloadWorkspaceFilter.All -> DownloadWorkspaceCopy(
             title = "All downloads",
-            subtitle = "One clean timeline across every state.",
+            subtitle = "One timeline across every transfer state.",
             emptyTitle = "No downloads yet",
             emptyDescription = "Use New download to add a link and review it before queueing.",
         )
@@ -77,8 +86,7 @@ internal object DownloadsWorkspacePlanner {
         query: String,
         includeArchived: Boolean,
         ordering: DownloadDashboardOrdering,
-    ): List<Download> = downloads
-        .asSequence()
+    ): List<Download> = downloads.asSequence()
         .filter { includeArchived || !it.archived }
         .filter { matchesFilter(it, filter) }
         .filter { query.isBlank() || matchesQuery(it, query) }
@@ -88,40 +96,26 @@ internal object DownloadsWorkspacePlanner {
     fun metrics(downloads: List<Download>): DownloadWorkspaceMetrics {
         val active = downloads.filter { it.state in activeStates }
         val queued = downloads.count { it.state in queuedStates }
-        val speed = downloads
-            .filter { it.state == DownloadState.Downloading }
-            .sumOf { it.speedBytesPerSecond.coerceAtLeast(0L) }
-        val remainingBytes = downloads
-            .filter { it.state == DownloadState.Downloading }
-            .sumOf { download ->
-                val total = download.totalBytes ?: return@sumOf 0L
-                (total - download.bytesReceived).coerceAtLeast(0L)
-            }
-        val remainingSeconds = speed.takeIf { it > 0L }?.let { remainingBytes / it }
-        return DownloadWorkspaceMetrics(
-            activeCount = active.size,
-            queuedCount = queued,
-            aggregateSpeedBytesPerSecond = speed,
-            remainingSeconds = remainingSeconds,
-        )
+        val receiving = downloads.filter { it.state == DownloadState.Downloading }
+        val speed = receiving.sumOf { it.speedBytesPerSecond.coerceAtLeast(0L) }
+        val allHaveKnownTotals = receiving.isNotEmpty() && receiving.all { it.totalBytes != null }
+        val remainingBytes = if (allHaveKnownTotals) receiving.sumOf {
+            ((it.totalBytes ?: 0L) - it.bytesReceived).coerceAtLeast(0L)
+        } else 0L
+        val remainingSeconds = speed.takeIf { it > 0L && allHaveKnownTotals }?.let { remainingBytes / it }
+        return DownloadWorkspaceMetrics(active.size, queued, speed, remainingSeconds)
     }
 
     fun firstPolicyHeldDownload(downloads: List<Download>): Download? = downloads.firstOrNull { download ->
-        download.errorMessage.orEmpty().startsWith("Queue policy:") &&
-            download.state !in setOf(
-                DownloadState.Downloading,
-                DownloadState.Connecting,
-                DownloadState.Completed,
-                DownloadState.Cancelled,
-            )
+        download.errorMessage.orEmpty().startsWith("Queue policy:") && download.state in queuedStates
     }
 
     private fun matchesQuery(download: Download, query: String): Boolean {
         val needle = query.trim().lowercase()
         return listOf(
             download.fileName,
-            download.sourceUrl,
-            download.destinationUri,
+            hostFromUrl(download.sourceUrl),
+            destinationUiLabel(download.destinationUri),
             download.userLabel.orEmpty(),
             download.backend.name,
             download.state.name,
@@ -131,14 +125,12 @@ internal object DownloadsWorkspacePlanner {
     private fun matchesFilter(download: Download, filter: DownloadWorkspaceFilter): Boolean = when (filter) {
         DownloadWorkspaceFilter.Active -> download.state in activeStates
         DownloadWorkspaceFilter.Queued -> download.state in queuedStates
-        DownloadWorkspaceFilter.Finished -> download.state == DownloadState.Completed
+        DownloadWorkspaceFilter.Paused -> download.state == DownloadState.Paused
+        DownloadWorkspaceFilter.Finished -> download.state in finishedStates
         DownloadWorkspaceFilter.All -> true
     }
 
-    private fun comparatorFor(
-        filter: DownloadWorkspaceFilter,
-        ordering: DownloadDashboardOrdering,
-    ): Comparator<Download> = when (ordering) {
+    private fun comparatorFor(filter: DownloadWorkspaceFilter, ordering: DownloadDashboardOrdering): Comparator<Download> = when (ordering) {
         DownloadDashboardOrdering.Smart -> compareByDescending<Download> { priorityFor(it, filter) }.thenByDescending { it.updatedAtEpochMs }
         DownloadDashboardOrdering.Recent -> compareByDescending { it.updatedAtEpochMs }
         DownloadDashboardOrdering.Name -> compareBy<Download, String>(String.CASE_INSENSITIVE_ORDER) { it.fileName }
@@ -146,9 +138,11 @@ internal object DownloadsWorkspacePlanner {
     }
 
     private fun priorityFor(download: Download, filter: DownloadWorkspaceFilter): Int = when {
-        download.state == DownloadState.Failed || download.state == DownloadState.RecoveryRequired -> 50
-        download.state == DownloadState.Downloading -> 40
-        download.state == DownloadState.Connecting -> 35
+        download.state == DownloadState.RecoveryRequired -> 60
+        download.state == DownloadState.Failed -> 55
+        download.state == DownloadState.Downloading -> 50
+        download.state in setOf(DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing) -> 45
+        download.state == DownloadState.Connecting -> 40
         download.state == DownloadState.Queued -> 30
         download.state == DownloadState.Paused -> 25
         download.state == DownloadState.Completed && filter == DownloadWorkspaceFilter.Finished -> 20
@@ -157,7 +151,7 @@ internal object DownloadsWorkspacePlanner {
 }
 
 internal fun formatRemainingTime(seconds: Long?): String = when {
-    seconds == null -> "Up next"
+    seconds == null -> "Unknown"
     seconds < 60L -> "< 1 min"
     seconds < 3_600L -> "${(seconds + 59L) / 60L} min"
     else -> {

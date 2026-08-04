@@ -292,6 +292,9 @@ object PostProcessingExecutionPolicy {
     fun preflightIssue(spec: PostProcessingJobSpec, bridge: TermuxBridgeStatus): String? {
         validateOutputName(spec.output.displayName)?.let { return it }
         formatCompatibilityIssue(spec)?.let { return it }
+        if (spec.inputUri.startsWith("xdm://downloads/") && spec.inputUri.endsWith("/completed-artifact")) {
+            return "Waiting for the redownloaded artifact to complete before cloning this post-processing action."
+        }
         if (!spec.kind.requiresTermux) return null
         if (!bridge.termuxInstalled) return "Termux is not installed."
         if (!bridge.runCommandPermissionGranted) return "Termux RUN_COMMAND permission is not granted."

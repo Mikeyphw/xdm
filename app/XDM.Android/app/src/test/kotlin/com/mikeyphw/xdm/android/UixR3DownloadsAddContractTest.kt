@@ -15,6 +15,7 @@ class UixR3DownloadsAddContractTest {
             "DownloadWorkspaceFilter",
             "Active(\"Active\")",
             "Queued(\"Queued\")",
+            "Paused(\"Paused\")",
             "Finished(\"Finished\")",
             "All(\"All\")",
             "XdmMetricStrip",

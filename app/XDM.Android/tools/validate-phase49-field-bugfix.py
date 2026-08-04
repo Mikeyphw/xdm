@@ -67,19 +67,19 @@ def main() -> int:
     require('DownloadActionKind.ShareFile -> shareCompletedFile' in downloads, 'Share file must dispatch to file sharing')
     require('DownloadActionKind.Cancel -> onCancelDownload' in downloads, 'Cancel must dispatch to ViewModel')
     require('DownloadActionKind.Redownload -> onRedownload' in downloads, 'Redownload must dispatch to ViewModel')
-    require('DownloadActionKind.DeleteFileAndRecord -> deleteSavedFileAndRecord' in downloads, 'Delete file+record must dispatch explicitly')
+    require('DownloadActionKind.DeleteFileAndRecord -> onDeleteSavedFile(download, true)' in downloads, 'Delete file+entry must dispatch through the off-main storage boundary')
     require('-> onMoveDownloadInQueue(download, action.kind)' in downloads, 'Queue moves must dispatch explicitly')
     require('DownloadActionKind.OpenFile,\n        DownloadActionKind.OpenDetails' not in downloads, 'Actions must not be grouped into details fallback')
     require('requiresConfirmation' in downloads and 'Button(onClick' in downloads, 'Confirmation sheet must remain wired')
 
-    require('DownloadDetailRow("Save to", destinationUiLabel(download.destinationUri))' in details, 'Normal UI must use destination label')
-    require('DownloadDetailRow("Save to", download.destinationUri)' not in details, 'Normal UI must not render raw destination')
+    require('DownloadDetailRow("Saved location", actionContext.artifact.friendlyLocation)' in details, 'Normal UI must use inspected friendly destination')
+    require('DownloadDetailRow("Saved location", download.destinationUri)' not in details, 'Normal UI must not render raw destination')
     require('Saved in Android shared storage' in labels, 'Content URI label must be human')
     require('Android stores shared files with access-safe content links instead of raw paths.' in labels, 'Content URI hint must explain scoped storage')
 
-    for symbol in ['fun cancelDownload', 'fun redownload', 'fun moveDownloadInQueue', 'transferRuntime.cancel', 'repository.saveAll(reprioritized)']:
+    for symbol in ['fun cancelDownload', 'fun redownloadPreserving', 'fun moveDownloadInQueue', 'fun deleteSavedFile', 'transferRuntime.cancel', 'repository.saveAll(reprioritized)']:
         require(symbol in vm, f'MainViewModel missing {symbol}')
-    for symbol in ['viewModel::cancelDownload', 'viewModel::redownload', 'viewModel::moveDownloadInQueue']:
+    for symbol in ['viewModel::cancelDownload', 'viewModel::redownload', 'viewModel::moveDownloadInQueue', 'viewModel::deleteSavedFile']:
         require(symbol in app, f'XdmApp missing {symbol}')
 
     require('applyDefaultProbeHeaders(connection, normalized, requestHeaders)' in media, 'Media probe must apply default headers')

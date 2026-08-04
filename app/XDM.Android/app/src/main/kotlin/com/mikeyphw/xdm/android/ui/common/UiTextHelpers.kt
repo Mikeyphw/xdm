@@ -439,8 +439,8 @@ internal fun Download.fileManagementSummary(): String = buildString {
     appendLine("File: $fileName")
     appendLine("State: ${state.uiLabel()}")
     appendLine("Backend: ${backend.uiLabel()}")
-    appendLine("URL: $sourceUrl")
-    appendLine("Destination: $destinationUri")
+    appendLine("Source: ${ExternalUrlPolicy.persistableUrl(sourceUrl) ?: "Sensitive URL redacted"}")
+    appendLine("Saved location: ${destinationUiLabel(destinationUri)}")
     appendLine("Progress: ${bytesReceived.formatBytes()}${totalBytes?.let { " / ${it.formatBytes()}" } ?: ""}")
     mimeType?.takeIf { it.isNotBlank() }?.let { appendLine("MIME type: $it") }
     userLabel?.takeIf { it.isNotBlank() }?.let { appendLine("Label: $it") }

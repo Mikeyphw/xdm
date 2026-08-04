@@ -20,8 +20,8 @@ class FieldBugfixDownloadActionsStorageContractTest {
             "DownloadActionKind.ShareFile -> shareCompletedFile",
             "DownloadActionKind.Cancel -> onCancelDownload",
             "DownloadActionKind.Redownload -> onRedownload",
-            "DownloadActionKind.DeleteRecord -> onDeleteRecord",
-            "DownloadActionKind.DeleteFileAndRecord -> deleteSavedFileAndRecord",
+            "DownloadActionKind.DeleteRecord -> onDeleteRecord(download)",
+            "DownloadActionKind.DeleteFileAndRecord -> onDeleteSavedFile(download, true)",
             "DownloadActionKind.MoveToTop,",
             "-> onMoveDownloadInQueue(download, action.kind)",
         ).forEach { expected -> assertTrue("Missing action dispatch: $expected", screen.contains(expected)) }
@@ -31,9 +31,9 @@ class FieldBugfixDownloadActionsStorageContractTest {
     fun destinationCopyUsesHumanLabelsInNormalUi() {
         val details = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDetails.kt")
         val labels = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDestinationUi.kt")
-        assertFalse(details.contains("DownloadDetailRow(\"Save to\", download.destinationUri)"))
-        assertTrue(details.contains("DownloadDetailRow(\"Save to\", destinationUiLabel(download.destinationUri))"))
-        assertTrue(details.contains("DownloadDetailRow(\"Storage\", destinationUiHint(download.destinationUri))"))
+        assertFalse(details.contains("DownloadDetailRow(\"Saved location\", download.destinationUri)"))
+        assertTrue(details.contains("DownloadDetailRow(\"Saved location\", actionContext.artifact.friendlyLocation)"))
+        assertTrue(details.contains("DownloadDetailRow(\"Provider\", actionContext.artifact.providerLabel)"))
         assertTrue(labels.contains("content://"))
         assertTrue(labels.contains("Saved in Android shared storage"))
         assertTrue(labels.contains("Android stores shared files with access-safe content links instead of raw paths."))
@@ -60,10 +60,10 @@ class FieldBugfixDownloadActionsStorageContractTest {
     fun viewModelBacksFieldActions() {
         val app = source("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")
         val viewModel = source("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
-        listOf("viewModel::cancelDownload", "viewModel::redownload", "viewModel::moveDownloadInQueue").forEach { expected ->
+        listOf("viewModel::cancelDownload", "viewModel::redownload", "viewModel::moveDownloadInQueue", "viewModel::startNow", "viewModel::deleteSavedFile").forEach { expected ->
             assertTrue("Downloads route must pass $expected", app.contains(expected))
         }
-        listOf("fun cancelDownload", "fun redownload", "fun moveDownloadInQueue", "transferRuntime.cancel", "repository.saveAll(reprioritized)").forEach { expected ->
+        listOf("fun cancelDownload", "fun redownloadPreserving", "fun moveDownloadInQueue", "fun startNow", "fun deleteSavedFile", "transferRuntime.cancel", "repository.saveAll(reprioritized)").forEach { expected ->
             assertTrue("MainViewModel must implement $expected", viewModel.contains(expected))
         }
     }

@@ -12,7 +12,7 @@ class DownloadListPhase44ActionMenusContractTest {
         val row = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt").readText()
         val screen = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt").readText()
 
-        assertTrue(row.contains("DownloadActionPlanner.primaryActionFor(download)"))
+        assertTrue(row.contains("DownloadActionPlanner.primaryActionFor(download, actionContext)"))
         assertTrue(row.contains("onMoreActions: () -> Unit"))
         assertTrue(row.contains("More actions for"))
         assertFalse(row.contains("private data class DownloadRowAction"))
@@ -20,7 +20,7 @@ class DownloadListPhase44ActionMenusContractTest {
 
         assertTrue(screen.contains("actionDownloadId"))
         assertTrue(screen.contains("DownloadActionsContent"))
-        assertTrue(screen.contains("DownloadActionPlanner.actionsFor(download)"))
+        assertTrue(screen.contains("DownloadActionPlanner.actionsFor(download, actionContext)"))
         assertTrue(screen.contains("performDownloadAction"))
         assertTrue(screen.contains("XdmListRow("))
     }
@@ -38,8 +38,8 @@ class DownloadListPhase44ActionMenusContractTest {
         assertTrue(planner.contains("destructive: Boolean = false"))
         assertTrue(planner.contains("requiresConfirmation: Boolean = false"))
         assertTrue(planner.contains("object DownloadActionPlanner"))
-        assertTrue(planner.contains("fun actionsFor(download: Download): List<DownloadAction>"))
-        assertTrue(planner.contains("fun primaryActionFor(download: Download): DownloadAction"))
+        assertTrue(planner.contains("fun actionsFor(download: Download, context: DownloadActionContext = DownloadActionContext()): List<DownloadAction>"))
+        assertTrue(planner.contains("fun primaryActionFor(download: Download, context: DownloadActionContext = DownloadActionContext()): DownloadAction"))
         assertTrue(planner.contains("fun batchActionsFor(downloads: List<Download>): List<DownloadAction>"))
     }
 

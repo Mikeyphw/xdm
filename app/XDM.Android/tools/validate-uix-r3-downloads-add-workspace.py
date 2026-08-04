@@ -26,7 +26,7 @@ def require(relative: str, *needles: str) -> str:
 planner = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsWorkspace.kt",
     "enum class DownloadWorkspaceFilter",
-    'Active("Active")', 'Queued("Queued")', 'Finished("Finished")', 'All("All")',
+    'Active("Active")', 'Queued("Queued")', 'Paused("Paused")', 'Finished("Finished")', 'All("All")',
     "fun visibleDownloads(", "fun metrics(", "fun firstPolicyHeldDownload(",
 )
 screen = require(
@@ -37,7 +37,7 @@ screen = require(
 row = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt",
     "combinedClickable(", "onLongClick", "XdmFileTypeIcon(", "XdmProgressLine(",
-    "DownloadActionPlanner.primaryActionFor(download)", "DownloadAction.iconVector()",
+    "DownloadActionPlanner.primaryActionFor(download, actionContext)", "DownloadAction.iconVector()",
 )
 
 # Phase61: UIX R3 originally required the old row-local primaryRowAction symbol.
@@ -55,7 +55,7 @@ for unsupported in ("DownloadState.Verifying,\n    DownloadState.Repairing", "Do
 
 details = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadDetails.kt",
-    "XdmTechnicalDetails", "Destination", "Source", "Verification", "Request data", "redacted",
+    "XdmTechnicalDetails", "Saved location", "Source site", "Verification", "Request session", "redacted",
 )
 for forbidden in ("Text(download.id)", "Text(download.sourceUrl)", "Text(download.requestHeaders"):
     if forbidden in details:
@@ -89,7 +89,11 @@ expected = {
     "version_name_unchanged": "0.20.0-rc08", "version_code_unchanged": 21,
 }
 for key, value in expected.items():
-    if r3.get(key) != value:
+    if key == "visible_filters":
+        actual = r3.get(key, [])
+        if not all(item in actual for item in value):
+            ERRORS.append(f"PROJECT_MANIFEST uix_r3_downloads_add_workspace.{key} must retain {value!r}")
+    elif r3.get(key) != value:
         ERRORS.append(f"PROJECT_MANIFEST uix_r3_downloads_add_workspace.{key} must equal {value!r}")
 
 require("docs/architecture/UIX-R3-DOWNLOADS-ADD-WORKSPACE.md", "transfer-first", "adaptive list-detail", "two-step review", "No Room schema bump")

@@ -52,10 +52,10 @@ require(phase.get("debug_workbench_reopened") is False, "Phase61 must not reopen
 require(phase.get("validator_harmony", {}).get("uix_r3_primary_action_assertion_updated") is True, "Phase61 manifest must record UIX R3 assertion update")
 
 require('"primaryRowAction"' not in uix_r3 and "'primaryRowAction'" not in uix_r3, "UIX R3 validator must not require retired primaryRowAction")
-require("DownloadActionPlanner.primaryActionFor(download)" in uix_r3, "UIX R3 validator must require planner-backed primary action")
+require("DownloadActionPlanner.primaryActionFor(download, actionContext)" in uix_r3, "UIX R3 validator must require planner-backed primary action")
 require("DownloadAction.iconVector()" in uix_r3, "UIX R3 validator must keep the row action icon contract")
 require("private fun Download.primaryRowAction" in phase44 and "old row-local action planner" in phase44, "Phase44 validator must keep forbidding row-local primaryAction")
-require("DownloadActionPlanner.primaryActionFor(download)" in row, "DownloadRow must keep using DownloadActionPlanner.primaryActionFor")
+require("DownloadActionPlanner.primaryActionFor(download, actionContext)" in row, "DownloadRow must keep using DownloadActionPlanner.primaryActionFor")
 require("private fun Download.primaryRowAction" not in row, "DownloadRow must not revive private primaryRowAction")
 require("private data class DownloadRowAction" not in row, "DownloadRow must not revive row-local action data")
 
