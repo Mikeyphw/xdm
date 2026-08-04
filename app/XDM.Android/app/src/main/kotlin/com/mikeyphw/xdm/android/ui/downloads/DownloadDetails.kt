@@ -110,7 +110,7 @@ internal fun DownloadDetails(
                 }
                 Text(download.fileName, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
                 Text(hostFromUrl(download.sourceUrl), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                download.totalBytes?.let { XdmProgressLine(download.progressFraction, truth.overallProgressText) }
+                download.totalBytes?.let { XdmProgressLine(progress = download.progressFraction, stateLabel = truth.overallProgressText) }
                 XdmActionFlowRow {
                     Button(
                         onClick = { onDownloadAction(primaryAction) },
@@ -192,16 +192,17 @@ internal fun DownloadDetails(
             }
         }
 
-        if (actionContext.publicSourceUrl != null || actionContext.postProcessingInputAvailable) {
+        val publicSourceUrl = actionContext.publicSourceUrl
+        if (publicSourceUrl != null || actionContext.postProcessingInputAvailable) {
             XdmGroupedList {
-                if (actionContext.publicSourceUrl != null) {
+                if (publicSourceUrl != null) {
                     XdmListRow(
                         headline = "Copy redacted source URL",
                         supporting = "Credential-bearing query values are removed or redacted before copying.",
-                        onClick = { copySensitiveTextToClipboard(context, "XDM redacted source URL", actionContext.publicSourceUrl) },
+                        onClick = { copySensitiveTextToClipboard(context, "XDM redacted source URL", publicSourceUrl) },
                     )
                 }
-                if (actionContext.publicSourceUrl != null && actionContext.postProcessingInputAvailable) XdmListSeparator()
+                if (publicSourceUrl != null && actionContext.postProcessingInputAvailable) XdmListSeparator()
                 if (actionContext.postProcessingInputAvailable) {
                     XdmListRow(
                         headline = "Copy redacted file information",

@@ -8,7 +8,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusable
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.dp
+import kotlin.math.pow
 
 /** Stable semantics tags used by UIX R6 layout and accessibility tests. */
 object XdmScreenTags {
@@ -129,7 +130,7 @@ object XdmContrastPolicy {
 }
 
 private fun Color.relativeLuminanceCompat(): Float {
-    fun channel(value: Float): Float = if (value <= 0.03928f) value / 12.92f else kotlin.math.pow(((value + 0.055f) / 1.055f).toDouble(), 2.4).toFloat()
+    fun channel(value: Float): Float = if (value <= 0.03928f) value / 12.92f else (((value + 0.055f) / 1.055f).toDouble()).pow(2.4).toFloat()
     return 0.2126f * channel(red) + 0.7152f * channel(green) + 0.0722f * channel(blue)
 }
 

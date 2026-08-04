@@ -9,10 +9,10 @@ class FinalReleaseGateModelsTest {
     @Test
     fun cleanSignedReleaseReportPassesFinalGate() {
         val report = FinalPublicReleaseGate.evaluate(
-            versionName = "0.17.0-rc01",
-            versionCode = 18,
+            versionName = "0.21.0-rc01",
+            versionCode = 22,
             packageId = "com.mikeyphw.xdm.android",
-            schemaVersion = 14,
+            schemaVersion = 17,
             buildType = "release",
             releaseSafetyReady = true,
             installUpdateReady = true,
@@ -28,16 +28,16 @@ class FinalReleaseGateModelsTest {
         assertTrue(report.readyForPublicRelease)
         assertEquals(0, report.blockingCount)
         assertTrue(report.summary.contains("clean"))
-        assertTrue(report.redactedSummary().contains("0.17.0-rc01"))
+        assertTrue(report.redactedSummary().contains("0.21.0-rc01"))
     }
 
     @Test
     fun alphaOrPartialValidationBlocksFinalRelease() {
         val report = FinalPublicReleaseGate.evaluate(
-            versionName = "0.16.0-alpha01",
-            versionCode = 17,
+            versionName = "0.20.0-alpha01",
+            versionCode = 21,
             packageId = "com.mikeyphw.xdm.android.debug",
-            schemaVersion = 13,
+            schemaVersion = 16,
             buildType = "release",
             releaseSafetyReady = false,
             installUpdateReady = false,
@@ -58,10 +58,10 @@ class FinalReleaseGateModelsTest {
     @Test
     fun debugBuildKeepsUnrunFullValidationAsWarning() {
         val report = FinalPublicReleaseGate.evaluate(
-            versionName = "0.18.0-rc01",
-            versionCode = 19,
+            versionName = "0.21.0-rc01",
+            versionCode = 22,
             packageId = "com.mikeyphw.xdm.android",
-            schemaVersion = 14,
+            schemaVersion = 17,
             buildType = "debug",
             releaseSafetyReady = true,
             installUpdateReady = true,
@@ -81,10 +81,10 @@ class FinalReleaseGateModelsTest {
     @Test
     fun debugWarningsIncludeActionableReleaseExplanations() {
         val report = FinalPublicReleaseGate.evaluate(
-            versionName = "0.18.0-rc01",
-            versionCode = 19,
+            versionName = "0.21.0-rc01",
+            versionCode = 22,
             packageId = "com.mikeyphw.xdm.android",
-            schemaVersion = 14,
+            schemaVersion = 17,
             buildType = "debug",
             releaseSafetyReady = true,
             installUpdateReady = true,

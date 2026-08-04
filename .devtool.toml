@@ -35,7 +35,7 @@ prefer_native_termux = false
 
 [targets.xdm_android.gradle]
 version = "9.4.1"
-max_workers = 1
+max_workers = 2
 structured_events = false
 no_daemon = true
 parallel = false
@@ -122,8 +122,8 @@ DOTNET_CLI_TELEMETRY_OPTOUT = "1"
 DOTNET_NOLOGO = "1"
 
 [validation]
-android_safe = true
-max_workers = 1
+android_safe = false
+max_workers = 2
 cpu_limit = 2
 split_gradle = true
 no_daemon = true
@@ -134,7 +134,7 @@ gradle_metaspace_mb = 768
 memory_guard_mb = 256
 
 [validation.phase_profiles.compile]
-max_workers = 1
+max_workers = 2
 cpu_limit = 2
 gradle_heap_mb = 1536
 memory_guard_mb = 256

@@ -89,7 +89,7 @@ class DownloaderExperiencePhase8CContractTest {
         val database = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt").readText()
         val build = File(root, "app/build.gradle.kts").readText()
         assertTrue(database.contains("version = 17"))
-        assertTrue(build.contains("versionCode = 21"))
+        assertTrue(build.contains("versionCode = 22"))
         assertTrue(build.contains("versionName = \"0.20.0-rc08\""))
         listOf(
             "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt",

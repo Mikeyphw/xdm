@@ -279,12 +279,15 @@ class TermuxMediaPipelineManager(
             finishFailure(job, "Publication recovery cannot parse the immutable specification: ${it.message}")
             return
         }
+        val committedOutputUri = job.committedOutputUri
+        val committedBytes = job.committedBytes
+        val committedSha256 = job.committedSha256
         when {
-            !job.committedOutputUri.isNullOrBlank() && job.committedBytes != null && !job.committedSha256.isNullOrBlank() -> {
+            !committedOutputUri.isNullOrBlank() && committedBytes != null && !committedSha256.isNullOrBlank() -> {
                 reconcileCommittedPublication(
                     job,
                     spec,
-                    AndroidPostProcessingArtifactBridge.ImportedOutput(job.committedOutputUri, job.publicationDisplayName ?: spec.output.displayName, job.committedBytes, job.committedSha256),
+                    AndroidPostProcessingArtifactBridge.ImportedOutput(committedOutputUri, job.publicationDisplayName ?: spec.output.displayName, committedBytes, committedSha256),
                     artifactBridge.readText(job.metadataBridgeUri),
                     job.toolVersionsJson,
                     job.resultStdoutLength,
@@ -748,7 +751,8 @@ class TermuxMediaPipelineManager(
             dao.acknowledgeControl(job.id, PostProcessingJobStatus.RecoveryRequired.name, "Interrupted job has no durable process owner.", System.currentTimeMillis())
             return
         }
-        if (job.timeoutAtEpochMs != null && System.currentTimeMillis() >= job.timeoutAtEpochMs) {
+        val timeoutAtEpochMs = job.timeoutAtEpochMs
+        if (timeoutAtEpochMs != null && System.currentTimeMillis() >= timeoutAtEpochMs) {
             requestControlNow(job, owner, TermuxProcessControlAction.Cancel, timedOut = true)
             return
         }
@@ -990,14 +994,17 @@ class TermuxMediaPipelineManager(
                 PostProcessingResultMode.OutputArtifact -> {
                     val bridgeUri = outputBridgeUri?.takeIf(String::isNotBlank) ?: error("Output-producing job has no durable output bridge")
                     val current = dao.findJob(job.id) ?: job
+                    val publicationDisplayName = current.publicationDisplayName
+                    val publicationExpectedBytes = current.publicationExpectedBytes
+                    val publicationExpectedSha256 = current.publicationExpectedSha256
                     val plan = if (
                         current.publicationState in setOf(PostProcessingPublicationState.Prepared.name, PostProcessingPublicationState.Committed.name) &&
-                        !current.publicationDisplayName.isNullOrBlank() && current.publicationExpectedBytes != null && !current.publicationExpectedSha256.isNullOrBlank()
+                        !publicationDisplayName.isNullOrBlank() && publicationExpectedBytes != null && !publicationExpectedSha256.isNullOrBlank()
                     ) {
                         AndroidPostProcessingArtifactBridge.PublicationPlan(
-                            current.publicationDisplayName,
-                            current.publicationExpectedBytes,
-                            current.publicationExpectedSha256,
+                            publicationDisplayName,
+                            publicationExpectedBytes,
+                            publicationExpectedSha256,
                             bridgeUri,
                         )
                     } else {
@@ -1015,15 +1022,18 @@ class TermuxMediaPipelineManager(
                         }
                     }
                     val afterPrepare = dao.findJob(job.id) ?: job
+                    val afterPrepareCommittedOutputUri = afterPrepare.committedOutputUri
+                    val afterPrepareCommittedBytes = afterPrepare.committedBytes
+                    val afterPrepareCommittedSha256 = afterPrepare.committedSha256
                     val imported = if (
                         afterPrepare.publicationState == PostProcessingPublicationState.Committed.name &&
-                        !afterPrepare.committedOutputUri.isNullOrBlank() && afterPrepare.committedBytes != null && !afterPrepare.committedSha256.isNullOrBlank()
+                        !afterPrepareCommittedOutputUri.isNullOrBlank() && afterPrepareCommittedBytes != null && !afterPrepareCommittedSha256.isNullOrBlank()
                     ) {
                         AndroidPostProcessingArtifactBridge.ImportedOutput(
-                            afterPrepare.committedOutputUri,
+                            afterPrepareCommittedOutputUri,
                             afterPrepare.publicationDisplayName ?: plan.displayName,
-                            afterPrepare.committedBytes,
-                            afterPrepare.committedSha256,
+                            afterPrepareCommittedBytes,
+                            afterPrepareCommittedSha256,
                         )
                     } else {
                         artifactBridge.publishPrepared(spec, job.id, plan).also { committed ->
@@ -1236,15 +1246,17 @@ class TermuxMediaPipelineManager(
                             reconcileOwnerCompletion(job, owner)
                             return@launch
                         }
+                        val processToken = job.processToken
                         owner.pid?.let { pid ->
-                            if (job.processId != pid && !job.processToken.isNullOrBlank()) {
-                                dao.recordProcessOwnership(job.id, job.processToken, pid, job.status, "Validated owner pid=$pid with durable process start identity ${owner.processStartTicks ?: -1L}.", System.currentTimeMillis())
+                            if (job.processId != pid && !processToken.isNullOrBlank()) {
+                                dao.recordProcessOwnership(job.id, processToken, pid, job.status, "Validated owner pid=$pid with durable process start identity ${owner.processStartTicks ?: -1L}.", System.currentTimeMillis())
                             }
                         }
                     }
                     val progress = parseProgress(artifactBridge.readText(job.progressBridgeUri), status)
                     dao.updateProgress(job.id, progress.status.name, progress.percent, progress.bytes, progress.totalBytes, progress.message, System.currentTimeMillis())
-                    if (job.timeoutAtEpochMs != null && System.currentTimeMillis() >= job.timeoutAtEpochMs && job.requestedControl != "Timeout") {
+                    val timeoutAtEpochMs = job.timeoutAtEpochMs
+                    if (timeoutAtEpochMs != null && System.currentTimeMillis() >= timeoutAtEpochMs && job.requestedControl != "Timeout") {
                         ownerFrom(job)?.let { requestControlNow(job, it, TermuxProcessControlAction.Cancel, timedOut = true) }
                     }
                     delay(1_000L)

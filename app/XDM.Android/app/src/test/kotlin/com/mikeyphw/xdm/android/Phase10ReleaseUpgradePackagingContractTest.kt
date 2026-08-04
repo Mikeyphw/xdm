@@ -6,7 +6,8 @@ import org.junit.Test
 import java.io.File
 
 class Phase10ReleaseUpgradePackagingContractTest {
-    private val root = File(".").canonicalFile
+    private val root: File = generateSequence(File(System.getProperty("user.dir") ?: ".")) { it.parentFile }
+        .first { File(it, "settings.gradle.kts").isFile && File(it, "app").isDirectory }
 
     @Test
     fun releaseBuildRequiresSigningAndNamedUnsignedVariant() {

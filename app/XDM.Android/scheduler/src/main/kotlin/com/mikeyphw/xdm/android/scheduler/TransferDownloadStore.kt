@@ -17,7 +17,7 @@ interface TransferDownloadStore {
 class RepositoryTransferDownloadStore(private val repository: DownloadRepository) : TransferDownloadStore {
     override suspend fun find(downloadId: String): Download? = repository.findDownload(downloadId)
     override suspend fun findByStates(states: Set<DownloadState>): List<Download> = repository.findDownloadsByStates(states)
-    override suspend fun save(download: Download) = repository.save(download)
+    override suspend fun save(download: Download) { repository.save(download) }
     override suspend fun saveBackendTask(downloadId: String, backend: BackendType, backendTaskId: String, ownership: BackendOwnership) =
         repository.saveBackendTask(downloadId, backend, backendTaskId, ownership)
     override suspend fun deleteBackendTask(downloadId: String) = repository.deleteBackendTask(downloadId)

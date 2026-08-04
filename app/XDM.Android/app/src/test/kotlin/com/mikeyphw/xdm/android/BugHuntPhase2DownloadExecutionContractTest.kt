@@ -29,7 +29,7 @@ class BugHuntPhase2DownloadExecutionContractTest {
         val worker = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt")
         val job = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt")
         val service = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt")
-        assertTrue(worker.contains("override fun onStopped()"))
+        assertTrue(worker.contains("if (isStopped) pauseAndRecordStop()"))
         assertTrue(worker.contains("runtime.pauseAll()"))
         assertTrue(job.contains("withTimeoutOrNull(5_000)"))
         assertTrue(job.contains("transferRuntime.pause(downloadId)"))

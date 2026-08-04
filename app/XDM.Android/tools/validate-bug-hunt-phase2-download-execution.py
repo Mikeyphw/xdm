@@ -44,7 +44,7 @@ for needle, label in [
     require(runtime, needle, label)
 
 for text, needle, label in [
-    (worker, "override fun onStopped()", "WorkManager stop hook"),
+    (worker, "if (isStopped) pauseAndRecordStop()", "WorkManager stop handling"),
     (worker, "runtime.pauseAll()", "WorkManager pauses runtime"),
     (job, "withTimeoutOrNull(5_000)", "UIDT stop wait"),
     (job, "transferRuntime.pause(downloadId)", "UIDT pauses item"),

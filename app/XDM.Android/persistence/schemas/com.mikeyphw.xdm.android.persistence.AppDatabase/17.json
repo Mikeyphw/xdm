@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 17,
-    "identityHash": "4d723f33122744c3f72b4500bd16caea",
+    "identityHash": "0cabd4104e47d11a8ab366b8f17a6939",
     "entities": [
       {
         "tableName": "downloads",
@@ -2601,7 +2601,7 @@
       },
       {
         "tableName": "post_processing_jobs",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `rootJobId` TEXT NOT NULL, `parentJobId` TEXT, `attemptGeneration` INTEGER NOT NULL, `claimKey` TEXT, `subjectId` TEXT NOT NULL, `subjectType` TEXT NOT NULL, `subjectGeneration` INTEGER NOT NULL, `downloadId` TEXT, `captureId` TEXT, `ruleId` TEXT, `actionId` TEXT NOT NULL, `trigger` TEXT NOT NULL, `kind` TEXT NOT NULL, `status` TEXT NOT NULL, `title` TEXT NOT NULL, `inputUri` TEXT NOT NULL, `stagedInputPath` TEXT, `inputBridgeUri` TEXT, `outputDisplayName` TEXT NOT NULL, `outputMimeType` TEXT NOT NULL, `outputDestinationUri` TEXT, `stagedOutputPath` TEXT, `outputBridgeUri` TEXT, `ownerBridgeUri` TEXT, `progressBridgeUri` TEXT, `metadataBridgeUri` TEXT, `payloadBridgeUri` TEXT, `finalOutputUri` TEXT, `publicationState` TEXT NOT NULL DEFAULT 'None', `publicationDisplayName` TEXT, `publicationExpectedBytes` INTEGER, `publicationExpectedSha256` TEXT, `committedOutputUri` TEXT, `committedBytes` INTEGER, `committedSha256` TEXT, `sideEffectOutcome` TEXT, `immutableSpecJson` TEXT NOT NULL, `expectedSha256` TEXT, `actualSha256` TEXT, `requiredTools` TEXT NOT NULL, `toolVersionsJson` TEXT NOT NULL, `runId` TEXT, `executionId` INTEGER, `processToken` TEXT, `processId` INTEGER, `controlGeneration` INTEGER NOT NULL, `requestedControl` TEXT, `progressPercent` INTEGER NOT NULL, `progressBytes` INTEGER NOT NULL, `progressTotalBytes` INTEGER, `timeoutAtEpochMs` INTEGER, `resultStdoutLength` INTEGER NOT NULL, `resultStderrLength` INTEGER NOT NULL, `metadataJson` TEXT, `message` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `startedAtEpochMs` INTEGER, `finishedAtEpochMs` INTEGER, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `rootJobId` TEXT NOT NULL, `parentJobId` TEXT, `attemptGeneration` INTEGER NOT NULL, `claimKey` TEXT, `subjectId` TEXT NOT NULL, `subjectType` TEXT NOT NULL, `subjectGeneration` INTEGER NOT NULL, `downloadId` TEXT, `captureId` TEXT, `ruleId` TEXT, `actionId` TEXT NOT NULL, `trigger` TEXT NOT NULL, `kind` TEXT NOT NULL, `status` TEXT NOT NULL, `title` TEXT NOT NULL, `inputUri` TEXT NOT NULL, `stagedInputPath` TEXT, `inputBridgeUri` TEXT, `outputDisplayName` TEXT NOT NULL, `outputMimeType` TEXT NOT NULL, `outputDestinationUri` TEXT, `stagedOutputPath` TEXT, `outputBridgeUri` TEXT, `ownerBridgeUri` TEXT, `progressBridgeUri` TEXT, `metadataBridgeUri` TEXT, `payloadBridgeUri` TEXT, `finalOutputUri` TEXT, `publicationState` TEXT NOT NULL, `publicationDisplayName` TEXT, `publicationExpectedBytes` INTEGER, `publicationExpectedSha256` TEXT, `committedOutputUri` TEXT, `committedBytes` INTEGER, `committedSha256` TEXT, `sideEffectOutcome` TEXT, `immutableSpecJson` TEXT NOT NULL, `expectedSha256` TEXT, `actualSha256` TEXT, `requiredTools` TEXT NOT NULL, `toolVersionsJson` TEXT NOT NULL, `runId` TEXT, `executionId` INTEGER, `processToken` TEXT, `processId` INTEGER, `controlGeneration` INTEGER NOT NULL, `requestedControl` TEXT, `progressPercent` INTEGER NOT NULL, `progressBytes` INTEGER NOT NULL, `progressTotalBytes` INTEGER, `timeoutAtEpochMs` INTEGER, `resultStdoutLength` INTEGER NOT NULL, `resultStderrLength` INTEGER NOT NULL, `metadataJson` TEXT, `message` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `startedAtEpochMs` INTEGER, `finishedAtEpochMs` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -2766,8 +2766,7 @@
             "fieldPath": "publicationState",
             "columnName": "publicationState",
             "affinity": "TEXT",
-            "notNull": true,
-            "defaultValue": "'None'"
+            "notNull": true
           },
           {
             "fieldPath": "publicationDisplayName",
@@ -3001,8 +3000,7 @@
             "orders": [],
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_post_processing_jobs_runId` ON `${TABLE_NAME}` (`runId`)"
           }
-        ],
-        "foreignKeys": []
+        ]
       },
       {
         "tableName": "post_processing_claims",
@@ -3119,7 +3117,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1b11f61d37814bb0c467a521e3f2001f')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0cabd4104e47d11a8ab366b8f17a6939')"
     ]
   }
 }

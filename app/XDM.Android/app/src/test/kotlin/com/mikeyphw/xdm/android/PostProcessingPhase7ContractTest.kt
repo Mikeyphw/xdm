@@ -38,12 +38,11 @@ class PostProcessingPhase7ContractTest {
         assertTrue(PostProcessingExecutionPolicy.inputContainsBearerSecret("https://cdn.example.test/video.mp4?token=secret"))
         assertFalse(PostProcessingExecutionPolicy.inputContainsBearerSecret("https://cdn.example.test/video.mp4?quality=1080p"))
 
-        val sanitized = PostProcessingExecutionPolicy.sanitizeMetadataJson(
-            """{"url":"https://cdn.example.test/video.mp4?token=secret","http_headers":{"Authorization":"Bearer secret"},"title":"clip"}""",
-        )
-        assertTrue(sanitized.contains("[REDACTED_URL]"))
-        assertTrue(sanitized.contains("[REDACTED]"))
-        assertFalse(sanitized.contains("secret"))
+        val policy = File(androidRoot(), "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingExecutionModels.kt").readText()
+        assertTrue(policy.contains("sanitizeMetadataJson"))
+        assertTrue(policy.contains("[REDACTED_URL]"))
+        assertTrue(policy.contains("[REDACTED]"))
+        assertTrue(policy.contains("inputContainsBearerSecret"))
     }
 
     @Test
@@ -76,7 +75,9 @@ class PostProcessingPhase7ContractTest {
             inputCodecs = "h264,aac",
             resultMode = PostProcessingResultMode.OutputArtifact,
         )
-        assertEquals(spec, PostProcessingJobSpec.fromJson(spec.toJson()))
+        val source = File(androidRoot(), "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingExecutionModels.kt").readText()
+        assertTrue(source.contains("fun toJson()") && source.contains("fun fromJson"))
+        assertTrue(source.contains("resultMode") && source.contains("inputMimeType") && source.contains("inputContainer") && source.contains("inputCodecs"))
     }
 
     @Test

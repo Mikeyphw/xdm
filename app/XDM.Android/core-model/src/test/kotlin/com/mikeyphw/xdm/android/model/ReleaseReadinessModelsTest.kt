@@ -9,10 +9,10 @@ class ReleaseReadinessModelsTest {
     @Test
     fun cleanInstallReadinessReportHasNoBlockingChecks() {
         val report = ReleaseInstallReadinessGate.evaluate(
-            versionName = "0.16.0-alpha01",
-            versionCode = 17,
+            versionName = "0.21.0-rc01",
+            versionCode = 22,
             packageId = "com.mikeyphw.xdm.android",
-            schemaVersion = 14,
+            schemaVersion = 17,
             buildType = "release",
             releaseSafetyComplete = true,
             recoverySurfaceReady = true,
@@ -31,10 +31,10 @@ class ReleaseReadinessModelsTest {
     @Test
     fun staleVersionAndSchemaBlockUpdateReadiness() {
         val report = ReleaseInstallReadinessGate.evaluate(
-            versionName = "0.15.0-alpha01",
-            versionCode = 16,
+            versionName = "0.20.0-alpha01",
+            versionCode = 21,
             packageId = "com.mikeyphw.xdm.android.debug",
-            schemaVersion = 13,
+            schemaVersion = 16,
             buildType = "release",
             releaseSafetyComplete = false,
             recoverySurfaceReady = false,

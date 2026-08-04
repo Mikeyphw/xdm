@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
 import com.mikeyphw.xdm.android.model.SystemExecutionOwner
-import com.mikeyphw.xdm.android.model.SystemStopReasonRecord
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -15,41 +14,23 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 
 /**
  * Evaluates queued work and owns the foreground lifetime of automatic transfers.
  * This avoids background foreground-service launches while preserving long downloads.
  */
 class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
-    override fun onStopped() {
-        super.onStopped()
-        val runtime = (applicationContext as? TransferRuntimeProvider)?.transferRuntime ?: return
-        val queue = (applicationContext as? QueueIntelligenceProvider)?.queueIntelligenceCoordinator
-        val phase4 = (applicationContext as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
-        phase4?.recordSystemStop(
-            downloadId = "queue-intelligence",
-            attemptGeneration = System.currentTimeMillis(),
-            owner = SystemExecutionOwner.WorkManager,
-            stopReason = getStopReason(),
-            nowEpochMs = System.currentTimeMillis(),
-        )?.also(TransferExecutionStopReasonRecorder::record)
-        CoroutineScope(Dispatchers.IO).launch {
-            queue?.pauseAllDurably()
-            runtime.pauseAll()
-        }
-    }
-
     override suspend fun doWork(): Result {
         val queueProvider = applicationContext as? QueueIntelligenceProvider ?: return Result.failure()
         val runtimeProvider = applicationContext as? TransferRuntimeProvider ?: return Result.failure()
         val coordinator = queueProvider.queueIntelligenceCoordinator
         val runtime = runtimeProvider.transferRuntime
-        return runCatching {
+        return try {
             repeat(MAX_DRAIN_ROUNDS) {
                 val outcome = coordinator.evaluateAndClaim()
                 if (outcome.eligibleDownloads.isEmpty()) return Result.success()
@@ -74,7 +55,26 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
                 }
             }
             Result.retry()
-        }.getOrElse { Result.retry() }
+        } catch (_: Throwable) {
+            Result.retry()
+        } finally {
+            if (isStopped) pauseAndRecordStop()
+        }
+    }
+
+    private suspend fun pauseAndRecordStop() = withContext(NonCancellable + Dispatchers.IO) {
+        val runtime = (applicationContext as? TransferRuntimeProvider)?.transferRuntime ?: return@withContext
+        val queue = (applicationContext as? QueueIntelligenceProvider)?.queueIntelligenceCoordinator
+        val phase4 = (applicationContext as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
+        phase4?.recordSystemStop(
+            downloadId = "queue-intelligence",
+            attemptGeneration = System.currentTimeMillis(),
+            owner = SystemExecutionOwner.WorkManager,
+            stopReason = getStopReason(),
+            nowEpochMs = System.currentTimeMillis(),
+        )?.also(TransferExecutionStopReasonRecorder::record)
+        queue?.pauseAllDurably()
+        runtime.pauseAll()
     }
 
     private fun createForegroundInfo(activeCount: Int, primaryDownloadId: String): ForegroundInfo {

@@ -63,9 +63,10 @@ internal fun DownloadRow(
 ) {
     val action = DownloadActionPlanner.primaryActionFor(download, actionContext)
     val truth = DownloadUiTruthPlanner.truth(download, actionContext)
-    val progressVisible = download.totalBytes != null && download.state !in setOf(DownloadState.Created, DownloadState.Cancelled)
+    val totalBytes = download.totalBytes
+    val progressVisible = totalBytes != null && download.state !in setOf(DownloadState.Created, DownloadState.Cancelled)
     val byteText = when {
-        download.totalBytes != null -> "${download.bytesReceived.coerceAtMost(download.totalBytes).formatBytes()} / ${download.totalBytes.formatBytes()}"
+        totalBytes != null -> "${download.bytesReceived.coerceAtMost(totalBytes).formatBytes()} / ${totalBytes.formatBytes()}"
         download.bytesReceived > 0L -> download.bytesReceived.formatBytes()
         else -> actionContext.artifact.friendlyLocation
     }
@@ -95,7 +96,7 @@ internal fun DownloadRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            XdmFileTypeIcon(download.fileName, download.mimeType, contentDescription = null)
+            XdmFileTypeIcon(download.fileName, mimeType = download.mimeType, contentDescription = null)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(download.fileName, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
@@ -108,7 +109,7 @@ internal fun DownloadRow(
                     maxLines = if (compact) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (progressVisible) XdmProgressLine(download.progressFraction, truth.overallProgressText)
+                if (progressVisible) XdmProgressLine(progress = download.progressFraction, stateLabel = truth.overallProgressText)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(byteText, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(trailing, style = MaterialTheme.typography.labelMedium, maxLines = 1)

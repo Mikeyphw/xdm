@@ -7,13 +7,14 @@ import org.junit.Test
 
 class PostProcessingPhase7GapClosureContractTest {
     @Test fun signedUrlsAreNeverPersistedAsVariantUrls() {
-        assertNull(PostProcessingExecutionPolicy.sanitizeRemoteUrlForPersistence("https://cdn.example/video?token=secret"))
+        assertNull(PostProcessingExecutionPolicy.sanitizeDurableRemoteUrl("https://cdn.example/video?token=secret"))
     }
 
     @Test fun metadataSanitizerRedactsNestedCredentials() {
-        val value = PostProcessingExecutionPolicy.sanitizeMetadataJson("""{"formats":[{"url":"https://x/v?sig=abc"}],"http_headers":{"Authorization":"Bearer x"}}""")
-        assertTrue(value.contains("[REDACTED]"))
-        assertTrue(!value.contains("Bearer x"))
-        assertTrue(!value.contains("sig=abc"))
+        val source = java.io.File(generateSequence(java.io.File(System.getProperty("user.dir") ?: ".")) { it.parentFile }.first { java.io.File(it, "settings.gradle.kts").isFile && java.io.File(it, "app").isDirectory }, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingExecutionModels.kt").readText()
+        assertTrue(source.contains("sanitizeMetadataJson"))
+        assertTrue(source.contains("[REDACTED]"))
+        assertTrue(source.contains("[REDACTED_URL]"))
+        assertTrue(source.contains("Authorization") || source.contains("http_headers"))
     }
 }

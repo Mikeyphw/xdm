@@ -302,6 +302,7 @@ class MainViewModel(
     private val externalAddDraft = MutableStateFlow<DownloadIntakeDraft?>(null)
     private val mediaCaptureService = MediaCaptureService()
     private val mediaSniffingEngine = MediaSniffingEngine(mediaCaptureService, debugRecorder = debugEventRecorder)
+    private val mediaPageProbe = MediaPageProbe(mediaSniffingEngine, debugRecorder = debugEventRecorder)
     private val mediaCaptureIntakePlanner = MediaCaptureIntakePlanner(mediaCaptureService)
     private val mediaBatchIntakePlanner = MediaBatchIntakePlanner(mediaCaptureService, sniffingEngine = mediaSniffingEngine, debugRecorder = debugEventRecorder)
     private val externalMediaReviewPlanner = ExternalMediaReviewPlanner(mediaCaptureService, sniffingEngine = mediaSniffingEngine, debugRecorder = debugEventRecorder)

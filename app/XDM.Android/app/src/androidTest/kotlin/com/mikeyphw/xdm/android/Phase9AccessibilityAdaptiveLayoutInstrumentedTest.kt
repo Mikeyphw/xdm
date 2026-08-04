@@ -13,7 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.assertExists
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.captureToImage
@@ -59,7 +59,7 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
             }
             composeRule.onRoot().captureToImage()
             val shellTag = if (case.profile.usesNavigationSidebar) XdmScreenTags.ShellExpanded else if (case.profile.windowClass == XdmWindowClass.Compact) XdmScreenTags.ShellCompact else XdmScreenTags.ShellMedium
-            composeRule.onNodeWithTag(shellTag).assertExists()
+            composeRule.onNodeWithTag(shellTag).assertIsDisplayed()
             assertTrue(Phase9AccessibilityRegressionContracts.coversScreenshotCase(case.name))
         }
     }
@@ -90,7 +90,7 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
             }
         }
         composeRule.onNodeWithText("Open sheet").performClick()
-        composeRule.onNodeWithTag(XdmTestTags.AdaptiveSheet).assertExists()
+        composeRule.onNodeWithTag(XdmTestTags.AdaptiveSheet).assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Focusable actions bottom sheet").performClick()
         composeRule.runOnIdle { }
         composeRule.onNodeWithText("Open sheet").assertIsFocused()
@@ -114,8 +114,8 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
             }
         }
         composeRule.onNodeWithTag(XdmTestTags.NoticeRow).assertHeightIsAtLeast(48.dp)
-        composeRule.onNodeWithTag(XdmTestTags.ProgressLine).assertExists()
-        composeRule.onNodeWithTag(XdmTestTags.AdaptiveSheet).assertExists()
+        composeRule.onNodeWithTag(XdmTestTags.ProgressLine).assertIsDisplayed()
+        composeRule.onNodeWithTag(XdmTestTags.AdaptiveSheet).assertIsDisplayed()
         Phase9AccessibilityRegressionContracts.riskyLargeFontSurfaces.forEach { surface ->
             assertTrue(Phase9AccessibilityRegressionContracts.coversRequiredRiskySurface(surface))
         }
