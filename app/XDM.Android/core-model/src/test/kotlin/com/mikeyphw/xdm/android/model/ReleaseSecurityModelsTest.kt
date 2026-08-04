@@ -17,6 +17,17 @@ class ReleaseSecurityModelsTest {
     }
 
     @Test
+    fun redactionPreservesPublicQueryFieldsAndAvoidsSubstringFalsePositives() {
+        val redacted = PrivacyDiagnosticsRedactor.redactUrl(
+            "https://example.test/video.mp4?quality=1080&author=alice&monkey=capuchin&api_key=secret",
+        )
+        assertEquals(
+            "https://example.test/video.mp4?quality=1080&author=alice&monkey=capuchin&api_key=<redacted>",
+            redacted,
+        )
+    }
+
+    @Test
     fun releaseGateBlocksUnexpectedSchemaButAllowsDebugBuilds() {
         val report = ReleaseSecurityGate.evaluate(
             versionName = "0.14.0-alpha01",

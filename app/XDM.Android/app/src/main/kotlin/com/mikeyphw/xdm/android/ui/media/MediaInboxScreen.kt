@@ -43,7 +43,7 @@ fun MediaInboxScreen(
     variants: List<MediaVariant>,
     mediaTrackSelections: Map<String, MediaTrackSelection>,
     downloads: List<Download>,
-    onPastePageUrl: () -> Unit,
+    onPastePageUrl: (String) -> Unit,
     onBatchInput: (String) -> Unit,
     onDownload: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
     onResumeOrRetryDownload: (Download) -> Unit,
@@ -56,6 +56,7 @@ fun MediaInboxScreen(
     val context = LocalContext.current
     var batchText by remember { mutableStateOf("") }
     var batchFeedback by remember { mutableStateOf<String?>(null) }
+    var pageUrlText by remember { mutableStateOf("") }
     val reviewableCaptures = remember(captures) {
         captures.filterNot { it.status == MediaCaptureStatus.DownloadCreated }
             .sortedByDescending(MediaCaptureRecord::updatedAtEpochMs)
@@ -72,7 +73,7 @@ fun MediaInboxScreen(
             title = "Media",
             subtitle = "Choose quality and tracks before anything is added to Downloads.",
             actions = {
-                Button(onClick = onPastePageUrl) { Text("Paste page URL") }
+                Button(onClick = { if (pageUrlText.isNotBlank()) onPastePageUrl(pageUrlText) }, enabled = pageUrlText.isNotBlank()) { Text("Sniff page URL") }
             },
         )
         LazyColumn(
@@ -80,6 +81,27 @@ fun MediaInboxScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            item {
+                XdmGroupedList {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        XdmSectionLabel("Paste page URL")
+                        Text("Paste a watch page, iframe page, HLS playlist, DASH manifest, or direct media URL. XDM fetches a bounded prefix with preserved session headers when available and creates review records only from real probe results.")
+                        OutlinedTextField(
+                            value = pageUrlText,
+                            onValueChange = { pageUrlText = it },
+                            label = { Text("Page or media URL") },
+                            placeholder = { Text("https://site.example/watch/episode") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                        )
+                        XdmActionFlowRow {
+                            Button(onClick = { onPastePageUrl(pageUrlText) }, enabled = pageUrlText.isNotBlank()) { Text("Sniff page URL") }
+                            TextButton(onClick = { pageUrlText = "" }, enabled = pageUrlText.isNotBlank()) { Text("Clear") }
+                        }
+                    }
+                }
+            }
+
             item {
                 XdmNoticeRow(
                     text = "Page session details stay private. XDM never shows cookies, authorization values, or temporary media links here.",
@@ -134,7 +156,7 @@ fun MediaInboxScreen(
                             "New captures will appear here when you share or inspect another media link."
                         },
                         actionLabel = "Paste page URL",
-                        onAction = onPastePageUrl,
+                        onAction = { if (pageUrlText.isNotBlank()) onPastePageUrl(pageUrlText) },
                     )
                 }
             } else {

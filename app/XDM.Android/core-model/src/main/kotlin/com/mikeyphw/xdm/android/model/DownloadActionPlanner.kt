@@ -149,7 +149,8 @@ object DownloadActionPlanner {
                 label = "Copy selected links",
                 icon = DownloadActionIcon.Copy,
                 enabled = downloads.any { it.sourceUrl.isNotBlank() },
-                supportingText = "Copy ${downloads.size} source link${if (downloads.size == 1) "" else "s"}.",
+                requiresConfirmation = true,
+                supportingText = "Copy ${downloads.size} full source link${if (downloads.size == 1) "" else "s"}. Links may contain private access parameters.",
             ))
             if (states.all { it in terminalStates }) add(deleteRecord(label = "Delete selected records"))
         }
@@ -239,7 +240,8 @@ object DownloadActionPlanner {
         label = "Copy link",
         icon = DownloadActionIcon.Copy,
         enabled = download.sourceUrl.isNotBlank(),
-        supportingText = "Copy the source URL only.",
+        requiresConfirmation = true,
+        supportingText = "Copy the full source URL. It may contain private access parameters and will be marked sensitive on the clipboard.",
     )
 
     private fun copyFileName(download: Download) = DownloadAction(
@@ -255,7 +257,7 @@ object DownloadActionPlanner {
         label = "Copy path",
         icon = DownloadActionIcon.Copy,
         enabled = download.destinationUri.isNotBlank(),
-        supportingText = "Copy the saved destination URI or path.",
+        supportingText = "Copy the saved Android URI or verified path. Provider identifiers can be private.",
     )
 
     private fun shareLink(download: Download) = DownloadAction(
@@ -263,7 +265,8 @@ object DownloadActionPlanner {
         label = "Share link",
         icon = DownloadActionIcon.Share,
         enabled = download.sourceUrl.isNotBlank(),
-        supportingText = "Share the public source URL with another app.",
+        requiresConfirmation = true,
+        supportingText = "Share the full source URL with another app. It may contain private access parameters.",
     )
 
     private fun shareFile(download: Download) = DownloadAction(

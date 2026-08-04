@@ -16,6 +16,7 @@
   const POSSIBLE_OFFER_THRESHOLD = 700;
 
   const capturedHeaders = new Map();
+  const tabDispatchSessions = new Map();
   const candidateStore = new globalThis.XdmCandidateStoreV1({ maxPerTab: MAX_CANDIDATES_PER_TAB, ttlMs: CANDIDATE_TTL_MS });
   const dispatchTimers = new Map();
   const lastDispatchedByTab = new Map();
@@ -73,6 +74,28 @@
       if (value) result[name] = value.slice(0, 8192);
     }
     return result;
+  }
+
+  function headerObservation(kind, headers, unavailableReason = "") {
+    return Object.freeze({ kind, headers: sanitizeHeaderObject(headers), unavailableReason });
+  }
+
+  function capturedHeaderPayload(captured) {
+    if (!captured) {
+      return Object.freeze({
+        proposedHeaders: headerObservation("Unavailable", {}, "webRequest headers unavailable"),
+        finalHeaders: headerObservation("Unavailable", {}, "onSendHeaders unavailable"),
+      });
+    }
+    return Object.freeze({
+      proposedHeaders: headerObservation("ProposedBeforeSend", captured.proposedHeaders || {}),
+      finalHeaders: captured.finalHeadersAvailable
+        ? headerObservation("FinalSent", captured.finalHeaders || {})
+        : headerObservation("Unavailable", {}, captured.finalUnavailableReason || "onSendHeaders unavailable"),
+      requestGeneration: Number(captured.requestGeneration || captured.at || Date.now()),
+      frameUrl: captured.frameUrl || "",
+      tabUrl: captured.tabUrl || "",
+    });
   }
 
   function sanitizeHeaderObject(value) {
@@ -202,7 +225,12 @@
 
   function mergeCandidate(tabId, candidate) {
     if (!allowsQuality(candidate && candidate.quality)) return false;
-    const safe = Object.assign({}, candidate, { headers: sanitizeHeaderObject(candidate && candidate.headers || {}) });
+    const safe = Object.assign({}, candidate, {
+      headers: sanitizeHeaderObject(candidate && candidate.headers || {}),
+      browserHandoff: candidate && candidate.browserHandoff ? capturedHeaderPayload(candidate.browserHandoff) : undefined,
+      stableMediaId: candidate && candidate.stableMediaId || CORE.stableMediaIdentity(candidate && candidate.url),
+      sessionRevision: Date.now(),
+    });
     return candidateStore.merge(tabId, safe);
   }
 
@@ -247,13 +275,16 @@
       displayFallback: true,
       candidateCount: candidateStore.size(tabId),
       streamKind: candidateStreamKind(candidate),
-      rank
+      rank,
+      stableMediaId: candidate.stableMediaId || CORE.stableMediaIdentity(candidate.url),
+      sessionRevision: candidate.sessionRevision || Date.now(),
+      browserHandoff: candidate.browserHandoff || null,
     });
     await updateDiagnostics(tabId, payload);
     await offerInTopFrame(tabId, payload);
   }
 
-  function addClassifiedResponse(tabId, details, headers, source = "webRequest") {
+  function addClassifiedResponse(tabId, details, headers, source = "webRequest", handoffContext = null) {
     const contentType = CORE.normalizeMime(details.contentType || "");
     const classification = CORE.classifyResponse({
       url: details.url,
@@ -279,6 +310,8 @@
       frameUrl: details.frameUrl || "",
       source,
       headers,
+      browserHandoff: handoffContext,
+      stableMediaId: CORE.stableMediaIdentity(details.url),
       confidence: classification.confidence,
       reason: classification.reason,
       manifest: classification.manifest,
@@ -417,13 +450,35 @@
         if (details.tabId === -1) return;
         capturedHeaders.set(details.requestId, {
           at: Date.now(),
-          headers: captureUsefulHeaders(details.requestHeaders)
+          requestGeneration: Date.now(),
+          proposedHeaders: captureUsefulHeaders(details.requestHeaders),
+          finalHeaders: {},
+          finalHeadersAvailable: false,
+          finalUnavailableReason: browser.webRequest.onSendHeaders ? "pending onSendHeaders" : "onSendHeaders unsupported",
+          frameUrl: details.documentUrl || details.originUrl || "",
+          tabUrl: details.initiator || "",
         });
         trimCapturedHeaders();
       },
       { urls: ["<all_urls>"] },
       ["requestHeaders"]
     );
+
+    if (browser.webRequest.onSendHeaders && browser.webRequest.onSendHeaders.addListener) {
+      browser.webRequest.onSendHeaders.addListener(
+        details => {
+          if (details.tabId === -1) return;
+          const previous = capturedHeaders.get(details.requestId) || { at: Date.now(), proposedHeaders: {} };
+          previous.finalHeaders = captureUsefulHeaders(details.requestHeaders);
+          previous.finalHeadersAvailable = true;
+          previous.finalUnavailableReason = "";
+          capturedHeaders.set(details.requestId, previous);
+          trimCapturedHeaders();
+        },
+        { urls: ["<all_urls>"] },
+        ["requestHeaders"]
+      );
+    }
 
     browser.webRequest.onHeadersReceived.addListener(
       details => {
@@ -438,7 +493,7 @@
           requestType: details.type || "",
           frameId: details.frameId,
           frameUrl: details.originUrl || details.documentUrl || ""
-        }, captured ? captured.headers : {}, "webRequest");
+        }, captured ? (captured.finalHeadersAvailable ? captured.finalHeaders : captured.proposedHeaders) : {}, "webRequest", captured);
       },
       { urls: ["<all_urls>"] },
       ["responseHeaders"]
@@ -448,7 +503,8 @@
     browser.webRequest.onCompleted.addListener(clear, { urls: ["<all_urls>"] });
     browser.webRequest.onErrorOccurred.addListener(clear, { urls: ["<all_urls>"] });
     browser.tabs.onRemoved.addListener(tabId => {
-      capturedHeaders.delete(tabId);
+      // Request headers are keyed by requestId. Tab removal must not accidentally delete a same-numbered request id.
+      tabDispatchSessions.delete(tabId);
       candidateStore.removeTab(tabId);
       lastDispatchedByTab.delete(tabId);
       diagnosticCounters.delete(tabId);

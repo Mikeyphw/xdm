@@ -139,9 +139,7 @@ class MediaPageProbe(
                 )
             }
             val body = BufferedInputStream(connection.inputStream).use { stream ->
-                val buffer = ByteArray(policy.bodyPrefixBytes)
-                val read = stream.read(buffer)
-                if (read <= 0) "" else buffer.decodeToString(endIndex = read)
+                stream.readBoundedUtf8(policy.bodyPrefixBytes)
             }
             val input = MediaSniffingInput(
                 url = normalized,
@@ -207,8 +205,21 @@ private fun applyDefaultProbeHeaders(connection: HttpURLConnection, url: String,
     if (!supplied("Accept-Encoding")) connection.setRequestProperty("Accept-Encoding", "identity")
     sameOriginReferer(url)?.takeIf { !supplied("Referer") }?.let { connection.setRequestProperty("Referer", it) }
     requestHeaders
-        .filterKeys { !PrivacyDiagnosticsRedactor.isSensitiveHeaderName(it) }
+        .filterKeys { name -> name.none { it == '\n' || it == '\n' } }
+        .filterValues { value -> value.none { it == '\n' || it == '\n' } }
         .forEach { (name, value) -> connection.setRequestProperty(name, value) }
+}
+
+private fun BufferedInputStream.readBoundedUtf8(limitBytes: Int): String {
+    if (limitBytes <= 0) return ""
+    val output = ByteArray(limitBytes)
+    var total = 0
+    while (total < limitBytes) {
+        val read = read(output, total, limitBytes - total)
+        if (read <= 0) break
+        total += read
+    }
+    return if (total <= 0) "" else output.decodeToString(endIndex = total)
 }
 
 private fun sameOriginReferer(url: String): String? = runCatching {
@@ -340,8 +351,8 @@ class MediaSniffingEngine(
             result = if (records.isEmpty()) "no-captures" else "captures-created",
             safeDetails = mapOf(
                 "source" to input.source.humanLabel(),
-                "url" to input.url.orEmpty(),
-                "pageUrl" to (input.pageUrl ?: input.finalUrl).orEmpty(),
+                "url" to PrivacyDiagnosticsRedactor.redactUrl(input.url).orEmpty(),
+                "pageUrl" to PrivacyDiagnosticsRedactor.redactUrl(input.pageUrl ?: input.finalUrl).orEmpty(),
                 "mimeType" to input.mimeType.orEmpty(),
                 "candidateCount" to candidates.size.toString(),
                 "recordCount" to records.size.toString(),

@@ -27,6 +27,7 @@ class DebugEventModelsTest {
         val json = event.toJsonLine()
 
         assertTrue(json.contains("token=<redacted>"))
+        assertTrue(json.contains("quality=1080"))
         assertTrue(json.contains("Authorization\":\"<redacted>"))
         assertTrue(json.contains("Cookie\":\"<redacted>"))
         assertFalse(json.contains("secret-token"))

@@ -71,6 +71,7 @@ class OkHttpAria2RpcControl(
             put("auto-file-renaming", "false")
             put("split", options.split.coerceIn(1, 16).toString())
             put("max-connection-per-server", options.maxConnectionsPerServer.coerceIn(1, 16).toString())
+            put("max-redirect", options.maxRedirects.coerceIn(0, 10).toString())
             if (safeHeaders.isNotEmpty()) put("header", buildJsonArray { safeHeaders.forEach { add(JsonPrimitive(it)) } })
         }
         val params = buildJsonArray {

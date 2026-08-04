@@ -63,8 +63,8 @@ import com.mikeyphw.xdm.android.model.QueueIntelligenceSummary
 import com.mikeyphw.xdm.android.model.SavedSearch
 import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
+import com.mikeyphw.xdm.android.scheduler.CompletedFileGrantPolicy
 import com.mikeyphw.xdm.android.util.formatSpeed
-import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import java.io.File
 
@@ -644,9 +644,9 @@ private fun performDownloadAction(
             if (download.errorMessage.orEmpty().startsWith("Queue policy:")) onStartIgnoringQueuePolicy(download) else onTogglePause(download)
         }
 
-        DownloadActionKind.CopyLink -> copyTextToClipboard(context, "XDM source URL", download.sourceUrl)
+        DownloadActionKind.CopyLink -> copySensitiveTextToClipboard(context, "XDM source URL", download.sourceUrl)
         DownloadActionKind.CopyFileName -> copyTextToClipboard(context, "XDM file name", download.fileName)
-        DownloadActionKind.CopyDestination -> copyTextToClipboard(context, "XDM destination", download.destinationUri)
+        DownloadActionKind.CopyDestination -> copySensitiveTextToClipboard(context, "XDM destination", download.destinationUri)
         DownloadActionKind.ShareLink -> shareText(context, "XDM source URL", download.sourceUrl)
 
         DownloadActionKind.OpenFile -> openCompletedFile(context, download)
@@ -726,22 +726,8 @@ private fun deleteSavedFileAndRecord(context: android.content.Context, download:
     }
 }
 
-private fun completedDownloadUri(context: android.content.Context, download: Download): Uri? {
-    val raw = download.destinationUri.trim().takeIf { it.isNotBlank() } ?: return null
-    val parsed = runCatching { raw.toUri() }.getOrNull()
-    return when (parsed?.scheme?.lowercase()) {
-        ContentResolver.SCHEME_CONTENT -> parsed
-        ContentResolver.SCHEME_FILE -> parsed.path?.let(::File)?.takeIf { it.isFile }?.let { contentUriForFile(context, it) }
-        null, "" -> File(raw).takeIf { it.isFile }?.let { contentUriForFile(context, it) }
-        else -> File(raw).takeIf { it.isFile }?.let { contentUriForFile(context, it) }
-    }
-}
-
-private fun contentUriForFile(context: android.content.Context, file: File): Uri = FileProvider.getUriForFile(
-    context,
-    "${context.applicationContext.packageName}.completed-downloads",
-    file.canonicalFile,
-)
+private fun completedDownloadUri(context: android.content.Context, download: Download): Uri? =
+    CompletedFileGrantPolicy.resolve(context, download)
 
 private fun deleteSavedFile(context: android.content.Context, download: Download): Boolean {
     val raw = download.destinationUri.trim().takeIf { it.isNotBlank() } ?: return false

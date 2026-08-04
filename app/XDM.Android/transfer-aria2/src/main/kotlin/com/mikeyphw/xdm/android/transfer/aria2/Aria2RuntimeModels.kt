@@ -193,6 +193,7 @@ data class Aria2TaskOptions(
     val split: Int = 4,
     val maxConnectionsPerServer: Int = 4,
     val headers: Map<String, String> = emptyMap(),
+    val maxRedirects: Int = 0,
 )
 
 interface Aria2RpcControl {

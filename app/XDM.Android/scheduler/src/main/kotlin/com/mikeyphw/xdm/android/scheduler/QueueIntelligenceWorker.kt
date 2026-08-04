@@ -3,6 +3,8 @@ package com.mikeyphw.xdm.android.scheduler
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
+import com.mikeyphw.xdm.android.model.SystemExecutionOwner
+import com.mikeyphw.xdm.android.model.SystemStopReasonRecord
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -12,6 +14,9 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -21,6 +26,24 @@ import kotlinx.coroutines.coroutineScope
  * This avoids background foreground-service launches while preserving long downloads.
  */
 class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
+    override fun onStopped() {
+        super.onStopped()
+        val runtime = (applicationContext as? TransferRuntimeProvider)?.transferRuntime ?: return
+        val queue = (applicationContext as? QueueIntelligenceProvider)?.queueIntelligenceCoordinator
+        val phase4 = (applicationContext as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
+        phase4?.recordSystemStop(
+            downloadId = "queue-intelligence",
+            attemptGeneration = System.currentTimeMillis(),
+            owner = SystemExecutionOwner.WorkManager,
+            stopReason = getStopReason(),
+            nowEpochMs = System.currentTimeMillis(),
+        )?.also(TransferExecutionStopReasonRecorder::record)
+        CoroutineScope(Dispatchers.IO).launch {
+            queue?.pauseAllDurably()
+            runtime.pauseAll()
+        }
+    }
+
     override suspend fun doWork(): Result {
         val queueProvider = applicationContext as? QueueIntelligenceProvider ?: return Result.failure()
         val runtimeProvider = applicationContext as? TransferRuntimeProvider ?: return Result.failure()
@@ -81,6 +104,9 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
         }
 
         fun enqueueImmediate(context: Context) {
+            (context.applicationContext as? QueueSchedulingRecoveryProvider)
+                ?.queueSchedulingRecoveryCoordinator
+                ?.requestImmediateReevaluation("queue-intelligence-worker", IMMEDIATE_WORK, System.currentTimeMillis())
             val request = OneTimeWorkRequestBuilder<QueueIntelligenceWorker>().addTag(IMMEDIATE_WORK).build()
             // KEEP is deliberate: replacing a running foreground worker would cancel active automatic transfers.
             WorkManager.getInstance(context).enqueueUniqueWork(IMMEDIATE_WORK, ExistingWorkPolicy.KEEP, request)

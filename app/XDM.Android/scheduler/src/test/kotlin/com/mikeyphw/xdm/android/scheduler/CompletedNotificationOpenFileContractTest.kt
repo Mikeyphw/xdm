@@ -9,6 +9,7 @@ class CompletedNotificationOpenFileContractTest {
     private val root = androidRoot()
     private val notifications = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotifications.kt").readText()
     private val activity = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/OpenDownloadedFileActivity.kt").readText()
+    private val grantPolicy = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/CompletedFileGrantPolicy.kt").readText()
     private val manifest = File(root, "scheduler/src/main/AndroidManifest.xml").readText()
     private val runtime = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt").readText()
 
@@ -27,7 +28,11 @@ class CompletedNotificationOpenFileContractTest {
         assertTrue(manifest.contains("\${applicationId}.completed-downloads"))
         assertTrue(activity.contains("Intent(Intent.ACTION_VIEW)"))
         assertTrue(activity.contains("Intent.FLAG_GRANT_READ_URI_PERMISSION"))
-        assertTrue(activity.contains("FileProvider.getUriForFile"))
+        assertTrue(activity.contains("CompletedFileGrantPolicy.resolve"))
+        assertTrue(grantPolicy.contains("FileProvider.getUriForFile"))
+        assertTrue(grantPolicy.contains("context.filesDir, \"downloads\""))
+        assertTrue(grantPolicy.contains("getExternalFilesDir(null)"))
+        assertTrue(grantPolicy.contains("if (file.name != download.fileName) return null"))
     }
 
     @Test fun trampolineRevalidatesCompletedStateAndFallsBackToXdm() {

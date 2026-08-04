@@ -41,6 +41,9 @@ data class DownloadRequest(
     val networkMetered: Boolean = false,
     val previousNativeThroughputBytesPerSecond: Long? = null,
     val previousAria2ThroughputBytesPerSecond: Long? = null,
+    val privateNetworkApproved: Boolean = false,
+    val cleartextCredentialsApproved: Boolean = false,
+    val attemptGeneration: Long = 0L,
 )
 
 data class BackendTask(

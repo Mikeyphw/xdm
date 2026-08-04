@@ -136,7 +136,7 @@ object PrivacyDiagnosticsRedactor {
         "token",
     )
     private val bearerPattern = Regex("(?i)\\b(bearer|basic)\\s+[A-Za-z0-9._~+/=-]{8,}")
-    private val querySecretPattern = Regex("(?i)([?&][^=&#]*(?:token|secret|password|session|cookie|signature|sig|key|auth)[^=&#]*=)[^&#\\s]+")
+    private val queryParameterPattern = Regex("""([?&])([^=&#\s]+)=([^&#\s"']+)""")
 
     fun isSensitiveHeaderName(name: String): Boolean = name.trim().lowercase(Locale.US) in sensitiveHeaderNames
 
@@ -144,7 +144,10 @@ object PrivacyDiagnosticsRedactor {
         val text = value?.trim()?.takeIf { it.isNotBlank() } ?: return null
         return text
             .replace(bearerPattern) { match -> match.groupValues[1].lowercase(Locale.US) + " <redacted>" }
-            .replace(querySecretPattern) { match -> match.groupValues[1] + "<redacted>" }
+            .replace(queryParameterPattern) { match ->
+                val part = "${match.groupValues[2]}=${match.groupValues[3]}"
+                match.groupValues[1] + ExternalUrlPolicy.redactQueryParameter(part, "<redacted>")
+            }
             .take(512)
     }
 
@@ -163,14 +166,7 @@ object PrivacyDiagnosticsRedactor {
         val query = uri.rawQuery
             ?.split('&')
             ?.filter { it.isNotBlank() }
-            ?.joinToString("&") { part ->
-                val name = part.substringBefore('=', missingDelimiterValue = part).lowercase(Locale.US)
-                if (name in sensitiveQueryNames || sensitiveQueryNames.any { marker -> name.contains(marker) }) {
-                    "$name=<redacted>"
-                } else {
-                    part.take(160)
-                }
-            }
+            ?.joinToString("&") { part -> ExternalUrlPolicy.redactQueryParameter(part, "<redacted>") }
             ?.takeIf { it.isNotBlank() }
             ?.let { "?$it" }
             .orEmpty()

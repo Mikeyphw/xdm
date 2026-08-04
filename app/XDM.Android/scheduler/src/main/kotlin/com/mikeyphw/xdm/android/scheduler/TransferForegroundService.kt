@@ -15,6 +15,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 
 class TransferForegroundService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -33,10 +35,20 @@ class TransferForegroundService : Service() {
         startForeground()
         terminalJob = scope.launch {
             runtime.terminalEvents.collectLatest { event ->
-                getSystemService(android.app.NotificationManager::class.java).notify(
-                    5000 + event.downloadId.stableSystemId(),
-                    notifications.terminal(event.downloadId, event.fileName, event.state, event.message, event.destinationUri, event.mimeType),
-                )
+                notifications.terminalIfFirst(
+                    downloadId = event.downloadId,
+                    fileName = event.fileName,
+                    state = event.state,
+                    message = event.message,
+                    destinationUri = event.destinationUri,
+                    mimeType = event.mimeType,
+                    attemptGeneration = event.attemptGeneration,
+                )?.let { notification ->
+                    getSystemService(android.app.NotificationManager::class.java).notify(
+                        5000 + event.downloadId.stableSystemId(),
+                        notification,
+                    )
+                }
             }
         }
         summaryJob = scope.launch {
@@ -55,7 +67,7 @@ class TransferForegroundService : Service() {
         commandReceived = true
         when (intent?.action) {
             ACTION_START -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let(runtime::launch)
-            TransferNotifications.ACTION_PAUSE_ALL -> scope.launch { runtime.pauseAll() }
+            TransferNotifications.ACTION_PAUSE_ALL -> scope.launch { queueIntelligence.pauseAllDurably(); runtime.pauseAll() }
             TransferNotifications.ACTION_RESUME_ALL -> scope.launch { queueIntelligence.resumeAllManual() }
             TransferNotifications.ACTION_CANCEL -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id -> scope.launch { runtime.cancel(id) } }
             TransferNotifications.ACTION_PAUSE -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id -> scope.launch { runtime.pause(id) } }
@@ -71,6 +83,7 @@ class TransferForegroundService : Service() {
     override fun onTimeout(startId: Int, fgsType: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             scope.launch {
+                queueIntelligence.pauseAllDurably()
                 runtime.pauseAll()
                 stopSelf(startId)
             }
@@ -78,6 +91,9 @@ class TransferForegroundService : Service() {
     }
 
     override fun onDestroy() {
+        if (runtime.summary.value.activeCount > 0) {
+            runBlocking(Dispatchers.IO) { withTimeoutOrNull(3_000) { queueIntelligence.pauseAllDurably(); runtime.pauseAll() } }
+        }
         summaryJob?.cancel()
         terminalJob?.cancel()
         scope.cancel()

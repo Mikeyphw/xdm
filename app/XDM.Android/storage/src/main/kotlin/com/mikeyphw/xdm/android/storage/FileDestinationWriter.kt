@@ -25,7 +25,7 @@ class FileDestinationWriter(
     }
 
     override suspend fun prepare(request: DestinationRequest): PreparedDestination {
-        val destination = resolveDestination(request).toFile()
+        val destination = resolveDestination(request.copy(fileName = androidProviderSafeFileName(request.fileName))).toFile()
         destination.parentFile?.mkdirs()
         val conflict = previewConflict(request)
         val resolved = when {
@@ -46,8 +46,30 @@ class FileDestinationWriter(
             override suspend fun promote(): DestinationPromotionResult {
                 check(artifacts.stagingFile.isFile) { "Staging file is missing" }
                 resolved.parentFile?.mkdirs()
+                val generation = PublicationGeneration(request.downloadId, attemptGeneration = 1L, artifactGeneration = artifacts.stagingFile.lastModified().coerceAtLeast(1L))
+                PublicationJournalCodec.write(
+                    artifacts.journalFile,
+                    PublicationCommitRecord(
+                        generation = generation,
+                        sourcePath = artifacts.stagingFile.absolutePath,
+                        stagingPath = artifacts.stagingFile.absolutePath,
+                        destinationSpec = request.destinationUri,
+                        committedUri = null,
+                        bytesExpected = artifacts.stagingFile.length(),
+                        bytesCommitted = 0L,
+                        checksumAlgorithm = null,
+                        expectationId = null,
+                        expectedDigest = null,
+                        actualDigest = null,
+                        verificationTimestampEpochMs = null,
+                        boundary = PublicationCommitBoundary.BeforeDestinationCommit,
+                        health = CompletedArtifactHealthStatus.PendingPublication,
+                        message = "Filesystem publication prepared before destination commit.",
+                    ),
+                )
                 val source = artifacts.stagingFile.toPath()
                 val target = resolved.toPath()
+                val expectedBytes = artifacts.stagingFile.length()
                 val atomic = runCatching {
                     Files.move(source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
                     true
@@ -55,6 +77,29 @@ class FileDestinationWriter(
                     Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
                     false
                 }
+                resolved.fsyncParentDirectoryIfSupported()
+                val health = CompletedArtifactHealthProbe.fileHealth(resolved, expectedBytes)
+                check(health == CompletedArtifactHealthStatus.Present) { "Completed file health is $health after publication" }
+                PublicationJournalCodec.write(
+                    artifacts.journalFile,
+                    PublicationCommitRecord(
+                        generation = generation,
+                        sourcePath = resolved.absolutePath,
+                        stagingPath = null,
+                        destinationSpec = request.destinationUri,
+                        committedUri = resolved.toURI().toString(),
+                        bytesExpected = expectedBytes,
+                        bytesCommitted = resolved.length(),
+                        checksumAlgorithm = null,
+                        expectationId = null,
+                        expectedDigest = null,
+                        actualDigest = null,
+                        verificationTimestampEpochMs = System.currentTimeMillis(),
+                        boundary = PublicationCommitBoundary.MetadataReconciled,
+                        health = health,
+                        message = "Filesystem destination committed and parent directory sync attempted.",
+                    ),
+                )
                 artifacts.checkpointFile.delete()
                 artifacts.journalFile.delete()
                 return DestinationPromotionResult(resolved.toURI().toString(), resolved.name, resolved.length(), atomic)

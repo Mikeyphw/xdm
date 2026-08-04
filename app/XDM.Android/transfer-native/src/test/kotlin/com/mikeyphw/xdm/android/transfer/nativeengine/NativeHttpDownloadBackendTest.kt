@@ -280,6 +280,7 @@ class NativeHttpDownloadBackendTest {
         fileName = destination.fileName.toString(),
         preferredBackend = BackendType.Native,
         maxConnections = maxConnections,
+        privateNetworkApproved = true,
     )
 
     private fun url(path: String) = "http://127.0.0.1:${server.address.port}$path"

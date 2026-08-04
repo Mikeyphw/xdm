@@ -1,79 +1,239 @@
 package com.mikeyphw.xdm.android.scheduler
 
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import java.util.concurrent.ConcurrentHashMap
 
-/** Short-lived, process-local handoff for resolver-selected media and browser session requests.
- * Raw cookies and Authorization values never enter persistent storage, sidecars, or normal UI; they live only
- * long enough for the runtime to build the next DownloadRequest. */
+/** Encrypted, scoped process-local handoff for browser sessions and signed URLs.
+ * The process cache is only an optimization; AndroidSecureRequestEnvelopeStore is authoritative
+ * after initialization so pause, process death, and retry do not silently lose authentication. */
 data class MediaRequestHandoff(
+    val exactUrl: String? = null,
+    val boundHost: String? = null,
+    val pageUrl: String? = null,
     val headers: Map<String, String>,
     val redactedSummary: String,
     val isExpiringUrl: Boolean,
+    val expiresAtEpochMs: Long,
+    val attemptGeneration: Long = 0L,
+    val privateNetworkApproved: Boolean = false,
+    val cleartextCredentialsApproved: Boolean = false,
     val cleanupActions: List<String> = emptyList(),
     val tempCookieFileName: String? = null,
+    val createdAtEpochMs: Long = System.currentTimeMillis(),
 )
 
 object MediaRequestHandoffStore {
     private const val MaxEntries = 128
-    private val handoffs = ConcurrentHashMap<String, MediaRequestHandoff>()
-    private val captureHandoffs = ConcurrentHashMap<String, MediaRequestHandoff>()
+    private const val DefaultExpiryMs = 24L * 60L * 60L * 1000L
+    private val cache = ConcurrentHashMap<String, MediaRequestHandoff>()
+    @Volatile private var durableStore: SecureRequestEnvelopeStore = InMemorySecureRequestEnvelopeStore()
+
+    fun initialize(store: SecureRequestEnvelopeStore) {
+        durableStore = store
+        durableStore.deleteExpired()
+    }
 
     fun remember(
         downloadId: String,
         headers: Map<String, String>,
         redactedSummary: String,
         isExpiringUrl: Boolean,
+        exactUrl: String? = null,
+        pageUrl: String? = null,
+        expiresAtEpochMs: Long = defaultExpiry(isExpiringUrl),
+        attemptGeneration: Long = 0L,
+        privateNetworkApproved: Boolean = false,
+        cleartextCredentialsApproved: Boolean = false,
         cleanupActions: List<String> = emptyList(),
         tempCookieFileName: String? = null,
-    ) {
-        rememberInto(handoffs, downloadId, headers, redactedSummary, isExpiringUrl, cleanupActions, tempCookieFileName)
-    }
+    ) = rememberSubject(
+        subjectId = subject(DOWNLOAD_PREFIX, downloadId),
+        headers = headers,
+        redactedSummary = redactedSummary,
+        isExpiringUrl = isExpiringUrl,
+        exactUrl = exactUrl,
+        pageUrl = pageUrl,
+        expiresAtEpochMs = expiresAtEpochMs,
+        attemptGeneration = attemptGeneration,
+        privateNetworkApproved = privateNetworkApproved,
+        cleartextCredentialsApproved = cleartextCredentialsApproved,
+        cleanupActions = cleanupActions,
+        tempCookieFileName = tempCookieFileName,
+    )
 
     fun rememberCapture(
         captureId: String,
         headers: Map<String, String>,
         redactedSummary: String,
         isExpiringUrl: Boolean,
-    ) {
-        rememberInto(captureHandoffs, captureId, headers, redactedSummary, isExpiringUrl)
-    }
+        exactUrl: String? = null,
+        pageUrl: String? = null,
+        expiresAtEpochMs: Long = defaultExpiry(isExpiringUrl),
+        privateNetworkApproved: Boolean = false,
+        cleartextCredentialsApproved: Boolean = false,
+    ) = rememberSubject(
+        subjectId = subject(CAPTURE_PREFIX, captureId),
+        headers = headers,
+        redactedSummary = redactedSummary,
+        isExpiringUrl = isExpiringUrl,
+        exactUrl = exactUrl,
+        pageUrl = pageUrl,
+        expiresAtEpochMs = expiresAtEpochMs,
+        privateNetworkApproved = privateNetworkApproved,
+        cleartextCredentialsApproved = cleartextCredentialsApproved,
+    )
 
-    fun forDownload(downloadId: String): MediaRequestHandoff? = handoffs[downloadId]
+    fun rememberVariant(
+        variantId: String,
+        exactUrl: String,
+        headers: Map<String, String> = emptyMap(),
+        redactedSummary: String = "",
+        expiresAtEpochMs: Long = defaultExpiry(true),
+    ) = rememberSubject(
+        subjectId = subject(VARIANT_PREFIX, variantId),
+        headers = headers,
+        redactedSummary = redactedSummary,
+        isExpiringUrl = true,
+        exactUrl = exactUrl,
+        expiresAtEpochMs = expiresAtEpochMs,
+    )
 
-    fun forCapture(captureId: String): MediaRequestHandoff? = captureHandoffs[captureId]
+    fun rememberCommand(
+        commandId: String,
+        exactUrl: String?,
+        pageUrl: String?,
+        headers: Map<String, String>,
+        redactedSummary: String,
+        privateNetworkApproved: Boolean,
+        cleartextCredentialsApproved: Boolean,
+        expiresAtEpochMs: Long = defaultExpiry(true),
+    ) = rememberSubject(
+        subjectId = subject(COMMAND_PREFIX, commandId),
+        headers = headers,
+        redactedSummary = redactedSummary,
+        isExpiringUrl = headers.isNotEmpty() || exactUrl != null,
+        exactUrl = exactUrl,
+        pageUrl = pageUrl,
+        expiresAtEpochMs = expiresAtEpochMs,
+        privateNetworkApproved = privateNetworkApproved,
+        cleartextCredentialsApproved = cleartextCredentialsApproved,
+    )
 
-    fun forget(downloadId: String) {
-        handoffs.remove(downloadId)
-    }
+    fun forDownload(downloadId: String): MediaRequestHandoff? = readSubject(subject(DOWNLOAD_PREFIX, downloadId))
+    fun forCapture(captureId: String): MediaRequestHandoff? = readSubject(subject(CAPTURE_PREFIX, captureId))
+    fun forVariant(variantId: String): MediaRequestHandoff? = readSubject(subject(VARIANT_PREFIX, variantId))
+    fun forCommand(commandId: String): MediaRequestHandoff? = readSubject(subject(COMMAND_PREFIX, commandId))
 
-    fun forgetCapture(captureId: String) {
-        captureHandoffs.remove(captureId)
-    }
+    fun forget(downloadId: String) = forgetSubject(subject(DOWNLOAD_PREFIX, downloadId))
+    fun forgetCapture(captureId: String) = forgetSubject(subject(CAPTURE_PREFIX, captureId))
+    fun forgetVariant(variantId: String) = forgetSubject(subject(VARIANT_PREFIX, variantId))
+    fun forgetCommand(commandId: String) = forgetSubject(subject(COMMAND_PREFIX, commandId))
 
-    fun verifyForgotten(downloadId: String): Boolean = !handoffs.containsKey(downloadId)
+    fun verifyForgotten(downloadId: String): Boolean = forDownload(downloadId) == null
 
-    private fun rememberInto(
-        target: ConcurrentHashMap<String, MediaRequestHandoff>,
-        key: String,
+    private fun rememberSubject(
+        subjectId: String,
         headers: Map<String, String>,
         redactedSummary: String,
         isExpiringUrl: Boolean,
+        exactUrl: String? = null,
+        pageUrl: String? = null,
+        expiresAtEpochMs: Long = defaultExpiry(isExpiringUrl),
+        attemptGeneration: Long = 0L,
+        privateNetworkApproved: Boolean = false,
+        cleartextCredentialsApproved: Boolean = false,
         cleanupActions: List<String> = emptyList(),
         tempCookieFileName: String? = null,
     ) {
-        if (key.isBlank()) return
+        if (subjectId.substringAfter(':').isBlank()) return
         val safeHeaders = headers.filterKeys(::isSafeHeaderName).filterValues(::isSafeHeaderValue)
-        if (safeHeaders.isEmpty() && redactedSummary.isBlank()) return
-        if (target.size >= MaxEntries) target.keys.firstOrNull()?.let(target::remove)
-        target[key] = MediaRequestHandoff(
+        val handoff = MediaRequestHandoff(
+            exactUrl = exactUrl?.trim()?.takeIf(String::isNotBlank),
+            boundHost = ExternalUrlPolicy.originHost(exactUrl),
+            pageUrl = pageUrl?.trim()?.takeIf(String::isNotBlank),
             headers = safeHeaders,
             redactedSummary = redactedSummary.take(500),
             isExpiringUrl = isExpiringUrl,
+            expiresAtEpochMs = expiresAtEpochMs,
+            attemptGeneration = attemptGeneration,
+            privateNetworkApproved = privateNetworkApproved,
+            cleartextCredentialsApproved = cleartextCredentialsApproved,
             cleanupActions = cleanupActions.map { it.take(120) },
             tempCookieFileName = tempCookieFileName?.take(96),
         )
+        if (handoff.headers.isEmpty() && handoff.exactUrl == null && handoff.pageUrl == null && handoff.redactedSummary.isBlank()) return
+        evictOldestIfNeeded()
+        cache[subjectId] = handoff
+        durableStore.put(handoff.toEnvelope(subjectId))
     }
 
+    private fun readSubject(subjectId: String): MediaRequestHandoff? {
+        val now = System.currentTimeMillis()
+        cache[subjectId]?.let { cached ->
+            if (cached.expiresAtEpochMs > now) return cached
+            cache.remove(subjectId)
+        }
+        val envelope = durableStore.get(subjectId, now) ?: return null
+        val handoff = envelope.toHandoff()
+        evictOldestIfNeeded()
+        cache[subjectId] = handoff
+        return handoff
+    }
+
+    private fun forgetSubject(subjectId: String) {
+        cache.remove(subjectId)
+        durableStore.delete(subjectId)
+    }
+
+    private fun evictOldestIfNeeded() {
+        while (cache.size >= MaxEntries) {
+            val oldest = cache.entries.minByOrNull { it.value.createdAtEpochMs } ?: return
+            cache.remove(oldest.key)
+            // Cache eviction is not credential deletion. Durable envelopes remain until expiry or
+            // explicit terminal cleanup, so process pressure cannot silently break a transfer.
+        }
+    }
+
+    private fun MediaRequestHandoff.toEnvelope(subjectId: String) = SecureRequestEnvelope(
+        subjectId = subjectId,
+        exactUrl = exactUrl,
+        boundHost = boundHost,
+        pageUrl = pageUrl,
+        headers = headers,
+        redactedSummary = redactedSummary,
+        isExpiringUrl = isExpiringUrl,
+        expiresAtEpochMs = expiresAtEpochMs,
+        attemptGeneration = attemptGeneration,
+        privateNetworkApproved = privateNetworkApproved,
+        cleartextCredentialsApproved = cleartextCredentialsApproved,
+        cleanupActions = cleanupActions,
+        tempCookieFileName = tempCookieFileName,
+        createdAtEpochMs = createdAtEpochMs,
+    )
+
+    private fun SecureRequestEnvelope.toHandoff() = MediaRequestHandoff(
+        exactUrl = exactUrl,
+        boundHost = boundHost,
+        pageUrl = pageUrl,
+        headers = headers,
+        redactedSummary = redactedSummary,
+        isExpiringUrl = isExpiringUrl,
+        expiresAtEpochMs = expiresAtEpochMs,
+        attemptGeneration = attemptGeneration,
+        privateNetworkApproved = privateNetworkApproved,
+        cleartextCredentialsApproved = cleartextCredentialsApproved,
+        cleanupActions = cleanupActions,
+        tempCookieFileName = tempCookieFileName,
+        createdAtEpochMs = createdAtEpochMs,
+    )
+
+    private fun subject(prefix: String, id: String) = "$prefix:$id"
     private fun isSafeHeaderName(name: String): Boolean = name.isNotBlank() && name.none { it == '\r' || it == '\n' }
     private fun isSafeHeaderValue(value: String): Boolean = value.none { it == '\r' || it == '\n' }
+    private fun defaultExpiry(expiring: Boolean): Long = System.currentTimeMillis() + if (expiring) DefaultExpiryMs else 7L * DefaultExpiryMs
+
+    private const val DOWNLOAD_PREFIX = "download"
+    private const val CAPTURE_PREFIX = "capture"
+    private const val VARIANT_PREFIX = "variant"
+    private const val COMMAND_PREFIX = "command"
 }

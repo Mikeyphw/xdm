@@ -164,4 +164,13 @@ class XdmBrowserDeepLinkParserTest {
     }
 
     private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8.name())
+    @Test
+    fun phaseFiveParsesStableSessionAndFrameMetadata() {
+        val raw = "xdmdownload://capture?v=1&url=https%3A%2F%2Fcdn.example%2Fvideo.mp4&stableMediaId=media-session-abcdef123456&sessionRevision=12345&frame=https%3A%2F%2Fplayer.example%2Fembed"
+        val result = XdmBrowserDeepLinkParser.parseDetailed(raw, "xdmdownload") as XdmBrowserDeepLinkParseResult.Accepted
+        assertEquals("media-session-abcdef123456", result.payload.stableMediaId)
+        assertEquals(12345L, result.payload.sessionRevision)
+        assertEquals("https://player.example/embed", result.payload.frameUrl)
+    }
+
 }

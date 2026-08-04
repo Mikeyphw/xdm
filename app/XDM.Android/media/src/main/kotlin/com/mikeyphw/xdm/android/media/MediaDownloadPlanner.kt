@@ -3,6 +3,8 @@ package com.mikeyphw.xdm.android.media
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
+import com.mikeyphw.xdm.android.model.BrowserHandoffMediaPolicy
+import com.mikeyphw.xdm.android.model.MediaTransferShape
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import java.util.Locale
 
@@ -159,14 +161,16 @@ class MediaDownloadPlanner {
         val primaryUrl = selected?.url ?: capture.selectedVariantUrl ?: capture.sourceUrl
         val live = isLive(capture)
         val protectedDiagnostic = protectedDiagnostic(capture, variants)
+        val shape = BrowserHandoffMediaPolicy.classifyShape(capture.kind, capture.pageUrl, capture.mimeType, live, protectedDiagnostic.protected)
         val strategy = when {
-            protectedDiagnostic.protected -> MediaDownloadStrategy.UnsupportedProtected
-            intent == MediaDownloadIntent.LiveRecording || live -> MediaDownloadStrategy.FfmpegLive
-            capture.kind == MediaSourceKind.HlsPlaylist || capture.kind == MediaSourceKind.DashManifest -> MediaDownloadStrategy.YtDlp
+            shape == MediaTransferShape.ProtectedDiagnostic -> MediaDownloadStrategy.UnsupportedProtected
+            shape == MediaTransferShape.LiveRecording -> MediaDownloadStrategy.FfmpegLive
+            shape == MediaTransferShape.AdaptivePlaylist -> MediaDownloadStrategy.YtDlp
+            shape == MediaTransferShape.SiteResolver -> MediaDownloadStrategy.YtDlp
             intent == MediaDownloadIntent.AudioOnly && capture.kind != MediaSourceKind.AudioStream -> MediaDownloadStrategy.YtDlp
             intent == MediaDownloadIntent.Subtitles -> MediaDownloadStrategy.YtDlp
             capture.kind == MediaSourceKind.AudioStream -> MediaDownloadStrategy.Native
-            capture.kind == MediaSourceKind.ProgressiveMedia || capture.kind == MediaSourceKind.DirectFile || capture.kind == MediaSourceKind.VideoStream -> MediaDownloadStrategy.Aria2
+            shape == MediaTransferShape.DirectMedia || shape == MediaTransferShape.DirectFile -> MediaDownloadStrategy.Aria2
             else -> MediaDownloadStrategy.YtDlp
         }
         val normalizedSelection = normalizeSelection(capture, variants, selection, selected)
@@ -295,17 +299,23 @@ class MediaDownloadPlanner {
     private fun isLive(capture: MediaCaptureRecord): Boolean = capture.container?.contains("live", ignoreCase = true) == true
 
     private fun protectedDiagnostic(capture: MediaCaptureRecord, variants: List<MediaVariant>): ProtectedMediaDiagnostic {
-        val evidence = listOfNotNull(capture.container, capture.codecs, capture.mimeType) + variants.mapNotNull { it.codecs } + variants.mapNotNull { it.mimeType }
-        val marker = evidence.firstOrNull { value -> protectedMarkers.any { marker -> value.contains(marker, ignoreCase = true) } }
-        return if (marker != null) {
-            ProtectedMediaDiagnostic(
-                protected = true,
-                scheme = protectedMarkers.firstOrNull { scheme -> evidence.any { it.contains(scheme, ignoreCase = true) } },
-                reason = "Manifest or codec metadata contains protection marker: ${marker.take(80)}.",
-                allowedAction = "Show diagnostics only. XDM does not bypass DRM or queue protected media.",
-            )
+        val hlsEvidence = listOf(capture.container, capture.codecs, capture.mimeType)
+            .filterNotNull()
+            .firstOrNull { it.contains("EXT-X-KEY", ignoreCase = true) || it.contains("SAMPLE-AES", ignoreCase = true) }
+        val dashEvidence = listOf(capture.container, capture.codecs)
+            .filterNotNull()
+            .firstOrNull { it.contains("ContentProtection", ignoreCase = true) || it.contains("urn:uuid:", ignoreCase = true) }
+        val resolverEvidence = variants.firstOrNull { it.displayLabel.contains("protected", ignoreCase = true) }?.displayLabel
+        val evidence = BrowserHandoffMediaPolicy.classifyProtection(
+            hlsKeyMetadata = hlsEvidence,
+            dashContentProtection = dashEvidence,
+            browserEncryptionEvent = null,
+            resolverReport = resolverEvidence,
+        )
+        return if (evidence.protected) {
+            ProtectedMediaDiagnostic(true, evidence.evidence.firstOrNull()?.scheme, "Authoritative protection evidence is present. XDM keeps this diagnostic-only and will not attempt DRM bypass.", "View diagnostics; do not download protected media.")
         } else {
-            ProtectedMediaDiagnostic(false, null, "No DRM/protection marker was present in capture metadata.", "Resolver and player actions remain review-first.")
+            ProtectedMediaDiagnostic(false, null, "No authoritative DRM evidence found in browser, HLS, DASH, or resolver data.", "Download or play after review.")
         }
     }
 

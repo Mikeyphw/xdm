@@ -14,6 +14,17 @@
   const QUALITY_POSSIBLE = "possible";
   const QUALITY_REJECTED = "rejected";
 
+  function stableMediaIdentity(value) {
+    try {
+      const url = new URL(String(value || ""));
+      url.hash = "";
+      url.search = "";
+      return `${url.origin}${url.pathname}`.toLowerCase();
+    } catch (_) {
+      return String(value || "").split(/[?#]/, 1)[0].toLowerCase();
+    }
+  }
+
   function normalizeMime(value) {
     return String(value || "").split(";", 1)[0].trim().toLowerCase();
   }
@@ -245,6 +256,7 @@
   }
 
   globalThis.XdmDetectorCoreV1 = Object.freeze({
+    stableMediaIdentity,
     normalizeMime,
     isManifest,
     isLikelyAd,

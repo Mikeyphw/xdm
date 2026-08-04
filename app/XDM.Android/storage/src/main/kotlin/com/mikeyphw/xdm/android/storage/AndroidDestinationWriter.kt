@@ -33,7 +33,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         if (isRegularFileDestination(request.destinationUri) || request.destinationUri == DestinationUris.APP_PRIVATE_DOWNLOADS) {
             return appPrivateWriter.artifactPaths(request)
         }
-        val directory = File(context.filesDir, "transfer-staging/${safeComponent(request.downloadId)}").apply(File::mkdirs)
+        val directory = File(context.filesDir, "transfer-staging/${collisionResistantComponent(request.downloadId)}").apply(File::mkdirs)
         val partial = File(directory, safeFileName(request.fileName) + request.stagingSuffix)
         return DestinationArtifacts(
             stagingFile = partial,
@@ -58,6 +58,28 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
 
             override suspend fun promote(): DestinationPromotionResult {
                 check(artifacts.stagingFile.isFile) { "Staging file is missing" }
+                val generation = PublicationGeneration(request.downloadId, attemptGeneration = 1L, artifactGeneration = artifacts.stagingFile.lastModified().coerceAtLeast(1L))
+                val expectedBytes = artifacts.stagingFile.length()
+                PublicationJournalCodec.write(
+                    artifacts.journalFile,
+                    PublicationCommitRecord(
+                        generation = generation,
+                        sourcePath = artifacts.stagingFile.absolutePath,
+                        stagingPath = artifacts.stagingFile.absolutePath,
+                        destinationSpec = request.destinationUri,
+                        committedUri = null,
+                        bytesExpected = expectedBytes,
+                        bytesCommitted = 0L,
+                        checksumAlgorithm = null,
+                        expectationId = null,
+                        expectedDigest = null,
+                        actualDigest = null,
+                        verificationTimestampEpochMs = null,
+                        boundary = PublicationCommitBoundary.BeforeDestinationCommit,
+                        health = CompletedArtifactHealthStatus.PendingPublication,
+                        message = "Content destination publication prepared before provider commit.",
+                    ),
+                )
                 val committed = target.openForCommit()
                 try {
                     copyAndSync(artifacts.stagingFile, committed.uri)
@@ -66,10 +88,32 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
                     committed.finish(false)
                     throw error
                 }
-                val bytes = querySize(committed.uri) ?: artifacts.stagingFile.length()
+                val bytes = querySize(committed.uri) ?: expectedBytes
+                check(bytes == expectedBytes) { "Published provider item reports $bytes bytes, expected $expectedBytes" }
+                PublicationJournalCodec.write(
+                    artifacts.journalFile,
+                    PublicationCommitRecord(
+                        generation = generation,
+                        sourcePath = artifacts.stagingFile.absolutePath,
+                        stagingPath = null,
+                        destinationSpec = request.destinationUri,
+                        committedUri = committed.uri.toString(),
+                        bytesExpected = expectedBytes,
+                        bytesCommitted = bytes,
+                        checksumAlgorithm = null,
+                        expectationId = null,
+                        expectedDigest = null,
+                        actualDigest = null,
+                        verificationTimestampEpochMs = System.currentTimeMillis(),
+                        boundary = PublicationCommitBoundary.MetadataReconciled,
+                        health = CompletedArtifactHealthStatus.Present,
+                        message = "Content destination committed, re-queried, and reconciled.",
+                    ),
+                )
                 artifacts.stagingFile.delete()
                 artifacts.checkpointFile.delete()
                 artifacts.journalFile.delete()
+                artifacts.stagingFile.parentFile?.takeIf { it.listFiles().isNullOrEmpty() }?.delete()
                 return DestinationPromotionResult(committed.uri.toString(), committed.displayName, bytes, atomic = false)
             }
 
@@ -209,7 +253,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType ?: guessMimeType(name))
-            root.relativePath?.let { put(MediaStore.MediaColumns.RELATIVE_PATH, it) }
+            root.relativePath?.let { put(MediaStore.MediaColumns.RELATIVE_PATH, normalizedRelativePath(it)) }
             put(MediaStore.MediaColumns.DATE_ADDED, createdAtSeconds)
             put(MediaStore.MediaColumns.DATE_MODIFIED, createdAtSeconds)
             put(MediaStore.MediaColumns.IS_PENDING, 1)
@@ -224,7 +268,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
     @SuppressLint("NewApi")
     private fun publishMediaItem(uri: Uri, root: DestinationRoot, name: String, mimeType: String) {
         val modifiedAtSeconds = System.currentTimeMillis() / 1000
-        resolver.update(
+        val rowsUpdated = resolver.update(
             uri,
             ContentValues().apply {
                 put(MediaStore.MediaColumns.IS_PENDING, 0)
@@ -233,6 +277,8 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
             null,
             null,
         )
+        check(rowsUpdated > 0) { "MediaStore publication updated zero rows for $uri" }
+        check(queryIsPending(uri) == false) { "MediaStore item remained pending after publication" }
         resolver.notifyChange(uri, null)
         val relativePath = root.relativePath ?: return
         val publicFile = File(Environment.getExternalStoragePublicDirectory(relativePath), name)
@@ -269,12 +315,20 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
 
     @SuppressLint("NewApi")
     private fun findMediaItem(root: DestinationRoot, name: String): Uri? {
-        val selection = if (root.relativePath == null) "${MediaStore.MediaColumns.DISPLAY_NAME}=?" else "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
-        val args = if (root.relativePath == null) arrayOf(name) else arrayOf(name, root.relativePath.trimEnd('/') + "%")
+        val normalizedPath = root.relativePath?.let(::normalizedRelativePath)
+        val selection = if (normalizedPath == null) {
+            "${MediaStore.MediaColumns.DISPLAY_NAME}=?"
+        } else {
+            "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.RELATIVE_PATH}=?"
+        }
+        val args = if (normalizedPath == null) arrayOf(name) else arrayOf(name, normalizedPath)
         return resolver.query(root.uri, arrayOf(MediaStore.MediaColumns._ID), selection, args, "${MediaStore.MediaColumns.DATE_MODIFIED} DESC")?.use { cursor ->
             if (!cursor.moveToFirst()) null else ContentUris.withAppendedId(root.uri, cursor.getLong(0))
         }
     }
+
+
+    private fun normalizedRelativePath(path: String): String = path.trim('/').plus("/")
 
     private fun uniqueName(root: DestinationRoot, requested: String): String {
         val dot = requested.lastIndexOf('.').takeIf { it > 0 } ?: requested.length
@@ -290,6 +344,14 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
             if (!exists) return candidate
         }
         return "$stem-${System.currentTimeMillis()}$extension"
+    }
+
+
+    private fun queryIsPending(uri: Uri): Boolean? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        return resolver.query(uri, arrayOf(MediaStore.MediaColumns.IS_PENDING), null, null, null)?.use { cursor ->
+            if (!cursor.moveToFirst()) null else cursor.getColumnIndex(MediaStore.MediaColumns.IS_PENDING).takeIf { it >= 0 && !cursor.isNull(it) }?.let { cursor.getInt(it) != 0 }
+        }
     }
 
     private fun queryDisplayName(uri: Uri): String? = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
@@ -326,8 +388,8 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
     }
 
     private fun isRegularFileDestination(uri: String): Boolean = uri.startsWith("file:") || !uri.contains("://")
-    private fun safeComponent(value: String): String = value.replace(Regex("[^A-Za-z0-9._-]"), "_").take(120)
-    private fun safeFileName(value: String): String = sanitizeFileName(value)
+    private fun safeComponent(value: String): String = collisionResistantComponent(value)
+    private fun safeFileName(value: String): String = androidProviderSafeFileName(sanitizeFileName(value))
     private fun guessMimeType(name: String): String = URLConnection.guessContentTypeFromName(name) ?: "application/octet-stream"
 
     private data class DestinationRoot(

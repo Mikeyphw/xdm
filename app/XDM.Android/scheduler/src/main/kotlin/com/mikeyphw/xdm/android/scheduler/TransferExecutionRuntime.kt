@@ -26,6 +26,7 @@ import com.mikeyphw.xdm.android.transfer.DownloadBackend
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,6 +37,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class TransferExecutionRuntime(
     private val store: TransferDownloadStore,
@@ -46,6 +49,7 @@ class TransferExecutionRuntime(
     recoveryStore: RecoveryWorkflowStore = InMemoryRecoveryWorkflowStore(),
     backends: Collection<DownloadBackend>,
     artifactRoots: List<File> = emptyList(),
+    private val requestSecurityGuard: TransferRequestSecurityGuard = TransferRequestSecurityGuard.AllowAll,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) {
     private val registry = BackendRegistry(backends)
@@ -57,6 +61,7 @@ class TransferExecutionRuntime(
     private val completionVerifier = CompletionVerificationCoordinator(checksumStore, ownershipStore)
     private val startupRecoveryCoordinator = StartupRecoveryCoordinator(store, ownershipStore, migrationStore, finalizationStore, recoveryStore, artifactRoots)
     private val jobs = ConcurrentHashMap<String, Job>()
+    private val commandControls = ConcurrentHashMap<String, DownloadCommandControl>()
     private val backendTaskIds = ConcurrentHashMap<String, Pair<BackendType, String>>()
     private val snapshots = MutableStateFlow<Map<String, BackendSnapshot>>(emptyMap())
     private val fileNames = ConcurrentHashMap<String, String>()
@@ -83,64 +88,59 @@ class TransferExecutionRuntime(
     }
 
     suspend fun execute(downloadId: String): DownloadState {
-        val download = store.find(downloadId) ?: return DownloadState.Failed
-        if (download.state in TERMINAL_STATES) return download.state
-        jobs[downloadId]?.let { existing ->
-            existing.join()
-            return store.find(downloadId)?.state ?: DownloadState.Failed
-        }
-        val job = scope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) { runDownload(download) }
-        jobs[downloadId] = job
-        job.start()
-        try {
-            job.join()
-        } finally {
-            jobs.remove(downloadId, job)
-        }
+        val job = ensureExecutionJob(downloadId) ?: return DownloadState.Failed
+        job.join()
         return store.find(downloadId)?.state ?: DownloadState.Failed
     }
 
     fun launch(downloadId: String) {
-        if (jobs[downloadId]?.isActive == true) return
-        val job = scope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) job@{
-            try {
-                val download = store.find(downloadId) ?: return@job
-                runDownload(download)
-            } finally {
-                jobs.remove(downloadId)
-            }
-        }
-        jobs[downloadId] = job
-        job.start()
+        scope.launch { ensureExecutionJob(downloadId) }
     }
 
     suspend fun pause(downloadId: String) {
+        val control = commandControl(downloadId)
+        val generation = control.request(DesiredTransferState.PauseRequested)
         val mapping = backendTaskIds[downloadId]
-        if (mapping != null) registry.require(mapping.first).pause(mapping.second)
+        if (mapping != null) {
+            registry.require(mapping.first).pause(mapping.second)
+        } else {
+            jobs[downloadId]?.cancel()
+        }
         jobs[downloadId]?.join()
-        store.find(downloadId)?.let {
-            if (it.state !in TERMINAL_STATES) store.save(it.copy(state = DownloadState.Paused, speedBytesPerSecond = 0, updatedAtEpochMs = System.currentTimeMillis()))
+        val latest = store.find(downloadId)
+        if (latest != null && latest.state !in TERMINAL_STATES && control.generation.get() == generation) {
+            store.save(latest.copy(state = DownloadState.Paused, speedBytesPerSecond = 0, updatedAtEpochMs = System.currentTimeMillis()))
         }
     }
 
     suspend fun resume(downloadId: String) {
+        val control = commandControl(downloadId)
+        control.request(DesiredTransferState.ResumeRequested)
         store.find(downloadId)?.let {
             store.save(it.copy(state = DownloadState.Queued, errorMessage = null, updatedAtEpochMs = System.currentTimeMillis()))
         }
-        launch(downloadId)
+        ensureExecutionJob(downloadId)
     }
 
     suspend fun cancel(downloadId: String) {
+        val control = commandControl(downloadId)
+        val generation = control.request(DesiredTransferState.CancelRequested)
         val mapping = backendTaskIds[downloadId]
-        if (mapping != null) registry.require(mapping.first).cancel(mapping.second)
-        store.find(downloadId)?.let {
-            store.save(it.copy(state = DownloadState.Cancelled, speedBytesPerSecond = 0, updatedAtEpochMs = System.currentTimeMillis()))
+        if (mapping != null) {
+            registry.require(mapping.first).cancel(mapping.second)
+        } else {
+            jobs[downloadId]?.cancel()
+        }
+        jobs[downloadId]?.join()
+        val latest = store.find(downloadId)
+        if (latest != null && latest.state != DownloadState.Completed && control.generation.get() == generation) {
+            store.save(latest.copy(state = DownloadState.Cancelled, speedBytesPerSecond = 0, updatedAtEpochMs = System.currentTimeMillis()))
         }
     }
 
     suspend fun pauseAll(): Int {
-        val ids = store.findByStates(ACTIVE_STATES).map(Download::id)
-        ids.forEach { pause(it) }
+        val ids = store.findByStates(ACTIVE_STATES + setOf(DownloadState.Verifying)).map(Download::id)
+        ids.forEach { id -> runCatching { pause(id) } }
         return ids.size
     }
 
@@ -148,6 +148,28 @@ class TransferExecutionRuntime(
         val ids = store.findByStates(setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)).map(Download::id)
         ids.forEach { resume(it) }
         return ids.size
+    }
+
+    private suspend fun ensureExecutionJob(downloadId: String): Job? {
+        val control = commandControl(downloadId)
+        return control.mutex.withLock {
+            val current = store.find(downloadId)
+            when {
+                current == null -> null
+                current.state in TERMINAL_STATES -> null
+                else -> jobs[downloadId]?.takeIf { it.isActive } ?: scope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
+                    try {
+                        val download = store.find(downloadId) ?: return@launch
+                        runDownload(download)
+                    } finally {
+                        jobs.remove(downloadId)
+                    }
+                }.also { job ->
+                    jobs[downloadId] = job
+                    job.start()
+                }
+            }
+        }
     }
 
     suspend fun reconcilePersistedOwnership(): Int {
@@ -198,6 +220,17 @@ class TransferExecutionRuntime(
     }
 
     private suspend fun runDownload(download: Download) {
+        when (commandControl(download.id).desired) {
+            DesiredTransferState.CancelRequested -> {
+                store.save(download.copy(state = DownloadState.Cancelled, speedBytesPerSecond = 0, updatedAtEpochMs = System.currentTimeMillis()))
+                return
+            }
+            DesiredTransferState.PauseRequested -> {
+                store.save(download.copy(state = DownloadState.Paused, speedBytesPerSecond = 0, updatedAtEpochMs = System.currentTimeMillis()))
+                return
+            }
+            else -> Unit
+        }
         val existingMapping = backendTaskIds[download.id]
         if (existingMapping != null) {
             observeExistingTask(download, existingMapping)
@@ -243,7 +276,7 @@ class TransferExecutionRuntime(
         val mediaHandoff = MediaRequestHandoffStore.forDownload(download.id)
         val request = DownloadRequest(
             id = download.id,
-            sourceUrl = download.sourceUrl,
+            sourceUrl = mediaHandoff?.exactUrl ?: download.sourceUrl,
             destinationUri = download.destinationUri,
             fileName = download.fileName,
             preferredBackend = download.requestedBackend,
@@ -254,8 +287,12 @@ class TransferExecutionRuntime(
             allowBackendFallback = download.allowBackendFallback,
             isExpiringUrl = mediaHandoff?.isExpiringUrl == true,
             isMediaRequest = mediaHandoff != null,
+            privateNetworkApproved = mediaHandoff?.privateNetworkApproved == true,
+            cleartextCredentialsApproved = mediaHandoff?.cleartextCredentialsApproved == true,
+            attemptGeneration = mediaHandoff?.attemptGeneration ?: 0L,
         )
         try {
+            requestSecurityGuard.validate(request)
             fileNames[download.id] = download.fileName
             val coordinated = coordinator.add(request)
             val selected = (store.find(download.id) ?: download).copy(
@@ -268,6 +305,19 @@ class TransferExecutionRuntime(
             store.save(selected)
             val mapping = coordinated.task.backend to coordinated.task.taskId
             backendTaskIds[download.id] = mapping
+            when (commandControl(download.id).desired) {
+                DesiredTransferState.CancelRequested -> {
+                    registry.require(mapping.first).cancel(mapping.second)
+                    store.save(selected.copy(state = DownloadState.Cancelled, speedBytesPerSecond = 0, updatedAtEpochMs = System.currentTimeMillis()))
+                    return
+                }
+                DesiredTransferState.PauseRequested -> {
+                    registry.require(mapping.first).pause(mapping.second)
+                    store.save(selected.copy(state = DownloadState.Paused, speedBytesPerSecond = 0, updatedAtEpochMs = System.currentTimeMillis()))
+                    return
+                }
+                else -> Unit
+            }
             observeTaskUntilRunEnd(selected, mapping)
         } catch (error: Throwable) {
             handleRuntimeFailure(download, error)
@@ -281,6 +331,18 @@ class TransferExecutionRuntime(
             fileNames[download.id] = download.fileName
             val backend = registry.require(mapping.first)
             val current = backend.query(mapping.second)
+            if (current?.state == DownloadState.Failed) {
+                runCatching { backend.remove(mapping.second) }
+                backendTaskIds.remove(download.id, mapping)
+                coordinator.release(download.id)
+                runDownload(download.copy(state = DownloadState.Queued, errorMessage = null, updatedAtEpochMs = System.currentTimeMillis()))
+                return
+            }
+            when (commandControl(download.id).desired) {
+                DesiredTransferState.CancelRequested -> { backend.cancel(mapping.second); return }
+                DesiredTransferState.PauseRequested -> { backend.pause(mapping.second); return }
+                else -> Unit
+            }
             if (current?.state == DownloadState.Paused) backend.resume(mapping.second)
             observeTaskUntilRunEnd(download, mapping)
         } catch (error: Throwable) {
@@ -351,22 +413,43 @@ class TransferExecutionRuntime(
         val state = store.find(downloadId)?.state
         val mapping = backendTaskIds[downloadId]
         if (state in RELEASE_OWNERSHIP_STATES) {
-            if (mapping != null) runCatching { registry.require(mapping.first).remove(mapping.second) }
-            backendTaskIds.remove(downloadId)
-            coordinator.release(downloadId)
+            val removed = if (mapping != null) runCatching { registry.require(mapping.first).remove(mapping.second); true }.getOrDefault(false) else true
+            if (removed) {
+                backendTaskIds.remove(downloadId)
+                coordinator.release(downloadId)
+            } else {
+                store.find(downloadId)?.let { current ->
+                    store.save(current.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = "Backend ownership could not be removed safely; artifacts remain quarantined.", updatedAtEpochMs = System.currentTimeMillis()))
+                }
+            }
             MediaRequestHandoffStore.forget(downloadId)
             snapshots.value = snapshots.value - downloadId
             fileNames.remove(downloadId)
             updateSummary()
         } else if (state !in ACTIVE_STATES) {
-            MediaRequestHandoffStore.forget(downloadId)
+            // Paused, failed, and recovery-required attempts retain their encrypted request
+            // envelope so process death does not silently discard authentication or signed URLs.
             snapshots.value = snapshots.value - downloadId
             updateSummary()
         }
     }
 
     private suspend fun publish(original: Download, snapshot: BackendSnapshot) {
+        val control = commandControl(original.id)
+        if (control.desired == DesiredTransferState.CancelRequested && snapshot.state != DownloadState.Completed) {
+            store.find(original.id)?.let { current ->
+                store.save(current.copy(state = DownloadState.Cancelled, speedBytesPerSecond = 0, updatedAtEpochMs = System.currentTimeMillis()))
+            }
+            return
+        }
+        val generationBeforeVerification = control.generation.get()
         val verifiedSnapshot = completionVerifier.complete(original, snapshot)
+        if (control.desired == DesiredTransferState.CancelRequested && control.generation.get() != generationBeforeVerification) {
+            store.find(original.id)?.let { current ->
+                store.save(current.copy(state = DownloadState.Cancelled, speedBytesPerSecond = 0, updatedAtEpochMs = System.currentTimeMillis()))
+            }
+            return
+        }
         snapshots.value = snapshots.value + (original.id to verifiedSnapshot)
         val current = store.find(original.id) ?: original
         store.save(
@@ -403,11 +486,27 @@ class TransferExecutionRuntime(
         )
     }
 
+    private fun commandControl(downloadId: String): DownloadCommandControl =
+        commandControls.computeIfAbsent(downloadId) { DownloadCommandControl() }
+
+    private class DownloadCommandControl {
+        val mutex = Mutex()
+        val generation = AtomicLong(0)
+        @Volatile var desired: DesiredTransferState = DesiredTransferState.None
+
+        fun request(state: DesiredTransferState): Long {
+            desired = state
+            return generation.incrementAndGet()
+        }
+    }
+
+    private enum class DesiredTransferState { None, PauseRequested, ResumeRequested, CancelRequested }
+
     companion object {
-        val ACTIVE_STATES = setOf(DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading, DownloadState.Finalizing, DownloadState.Repairing)
+        val ACTIVE_STATES = setOf(DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading, DownloadState.Finalizing, DownloadState.Verifying, DownloadState.Repairing)
         val INTERRUPTED_STATES = setOf(DownloadState.Connecting, DownloadState.Downloading, DownloadState.Finalizing, DownloadState.Repairing, DownloadState.Verifying)
         val TERMINAL_STATES = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)
-        val RELEASE_OWNERSHIP_STATES = setOf(DownloadState.Completed, DownloadState.Cancelled)
+        val RELEASE_OWNERSHIP_STATES = setOf(DownloadState.Completed, DownloadState.Cancelled, DownloadState.Failed)
         val RUN_END_STATES = TERMINAL_STATES + setOf(DownloadState.Paused, DownloadState.RecoveryRequired)
     }
 }

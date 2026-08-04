@@ -6,14 +6,27 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import com.mikeyphw.xdm.android.model.TerminalNotificationRecord
+import com.mikeyphw.xdm.android.model.TerminalNotificationKey
+import com.mikeyphw.xdm.android.model.QueueControlCommand
+import com.mikeyphw.xdm.android.model.NotificationPermissionState
+import com.mikeyphw.xdm.android.model.NotificationActionVisibility
+import com.mikeyphw.xdm.android.model.NotificationActionModel
+import android.os.Build
+import android.content.pm.PackageManager
+import android.Manifest
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.util.sanitizeNotificationText
 import java.util.Locale
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 
 class TransferNotifications(private val context: Context) {
     private val manager = requireNotNull(context.getSystemService<NotificationManager>())
+    private val phase4Coordinator: QueueSchedulingRecoveryCoordinator =
+        (context.applicationContext as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
+            ?: QueueSchedulingRecoveryCoordinator(FileBackedQueueSchedulingRecoveryStore(java.io.File(context.filesDir, "queue-scheduling-recovery")))
 
     fun ensureChannels() {
         manager.createNotificationChannel(
@@ -47,10 +60,13 @@ class TransferNotifications(private val context: Context) {
             append(formatSpeed(summary.speedBytesPerSecond))
             append(" • ").append(summary.bandwidthProfile)
         }
+        val permissionWarning = notificationPermissionState().takeIf { it.needsInAppControlWarning }
+        val displayText = if (permissionWarning != null) "$text • Notifications blocked: use in-app controls" else text
         val builder = NotificationCompat.Builder(context, CHANNEL_ACTIVE)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle(title)
-            .setContentText(text)
+            .setContentText(displayText)
+            .setSubText(permissionWarning?.let { "Notification permission denied" })
             .setOnlyAlertOnce(true)
             .setOngoing(summary.activeCount > 0)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
@@ -87,6 +103,32 @@ class TransferNotifications(private val context: Context) {
             .build()
     }
 
+    fun terminalIfFirst(
+        downloadId: String,
+        fileName: String,
+        state: DownloadState,
+        message: String?,
+        destinationUri: String? = null,
+        mimeType: String? = null,
+        attemptGeneration: Long = 0L,
+    ): Notification? {
+        val profile = notificationProfile(state, fileName, message)
+        val now = System.currentTimeMillis()
+        val record = TerminalNotificationRecord(
+            key = TerminalNotificationKey(downloadId, attemptGeneration, state),
+            title = profile.title,
+            text = profile.text,
+            actions = terminalActionModels(state, downloadId),
+            createdAtEpochMs = now,
+            dispatchedAtEpochMs = now,
+        )
+        return if (phase4Coordinator.recordTerminalNotification(record)) {
+            terminal(downloadId, fileName, state, message, destinationUri, mimeType)
+        } else {
+            null
+        }
+    }
+
     fun terminal(
         downloadId: String,
         fileName: String,
@@ -114,16 +156,40 @@ class TransferNotifications(private val context: Context) {
                     DownloadState.Completed -> addAction(android.R.drawable.ic_menu_view, "Open XDM", openAppPendingIntent(downloadId))
                     DownloadState.Paused -> addAction(android.R.drawable.ic_media_play, "Resume", actionPendingIntent(ACTION_RESUME, downloadId, 20 + downloadId.hashCode()))
                     DownloadState.Failed -> addAction(android.R.drawable.ic_popup_sync, "Retry", actionPendingIntent(ACTION_RETRY, downloadId, 20 + downloadId.hashCode()))
-                    DownloadState.RecoveryRequired -> addAction(android.R.drawable.ic_popup_sync, "Retry", actionPendingIntent(ACTION_RETRY, downloadId, 20 + downloadId.hashCode()))
+                    DownloadState.RecoveryRequired -> addAction(android.R.drawable.ic_menu_manage, "Review recovery", actionPendingIntent(ACTION_REVIEW_RECOVERY, downloadId, 20 + downloadId.hashCode()))
                     else -> Unit
                 }
-                addAction(android.R.drawable.ic_menu_close_clear_cancel, "Mute", actionPendingIntent(ACTION_MUTE, downloadId, 21 + downloadId.hashCode()))
+                addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", actionPendingIntent(ACTION_DISMISS, downloadId, 21 + downloadId.hashCode()))
             }
             .build()
     }
 
     fun terminal(downloadId: String, fileName: String, completed: Boolean, message: String?): Notification =
         terminal(downloadId, fileName, if (completed) DownloadState.Completed else DownloadState.Failed, message)
+
+    private fun terminalActionModels(state: DownloadState, downloadId: String): List<NotificationActionModel> = buildList {
+        when (state) {
+            DownloadState.Completed -> add(NotificationActionModel(QueueControlCommand.StartOne, "Open XDM", NotificationActionVisibility.Show, downloadId))
+            DownloadState.Paused -> add(NotificationActionModel(QueueControlCommand.ResumeOne, "Resume", NotificationActionVisibility.Show, downloadId))
+            DownloadState.Failed -> add(NotificationActionModel(QueueControlCommand.RetryOne, "Retry", NotificationActionVisibility.Show, downloadId))
+            DownloadState.RecoveryRequired -> add(NotificationActionModel(QueueControlCommand.RetryOne, "Review recovery", NotificationActionVisibility.Show, downloadId))
+            else -> Unit
+        }
+        add(NotificationActionModel(QueueControlCommand.DisableQueue, "Dismiss", NotificationActionVisibility.Show, downloadId))
+    }
+
+    fun notificationPermissionState(): NotificationPermissionState {
+        val android13OrNewer = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        val granted = if (android13OrNewer) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+        return NotificationPermissionState(
+            android13OrNewer = android13OrNewer,
+            drawerPermissionGranted = granted,
+        )
+    }
 
     private fun notificationProfile(state: DownloadState, fileName: String, message: String?): NotificationProfile = when (state) {
         DownloadState.Completed -> NotificationProfile(
@@ -202,6 +268,9 @@ class TransferNotifications(private val context: Context) {
         const val ACTION_PAUSE = "com.mikeyphw.xdm.android.action.PAUSE"
         const val ACTION_RESUME = "com.mikeyphw.xdm.android.action.RESUME"
         const val ACTION_RETRY = "com.mikeyphw.xdm.android.action.RETRY"
+        const val ACTION_REVIEW_RECOVERY = "com.mikeyphw.xdm.android.action.REVIEW_RECOVERY"
+        const val ACTION_DISMISS = "com.mikeyphw.xdm.android.action.DISMISS"
+        @Deprecated("Phase 4 renamed Mute to Dismiss; keep constant only for old broadcast compatibility.")
         const val ACTION_MUTE = "com.mikeyphw.xdm.android.action.MUTE"
         const val ACTION_OPEN_COMPLETED_DOWNLOAD = "com.mikeyphw.xdm.android.action.OPEN_COMPLETED_DOWNLOAD"
         const val ACTION_OPEN_DOWNLOAD_DETAILS = "com.mikeyphw.xdm.android.action.OPEN_DOWNLOAD_DETAILS"

@@ -6,6 +6,8 @@ import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
+import com.mikeyphw.xdm.android.model.PageObservationProof
+import com.mikeyphw.xdm.android.model.BrowserHandoffMediaPolicy
 import com.mikeyphw.xdm.android.util.sanitizeFileName
 import java.net.URI
 import java.security.MessageDigest
@@ -33,6 +35,13 @@ data class MediaRequestFacts(
     val pageUrl: String? = null,
     val pageTitle: String? = null,
     val headers: Map<String, String> = emptyMap(),
+    val frameUrl: String? = null,
+    val stableMediaId: String? = null,
+    val sessionRevision: Long? = null,
+    val proposedHeaders: Map<String, String> = emptyMap(),
+    val finalHeaders: Map<String, String> = emptyMap(),
+    val pageObservationProof: PageObservationProof? = null,
+    val requiresPageObservationProof: Boolean = false,
 )
 
 data class MediaManifestSummary(
@@ -233,14 +242,20 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         val mediaGroups = lines.filter { it.startsWith("#EXT-X-MEDIA", ignoreCase = true) }.map { attributeList(it.substringAfter(':', "")) }
         val keyLines = lines.filter { it.startsWith("#EXT-X-KEY", ignoreCase = true) }
         val protection = keyLines.map { attributeList(it.substringAfter(':', "")) }.firstOrNull { attrs -> attrs["METHOD"]?.equals("NONE", ignoreCase = true) != true }
+        val protectionEvidence = BrowserHandoffMediaPolicy.classifyProtection(
+            hlsKeyMetadata = protection?.let { it["KEYFORMAT"] ?: it["METHOD"] },
+            dashContentProtection = null,
+            browserEncryptionEvent = null,
+            resolverReport = null,
+        )
         return MediaManifestSummary(
             kind = MediaSourceKind.HlsPlaylist,
             variantCount = variants.coerceAtLeast(1),
             audioTrackCount = mediaGroups.count { it["TYPE"]?.equals("AUDIO", ignoreCase = true) == true },
             subtitleTrackCount = mediaGroups.count { it["TYPE"]?.equals("SUBTITLES", ignoreCase = true) == true || it["TYPE"]?.equals("CLOSED-CAPTIONS", ignoreCase = true) == true },
             isLive = lines.none { it.equals("#EXT-X-ENDLIST", ignoreCase = true) },
-            hasDrm = protection != null,
-            protectionScheme = protection?.get("KEYFORMAT") ?: protection?.get("METHOD"),
+            hasDrm = protectionEvidence.protected,
+            protectionScheme = protectionEvidence.evidence.firstOrNull()?.scheme,
         )
     }
 
@@ -263,13 +278,19 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         val summaryVariants = parseDashManifest("inspect", "https://example.invalid/manifest.mpd", manifestText)
         val hasDrm = manifestText.contains("<ContentProtection", ignoreCase = true)
         val protectionScheme = Regex("""schemeIdUri=['\"]([^'\"]+)['\"]""", RegexOption.IGNORE_CASE).find(manifestText)?.groupValues?.getOrNull(1)
+        val protectionEvidence = BrowserHandoffMediaPolicy.classifyProtection(
+            hlsKeyMetadata = null,
+            dashContentProtection = manifestText.takeIf { hasDrm },
+            browserEncryptionEvent = null,
+            resolverReport = null,
+        )
         return MediaManifestSummary(
             kind = MediaSourceKind.DashManifest,
             variantCount = summaryVariants.count { it.kind == MediaVariantKind.Video }.coerceAtLeast(summaryVariants.size.coerceAtLeast(1)),
             audioTrackCount = summaryVariants.count { it.kind == MediaVariantKind.Audio },
             subtitleTrackCount = summaryVariants.count { it.kind == MediaVariantKind.Subtitle },
             isLive = Regex("""type=['\"]dynamic['\"]""", RegexOption.IGNORE_CASE).containsMatchIn(manifestText),
-            hasDrm = hasDrm,
+            hasDrm = protectionEvidence.protected,
             protectionScheme = protectionScheme,
         )
     }

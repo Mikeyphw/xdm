@@ -1,6 +1,10 @@
 package com.mikeyphw.xdm.android
 
 import android.content.ClipData
+import android.os.Looper
+import android.os.Handler
+import android.os.PersistableBundle
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -211,6 +215,35 @@ internal fun firstDownloadUrlFromClipboard(context: Context): String? {
 internal fun copyTextToClipboard(context: Context, label: String, value: String) {
     val clipboard = context.getSystemService(ClipboardManager::class.java)
     clipboard?.setPrimaryClip(ClipData.newPlainText(label, value))
+}
+
+internal fun copySensitiveTextToClipboard(
+    context: Context,
+    label: String,
+    value: String,
+    clearAfterMs: Long = 60_000L,
+) {
+    val clipboard = context.getSystemService(ClipboardManager::class.java) ?: return
+    val clip = ClipData.newPlainText(label, value)
+    val extras = PersistableBundle().apply {
+        val key = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            ClipDescription.EXTRA_IS_SENSITIVE
+        } else {
+            "android.content.extra.IS_SENSITIVE"
+        }
+        putBoolean(key, true)
+    }
+    clip.description.extras = extras
+    clipboard.setPrimaryClip(clip)
+    if (clearAfterMs > 0L) {
+        Handler(Looper.getMainLooper()).postDelayed({
+            val current = clipboard.primaryClip
+            if (current != null && current.itemCount == 1 && current.getItemAt(0).text?.toString() == value) {
+                if (android.os.Build.VERSION.SDK_INT >= 28) clipboard.clearPrimaryClip()
+                else clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+            }
+        }, clearAfterMs)
+    }
 }
 
 internal fun shareTextReport(context: Context, title: String, value: String) {

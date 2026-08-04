@@ -176,7 +176,7 @@ private fun XdmRouteContent(
                 variants = state.mediaVariants,
                 mediaTrackSelections = state.mediaTrackSelections,
                 downloads = state.downloads,
-                onPastePageUrl = { viewModel.navigate(AppRoute.Add) },
+                onPastePageUrl = viewModel::capturePageUrl,
                 onBatchInput = viewModel::captureMediaBatchInput,
                 onDownload = viewModel::downloadMediaCapture,
                 onResumeOrRetryDownload = viewModel::togglePause,

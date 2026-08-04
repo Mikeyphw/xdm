@@ -9,6 +9,8 @@ import com.mikeyphw.xdm.android.model.BackendOwnership
 import com.mikeyphw.xdm.android.model.BackendReconciliationClassification
 import com.mikeyphw.xdm.android.model.BackendRuntimeIdentity
 import com.mikeyphw.xdm.android.model.BackendType
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.storage.DestinationRequest
@@ -60,7 +62,7 @@ class EmbeddedAria2Backend(
             supportsMirrors = available,
             supportsSelectiveRepair = false,
             supportsSafDestination = false,
-            supportsAuthentication = available,
+            supportsAuthentication = false,
             supportsProxy = available,
             maxConnectionsPerDownload = if (available) 16 else 0,
             supportsMetalink = available,
@@ -75,6 +77,12 @@ class EmbeddedAria2Backend(
     override suspend fun prepare(request: DownloadRequest): BackendPreparation {
         val capability = processManager.probe()
         if (!capability.isAvailable) throw BackendUnavailableException(capability.summary)
+        require(!ExternalUrlPolicy.hasCredentialBearingQuery(request.sourceUrl)) {
+            "aria2 cannot durably own signed or credential-bearing URLs; use the native encrypted request path"
+        }
+        require(request.headers.keys.none(PrivacyDiagnosticsRedactor::isSensitiveHeaderName)) {
+            "aria2 cannot durably own authenticated request headers; use the native encrypted request path"
+        }
         require(request.destinationUri.substringBefore(':').lowercase() !in setOf("content", "xdm")) {
             "aria2 currently requires an app-private or filesystem staging destination; Android document providers use the native backend"
         }
@@ -110,15 +118,19 @@ class EmbeddedAria2Backend(
                 pause = true,
                 split = request.maxConnections,
                 maxConnectionsPerServer = request.maxConnections,
-                headers = request.headers,
+                headers = request.headers.filterKeys { name ->
+                    !name.equals("Range", true) && !name.equals("Host", true) &&
+                        !name.equals("Content-Length", true) && !name.equals("Connection", true)
+                },
+                maxRedirects = 0,
             ),
         )
         val now = clock()
         val mapping = Aria2TaskMapping(
             downloadId = request.id,
             gid = gid,
-            sourceUrl = request.sourceUrl,
-            mirrorUrls = request.mirrors,
+            sourceUrl = ExternalUrlPolicy.persistableUrl(request.sourceUrl) ?: request.sourceUrl.substringBefore('?'),
+            mirrorUrls = request.mirrors.map { mirror -> ExternalUrlPolicy.persistableUrl(mirror) ?: mirror.substringBefore('?') },
             destinationUri = request.destinationUri,
             destinationKey = preparation.destinationKey,
             fileName = prepared.destination.displayName,
@@ -198,22 +210,24 @@ class EmbeddedAria2Backend(
         val status = rpc.tellStatus(taskId)
         if (status.status in setOf(Aria2TaskStatusValue.Paused, Aria2TaskStatusValue.Waiting)) rpc.unpause(taskId)
         mappingStore.findByGid(taskId)?.let { updateMapping(it, MAPPING_ACTIVE) }
+        rpc.saveSession()
     }
 
     override suspend fun cancel(taskId: String) {
         val rpc = processManager.rpc()
         val status = runCatching { rpc.tellStatus(taskId) }.getOrNull()
-        if (status?.status !in TERMINAL_RPC_STATES) runCatching { rpc.remove(taskId, force = true) }
+        if (status?.status !in TERMINAL_RPC_STATES) rpc.remove(taskId, force = true)
+        rpc.saveSession()
         mappingStore.findByGid(taskId)?.let { updateMapping(it, MAPPING_REMOVED) }
         snapshots[taskId] = BackendSnapshot(taskId, DownloadState.Cancelled, status?.completedLength ?: 0, status?.totalLength, 0)
-        rpc.saveSession()
     }
 
     override suspend fun remove(taskId: String) {
         val mapping = mappingStore.findByGid(taskId)
         val rpc = runCatching { processManager.rpc() }.getOrNull()
         val status = rpc?.let { runCatching { it.tellStatus(taskId) }.getOrNull() }
-        if (status?.status !in TERMINAL_RPC_STATES) runCatching { rpc?.remove(taskId, force = true) }
+        if (status?.status !in TERMINAL_RPC_STATES) rpc?.remove(taskId, force = true)
+        rpc?.saveSession()
         runCatching { rpc?.removeDownloadResult(taskId) }
         controls.remove(taskId)?.let { control -> runCatching { control.destination.deleteArtifacts() } }
         mapping?.let {
@@ -225,7 +239,6 @@ class EmbeddedAria2Backend(
         }
         snapshots.remove(taskId)
         finalizationGates.remove(taskId)
-        runCatching { rpc?.saveSession() }
     }
 
     override suspend fun detach(taskId: String): Boolean = runCatching {
@@ -404,6 +417,9 @@ class EmbeddedAria2Backend(
                 check(physicalLength == expected) { "aria2 output length $physicalLength does not match reported length $expected" }
             }
             val destination = preparedDestination(mapping)
+            require(destination.destinationKey == mapping.destinationKey) {
+                "Recovered aria2 destination key no longer matches the original ownership claim"
+            }
             require(destination.artifacts.stagingFile.canonicalFile == output.canonicalFile) {
                 "Recovered aria2 destination no longer resolves to the owned staging file"
             }

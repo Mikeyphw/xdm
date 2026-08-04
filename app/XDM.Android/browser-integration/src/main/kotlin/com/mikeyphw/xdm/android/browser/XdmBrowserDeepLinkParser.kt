@@ -74,6 +74,12 @@ object XdmBrowserDeepLinkParser {
             else -> rawPageUrl.strictExternalUrl(XdmBrowserDeepLinkContract.MaxPageUrlBytes)
                 ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafePageUrl)
         }
+        val rawFrameUrl = parameters.singleValue(XdmBrowserDeepLinkContract.FrameUrlParameter)
+        val frameUrl = when {
+            rawFrameUrl == null -> null
+            else -> rawFrameUrl.strictExternalUrl(XdmBrowserDeepLinkContract.MaxPageUrlBytes)
+                ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafePageUrl)
+        }
 
         return XdmBrowserDeepLinkParseResult.Accepted(
             XdmBrowserDeepLinkPayload(
@@ -89,6 +95,12 @@ object XdmBrowserDeepLinkParser {
                     .sanitizedMimeType(),
                 mediaKind = parameters.singleValue(XdmBrowserDeepLinkContract.MediaKindParameter)
                     .sanitizedMediaKind(),
+                stableMediaId = parameters.singleValue(XdmBrowserDeepLinkContract.StableMediaIdParameter)
+                    .sanitizedStableMediaId(),
+                sessionRevision = parameters.singleValue(XdmBrowserDeepLinkContract.SessionRevisionParameter)
+                    ?.toLongOrNull()
+                    ?.takeIf { it > 0L },
+                frameUrl = frameUrl,
             ),
         )
     }
@@ -154,6 +166,11 @@ object XdmBrowserDeepLinkParser {
         ?.lowercase(Locale.US)
         ?.take(XdmBrowserDeepLinkContract.MaxMediaKindCharacters)
         ?.takeIf { value -> value.matches(Regex("[a-z0-9_-]+")) }
+
+    private fun String?.sanitizedStableMediaId(): String? = this
+        ?.trim()
+        ?.take(XdmBrowserDeepLinkContract.MaxStableMediaIdCharacters)
+        ?.takeIf { value -> value.matches(Regex("[A-Za-z0-9._:-]{8,160}")) }
 
     private fun String.utf8Size(): Int = toByteArray(StandardCharsets.UTF_8).size
 }

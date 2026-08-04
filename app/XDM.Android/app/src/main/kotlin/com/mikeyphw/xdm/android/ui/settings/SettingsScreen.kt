@@ -21,6 +21,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -226,6 +230,41 @@ private fun PrivacySettingsScreen(state: MainUiState, viewModel: MainViewModel) 
             XdmListCard {
                 XdmCardTitle("Private by default")
                 XdmSupportingText("Media page context is kept only long enough to review and hand off a download. Normal screens never print cookies, authorization headers, raw commands, or full secret-bearing URLs.", maxLines = 5)
+            }
+        }
+        item {
+            val trustStore = remember(context) { ExternalAutomationTrustStore(context) }
+            var configured by remember { mutableStateOf(trustStore.isConfigured()) }
+            var generatedSecret by remember { mutableStateOf<String?>(null) }
+            XdmListCard {
+                XdmCardTitle("External automation secret")
+                XdmSupportingText(
+                    if (configured) {
+                        "Tasker-style actions require the current user-created secret or an on-screen confirmation. Rotate it to invalidate every previous integration."
+                    } else {
+                        "Create a one-time visible secret for trusted Tasker-style automation. Untrusted actions always require confirmation."
+                    },
+                    maxLines = 5,
+                )
+                generatedSecret?.let { secret ->
+                    XdmMetadataText("Secret generated. Copy it now; XDM stores only a salted verifier and cannot show it again.", maxLines = 3)
+                    XdmActionFlowRow {
+                        Button(onClick = { copySensitiveTextToClipboard(context, "XDM integration secret", secret) }) { Text("Copy once") }
+                        TextButton(onClick = { generatedSecret = null }) { Text("Hide") }
+                    }
+                } ?: XdmActionFlowRow {
+                    Button(onClick = {
+                        generatedSecret = trustStore.generateAndRotate()
+                        configured = true
+                    }) { Text(if (configured) "Rotate secret" else "Generate secret") }
+                    if (configured) {
+                        TextButton(onClick = {
+                            trustStore.revoke()
+                            configured = false
+                            generatedSecret = null
+                        }) { Text("Revoke") }
+                    }
+                }
             }
         }
         item {

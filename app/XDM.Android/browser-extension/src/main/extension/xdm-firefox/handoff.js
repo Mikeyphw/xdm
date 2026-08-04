@@ -60,6 +60,13 @@
     const mime = String(input.mimeType || "").split(";", 1)[0].trim().toLowerCase();
     if (/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(mime)) params.set("mime", mime.slice(0, 120));
     params.set("kind", mediaKind(url, mime));
+    if (input.stableMediaId) params.set("stableMediaId", String(input.stableMediaId).slice(0, 160));
+    if (input.sessionRevision) params.set("sessionRevision", String(input.sessionRevision).slice(0, 40));
+    if (input.frameUrl) {
+      const frame = safeHttpUrl(input.frameUrl);
+      if (frame && frame !== page) params.set("frame", frame);
+    }
+    // Keep custom-scheme URLs credential-thin: raw Cookie/Authorization/header bags never go into the URL.
     return `${scheme}://capture?${params.toString()}`;
   }
 

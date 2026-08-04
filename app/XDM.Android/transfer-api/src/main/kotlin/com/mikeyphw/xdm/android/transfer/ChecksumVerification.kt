@@ -221,6 +221,22 @@ private class RandomAccessBlockReader(private val file: File) : AutoCloseable {
 }
 
 fun normalizeHex(value: String): String = value.trim().lowercase(Locale.ROOT).filter { it in '0'..'9' || it in 'a'..'f' }
+
+fun parseExpectedChecksum(value: String, algorithm: ChecksumAlgorithm): String {
+    val trimmed = value.trim()
+    require(trimmed.isNotEmpty()) { "Checksum value is empty" }
+    require(Regex("^[0-9a-fA-F]+$").matches(trimmed)) {
+        "Checksum must be exactly one hexadecimal digest, not a labelled or contaminated string"
+    }
+    val requiredLength = when (algorithm) {
+        ChecksumAlgorithm.Sha256 -> 64
+        ChecksumAlgorithm.Sha512 -> 128
+    }
+    require(trimmed.length == requiredLength) {
+        "${algorithm.displayName()} checksum must contain exactly $requiredLength hexadecimal characters"
+    }
+    return trimmed.lowercase(Locale.ROOT)
+}
 fun ChecksumAlgorithm.messageDigestName(): String = when (this) {
     ChecksumAlgorithm.Sha256 -> "SHA-256"
     ChecksumAlgorithm.Sha512 -> "SHA-512"

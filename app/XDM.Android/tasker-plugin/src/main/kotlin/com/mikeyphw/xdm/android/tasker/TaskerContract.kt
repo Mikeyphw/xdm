@@ -15,6 +15,7 @@ object TaskerContract {
     const val ExtraPageTitle = "com.mikeyphw.xdm.android.extra.PAGE_TITLE"
     const val ExtraPageUrl = "com.mikeyphw.xdm.android.extra.PAGE_URL"
     const val ExtraIdempotencyKey = "com.mikeyphw.xdm.android.extra.IDEMPOTENCY_KEY"
+    const val ExtraIntegrationSecret = "com.mikeyphw.xdm.android.extra.INTEGRATION_SECRET"
 
     fun draftFor(
         actionName: String?,
@@ -24,6 +25,7 @@ object TaskerContract {
         pageUrl: String? = null,
         idempotencyKey: String? = null,
         originPackage: String? = null,
+        claimedOriginPackage: String? = null,
         rawHeaders: String? = null,
     ): AutomationCommandDraft? {
         val action = when (actionName) {
@@ -42,6 +44,7 @@ object TaskerContract {
             pageUrl = pageUrl,
             explicitIdempotencyKey = idempotencyKey,
             originPackage = originPackage,
+            claimedOriginPackage = claimedOriginPackage,
             rawHeaders = rawHeaders,
         )
     }

@@ -125,8 +125,11 @@ object DebugRedactor {
         "auth",
         "key",
     )
+    private val jsonSecretValuePattern = Regex(
+        """(?i)("(?:authorization|proxy-authorization|cookie|set-cookie|token|secret|password|session|signature|sig|api[_-]?key|access[_-]?key|refresh[_-]?token)"\s*:\s*")[^"]*(")""",
+    )
     private val bearerPattern = Regex("(?i)\\b(bearer|basic)\\s+[A-Za-z0-9._~+/=-]{8,}")
-    private val querySecretPattern = Regex("(?i)([?&][^=&#]*(?:token|secret|password|session|cookie|signature|sig|key|auth)[^=&#]*=)[^&#\\s]+")
+    private val queryParameterPattern = Regex("""([?&])([^=&#\s]+)=([^&#\s"']+)""")
 
     fun redactDetails(details: Map<String, String>): Map<String, String> = details
         .entries
@@ -150,7 +153,10 @@ object DebugRedactor {
         val text = value?.trim()?.takeIf { it.isNotBlank() } ?: return ""
         return text
             .replace(bearerPattern) { match -> match.groupValues[1].lowercase(Locale.US) + " <redacted>" }
-            .replace(querySecretPattern) { match -> match.groupValues[1] + "<redacted>" }
+            .replace(queryParameterPattern) { match ->
+                val part = "${match.groupValues[2]}=${match.groupValues[3]}"
+                match.groupValues[1] + ExternalUrlPolicy.redactQueryParameter(part, "<redacted>")
+            }
             .take(512)
     }
 
@@ -169,15 +175,21 @@ object DebugRedactor {
         val query = uri.rawQuery
             ?.split('&')
             ?.filter { it.isNotBlank() }
-            ?.joinToString("&") { part ->
-                val name = part.substringBefore('=', missingDelimiterValue = part).lowercase(Locale.US)
-                if (isSensitiveKey(name)) "$name=<redacted>" else part.take(160)
-            }
+            ?.joinToString("&") { part -> ExternalUrlPolicy.redactQueryParameter(part, "<redacted>") }
             ?.takeIf { it.isNotBlank() }
             ?.let { "?$it" }
             .orEmpty()
         return "$scheme://$host$port$path$query"
     }
+
+    fun redactExportLine(value: String): String = value
+        .replace(jsonSecretValuePattern) { match -> match.groupValues[1] + "<redacted>" + match.groupValues[2] }
+        .replace(bearerPattern) { match -> match.groupValues[1].lowercase(Locale.US) + " <redacted>" }
+        .replace(queryParameterPattern) { match ->
+            val part = "${match.groupValues[2]}=${match.groupValues[3]}"
+            match.groupValues[1] + ExternalUrlPolicy.redactQueryParameter(part, "<redacted>")
+        }
+        .take(16 * 1024)
 
     fun jsonEscape(value: String): String = value.flatMap { char ->
         when (char) {
@@ -240,7 +252,11 @@ class RollingJsonlDebugEventRecorder(
         ZipOutputStream(FileOutputStream(destinationZip)).use { zip ->
             if (currentFile.isFile) {
                 zip.putNextEntry(ZipEntry("debug-session.jsonl"))
-                zip.write(currentFile.readBytes())
+                currentFile.useLines(Charsets.UTF_8) { lines ->
+                    lines.forEach { line ->
+                        zip.write((DebugRedactor.redactExportLine(line) + "\n").toByteArray(Charsets.UTF_8))
+                    }
+                }
                 zip.closeEntry()
             }
             zip.putNextEntry(ZipEntry("debug-metadata.txt"))

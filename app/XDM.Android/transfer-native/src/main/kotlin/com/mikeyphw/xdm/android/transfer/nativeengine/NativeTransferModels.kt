@@ -66,4 +66,4 @@ data class NativeArtifactPaths(val destinationIdentity: String, val partial: Pat
 
 class RemoteObjectChangedException(message: String) : IllegalStateException(message)
 class InvalidRangeResponseException(message: String) : IllegalStateException(message)
-class HttpTransferException(val statusCode: Int, message: String) : java.io.IOException(message)
+class HttpTransferException(val statusCode: Int, message: String, val retryAfterMillis: Long? = null) : java.io.IOException(message)

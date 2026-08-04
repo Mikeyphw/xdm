@@ -14,6 +14,13 @@ import com.mikeyphw.xdm.android.persistence.RoomFinalizationJournalStore
 import com.mikeyphw.xdm.android.scheduler.RepositoryTransferDownloadStore
 import com.mikeyphw.xdm.android.scheduler.QueueConditionMonitor
 import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceCoordinator
+import com.mikeyphw.xdm.android.scheduler.AndroidSecureRequestEnvelopeStore
+import com.mikeyphw.xdm.android.scheduler.AndroidTransferRequestSecurityGuard
+import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
+import com.mikeyphw.xdm.android.scheduler.FileBackedQueueSchedulingRecoveryStore
+import com.mikeyphw.xdm.android.scheduler.QueueSchedulingRecoveryCoordinator
+import com.mikeyphw.xdm.android.scheduler.QueueSchedulingRecoveryProvider
+import com.mikeyphw.xdm.android.scheduler.TransferExecutionStopReasonRecorder
 import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceProvider
 import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceWorker
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
@@ -26,6 +33,8 @@ import com.mikeyphw.xdm.android.model.DebugEventRecorder
 import com.mikeyphw.xdm.android.model.DebugRecorderProvider
 import com.mikeyphw.xdm.android.model.RollingJsonlDebugEventRecorder
 import java.io.File
+import com.mikeyphw.xdm.android.media.BrowserHandoffMediaCoordinator
+import com.mikeyphw.xdm.android.media.FileBackedBrowserHandoffMediaSessionStore
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.transfer.aria2.AndroidAria2CapabilityProbe
 import com.mikeyphw.xdm.android.transfer.aria2.AppPrivateAria2SecretProvider
@@ -42,9 +51,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.collectLatest
 
-class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, DebugRecorderProvider {
+class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, DebugRecorderProvider {
     lateinit var container: AppContainer
         private set
 
@@ -52,6 +62,9 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         private set
 
     override lateinit var queueIntelligenceCoordinator: QueueIntelligenceCoordinator
+        private set
+
+    override lateinit var queueSchedulingRecoveryCoordinator: QueueSchedulingRecoveryCoordinator
         private set
 
     override lateinit var debugEventRecorder: DebugEventRecorder
@@ -76,6 +89,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
                 Migrations.Migration11To12,
                 Migrations.Migration12To13,
                 Migrations.Migration13To14,
+                Migrations.Migration14To15,
             )
             .build()
         val repository = DownloadRepository(database)
@@ -90,6 +104,8 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val finalizationStore = RoomFinalizationJournalStore(database)
         val recoveryStore = RoomRecoveryWorkflowStore(database)
         val destinationWriter = AndroidDestinationWriter(this)
+        MediaRequestHandoffStore.initialize(AndroidSecureRequestEnvelopeStore(this))
+        runBlocking(Dispatchers.IO) { SensitivePersistenceMigrator(this@XdmApplication, repository).migrateIfNeeded() }
         val runtimeIdentities = BackendRuntimeIdentityStore(this)
         val aria2SessionStore = Aria2SessionStore(this)
         val termuxBridgeManager = TermuxBridgeManager(this)
@@ -112,6 +128,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             finalizationStore = finalizationStore,
             recoveryStore = recoveryStore,
             artifactRoots = listOf(filesDir, cacheDir).filterNotNull(),
+            requestSecurityGuard = AndroidTransferRequestSecurityGuard(this),
             backends = listOf(
                 NativeHttpDownloadBackend(
                     destinationWriter = destinationWriter,
@@ -126,12 +143,20 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
                 ),
             ),
         )
+        queueSchedulingRecoveryCoordinator = QueueSchedulingRecoveryCoordinator(
+            FileBackedQueueSchedulingRecoveryStore(File(filesDir, "queue-scheduling-recovery")),
+        )
+        val browserHandoffMediaCoordinator = BrowserHandoffMediaCoordinator(
+            store = FileBackedBrowserHandoffMediaSessionStore(File(filesDir, "browser-handoff-media-sessions")),
+        )
+        TransferExecutionStopReasonRecorder.installPersistentRoot(File(filesDir, "queue-scheduling-recovery"))
         TransferNotifications(this).ensureChannels()
         val executionStarter = TransferExecutionStarter(this)
         queueIntelligenceCoordinator = QueueIntelligenceCoordinator(
             context = this,
             repository = repository,
             executionStarter = executionStarter,
+            phase4Coordinator = queueSchedulingRecoveryCoordinator,
         )
         container = AppContainer(
             repository = repository,
@@ -141,6 +166,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             transferRuntime = transferRuntime,
             executionStarter = executionStarter,
             queueIntelligenceCoordinator = queueIntelligenceCoordinator,
+            queueSchedulingRecoveryCoordinator = queueSchedulingRecoveryCoordinator,
             destinationWriter = destinationWriter,
             aria2ProcessManager = aria2ProcessManager,
             termuxBridgeManager = termuxBridgeManager,
@@ -150,6 +176,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             mediaResolverSelectionStore = mediaResolverSelectionStore,
             operationalActivityStore = operationalActivityStore,
             browserExtensionExportManager = browserExtensionExportManager,
+            browserHandoffMediaCoordinator = browserHandoffMediaCoordinator,
             debugEventRecorder = debugEventRecorder,
         )
         queueConditionMonitor = QueueConditionMonitor(this) {
@@ -180,6 +207,7 @@ data class AppContainer(
     val transferRuntime: TransferExecutionRuntime,
     val executionStarter: TransferExecutionStarter,
     val queueIntelligenceCoordinator: QueueIntelligenceCoordinator,
+    val queueSchedulingRecoveryCoordinator: QueueSchedulingRecoveryCoordinator,
     val destinationWriter: AndroidDestinationWriter,
     val aria2ProcessManager: Aria2ProcessManager,
     val termuxBridgeManager: TermuxBridgeManager,
@@ -189,5 +217,6 @@ data class AppContainer(
     val mediaResolverSelectionStore: MediaResolverSelectionStore,
     val operationalActivityStore: OperationalActivityStore,
     val browserExtensionExportManager: BrowserExtensionExportManager,
+    val browserHandoffMediaCoordinator: BrowserHandoffMediaCoordinator,
     val debugEventRecorder: DebugEventRecorder,
 )

@@ -16,7 +16,16 @@ class TransferActionReceiver : BroadcastReceiver() {
             ContextCompat.startForegroundService(context, serviceIntent)
             return
         }
-        if (intent.action == TransferNotifications.ACTION_MUTE) {
+        if (intent.action == TransferNotifications.ACTION_REVIEW_RECOVERY) {
+            val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                ?: Intent(Intent.ACTION_MAIN).setPackage(context.packageName)
+            launch.action = TransferNotifications.ACTION_REVIEW_RECOVERY
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { launch.putExtra(TransferNotifications.EXTRA_DOWNLOAD_ID, it) }
+            context.startActivity(launch)
+            return
+        }
+        if (intent.action == TransferNotifications.ACTION_DISMISS || intent.action == TransferNotifications.ACTION_MUTE) {
             intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id ->
                 context.getSystemService(android.app.NotificationManager::class.java).cancel(5000 + id.stableSystemId())
             }
@@ -27,7 +36,10 @@ class TransferActionReceiver : BroadcastReceiver() {
             try {
                 val runtime = (context.applicationContext as TransferRuntimeProvider).transferRuntime
                 when (intent.action) {
-                    TransferNotifications.ACTION_PAUSE_ALL -> runtime.pauseAll()
+                    TransferNotifications.ACTION_PAUSE_ALL -> {
+                        (context.applicationContext as? QueueIntelligenceProvider)?.queueIntelligenceCoordinator?.pauseAllDurably()
+                        runtime.pauseAll()
+                    }
                     TransferNotifications.ACTION_PAUSE -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { runtime.pause(it) }
                     TransferNotifications.ACTION_CANCEL -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { runtime.cancel(it) }
                 }

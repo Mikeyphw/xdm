@@ -28,6 +28,9 @@
         frameUrl: candidate.frameUrl || previous.frameUrl || "",
         source: candidate.source || previous.source || "network",
         headers: Object.assign({}, previous.headers || {}, candidate.headers || {}),
+        browserHandoff: Object.assign({}, previous.browserHandoff || {}, candidate.browserHandoff || {}),
+        stableMediaId: candidate.stableMediaId || previous.stableMediaId || CORE.stableMediaIdentity(url),
+        sessionRevision: Math.max(Number(candidate.sessionRevision || 0), Number(previous.sessionRevision || 0), Date.now()),
         quality: candidate.quality || previous.quality || "strong",
         confidence: Math.max(nextConfidence, previousConfidence),
         reason: nextConfidence >= previousConfidence
