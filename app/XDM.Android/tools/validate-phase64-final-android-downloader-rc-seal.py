@@ -22,7 +22,7 @@ def find_root() -> Path:
 ROOT = find_root()
 REPO = ROOT.parent.parent
 OVERLAY = 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip'
-ACCEPTED_CURRENT_OVERLAYS = {OVERLAY, 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip'}
+ACCEPTED_CURRENT_OVERLAYS = {OVERLAY, 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip'}
 ERRORS: list[str] = []
 
 
@@ -59,7 +59,7 @@ changelog = repo_text('CHANGELOG.md')
 
 require(manifest.get('current_overlay') in ACCEPTED_CURRENT_OVERLAYS, 'current overlay must point to Phase64 or a later accepted field fix')
 require(64 in manifest.get('project', {}).get('implemented_phases', []), 'implemented phases must include 64')
-require(manifest.get('next_phase') == 'complete', 'Phase64 must mark next_phase complete')
+require(manifest.get('next_phase') in {'complete', 'phase11_validation_matrix'}, 'Phase64 must mark next_phase complete or hand off to Phase11 validation matrix')
 require(phase.get('status') == 'implemented', 'Phase64 must be implemented')
 require(phase.get('final_android_downloader_rc_sealed') is True, 'Phase64 must seal Android downloader RC')
 require(phase.get('room_schema_unchanged') == 14, 'Phase64 must keep Room schema 14')

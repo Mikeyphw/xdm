@@ -813,6 +813,41 @@
     "phase": "Phase 2",
     "revision": 1
   },
+  "bug_hunt_phase_10_release_upgrade_packaging": {
+    "aab_signature_and_page_alignment_required": true,
+    "aab_signed_by_gradle_or_jarsigner": true,
+    "apk_manifest_inspection_required": true,
+    "apk_set_signing_inputs_required": true,
+    "apksigner_verify_required": true,
+    "aria2_archive_digest_required": true,
+    "aria2_runtime_attestation_required": true,
+    "backup_and_device_transfer_excluded": true,
+    "build_id_field": "BuildConfig.XDM_RELEASE_BUILD_ID",
+    "bundle_release_required": true,
+    "debug_key_fallback_rejected": true,
+    "downgrade_rejection_required": true,
+    "native_alignment_16kb_required": true,
+    "pinned_signer_sha256_required": true,
+    "publication_metadata_required": true,
+    "r8_policy": "release unminified intentionally, documented and inventory-gated",
+    "release_inventory_allow_deny_required": true,
+    "release_runtime_readiness_uses_attestation": true,
+    "release_signing_required": true,
+    "roadmap_phase": 10,
+    "room_schema_current": 17,
+    "sbom_provenance_required": true,
+    "signed_checksums_required": true,
+    "status": "implemented",
+    "supported_abis": [
+      "arm64-v8a"
+    ],
+    "top_level_route_added": false,
+    "unsigned_development_variant": "developmentUnsigned",
+    "unsupported_abis_rejected": "Release inventory and ABI filters package only the attested arm64-v8a runtime; other ABIs are unsupported until distinct attested payloads are added.",
+    "upgrade_reboot_smoke_required": true,
+    "version_code": 22,
+    "version_name": "0.21.0"
+  },
   "bug_hunt_remediation": {
     "phases": {
       "9": "Accessibility and Adaptive Layout r2 gap closure: real fold posture source, focus restoration, Compose screenshot/semantics matrix, large-font risky surfaces, traversal order, and contrast gates."
@@ -1068,7 +1103,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip",
+  "current_overlay": "xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -1090,7 +1125,7 @@
       "13_to_14"
     ],
     "organization_power_tools": true,
-    "version": 14
+    "version": 17
   },
   "debug_workbench_phase_d1_compile_hygiene": {
     "fixes": [
@@ -2617,7 +2652,7 @@
     "workmanager_foreground_fallback": true,
     "yt_dlp_launch_adapter_contract": true
   },
-  "next_phase": "complete",
+  "next_phase": "phase11_validation_matrix",
   "notes": [
     "Phase 1 r4 updates scheduler FileProvider contract test to match CompletedFileGrantPolicy delegation."
   ],

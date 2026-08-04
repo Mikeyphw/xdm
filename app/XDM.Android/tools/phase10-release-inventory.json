@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "versionName": "0.21.0",
+  "versionCode": 22,
+  "supportedAbis": [
+    "arm64-v8a"
+  ],
+  "requiredApkEntries": [
+    "AndroidManifest.xml",
+    "classes.dex",
+    "lib/arm64-v8a/libaria2c.so"
+  ],
+  "forbiddenNameFragments": [
+    "/debug/",
+    "androidTest",
+    "testOnly",
+    "debug.keystore",
+    ".devtool",
+    "fixtures/",
+    "mockwebserver",
+    "src/test",
+    "source-marker"
+  ],
+  "forbiddenManifestFlags": [
+    "debuggable=\"true\"",
+    "testOnly=\"true\""
+  ]
+}

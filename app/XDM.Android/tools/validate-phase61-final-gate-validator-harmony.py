@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ERRORS: list[str] = []
 OVERLAY = 'xdm_android_phase61_final_gate_validator_harmony_overlay.zip'
-LATER_OVERLAYS = {'xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip', 'xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip', 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip', 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip'}
+LATER_OVERLAYS = {'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip', 'xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip', 'xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip', 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip', 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip'}
 
 def read(relative: str) -> str:
     path = ROOT / relative
@@ -42,7 +42,7 @@ android_manifest = read("app/src/main/AndroidManifest.xml")
 
 require(manifest.get("current_overlay") in ({OVERLAY} | LATER_OVERLAYS), "current overlay must point to Phase61 or a later accepted overlay")
 require(61 in manifest.get("project", {}).get("implemented_phases", []), "implemented phases must include 61")
-require(manifest.get("next_phase") in {"complete", "phase63_release_readiness_support_bundle_seal", 'phase64_final_android_downloader_rc_seal'}, "next phase should mark the field-fix arc complete or point to Phase63 support-bundle seal")
+require(manifest.get("next_phase") in {"complete", "phase63_release_readiness_support_bundle_seal", 'phase64_final_android_downloader_rc_seal', 'phase11_validation_matrix'}, "next phase should mark the field-fix arc complete or point to Phase63 support-bundle seal")
 require(phase.get("room_schema_unchanged") == 14, "Phase61 must keep Room schema 14")
 require(phase.get("top_level_route_added") is False, "Phase61 must not add a top-level route")
 require(phase.get("automatic_transfer_start") is False, "Phase61 must not start transfers automatically")

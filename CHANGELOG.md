@@ -1,4 +1,10 @@
 
+## XDM Android bug hunt Phase 10 release gate
+
+- Adds signed APK/AAB release gate, signer pinning, APK-set verification hooks, aria2 runtime attestation, 16 KB native-alignment checks, backup/device-transfer exclusion validation, install/upgrade/reboot/downgrade smoke scripts, and signed/attested publication metadata.
+- Bumps Android metadata to versionCode 22 / versionName 0.21.0 for a distributable Phase 10 candidate.
+
+
 ## Bug Hunt Remediation Phase 4 - Queue, Scheduling, And State Machines
 
 - Added queue state-machine models for start-only, ongoing, and drain-only constraints.
@@ -719,3 +725,7 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Strengthened Phase 6 tests and the embedded validator so marker-only implementations cannot pass.
 
 - Hardened backend ownership/migration store enum parsing so malformed persisted backend evidence cannot crash model conversion.
+
+## Phase 10 r2 release gate honesty closure
+
+- Fixed Phase 10 Kotlin contract compilation, Room schema 17 readiness reporting, signer-attestation wiring, pinned aria2 digest enforcement, truthful ARM64-only ABI scope, APK/AAB manifest/signature/page-size verification, publication SBOM/provenance stubs, and clean-install upgrade smoke coverage.

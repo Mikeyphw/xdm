@@ -217,8 +217,8 @@ database = read("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistenc
 if not re.search(r"version\s*=\s*17\b", database):
     ERRORS.append("Room schema must remain 17 after Phase 7 publication journaling")
 build = read("app/build.gradle.kts")
-if 'versionName = "0.20.0-rc08"' not in build or not re.search(r"versionCode\s*=\s*21\b", build):
-    ERRORS.append("App version must remain 0.20.0-rc08 / 21")
+if 'versionName = "0.21.0"' not in build or not re.search(r"versionCode\s*=\s*22\b", build):
+    ERRORS.append("App version must remain 0.21.0 / 21")
 if "warningsAsErrors = true" not in build:
     ERRORS.append("Android lint warnings must remain errors")
 
@@ -237,7 +237,7 @@ expected = {
     "external_handoff_manual_gate": True,
     "full_validation_required": True,
     "room_schema_current": 17,
-    "version_name_unchanged": "0.20.0-rc08",
+    "version_name_unchanged": "0.21.0",
     "version_code_unchanged": 21,
     "depends_on": "uix_r5_activity_settings_developer_boundary",
     "next_overlay": "complete",

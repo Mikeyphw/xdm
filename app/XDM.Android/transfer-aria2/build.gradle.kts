@@ -31,7 +31,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     packaging {
-        jniLibs.useLegacyPackaging = true
+        jniLibs.useLegacyPackaging = false
         jniLibs.keepDebugSymbols += "**/libaria2c.so"
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }

@@ -52,8 +52,8 @@ if phase.get("stable_routes") != ["Downloads", "Add", "Media", "Library", "Activ
     errors.append("Stable downloader routes changed")
 if phase.get("room_schema_unchanged") != 14:
     errors.append("Room schema must remain 14")
-if phase.get("version_name_unchanged") != "0.20.0-rc08" or phase.get("version_code_unchanged") != 21:
-    errors.append("App version must remain 0.20.0-rc08 / 21")
+if phase.get("version_name_unchanged") != "0.21.0" or phase.get("version_code_unchanged") != 21:
+    errors.append("App version must remain 0.21.0 / 21")
 
 model = read("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/QueueIntelligence.kt")
 for marker in (
@@ -185,7 +185,7 @@ for preserved in (
         errors.append(f"Preserved downloader implementation missing: {preserved}")
 
 build = read("app/build.gradle.kts")
-if 'versionName = "0.20.0-rc08"' not in build or not re.search(r"versionCode\s*=\s*21\b", build):
+if 'versionName = "0.21.0"' not in build or not re.search(r"versionCode\s*=\s*22\b", build):
     errors.append("Phase 8C must not change app version")
 database = read("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt")
 if not re.search(r"version\s*=\s*14\b", database):

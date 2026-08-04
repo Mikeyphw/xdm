@@ -135,9 +135,16 @@ def main() -> None:
     parser.add_argument("--require-payload", action="store_true")
     parser.add_argument("--require-16kb-alignment", action="store_true")
     parser.add_argument("--apk", type=Path)
+    parser.add_argument("--expected-archive-sha256", default=None)
+    parser.add_argument("--require-trusted-archive-digest", action="store_true")
     args = parser.parse_args()
 
     lock = verify_payload(args.require_payload, args.require_16kb_alignment)
+    expected_archive_sha256 = args.expected_archive_sha256 or MANIFEST.get("archiveSha256")
+    if args.require_trusted_archive_digest and not expected_archive_sha256:
+        raise SystemExit("strict release verification requires a pinned aria2 archive SHA-256")
+    if lock is not None and expected_archive_sha256 and lock.get("archiveSha256", "").lower() != expected_archive_sha256.lower():
+        raise SystemExit("aria2 runtime archive SHA-256 does not match the pinned release digest")
     if args.apk:
         if lock is None:
             raise SystemExit("cannot inspect APK without an installed runtime")

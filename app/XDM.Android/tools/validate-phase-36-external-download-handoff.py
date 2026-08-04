@@ -49,7 +49,7 @@ for key in [
 for key in ["raw_shell_exposed", "root_required", "room_schema_migration", "top_level_route_added"]:
     if phase.get(key) is not False:
         errors.append(f"phase36_external_download_handoff.{key} must be false")
-if phase.get("version_name_unchanged") != "0.20.0-rc08" or phase.get("version_code_unchanged") != 21:
+if phase.get("version_name_unchanged") != "0.21.0" or phase.get("version_code_unchanged") != 21:
     errors.append("Phase 36 must not bump version metadata")
 
 manifest = text("app/src/main/AndroidManifest.xml")
@@ -135,7 +135,7 @@ for rel, token in [
     require(rel, token)
 
 build = text("app/build.gradle.kts")
-if 'versionName = "0.20.0-rc08"' not in build or not re.search(r"versionCode\s*=\s*21\b", build):
+if 'versionName = "0.21.0"' not in build or not re.search(r"versionCode\s*=\s*22\b", build):
     errors.append("Phase 36 must not bump app version")
 
 screens = text("app/src/main/kotlin/com/mikeyphw/xdm/android/Screens.kt")

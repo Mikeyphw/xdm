@@ -123,7 +123,8 @@ def main() -> None:
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--archive", type=Path, help="ZIP archive or raw aria2c ELF payload")
     source.add_argument("--download-official", action="store_true")
-    parser.add_argument("--expected-archive-sha256")
+    parser.add_argument("--expected-archive-sha256", default=os.environ.get("XDM_ARIA2_ARCHIVE_SHA256"))
+    parser.add_argument("--require-trusted-digest", action="store_true")
     args = parser.parse_args()
 
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
@@ -149,6 +150,8 @@ def main() -> None:
 
         archive_hash = sha256(archive)
         expected_hash = args.expected_archive_sha256 or manifest.get("archiveSha256")
+        if args.require_trusted_digest and not expected_hash:
+            raise SystemExit("a pinned aria2 archive SHA-256 is required for strict release installation")
         if expected_hash and archive_hash.lower() != expected_hash.lower():
             raise SystemExit("official archive SHA-256 does not match the trusted value")
 

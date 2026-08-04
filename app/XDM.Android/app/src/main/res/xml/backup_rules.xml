@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
+    <!-- Phase 10: fail closed. Nothing app-private, external, Room, shared-pref, checkpoint, session, Termux, recovery, diagnostic, or stale execution state is backup eligible. -->
     <exclude domain="root" path="." />
     <exclude domain="file" path="." />
     <exclude domain="database" path="." />
     <exclude domain="sharedpref" path="." />
     <exclude domain="external" path="." />
+    <exclude domain="database" path="xdm.db" />
+    <exclude domain="database" path="xdm.db-shm" />
+    <exclude domain="database" path="xdm.db-wal" />
+    <exclude domain="file" path="checkpoints/" />
+    <exclude domain="file" path="ownership/" />
+    <exclude domain="file" path="journals/" />
+    <exclude domain="file" path="recovery/" />
+    <exclude domain="file" path="termux/" />
+    <exclude domain="file" path="diagnostics/" />
+    <exclude domain="file" path="support/" />
+    <exclude domain="sharedpref" path="androidx.work.util.preferences.xml" />
 </full-backup-content>

@@ -144,6 +144,14 @@ data class Aria2DiagnosticsUi(
     val smokeTestRunning: Boolean = false,
 )
 
+private const val CurrentRoomSchemaVersion = 17
+private const val UnpinnedReleaseSigner = "UNPINNED"
+
+private fun releaseSigningAttestationConfigured(): Boolean =
+    BuildConfig.XDM_RELEASE_SIGNING_CONFIGURED &&
+        BuildConfig.XDM_PINNED_RELEASE_SIGNER_SHA256.isNotBlank() &&
+        BuildConfig.XDM_PINNED_RELEASE_SIGNER_SHA256 != UnpinnedReleaseSigner
+
 data class MainUiState(
     val route: AppRoute = AppRoute.Downloads,
     val compactDensity: Boolean = false,
@@ -211,13 +219,13 @@ data class MainUiState(
     val browserIntegrationStatus: BrowserIntegrationStatus = BrowserIntegrationStatus(true, true, true, 0, 0),
     val backupRestoreReport: BackupRestoreReport = BackupRestorePolicy.evaluate(SettingsExchangeSnapshot().toPortableText()),
     val protocolExpansionReport: ProtocolExpansionReport = ProtocolExpansionPolish.summarize(emptyList()),
-    val releasePackagingReport: ReleasePackagingReport = ReleasePackagingGate.report("0.18.0-rc01", 19, "com.mikeyphw.xdm.android"),
+    val releasePackagingReport: ReleasePackagingReport = ReleasePackagingGate.report("0.21.0", 22, "com.mikeyphw.xdm.android"),
     val desktopParityReport: DesktopParityReport = DesktopParityGate.evaluate(true, true, true, true, true, true),
     val finalReleaseGateReport: FinalReleaseGateReport = FinalPublicReleaseGate.evaluate(
-        versionName = "0.18.0-rc01",
-        versionCode = 19,
+        versionName = "0.21.0",
+        versionCode = 22,
         packageId = "com.mikeyphw.xdm.android",
-        schemaVersion = 14,
+        schemaVersion = CurrentRoomSchemaVersion,
         buildType = "debug",
         releaseSafetyReady = true,
         installUpdateReady = true,
@@ -230,18 +238,18 @@ data class MainUiState(
         releaseSigningConfigured = false,
     ),
     val releaseSecurityReport: ReleaseSecurityReport = ReleaseSecurityGate.evaluate(
-        versionName = "0.18.0-rc01",
-        schemaVersion = 14,
+        versionName = "0.21.0",
+        schemaVersion = CurrentRoomSchemaVersion,
         buildType = "debug",
         debuggable = true,
         privacySafeDiagnostics = true,
         releaseSigningConfigured = false,
     ),
     val installUpdateReadinessReport: InstallUpdateReadinessReport = ReleaseInstallReadinessGate.evaluate(
-        versionName = "0.18.0-rc01",
-        versionCode = 19,
+        versionName = "0.21.0",
+        versionCode = 22,
         packageId = "com.mikeyphw.xdm.android",
-        schemaVersion = 14,
+        schemaVersion = CurrentRoomSchemaVersion,
         buildType = "debug",
         releaseSafetyComplete = true,
         recoverySurfaceReady = true,
@@ -524,7 +532,7 @@ class MainViewModel(
                 appVersion = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
                 versionCode = BuildConfig.VERSION_CODE,
                 androidVersion = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
-                schemaVersion = 14,
+                schemaVersion = CurrentRoomSchemaVersion,
                 enabledEngines = listOf("Native", "aria2", "Termux", "yt-dlp").filter { engine ->
                     engine == "Native" || engine == "aria2" || snapshot.downloads.isNotEmpty() || snapshot.mediaCaptures.isNotEmpty()
                 },
@@ -535,30 +543,30 @@ class MainViewModel(
         )
         val releaseSecurityReport = ReleaseSecurityGate.evaluate(
             versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
-            schemaVersion = 14,
+            schemaVersion = CurrentRoomSchemaVersion,
             buildType = BuildConfig.BUILD_TYPE,
             debuggable = BuildConfig.DEBUG,
             privacySafeDiagnostics = true,
-            releaseSigningConfigured = !BuildConfig.DEBUG,
+            releaseSigningConfigured = releaseSigningAttestationConfigured(),
         )
         val installUpdateReadinessReport = ReleaseInstallReadinessGate.evaluate(
             versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
             versionCode = BuildConfig.VERSION_CODE,
             packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug"),
-            schemaVersion = 14,
+            schemaVersion = CurrentRoomSchemaVersion,
             buildType = BuildConfig.BUILD_TYPE,
             releaseSafetyComplete = true,
             recoverySurfaceReady = snapshot.finalizationJournals.none { it.needsRecovery } || snapshot.recovery.isNotEmpty() || snapshot.finalizationJournals.isEmpty(),
             diagnosticsExportRedacted = true,
             aria2PayloadGateRetained = true,
             updateKeepsPackageIdentity = true,
-            releaseSigningConfigured = !BuildConfig.DEBUG,
+            releaseSigningConfigured = releaseSigningAttestationConfigured(),
         )
         val finalReleaseGateReport = FinalPublicReleaseGate.evaluate(
             versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
             versionCode = BuildConfig.VERSION_CODE,
             packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug"),
-            schemaVersion = 14,
+            schemaVersion = CurrentRoomSchemaVersion,
             buildType = BuildConfig.BUILD_TYPE,
             releaseSafetyReady = true,
             installUpdateReady = true,
@@ -568,7 +576,7 @@ class MainViewModel(
             releaseDocsComplete = true,
             noNewTopLevelRoutes = true,
             fullValidationPassed = false,
-            releaseSigningConfigured = !BuildConfig.DEBUG,
+            releaseSigningConfigured = releaseSigningAttestationConfigured(),
         )
         val supportBundleSeal = SupportBundleReleaseReadinessPlanner.evaluate(
             operationalDiagnosticsIncluded = activityDiagnosticsExport.isNotBlank(),

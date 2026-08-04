@@ -17,7 +17,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: app/XDM.Android
@@ -36,48 +36,81 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.4.1'
-      - name: Static and final release contracts
+      - name: Static release contracts
         run: |
-          python3 tools/validate-foundation.py
-          python3 tools/validate-uix-r6-accessibility-performance-release-seal.py
-          python3 tools/validate-phase-2-3.py
-          python3 tools/validate-phase-4.py
-          python3 tools/validate-phase-5.py
-          python3 tools/validate-ownership-hardening.py
-          python3 tools/validate-phase-6b.py
-          python3 tools/validate-phase-6.py
-          python3 tools/validate-phase-7.py
-          python3 tools/validate-phase-8.py
-          python3 tools/validate-phase-9.py
-          python3 tools/validate-phase-10.py
-          python3 tools/validate-phase-37-browser-scheme-contract.py
-          python3 tools/validate-phase-38-repo-owned-extension.py
-          python3 tools/validate-phase-39-xpi-export.py
-          python3 tools/validate-phase-40-theme-fab.py
-          python3 tools/validate-phase-41-browser-bridge-integration.py
-          python3 tools/validate-phase-42-browser-bridge-release-gate.py
-          python3 tools/validate-phase-42-kotlin-compile-recovery.py
-          python3 tools/validate-retired-prerelease-channel.py
+          python3 tools/validate-bug-hunt-phase10-release-upgrade-packaging.py
+          python3 tools/verify-phase10-backup-policy.py
           bash tools/run-final-release-gate.sh --ci
       - name: Bootstrap wrapper
         run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.4.1
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
-      - name: Lint, test, and package
-        run: ./gradlew -Pxdm.requireAria2Runtime=true -Pxdm.cleanKotlinValidation=true -Pkotlin.incremental=false -Pkotlin.compiler.execution.strategy=in-process --no-daemon --max-workers=1 --no-parallel --no-build-cache --no-configuration-cache --stacktrace :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts lintDebug :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug
-      - name: Browser bridge release artifacts
-        run: bash tools/run-browser-bridge-release-gate.sh --verify-artifacts
-      - name: Verify packaged aria2 payload
-        run: |
-          apk="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
-          test -n "$apk"
-          python3 tools/verify-aria2-runtime.py --require-payload --apk "$apk"
+      - name: Debug validation matrix
+        run: ./gradlew -Pxdm.requireAria2Runtime=true :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts lintDebug :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: xdm-android-apks
+          name: xdm-android-debug-artifacts
           path: |
             app/XDM.Android/app/build/outputs/apk/debug/*.apk
-            app/XDM.Android/app/build/outputs/apk/release/*.apk
             app/XDM.Android/browser-extension/build/outputs/xpi/*.xpi
             app/XDM.Android/browser-extension/build/outputs/xpi/release-artifacts.json
+          if-no-files-found: error
+
+  signed-release:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/android-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    defaults:
+      run:
+        working-directory: app/XDM.Android
+    env:
+      XDM_RELEASE_STORE_FILE: ${{ github.workspace }}/release-keystore.jks
+      XDM_RELEASE_STORE_PASSWORD: ${{ secrets.XDM_RELEASE_STORE_PASSWORD }}
+      XDM_RELEASE_KEY_ALIAS: ${{ secrets.XDM_RELEASE_KEY_ALIAS }}
+      XDM_RELEASE_KEY_PASSWORD: ${{ secrets.XDM_RELEASE_KEY_PASSWORD }}
+      XDM_RELEASE_SIGNER_SHA256: ${{ secrets.XDM_RELEASE_SIGNER_SHA256 }}
+      XDM_RELEASE_BUILD_ID: ${{ github.sha }}
+      BUNDLETOOL_JAR: ${{ secrets.BUNDLETOOL_JAR_PATH }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore release keystore
+        env:
+          XDM_RELEASE_KEYSTORE_BASE64: ${{ secrets.XDM_RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$XDM_RELEASE_KEYSTORE_BASE64"
+          printf '%s' "$XDM_RELEASE_KEYSTORE_BASE64" | base64 -d > "$XDM_RELEASE_STORE_FILE"
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.4.1'
+      - name: Install official ARM64 aria2 runtime
+        run: python3 tools/install-aria2-runtime.py --download-official
+      - name: Require bundletool input
+        run: test -n "${BUNDLETOOL_JAR:-}" || command -v bundletool
+      - name: Signed release gate
+        run: bash tools/run-bug-hunt-phase10-release-gate.sh
+      - name: Attest Android publication metadata
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            app/XDM.Android/build/release/publication/SHA256SUMS
+            app/XDM.Android/build/release/publication/SHA512SUMS
+            app/XDM.Android/build/release/publication/release-metadata.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xdm-android-signed-release
+          path: app/XDM.Android/build/release/publication/*
           if-no-files-found: error

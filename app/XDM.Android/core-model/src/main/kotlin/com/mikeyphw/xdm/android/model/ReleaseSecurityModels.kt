@@ -45,23 +45,23 @@ object ReleaseSecurityGate {
                 .getOrNull(1)
                 ?.toIntOrNull()
                 ?: -1
-            if (minor < 14) {
+            if (minor < 21) {
                 add(
                     ReleaseSecurityFinding(
                         id = "version.phase14",
                         severity = ReleaseSecuritySeverity.Warning,
                         title = "Version metadata",
-                        detail = "Expected version metadata from phase 14 or later.",
+                        detail = "Expected Phase 10 version metadata, 0.21.x or later.",
                     ),
                 )
             }
-            if (schemaVersion != 14) {
+            if (schemaVersion != 17) {
                 add(
                     ReleaseSecurityFinding(
                         id = "database.schema",
                         severity = ReleaseSecuritySeverity.Blocking,
                         title = "Unexpected schema version",
-                        detail = "Release hardening must not migrate Room unless a later release gate explicitly does it.",
+                        detail = "Release hardening must report reviewed Room schema v17 after the Phase 7 publication-journal migration chain.",
                     ),
                 )
             }
@@ -91,7 +91,7 @@ object ReleaseSecurityGate {
                         id = "signing.release",
                         severity = ReleaseSecuritySeverity.Warning,
                         title = "Release signing missing",
-                        detail = "Unsigned release builds are allowed locally, but a publishable build must provide release signing values.",
+                        detail = "Publishable release builds must provide signing values and signer attestation; use developmentUnsigned for local unsigned handoff.",
                     ),
                 )
             }

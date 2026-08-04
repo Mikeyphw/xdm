@@ -59,23 +59,23 @@ object ReleaseInstallReadinessGate {
                 .getOrNull(1)
                 ?.toIntOrNull()
                 ?: -1
-            if (minor < 16) {
+            if (minor < 21) {
                 add(
                     ReleaseReadinessCheck(
                         id = "version.phase16",
                         severity = ReleaseReadinessSeverity.Blocking,
                         title = "Version metadata is stale",
-                        detail = "Install/update readiness requires a 0.16.x or newer version.",
+                        detail = "Install/update readiness requires the Phase 10 0.21.x or newer release metadata.",
                     ),
                 )
             }
-            if (versionCode < 17) {
+            if (versionCode < 22) {
                 add(
                     ReleaseReadinessCheck(
                         id = "version.code",
                         severity = ReleaseReadinessSeverity.Blocking,
                         title = "Version code is not monotonic",
-                        detail = "An update APK must advance versionCode to at least 17.",
+                        detail = "A Phase 10 update APK must advance versionCode to at least 22.",
                     ),
                 )
             }
@@ -89,13 +89,13 @@ object ReleaseInstallReadinessGate {
                     ),
                 )
             }
-            if (schemaVersion != 14) {
+            if (schemaVersion != 17) {
                 add(
                     ReleaseReadinessCheck(
                         id = "database.schema",
                         severity = ReleaseReadinessSeverity.Blocking,
                         title = "Unexpected schema migration",
-                        detail = "Install/update readiness must preserve Room schema v14 unless a reviewed migration is included.",
+                        detail = "Install/update readiness must report the reviewed Room schema v17 after Phase 7 publication journaling migrations.",
                     ),
                 )
             }

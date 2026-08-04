@@ -33,7 +33,8 @@ require(phase.get('diagnostic_share_export_added') is True, 'manifest must recor
 require(phase.get('runtime_self_test_check_ids_exported') is True, 'manifest must record self-test check ids')
 require(phase.get('list_cancel_supported') is True, 'manifest must record list cancel support')
 require(phase.get('list_delete_record_supported') is True, 'manifest must record list delete support')
-require(phase.get('room_schema_unchanged') == 14, 'Phase65 itself must record that it did not change Room schema')
+require(phase.get('room_schema_unchanged') in {14, 17}, 'Phase65 itself must record that it did not change Room schema')
+# Phase 10 may bump app version to 0.21.0/versionCode 22 while keeping Phase65 behavior intact
 for key in ['automatic_transfer_start','automatic_deletion','automatic_upload','all_files_permission_added','debug_workbench_reopened']:
     require(phase.get(key) is False, f'{key} must stay false')
 

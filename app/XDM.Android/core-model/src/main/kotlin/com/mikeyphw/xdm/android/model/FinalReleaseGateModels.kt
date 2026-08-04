@@ -207,13 +207,13 @@ object FinalPublicReleaseGate {
                 .getOrNull(1)
                 ?.toIntOrNull()
                 ?: -1
-            if (minor < 17) {
+            if (minor < 21) {
                 add(
                     FinalReleaseGateCheck(
                         id = "version.phase17",
                         severity = FinalReleaseGateSeverity.Blocking,
                         title = "Version metadata is stale",
-                        detail = "The final gate requires a 0.17.x release-candidate or public release version.",
+                        detail = "The final gate requires the Phase 10 0.21.x public release version metadata.",
                     ),
                 )
             }
@@ -227,13 +227,13 @@ object FinalPublicReleaseGate {
                     ),
                 )
             }
-            if (versionCode < 18) {
+            if (versionCode < 22) {
                 add(
                     FinalReleaseGateCheck(
                         id = "version.code",
                         severity = FinalReleaseGateSeverity.Blocking,
                         title = "Version code is not final-gate monotonic",
-                        detail = "Public release artifacts must advance versionCode to at least 18.",
+                        detail = "Public release artifacts must advance versionCode to at least 22 for Phase 10.",
                     ),
                 )
             }
@@ -247,13 +247,13 @@ object FinalPublicReleaseGate {
                     ),
                 )
             }
-            if (schemaVersion != 14) {
+            if (schemaVersion != 17) {
                 add(
                     FinalReleaseGateCheck(
                         id = "database.schema",
                         severity = FinalReleaseGateSeverity.Blocking,
                         title = "Unexpected Room schema for public gate",
-                        detail = "The public release gate expects Room schema v14 unless a reviewed migration is included.",
+                        detail = "The public release gate expects reviewed Room schema v17 after Phase 7 through Phase 10 migrations.",
                     ),
                 )
             }

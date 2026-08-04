@@ -90,13 +90,14 @@ validators=(
   tools/validate-phase65-diagnostic-export-download-action-fix.py
   tools/validate-bug-hunt-phase8-download-actions-ui-truthfulness.py
   tools/validate-bug-hunt-phase9-accessibility-adaptive-layout.py
+  tools/validate-bug-hunt-phase10-release-upgrade-packaging.py
 )
 
 for validator in "${validators[@]}"; do
   python3 "$validator"
 done
 
-FULL_GRADLE_GATE='./gradlew -Pxdm.requireAria2Runtime=true -Pxdm.cleanKotlinValidation=true -Pkotlin.incremental=false -Pkotlin.compiler.execution.strategy=in-process --no-daemon --max-workers=1 --no-parallel --no-build-cache --no-configuration-cache --stacktrace :browser-extension:test :browser-extension:jsTest :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts :app:checkBrowserIntegration :core-model:test :core-utils:test :media:test :transfer-api:test :browser-integration:testDebugUnitTest :storage:testDebugUnitTest :transfer-native:testDebugUnitTest :transfer-aria2:test :scheduler:testDebugUnitTest :persistence:testDebugUnitTest :app:testDebugUnitTest lintDebug :app:assembleDebugAndroidTest assembleDebug'
+FULL_GRADLE_GATE='bash tools/run-bug-hunt-phase10-release-gate.sh && ./gradlew -Pxdm.requireAria2Runtime=true :browser-extension:test :browser-extension:jsTest :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts :app:checkBrowserIntegration :core-model:test :core-utils:test :media:test :transfer-api:test :browser-integration:testDebugUnitTest :storage:testDebugUnitTest :transfer-native:testDebugUnitTest :transfer-aria2:test :scheduler:testDebugUnitTest :persistence:testDebugUnitTest :app:testDebugUnitTest lintDebug :app:assembleDebugAndroidTest assembleDebug'
 
 if [[ "${1:-}" == "--ci" ]]; then
   echo "CI final static gate passed"

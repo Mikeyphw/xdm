@@ -15,6 +15,13 @@ val releaseStoreFile = releaseSigningValue("xdm.release.storeFile", "XDM_RELEASE
 val releaseStorePassword = releaseSigningValue("xdm.release.storePassword", "XDM_RELEASE_STORE_PASSWORD")
 val releaseKeyAlias = releaseSigningValue("xdm.release.keyAlias", "XDM_RELEASE_KEY_ALIAS")
 val releaseKeyPassword = releaseSigningValue("xdm.release.keyPassword", "XDM_RELEASE_KEY_PASSWORD")
+val releaseBuildId = releaseSigningValue("xdm.release.buildId", "XDM_RELEASE_BUILD_ID")
+    ?: providers.environmentVariable("GITHUB_SHA").orNull?.take(12)
+    ?: "local-dev"
+val pinnedReleaseSignerSha256 = releaseSigningValue("xdm.release.signerSha256", "XDM_RELEASE_SIGNER_SHA256")
+val releaseCertificateNotAfter = releaseSigningValue("xdm.release.certificateNotAfter", "XDM_RELEASE_CERTIFICATE_NOT_AFTER")
+
+fun buildConfigString(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 val hasReleaseSigning = listOf(
     releaseStoreFile,
     releaseStorePassword,
@@ -34,11 +41,18 @@ android {
         applicationId = "com.mikeyphw.xdm.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 21
-        versionName = "0.20.0-rc08"
+        versionCode = 22
+        versionName = "0.21.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["xdmBrowserScheme"] = "xdmdownload"
         buildConfigField("String", "XDM_BROWSER_SCHEME", "\"xdmdownload\"")
+        buildConfigField("String", "XDM_RELEASE_BUILD_ID", buildConfigString(releaseBuildId))
+        buildConfigField("String", "XDM_PINNED_RELEASE_SIGNER_SHA256", buildConfigString(pinnedReleaseSignerSha256 ?: "UNPINNED"))
+        buildConfigField("String", "XDM_RELEASE_CERTIFICATE_NOT_AFTER", buildConfigString(releaseCertificateNotAfter ?: "UNKNOWN"))
+        buildConfigField("Boolean", "XDM_RELEASE_SIGNING_CONFIGURED", hasReleaseSigning.toString())
+        ndk {
+            abiFilters += setOf("arm64-v8a")
+        }
     }
 
     signingConfigs {
@@ -67,14 +81,24 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
+
+        create("developmentUnsigned") {
+            initWith(getByName("debug"))
+            matchingFallbacks += listOf("debug")
+            applicationIdSuffix = ".devunsigned"
+            versionNameSuffix = "-unsigned-dev"
+            isDebuggable = true
+            signingConfig = null
+            manifestPlaceholders["xdmBrowserScheme"] = "xdmdownload-devunsigned"
+            buildConfigField("String", "XDM_BROWSER_SCHEME", "\"xdmdownload-devunsigned\"")
+        }
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     packaging {
-        jniLibs.useLegacyPackaging = true
-        // Termux/chroot ARM builds can accidentally resolve the Linux x86_64 NDK host strip tool.
-        // Keep native debug symbols for every packaged JNI lib so Gradle never shells out to that host-only llvm-strip.
-        jniLibs.keepDebugSymbols += "**/*.so"
+        jniLibs.useLegacyPackaging = false
+        // Keep only the attested aria2 runtime symbols; release inventory rejects broad debug-symbol retention.
+        jniLibs.keepDebugSymbols += "**/libaria2c.so"
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
     lint {
@@ -98,6 +122,22 @@ android {
             disable += "Aligned16KB"
         }
     }
+}
+
+val xdmAssertReleaseSigningInputs by tasks.registering {
+    group = "verification"
+    description = "Fails publishable release builds unless release keystore inputs and signer pin metadata are present."
+    doLast {
+        require(hasReleaseSigning) { "Release signing inputs are required for assembleRelease/bundleRelease. Use assembleDevelopmentUnsigned for unsigned local handoff builds." }
+        val storePath = requireNotNull(releaseStoreFile) { "xdm.release.storeFile or XDM_RELEASE_STORE_FILE is required" }
+        require(file(storePath).isFile) { "Release keystore does not exist: $storePath" }
+        require(!pinnedReleaseSignerSha256.isNullOrBlank()) { "xdm.release.signerSha256 or XDM_RELEASE_SIGNER_SHA256 is required for signer continuity" }
+        require(Regex("^[0-9A-Fa-f]{64}$").matches(pinnedReleaseSignerSha256!!)) { "Pinned release signer SHA-256 must be 64 hex characters" }
+    }
+}
+
+tasks.matching { it.name in setOf("assembleRelease", "bundleRelease") }.configureEach {
+    dependsOn(xdmAssertReleaseSigningInputs)
 }
 
 dependencies {

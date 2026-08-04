@@ -22,7 +22,7 @@ def find_root() -> Path:
 ROOT = find_root()
 REPO = ROOT.parent.parent
 OVERLAY = 'xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip'
-LATER_OVERLAYS = {'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip', 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip'}
+LATER_OVERLAYS = {'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip', 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip', 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip'}
 ERRORS: list[str] = []
 
 
@@ -60,7 +60,7 @@ changelog = repo_text('CHANGELOG.md')
 
 require(manifest.get('current_overlay') in ({OVERLAY} | LATER_OVERLAYS), 'current overlay must point to Phase63 or the final RC overlay')
 require(63 in manifest.get('project', {}).get('implemented_phases', []), 'implemented phases must include 63')
-require(manifest.get('next_phase') in {'phase64_final_android_downloader_rc_seal', 'complete'}, 'next phase should point to Phase64 or complete after final RC seal')
+require(manifest.get('next_phase') in {'phase64_final_android_downloader_rc_seal', 'complete', 'phase11_validation_matrix'}, 'next phase should point to Phase64 or complete after final RC seal')
 require(phase.get('status') == 'implemented', 'Phase63 must be implemented')
 require(phase.get('room_schema_unchanged') == 14, 'Phase63 must keep Room schema 14')
 require(phase.get('top_level_route_added') is False, 'Phase63 must not add a top-level route')
