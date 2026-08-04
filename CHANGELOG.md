@@ -1,4 +1,19 @@
 
+## Android Bug Hunt Phase 11 Validation Matrix r2 Gap Closure
+
+- Closed the six self-referential Phase 11 matrix rows by mapping them to phase-specific executable tests and validators.
+- Strengthened the Phase 11 validator so matrix rows cannot be satisfied by the Phase 11 matrix/runner alone.
+- Added an evidence-closure contract test covering `BH11-003`, `BH11-014`, `BH11-019`, `BH11-032`, `BH11-040`, and `BH11-047`.
+
+
+## Android Bug Hunt Phase 11 Validation Matrix
+
+- Added the machine-readable 80-row bug-hunt validation matrix.
+- Added Phase 11 static, device, and release gate runner modes.
+- Wired the Phase 11 validator into Android CI and the final release static gate.
+- Synchronized the in-repo remediation roadmap with the complete source roadmap.
+
+
 ## XDM Android bug hunt Phase 10 release gate
 
 - Adds signed APK/AAB release gate, signer pinning, APK-set verification hooks, aria2 runtime attestation, 16 KB native-alignment checks, backup/device-transfer exclusion validation, install/upgrade/reboot/downgrade smoke scripts, and signed/attested publication metadata.

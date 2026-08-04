@@ -71893,6 +71893,200 @@
         }
       },
       "history_id": "798168c65dbe447bae3522970ad0271e"
+    },
+    {
+      "applied_at": "2026-08-04T17:56:59.015034Z",
+      "artifact": "/home/mike/Downloads/xdm_android_bug_hunt_phase11_validation_matrix_full_r2_gap_closure_overlay.zip",
+      "artifact_name": "xdm_android_bug_hunt_phase11_validation_matrix_full_r2_gap_closure_overlay.zip",
+      "type": "overlay",
+      "sha256": "822d120212a1b775b05a9310c99d03cbb5dd370ed6042241536030e0e9598156",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Close XDM Android bug hunt Phase 11 validation matrix evidence gaps",
+      "commit_hash": "",
+      "file_count": 16,
+      "change_counts": {
+        "add": 8,
+        "modify": 8
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Bug Hunt Phase 11 Validation Matrix r2 Gap Closure Overlay",
+        "description": "Closes Phase 11 validation-matrix evidence gaps by forbidding self-only matrix/runner rows and mapping all 80 rows to phase-specific executable evidence.",
+        "target": "xdm_android",
+        "workspace": {
+          "root": "app/XDM.Android"
+        },
+        "apply": {
+          "atomic": true,
+          "path_policy": "repository-relative",
+          "conflict_policy": "fail",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "message": "Close XDM Android bug hunt Phase 11 validation matrix evidence gaps",
+            "strategy": "single"
+          }
+        },
+        "validation": {
+          "mode": "required",
+          "required": true,
+          "restore": true,
+          "build": true,
+          "test": true,
+          "allow_deferred": false,
+          "minimum_phase": "finalize",
+          "rollback_on_failure": true,
+          "failure_action": "rollback",
+          "execution_environment": "auto",
+          "script": {
+            "path": ".devtool-artifact/validate.sh",
+            "runner": "bash",
+            "sha256": "ac2fe7e34a90a97d0064675f1b76e8e1b771f6c1feb7c8b84ce6533f4a0ef5dd",
+            "timeout_seconds": 300
+          },
+          "expected": {
+            "restore": "pass",
+            "build": "pass",
+            "tests": "pass"
+          }
+        },
+        "inventory": {
+          "format": 1,
+          "exhaustive": true,
+          "entries": [
+            {
+              "path": ".github/workflows/android.yml",
+              "action": "modify",
+              "source_sha256": "91795cc04f3290b9f2f5c8054b0a89abe196342f1fee927ede695acc2eb2c7b4",
+              "sha256": "9842d9a5a06b18ea869a2622e177f61d17dc3e6547b48df41903bf9ca6a78444",
+              "size": 4801
+            },
+            {
+              "path": "CHANGELOG.md",
+              "action": "modify",
+              "source_sha256": "f43e7374e9fe83609c3cf1270836e770022e9330e0ded30c6be5dd42338252aa",
+              "sha256": "34183fee8e59e4d19b6e2b14764a4902bb59fc88e2319bb4a4fbcd159443ebe6",
+              "size": 61520
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "source_sha256": "d17c513645b8686d986e7a20b87c3d6de8eaf5f659a69dead4c3c3a443deeed9",
+              "sha256": "81c2f12a3ea5e8c48437b097b91442735ba6bd9aeeeb8240cbfcd0459bd6cc7b",
+              "size": 125565
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11EvidenceClosureContractTest.kt",
+              "action": "add",
+              "sha256": "969872a2a6af0aae3ead3bd83011be90efda2bfa5de5d178ea88bd6ec62a3d98",
+              "size": 3546
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11ValidationMatrixContractTest.kt",
+              "action": "add",
+              "sha256": "ce4d7ab71f05359214ee8bbce8e4c95238a91b848a6d0fe717eaa29824f56ad0",
+              "size": 2997
+            },
+            {
+              "path": "app/XDM.Android/docs/ANDROID_BUG_HUNT_REMEDIATION_ROADMAP.md",
+              "action": "modify",
+              "source_sha256": "3f996899da4945489d5bdb7f5d69ea999fbc097f738e65a7c67cc117a48fd247",
+              "sha256": "94cc2339a6345da94edb310be172e6eb1ea96e21eaca1979993caeb7ce689b59",
+              "size": 53867
+            },
+            {
+              "path": "app/XDM.Android/docs/release/BUG-HUNT-PHASE-11-VALIDATION-MATRIX.md",
+              "action": "add",
+              "sha256": "6c39ab66bcc3225f4d3707a9e658654d4431c67fad74ba9b877c3564cb2b0c42",
+              "size": 2754
+            },
+            {
+              "path": "app/XDM.Android/tools/bug-hunt-phase11-validation-matrix.json",
+              "action": "add",
+              "sha256": "b59f0062e968d6519fcfc88618b61208a101fb3aa0226af52ae82ddc69090c45",
+              "size": 115644
+            },
+            {
+              "path": "app/XDM.Android/tools/run-bug-hunt-phase11-validation-matrix.sh",
+              "action": "add",
+              "sha256": "b4cc0078a2aa6f753c5b1486dd3adfc9f56dad1a5623b72d8a73d2d8ff6fa3e8",
+              "size": 3682
+            },
+            {
+              "path": "app/XDM.Android/tools/run-final-release-gate.sh",
+              "action": "modify",
+              "source_sha256": "0beff778ad01e9f8166eebcbee9e14df5cbd21a712a63faabb9634516d172507",
+              "sha256": "39b5a27107f917bcdc4eb34c5ca922fa3f000832494128251c59a92cdf42a8f5",
+              "size": 2226
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-bug-hunt-phase1-external-control-secrets-privacy.py",
+              "action": "modify",
+              "source_sha256": "f170c24d7099976606d195af052dc8d0f80e7a19c4e9c6288cf663be0f6e64d8",
+              "sha256": "eea5cff13897885929f6a0c08a52f736ede0ae351c4e22c77fff0824405459ea",
+              "size": 11920
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-bug-hunt-phase11-validation-matrix.py",
+              "action": "add",
+              "sha256": "2bf325c4b77fc4fe7acf70d02a1252b0235a0c394a1e612f53dde3e6c407f9d9",
+              "size": 8019
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-bug-hunt-phase5-browser-handoff-media.py",
+              "action": "add",
+              "sha256": "e259f32aac3d3065e84aad2d4250621732f7de0ba022c9ea98fe3bb47aae4689",
+              "size": 1430
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-bug-hunt-phase6-database-integrity-migrations.py",
+              "action": "add",
+              "sha256": "d25a5d20274acd15dbf9620cada089c912d2daeac5554a5ee53d2d2d94123a29",
+              "size": 1345
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase58-runtime-recovery-execution-guard.py",
+              "action": "modify",
+              "source_sha256": "5080c36691f639ad2a288d2a1d9478020e95e49b8a0520957cc07878a8d32ce7",
+              "sha256": "a3dc81c15b69c185ee653690929daa39c3de95ccc3c36444857f6b99c629feae",
+              "size": 5599
+            },
+            {
+              "path": "app/XDM.Android/tools/validate-phase61-final-gate-validator-harmony.py",
+              "action": "modify",
+              "source_sha256": "ae447dbfec1316408ad08f0502a822a08c72ff5324085fb783088d1784b58f4a",
+              "sha256": "57b016802f921efde234e67561be071b5de5713983b26bcdc210fd06d48fbef1",
+              "size": 6143
+            }
+          ]
+        },
+        "metadata": {
+          "roadmap_phase": "11",
+          "revision": "r2_gap_closure",
+          "full_phase": true,
+          "source_commit": "7b7926c",
+          "room_schema": 17,
+          "version_code": 22,
+          "version_name": "0.21.0",
+          "payload_files": 16,
+          "modified_files": 8,
+          "added_files": 8,
+          "matrix_rows": 80,
+          "self_only_rows_closed": [
+            "BH11-003",
+            "BH11-014",
+            "BH11-019",
+            "BH11-032",
+            "BH11-040",
+            "BH11-047"
+          ],
+          "completion_status": "bug_hunt_remediation_complete",
+          "commands_do_not_include_rejected_resource_flags": true
+        }
+      },
+      "history_id": "93ec1ad950f746f68b879827ab6fd075"
     }
   ]
 }

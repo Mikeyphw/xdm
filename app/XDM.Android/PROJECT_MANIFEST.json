@@ -1103,7 +1103,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip",
+  "current_overlay": "xdm_android_bug_hunt_phase11_validation_matrix_full_overlay.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -2652,7 +2652,7 @@
     "workmanager_foreground_fallback": true,
     "yt_dlp_launch_adapter_contract": true
   },
-  "next_phase": "phase11_validation_matrix",
+  "next_phase": "complete",
   "notes": [
     "Phase 1 r4 updates scheduler FileProvider contract test to match CompletedFileGrantPolicy delegation."
   ],
@@ -2861,7 +2861,7 @@
     ],
     "name": "XDM Android",
     "package_id": "com.mikeyphw.xdm.android",
-    "version": "0.20.0-rc08"
+    "version": "0.21.0"
   },
   "release_install_readiness": {
     "aria2_payload_gate_retained": true,
@@ -3231,5 +3231,37 @@
     "native_selective_repair_planner": true,
     "repeat_verification_without_network": true,
     "trusted_block_manifest": true
+  },
+  "bug_hunt_phase_11_validation_matrix": {
+    "roadmap_phase": 11,
+    "status": "implemented",
+    "roadmap_requirement_count": 80,
+    "matrix_file": "tools/bug-hunt-phase11-validation-matrix.json",
+    "validator": "tools/validate-bug-hunt-phase11-validation-matrix.py",
+    "runner": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+    "contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11ValidationMatrixContractTest.kt",
+    "coverage_levels": [
+      "unit",
+      "instrumentation",
+      "device",
+      "release"
+    ],
+    "doc_only_evidence_allowed": false,
+    "current_room_schema": 17,
+    "release_gate_included": true,
+    "device_gate_included": true,
+    "ci_static_gate_included": true,
+    "revision": "r2_gap_closure",
+    "evidence_closure_contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11EvidenceClosureContractTest.kt",
+    "phase_specific_evidence_required": true,
+    "self_only_phase11_evidence_allowed": false,
+    "self_only_rows_closed": [
+      "BH11-003",
+      "BH11-014",
+      "BH11-019",
+      "BH11-032",
+      "BH11-040",
+      "BH11-047"
+    ]
   }
 }

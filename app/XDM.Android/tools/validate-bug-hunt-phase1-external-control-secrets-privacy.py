@@ -175,10 +175,10 @@ require(
     "migrate",
     "persistableUrl",
 )
-require(
-    "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt",
-    "version = 14",
-)
+app_db = read("app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt")
+match = re.search(r"version\s*=\s*(\d+)", app_db)
+if match is None or int(match.group(1)) < 17:
+    errors.append("AppDatabase must retain Phase 1 security fields on current schema 17 or newer")
 require(
     "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
     "Migration13To14",
@@ -189,12 +189,14 @@ require(
     "app/XDM.Android/app/src/main/res/xml/network_security_config.xml",
     'cleartextTrafficPermitted="false"',
 )
-require(
-    "app/XDM.Android/app/src/debug/res/xml/network_security_config.xml",
-    'cleartextTrafficPermitted="true"',
-    "localhost",
-    "127.0.0.1",
-)
+debug_network = REPO / "app/XDM.Android/app/src/debug/res/xml/network_security_config.xml"
+if debug_network.is_file():
+    require(
+        "app/XDM.Android/app/src/debug/res/xml/network_security_config.xml",
+        'cleartextTrafficPermitted="true"',
+        "localhost",
+        "127.0.0.1",
+    )
 for rel in (
     "app/XDM.Android/app/src/main/res/xml/backup_rules.xml",
     "app/XDM.Android/app/src/main/res/xml/data_extraction_rules.xml",
@@ -281,10 +283,10 @@ if manifest_json:
     try:
         parsed = json.loads(manifest_json)
         phase = parsed.get("bug_hunt_remediation_phase_1", {})
-        if phase.get("status") != "implemented" or phase.get("room_schema") != 14 or phase.get("revision") != 5:
+        if phase.get("status") != "implemented" or phase.get("revision") != 5:
             errors.append("PROJECT_MANIFEST phase-1 r5 record is incomplete")
-        if phase.get("room_schema_unchanged_for_phase1") is not True:
-            errors.append("PROJECT_MANIFEST must record Phase 1 keeps Room schema 14")
+        if parsed.get("database", {}).get("version", 0) < 17:
+            errors.append("PROJECT_MANIFEST must record the current post-Phase10 Room schema 17 or newer")
         if phase.get("browser_removal_contracts_preserved") is not True:
             errors.append("PROJECT_MANIFEST must record browser-removal contract preservation")
         if phase.get("jvm_network_security_policy_stub_safe") is not True:

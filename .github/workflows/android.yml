@@ -40,6 +40,8 @@ jobs:
         run: |
           python3 tools/validate-bug-hunt-phase10-release-upgrade-packaging.py
           python3 tools/verify-phase10-backup-policy.py
+          python3 tools/validate-bug-hunt-phase11-validation-matrix.py
+          bash tools/run-bug-hunt-phase11-validation-matrix.sh --static-only --ci
           bash tools/run-final-release-gate.sh --ci
       - name: Bootstrap wrapper
         run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.4.1

@@ -1,0 +1,2127 @@
+{
+  "schema_version": 1,
+  "roadmap_phase": 11,
+  "name": "XDM Android Bug Hunt Phase 11 Validation Matrix",
+  "baseline_commit": "7b7926c",
+  "current_room_schema": 17,
+  "total_requirements": 80,
+  "definition_of_done": [
+    "implementation merged",
+    "executable regression test or verification tool covers the original failure mode",
+    "UI copy or developer documentation reflects actual behavior",
+    "release gate or CI workflow runs the relevant test",
+    "matrix item links back to the roadmap item and is marked complete"
+  ],
+  "entries": [
+    {
+      "id": "BH11-001",
+      "requirement": "Untrusted external apps cannot mutate downloads.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ExternalControlSecurityTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgeDiagnosticsRedactorTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase1-external-control-secrets-privacy.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-002",
+      "requirement": "Tasker Pause All and Resume All work repeatedly.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-003",
+      "requirement": "Probe and payload requests receive equivalent default/request headers.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase2DownloadExecutionContractTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11EvidenceClosureContractTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":transfer-native:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-004",
+      "requirement": "Failed SAF/MediaStore overwrite preserves the old file.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-005",
+      "requirement": "Worker cancellation stops or pauses the real transfer.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-006",
+      "requirement": "MediaStore exact-path lookup ignores nested directories.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-007",
+      "requirement": "Completed OkHttp calls leave the active set.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-008",
+      "requirement": "Browser-authenticated recovery after process death is explicit and usable.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngineTest.kt",
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/BrowserHandoffMediaCoordinatorTest.kt",
+        "browser-extension/src/test/kotlin/com/mikeyphw/xdm/android/browserextension/BugHuntPhase5BrowserExtensionContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/BrowserHandoffMediaModelsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase5-browser-handoff-media.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":media:test",
+        ":browser-extension:test",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-009",
+      "requirement": "Staging-space exhaustion fails before the download begins.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-010",
+      "requirement": "Retry performs a new network attempt.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-011",
+      "requirement": "Two execution owners cannot run one download.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-012",
+      "requirement": "Finalization journal recovery works for app-private, MediaStore, and SAF destinations.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-013",
+      "requirement": "Cancel/Pause during checksum and finalization cannot later become Completed incorrectly.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-014",
+      "requirement": "Selective repair refuses servers that ignore Range.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase3StoragePublicationContractTest.kt",
+        "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeSelectiveRepairService.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11EvidenceClosureContractTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":transfer-native:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-015",
+      "requirement": "Queue concurrency holds under rapid manual starts.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-016",
+      "requirement": "Invalid schedules fail closed.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-017",
+      "requirement": "Retry deadlines trigger at the intended time.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-018",
+      "requirement": "Database migrations pass every adjacent and long-path version to schema 14.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "persistence/src/test/kotlin/com/mikeyphw/xdm/android/persistence/BugHuntPhase6DatabaseIntegrityContractTest.kt",
+        "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase6-database-integrity-migrations.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":persistence:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-019",
+      "requirement": "Deletion removes the complete graph or fails transactionally.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase8DownloadActionsUiTruthfulnessContractTest.kt",
+        "persistence/src/test/kotlin/com/mikeyphw/xdm/android/persistence/BugHuntPhase6DatabaseIntegrityContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadActionPlannerTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11EvidenceClosureContractTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase6-database-integrity-migrations.py",
+        "tools/validate-bug-hunt-phase8-download-actions-ui-truthfulness.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":persistence:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-020",
+      "requirement": "Post-processing runs automatically, survives process death, and imports outputs.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/PostProcessingPhase7GapClosureContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/AutomationModelsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase7-post-processing-termux.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-021",
+      "requirement": "UI action matrix matches queued, connecting, downloading, paused, failed, verifying, repairing, finalizing, completed, cancelled, and recovery-required states.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadActionPlannerTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadUiTruthTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase8DownloadActionsUiTruthfulnessContractTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py",
+        "tools/validate-bug-hunt-phase8-download-actions-ui-truthfulness.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-022",
+      "requirement": "Accessibility tests pass at large font, TalkBack semantics, keyboard/D-pad, split-screen, landscape, and tablet widths.",
+      "execution_level": "instrumentation",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase9AccessibilityGapClosurePolicyTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase9AdaptiveAccessibilityPolicyTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase9-accessibility-adaptive-layout.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":app:connectedDebugAndroidTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-023",
+      "requirement": "Release CI builds, signs, verifies, installs, upgrades, and publishes the release artifact.",
+      "execution_level": "release",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase10ReleaseUpgradePackagingContractTest.kt",
+        "tools/run-bug-hunt-phase10-release-gate.sh",
+        "tools/run-phase10-install-upgrade-matrix.sh",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase10-release-upgrade-packaging.py",
+        "tools/verify-phase10-backup-policy.py",
+        "tools/verify-phase10-release-artifacts.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":app:lintRelease",
+        ":app:testReleaseUnitTest",
+        ":app:bundleRelease"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-024",
+      "requirement": "Untrusted private-network and loopback URL requests are blocked or explicitly reviewed.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ExternalControlSecurityTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgeDiagnosticsRedactorTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadIntakePlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase1-external-control-secrets-privacy.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-025",
+      "requirement": "Notification progress, exact-item navigation, permission denial, grouping, and terminal delivery are correct and non-duplicated.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/CompletedNotificationDebugEventsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-026",
+      "requirement": "Recovery Doctor actions execute classification-specific behavior, unsafe Validate All is impossible, and successful recovery resolves its records.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RecoveryStorageDoctorTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py",
+        "tools/validate-phase51-recovery-storage-doctor.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-027",
+      "requirement": "aria2 RPC cancellation failure preserves ownership and does not report a false terminal state.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-028",
+      "requirement": "Reconstructed aria2 promotion cannot change the originally claimed destination.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest",
+        ":storage:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-029",
+      "requirement": "A post-commit MediaStore metadata failure reconciles the committed item instead of creating a duplicate.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-030",
+      "requirement": "Completed media playback uses the canonical URI and media captures honor destination selection.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-031",
+      "requirement": "Rotating signed media tokens refresh stable captures without producing permanent duplicates.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngineTest.kt",
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/BrowserHandoffMediaCoordinatorTest.kt",
+        "browser-extension/src/test/kotlin/com/mikeyphw/xdm/android/browserextension/BugHuntPhase5BrowserExtensionContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/BrowserHandoffMediaModelsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase5-browser-handoff-media.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":media:test",
+        ":browser-extension:test",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-032",
+      "requirement": "Fallback classification never treats missing authentication as an engine-capability problem.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/BrowserHandoffMediaModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/EngineEscalationPlannerTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11EvidenceClosureContractTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase5-browser-handoff-media.py"
+      ],
+      "gradle_tasks": [
+        ":core-model:test",
+        ":transfer-api:test",
+        ":app:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-033",
+      "requirement": "Support-bundle export applies an independent final redaction pass.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ExternalControlSecurityTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgeDiagnosticsRedactorTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/SupportBundleReleaseReadinessPlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase1-external-control-secrets-privacy.py",
+        "tools/validate-phase63-release-readiness-support-bundle-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-034",
+      "requirement": "Sensitive clipboard entries use Android privacy metadata and bounded retention.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ExternalControlSecurityTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgeDiagnosticsRedactorTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase1-external-control-secrets-privacy.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-035",
+      "requirement": "Resume rejects object-changing redirects, uses `If-Range`, and handles compressed responses safely.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest",
+        ":storage:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-036",
+      "requirement": "Filename traversal, UTF-8 byte limits, and staging-ID collisions are rejected.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-037",
+      "requirement": "High-contrast states and TalkBack live-region behavior pass accessibility tests.",
+      "execution_level": "instrumentation",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase9AccessibilityGapClosurePolicyTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase9AdaptiveAccessibilityPolicyTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase9-accessibility-adaptive-layout.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":app:connectedDebugAndroidTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-038",
+      "requirement": "Post-processing refuses insufficient capacity, unavailable tools, unsupported codecs, and invalid output names before execution.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/PostProcessingPhase7GapClosureContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/AutomationModelsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase7-post-processing-termux.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-039",
+      "requirement": "Pause/Cancel requested during destination commit is deferred and cannot leave a committed file labeled Paused or Cancelled.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadActionPlannerTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadUiTruthTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase8DownloadActionsUiTruthfulnessContractTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py",
+        "tools/validate-bug-hunt-phase8-download-actions-ui-truthfulness.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-040",
+      "requirement": "Segmented retries honor coordinated host backoff, jitter, and circuit breaking.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase2DownloadExecutionContractTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11EvidenceClosureContractTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":transfer-native:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-041",
+      "requirement": "MediaStore publication requires a successful update count, clears `IS_PENDING`, verifies provider size, and recovers hidden pending rows.",
+      "execution_level": "release",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase10ReleaseUpgradePackagingContractTest.kt",
+        "tools/run-bug-hunt-phase10-release-gate.sh",
+        "tools/run-phase10-install-upgrade-matrix.sh",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py",
+        "tools/validate-bug-hunt-phase10-release-upgrade-packaging.py",
+        "tools/verify-phase10-backup-policy.py",
+        "tools/verify-phase10-release-artifacts.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test",
+        ":app:lintRelease",
+        ":app:testReleaseUnitTest",
+        ":app:bundleRelease"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-042",
+      "requirement": "FileProvider refuses arbitrary app-readable files even when a database row contains a poisoned path.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ExternalControlSecurityTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgeDiagnosticsRedactorTest.kt",
+        "persistence/src/test/kotlin/com/mikeyphw/xdm/android/persistence/BugHuntPhase6DatabaseIntegrityContractTest.kt",
+        "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase1-external-control-secrets-privacy.py",
+        "tools/validate-bug-hunt-phase6-database-integrity-migrations.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test",
+        ":persistence:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-043",
+      "requirement": "Recovery records identify real staging/checkpoint/control/output artifacts rather than destination configuration URIs.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-044",
+      "requirement": "Android 8/9 app-private storage is visibly uninstall-sensitive and public SAF selection works.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-045",
+      "requirement": "aria2 Pause, Resume, and Cancel are durably persisted or fail into RecoveryRequired.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-046",
+      "requirement": "Retry Last Failed creates a real new Termux/post-processing attempt.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/PostProcessingPhase7GapClosureContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/AutomationModelsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py",
+        "tools/validate-bug-hunt-phase7-post-processing-termux.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-047",
+      "requirement": "Selective repair is unavailable without trusted block evidence and validates exact 206 range responses.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase3StoragePublicationContractTest.kt",
+        "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeSelectiveRepairService.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11EvidenceClosureContractTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":transfer-native:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-048",
+      "requirement": "Checksum parsing rejects contaminated, ambiguous, and wrong-length digests without changing user input.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-049",
+      "requirement": "Resumed storage preflight uses remaining bytes plus publication overhead and reserve.",
+      "execution_level": "release",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase10ReleaseUpgradePackagingContractTest.kt",
+        "tools/run-bug-hunt-phase10-release-gate.sh",
+        "tools/run-phase10-install-upgrade-matrix.sh",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py",
+        "tools/validate-bug-hunt-phase10-release-upgrade-packaging.py",
+        "tools/verify-phase10-backup-policy.py",
+        "tools/verify-phase10-release-artifacts.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":app:lintRelease",
+        ":app:testReleaseUnitTest",
+        ":app:bundleRelease"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-050",
+      "requirement": "Explicit transfer shapes drive backend compatibility, and immutable browser request context survives retry, repair, yt-dlp, FFmpeg, and migration.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngineTest.kt",
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/BrowserHandoffMediaCoordinatorTest.kt",
+        "browser-extension/src/test/kotlin/com/mikeyphw/xdm/android/browserextension/BugHuntPhase5BrowserExtensionContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/BrowserHandoffMediaModelsTest.kt",
+        "persistence/src/test/kotlin/com/mikeyphw/xdm/android/persistence/BugHuntPhase6DatabaseIntegrityContractTest.kt",
+        "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/PostProcessingPhase7GapClosureContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/AutomationModelsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py",
+        "tools/validate-bug-hunt-phase5-browser-handoff-media.py",
+        "tools/validate-bug-hunt-phase6-database-integrity-migrations.py",
+        "tools/validate-bug-hunt-phase7-post-processing-termux.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest",
+        ":media:test",
+        ":browser-extension:test",
+        ":core-model:test",
+        ":persistence:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-051",
+      "requirement": "Backend migration preserves one owner and rolls back safely when target preparation fails.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "persistence/src/test/kotlin/com/mikeyphw/xdm/android/persistence/BugHuntPhase6DatabaseIntegrityContractTest.kt",
+        "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py",
+        "tools/validate-bug-hunt-phase6-database-integrity-migrations.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":persistence:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-052",
+      "requirement": "Media variant refresh removes stale variants and invalidates disappeared selections transactionally.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngineTest.kt",
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/BrowserHandoffMediaCoordinatorTest.kt",
+        "browser-extension/src/test/kotlin/com/mikeyphw/xdm/android/browserextension/BugHuntPhase5BrowserExtensionContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/BrowserHandoffMediaModelsTest.kt",
+        "persistence/src/test/kotlin/com/mikeyphw/xdm/android/persistence/BugHuntPhase6DatabaseIntegrityContractTest.kt",
+        "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase5-browser-handoff-media.py",
+        "tools/validate-bug-hunt-phase6-database-integrity-migrations.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":media:test",
+        ":browser-extension:test",
+        ":core-model:test",
+        ":persistence:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-053",
+      "requirement": "Queue start-only, ongoing, and drain-only policies behave as documented when limits change during execution.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-054",
+      "requirement": "Page probing reads repeatedly up to the bounded limit and handles short reads.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngineTest.kt",
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/BrowserHandoffMediaCoordinatorTest.kt",
+        "browser-extension/src/test/kotlin/com/mikeyphw/xdm/android/browserextension/BugHuntPhase5BrowserExtensionContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/BrowserHandoffMediaModelsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase5-browser-handoff-media.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":media:test",
+        ":browser-extension:test",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-055",
+      "requirement": "Accessibility passes five-item navigation at 200% font, compact-height player layouts, focus restoration, and separating hinges.",
+      "execution_level": "instrumentation",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase9AccessibilityGapClosurePolicyTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase9AdaptiveAccessibilityPolicyTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase9-accessibility-adaptive-layout.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":app:connectedDebugAndroidTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-056",
+      "requirement": "Release verification covers `versionName`, APK signing schemes, certificate validity/expiry, `bundleRelease`, bundletool validation, and install tests from generated APK sets.",
+      "execution_level": "release",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/PostProcessingPhase7GapClosureContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/AutomationModelsTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase10ReleaseUpgradePackagingContractTest.kt",
+        "tools/run-bug-hunt-phase10-release-gate.sh",
+        "tools/run-phase10-install-upgrade-matrix.sh",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase7-post-processing-termux.py",
+        "tools/validate-bug-hunt-phase10-release-upgrade-packaging.py",
+        "tools/verify-phase10-backup-policy.py",
+        "tools/verify-phase10-release-artifacts.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test",
+        ":app:lintRelease",
+        ":app:testReleaseUnitTest",
+        ":app:bundleRelease"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-057",
+      "requirement": "Cancel during checksum verification wins over an in-flight hash and cannot later publish Completed.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-058",
+      "requirement": "Runtime backend migration after bytes are written is review-first, preserves one owner, and handles partial data according to the classified failure.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "persistence/src/test/kotlin/com/mikeyphw/xdm/android/persistence/BugHuntPhase6DatabaseIntegrityContractTest.kt",
+        "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py",
+        "tools/validate-bug-hunt-phase6-database-integrity-migrations.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest",
+        ":persistence:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-059",
+      "requirement": "Every Recovery Doctor entry point opens `ActivityPanel.Recovery` with the exact affected record preselected.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RecoveryStorageDoctorTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py",
+        "tools/validate-phase51-recovery-storage-doctor.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-060",
+      "requirement": "Synthetic Primary variants cannot mark HLS/DASH captures Resolved without fetching and parsing real resolver output.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngineTest.kt",
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/BrowserHandoffMediaCoordinatorTest.kt",
+        "browser-extension/src/test/kotlin/com/mikeyphw/xdm/android/browserextension/BugHuntPhase5BrowserExtensionContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/BrowserHandoffMediaModelsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase5-browser-handoff-media.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":media:test",
+        ":browser-extension:test",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-061",
+      "requirement": "Signed URLs and bearer-like values are protected or removed in checkpoints, mappings, ownership files, journals, command files, temporary metadata, and recovery artifacts as well as Room.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ExternalControlSecurityTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgeDiagnosticsRedactorTest.kt",
+        "persistence/src/test/kotlin/com/mikeyphw/xdm/android/persistence/BugHuntPhase6DatabaseIntegrityContractTest.kt",
+        "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase1-external-control-secrets-privacy.py",
+        "tools/validate-bug-hunt-phase6-database-integrity-migrations.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test",
+        ":persistence:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-062",
+      "requirement": "One-sided schedule windows are rejected or execute exactly according to documented UI semantics.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-063",
+      "requirement": "Filesystem publication syncs the parent directory after rename or replacement where the platform supports it.",
+      "execution_level": "release",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase10ReleaseUpgradePackagingContractTest.kt",
+        "tools/run-bug-hunt-phase10-release-gate.sh",
+        "tools/run-phase10-install-upgrade-matrix.sh",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py",
+        "tools/validate-bug-hunt-phase10-release-upgrade-packaging.py",
+        "tools/verify-phase10-backup-policy.py",
+        "tools/verify-phase10-release-artifacts.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test",
+        ":app:lintRelease",
+        ":app:testReleaseUnitTest",
+        ":app:bundleRelease"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-064",
+      "requirement": "Termux cancellation targets only the XDM-owned PID/process token, confirms graceful exit, and bounds any force-stop escalation.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/PostProcessingPhase7GapClosureContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/AutomationModelsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase7-post-processing-termux.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-065",
+      "requirement": "Release artifact inventory rejects debug-only classes, test resources, development certificates, fixtures, and accidental diagnostic payloads.",
+      "execution_level": "release",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase10ReleaseUpgradePackagingContractTest.kt",
+        "tools/run-bug-hunt-phase10-release-gate.sh",
+        "tools/run-phase10-install-upgrade-matrix.sh",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase10-release-upgrade-packaging.py",
+        "tools/verify-phase10-backup-policy.py",
+        "tools/verify-phase10-release-artifacts.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":app:lintRelease",
+        ":app:testReleaseUnitTest",
+        ":app:bundleRelease"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-066",
+      "requirement": "Previous-release upgrade tests reboot afterward and verify ownership, notifications, storage grants, and no duplicate execution.",
+      "execution_level": "release",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase10ReleaseUpgradePackagingContractTest.kt",
+        "tools/run-bug-hunt-phase10-release-gate.sh",
+        "tools/run-phase10-install-upgrade-matrix.sh",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/CompletedNotificationDebugEventsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py",
+        "tools/validate-bug-hunt-phase10-release-upgrade-packaging.py",
+        "tools/verify-phase10-backup-policy.py",
+        "tools/verify-phase10-release-artifacts.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test",
+        ":core-model:test",
+        ":app:lintRelease",
+        ":app:testReleaseUnitTest",
+        ":app:bundleRelease"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-067",
+      "requirement": "Pause All establishes a durable global hold before pausing every active phase and continues past individual failures.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-068",
+      "requirement": "Queue slot checking and reservation are atomic across simultaneous manual and automatic claims.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-069",
+      "requirement": "Download Details exposes every applicable completed-artifact action with truthful capability and confirmation behavior.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadActionPlannerTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadUiTruthTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase8DownloadActionsUiTruthfulnessContractTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase8-download-actions-ui-truthfulness.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-070",
+      "requirement": "DRM classification requires browser or parsed manifest/resolver evidence and is not based on broad substring heuristics.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngineTest.kt",
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/BrowserHandoffMediaCoordinatorTest.kt",
+        "browser-extension/src/test/kotlin/com/mikeyphw/xdm/android/browserextension/BugHuntPhase5BrowserExtensionContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/BrowserHandoffMediaModelsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase5-browser-handoff-media.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":media:test",
+        ":browser-extension:test",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-071",
+      "requirement": "Typed backend preparation failures trigger fallback only for explicitly safe categories.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-072",
+      "requirement": "Completed-artifact health transitions among Present, Missing, PermissionLost, ProviderChanged, and SizeMismatch drive UI and recovery correctly.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinatorTest.kt",
+        "storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/MediaStoreVisibilityContractTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerificationServiceTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadActionPlannerTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/DownloadUiTruthTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase8DownloadActionsUiTruthfulnessContractTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py",
+        "tools/validate-bug-hunt-phase8-download-actions-ui-truthfulness.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":storage:testDebugUnitTest",
+        ":transfer-api:test",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-073",
+      "requirement": "Long user-started transfers use UIDT on supported Android versions, automatic deferrable work remains in WorkManager, and Android 16 quota exhaustion produces a durable, truthful pause/reschedule/ownership outcome.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-074",
+      "requirement": "WorkManager and JobScheduler stop reasons plus Android 16 pending-job reason history are persisted, surfaced, and never misreported as generic network failures.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntimeTest.kt",
+        "transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+        "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase2-download-execution.py",
+        "tools/validate-phase58-runtime-recovery-execution-guard.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":transfer-api:test",
+        ":transfer-native:testDebugUnitTest",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-075",
+      "requirement": "Notification permission Allow, Deny, dismissed, pre-granted upgrade, and previously denied upgrade states preserve accessible in-app controls and match Task Manager versus notification-drawer behavior.",
+      "execution_level": "release",
+      "evidence_files": [
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotificationPolicyContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/RuntimeRecoveryFlowSealPlannerTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase10ReleaseUpgradePackagingContractTest.kt",
+        "tools/run-bug-hunt-phase10-release-gate.sh",
+        "tools/run-phase10-install-upgrade-matrix.sh",
+        "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/CompletedNotificationDebugEventsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+        "tools/validate-phase60-runtime-recovery-flow-seal.py",
+        "tools/validate-bug-hunt-phase10-release-upgrade-packaging.py",
+        "tools/verify-phase10-backup-policy.py",
+        "tools/verify-phase10-release-artifacts.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":scheduler:testDebugUnitTest",
+        ":core-model:test",
+        ":app:lintRelease",
+        ":app:testReleaseUnitTest",
+        ":app:bundleRelease"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-076",
+      "requirement": "Firefox handoff does not depend on unsupported webpage `externally_connectable` messaging, records final sent headers where supported, and remains correct when another extension changes headers.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngineTest.kt",
+        "media/src/test/kotlin/com/mikeyphw/xdm/android/media/BrowserHandoffMediaCoordinatorTest.kt",
+        "browser-extension/src/test/kotlin/com/mikeyphw/xdm/android/browserextension/BugHuntPhase5BrowserExtensionContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/BrowserHandoffMediaModelsTest.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase5-browser-handoff-media.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":media:test",
+        ":browser-extension:test",
+        ":core-model:test"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-077",
+      "requirement": "Every retained Room schema is exported and adjacent/long-path migrations pass `MigrationTestHelper.runMigrationsAndValidate()` before the production Room database opens.",
+      "execution_level": "unit",
+      "evidence_files": [
+        "persistence/src/test/kotlin/com/mikeyphw/xdm/android/persistence/BugHuntPhase6DatabaseIntegrityContractTest.kt",
+        "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase6-database-integrity-migrations.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":persistence:testDebugUnitTest"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-078",
+      "requirement": "`bundletool build-apks` receives release signing inputs, every generated split APK matches the pinned release certificate, and no debug-key fallback is accepted.",
+      "execution_level": "release",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/PostProcessingPhase7GapClosureContractTest.kt",
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/AutomationModelsTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase10ReleaseUpgradePackagingContractTest.kt",
+        "tools/run-bug-hunt-phase10-release-gate.sh",
+        "tools/run-phase10-install-upgrade-matrix.sh",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase7-post-processing-termux.py",
+        "tools/validate-bug-hunt-phase10-release-upgrade-packaging.py",
+        "tools/verify-phase10-backup-policy.py",
+        "tools/verify-phase10-release-artifacts.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test",
+        ":app:lintRelease",
+        ":app:testReleaseUnitTest",
+        ":app:bundleRelease"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-079",
+      "requirement": "AAB configuration reports `PAGE_ALIGNMENT_16K`, all generated APK-set native libraries satisfy 16 KB requirements, and install/upgrade smoke tests pass on a 16 KB device or emulator.",
+      "execution_level": "release",
+      "evidence_files": [
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase10ReleaseUpgradePackagingContractTest.kt",
+        "tools/run-bug-hunt-phase10-release-gate.sh",
+        "tools/run-phase10-install-upgrade-matrix.sh",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase10-release-upgrade-packaging.py",
+        "tools/verify-phase10-backup-policy.py",
+        "tools/verify-phase10-release-artifacts.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":app:lintRelease",
+        ":app:testReleaseUnitTest",
+        ":app:bundleRelease"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    },
+    {
+      "id": "BH11-080",
+      "requirement": "Cloud backup and device-to-device transfer rules exclude all sensitive and stale execution state, and an actual D2D test cannot restore credentials, ownership, partial jobs, or recovery commands.",
+      "execution_level": "release",
+      "evidence_files": [
+        "core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/ExternalControlSecurityTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserBridgeDiagnosticsRedactorTest.kt",
+        "app/src/test/kotlin/com/mikeyphw/xdm/android/Phase10ReleaseUpgradePackagingContractTest.kt",
+        "tools/run-bug-hunt-phase10-release-gate.sh",
+        "tools/run-phase10-install-upgrade-matrix.sh",
+        "tools/bug-hunt-phase11-validation-matrix.json",
+        "tools/run-bug-hunt-phase11-validation-matrix.sh"
+      ],
+      "validators": [
+        "tools/validate-bug-hunt-phase11-validation-matrix.py",
+        "tools/validate-bug-hunt-phase1-external-control-secrets-privacy.py",
+        "tools/validate-bug-hunt-phase10-release-upgrade-packaging.py",
+        "tools/verify-phase10-backup-policy.py",
+        "tools/verify-phase10-release-artifacts.py"
+      ],
+      "gradle_tasks": [
+        ":app:testDebugUnitTest",
+        ":core-model:test",
+        ":app:lintRelease",
+        ":app:testReleaseUnitTest",
+        ":app:bundleRelease"
+      ],
+      "gate": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+      "acceptance": "Each evidence file must exist, at least one executable test or tool must cover the row, and the Phase 11 gate must include its validators/tasks."
+    }
+  ]
+}
