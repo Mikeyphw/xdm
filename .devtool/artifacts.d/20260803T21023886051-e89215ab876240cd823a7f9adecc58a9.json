@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-08-03T21:02:38.860519Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_bug_hunt_phase1_external_control_secrets_privacy_r5_overlay.zip",
+  "artifact_name": "xdm_android_bug_hunt_phase1_external_control_secrets_privacy_r5_overlay.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "e89215ab876240cd823a7f9adecc58a9"
+}

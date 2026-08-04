@@ -175,7 +175,7 @@ class AppDatabaseMigrationTest {
 
 
     @Test
-    fun migrate5To6ReplacesUnsafeLegacyAria2Mappings() {
+    fun migrate5To6PreservesLegacyAria2MappingsAsRecoveryRequired() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val name = "migration-v6-${System.nanoTime()}.db"
         val seed = FrameworkSQLiteOpenHelperFactory().create(
@@ -217,7 +217,12 @@ class AppDatabaseMigrationTest {
         }
         helper.writableDatabase.query("SELECT COUNT(*) FROM aria2_session_mappings").use { cursor ->
             assertTrue(cursor.moveToFirst())
-            assertTrue("Unsafe legacy mappings must not be adopted", cursor.getLong(0) == 0L)
+            assertTrue("Legacy mappings must be preserved for recovery review", cursor.getLong(0) == 1L)
+        }
+        helper.writableDatabase.query("SELECT status, lastErrorCode FROM aria2_session_mappings WHERE id='legacy'").use { cursor ->
+            assertTrue("Legacy mapping row must still exist", cursor.moveToFirst())
+            assertTrue("Legacy mapping must require recovery review", cursor.getString(0) == "RecoveryRequired")
+            assertTrue("Legacy mapping must explain legacy schema", cursor.getString(1) == "LEGACY_SCHEMA")
         }
         helper.close()
         context.deleteDatabase(name)

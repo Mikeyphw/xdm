@@ -89,6 +89,19 @@ object Migrations {
                     lastErrorMessage TEXT
                 )""".trimIndent(),
             )
+            db.execSQL(
+                """INSERT INTO aria2_session_mappings_v6(
+                    id, downloadId, gid, sourceUrl, mirrorUrls, destinationUri, destinationKey, fileName,
+                    conflictPolicy, mimeType, outputPath, controlPath, ownershipMetadataPath, sessionFilePath,
+                    expectedLength, ownershipGeneration, backendInstanceId, backendSessionId, status,
+                    createdAtEpochMs, updatedAtEpochMs, lastSynchronizedAtEpochMs, lastErrorCode, lastErrorMessage
+                )
+                SELECT id, downloadId, gid, '', '', '', 'legacy:' || downloadId, 'unknown',
+                    'Rename', NULL, '', '', '', sessionFilePath, NULL, 0, '', '', 'RecoveryRequired',
+                    updatedAtEpochMs, updatedAtEpochMs, updatedAtEpochMs, 'LEGACY_SCHEMA',
+                    'Legacy v5 aria2 mapping preserved for review instead of being discarded.'
+                FROM aria2_session_mappings""".trimIndent(),
+            )
             db.execSQL("DROP TABLE aria2_session_mappings")
             db.execSQL("ALTER TABLE aria2_session_mappings_v6 RENAME TO aria2_session_mappings")
             db.execSQL("CREATE UNIQUE INDEX index_aria2_session_mappings_downloadId ON aria2_session_mappings(downloadId)")

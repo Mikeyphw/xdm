@@ -1,0 +1,182 @@
+{
+  "applied_at": "2026-08-03T22:22:13.757624Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_bug_hunt_phase4_queue_scheduling_state_machines_r2_overlay.zip",
+  "artifact_name": "xdm_android_bug_hunt_phase4_queue_scheduling_state_machines_r2_overlay.zip",
+  "type": "overlay",
+  "sha256": "86408d3cc2b3602ad067bb0db72a63df4ce7f925e7b2a49645dd83751aba5552",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 18,
+  "change_counts": {
+    "add": 7,
+    "modify": 11
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Bug Hunt Remediation Phase 4 r2: Queue, Scheduling, And State Machines Runtime Wiring",
+    "description": "Apply-only Phase 4 r2 overlay on top of Phase 1 r5, Phase 2 r2, and Phase 3 r2. Converts Phase 4 from contract/scaffold coverage into production runtime wiring with app-private fsynced evidence, durable Pause All ordering, queue admission reservations, queue deletion plans, terminal notification idempotency, notification-permission warning state, and persisted stop-reason records.",
+    "commit_message": "Phase 4 r2: wire queue scheduling recovery and notification state machines into runtime persistence",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "70d10088dcc129fd90fa8b3819241744b0bb73216e196f3838f6e5fb32e27c64",
+          "size": 57391,
+          "source_sha256": "54a0e082790d23d70038570a82acb968e1036dddc07dd448ac9e1d1184ecd549",
+          "source_size": 55161
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "6574880c55466512106c3072f7eaf8b62f2341e73b0afb157f9b8abb69166b43",
+          "size": 119968,
+          "source_sha256": "aa4fc654b5ab5a7838f769bcc5e0bc785a2e428b5b2663daab457ea79b9afa95",
+          "source_size": 116833
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "b5245da860f4f31c1f98e88651d8fac21dc1f6d30f67226e39a74f4ef043ca8d",
+          "size": 112385,
+          "source_sha256": "45fd34a56c6b8b6d7349791193890d78d27d57c7ba60c484bf2c51d9fa3dffda",
+          "source_size": 112251
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+          "action": "modify",
+          "sha256": "18c5d7a94c10cd051cf1a9b87a4942827dee291b71f4bbbfd8efd9e9c1ecf5cc",
+          "size": 11395,
+          "source_sha256": "47107a1076508f465552d51d1bca7b607eddfa7495e9dc2b633b438ee3dcb54a",
+          "source_size": 10402
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase4QueueSchedulingStateMachinesContractTest.kt",
+          "action": "add",
+          "sha256": "214fdf2d8d166883fb3490e9701251cdb06eca2116a371b8336142e38dcbcea7",
+          "size": 6104
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModels.kt",
+          "action": "add",
+          "sha256": "8be7704490afb3b96706c626a015dc365b3ede3011ca2f2767e6e4065f330a5a",
+          "size": 12657
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/test/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModelsTest.kt",
+          "action": "add",
+          "sha256": "e53f1fdaaa3d4b7ee74d53b270c6cf52ae88814274543ed1dbf73c9625469704",
+          "size": 4932
+        },
+        {
+          "path": "app/XDM.Android/docs/audits/BUG-HUNT-REMEDIATION-PHASE-4.md",
+          "action": "add",
+          "sha256": "de47658a21e392b80dff5deb4171e79cb8c7f2a9967c547b5e9d7b57ded41ebf",
+          "size": 1788
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt",
+          "action": "modify",
+          "sha256": "5983be233ae25d3675ae1ce10f0e27b044dff3f3f58dc6bd9b09879dcb7e6de3",
+          "size": 18943,
+          "source_sha256": "a0195f9991e1523952644086afb64d3a68e0c6500e76fc897cec3b48bdd4d819",
+          "source_size": 13749
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt",
+          "action": "modify",
+          "sha256": "b2f4f4e7ae2913640a1ce8a5ebd3fb6309f70bc15289f39b3fe026cd663dc04b",
+          "size": 5647,
+          "source_sha256": "e969084a772d4c7648d9df655a6c3cebe80df3d057d103a1a68c1c8697790c18",
+          "source_size": 4654
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinator.kt",
+          "action": "add",
+          "sha256": "fb174efc225e9b2d21b56e9dfa360e63943e8dab4ada14028c53bda125626eb1",
+          "size": 21272
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferActionReceiver.kt",
+          "action": "modify",
+          "sha256": "bd0d506279a955ac70586370b86f37733861a790cc5cd359c82faf4abab492b9",
+          "size": 2814,
+          "source_sha256": "a90f6ae15de7cda72d94a115d8232e00ee6372835905d6189712158c99b8abc1",
+          "source_size": 1979
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionModels.kt",
+          "action": "modify",
+          "sha256": "472770439abb391641fc8252edc470c402761e5243210f6b5805b4c063228ad4",
+          "size": 1119,
+          "source_sha256": "4ae74630b97c43b06b0dd3f8dad66c3ea40372cb8d17c58c0fabe7cb861b0c15",
+          "source_size": 1081
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt",
+          "action": "modify",
+          "sha256": "42be21aaa2f5c40a0db5ab03f479a92660c44238812d5c18e74d88739eac8d8f",
+          "size": 5183,
+          "source_sha256": "8a980331f96343182160f741dc9c4dee81c77e06979d8ff2833113114e8faf40",
+          "source_size": 4690
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotifications.kt",
+          "action": "modify",
+          "sha256": "b5c51c561114f346596a1f5b5d9ce07e892a95a1786416530634d8660b4f8cb1",
+          "size": 14559,
+          "source_sha256": "dba196674743efcdef595e97bbee379ccee71f9e2c5cb06b2c87069c1c22ee4f",
+          "source_size": 10672
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt",
+          "action": "modify",
+          "sha256": "dd2751c6ad89a34b2ef7c6d07d2f2f6541a760427c10583121ddedf41d150c42",
+          "size": 4611,
+          "source_sha256": "66df525d01b0dabee909bb69e2d64c5fe183b22da895ea7267a15dcb706b7b56",
+          "source_size": 3171
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinatorTest.kt",
+          "action": "add",
+          "sha256": "ec3d19969fdfc888e38c0f3d151458eae34079c20a76a9801263fba56661aee6",
+          "size": 5110
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-bug-hunt-phase4-queue-scheduling-state-machines.py",
+          "action": "add",
+          "sha256": "bc0b4bd9d585ffaa79e77763e5aadd370d8b29db7442e94438e11d99a3bcc5d6",
+          "size": 7152
+        }
+      ]
+    },
+    "validation": {
+      "mode": "disabled",
+      "script": ".devtool-artifact/validate_phase4_queue_scheduling_state_machines.sh",
+      "script_sha256": "714b06488e3822ed0d63679bd15d531f4e370156338658e599a4ce416bd1337a"
+    },
+    "phase": {
+      "number": 4,
+      "revision": 2,
+      "base_chain": [
+        "phase1-r5",
+        "phase2-r2",
+        "phase3-r2"
+      ],
+      "apply_only": true
+    }
+  },
+  "history_id": "62340f0d199e46fcbf1a6331fd121835"
+}

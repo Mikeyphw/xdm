@@ -3,12 +3,17 @@ package com.mikeyphw.xdm.android.scheduler
 import android.content.Context
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.DurableQueueCommandResult
+import com.mikeyphw.xdm.android.model.QueueBudget
 import com.mikeyphw.xdm.android.model.QueueDefinition
+import com.mikeyphw.xdm.android.model.QueueDeletionDisposition
+import com.mikeyphw.xdm.android.model.QueueDeletionPlan
 import com.mikeyphw.xdm.android.model.QueueHoldReason
 import com.mikeyphw.xdm.android.model.QueueIntelligencePlanner
 import com.mikeyphw.xdm.android.model.QueueIntelligenceSummary
 import com.mikeyphw.xdm.android.model.QueueLaunchDecision
 import com.mikeyphw.xdm.android.model.QueueLaunchDisposition
+import com.mikeyphw.xdm.android.model.QueueStateMachinePlanner
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +33,9 @@ class QueueIntelligenceCoordinator(
     private val conditionsReader: AndroidQueueConditionsReader = AndroidQueueConditionsReader(context),
     private val retryLedger: QueueRetryLedger = QueueRetryLedger(context),
     private val decisionLedger: QueueDecisionLedger = QueueDecisionLedger(context),
+    private val phase4Coordinator: QueueSchedulingRecoveryCoordinator = QueueSchedulingRecoveryCoordinator(
+        FileBackedQueueSchedulingRecoveryStore(java.io.File(context.filesDir, "queue-scheduling-recovery")),
+    ),
 ) {
     private val evaluationMutex = Mutex()
     private val _status = MutableStateFlow(QueueIntelligenceSummary(recentDecisions = decisionLedger.recent()))
@@ -69,8 +77,28 @@ class QueueIntelligenceCoordinator(
                 policyOverride = policyOverride,
             )
             if (decision.canStart) {
-                claimForLaunch(download, decision, manual)
-                executionStarter.start(download.id, download.totalBytes, userVisible)
+                val reservation = QueueStateMachinePlanner.reserveSlotAtomically(
+                    queueId = queue.id,
+                    downloadId = download.id,
+                    attemptGeneration = System.currentTimeMillis(),
+                    activeCount = activeCount,
+                    budget = QueueBudget(maxConcurrent = resolved.policy.maxConcurrent),
+                )
+                phase4Coordinator.recordQueueReservation(reservation)
+                if (reservation.accepted) {
+                    claimForLaunch(download, decision, manual)
+                    executionStarter.start(download.id, download.totalBytes, userVisible)
+                } else {
+                    applyHold(
+                        download,
+                        QueueLaunchDecision(
+                            QueueLaunchDisposition.Hold,
+                            QueueHoldReason.ConcurrencyLimit,
+                            title = "Queue limit reached",
+                            detail = reservation.message,
+                        ),
+                    )
+                }
             } else {
                 applyHold(download, decision)
             }
@@ -166,11 +194,32 @@ class QueueIntelligenceCoordinator(
                         null -> Unit
                     }
                     if (decision.canStart) {
-                        claimForLaunch(download, decision, manual = false)
-                        eligible += download
-                        activeCount++
-                        activeCounts[queueId] = activeCount
-                        started++
+                        val reservation = QueueStateMachinePlanner.reserveSlotAtomically(
+                            queueId = queue.id,
+                            downloadId = download.id,
+                            attemptGeneration = System.currentTimeMillis(),
+                            activeCount = activeCount,
+                            budget = QueueBudget(maxConcurrent = resolved.policy.maxConcurrent),
+                        )
+                        phase4Coordinator.recordQueueReservation(reservation)
+                        if (reservation.accepted) {
+                            claimForLaunch(download, decision, manual = false)
+                            eligible += download
+                            activeCount++
+                            activeCounts[queueId] = activeCount
+                            started++
+                        } else {
+                            concurrency++
+                            applyHold(
+                                download,
+                                QueueLaunchDecision(
+                                    QueueLaunchDisposition.Hold,
+                                    QueueHoldReason.ConcurrencyLimit,
+                                    title = "Queue limit reached",
+                                    detail = reservation.message,
+                                ),
+                            )
+                        }
                     } else {
                         applyHold(download, decision)
                     }
@@ -217,6 +266,53 @@ class QueueIntelligenceCoordinator(
         if (event.state == DownloadState.Completed || event.state == DownloadState.Cancelled) {
             retryLedger.clear(event.downloadId)
         }
+    }
+
+    suspend fun pauseAllDurably(): DurableQueueCommandResult {
+        val downloads = repository.findDownloadsByStates(QueueStateMachinePlanner.activePauseStates)
+        val result = QueueStateMachinePlanner.planPauseAll(downloads, generation = System.currentTimeMillis(), nowEpochMs = System.currentTimeMillis())
+        phase4Coordinator.recordPauseAll(result)
+        return result
+    }
+
+    suspend fun deleteQueueSafely(queueId: String, replacementQueueId: String? = null): QueueDeletionPlan {
+        val referenced = repository.downloads.first().filter { it.queueId == queueId }.map { it.id }
+        val plan = if (referenced.isEmpty()) {
+            QueueDeletionPlan(
+                queueId = queueId,
+                disposition = QueueDeletionDisposition.Delete,
+                referencedDownloadIds = emptyList(),
+                replacementQueueId = null,
+                message = "Queue has no referenced downloads and can be deleted safely.",
+            )
+        } else if (replacementQueueId != null) {
+            QueueDeletionPlan(
+                queueId = queueId,
+                disposition = QueueDeletionDisposition.ReassignThenDelete,
+                referencedDownloadIds = referenced,
+                replacementQueueId = replacementQueueId,
+                message = "Queue deletion will first reassign referenced downloads to $replacementQueueId.",
+            )
+        } else {
+            QueueDeletionPlan(
+                queueId = queueId,
+                disposition = QueueDeletionDisposition.RejectDanglingReferences,
+                referencedDownloadIds = referenced,
+                replacementQueueId = null,
+                message = "Queue deletion rejected because downloads still reference this queue.",
+            )
+        }
+        phase4Coordinator.recordQueueDeletion(plan)
+        if (plan.disposition == QueueDeletionDisposition.Delete) {
+            repository.deleteQueue(queueId)
+        } else if (plan.disposition == QueueDeletionDisposition.ReassignThenDelete && replacementQueueId != null) {
+            repository.reassignQueueThenDelete(queueId, replacementQueueId)
+        }
+        return plan
+    }
+
+    fun recordImmediateReevaluation(source: String, coalesceKey: String = "queue-intelligence") {
+        phase4Coordinator.requestImmediateReevaluation(source, coalesceKey, System.currentTimeMillis())
     }
 
     fun clearDecisionHistory() {

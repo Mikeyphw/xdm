@@ -1,0 +1,137 @@
+{
+  "applied_at": "2026-08-03T21:45:41.073155Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_bug_hunt_phase3_storage_publication_verification_repair_r2_overlay.zip",
+  "artifact_name": "xdm_android_bug_hunt_phase3_storage_publication_verification_repair_r2_overlay.zip",
+  "type": "overlay",
+  "sha256": "02a993644f614f009082e88fe068056e0093767ddd13151ff2f678ac60407941",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 11,
+  "change_counts": {
+    "add": 4,
+    "modify": 7
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Bug Hunt Remediation Phase 3 r2: Storage, Publication, Verification, and Repair",
+    "description": "Phase 3 storage/publication/verification/repair overlay; r2 fixes artifact validation.mode for apply-only Devtool usage.",
+    "commit_message": "Phase 3: harden storage publication, verification, and selective repair",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "54a0e082790d23d70038570a82acb968e1036dddc07dd448ac9e1d1184ecd549",
+          "size": 55161,
+          "source_sha256": "005b24f8fbbfcd6368d72964287569ce19cbdb297c5d5123bf6672208d5b7544",
+          "source_size": 54276
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "aa4fc654b5ab5a7838f769bcc5e0bc785a2e428b5b2663daab457ea79b9afa95",
+          "size": 116833,
+          "source_sha256": "78309dcf9074a330010709313c6d62c6973c875025408cd97afc661c913978c0",
+          "source_size": 115082
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "45fd34a56c6b8b6d7349791193890d78d27d57c7ba60c484bf2c51d9fa3dffda",
+          "size": 112251,
+          "source_sha256": "69d2f707a7cb0ca7cb026470e814baef961bb1e9129aa457c953b6da1aab77e9",
+          "source_size": 112158
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase3StoragePublicationContractTest.kt",
+          "action": "add",
+          "sha256": "79d04d1ab98192bc147c45cacf516e2d7e2ada3f23672f28e45d0fafeb5c483d",
+          "size": 3876
+        },
+        {
+          "path": "app/XDM.Android/docs/audits/BUG-HUNT-REMEDIATION-PHASE-3.md",
+          "action": "add",
+          "sha256": "4f5582593c147710f98203cf4531984e0380fac30ce0c464907dcd49020d3417",
+          "size": 2416
+        },
+        {
+          "path": "app/XDM.Android/storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/AndroidDestinationWriter.kt",
+          "action": "modify",
+          "sha256": "28319b5ecb6156d093c8ce7ec19cea1746faf14f004645a8a231c6c3922ad570",
+          "size": 23054,
+          "source_sha256": "2c350c41d9d558096754449e2041aac55bff22a3696ce3d097808705152fbe59",
+          "source_size": 19531
+        },
+        {
+          "path": "app/XDM.Android/storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/FileDestinationWriter.kt",
+          "action": "modify",
+          "sha256": "5e9aaae1484a2836aba2733d0244a326c9657838da6cdacc4b7ade2bb53148f0",
+          "size": 8980,
+          "source_sha256": "22b22abd7d05c522a2f9fa2ec248f2ce986b86cc2ce65fef3e7d362d71ee3042",
+          "source_size": 6201
+        },
+        {
+          "path": "app/XDM.Android/storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/PublicationSafety.kt",
+          "action": "add",
+          "sha256": "cf89fdbf3e6ea75a953fb19810b31dedcc78405630ce18844a13a57ca8761d9d",
+          "size": 5513
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py",
+          "action": "add",
+          "sha256": "7b5e8dda37648d6199b1706279b3804a8c54f939c2f5d55f8396ea5fddf4b346",
+          "size": 2365
+        },
+        {
+          "path": "app/XDM.Android/transfer-api/src/main/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerification.kt",
+          "action": "modify",
+          "sha256": "b4aa9fc2d64d156e0ae2dddc63c142bc8dab0c445b9292b7e151dea83c655db4",
+          "size": 10933,
+          "source_sha256": "fec792a5153d7862109be30fc7e893e02dd1e73fba346da9a58223468e9df064",
+          "source_size": 10264
+        },
+        {
+          "path": "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeSelectiveRepairService.kt",
+          "action": "modify",
+          "sha256": "2fce450d3ac26598a4364516ec407c1cef4e106234a231df7b9a1dc770115f18",
+          "size": 4898,
+          "source_sha256": "892cec60378a9e7e1d9f28cc3e6d8be3509a9447f5c80003aecd4bb408a497b1",
+          "source_size": 2618
+        }
+      ]
+    },
+    "validation": {
+      "mode": "disabled",
+      "script": ".devtool-artifact/validate_phase3_storage_publication.sh",
+      "script_sha256": "f39b4eab6d5b88967f86f2c6b75dc8c1fb7011bebf9bf73268dea12ebc83874f",
+      "notes": "Intermediate overlay is intended to be applied with --no-validate; validation.mode is disabled because Devtool only accepts required, optional, normal, or disabled."
+    },
+    "requires": [
+      "xdm_android_bug_hunt_phase1_external_control_secrets_privacy_r5_overlay.zip",
+      "xdm_android_bug_hunt_phase2_download_execution_correctness_r2_overlay.zip"
+    ],
+    "phase": {
+      "number": 3,
+      "name": "Storage, Publication, Verification, and Repair"
+    },
+    "notes": [
+      "No inventory entry targets .devtool-artifact/* reserved metadata.",
+      "commit_message is intentionally present at artifact root per user instruction.",
+      "No Room schema bump, top-level route, all-files permission, or automatic cleanup behavior is introduced.",
+      "r2 artifact-only fix: validation.mode changed from unsupported deferred to disabled for apply-only intermediate overlay."
+    ]
+  },
+  "history_id": "20d1fea59a9c4aac89655682eab95527"
+}

@@ -4,6 +4,7 @@ import com.mikeyphw.xdm.android.model.AutomationCommandAction
 import com.mikeyphw.xdm.android.model.AutomationCommandRecord
 import com.mikeyphw.xdm.android.model.AutomationCommandSource
 import com.mikeyphw.xdm.android.model.AutomationCommandStatus
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.model.AutomationRejectionReason
 import com.mikeyphw.xdm.android.model.ClipboardInboxItem
 import com.mikeyphw.xdm.android.model.BackendOwnership
@@ -62,11 +63,12 @@ class DownloadRepository(private val database: AppDatabase) {
 
     suspend fun countDownloads(): Int = database.downloadDao().count()
     suspend fun countQueues(): Int = database.queueDao().count()
-    suspend fun save(download: Download) = database.downloadDao().upsert(download.toEntity())
-    suspend fun saveAll(downloads: List<Download>) = database.downloadDao().upsertAll(downloads.map { it.toEntity() })
+    suspend fun save(download: Download): Boolean = database.downloadGraphTransactionDao().upsertDownloadPreservingNewerState(download.redactedForPersistence().toEntity())
+    suspend fun saveAll(downloads: List<Download>) { downloads.forEach { save(it) } }
     suspend fun saveQueue(queue: QueueDefinition) = database.queueDao().upsertAll(listOf(queue.toEntity()))
     suspend fun saveQueues(queues: List<QueueDefinition>) = database.queueDao().upsertAll(queues.map { it.toEntity() })
-    suspend fun deleteQueue(id: String) = database.queueDao().delete(id)
+    suspend fun deleteQueue(id: String) = database.downloadGraphTransactionDao().deleteQueueIfUnreferenced(id)
+    suspend fun reassignQueueThenDelete(id: String, replacementQueueId: String) = database.downloadGraphTransactionDao().reassignQueueThenDelete(id, replacementQueueId, System.currentTimeMillis())
     suspend fun saveSchedule(rule: ScheduleRule) = database.scheduleDao().upsertAll(listOf(rule.toEntity()))
     suspend fun saveSchedules(rules: List<ScheduleRule>) = database.scheduleDao().upsertAll(rules.map { it.toEntity() })
     suspend fun deleteSchedule(id: String) = database.scheduleDao().delete(id)
@@ -80,19 +82,23 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun saveChecksumResult(result: ChecksumResult) = database.checksumDao().upsertResult(result.toEntity())
     suspend fun saveVerificationRecord(record: VerificationRecord) = database.checksumDao().upsertVerification(record.toEntity())
     suspend fun saveTrustedManifest(manifest: TrustedBlockManifest) = database.checksumDao().upsertTrustedManifest(manifest.toEntity())
-    suspend fun saveMediaCapture(record: MediaCaptureRecord) = database.mediaCaptureDao().upsert(record.toEntity())
-    suspend fun saveMediaCaptures(records: List<MediaCaptureRecord>) = database.mediaCaptureDao().upsertAll(records.map { it.toEntity() })
-    suspend fun saveMediaVariants(records: List<MediaVariant>) = database.mediaCaptureDao().upsertVariants(records.map { it.toEntity() })
+    suspend fun saveMediaCapture(record: MediaCaptureRecord) = database.mediaCaptureDao().upsert(record.redactedForPersistence().toEntity())
+    suspend fun saveMediaCaptures(records: List<MediaCaptureRecord>) = database.mediaCaptureDao().upsertAll(records.map { it.redactedForPersistence().toEntity() })
+    suspend fun saveMediaVariants(records: List<MediaVariant>) = database.mediaCaptureDao().upsertVariants(records.map { it.redactedForPersistence().toEntity() })
+    suspend fun replaceMediaVariants(records: List<MediaVariant>) = database.downloadGraphTransactionDao().replaceMediaVariantsForCaptures(records.map { it.redactedForPersistence().toEntity() }, System.currentTimeMillis())
     suspend fun variantsForMediaCapture(captureId: String): List<MediaVariant> = database.mediaCaptureDao().variantsForCapture(captureId).map { it.toModel() }
-    suspend fun selectMediaVariant(captureId: String, variant: MediaVariant, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().selectVariant(captureId, variant.id, variant.url, MediaResolutionStatus.Resolved.name, updatedAtEpochMs)
+    suspend fun selectMediaVariant(captureId: String, variant: MediaVariant, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().selectVariant(captureId, variant.id, ExternalUrlPolicy.persistableUrl(variant.url) ?: variant.url.substringBefore('?'), MediaResolutionStatus.Resolved.name, updatedAtEpochMs)
     suspend fun findMediaCapture(id: String): MediaCaptureRecord? = database.mediaCaptureDao().findById(id)?.toModel()
     suspend fun markMediaDownloadCreated(captureId: String, downloadId: String, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().markDownloadCreated(captureId, MediaCaptureStatus.DownloadCreated.name, downloadId, updatedAtEpochMs)
     suspend fun deleteMediaCapture(id: String) = database.mediaCaptureDao().delete(id)
     suspend fun findAutomationCommand(id: String): AutomationCommandRecord? = database.automationCommandDao().findById(id)?.toModel()
     suspend fun findAutomationCommandByKey(idempotencyKey: String): AutomationCommandRecord? = database.automationCommandDao().findByIdempotencyKey(idempotencyKey)?.toModel()
-    suspend fun saveAutomationCommand(record: AutomationCommandRecord) = database.automationCommandDao().upsert(record.toEntity())
+    suspend fun saveAutomationCommand(record: AutomationCommandRecord) = database.downloadGraphTransactionDao().upsertAutomationCommandStatefully(record.redactedForPersistence().toEntity())
+    suspend fun transitionAutomationCommand(id: String, from: List<AutomationCommandStatus>, to: AutomationCommandStatus, message: String): Int = database.downloadGraphTransactionDao().transitionAutomationCommand(id, from.map { it.name }, to.name, message, System.currentTimeMillis())
+    suspend fun markAutomationCommandExecuting(id: String): Boolean = database.downloadGraphTransactionDao().markAutomationCommandExecuting(id, System.currentTimeMillis())
     suspend fun findDownload(id: String): Download? = database.downloadDao().findById(id)?.toModel()
-    suspend fun deleteDownload(id: String) = database.downloadDao().delete(id)
+    suspend fun deleteDownload(id: String) = database.downloadGraphTransactionDao().deleteDownloadGraph(id)
+    suspend fun updateDownloadCompareAndSwap(download: Download, expectedUpdatedAtEpochMs: Long): Boolean = database.downloadGraphTransactionDao().updateDownloadCompareAndSwap(download.id, expectedUpdatedAtEpochMs, download.state.name, download.bytesReceived, download.totalBytes, download.speedBytesPerSecond, download.errorMessage, download.updatedAtEpochMs) == 1
     suspend fun setArchived(ids: List<String>, archived: Boolean) {
         if (ids.isNotEmpty()) database.downloadDao().setArchived(ids, archived, System.currentTimeMillis())
     }
@@ -103,8 +109,8 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun deleteSavedSearch(id: String) = database.organizationDao().deleteSavedSearch(id)
     suspend fun saveDestinationRule(rule: DestinationRule) = database.organizationDao().upsertDestinationRule(rule.toEntity())
     suspend fun saveDuplicateRule(rule: DuplicateUrlRule) = database.organizationDao().upsertDuplicateRule(rule.toEntity())
-    suspend fun saveClipboardItems(items: List<ClipboardInboxItem>) = database.organizationDao().upsertClipboardItems(items.map { it.toEntity() })
-    suspend fun saveClipboardItem(item: ClipboardInboxItem) = database.organizationDao().upsertClipboardItem(item.toEntity())
+    suspend fun saveClipboardItems(items: List<ClipboardInboxItem>) = database.organizationDao().upsertClipboardItems(items.map { it.copy(url = ExternalUrlPolicy.persistableUrl(it.url) ?: it.url.substringBefore('?')).toEntity() })
+    suspend fun saveClipboardItem(item: ClipboardInboxItem) = database.organizationDao().upsertClipboardItem(item.copy(url = ExternalUrlPolicy.persistableUrl(item.url) ?: item.url.substringBefore('?')).toEntity())
     suspend fun findDownloadsByStates(states: Set<DownloadState>): List<Download> =
         if (states.isEmpty()) emptyList() else database.downloadDao().findByStates(states.map { it.name }).map { it.toModel() }
 
@@ -137,25 +143,46 @@ class DownloadRepository(private val database: AppDatabase) {
 }
 
 
+private fun Download.redactedForPersistence(): Download = copy(
+    sourceUrl = ExternalUrlPolicy.persistableUrl(sourceUrl) ?: sourceUrl.substringBefore('?'),
+)
+
+private fun AutomationCommandRecord.redactedForPersistence(): AutomationCommandRecord = copy(
+    url = ExternalUrlPolicy.persistableUrl(url),
+    pageUrl = ExternalUrlPolicy.persistableUrl(pageUrl),
+)
+
+private fun MediaCaptureRecord.redactedForPersistence(): MediaCaptureRecord = copy(
+    sourceUrl = ExternalUrlPolicy.persistableUrl(sourceUrl) ?: sourceUrl.substringBefore('?'),
+    pageUrl = ExternalUrlPolicy.persistableUrl(pageUrl),
+    thumbnailUrl = ExternalUrlPolicy.persistableUrl(thumbnailUrl),
+    selectedVariantUrl = ExternalUrlPolicy.persistableUrl(selectedVariantUrl),
+)
+
+private fun MediaVariant.redactedForPersistence(): MediaVariant = copy(
+    url = ExternalUrlPolicy.persistableUrl(url) ?: url.substringBefore('?'),
+)
+
+
 private fun AutomationCommandEntity.toModel() = AutomationCommandRecord(
     id = id,
     idempotencyKey = idempotencyKey,
-    source = runCatching { AutomationCommandSource.valueOf(source) }.getOrDefault(AutomationCommandSource.Internal),
-    action = runCatching { AutomationCommandAction.valueOf(action) }.getOrDefault(AutomationCommandAction.Unknown),
+    source = safeEnum(source, AutomationCommandSource.Internal),
+    action = safeEnum(action, AutomationCommandAction.Unknown),
     url = url,
     fileName = fileName,
     pageTitle = pageTitle,
     pageUrl = pageUrl,
     mediaCaptureId = mediaCaptureId,
     downloadId = downloadId,
-    status = runCatching { AutomationCommandStatus.valueOf(status) }.getOrDefault(AutomationCommandStatus.Failed),
+    status = safeEnum(status, AutomationCommandStatus.Failed),
     resultMessage = resultMessage,
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
     originPackage = originPackage,
     originHost = originHost,
     sanitizedHeaders = sanitizedHeaders,
-    rejectionReason = runCatching { AutomationRejectionReason.valueOf(rejectionReason) }.getOrDefault(AutomationRejectionReason.None),
+    rejectionReason = safeEnum(rejectionReason, AutomationRejectionReason.None),
 )
 
 private fun AutomationCommandRecord.toEntity() = AutomationCommandEntity(
@@ -184,8 +211,8 @@ private fun DownloadEntity.toModel() = Download(
     fileName = fileName,
     sourceUrl = sourceUrl,
     destinationUri = destinationUri,
-    state = DownloadState.valueOf(state),
-    backend = BackendType.valueOf(backend),
+    state = safeEnum(state, DownloadState.RecoveryRequired),
+    backend = safeEnum(backend, BackendType.Automatic),
     bytesReceived = bytesReceived,
     totalBytes = totalBytes,
     speedBytesPerSecond = speedBytesPerSecond,
@@ -195,10 +222,10 @@ private fun DownloadEntity.toModel() = Download(
     updatedAtEpochMs = updatedAtEpochMs,
     errorMessage = errorMessage,
     userLabel = userLabel,
-    conflictPolicy = runCatching { FilenameConflictPolicy.valueOf(conflictPolicy) }.getOrDefault(FilenameConflictPolicy.Rename),
+    conflictPolicy = safeEnum(conflictPolicy, FilenameConflictPolicy.Rename),
     mimeType = mimeType,
-    requestedBackend = runCatching { BackendType.valueOf(requestedBackend) }.getOrDefault(BackendType.Automatic),
-    backendSelectionReason = runCatching { BackendSelectionReason.valueOf(backendSelectionReason) }.getOrDefault(BackendSelectionReason.DefaultNative),
+    requestedBackend = safeEnum(requestedBackend, BackendType.Automatic),
+    backendSelectionReason = safeEnum(backendSelectionReason, BackendSelectionReason.DefaultNative),
     backendSelectionExplanation = backendSelectionExplanation,
     allowBackendFallback = allowBackendFallback,
     archived = archived,
@@ -234,10 +261,10 @@ private fun ScheduleRule.toEntity() = ScheduleRuleEntity(id, queueId, name, enab
 private fun DestinationPermissionEntity.toModel() = DestinationPermission(
     uri = uri,
     displayName = displayName,
-    type = runCatching { DestinationType.valueOf(providerType) }.getOrDefault(DestinationType.SafTree),
+    type = safeEnum(providerType, DestinationType.SafTree),
     persistedRead = persistedRead,
     persistedWrite = persistedWrite,
-    status = runCatching { DestinationHealthStatus.valueOf(status) }.getOrDefault(DestinationHealthStatus.Unknown),
+    status = safeEnum(status, DestinationHealthStatus.Unknown),
     lastValidatedAtEpochMs = lastValidatedAtEpochMs,
     lastError = lastError,
 )
@@ -258,7 +285,7 @@ private fun SavedSearchEntity.toModel() = SavedSearch(
     id = id,
     name = name,
     query = query,
-    state = state?.let { runCatching { DownloadState.valueOf(it) }.getOrNull() },
+    state = safeEnumOrNull(state),
     includeArchived = includeArchived,
     createdAtEpochMs = createdAtEpochMs,
 )
@@ -266,14 +293,14 @@ private fun SavedSearch.toEntity() = SavedSearchEntity(id, name, query, state?.n
 private fun DuplicateUrlRuleEntity.toModel() = DuplicateUrlRule(
     id = id,
     hostPattern = hostPattern,
-    action = runCatching { DuplicateUrlAction.valueOf(action) }.getOrDefault(DuplicateUrlAction.Ask),
+    action = safeEnum(action, DuplicateUrlAction.Ask),
     enabled = enabled,
 )
 private fun DuplicateUrlRule.toEntity() = DuplicateUrlRuleEntity(id, hostPattern, action.name, enabled)
 private fun DestinationRuleEntity.toModel() = DestinationRule(
     id = id,
     name = name,
-    match = runCatching { DestinationRuleMatch.valueOf(match) }.getOrDefault(DestinationRuleMatch.Host),
+    match = safeEnum(match, DestinationRuleMatch.Host),
     pattern = pattern,
     destinationUri = destinationUri,
     enabled = enabled,
@@ -288,8 +315,8 @@ private fun MediaCaptureEntity.toModel() = MediaCaptureRecord(
     sourceUrl = sourceUrl,
     pageUrl = pageUrl,
     title = title,
-    status = runCatching { MediaCaptureStatus.valueOf(status) }.getOrDefault(MediaCaptureStatus.Captured),
-    kind = runCatching { MediaSourceKind.valueOf(kind) }.getOrDefault(MediaSourceKind.Unknown),
+    status = safeEnum(status, MediaCaptureStatus.Captured),
+    kind = safeEnum(kind, MediaSourceKind.Unknown),
     mimeType = mimeType,
     container = container,
     codecs = codecs,
@@ -304,7 +331,7 @@ private fun MediaCaptureEntity.toModel() = MediaCaptureRecord(
     selectedVariantUrl = selectedVariantUrl,
     manifestExpiresAtEpochMs = manifestExpiresAtEpochMs,
     lastResolvedAtEpochMs = lastResolvedAtEpochMs,
-    resolutionStatus = runCatching { MediaResolutionStatus.valueOf(resolutionStatus) }.getOrDefault(MediaResolutionStatus.Unresolved),
+    resolutionStatus = safeEnum(resolutionStatus, MediaResolutionStatus.Unresolved),
 )
 
 private fun MediaCaptureRecord.toEntity() = MediaCaptureEntity(
@@ -335,7 +362,7 @@ private fun MediaVariantEntity.toModel() = MediaVariant(
     id = id,
     captureId = captureId,
     url = url,
-    kind = runCatching { MediaVariantKind.valueOf(kind) }.getOrDefault(MediaVariantKind.Primary),
+    kind = safeEnum(kind, MediaVariantKind.Primary),
     mimeType = mimeType,
     width = width,
     height = height,
@@ -362,3 +389,15 @@ private fun MediaVariant.toEntity() = MediaVariantEntity(
     displayLabel = displayLabel,
     expiresAtEpochMs = expiresAtEpochMs,
 )
+
+
+private inline fun <reified T : Enum<T>> safeEnum(raw: String?, fallback: T): T = raw
+    ?.trim()
+    ?.takeIf { it.isNotEmpty() }
+    ?.let { value -> runCatching { enumValueOf<T>(value) }.getOrNull() }
+    ?: fallback
+
+private inline fun <reified T : Enum<T>> safeEnumOrNull(raw: String?): T? = raw
+    ?.trim()
+    ?.takeIf { it.isNotEmpty() }
+    ?.let { value -> runCatching { enumValueOf<T>(value) }.getOrNull() }

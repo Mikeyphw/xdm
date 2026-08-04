@@ -15,6 +15,7 @@ import com.mikeyphw.xdm.android.model.AutomationCommandRecord
 import com.mikeyphw.xdm.android.model.AutomationCommandStatus
 import com.mikeyphw.xdm.android.model.AutomationCommandSource
 import com.mikeyphw.xdm.android.model.AutomationRejectionReason
+import com.mikeyphw.xdm.android.model.ExternalCommandAuthorization
 import com.mikeyphw.xdm.android.model.BackupRestorePolicy
 import com.mikeyphw.xdm.android.model.BackupRestoreReport
 import com.mikeyphw.xdm.android.model.DownloadIntakeDraft
@@ -54,6 +55,8 @@ import com.mikeyphw.xdm.android.media.MediaCaptureService
 import com.mikeyphw.xdm.android.media.MediaCaptureIntakePlanner
 import com.mikeyphw.xdm.android.media.MediaBatchIntakePlanner
 import com.mikeyphw.xdm.android.media.MediaSniffingEngine
+import com.mikeyphw.xdm.android.media.MediaPageProbe
+import com.mikeyphw.xdm.android.media.BrowserHandoffMediaCoordinator
 import com.mikeyphw.xdm.android.media.MediaSniffingInput
 import com.mikeyphw.xdm.android.media.MediaSniffingSource
 import com.mikeyphw.xdm.android.media.ExternalMediaReviewPlanner
@@ -81,6 +84,7 @@ import com.mikeyphw.xdm.android.model.HistoryManagementReport
 import com.mikeyphw.xdm.android.model.OrganizationPowerTools
 import com.mikeyphw.xdm.android.model.OrganizationPowerToolsReport
 import com.mikeyphw.xdm.android.model.OperationalActivityEvent
+import com.mikeyphw.xdm.android.model.PageObservationProof
 import com.mikeyphw.xdm.android.model.OperationalActivityPlanner
 import com.mikeyphw.xdm.android.model.OperationalActivitySummary
 import com.mikeyphw.xdm.android.model.OperationalDiagnosticsContext
@@ -104,7 +108,7 @@ import com.mikeyphw.xdm.android.storage.DestinationUris
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.newChecksumExpectationId
-import com.mikeyphw.xdm.android.transfer.normalizeHex
+import com.mikeyphw.xdm.android.transfer.parseExpectedChecksum
 import com.mikeyphw.xdm.android.util.sanitizeFileName
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2CapabilityReport
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessManager
@@ -130,7 +134,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-private val SessionHeaderAllowList = setOf("authorization", "cookie", "referer", "user-agent", "origin", "accept", "range")
+private val SessionHeaderAllowList = setOf("authorization", "cookie", "referer", "user-agent", "origin", "accept", "accept-language")
 
 data class Aria2DiagnosticsUi(
     val status: String = "Checking",
@@ -260,6 +264,7 @@ class MainViewModel(
     private val mediaResolverSelectionStore: MediaResolverSelectionStore,
     private val operationalActivityStore: OperationalActivityStore,
     private val browserExtensionExportManager: BrowserExtensionExportManager,
+    private val browserHandoffMediaCoordinator: BrowserHandoffMediaCoordinator,
     private val debugEventRecorder: DebugEventRecorder,
 ) : ViewModel() {
     private data class NavigationOverride(
@@ -764,7 +769,10 @@ class MainViewModel(
 
     fun deleteQueue(queue: QueueDefinition) {
         if (queue.id == "default") return
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteQueue(queue.id); queueIntelligenceCoordinator.reconcile() }
+        viewModelScope.launch(Dispatchers.IO) {
+            queueIntelligenceCoordinator.deleteQueueSafely(queue.id)
+            queueIntelligenceCoordinator.reconcile()
+        }
     }
 
     fun createSchedule(name: String, queueId: String?, constraintsJson: String) {
@@ -1286,6 +1294,8 @@ class MainViewModel(
                     url = item.url,
                     pageTitle = item.title,
                     explicitIdempotencyKey = item.id,
+                    authorization = ExternalCommandAuthorization.UserConfirmed,
+                    privateNetworkApproved = true,
                 ),
             )
         }
@@ -1437,7 +1447,7 @@ class MainViewModel(
         val download = Download(
             id = UUID.randomUUID().toString(),
             fileName = safeName,
-            sourceUrl = url.trim(),
+            sourceUrl = ExternalUrlPolicy.persistableUrl(url) ?: url.trim().substringBefore('?'),
             destinationUri = resolvedDestination,
             state = DownloadState.Queued,
             backend = resolvedBackend,
@@ -1457,16 +1467,18 @@ class MainViewModel(
         )
         viewModelScope.launch {
             repository.save(download)
-            if (externalSessionHeaders.isNotEmpty()) {
-                MediaRequestHandoffStore.remember(
-                    downloadId = download.id,
-                    headers = externalSessionHeaders,
-                    redactedSummary = consumedExternalDraft?.redactedHeaderSummary.orEmpty(),
-                    isExpiringUrl = true,
-                )
-            }
+            MediaRequestHandoffStore.remember(
+                downloadId = download.id,
+                headers = externalSessionHeaders,
+                redactedSummary = consumedExternalDraft?.redactedHeaderSummary.orEmpty(),
+                isExpiringUrl = externalSessionHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(url),
+                exactUrl = url.trim(),
+                pageUrl = consumedExternalDraft?.pageUrl,
+                privateNetworkApproved = true,
+                cleartextCredentialsApproved = false,
+            )
             consumedExternalDraft?.let { markExternalDraftDownloadCreated(it, download.id) }
-            val normalizedChecksum = normalizeHex(expectedChecksum)
+            val normalizedChecksum = expectedChecksum.trim().takeIf { it.isNotBlank() }?.let { parseExpectedChecksum(it, checksumAlgorithm) }.orEmpty()
             if (normalizedChecksum.isNotBlank()) {
                 repository.saveChecksumExpectation(
                     ChecksumExpectation(
@@ -1559,6 +1571,7 @@ class MainViewModel(
     private suspend fun processAutomationCommand(draft: AutomationCommandDraft) {
         val key = draft.stableIdempotencyKey
         val now = System.currentTimeMillis()
+        if (draft.authorization == ExternalCommandAuthorization.Untrusted && draft.source != AutomationCommandSource.Internal) return
         val existing = repository.findAutomationCommandByKey(key)
         if (existing != null) {
             if (existing.mediaCaptureId != null) {
@@ -1571,13 +1584,14 @@ class MainViewModel(
                 navigate(AppRoute.Downloads)
                 return
             }
-            val url = existing.url
+            val commandHandoff = MediaRequestHandoffStore.forCommand(existing.id)
+            val url = commandHandoff?.exactUrl ?: existing.url
             if (!url.isNullOrBlank()) {
                 externalAddDraft.value = downloadIntakePlanner.fromExternal(
                     id = existing.id,
                     url = url,
                     fileName = existing.fileName,
-                    sourceLabel = sourceLabelFor(existing.source, existing.originPackage),
+                    sourceLabel = sourceLabelFor(existing.source, existing.originPackage, existing.verifiedIntegrationId),
                     origin = intakeOriginFor(existing.source),
                     pageTitle = existing.pageTitle,
                     pageUrl = existing.pageUrl,
@@ -1589,54 +1603,96 @@ class MainViewModel(
             repository.saveAutomationCommand(existing.copy(status = AutomationCommandStatus.Duplicate, resultMessage = "Duplicate command ignored", rejectionReason = AutomationRejectionReason.Duplicate, updatedAtEpochMs = now))
             return
         }
+        val commandId = AutomationCommandIds.commandId(key)
+        val commandHeaders = transientSessionHeaders(
+            rawHeaders = draft.rawHeaders,
+            pageUrl = draft.pageUrl,
+            targetUrl = draft.normalizedUrl,
+            cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
+        )
         val accepted = AutomationCommandRecord(
-            id = AutomationCommandIds.commandId(key),
+            id = commandId,
             idempotencyKey = key,
             source = draft.source,
             action = draft.action,
-            url = draft.normalizedUrl,
+            url = ExternalUrlPolicy.persistableUrl(draft.normalizedUrl),
             fileName = draft.fileName?.trim()?.takeIf { it.isNotBlank() },
             pageTitle = draft.pageTitle?.trim()?.takeIf { it.isNotBlank() },
-            pageUrl = draft.normalizedPageUrl,
+            pageUrl = ExternalUrlPolicy.persistableUrl(draft.normalizedPageUrl),
             mediaCaptureId = null,
             downloadId = null,
-            status = AutomationCommandStatus.Accepted,
-            resultMessage = "Accepted",
+            status = AutomationCommandStatus.Received,
+            resultMessage = "Received through ${draft.authorization.name}",
             createdAtEpochMs = now,
             updatedAtEpochMs = now,
             originPackage = draft.originPackage?.trim()?.takeIf { it.isNotBlank() },
+            claimedOriginPackage = draft.claimedOriginPackage?.trim()?.takeIf { it.isNotBlank() },
+            verifiedIntegrationId = draft.verifiedIntegrationId?.trim()?.takeIf { it.isNotBlank() },
+            authorization = draft.authorization,
+            privateNetworkApproved = draft.privateNetworkApproved,
+            cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
             originHost = draft.originHost,
             sanitizedHeaders = draft.sanitizedHeaders,
         )
+        MediaRequestHandoffStore.rememberCommand(
+            commandId = commandId,
+            exactUrl = draft.normalizedUrl,
+            pageUrl = draft.normalizedPageUrl,
+            headers = commandHeaders,
+            redactedSummary = redactedSessionSummary(draft.rawHeaders, draft.pageUrl),
+            privateNetworkApproved = draft.privateNetworkApproved,
+            cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
+        )
         repository.saveAutomationCommand(accepted)
+        markAutomationCommandExecuting(accepted)
         when (draft.action) {
             AutomationCommandAction.CaptureMedia -> executeCaptureMediaCommand(accepted, draft, now)
             AutomationCommandAction.PromptAddDownload -> openExternalAddDraft(accepted, draft, "External download opened Add Download prompt")
             AutomationCommandAction.EnqueueDownload -> executeEnqueueCommand(accepted, draft, now)
             AutomationCommandAction.PauseAll -> {
                 transferRuntime.pauseAll()
-                repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Executed, resultMessage = "Pause all requested", updatedAtEpochMs = System.currentTimeMillis()))
+                repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Applied, resultMessage = "Pause all requested", updatedAtEpochMs = System.currentTimeMillis()))
             }
             AutomationCommandAction.ResumeAll -> {
                 val paused = repository.findDownloadsByStates(setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower))
                 paused.forEach { queueIntelligenceCoordinator.requestStart(it.id, userVisible = true, manual = true) }
-                repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Executed, resultMessage = "Resume requested for ${paused.size} download(s)", updatedAtEpochMs = System.currentTimeMillis()))
+                repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Applied, resultMessage = "Resume requested for ${paused.size} download(s)", updatedAtEpochMs = System.currentTimeMillis()))
             }
             AutomationCommandAction.Unknown -> repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Unsupported automation action", rejectionReason = AutomationRejectionReason.UnsupportedAction, updatedAtEpochMs = System.currentTimeMillis()))
         }
+    }
+
+
+
+    private suspend fun markAutomationCommandExecuting(command: AutomationCommandRecord) {
+        repository.transitionAutomationCommand(
+            command.id,
+            from = listOf(AutomationCommandStatus.Received, AutomationCommandStatus.Accepted),
+            to = AutomationCommandStatus.Claimed,
+            message = "Command claimed by MainViewModel.",
+        )
+        repository.transitionAutomationCommand(
+            command.id,
+            from = listOf(AutomationCommandStatus.Claimed),
+            to = AutomationCommandStatus.Executing,
+            message = "Command side effects are executing.",
+        )
     }
 
     private suspend fun executeCaptureMediaCommand(command: AutomationCommandRecord, draft: AutomationCommandDraft, now: Long) {
         val text = draft.normalizedUrl ?: return repository.saveAutomationCommand(
             command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing media URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = now),
         )
-        val requestHeaders = transientSessionHeaders(draft.rawHeaders, draft.pageUrl)
+        val proposedHeaders = transientSessionHeaders(draft.proposedHeaders ?: draft.rawHeaders, draft.frameUrl ?: draft.pageUrl, text, draft.cleartextCredentialsApproved)
+        val finalHeaders = transientSessionHeaders(draft.finalHeaders, draft.frameUrl ?: draft.pageUrl, text, draft.cleartextCredentialsApproved).takeIf { it.isNotEmpty() }
+        val requestHeaders = finalHeaders ?: proposedHeaders
+        val pageObservationProof = draft.toPageObservationProof()
         val sniffingPlan = mediaSniffingEngine.sniff(
             MediaSniffingInput(
                 url = text,
                 mimeType = draft.mimeType,
                 contentLength = draft.contentLength,
-                pageUrl = draft.pageUrl,
+                pageUrl = draft.frameUrl ?: draft.pageUrl,
                 pageTitle = draft.pageTitle,
                 requestHeaders = requestHeaders,
                 source = MediaSniffingSource.BrowserExtension,
@@ -1655,21 +1711,45 @@ class MainViewModel(
             }
         }
         repository.saveMediaCaptures(merged)
-        if (requestHeaders.isNotEmpty()) {
-            val redactedSummary = redactedSessionSummary(draft.rawHeaders, draft.pageUrl)
-            merged.forEach { record ->
-                MediaRequestHandoffStore.rememberCapture(
-                    captureId = record.id,
-                    headers = requestHeaders,
-                    redactedSummary = redactedSummary,
-                    isExpiringUrl = true,
-                )
-            }
+        merged.forEach { record ->
+            val session = browserHandoffMediaCoordinator.rememberBrowserRevision(
+                requestUrl = record.sourceUrl,
+                topPageUrl = draft.pageUrl,
+                frameUrl = draft.frameUrl,
+                kind = record.kind,
+                mimeType = draft.mimeType,
+                proposedHeaders = proposedHeaders,
+                finalHeaders = finalHeaders,
+                revision = draft.sessionRevision ?: now,
+                expiresAtEpochMs = now + 24L * 60L * 60L * 1000L,
+                declaredStableMediaId = draft.stableMediaId,
+                pageObservationProof = pageObservationProof,
+                requirePageObservationProof = draft.pageObservationNonce != null,
+            )
+            MediaRequestHandoffStore.rememberCapture(
+                captureId = record.id,
+                headers = session.usableHeaders,
+                redactedSummary = session.redactedSummary,
+                isExpiringUrl = session.usableHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(session.exactRequestUrl),
+                exactUrl = session.exactRequestUrl,
+                pageUrl = session.frameUrl ?: session.pageUrl ?: record.pageUrl,
+                privateNetworkApproved = draft.privateNetworkApproved,
+                cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
+            )
         }
-        repository.saveMediaVariants(sniffingPlan.variants)
+        sniffingPlan.variants.forEach { variant ->
+            MediaRequestHandoffStore.rememberVariant(
+                variantId = variant.id,
+                exactUrl = variant.url,
+                headers = requestHeaders,
+                redactedSummary = redactedSessionSummary(draft.rawHeaders, draft.pageUrl),
+                expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
+            )
+        }
+        repository.replaceMediaVariants(sniffingPlan.variants)
         repository.saveAutomationCommand(
             command.copy(
-                status = AutomationCommandStatus.Executed,
+                status = AutomationCommandStatus.Applied,
                 resultMessage = "Captured ${merged.size} media item(s)",
                 mediaCaptureId = merged.firstOrNull()?.id,
                 updatedAtEpochMs = System.currentTimeMillis(),
@@ -1682,12 +1762,12 @@ class MainViewModel(
         val url = draft.normalizedUrl ?: return repository.saveAutomationCommand(
             command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing download URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = System.currentTimeMillis()),
         )
-        val requestHeaders = transientSessionHeaders(draft.rawHeaders, draft.pageUrl)
+        val requestHeaders = transientSessionHeaders(draft.rawHeaders, draft.pageUrl, url, draft.cleartextCredentialsApproved)
         externalAddDraft.value = downloadIntakePlanner.fromExternal(
             id = command.id,
             url = url,
             fileName = draft.fileName,
-            sourceLabel = sourceLabelFor(draft.source, draft.originPackage),
+            sourceLabel = sourceLabelFor(draft.source, draft.originPackage, draft.verifiedIntegrationId),
             origin = intakeOriginFor(draft.source),
             pageTitle = draft.pageTitle,
             pageUrl = draft.pageUrl,
@@ -1698,7 +1778,7 @@ class MainViewModel(
         ) ?: return repository.saveAutomationCommand(
             command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Unsupported download URL", rejectionReason = AutomationRejectionReason.UnsupportedUrl, updatedAtEpochMs = System.currentTimeMillis()),
         )
-        repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Executed, resultMessage = message, updatedAtEpochMs = System.currentTimeMillis()))
+        repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Applied, resultMessage = message, updatedAtEpochMs = System.currentTimeMillis()))
         navigate(AppRoute.Add)
     }
 
@@ -1706,7 +1786,7 @@ class MainViewModel(
         val command = repository.findAutomationCommand(draft.id) ?: return
         repository.saveAutomationCommand(
             command.copy(
-                status = AutomationCommandStatus.Executed,
+                status = AutomationCommandStatus.Applied,
                 resultMessage = "Download created from ${draft.sourceLabel}",
                 downloadId = downloadId,
                 rejectionReason = AutomationRejectionReason.None,
@@ -1715,14 +1795,25 @@ class MainViewModel(
         )
     }
 
-    private fun sourceLabelFor(source: AutomationCommandSource, originPackage: String? = null): String {
+    private fun AutomationCommandDraft.toPageObservationProof(): PageObservationProof? {
+        val nonce = pageObservationNonce?.trim()?.takeIf { it.isNotBlank() } ?: return null
+        return PageObservationProof(
+            nonce = nonce,
+            originPackage = originPackage,
+            createdAtEpochMs = pageObservationCreatedAtEpochMs ?: receivedAtEpochMs,
+            expiresAtEpochMs = pageObservationExpiresAtEpochMs ?: (receivedAtEpochMs + 10L * 60L * 1000L),
+        )
+    }
+
+    private fun sourceLabelFor(source: AutomationCommandSource, originPackage: String? = null, verifiedIntegrationId: String? = null): String {
         val safePackage = originPackage
             ?.trim()
             ?.takeIf { it.isNotBlank() && it.length <= 96 }
+        val verified = verifiedIntegrationId?.takeIf(String::isNotBlank)
         return when (source) {
             AutomationCommandSource.ShareSheet -> safePackage?.let { "Shared from $it" } ?: "Shared link"
             AutomationCommandSource.ViewIntent, AutomationCommandSource.BrowserExtension -> safePackage?.let { "Download from $it" } ?: "External browser"
-            AutomationCommandSource.Tasker -> "Tasker"
+            AutomationCommandSource.Tasker -> verified?.let { "Trusted automation" } ?: "Tasker"
             AutomationCommandSource.DeepLink -> "XDM link"
             AutomationCommandSource.Internal -> "External app"
         }
@@ -1735,7 +1826,12 @@ class MainViewModel(
         AutomationCommandSource.Tasker, AutomationCommandSource.DeepLink, AutomationCommandSource.Internal -> DownloadIntakeOrigin.Automation
     }
 
-    private fun transientSessionHeaders(rawHeaders: String?, pageUrl: String? = null): Map<String, String> {
+    private fun transientSessionHeaders(
+        rawHeaders: String?,
+        pageUrl: String? = null,
+        targetUrl: String? = null,
+        cleartextCredentialsApproved: Boolean = false,
+    ): Map<String, String> {
         val headers = linkedMapOf<String, String>()
         rawHeaders
             ?.lineSequence()
@@ -1744,6 +1840,13 @@ class MainViewModel(
         val referer = ExternalUrlPolicy.normalizedUrl(pageUrl)
         if (referer != null && headers.keys.none { it.equals("Referer", ignoreCase = true) }) {
             headers["Referer"] = referer
+        }
+        if (ExternalUrlPolicy.isCleartext(targetUrl) && !cleartextCredentialsApproved) {
+            headers.keys.removeAll { it.equals("Cookie", true) || it.equals("Authorization", true) }
+        }
+        headers.keys.removeAll {
+            it.equals("Range", true) || it.equals("Host", true) ||
+                it.equals("Content-Length", true) || it.equals("Connection", true)
         }
         return headers
     }
@@ -1772,7 +1875,7 @@ class MainViewModel(
         "user-agent" -> "User-Agent"
         "origin" -> "Origin"
         "accept" -> "Accept"
-        "range" -> "Range"
+        "accept-language" -> "Accept-Language"
         else -> name.trim()
     }
 
@@ -1781,7 +1884,7 @@ class MainViewModel(
             command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing download URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = now),
         )
         val safeName = resolveFileName(url, draft.fileName.orEmpty())
-        val sessionHeaders = transientSessionHeaders(draft.rawHeaders, draft.pageUrl)
+        val sessionHeaders = transientSessionHeaders(draft.rawHeaders, draft.pageUrl, url, draft.cleartextCredentialsApproved)
         val mediaCandidate = mediaCaptureService.candidateFor(url)
         val destination = uiState.value.destinationUri.ifBlank { DestinationUris.PUBLIC_DOWNLOADS }
         val conflictPolicy = uiState.value.conflictPolicy
@@ -1804,7 +1907,7 @@ class MainViewModel(
         val download = Download(
             id = UUID.randomUUID().toString(),
             fileName = safeName,
-            sourceUrl = url,
+            sourceUrl = ExternalUrlPolicy.persistableUrl(url) ?: url.substringBefore('?'),
             destinationUri = destination,
             state = DownloadState.Queued,
             backend = recommendation.backend,
@@ -1823,17 +1926,41 @@ class MainViewModel(
             allowBackendFallback = true,
         )
         repository.save(download)
-        if (sessionHeaders.isNotEmpty()) {
-            MediaRequestHandoffStore.remember(
-                downloadId = download.id,
-                headers = sessionHeaders,
-                redactedSummary = redactedSessionSummary(draft.rawHeaders, draft.pageUrl),
-                isExpiringUrl = true,
-            )
-        }
-        repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Executed, resultMessage = "Queued download", downloadId = download.id, updatedAtEpochMs = System.currentTimeMillis()))
+        MediaRequestHandoffStore.remember(
+            downloadId = download.id,
+            headers = sessionHeaders,
+            redactedSummary = redactedSessionSummary(draft.rawHeaders, draft.pageUrl),
+            isExpiringUrl = sessionHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(url),
+            exactUrl = url,
+            pageUrl = draft.normalizedPageUrl,
+            privateNetworkApproved = draft.privateNetworkApproved,
+            cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
+        )
+        repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Applied, resultMessage = "Queued download", downloadId = download.id, updatedAtEpochMs = System.currentTimeMillis()))
         queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
         navigate(AppRoute.Downloads)
+    }
+
+
+    fun capturePageUrl(pageUrl: String, pageTitle: String? = null) {
+        val normalized = pageUrl.trim()
+        if (normalized.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val plan = mediaPageProbe.probePage(normalized, pageTitle = pageTitle)
+            if (plan.records.isEmpty()) return@launch
+            val now = System.currentTimeMillis()
+            val merged = plan.records.map { record ->
+                val existing = repository.findMediaCapture(record.id)
+                if (existing?.downloadId != null) {
+                    record.copy(status = existing.status, downloadId = existing.downloadId, createdAtEpochMs = existing.createdAtEpochMs, updatedAtEpochMs = now)
+                } else {
+                    record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs, updatedAtEpochMs = now)
+                }
+            }
+            repository.saveMediaCaptures(merged)
+            if (plan.variants.isNotEmpty()) repository.replaceMediaVariants(plan.variants)
+            navigate(AppRoute.Media)
+        }
     }
 
     fun captureSharedText(text: String, pageTitle: String? = null, pageUrl: String? = null) {
@@ -1862,13 +1989,31 @@ class MainViewModel(
                 }
             }
             repository.saveMediaCaptures(merged)
-            repository.saveMediaVariants(sniffingPlan.variants)
+            repository.replaceMediaVariants(sniffingPlan.variants)
             navigate(AppRoute.Media)
         }
     }
 
     fun captureMediaRequest(facts: MediaRequestFacts) {
+        if (facts.requiresPageObservationProof && !browserHandoffMediaCoordinator.authenticatePageObservation(facts.pageObservationProof)) return
         val intake = mediaCaptureIntakePlanner.plan(facts) ?: return
+        val proposedHeaders = facts.proposedHeaders.ifEmpty { facts.headers }
+        val finalHeaders = facts.finalHeaders.takeIf { it.isNotEmpty() }
+        val now = System.currentTimeMillis()
+        val session = browserHandoffMediaCoordinator.rememberBrowserRevision(
+            requestUrl = facts.url,
+            topPageUrl = facts.pageUrl,
+            frameUrl = facts.frameUrl ?: facts.headers["X-XDM-Frame-Url"],
+            kind = intake.record.kind,
+            mimeType = facts.mimeType,
+            proposedHeaders = proposedHeaders,
+            finalHeaders = finalHeaders,
+            revision = facts.sessionRevision ?: now,
+            expiresAtEpochMs = now + 24L * 60L * 60L * 1000L,
+            declaredStableMediaId = facts.stableMediaId,
+            pageObservationProof = facts.pageObservationProof,
+            requirePageObservationProof = facts.requiresPageObservationProof,
+        )
         viewModelScope.launch(Dispatchers.IO) {
             val existing = repository.findMediaCapture(intake.record.id)
             val merged = if (existing?.downloadId != null) {
@@ -1882,7 +2027,15 @@ class MainViewModel(
                 intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
             }
             repository.saveMediaCapture(merged)
-            repository.saveMediaVariants(intake.candidate.variants)
+            MediaRequestHandoffStore.rememberCapture(
+                captureId = merged.id,
+                headers = session.usableHeaders,
+                redactedSummary = session.redactedSummary,
+                isExpiringUrl = true,
+                exactUrl = session.exactRequestUrl,
+                pageUrl = session.frameUrl ?: session.pageUrl,
+            )
+            repository.replaceMediaVariants(intake.candidate.variants)
         }
     }
 
@@ -1909,7 +2062,7 @@ class MainViewModel(
                     }
                 }
                 repository.saveMediaCaptures(merged)
-                if (plan.variants.isNotEmpty()) repository.saveMediaVariants(plan.variants)
+                if (plan.variants.isNotEmpty()) repository.replaceMediaVariants(plan.variants)
             }
             navigate(AppRoute.Media)
         }
@@ -1940,19 +2093,29 @@ class MainViewModel(
                 intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
             }
             repository.saveMediaCapture(merged)
-            if (draft.requestHeaders.isNotEmpty()) {
-                MediaRequestHandoffStore.rememberCapture(
-                    captureId = merged.id,
+            MediaRequestHandoffStore.rememberCapture(
+                captureId = merged.id,
+                headers = draft.requestHeaders,
+                redactedSummary = draft.redactedHeaderSummary.orEmpty(),
+                isExpiringUrl = draft.requestHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(merged.sourceUrl),
+                exactUrl = merged.sourceUrl,
+                pageUrl = merged.pageUrl,
+                privateNetworkApproved = true,
+            )
+            intake.variants.forEach { variant ->
+                MediaRequestHandoffStore.rememberVariant(
+                    variantId = variant.id,
+                    exactUrl = variant.url,
                     headers = draft.requestHeaders,
                     redactedSummary = draft.redactedHeaderSummary.orEmpty(),
-                    isExpiringUrl = true,
+                    expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
                 )
             }
-            if (intake.variants.isNotEmpty()) repository.saveMediaVariants(intake.variants)
+            if (intake.variants.isNotEmpty()) repository.replaceMediaVariants(intake.variants)
             repository.findAutomationCommand(draft.id)?.let { command ->
                 repository.saveAutomationCommand(
                     command.copy(
-                        status = AutomationCommandStatus.Executed,
+                        status = AutomationCommandStatus.Applied,
                         resultMessage = if (intake.isPageProbe) "External page opened in media resolver" else "External media opened in media resolver",
                         mediaCaptureId = merged.id,
                         rejectionReason = AutomationRejectionReason.None,
@@ -1969,10 +2132,17 @@ class MainViewModel(
         mediaResolverSelectionStore.save(record.id, selection)
         viewModelScope.launch(Dispatchers.IO) {
             val now = System.currentTimeMillis()
-            val variants = repository.variantsForMediaCapture(record.id)
+            val storedVariants = repository.variantsForMediaCapture(record.id)
             val captureHandoff = MediaRequestHandoffStore.forCapture(record.id)
+            val exactRecord = record.copy(
+                sourceUrl = captureHandoff?.exactUrl ?: record.sourceUrl,
+                pageUrl = captureHandoff?.pageUrl ?: record.pageUrl,
+            )
+            val variants = storedVariants.map { variant ->
+                variant.copy(url = MediaRequestHandoffStore.forVariant(variant.id)?.exactUrl ?: variant.url)
+            }
             val spec = mediaExecutionPlanner.queueSpec(
-                capture = record,
+                capture = exactRecord,
                 variants = variants,
                 selection = selection,
                 destinationUri = DestinationUris.PUBLIC_DOWNLOADS,
@@ -2007,7 +2177,7 @@ class MainViewModel(
             val download = Download(
                 id = UUID.randomUUID().toString(),
                 fileName = sanitizeFileName(spec.fileName),
-                sourceUrl = spec.sourceUrl,
+                sourceUrl = ExternalUrlPolicy.persistableUrl(spec.sourceUrl) ?: spec.sourceUrl.substringBefore('?'),
                 destinationUri = DestinationUris.PUBLIC_DOWNLOADS,
                 state = DownloadState.Queued,
                 backend = recommendation.backend,
@@ -2031,6 +2201,10 @@ class MainViewModel(
                 headers = spec.requestHeaders.ifEmpty { captureHandoff?.headers.orEmpty() },
                 redactedSummary = spec.redactedSessionSummary.ifBlank { captureHandoff?.redactedSummary.orEmpty() },
                 isExpiringUrl = spec.isExpiringUrl || captureHandoff?.isExpiringUrl == true,
+                exactUrl = spec.sourceUrl,
+                pageUrl = captureHandoff?.pageUrl,
+                privateNetworkApproved = captureHandoff?.privateNetworkApproved ?: true,
+                cleartextCredentialsApproved = captureHandoff?.cleartextCredentialsApproved ?: false,
                 cleanupActions = enginePlan.cleanupActions,
                 tempCookieFileName = enginePlan.tempCookieFile?.fileName,
             )
@@ -2044,24 +2218,17 @@ class MainViewModel(
 
     fun resolveMediaCapture(record: MediaCaptureRecord) {
         viewModelScope.launch(Dispatchers.IO) {
-            val candidate = mediaCaptureService.candidateFor(record.sourceUrl) ?: return@launch
-            val variants = candidate.variants.ifEmpty {
-                listOfNotNull(
-                    record.selectedVariantUrl?.let { url ->
-                        MediaVariant(
-                            id = record.id + ":selected",
-                            captureId = record.id,
-                            url = url,
-                            kind = MediaVariantKind.Primary,
-                            mimeType = record.mimeType,
-                            displayLabel = "Selected",
-                        )
-                    },
-                )
+            val handoff = MediaRequestHandoffStore.forCapture(record.id)
+            val probeUrl = handoff?.exactUrl ?: record.sourceUrl
+            val plan = mediaPageProbe.probePage(probeUrl, pageTitle = record.title, requestHeaders = handoff?.headers.orEmpty())
+            val variants = plan.variants.filter { it.captureId == record.id }.ifEmpty { plan.variants }
+            if (variants.isEmpty()) {
+                repository.saveMediaCapture(record.copy(resolutionStatus = com.mikeyphw.xdm.android.model.MediaResolutionStatus.RequiresRefresh, updatedAtEpochMs = System.currentTimeMillis()))
+                return@launch
             }
             val refreshed = mediaCaptureService.refreshRecordAfterResolution(record, variants)
             repository.saveMediaCapture(refreshed)
-            repository.saveMediaVariants(variants)
+            repository.replaceMediaVariants(variants)
         }
     }
 
@@ -2115,7 +2282,10 @@ class MainViewModel(
 
 
     fun pauseAll() {
-        viewModelScope.launch { transferRuntime.pauseAll() }
+        viewModelScope.launch {
+            queueIntelligenceCoordinator.pauseAllDurably()
+            transferRuntime.pauseAll()
+        }
     }
 
     fun resumeAll() {
@@ -2153,6 +2323,8 @@ class MainViewModel(
         headers: Map<String, String> = emptyMap(),
         mimeType: String? = null,
         isExpiringUrl: Boolean = false,
+        privateNetworkApproved: Boolean = true,
+        cleartextCredentialsApproved: Boolean = false,
     ) = DownloadRequest(
         id = "preview",
         sourceUrl = url.trim(),
@@ -2165,6 +2337,8 @@ class MainViewModel(
         allowBackendFallback = allowFallback,
         isExpiringUrl = isExpiringUrl,
         isMediaRequest = isMediaRequest,
+        privateNetworkApproved = privateNetworkApproved,
+        cleartextCredentialsApproved = cleartextCredentialsApproved,
     )
 
 
@@ -2196,6 +2370,7 @@ class MainViewModel(
             container.mediaResolverSelectionStore,
             container.operationalActivityStore,
             container.browserExtensionExportManager,
+            container.browserHandoffMediaCoordinator,
             container.debugEventRecorder,
         ) as T
     }

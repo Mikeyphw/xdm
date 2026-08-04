@@ -53,4 +53,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun mediaCaptureDao(): MediaCaptureDao
     abstract fun automationCommandDao(): AutomationCommandDao
     abstract fun organizationDao(): OrganizationDao
+    abstract fun downloadGraphTransactionDao(): DownloadGraphTransactionDao
 }

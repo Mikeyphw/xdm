@@ -274,12 +274,12 @@ private fun DestinationClaimEntity.toModel(backendTaskId: String? = null) = Back
         primary = partialIdentity,
         companions = companionArtifactIdentities.decodeCompanions(),
     ),
-    backend = BackendType.valueOf(backend),
+    backend = safeEnum(backend, BackendType.Automatic),
     generation = generation,
-    status = BackendOwnershipStatus.valueOf(status),
+    status = safeEnum(status, BackendOwnershipStatus.Quarantined),
     runtimeIdentity = BackendRuntimeIdentity(backendInstanceId, backendSessionId),
     backendTaskId = backendTaskId,
-    reconciliation = BackendReconciliationClassification.valueOf(reconciliation),
+    reconciliation = safeEnum(reconciliation, BackendReconciliationClassification.Pending),
     reconciliationMessage = reconciliationMessage,
     reconciledAtEpochMs = reconciledAtEpochMs,
     claimedAtEpochMs = claimedAtEpochMs,
@@ -288,3 +288,10 @@ private fun DestinationClaimEntity.toModel(backendTaskId: String? = null) = Back
 
 private fun List<String>.encodeCompanions(): String = joinToString("\n")
 private fun String.decodeCompanions(): List<String> = lineSequence().filter(String::isNotBlank).toList()
+
+
+private inline fun <reified T : Enum<T>> safeEnum(raw: String?, fallback: T): T = raw
+    ?.trim()
+    ?.takeIf { it.isNotEmpty() }
+    ?.let { value -> runCatching { enumValueOf<T>(value) }.getOrNull() }
+    ?: fallback

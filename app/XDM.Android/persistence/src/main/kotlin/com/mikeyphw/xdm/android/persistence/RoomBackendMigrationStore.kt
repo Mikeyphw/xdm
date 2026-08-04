@@ -19,13 +19,13 @@ class RoomBackendMigrationStore(private val database: AppDatabase) : BackendMigr
 internal fun BackendMigrationEntity.toModel() = BackendMigrationRecord(
     id = id,
     downloadId = downloadId,
-    sourceBackend = BackendType.valueOf(sourceBackend),
-    targetBackend = BackendType.valueOf(targetBackend),
+    sourceBackend = safeEnum(sourceBackend, BackendType.Automatic),
+    targetBackend = safeEnum(targetBackend, BackendType.Automatic),
     sourceGeneration = sourceGeneration,
     targetGeneration = targetGeneration,
     sourceTaskId = sourceTaskId,
     targetTaskId = targetTaskId,
-    stage = BackendMigrationStage.valueOf(stage),
+    stage = safeEnum(stage, BackendMigrationStage.RecoveryRequired),
     sourceArtifactIdentity = sourceArtifactIdentity,
     targetArtifactIdentity = targetArtifactIdentity,
     restartFromZero = restartFromZero,
@@ -51,3 +51,10 @@ internal fun BackendMigrationRecord.toEntity() = BackendMigrationEntity(
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
 )
+
+
+private inline fun <reified T : Enum<T>> safeEnum(raw: String?, fallback: T): T = raw
+    ?.trim()
+    ?.takeIf { it.isNotEmpty() }
+    ?.let { value -> runCatching { enumValueOf<T>(value) }.getOrNull() }
+    ?: fallback

@@ -1,0 +1,145 @@
+{
+  "applied_at": "2026-08-03T21:03:49.531067Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_bug_hunt_phase2_download_execution_correctness_overlay.zip",
+  "artifact_name": "xdm_android_bug_hunt_phase2_download_execution_correctness_overlay.zip",
+  "type": "overlay",
+  "sha256": "c0f6b9b4ada8f119fc9631c4fbc374c8603fd54c7bcd836a991f22e2be077074",
+  "status": "failed",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 12,
+  "change_counts": {
+    "add": 3,
+    "modify": 9
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Bug Hunt Remediation Phase 2: Download Execution Correctness",
+    "description": "Full Phase 2 transfer-execution overlay on top of Phase 1 r5. Implements single durable execution ownership, control generations, stop-path pause behavior, native HTTP resume/request correctness, aria2 ownership safety, and targeted regression contracts.",
+    "repository": {
+      "name": "xdm"
+    },
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": ".devtool-artifact/validate_phase2_download_execution.sh",
+          "action": "add",
+          "sha256": "8d8b98f529710ae22d6ec815ce023a29b7d0d8aca0bb52f5f47cdc9568c857ec",
+          "size": 146,
+          "mode": "100755"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "action": "modify",
+          "sha256": "005b24f8fbbfcd6368d72964287569ce19cbdb297c5d5123bf6672208d5b7544",
+          "size": 54276,
+          "source_sha256": "677179a909e6e73d82cb6fc1b7fe7e773b0bf0aa6b8e806bd158ccd3acc6aeb8",
+          "source_size": 53439
+        },
+        {
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "action": "modify",
+          "sha256": "78309dcf9074a330010709313c6d62c6973c875025408cd97afc661c913978c0",
+          "size": 115082,
+          "source_sha256": "8f2145a92f0f0e963880759dadb509e20db99fdf88952445bcccbc373bc308ab",
+          "source_size": 114185
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase2DownloadExecutionContractTest.kt",
+          "action": "add",
+          "sha256": "f7ace28d4e5966339ad373352dfa0f67e9fef1ffadb8350a8860364335af19e8",
+          "size": 4468
+        },
+        {
+          "path": "app/XDM.Android/docs/audits/BUG-HUNT-REMEDIATION-PHASE-2.md",
+          "action": "add",
+          "sha256": "5b4d69248eb14a1732d5590cf1cc9b6509f7a4d0433a856033dedd43d19f3d00",
+          "size": 2435
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt",
+          "action": "modify",
+          "sha256": "e969084a772d4c7648d9df655a6c3cebe80df3d057d103a1a68c1c8697790c18",
+          "size": 4654,
+          "source_sha256": "b11c0339055ff8dd39babceae1b05c4e45395dfb3b6cdaf633703951fafa853c",
+          "source_size": 4311
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt",
+          "action": "modify",
+          "sha256": "85b812ac80634cdb3274db5bb26b2d7a9db808d102a99a94f8ab898f92d638e9",
+          "size": 25941,
+          "source_sha256": "d7029568d46c0f9ce802e3cb0bf2bfe4b38d7bf17d235f1350e2674e0300d89d",
+          "source_size": 20879
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt",
+          "action": "modify",
+          "sha256": "8a980331f96343182160f741dc9c4dee81c77e06979d8ff2833113114e8faf40",
+          "size": 4690,
+          "source_sha256": "50bedce9b0180f9504c9c16ca49230d1bae3735dbbf51985918caf6f4dddc97c",
+          "source_size": 4453
+        },
+        {
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt",
+          "action": "modify",
+          "sha256": "66df525d01b0dabee909bb69e2d64c5fe183b22da895ea7267a15dcb706b7b56",
+          "size": 3171,
+          "source_sha256": "ceb13c8ec6faa43bb83451ccd4c0509f7df7f53dd0b4ec2113edab277ae8ccbf",
+          "source_size": 3037
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-bug-hunt-phase2-download-execution.py",
+          "action": "add",
+          "sha256": "7a6e3a20aee3f989ee03d69b0fabdbe1505309a29058a0c70323252671dbc645",
+          "size": 4819
+        },
+        {
+          "path": "app/XDM.Android/transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt",
+          "action": "modify",
+          "sha256": "7cc5ae72bfc2f410f39316c1f3cd75bf6146895b42fa35e8d9b20eb201377cd5",
+          "size": 31269,
+          "source_sha256": "05c51ace5c263b13f2ec5cf3831a95303fc737d2e2c20f340588395c8b733eca",
+          "source_size": 31104
+        },
+        {
+          "path": "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt",
+          "action": "modify",
+          "sha256": "b8e9561de3260705a359f5b285f587b02ca719fb04272eb796cde8a3a1989f23",
+          "size": 48235,
+          "source_sha256": "5022c9cfb431d22b73ab600f994d632a8b2c7d4f5e813af1c965d253ee7dc3ae",
+          "source_size": 43189
+        },
+        {
+          "path": "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeTransferModels.kt",
+          "action": "modify",
+          "sha256": "8fe813934985424b68e6c43f1aadff90ee82484cd4af8056a9c7f42c79c4e518",
+          "size": 2649,
+          "source_sha256": "37076e56d12153e9009122b398c54294213db2c7934dbc6c05cc82f02f2fdd40",
+          "source_size": 2613
+        }
+      ]
+    },
+    "validation": {
+      "script": ".devtool-artifact/validate_phase2_download_execution.sh",
+      "script_sha256": "8d8b98f529710ae22d6ec815ce023a29b7d0d8aca0bb52f5f47cdc9568c857ec"
+    },
+    "requires": {
+      "baseline": "Phase 1 r5 external-control/secrets/privacy landed state"
+    },
+    "phase": {
+      "id": "bug-hunt-phase-2",
+      "title": "Download Execution Correctness",
+      "revision": 1
+    }
+  },
+  "history_id": "f5011d0696d244aaaa7377e132b26b34"
+}

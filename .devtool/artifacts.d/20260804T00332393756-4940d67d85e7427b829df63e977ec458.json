@@ -1,0 +1,144 @@
+{
+  "applied_at": "2026-08-04T00:33:23.937564Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_bug_hunt_phase6_database_integrity_migrations_r2_overlay.zip",
+  "artifact_name": "xdm_android_bug_hunt_phase6_database_integrity_migrations_r2_overlay.zip",
+  "type": "overlay",
+  "sha256": "e98505c65f0a00efc3b1e4ba6b35e568f8b296359205714373699a7a7bd8c200",
+  "status": "failed",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 15,
+  "change_counts": {
+    "add": 4,
+    "modify": 11
+  },
+  "manifest": {
+    "schema_version": 1,
+    "type": "devtool-overlay",
+    "name": "xdm_android_bug_hunt_phase6_database_integrity_migrations_r2_overlay",
+    "target": "xdm_android",
+    "repository": "xdm",
+    "workspace": "app/XDM.Android",
+    "description": "Phase 6 r2 database integrity runtime wiring hotfix over Phase 5 r2 baseline.",
+    "base_chain": [
+      "phase1_r5",
+      "phase2_r2",
+      "phase3_r2",
+      "phase4_r2",
+      "phase5_r2"
+    ],
+    "commit_message": "Phase 6 r2: wire database integrity guards into runtime writers",
+    "validation": {
+      "mode": "disabled",
+      "script": ".devtool-artifact/validate_phase6_database_integrity_r2.py",
+      "script_sha256": "f0ccd2d9ef4b8357a8bcf1b4097a0986d00d29722fe1bcb98b2e9e9b995da12e"
+    },
+    "inventory": {
+      "entries": [
+        {
+          "action": "modify",
+          "path": "CHANGELOG.md",
+          "sha256": "241eb404abe0e5d20c14c9d597959ba62395229de8a9c9470d752c720ba6f9bd",
+          "size": 59982,
+          "source_sha256": "864cee654d41275ee3f2e69a2be6b8a7bcb59383451fd083640ebb6ae6455455"
+        },
+        {
+          "action": "modify",
+          "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+          "sha256": "dca50fb9eef60fd974a6e49a045b96e67e6c055486e4fe0c9cc0097dc63e2217",
+          "size": 122602,
+          "source_sha256": "ef09bdbc67f8345709d0911bc8582050a6ed6c2f539b0a89bb8f53bf99a607f2"
+        },
+        {
+          "action": "modify",
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "sha256": "fc72417e39c3a247170e1481cfaf9a799a5ff7d45579f0c1f6ff603ec785a334",
+          "size": 117477,
+          "source_sha256": "e30ac1940c2aeddfac01f8e3f9e20462369b0bc88bc25dbb5009801a062a9c98"
+        },
+        {
+          "action": "modify",
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/AutomationModels.kt",
+          "sha256": "2500e07fa80804278460c827057e2977f619fedccaffb08515e97bc55f415989",
+          "size": 13500,
+          "source_sha256": "f12ba9a32d395d923ddf5644cb9ef0cefa059e1cffc00efa50b0262c8f0fbefd"
+        },
+        {
+          "action": "add",
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DatabaseIntegrityModels.kt",
+          "sha256": "b0c639009f88215cab4eb0b6b408f0b2303d14f191569c94d9eaa45e8f274c32",
+          "size": 6761
+        },
+        {
+          "action": "add",
+          "path": "app/XDM.Android/docs/audits/BUG-HUNT-REMEDIATION-PHASE-6.md",
+          "sha256": "d98a91238b583212e829cf435ddb5f5467534f30900b4a4e78f020e1fdb8ee6c",
+          "size": 2418
+        },
+        {
+          "action": "modify",
+          "path": "app/XDM.Android/persistence/src/androidTest/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabaseMigrationTest.kt",
+          "sha256": "9c3ee15b170f462d2476773c7a8e00a66ff0121123446c29c1ff9fd1fe221847",
+          "size": 22871,
+          "source_sha256": "7ec4910cabffb7024680e1f969a790648de3b0a05c78ccde1dfe89a6bfd3dae4"
+        },
+        {
+          "action": "modify",
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt",
+          "sha256": "77d06d620fb8282d8fbfa5a1bfce91de20fc40c1af5337dbb59231847c798c52",
+          "size": 2124,
+          "source_sha256": "2a33ba4715278b5ede936c8e2e3cdc03918fb7f8acb84110b5008818126dc7a4"
+        },
+        {
+          "action": "add",
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadGraphTransactionDao.kt",
+          "sha256": "2c040b9d95ee4fb495bf6268fa9ef242ff2910645caedbd175b1a94b6a9ece39",
+          "size": 14269
+        },
+        {
+          "action": "modify",
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+          "sha256": "6f66b13c5bdf2841f3c6904709a67c48264cdb7ad5430239c10afd01dbec85df",
+          "size": 23507,
+          "source_sha256": "a513171960290d1ca804ce4ed7a39f74ee11231c1f8932c0b8977f9ca5455a45"
+        },
+        {
+          "action": "modify",
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+          "sha256": "948f76b15499dbfae3fa3c0640017fbd09bea357bf950507f3ac35922b974b64",
+          "size": 19754,
+          "source_sha256": "05c9767bd17ff427e3bc5b236fb780af53268a753a0701e236e3cf53b7bba4b5"
+        },
+        {
+          "action": "modify",
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/RoomBackendMigrationStore.kt",
+          "sha256": "ecd61728ea1e090a530226e02534e238ec69e05b3381afc7e68ccde88b542242",
+          "size": 2496,
+          "source_sha256": "b13b4f284a370cae9f2d067e443d3e38b0b2bd66d7987281f63143cc83a93dcb"
+        },
+        {
+          "action": "modify",
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/RoomBackendOwnershipStore.kt",
+          "sha256": "3b683e86a77d96ce873f62c905584b8e5e3898225660cb01d149631deffd90e6",
+          "size": 13964,
+          "source_sha256": "ad8f701fba70f108ef1efd41c59bab1488773dfec0e2d04f46e5d515568b5616"
+        },
+        {
+          "action": "add",
+          "path": "app/XDM.Android/persistence/src/test/kotlin/com/mikeyphw/xdm/android/persistence/BugHuntPhase6DatabaseIntegrityContractTest.kt",
+          "sha256": "4a07f35794b681f82239fa40cb6b8266c7de7edf8ad467f92571612a4b1bbd96",
+          "size": 6160
+        },
+        {
+          "action": "modify",
+          "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt",
+          "sha256": "687f79c1b5c1697e63d28e67ff7c182517f7e6f9eacdc47ded4476ae985c6146",
+          "size": 18767,
+          "source_sha256": "5983be233ae25d3675ae1ce10f0e27b044dff3f3f58dc6bd9b09879dcb7e6de3"
+        }
+      ]
+    }
+  },
+  "history_id": "4940d67d85e7427b829df63e977ec458"
+}

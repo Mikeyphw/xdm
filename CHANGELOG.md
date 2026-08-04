@@ -1,4 +1,42 @@
 
+## Bug Hunt Remediation Phase 4 - Queue, Scheduling, And State Machines
+
+- Added queue state-machine models for start-only, ongoing, and drain-only constraints.
+- Added atomic queue-slot reservation, global concurrency/bandwidth budget modeling, durable Pause All holds, fail-closed schedule-window validation, failure-generation retry deadlines, and queue deletion anti-dangling plans.
+- Added system stop-reason records for WorkManager and user-initiated JobScheduler execution, including Android 16 pending-job reason and history fields for final diagnostics.
+- Added typed recovery operations, concrete artifact identities, and typed blocked outcomes so Recovery Doctor flows cannot silently convert unsafe records into blind queue starts.
+- Added idempotent terminal-notification records, recovery review routing, Dismiss copy, and notification-permission denial state.
+
+## XDM Android Bug Hunt Remediation Phase 1 r4 — External Control, Secrets, and Privacy
+
+## Android Bug Hunt Phase 2 - Download Execution Correctness
+
+- Serialized transfer execution ownership with per-download command generations.
+- Added durable Pause/Cancel intent before backend lookup so controls are not lost during backend preparation.
+- Made failed backend retry create a fresh attempt instead of re-observing an old failed task.
+- Hardened WorkManager, UIDT JobService, and foreground-service stop paths to pause or preserve live work.
+- Hardened aria2 pause/resume/cancel/remove so ownership is released only after confirmed RPC/session persistence.
+- Hardened native HTTP resume with validator disappearance checks, effective-URL validation, `If-Range`, completed-segment normalization, expected-length enforcement, request-header parity, retry-after/backoff, active-call cleanup, and HTML/compression rejection.
+
+
+- Supersedes the failed Phase 1, Phase 1 r2, and Phase 1 r3 overlays against the pre-Phase-1 baseline.
+- Keeps the complete Phase 1 implementation plus r2 query-redaction precision fixes and r3's JVM-safe cleartext-policy boundary.
+- Fixes `:scheduler:testDebugUnitTest` by aligning `CompletedNotificationOpenFileContractTest` with the narrowed FileProvider architecture: `OpenDownloadedFileActivity` delegates URI ownership checks and grants to `CompletedFileGrantPolicy`.
+- Keeps production and instrumented Android behavior on the real platform `NetworkSecurityPolicy`, while avoiding local unit-test false failures in native segmented, retry, checkpoint, and content-range tests.
+
+## XDM Android Bug Hunt Remediation Phase 1 r2 — External Control, Secrets, and Privacy
+
+- Rebuilt the complete Phase 1 overlay after `:core-model:test` exposed query over-redaction: public parameters such as `quality=1080` were incorrectly replaced alongside credential values.
+- Redacts only structurally identified credential query names, including percent-encoded names and common signed-URL key forms, while preserving public fields and avoiding substring false positives such as `author` and `monkey`.
+- Added focused regressions across durable URL persistence, release diagnostics, and Debug Workbench export redaction.
+- Moved exported automation into a dedicated review/authentication surface; launcher `MainActivity` no longer accepts public queue-control or download-mutation actions.
+- Added one-use internal dispatch capabilities, a user-created integration secret verifier, explicit caller identity separation, and confirmation for untrusted or private-network handoffs.
+- Added encrypted Android Keystore request envelopes bound to subject, host, expiry, attempt generation, and explicit private/cleartext approvals; durable Room records retain only redacted URLs and summaries.
+- Added restrictive production network security, HTTPS-to-HTTP credential stripping/blocking, private/loopback target guards, sensitive clipboard handling, backup/device-transfer exclusions, persistence scrubbing, and independent support redaction.
+- Narrowed completed-file FileProvider roots and validates completed-artifact ownership before issuing grants.
+- Added JVM, Android instrumentation, migration, source-contract, and embedded Devtool validation for the complete remediation phase.
+
+
 ## XDM Android Phase 65 Diagnostic Export / Download Action Fix
 
 - Added Android share-sheet export actions for redacted support and runtime self-test reports.
@@ -608,3 +646,76 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Fixed the runtime self-test redaction smoke so it uses the existing key-aware DebugRedactor path for Authorization and Cookie values.
 - Preserved the D6 read-only boundary and kept missing browser/device/session state as notes instead of failures.
 - Added validator coverage for the redaction-smoke regression that caused the r2 app unit-test failure.
+
+## Android Bug Hunt Phase 1 r4
+
+- Supersedes Phase 1, r2, and r3 after Devtool rolled each back during focused validation.
+- Fixes `CompletedNotificationOpenFileContractTest.trampolineIsNonExportedAndUsesTemporaryReadGrant` by updating the source contract to match the Phase 1 FileProvider hardening architecture: `OpenDownloadedFileActivity` delegates grant resolution to `CompletedFileGrantPolicy`, and that policy owns the narrow FileProvider root check plus temporary read grant URI creation.
+- Keeps the full Phase 1 implementation from r3, including r2 query-redaction precision and the JVM-safe `NetworkSecurityPolicy` boundary.
+
+## XDM Android Bug Hunt Phase 1 r5 validation-contract hotfix
+
+- Supersedes Phase 1 r4 after Devtool rollback at `:app:testDebugUnitTest`.
+- Preserves the full Phase 1 security/privacy implementation, r2 key-aware query redaction, r3 JVM-safe `NetworkSecurityPolicy` boundary, and r4 narrowed FileProvider grant policy.
+- Restores the existing browser-removal and external-download handoff contracts required by app unit tests:
+  - `ExternalAddDownloadActivity` again reuses `MainActivity`'s Compose shell.
+  - `MainActivity` again owns review-first external Add/Media handoff parsing while ignoring non-external launcher intents.
+  - Custom-scheme rejection still returns before generic Sharesheet/VIEW parsing.
+  - handoff MIME type, content length, page URL, subject, shared text, and ClipData are preserved for review.
+- Keeps Room schema at v14 because Phase 1 durable request envelopes are app-private/no-backup encrypted files rather than Room tables.
+- Restores the process-local handoff marker without reintroducing raw cookie persistence.
+
+
+## XDM Android Bug Hunt Phase 3: Storage, Publication, Verification, and Repair
+
+- Adds journaled destination publication contracts for filesystem, SAF, and MediaStore paths.
+- Records explicit publication commit boundaries, committed URI, attempt/artifact generation, and checksum metadata fields.
+- Switches MediaStore conflict lookup to exact relative-path matching and verifies publication update count, pending state, and final size.
+- Adds strict checksum input parsing for user-provided SHA-256/SHA-512 values.
+- Hardens selective repair so partial repairs require HTTP 206, exact Content-Range, exact length, If-Range, no trailing bytes, and temporary-artifact promotion.
+- Adds Phase 3 audit documentation, app contract tests, and validator coverage.
+- JSON artifact manifest includes commit_message: Phase 3: harden storage publication, verification, and selective repair.
+
+## XDM Android Bug Hunt Remediation Phase 4 r2 - Runtime wiring hotfix
+
+- Rebuilt Phase 4 as a runtime-wired overlay instead of a scaffold-only contract slice.
+- Added `FileBackedQueueSchedulingRecoveryStore`, an app-private fsynced evidence store for queue commands, queue-slot reservations, system stop reasons, immediate reevaluations, recovery plans, terminal-notification idempotency, and queue-deletion plans.
+- Wired `XdmApplication` to expose `QueueSchedulingRecoveryProvider` and install a persistent root for stop-reason records.
+- Wired queue admission through `QueueStateMachinePlanner.reserveSlotAtomically(...)` and persisted each accepted or rejected reservation before claiming work.
+- Wired Pause All from the UI, notification receiver, foreground service timeout/destruction path, and WorkManager stop path so the durable hold is written before `runtime.pauseAll()`.
+- Replaced raw queue deletion with `deleteQueueSafely(...)`, recording reject-or-reassign plans to avoid dangling references.
+- Added terminal notification `terminalIfFirst(...)` so completed/failed/recovery terminal notifications pass through a persisted idempotency gate before dispatch.
+- Wired notification permission-denial state into active-notification copy.
+- Extended Phase 4 validator and contract tests so a scaffold-only implementation cannot pass again.
+
+
+## XDM Android Bug Hunt Remediation Phase 5
+
+- Added browser handoff/media sniffing runtime wiring: page URL sniffing from Media, bounded prefix reads, preserved session headers, stable media session revisions, iframe-aware referer, evidence-based DRM classification, explicit media transfer shapes, and backend fallback provenance contracts.
+
+## Bug Hunt Remediation Phase 5 r2
+
+- Fixed invalid Kotlin raw CR/LF character literals in `MediaSniffingEngine`.
+- Ensured `MediaDownloadPlanner` has a single `selectedMimeType` declaration.
+- Wired browser handoff stable media ID, session revision, frame URL, proposed headers, final headers, and page-observation proof fields into Android custom-scheme and intent intake.
+- Added an app-private file-backed browser handoff media session store.
+- Strengthened the Phase 5 validator so syntax blockers and scaffold-only handoff markers cannot pass.
+
+## XDM Android Bug Hunt Phase 6 - Database Integrity And Migrations
+
+- Added transactional download graph deletion across download metadata, progress, queues, media captures, variants, automation, journals, aria2 ownership, recovery, and notification records.
+- Added compare-and-swap download update hook for runtime writers that must not overwrite newer state.
+- Added transactional media variant replacement that removes obsolete variants, updates variant counts, and invalidates disappeared selections.
+- Added durable automation command states and stateful persistence mapping from legacy Accepted/Executed rows to Received/Applied.
+- Fixed the 5-to-6 migration so legacy aria2 mappings are preserved as RecoveryRequired rows with LEGACY_SCHEMA evidence.
+- Added Phase 6 source-contract tests and validator coverage for migration/schema integrity.
+
+## XDM Android Bug Hunt Phase 6 r2 - Runtime Database Integrity Wiring
+
+- Replaced raw download upsert writes with stale-write guarded repository saves backed by `upsertDownloadPreservingNewerState`.
+- Wired automation commands through `Received/Accepted -> Claimed -> Executing` before MainViewModel side effects and terminal updates.
+- Routed queue reassignment deletion through the transactional `reassignQueueThenDelete` helper instead of manual row-by-row saves.
+- Hardened stored enum parsing for downloads, backends, destination health, media captures, variants, saved searches, and automation records.
+- Strengthened Phase 6 tests and the embedded validator so marker-only implementations cannot pass.
+
+- Hardened backend ownership/migration store enum parsing so malformed persisted backend evidence cannot crash model conversion.
