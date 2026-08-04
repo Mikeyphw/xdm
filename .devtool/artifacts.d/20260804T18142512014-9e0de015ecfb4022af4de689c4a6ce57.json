@@ -1,0 +1,82 @@
+{
+  "applied_at": "2026-08-04T18:14:25.120141Z",
+  "artifact": "/home/mike/Downloads/xdm_android_phase11_operational_activity_exhaustive_status_hotfix_overlay.zip",
+  "artifact_name": "xdm_android_phase11_operational_activity_exhaustive_status_hotfix_overlay.zip",
+  "type": "overlay",
+  "sha256": "61ae78402613d418da0704fb01ef57433e76067e86980057fc8555c5d950035e",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Fix XDM OperationalActivity automation status exhaustiveness",
+  "commit_hash": "",
+  "file_count": 1,
+  "change_counts": {
+    "modify": 1
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Phase 11 OperationalActivity Exhaustive Status Hotfix Overlay",
+    "description": "Fixes core-model Kotlin compilation by handling all durable AutomationCommandStatus branches in OperationalActivity activity severity and labels.",
+    "target": "xdm_android",
+    "workspace": {
+      "root": "app/XDM.Android"
+    },
+    "apply": {
+      "atomic": true,
+      "path_policy": "repository-relative",
+      "conflict_policy": "fail",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "message": "Fix XDM OperationalActivity automation status exhaustiveness",
+        "strategy": "single"
+      }
+    },
+    "validation": {
+      "mode": "required",
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "rollback_on_failure": true,
+      "failure_action": "rollback",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate.sh",
+        "runner": "bash",
+        "sha256": "c0f7c484fb7b8824592c7ef7456a9e5b005d7e20f16dffadb928a2b84a345368",
+        "timeout_seconds": 120
+      },
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass"
+      }
+    },
+    "inventory": {
+      "format": 1,
+      "exhaustive": true,
+      "entries": [
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/OperationalActivity.kt",
+          "action": "modify",
+          "source_sha256": "0a5ea79a968e5e391f6ed36f9afa6d92b82dd593362504c7aa8a8067b6266dc3",
+          "sha256": "3f5a93c68449555f6064389ef33942436b9b1e894555201667761b3fb31b1461",
+          "size": 21663
+        }
+      ]
+    },
+    "metadata": {
+      "source_commit": "dcb6261",
+      "roadmap_phase": "11",
+      "hotfix": true,
+      "failure": ":core-model:compileKotlin non-exhaustive AutomationCommandStatus when expressions",
+      "payload_files": 1,
+      "room_schema": 17,
+      "version_name": "0.21.0"
+    }
+  },
+  "history_id": "9e0de015ecfb4022af4de689c4a6ce57"
+}

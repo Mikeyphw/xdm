@@ -278,9 +278,13 @@ object OperationalActivityPlanner {
 
     private fun handoffEvent(record: AutomationCommandRecord): OperationalActivityEvent {
         val severity = when (record.status) {
+            AutomationCommandStatus.Received,
+            AutomationCommandStatus.Claimed,
+            AutomationCommandStatus.Executing,
+            AutomationCommandStatus.Duplicate -> OperationalActivitySeverity.Info
+            AutomationCommandStatus.Applied,
             AutomationCommandStatus.Accepted,
             AutomationCommandStatus.Executed -> OperationalActivitySeverity.Success
-            AutomationCommandStatus.Duplicate -> OperationalActivitySeverity.Info
             AutomationCommandStatus.Rejected -> OperationalActivitySeverity.Warning
             AutomationCommandStatus.Failed -> OperationalActivitySeverity.Error
         }
@@ -387,6 +391,10 @@ object OperationalActivityPlanner {
     }
 
     private fun handoffStatusLabel(status: AutomationCommandStatus): String = when (status) {
+        AutomationCommandStatus.Received -> "received"
+        AutomationCommandStatus.Claimed -> "claimed"
+        AutomationCommandStatus.Executing -> "executing"
+        AutomationCommandStatus.Applied -> "applied"
         AutomationCommandStatus.Accepted -> "accepted"
         AutomationCommandStatus.Executed -> "executed"
         AutomationCommandStatus.Duplicate -> "already added"
