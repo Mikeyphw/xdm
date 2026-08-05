@@ -7,11 +7,11 @@ import org.junit.Test
 class Phase9AdaptiveAccessibilityPolicyTest {
     @Test
     fun twoPaneDownloadsRequireEnoughWidthHeightAndNoSeparatingHinge() {
-        assertTrue(XdmAdaptiveLayoutPolicy.twoPaneDownloadsAllowed(widthDp = 1180f, heightDp = 820f))
+        assertTrue(XdmAdaptiveLayoutPolicy.twoPaneDownloadsAllowed(widthDp = 1280f, heightDp = 820f))
         assertFalse(XdmAdaptiveLayoutPolicy.twoPaneDownloadsAllowed(widthDp = 840f, heightDp = 820f))
-        assertFalse(XdmAdaptiveLayoutPolicy.twoPaneDownloadsAllowed(widthDp = 1180f, heightDp = 480f))
-        assertFalse(XdmAdaptiveLayoutPolicy.twoPaneDownloadsAllowed(widthDp = 1180f, heightDp = 820f, foldPosture = XdmFoldPosture.SeparatingHinge))
-        assertFalse(XdmAdaptiveLayoutPolicy.twoPaneDownloadsAllowed(widthDp = 1180f, heightDp = 820f, fontScale = 2.0f))
+        assertFalse(XdmAdaptiveLayoutPolicy.twoPaneDownloadsAllowed(widthDp = 1280f, heightDp = 480f))
+        assertFalse(XdmAdaptiveLayoutPolicy.twoPaneDownloadsAllowed(widthDp = 1280f, heightDp = 820f, foldPosture = XdmFoldPosture.SeparatingHinge))
+        assertFalse(XdmAdaptiveLayoutPolicy.twoPaneDownloadsAllowed(widthDp = 1280f, heightDp = 820f, fontScale = 2.0f))
     }
 
     @Test

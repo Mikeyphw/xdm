@@ -20,7 +20,7 @@ class BugHuntPhase8DownloadActionsUiTruthfulnessContractTest {
         assertTrue(manager.contains("DocumentsContract.deleteDocument"))
         assertTrue(manager.contains("safeOwnedFile"))
         assertTrue(viewModel.contains("queueIntelligenceCoordinator.requestStart"))
-        assertTrue(viewModel.contains("repository.deleteDownload(current.id)"))
+        assertTrue(viewModel.contains("repository.deleteDownload"))
         assertTrue(viewModel.contains("repository.finalizationForDownload(current.id)"))
         assertTrue(viewModel.contains("destinationUri = originalDestination"))
         assertTrue(viewModel.contains("inspectResumeCapability"))

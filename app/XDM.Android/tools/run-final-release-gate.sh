@@ -25,6 +25,22 @@ validators=(
   tools/verify-phase10-backup-policy.py
   tools/validate-phase58-runtime-recovery-execution-guard.py
   tools/validate-phase61-final-gate-validator-harmony.py
+  tools/validate-phase65-diagnostic-export-download-action-fix.py
+  tools/validate-phase64-final-android-downloader-rc-seal.py
+  tools/validate-phase63-release-readiness-support-bundle-seal.py
+  tools/validate-phase62-real-device-operational-smoke-seal.py
+  tools/validate-phase60-runtime-recovery-flow-seal.py
+  tools/validate-phase59-runtime-recovery-action-transparency.py
+  tools/validate-phase57-runtime-failure-recovery-ux.py
+  tools/validate-phase56-stale-copy-architecture-noise-sweep.py
+  tools/validate-phase55-final-release-warning-explainer.py
+  tools/validate-media-mobile-polish.py
+  tools/validate-media-final-validation-gate.py
+  tools/validate-phase-34-release-handoff.py
+  tools/validate-phase-35-release-candidate-polish.py
+  tools/validate-phase-36-external-download-handoff.py
+  tools/validate-browser-removal-phase-4.py
+  tools/validate-browser-removal-phase-5.py
   tools/validate-bug-hunt-phase11-validation-matrix.py
 )
 

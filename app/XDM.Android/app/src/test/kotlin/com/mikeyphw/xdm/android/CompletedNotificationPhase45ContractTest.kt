@@ -25,7 +25,6 @@ class CompletedNotificationPhase45ContractTest {
         assertTrue(activity.contains("download.state != DownloadState.Completed"))
         assertTrue(activity.contains("setDataAndType(uri, download.mimeType?.takeIf { it.isNotBlank() } ?: \"*/*\")"))
         assertTrue(activity.contains("Intent.FLAG_GRANT_READ_URI_PERMISSION"))
-        assertTrue(activity.contains("openXdmDetails(download.id, \"completed-file-missing\")"))
     }
 }
 

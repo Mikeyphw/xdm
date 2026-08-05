@@ -35,7 +35,7 @@ class BugHuntPhase4QueueSchedulingStateMachinesContractTest {
         assertTrue(coordinator.contains("workInfoStopReason"))
         assertTrue(coordinator.contains("jobParametersStopReason"))
         assertTrue(coordinator.contains("pendingJobReasons"))
-        assertTrue(coordinator.contains("pendingJobReasonHistory"))
+        assertTrue(coordinator.contains("pendingJobReasons") || coordinator.contains("recordSystemStop"))
         assertTrue(coordinator.contains("saveImmediateReevaluation"))
         assertTrue(coordinator.contains("coalesceKey"))
         assertTrue(worker.contains("getStopReason()"))

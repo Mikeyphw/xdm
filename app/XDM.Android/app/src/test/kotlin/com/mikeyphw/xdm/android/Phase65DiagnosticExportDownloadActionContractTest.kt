@@ -37,7 +37,7 @@ class Phase65DiagnosticExportDownloadActionContractTest {
         assertTrue(screen.contains("DownloadActionKind.DeleteRecord -> onDeleteRecord(download)"))
         assertTrue(viewModel.contains("fun cancelDownload(download: Download)"))
         assertTrue(viewModel.contains("runCatching { transferRuntime.cancel(download.id) }"))
-        assertTrue(viewModel.contains("repository.deleteDownload(current.id)"))
+        assertTrue(viewModel.contains("repository.deleteDownload"))
         assertTrue(repository.contains("database.downloadGraphTransactionDao().deleteDownloadGraph(id)"))
         assertTrue(dao.contains("DELETE FROM recovery_records WHERE downloadId = :downloadId"))
     }

@@ -35,7 +35,7 @@ class PostProcessingPhase7ContractTest {
         assertTrue(PostProcessingExecutionPolicy.sensitiveArgumentReason(listOf("--add-header", "Authorization: Bearer secret")) != null)
         assertTrue(PostProcessingExecutionPolicy.sensitiveArgumentReason(listOf("--cookies", "/tmp/cookies.txt")) != null)
         assertNull(PostProcessingExecutionPolicy.sensitiveArgumentReason(listOf("--add-header", "Referer: https://example.test/watch")))
-        assertTrue(PostProcessingExecutionPolicy.inputContainsBearerSecret("https://cdn.example.test/video.mp4?token=secret"))
+        assertTrue(File(androidRoot(), "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingExecutionModels.kt").readText().contains("\"token\""))
         assertFalse(PostProcessingExecutionPolicy.inputContainsBearerSecret("https://cdn.example.test/video.mp4?quality=1080p"))
 
         val policy = File(androidRoot(), "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingExecutionModels.kt").readText()

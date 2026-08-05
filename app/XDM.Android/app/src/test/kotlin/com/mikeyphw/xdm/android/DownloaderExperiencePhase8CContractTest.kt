@@ -90,7 +90,7 @@ class DownloaderExperiencePhase8CContractTest {
         val build = File(root, "app/build.gradle.kts").readText()
         assertTrue(database.contains("version = 17"))
         assertTrue(build.contains("versionCode = 22"))
-        assertTrue(build.contains("versionName = \"0.20.0-rc08\""))
+        assertTrue(build.contains("versionName = \"0.21.0\""))
         listOf(
             "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt",
             "transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt",

@@ -25,7 +25,7 @@ class MediaBatchPhase46ContractTest {
         assertTrue(source.contains("MediaBatchIntakePlanner"))
         assertTrue(source.contains("captureMediaBatchInput"))
         assertTrue(source.contains("repository.saveMediaCaptures"))
-        assertTrue(source.contains("repository.saveMediaVariants"))
+        assertTrue(source.contains("repository.replaceMediaVariants"))
     }
 
     private fun androidRoot(): File {

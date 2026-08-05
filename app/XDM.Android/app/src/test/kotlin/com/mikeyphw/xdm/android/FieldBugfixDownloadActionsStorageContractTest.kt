@@ -47,11 +47,11 @@ class FieldBugfixDownloadActionsStorageContractTest {
         val runtime = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt")
         val native = source("transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt")
         assertTrue(intake.contains("val requestHeaders: Map<String, String> = emptyMap()"))
-        assertTrue(viewModel.contains("transientSessionHeaders(draft.rawHeaders, draft.pageUrl)"))
+        assertTrue(viewModel.contains("transientSessionHeaders(") && viewModel.contains("rawHeaders = draft.rawHeaders"))
         assertTrue(viewModel.contains("MediaRequestHandoffStore.rememberCapture"))
         assertTrue(viewModel.contains("MediaRequestHandoffStore.forgetCapture(record.id)"))
         assertTrue(viewModel.contains("headers = externalSessionHeaders"))
-        assertTrue(handoff.contains("process-local handoff") && handoff.contains("captureHandoffs"))
+        assertTrue(handoff.contains("process-local handoff") && handoff.contains("CAPTURE_PREFIX"))
         assertTrue(runtime.contains("headers = mediaHandoff?.headers.orEmpty()"))
         assertTrue(native.contains("applyBrowserLikeDefaults(request)") && native.contains("Authentication required"))
     }
