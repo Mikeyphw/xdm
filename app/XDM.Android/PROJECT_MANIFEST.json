@@ -2156,6 +2156,7 @@
     "debug_workbench_reopened": false,
     "final_android_downloader_rc_sealed": true,
     "name": "Final Android Downloader RC Seal",
+    "current_overlay": "xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip",
     "overlay": "xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip",
     "persisted_session_values": false,
     "release_criteria_changed": false,

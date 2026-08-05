@@ -15,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.io.path.createTempDirectory
 
 // Phase 4: Queue, Scheduling, And State Machines
 class QueueSchedulingRecoveryCoordinatorTest {
@@ -76,7 +77,7 @@ class QueueSchedulingRecoveryCoordinatorTest {
     }
 
     @Test fun fileBackedStorePersistsTerminalIdempotencyAcrossInstances() {
-        val root = createTempDir(prefix = "xdm-phase4-store")
+        val root = createTempDirectory(prefix = "xdm-phase4-store").toFile()
         try {
             val first = QueueSchedulingRecoveryCoordinator(FileBackedQueueSchedulingRecoveryStore(root))
             val second = QueueSchedulingRecoveryCoordinator(FileBackedQueueSchedulingRecoveryStore(root))

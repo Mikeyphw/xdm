@@ -78,8 +78,8 @@ data class XdmWindowProfile(
         get() = downloadsListMinWidth + downloadsDetailMinWidth + minimumPaneGap + 40.dp
 
     fun allowsTwoPaneDownloadsFor(availablePaneWidth: Dp): Boolean {
-        if (!allowsExpandedShell || isShort || hasSeparatingFold) return false
-        return availablePaneWidth >= requiredDownloadsPaneWidth
+        if (!allowsExpandedShell || isShort || isVeryLargeFont || hasSeparatingFold) return false
+        return availablePaneWidth >= requiredDownloadsPaneWidth && availablePaneWidth >= 900.dp
     }
 
     val allowsTwoPaneDownloads: Boolean

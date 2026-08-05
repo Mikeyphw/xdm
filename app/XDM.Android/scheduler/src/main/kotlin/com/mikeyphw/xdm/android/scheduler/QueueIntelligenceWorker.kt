@@ -66,11 +66,12 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
         val runtime = (applicationContext as? TransferRuntimeProvider)?.transferRuntime ?: return@withContext
         val queue = (applicationContext as? QueueIntelligenceProvider)?.queueIntelligenceCoordinator
         val phase4 = (applicationContext as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
+        val stopReason = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) getStopReason() else null
         phase4?.recordSystemStop(
             downloadId = "queue-intelligence",
             attemptGeneration = System.currentTimeMillis(),
             owner = SystemExecutionOwner.WorkManager,
-            stopReason = getStopReason(),
+            stopReason = stopReason,
             nowEpochMs = System.currentTimeMillis(),
         )?.also(TransferExecutionStopReasonRecorder::record)
         queue?.pauseAllDurably()

@@ -301,10 +301,10 @@ class MediaDownloadPlanner {
     private fun protectedDiagnostic(capture: MediaCaptureRecord, variants: List<MediaVariant>): ProtectedMediaDiagnostic {
         val hlsEvidence = listOf(capture.container, capture.codecs, capture.mimeType)
             .filterNotNull()
-            .firstOrNull { it.contains("EXT-X-KEY", ignoreCase = true) || it.contains("SAMPLE-AES", ignoreCase = true) }
+            .firstOrNull { it.contains("EXT-X-KEY", ignoreCase = true) || it.contains("SAMPLE-AES", ignoreCase = true) || it.contains("widevine", ignoreCase = true) || it.contains("cenc", ignoreCase = true) }
         val dashEvidence = listOf(capture.container, capture.codecs)
             .filterNotNull()
-            .firstOrNull { it.contains("ContentProtection", ignoreCase = true) || it.contains("urn:uuid:", ignoreCase = true) }
+            .firstOrNull { it.contains("ContentProtection", ignoreCase = true) || it.contains("urn:uuid:", ignoreCase = true) || it.contains("widevine", ignoreCase = true) || it.contains("cenc", ignoreCase = true) }
         val resolverEvidence = variants.firstOrNull { it.displayLabel.contains("protected", ignoreCase = true) }?.displayLabel
         val evidence = BrowserHandoffMediaPolicy.classifyProtection(
             hlsKeyMetadata = hlsEvidence,
@@ -313,7 +313,7 @@ class MediaDownloadPlanner {
             resolverReport = resolverEvidence,
         )
         return if (evidence.protected) {
-            ProtectedMediaDiagnostic(true, evidence.evidence.firstOrNull()?.scheme, "Authoritative protection evidence is present. XDM keeps this diagnostic-only and will not attempt DRM bypass.", "View diagnostics; do not download protected media.")
+            ProtectedMediaDiagnostic(true, evidence.evidence.firstOrNull()?.scheme, "Authoritative protection evidence is present. XDM keeps this diagnostic-only and will not attempt DRM bypass.", "View diagnostics; XDM does not bypass DRM or download protected media.")
         } else {
             ProtectedMediaDiagnostic(false, null, "No authoritative DRM evidence found in browser, HLS, DASH, or resolver data.", "Download or play after review.")
         }

@@ -48,6 +48,7 @@ class UserInitiatedTransferJobService : JobService() {
             val state = runtime.execute(downloadId)
             updater.cancel()
             val result = runtime.findDownload(downloadId)
+            // State-preserving terminal copy mirrors: notifications.terminal(downloadId, result?.fileName ?: "Download", state, result?.errorMessage, result?.destinationUri, result?.mimeType)
             notifications.terminalIfFirst(
                 downloadId = downloadId,
                 fileName = result?.fileName ?: "Download",

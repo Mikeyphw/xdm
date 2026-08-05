@@ -1851,12 +1851,12 @@ class MainViewModel(
 
     private suspend fun resolveCapturedPlaylistIfPossible(
         record: MediaCaptureRecord,
-        exactUrl: String,
+        probeUrl: String,
         requestHeaders: Map<String, String>,
         now: Long = System.currentTimeMillis(),
     ): Pair<MediaCaptureRecord, List<MediaVariant>> {
         if (record.kind != MediaSourceKind.HlsPlaylist && record.kind != MediaSourceKind.DashManifest) return record to emptyList()
-        val plan = mediaPageProbe.probePage(exactUrl, pageTitle = record.title, requestHeaders = requestHeaders)
+        val plan = mediaPageProbe.probePage(probeUrl, pageTitle = record.title, requestHeaders = requestHeaders)
         val sameCaptureVariants = plan.variants.filter { it.captureId == record.id }
         val acceptedVariants = sameCaptureVariants.ifEmpty {
             if (plan.records.size == 1 && plan.variants.isNotEmpty()) {
@@ -2182,6 +2182,7 @@ class MainViewModel(
         )
         if (sniffingPlan.records.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
             val merged = sniffingPlan.records.map { record ->
                 val existing = repository.findMediaCapture(record.id)
                 if (existing?.downloadId != null) {
@@ -2189,10 +2190,10 @@ class MainViewModel(
                         status = existing.status,
                         downloadId = existing.downloadId,
                         createdAtEpochMs = existing.createdAtEpochMs,
-                        updatedAtEpochMs = System.currentTimeMillis(),
+                        updatedAtEpochMs = now,
                     )
                 } else {
-                    record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs)
+                    record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs, updatedAtEpochMs = now)
                 }
             }
             repository.saveMediaCapturesWithVariants(merged, sniffingPlan.variants, now)
@@ -2277,6 +2278,7 @@ class MainViewModel(
                         )
                     }
                 }
+                // saveMediaCapturesWithVariants preserves the old repository.saveMediaCaptures + repository.replaceMediaVariants contract atomically.
                 repository.saveMediaCapturesWithVariants(merged, plan.variants, now)
             }
             navigate(AppRoute.Media)
@@ -2449,7 +2451,7 @@ class MainViewModel(
             val now = System.currentTimeMillis()
             val (refreshed, variants) = resolveCapturedPlaylistIfPossible(
                 record = record.copy(sourceUrl = probeUrl),
-                exactUrl = probeUrl,
+                probeUrl = probeUrl,
                 requestHeaders = handoff?.headers.orEmpty(),
                 now = now,
             )

@@ -121,7 +121,7 @@ object XdmBrowserDeepLinkParser {
     }
 
     private fun Map<String, List<String>>.singleValue(name: String): String? {
-        val values = this[name] ?: return null
+        val values = this[name.lowercase(Locale.US)] ?: return null
         return values.singleOrNull()
     }
 

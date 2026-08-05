@@ -110,6 +110,8 @@ android {
             "GradleDependency",
             "MissingApplicationIcon",
             "OldTargetApi",
+            // XDM currently ships only the attested arm64-v8a aria2 runtime; ChromeOS x86_64 is unsupported until a matching payload is validated.
+            "ChromeOsAbiSupport",
             // Some existing checkouts still carry mipmap-anydpi-v26 launcher resources while minSdk is 26.
             // Treat this as a compatibility cleanup item instead of blocking unrelated media overlays.
             "ObsoleteSdkInt",

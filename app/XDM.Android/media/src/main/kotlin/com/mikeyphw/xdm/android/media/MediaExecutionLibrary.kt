@@ -322,10 +322,11 @@ class MediaExecutionLibraryPlanner(
 
     fun offlineLibraryItems(captures: List<MediaCaptureRecord>, downloads: List<Download>, variants: List<MediaVariant>): List<OfflineMediaLibraryItem> = captures.mapNotNull { capture ->
         val download = capture.downloadId?.let { id -> downloads.firstOrNull { it.id == id } } ?: return@mapNotNull null
-        val completedDownload = download.takeIf { it.state == DownloadState.Completed } ?: return@mapNotNull null
-        val playback = completedPlaybackUrl(completedDownload) ?: return@mapNotNull null
+        val completed = download.state == DownloadState.Completed
+        if (!completed && download.state !in retryableStates) return@mapNotNull null
+        val playback = download.takeIf { completed }?.let(::completedPlaybackUrl)
         val selectedIds = selectedTrackIds(capture, variants.filter { it.captureId == capture.id })
-        val sidecar = sidecar(capture, download.id, selectedIds, completedDownload.updatedAtEpochMs)
+        val sidecar = sidecar(capture, download.id, selectedIds, download.updatedAtEpochMs.takeIf { completed })
         OfflineMediaLibraryItem(
             captureId = capture.id,
             downloadId = download.id,
@@ -338,10 +339,10 @@ class MediaExecutionLibraryPlanner(
             state = download.state,
             detail = libraryDetail(capture, download),
             playbackUrl = playback,
-            isCompleted = true,
-            canPlayDirect = true,
-            canResume = false,
-            canRetry = false,
+            isCompleted = completed,
+            canPlayDirect = completed && playback != null,
+            canResume = download.state in resumableStates,
+            canRetry = download.state in retryableStates,
             sidecar = sidecar,
         )
     }.sortedWith(compareByDescending<OfflineMediaLibraryItem> { it.isCompleted }.thenBy { it.title.lowercase(Locale.US) })

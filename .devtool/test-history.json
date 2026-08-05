@@ -1,35 +1,3 @@
 {
-  "failed": [
-    "com.mikeyphw.xdm.android.ArchitectureContractTest.mediaFinalValidationGateContractsArePresent",
-    "com.mikeyphw.xdm.android.ArchitectureContractTest.termuxCommandRunnerAndOptionalRootFoundationContractsArePresent",
-    "com.mikeyphw.xdm.android.ArchitectureContractTest.browserRemovalPhaseFourRuntimeExcisionContractsArePresent",
-    "com.mikeyphw.xdm.android.ArchitectureContractTest.phaseThirtySixExternalDownloadHandoffContractsArePresent",
-    "com.mikeyphw.xdm.android.ArchitectureContractTest.phaseFourteenReleaseSafetyContractsArePresent",
-    "com.mikeyphw.xdm.android.ArchitectureContractTest.phaseThirtyFourReleaseHandoffContractsArePresent",
-    "com.mikeyphw.xdm.android.ArchitectureContractTest.uiUxPhaseThreeAndFourWorkflowContractsArePresent",
-    "com.mikeyphw.xdm.android.ArchitectureContractTest.phaseFifteenUxAccessibilityContractsArePresent",
-    "com.mikeyphw.xdm.android.ArchitectureContractTest.phaseThirtyFiveReleaseCandidatePolishContractsArePresent",
-    "com.mikeyphw.xdm.android.ArchitectureContractTest.phaseSeventeenFinalReleaseGateContractsArePresent",
-    "com.mikeyphw.xdm.android.ArchitectureContractTest.phaseSixteenPackagingRecoveryReadinessContractsArePresent",
-    "com.mikeyphw.xdm.android.BrowserRemovalPhase5ContractTest.browserOnlyPersistenceAndContractsAreGoneWhileDownloaderIntegrationSurvives",
-    "com.mikeyphw.xdm.android.BugHuntPhase4QueueSchedulingStateMachinesContractTest.schedulerRecordsSystemStopReasonsAndDurableReevaluation",
-    "com.mikeyphw.xdm.android.BugHuntPhase8DownloadActionsUiTruthfulnessContractTest.actionsUseRealCapabilitiesAndOffMainStorageBoundary",
-    "com.mikeyphw.xdm.android.CompletedNotificationPhase45ContractTest.completedOpenHandlerIsPrivateAndRevalidatesBeforeGrantingAccess",
-    "com.mikeyphw.xdm.android.DownloaderExperiencePhase8CContractTest.browserFreeDownloaderBoundaryAndStableStorageRemainSealed",
-    "com.mikeyphw.xdm.android.FieldBugfixDownloadActionsStorageContractTest.externalBrowserSessionHandoffStaysTransientAndFeedsRuntimeRequests",
-    "com.mikeyphw.xdm.android.MediaBatchPhase46ContractTest.viewModelRoutesBatchThroughMediaBatchPlanner",
-    "com.mikeyphw.xdm.android.Phase55FinalReleaseWarningExplainerContractTest.manifestDocsAndValidatorKeepReleaseBoundary",
-    "com.mikeyphw.xdm.android.Phase56StaleCopyArchitectureNoiseContractTest.manifestDocsAndValidatorsDescribeTheSweepBoundary",
-    "com.mikeyphw.xdm.android.Phase57RuntimeFailureRecoveryUxContractTest.phase57DoesNotAddDangerousPermissionsRoutesOrSchemaChanges",
-    "com.mikeyphw.xdm.android.Phase59RuntimeRecoveryActionTransparencyContractTest.phase59PreservesSealedBoundariesAndReleaseGate",
-    "com.mikeyphw.xdm.android.Phase60RuntimeRecoveryFlowSealContractTest.finalGatesRunPhase60AndEarlierValidatorsAcceptLaterOverlay",
-    "com.mikeyphw.xdm.android.Phase62RealDeviceOperationalSmokeSealContractTest.finalGatesRunPhase62AndEarlierValidatorsAcceptLaterOverlay",
-    "com.mikeyphw.xdm.android.Phase63ReleaseReadinessSupportBundleSealContractTest.finalGatesRunPhase63AndEarlierValidatorsAcceptLaterOverlay",
-    "com.mikeyphw.xdm.android.Phase64FinalAndroidDownloaderRcSealContractTest.finalGatesRunPhase64AndEarlierValidatorsAcceptFinalOverlay",
-    "com.mikeyphw.xdm.android.Phase64FinalAndroidDownloaderRcSealContractTest.finalRcManifestPreservesDownloaderOnlyBoundaries",
-    "com.mikeyphw.xdm.android.Phase65DiagnosticExportDownloadActionContractTest.downloadListActionsExposeCancelAndDeleteFromThreeDotMenu",
-    "com.mikeyphw.xdm.android.Phase9AdaptiveAccessibilityPolicyTest.twoPaneDownloadsRequireEnoughWidthHeightAndNoSeparatingHinge",
-    "com.mikeyphw.xdm.android.PostProcessingPhase7ContractTest.credentialsAreRejectedAndDurableMetadataDropsBearerUrls",
-    "com.mikeyphw.xdm.android.UixR6ReleaseSealContractTest.developerDiagnosticsStayLazyAndTheProductBoundaryDoesNotMove"
-  ]
+  "failed": []
 }

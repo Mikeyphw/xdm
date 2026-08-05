@@ -9,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.io.path.createTempDirectory
 
 class BrowserHandoffMediaCoordinatorTest {
     @Test fun rotatingSignedUrlRefreshesSameStableSession() {
@@ -48,7 +49,7 @@ class BrowserHandoffMediaCoordinatorTest {
     }
 
     @Test fun fileBackedStorePersistsFinalHeadersAndDeclaredStableId() {
-        val root = createTempDir(prefix = "xdm-browser-handoff")
+        val root = createTempDirectory(prefix = "xdm-browser-handoff").toFile()
         try {
             val coordinator = BrowserHandoffMediaCoordinator(store = FileBackedBrowserHandoffMediaSessionStore(root), clock = { 1_000 })
             val session = coordinator.rememberBrowserRevision(
