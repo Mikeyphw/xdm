@@ -325,8 +325,15 @@ class MediaSniffingEngine(
             )
         }
         val records = captureService.recordsFor(captureCandidates)
-        val variants = captureCandidates.flatMap(MediaCaptureCandidate::variants).distinctBy(MediaVariant::id)
-        val safeDiagnostics = diagnostics + diagnosticSummary(input, ranked)
+        val manifestVariants = captureCandidates.flatMap { candidate ->
+            parseInlineManifestVariants(candidate, input.bodyPrefix).ifEmpty { candidate.variants }
+        }
+        val variants = manifestVariants.distinctBy(MediaVariant::id)
+        val manifestDiagnostics = captureCandidates.mapNotNull { candidate ->
+            val parsedCount = parseInlineManifestVariants(candidate, input.bodyPrefix).size
+            parsedCount.takeIf { it > candidate.variants.size }?.let { "manifest-resolved-inline ${candidate.kind.name} variants=$it" }
+        }
+        val safeDiagnostics = diagnostics + manifestDiagnostics + diagnosticSummary(input, ranked)
         recordDebugSniff(input, ranked, records, variants, safeDiagnostics)
         return MediaSniffingPlan(
             candidates = ranked,
@@ -336,6 +343,27 @@ class MediaSniffingEngine(
         )
     }
 
+
+
+    private fun parseInlineManifestVariants(candidate: MediaCaptureCandidate, bodyPrefix: String?): List<MediaVariant> {
+        val body = bodyPrefix?.trimStart()?.takeIf(String::isNotBlank) ?: return emptyList()
+        val captureId = MediaCaptureService.captureIdFor(candidate.sourceUrl)
+        return when (candidate.kind) {
+            MediaSourceKind.HlsPlaylist -> if (body.startsWith("#EXTM3U", ignoreCase = true)) {
+                val parsed = captureService.parseHlsPlaylist(captureId, candidate.sourceUrl, body)
+                parsed.ifEmpty { candidate.variants }
+            } else {
+                emptyList()
+            }
+            MediaSourceKind.DashManifest -> if (body.contains("<MPD", ignoreCase = true)) {
+                val parsed = captureService.parseDashManifest(captureId, candidate.sourceUrl, body)
+                parsed.ifEmpty { candidate.variants }
+            } else {
+                emptyList()
+            }
+            else -> emptyList()
+        }
+    }
 
     private fun recordDebugSniff(
         input: MediaSniffingInput,

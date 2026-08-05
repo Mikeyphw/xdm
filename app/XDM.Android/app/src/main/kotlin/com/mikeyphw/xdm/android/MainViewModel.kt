@@ -52,6 +52,8 @@ import com.mikeyphw.xdm.android.model.DuplicateUrlRule
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaResolutionStatus
+import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.media.MediaCaptureService
 import com.mikeyphw.xdm.android.media.MediaCaptureIntakePlanner
 import com.mikeyphw.xdm.android.media.MediaBatchIntakePlanner
@@ -1847,6 +1849,37 @@ class MainViewModel(
         )
     }
 
+    private suspend fun resolveCapturedPlaylistIfPossible(
+        record: MediaCaptureRecord,
+        exactUrl: String,
+        requestHeaders: Map<String, String>,
+        now: Long = System.currentTimeMillis(),
+    ): Pair<MediaCaptureRecord, List<MediaVariant>> {
+        if (record.kind != MediaSourceKind.HlsPlaylist && record.kind != MediaSourceKind.DashManifest) return record to emptyList()
+        val plan = mediaPageProbe.probePage(exactUrl, pageTitle = record.title, requestHeaders = requestHeaders)
+        val sameCaptureVariants = plan.variants.filter { it.captureId == record.id }
+        val acceptedVariants = sameCaptureVariants.ifEmpty {
+            if (plan.records.size == 1 && plan.variants.isNotEmpty()) {
+                plan.variants.map { it.rekeyForCapture(record.id) }
+            } else {
+                emptyList()
+            }
+        }
+        return if (acceptedVariants.isNotEmpty()) {
+            mediaCaptureService.refreshRecordAfterResolution(record, acceptedVariants, now) to acceptedVariants
+        } else {
+            record.copy(
+                resolutionStatus = MediaResolutionStatus.RequiresRefresh,
+                updatedAtEpochMs = now,
+            ) to emptyList()
+        }
+    }
+
+    private fun MediaVariant.rekeyForCapture(captureId: String): MediaVariant {
+        val suffix = id.substringAfter(':', id).takeIf { it.isNotBlank() } ?: "variant"
+        return copy(id = "$captureId:$suffix", captureId = captureId)
+    }
+
     private suspend fun executeCaptureMediaCommand(command: AutomationCommandRecord, draft: AutomationCommandDraft, now: Long) {
         val text = draft.normalizedUrl ?: return repository.saveAutomationCommand(
             command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing media URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = now),
@@ -1870,15 +1903,22 @@ class MainViewModel(
             openExternalAddDraft(command, draft, "No media stream was detected; opened Add Download instead")
             return
         }
-        val merged = sniffingPlan.records.map { record ->
+        val resolvedCaptures = sniffingPlan.records.map { record ->
             val existing = repository.findMediaCapture(record.id)
-            if (existing?.downloadId != null) {
-                record.copy(status = existing.status, downloadId = existing.downloadId, createdAtEpochMs = existing.createdAtEpochMs, updatedAtEpochMs = System.currentTimeMillis())
+            val merged = if (existing?.downloadId != null) {
+                record.copy(status = existing.status, downloadId = existing.downloadId, createdAtEpochMs = existing.createdAtEpochMs, updatedAtEpochMs = now)
             } else {
-                record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs)
+                record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs, updatedAtEpochMs = now)
+            }
+            if (existing?.downloadId != null) {
+                merged to emptyList()
+            } else {
+                resolveCapturedPlaylistIfPossible(merged, record.sourceUrl, requestHeaders, now)
             }
         }
-        repository.saveMediaCaptures(merged)
+        val merged = resolvedCaptures.map { it.first }
+        val resolvedVariants = resolvedCaptures.flatMap { it.second }
+        val allVariants = (sniffingPlan.variants + resolvedVariants).distinctBy(MediaVariant::id)
         merged.forEach { record ->
             val session = browserHandoffMediaCoordinator.rememberBrowserRevision(
                 requestUrl = record.sourceUrl,
@@ -1905,7 +1945,7 @@ class MainViewModel(
                 cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
             )
         }
-        sniffingPlan.variants.forEach { variant ->
+        allVariants.forEach { variant ->
             MediaRequestHandoffStore.rememberVariant(
                 variantId = variant.id,
                 exactUrl = variant.url,
@@ -1914,11 +1954,11 @@ class MainViewModel(
                 expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
             )
         }
-        repository.replaceMediaVariants(sniffingPlan.variants)
+        repository.saveMediaCapturesWithVariants(merged, allVariants, now)
         repository.saveAutomationCommand(
             command.copy(
                 status = AutomationCommandStatus.Applied,
-                resultMessage = "Captured ${merged.size} media item(s)",
+                resultMessage = "Captured ${merged.size} media item(s); resolved ${resolvedVariants.size} manifest variant(s)",
                 mediaCaptureId = merged.firstOrNull()?.id,
                 updatedAtEpochMs = System.currentTimeMillis(),
             ),
@@ -2125,8 +2165,7 @@ class MainViewModel(
                     record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs, updatedAtEpochMs = now)
                 }
             }
-            repository.saveMediaCaptures(merged)
-            if (plan.variants.isNotEmpty()) repository.replaceMediaVariants(plan.variants)
+            repository.saveMediaCapturesWithVariants(merged, plan.variants, now)
             navigate(AppRoute.Media)
         }
     }
@@ -2156,8 +2195,7 @@ class MainViewModel(
                     record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs)
                 }
             }
-            repository.saveMediaCaptures(merged)
-            repository.replaceMediaVariants(sniffingPlan.variants)
+            repository.saveMediaCapturesWithVariants(merged, sniffingPlan.variants, now)
             navigate(AppRoute.Media)
         }
     }
@@ -2194,16 +2232,26 @@ class MainViewModel(
             } else {
                 intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
             }
-            repository.saveMediaCapture(merged)
+            val (resolved, resolvedVariants) = resolveCapturedPlaylistIfPossible(merged, session.exactRequestUrl, session.usableHeaders, now)
             MediaRequestHandoffStore.rememberCapture(
-                captureId = merged.id,
+                captureId = resolved.id,
                 headers = session.usableHeaders,
                 redactedSummary = session.redactedSummary,
                 isExpiringUrl = true,
                 exactUrl = session.exactRequestUrl,
                 pageUrl = session.frameUrl ?: session.pageUrl,
             )
-            repository.replaceMediaVariants(intake.candidate.variants)
+            val capturedVariants = (intake.candidate.variants + resolvedVariants).distinctBy(MediaVariant::id)
+            capturedVariants.forEach { variant ->
+                MediaRequestHandoffStore.rememberVariant(
+                    variantId = variant.id,
+                    exactUrl = variant.url,
+                    headers = session.usableHeaders,
+                    redactedSummary = session.redactedSummary,
+                    expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
+                )
+            }
+            repository.saveMediaCaptureWithVariants(resolved, capturedVariants, now)
         }
     }
 
@@ -2229,8 +2277,7 @@ class MainViewModel(
                         )
                     }
                 }
-                repository.saveMediaCaptures(merged)
-                if (plan.variants.isNotEmpty()) repository.replaceMediaVariants(plan.variants)
+                repository.saveMediaCapturesWithVariants(merged, plan.variants, now)
             }
             navigate(AppRoute.Media)
         }
@@ -2260,14 +2307,15 @@ class MainViewModel(
             } else {
                 intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
             }
-            repository.saveMediaCapture(merged)
+            val inspectNow = System.currentTimeMillis()
+            val (resolved, resolvedVariants) = resolveCapturedPlaylistIfPossible(merged, intake.record.sourceUrl, draft.requestHeaders, inspectNow)
             MediaRequestHandoffStore.rememberCapture(
-                captureId = merged.id,
+                captureId = resolved.id,
                 headers = draft.requestHeaders,
                 redactedSummary = draft.redactedHeaderSummary.orEmpty(),
-                isExpiringUrl = draft.requestHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(merged.sourceUrl),
-                exactUrl = merged.sourceUrl,
-                pageUrl = merged.pageUrl,
+                isExpiringUrl = draft.requestHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(intake.record.sourceUrl),
+                exactUrl = intake.record.sourceUrl,
+                pageUrl = resolved.pageUrl,
                 privateNetworkApproved = true,
             )
             intake.variants.forEach { variant ->
@@ -2279,13 +2327,23 @@ class MainViewModel(
                     expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
                 )
             }
-            if (intake.variants.isNotEmpty()) repository.replaceMediaVariants(intake.variants)
+            val externalVariants = (intake.variants + resolvedVariants).distinctBy(MediaVariant::id)
+            externalVariants.forEach { variant ->
+                MediaRequestHandoffStore.rememberVariant(
+                    variantId = variant.id,
+                    exactUrl = variant.url,
+                    headers = draft.requestHeaders,
+                    redactedSummary = draft.redactedHeaderSummary.orEmpty(),
+                    expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
+                )
+            }
+            repository.saveMediaCaptureWithVariants(resolved, externalVariants, inspectNow)
             repository.findAutomationCommand(draft.id)?.let { command ->
                 repository.saveAutomationCommand(
                     command.copy(
                         status = AutomationCommandStatus.Applied,
                         resultMessage = if (intake.isPageProbe) "External page opened in media resolver" else "External media opened in media resolver",
-                        mediaCaptureId = merged.id,
+                        mediaCaptureId = resolved.id,
                         rejectionReason = AutomationRejectionReason.None,
                         updatedAtEpochMs = System.currentTimeMillis(),
                     ),
@@ -2388,15 +2446,18 @@ class MainViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val handoff = MediaRequestHandoffStore.forCapture(record.id)
             val probeUrl = handoff?.exactUrl ?: record.sourceUrl
-            val plan = mediaPageProbe.probePage(probeUrl, pageTitle = record.title, requestHeaders = handoff?.headers.orEmpty())
-            val variants = plan.variants.filter { it.captureId == record.id }.ifEmpty { plan.variants }
+            val now = System.currentTimeMillis()
+            val (refreshed, variants) = resolveCapturedPlaylistIfPossible(
+                record = record.copy(sourceUrl = probeUrl),
+                exactUrl = probeUrl,
+                requestHeaders = handoff?.headers.orEmpty(),
+                now = now,
+            )
             if (variants.isEmpty()) {
-                repository.saveMediaCapture(record.copy(resolutionStatus = com.mikeyphw.xdm.android.model.MediaResolutionStatus.RequiresRefresh, updatedAtEpochMs = System.currentTimeMillis()))
+                repository.saveMediaCapture(record.copy(resolutionStatus = MediaResolutionStatus.RequiresRefresh, updatedAtEpochMs = now))
                 return@launch
             }
-            val refreshed = mediaCaptureService.refreshRecordAfterResolution(record, variants)
-            repository.saveMediaCapture(refreshed)
-            repository.replaceMediaVariants(variants)
+            repository.saveMediaCaptureWithVariants(refreshed.copy(sourceUrl = record.sourceUrl), variants, now)
         }
     }
 

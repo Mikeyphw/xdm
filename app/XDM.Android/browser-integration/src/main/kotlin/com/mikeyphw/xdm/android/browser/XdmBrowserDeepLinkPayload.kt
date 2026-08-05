@@ -26,9 +26,18 @@ data class XdmBrowserDeepLinkPayload(
         pageTitle = pageTitle,
         pageUrl = pageUrl,
         originPackage = originPackage,
-        mimeType = mimeType,
+        mimeType = mimeType ?: mediaKind.toMimeTypeHint(),
+        mediaKind = mediaKind,
         stableMediaId = stableMediaId,
         sessionRevision = sessionRevision,
         frameUrl = frameUrl,
     )
+}
+
+private fun String?.toMimeTypeHint(): String? = when (this?.trim()?.lowercase()) {
+    "hls", "m3u8", "hlsplaylist", "application/vnd.apple.mpegurl" -> "application/vnd.apple.mpegurl"
+    "dash", "mpd", "dashmanifest", "application/dash+xml" -> "application/dash+xml"
+    "video", "mp4", "progressive" -> "video/mp4"
+    "audio" -> "audio/mp4"
+    else -> null
 }

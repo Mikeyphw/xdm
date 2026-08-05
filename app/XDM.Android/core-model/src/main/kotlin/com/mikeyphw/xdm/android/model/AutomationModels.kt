@@ -35,6 +35,9 @@ data class AutomationCommandDraft(
     val cleartextCredentialsApproved: Boolean = false,
     val rawHeaders: String? = null,
     val mimeType: String? = null,
+    /** Browser extension media kind hint, for example hls/dash/video/audio. It is sanitized
+     * by the browser deep-link parser and used only for classification and diagnostics. */
+    val mediaKind: String? = null,
     val contentLength: Long? = null,
     val frameUrl: String? = null,
     val stableMediaId: String? = null,

@@ -321,26 +321,27 @@ class MediaExecutionLibraryPlanner(
     }
 
     fun offlineLibraryItems(captures: List<MediaCaptureRecord>, downloads: List<Download>, variants: List<MediaVariant>): List<OfflineMediaLibraryItem> = captures.mapNotNull { capture ->
-        val download = capture.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }
+        val download = capture.downloadId?.let { id -> downloads.firstOrNull { it.id == id } } ?: return@mapNotNull null
+        val completedDownload = download.takeIf { it.state == DownloadState.Completed } ?: return@mapNotNull null
+        val playback = completedPlaybackUrl(completedDownload) ?: return@mapNotNull null
         val selectedIds = selectedTrackIds(capture, variants.filter { it.captureId == capture.id })
-        val sidecar = sidecar(capture, download?.id, selectedIds, download?.takeIf { it.state == DownloadState.Completed }?.updatedAtEpochMs)
-        val playback = download?.takeIf { it.state == DownloadState.Completed }?.let { completedPlaybackUrl(it) }
+        val sidecar = sidecar(capture, download.id, selectedIds, completedDownload.updatedAtEpochMs)
         OfflineMediaLibraryItem(
             captureId = capture.id,
-            downloadId = download?.id ?: capture.downloadId,
+            downloadId = download.id,
             title = capture.title.ifBlank { capture.fileName },
-            fileName = download?.fileName ?: capture.fileName,
+            fileName = download.fileName,
             sourceHost = sidecar.sourceHost,
             pageHost = sidecar.pageHost,
             durationLabel = capture.durationMs?.let(::formatDurationForUi) ?: "duration unknown",
             thumbnailUrl = capture.thumbnailUrl,
-            state = download?.state,
+            state = download.state,
             detail = libraryDetail(capture, download),
             playbackUrl = playback,
-            isCompleted = download?.state == DownloadState.Completed,
-            canPlayDirect = playback != null && !capture.isPlaylist,
-            canResume = download?.state in resumableStates,
-            canRetry = download?.state in retryableStates,
+            isCompleted = true,
+            canPlayDirect = true,
+            canResume = false,
+            canRetry = false,
             sidecar = sidecar,
         )
     }.sortedWith(compareByDescending<OfflineMediaLibraryItem> { it.isCompleted }.thenBy { it.title.lowercase(Locale.US) })
@@ -551,7 +552,7 @@ class MediaExecutionLibraryPlanner(
     }
 
     private fun completedPlaybackUrl(download: Download): String? = if (download.destinationUri.startsWith("content://") || download.destinationUri.startsWith("file://")) {
-        download.destinationUri.trimEnd('/') + "/" + download.fileName
+        download.destinationUri
     } else null
 
     companion object {

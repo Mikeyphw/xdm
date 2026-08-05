@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android.persistence
 
+import androidx.room.withTransaction
 import com.mikeyphw.xdm.android.model.AutomationCommandAction
 import com.mikeyphw.xdm.android.model.AutomationCommandRecord
 import com.mikeyphw.xdm.android.model.AutomationCommandSource
@@ -91,6 +92,18 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun saveMediaCaptures(records: List<MediaCaptureRecord>) = database.mediaCaptureDao().upsertAll(records.map { it.redactedForPersistence().toEntity() })
     suspend fun saveMediaVariants(records: List<MediaVariant>) = database.mediaCaptureDao().upsertVariants(records.map { it.redactedForPersistence().toEntity() })
     suspend fun replaceMediaVariants(records: List<MediaVariant>) = database.downloadGraphTransactionDao().replaceMediaVariantsForCaptures(records.map { it.redactedForPersistence().toEntity() }, System.currentTimeMillis())
+    suspend fun saveMediaCaptureWithVariants(record: MediaCaptureRecord, variants: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.withTransaction {
+        database.mediaCaptureDao().upsert(record.redactedForPersistence().toEntity())
+        if (variants.isNotEmpty()) {
+            database.downloadGraphTransactionDao().replaceMediaVariantsForCaptures(variants.map { it.redactedForPersistence().toEntity() }, updatedAtEpochMs)
+        }
+    }
+    suspend fun saveMediaCapturesWithVariants(records: List<MediaCaptureRecord>, variants: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.withTransaction {
+        if (records.isNotEmpty()) database.mediaCaptureDao().upsertAll(records.map { it.redactedForPersistence().toEntity() })
+        if (variants.isNotEmpty()) {
+            database.downloadGraphTransactionDao().replaceMediaVariantsForCaptures(variants.map { it.redactedForPersistence().toEntity() }, updatedAtEpochMs)
+        }
+    }
     suspend fun variantsForMediaCapture(captureId: String): List<MediaVariant> = database.mediaCaptureDao().variantsForCapture(captureId).map { it.toModel() }
     suspend fun selectMediaVariant(captureId: String, variant: MediaVariant, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().selectVariant(captureId, variant.id, ExternalUrlPolicy.persistableUrl(variant.url) ?: variant.url.substringBefore('?'), MediaResolutionStatus.Resolved.name, updatedAtEpochMs)
     suspend fun findMediaCapture(id: String): MediaCaptureRecord? = database.mediaCaptureDao().findById(id)?.toModel()

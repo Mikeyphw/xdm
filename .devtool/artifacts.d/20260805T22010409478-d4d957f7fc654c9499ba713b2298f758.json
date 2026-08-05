@@ -1,0 +1,131 @@
+{
+  "applied_at": "2026-08-05T22:01:04.094785Z",
+  "artifact": "/home/mike/Downloads/xdm_android_extension_hls_capture_resolution_hotfix_r2_overlay.zip",
+  "artifact_name": "xdm_android_extension_hls_capture_resolution_hotfix_r2_overlay.zip",
+  "type": "overlay",
+  "sha256": "a7a79243d2f82b1f0e5dcd9c91f1b898597e730acfddf7d7c8dc814118c53cdb",
+  "status": "ok",
+  "validation_status": "not-run",
+  "commit_message": "Fix XDM extension HLS capture resolution library gap closure",
+  "commit_hash": "",
+  "file_count": 8,
+  "change_counts": {
+    "add": 2,
+    "modify": 6
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Extension HLS Capture Resolution Hotfix r2 Overlay",
+    "description": "Supersedes the first HLS capture hotfix by making capture+variant writes transactional, preserving resolved variant handoffs, and hiding unavailable Library placeholders until a completed playable artifact exists.",
+    "target": "xdm_android",
+    "workspace": {
+      "root": "app/XDM.Android"
+    },
+    "apply": {
+      "atomic": true,
+      "path_policy": "repository-relative",
+      "conflict_policy": "fail",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "message": "Fix XDM extension HLS capture resolution library gap closure",
+        "strategy": "single"
+      }
+    },
+    "validation": {
+      "mode": "required",
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "rollback_on_failure": true,
+      "failure_action": "rollback",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate.sh",
+        "runner": "bash",
+        "sha256": "c51b3cdf1268628486ac3786f9f8dd129d762ea16709a0f550cc232aaa88d818",
+        "timeout_seconds": 120
+      },
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass"
+      }
+    },
+    "inventory": {
+      "format": 1,
+      "exhaustive": true,
+      "entries": [
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/AutomationModels.kt",
+          "action": "modify",
+          "sha256": "7a9da806c3195a3ae7cfacd6bc07760af73c02a92f6468e5a43e701b207cb7a1",
+          "size": 13720,
+          "source_sha256": "2500e07fa80804278460c827057e2977f619fedccaffb08515e97bc55f415989"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkPayload.kt",
+          "action": "modify",
+          "sha256": "81eb128203a9f8d25031645f39ceda71f1761dafdeb6da1c427fc22f91f37b72",
+          "size": 1625,
+          "source_sha256": "559a981dc16c4ed1fe6035b51ea7a9dcccd0af62aebee7fb0eab8dff63f1f1c8"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngine.kt",
+          "action": "modify",
+          "sha256": "b9a09380df7f77c4c1c2523c9c3c702ebd5dc965c5c3b22240e56fc1cfa518e7",
+          "size": 24409,
+          "source_sha256": "36a201d55f62363b9b88297d3063942fd0996f2e956598df6950c0f9a641382b"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "c03b4c1ea54369c3004a4254b8235b8653052a62d733b14690c39e0ffaee947a",
+          "size": 131673,
+          "source_sha256": "991298bdb3469bd8d6d243638fbc3bf1d8744d68d5133881683890d67ebc6026"
+        },
+        {
+          "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+          "action": "modify",
+          "sha256": "b0d7f29bfcaf3bb2486f78b15c5468220def93393b7a86e86b9e035d8399a4e6",
+          "size": 30363,
+          "source_sha256": "947148546b8c82d47f1d40eb3e57b6642fa9541ce071909e53d7b394f60f1404"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionLibrary.kt",
+          "action": "modify",
+          "sha256": "f0ef681e16da5aec18e7ba1ef7fb0aff5080821c5d02018ab39f6842d87ae65a",
+          "size": 28705,
+          "source_sha256": "c1c3e294a096093c674a089bf6a006e120088f8684bfc2fadcae0e161659e53f"
+        },
+        {
+          "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/ExtensionHlsCaptureResolutionHotfixTest.kt",
+          "action": "add",
+          "sha256": "f0d8e5e0df74f46ba1d6f95c85d31fa80783fb7398769b53b1053ed9c024f266",
+          "size": 3829
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-extension-hls-capture-hotfix.py",
+          "action": "add",
+          "sha256": "38dcf632c5439c1360880c607023ebadcd3b21c0949fc4af6fdf1a6190726887",
+          "size": 5908
+        }
+      ]
+    },
+    "metadata": {
+      "source_snapshot": "xdm-20260805-175822.tar.gz",
+      "supersedes": "xdm_android_extension_hls_capture_resolution_hotfix_overlay.zip",
+      "hotfix": true,
+      "failure": "Browser extension accepted HLS capture but XDM showed an unavailable Library placeholder and did not resolve/download the video.",
+      "r2_gap_closure": true,
+      "payload_files": 8,
+      "room_schema": 17,
+      "version_name": "0.21.0"
+    }
+  },
+  "history_id": "d4d957f7fc654c9499ba713b2298f758"
+}
