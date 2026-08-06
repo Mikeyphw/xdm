@@ -39,12 +39,12 @@ phase=project.get('bug_hunt_phase_10_release_upgrade_packaging', {})
 
 for needle in ['versionCode = 22','versionName = "0.21.0"','XDM_RELEASE_BUILD_ID','XDM_RELEASE_SIGNER_SHA256','XDM_RELEASE_CERTIFICATE_NOT_AFTER','XDM_RELEASE_SIGNING_CONFIGURED','xdmAssertReleaseSigningInputs','create("developmentUnsigned")','abiFilters += setOf("arm64-v8a")']:
     require(needle in build, f'app build missing {needle}')
-require('jniLibs.useLegacyPackaging = false' in build, 'app release packaging must disable legacy JNI extraction')
+require('jniLibs.useLegacyPackaging = true' in build, 'app release packaging must extract JNI libraries')
 require('jniLibs.keepDebugSymbols += "**/libaria2c.so"' in build, 'debug symbols must be scoped to aria2 runtime only')
-require('android:extractNativeLibs="false"' in manifest, 'manifest must opt out of native extraction')
+require('android:extractNativeLibs="true"' in manifest, 'manifest must enable native extraction for executable aria2')
 require('android:allowBackup="false"' in manifest, 'allowBackup must remain false')
 require('android:dataExtractionRules="@xml/data_extraction_rules"' in manifest, 'manifest must reference data extraction rules')
-require('jniLibs.useLegacyPackaging = false' in aria_build, 'aria2 module must disable legacy JNI extraction')
+require('jniLibs.useLegacyPackaging = true' in aria_build, 'aria2 module must extract JNI libraries')
 require('--require-16kb-alignment' in text('tools/verify-aria2-runtime.py'), 'aria2 verifier must support 16 KB runtime gate')
 
 for rules_name,rules in [('backup_rules', backup_rules),('data_extraction_rules', data_rules)]:

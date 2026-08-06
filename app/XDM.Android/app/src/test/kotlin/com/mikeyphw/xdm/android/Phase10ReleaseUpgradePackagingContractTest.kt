@@ -12,6 +12,7 @@ class Phase10ReleaseUpgradePackagingContractTest {
     @Test
     fun releaseBuildRequiresSigningAndNamedUnsignedVariant() {
         val build = File(root, "app/build.gradle.kts").readText()
+        val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
         assertTrue(build.contains("xdmAssertReleaseSigningInputs"))
         assertTrue(build.contains("XDM_RELEASE_SIGNER_SHA256"))
         assertTrue(build.contains("XDM_RELEASE_SIGNING_CONFIGURED"))
@@ -19,6 +20,8 @@ class Phase10ReleaseUpgradePackagingContractTest {
         assertTrue(build.contains("versionCode = 22"))
         assertTrue(build.contains("versionName = \"0.21.0\""))
         assertTrue(build.contains("abiFilters += setOf(\"arm64-v8a\")"))
+        assertTrue(build.contains("jniLibs.useLegacyPackaging = true"))
+        assertTrue(manifest.contains("android:extractNativeLibs=\"true\""))
     }
 
     @Test

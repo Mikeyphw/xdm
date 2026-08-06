@@ -96,7 +96,7 @@ android {
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     packaging {
-        jniLibs.useLegacyPackaging = false
+        jniLibs.useLegacyPackaging = true
         // Keep only the attested aria2 runtime symbols; release inventory rejects broad debug-symbol retention.
         jniLibs.keepDebugSymbols += "**/libaria2c.so"
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"

@@ -47,7 +47,7 @@ assert 'saveSession()' in manager and 'shutdown(force = false)' in manager
 assert 'EmbeddedAria2Backend' in application
 assert 'Aria2BackendPlaceholder(' not in application
 assert not (ROOT / 'transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2BackendPlaceholder.kt').exists()
-assert 'android:extractNativeLibs=' not in manifest
+assert 'android:extractNativeLibs="true"' in manifest
 assert 'jniLibs.useLegacyPackaging = true' in app_gradle
 assert 'jniLibs.useLegacyPackaging = true' in aria2_gradle
 assert ('jniLibs.keepDebugSymbols += "**/libaria2c.so"' in app_gradle) or ('jniLibs.keepDebugSymbols += "**/*.so"' in app_gradle)
