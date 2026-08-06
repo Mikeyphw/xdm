@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class TransferActionReceiver : BroadcastReceiver() {
+    @Suppress("DEPRECATION")
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action in setOf(TransferNotifications.ACTION_RESUME_ALL, TransferNotifications.ACTION_RESUME, TransferNotifications.ACTION_RETRY)) {
             val serviceIntent = Intent(context, TransferForegroundService::class.java).setAction(intent.action)

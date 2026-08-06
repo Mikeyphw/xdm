@@ -16,6 +16,9 @@ data class XdmBrowserDeepLinkPayload(
     val mediaKind: String? = null,
     val stableMediaId: String? = null,
     val sessionRevision: Long? = null,
+    val contentLength: Long? = null,
+    val durationMs: Long? = null,
+    val thumbnailUrl: String? = null,
     val frameUrl: String? = null,
 ) {
     fun toAutomationCommandDraft(originPackage: String? = null): AutomationCommandDraft = AutomationCommandDraft(
@@ -28,6 +31,9 @@ data class XdmBrowserDeepLinkPayload(
         originPackage = originPackage,
         mimeType = mimeType ?: mediaKind.toMimeTypeHint(),
         mediaKind = mediaKind,
+        contentLength = contentLength,
+        durationMs = durationMs,
+        thumbnailUrl = thumbnailUrl,
         stableMediaId = stableMediaId,
         sessionRevision = sessionRevision,
         frameUrl = frameUrl,

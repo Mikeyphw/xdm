@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BugHuntPhase5MediaSniffingContractTest {
-    private val root = File(System.getProperty("user.dir"))
+    private val root = File(System.getProperty("user.dir") ?: ".")
 
     @Test fun pageProbeUsesBoundedReadsAndPreservesSessionHeaders() {
         val source = File(root, "../media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngine.kt").canonicalFile.readText()

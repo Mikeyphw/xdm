@@ -39,6 +39,8 @@ data class AutomationCommandDraft(
      * by the browser deep-link parser and used only for classification and diagnostics. */
     val mediaKind: String? = null,
     val contentLength: Long? = null,
+    val durationMs: Long? = null,
+    val thumbnailUrl: String? = null,
     val frameUrl: String? = null,
     val stableMediaId: String? = null,
     val sessionRevision: Long? = null,

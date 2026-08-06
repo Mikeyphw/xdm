@@ -1851,12 +1851,12 @@ class MainViewModel(
 
     private suspend fun resolveCapturedPlaylistIfPossible(
         record: MediaCaptureRecord,
-        probeUrl: String,
+        exactUrl: String,
         requestHeaders: Map<String, String>,
         now: Long = System.currentTimeMillis(),
     ): Pair<MediaCaptureRecord, List<MediaVariant>> {
         if (record.kind != MediaSourceKind.HlsPlaylist && record.kind != MediaSourceKind.DashManifest) return record to emptyList()
-        val plan = mediaPageProbe.probePage(probeUrl, pageTitle = record.title, requestHeaders = requestHeaders)
+        val plan = mediaPageProbe.probePage(exactUrl, pageTitle = record.title, requestHeaders = requestHeaders)
         val sameCaptureVariants = plan.variants.filter { it.captureId == record.id }
         val acceptedVariants = sameCaptureVariants.ifEmpty {
             if (plan.records.size == 1 && plan.variants.isNotEmpty()) {
@@ -1897,6 +1897,8 @@ class MainViewModel(
                 pageTitle = draft.pageTitle,
                 requestHeaders = requestHeaders,
                 source = MediaSniffingSource.BrowserExtension,
+                durationMs = draft.durationMs,
+                thumbnailUrl = draft.thumbnailUrl,
             ),
         )
         if (sniffingPlan.records.isEmpty()) {
@@ -1981,6 +1983,8 @@ class MainViewModel(
             pageUrl = draft.pageUrl,
             mimeType = draft.mimeType,
             contentLength = draft.contentLength,
+            durationMs = draft.durationMs,
+            thumbnailUrl = draft.thumbnailUrl,
             requestHeaders = requestHeaders,
             redactedHeaderSummary = redactedSessionSummary(draft.rawHeaders, draft.pageUrl),
         ) ?: return repository.saveAutomationCommand(
@@ -2193,7 +2197,10 @@ class MainViewModel(
                         updatedAtEpochMs = now,
                     )
                 } else {
-                    record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs, updatedAtEpochMs = now)
+                    record.copy(
+                        createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs,
+                        updatedAtEpochMs = now,
+                    )
                 }
             }
             repository.saveMediaCapturesWithVariants(merged, sniffingPlan.variants, now)
@@ -2278,7 +2285,6 @@ class MainViewModel(
                         )
                     }
                 }
-                // saveMediaCapturesWithVariants preserves the old repository.saveMediaCaptures + repository.replaceMediaVariants contract atomically.
                 repository.saveMediaCapturesWithVariants(merged, plan.variants, now)
             }
             navigate(AppRoute.Media)
@@ -2401,7 +2407,16 @@ class MainViewModel(
                 isExpiringUrl = spec.isExpiringUrl,
             )
             val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
-            if (!recommendation.compatible) return@launch
+            if (!recommendation.compatible) {
+                repository.saveMediaCapture(
+                    record.copy(
+                        resolutionStatus = MediaResolutionStatus.Failed,
+                        updatedAtEpochMs = now,
+                    ),
+                )
+                navigate(AppRoute.Media)
+                return@launch
+            }
             val download = Download(
                 id = UUID.randomUUID().toString(),
                 fileName = sanitizeFileName(spec.fileName),
@@ -2451,7 +2466,7 @@ class MainViewModel(
             val now = System.currentTimeMillis()
             val (refreshed, variants) = resolveCapturedPlaylistIfPossible(
                 record = record.copy(sourceUrl = probeUrl),
-                probeUrl = probeUrl,
+                exactUrl = probeUrl,
                 requestHeaders = handoff?.headers.orEmpty(),
                 now = now,
             )

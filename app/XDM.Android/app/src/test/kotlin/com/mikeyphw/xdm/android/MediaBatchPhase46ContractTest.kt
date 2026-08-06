@@ -1,6 +1,7 @@
 package com.mikeyphw.xdm.android
 
 import java.io.File
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -22,10 +23,18 @@ class MediaBatchPhase46ContractTest {
     @Test
     fun viewModelRoutesBatchThroughMediaBatchPlanner() {
         val source = root.resolve("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
-        assertTrue(source.contains("MediaBatchIntakePlanner"))
-        assertTrue(source.contains("captureMediaBatchInput"))
-        assertTrue(source.contains("repository.saveMediaCaptures"))
-        assertTrue(source.contains("repository.replaceMediaVariants"))
+        val batchFlow = source
+            .substringAfter("fun captureMediaBatchInput(text: String)")
+            .substringBefore("fun openDownloadReview")
+
+        assertTrue("MainViewModel must retain the media batch planner", source.contains("MediaBatchIntakePlanner"))
+        assertTrue("MainViewModel must expose batch intake", source.contains("captureMediaBatchInput"))
+        assertTrue(
+            "Batch records and variants must persist in one repository transaction",
+            batchFlow.contains("repository.saveMediaCapturesWithVariants(merged, plan.variants, now)"),
+        )
+        assertFalse("Batch intake must not save captures separately", batchFlow.contains("repository.saveMediaCaptures(merged)"))
+        assertFalse("Batch intake must not replace variants in a second call", batchFlow.contains("repository.replaceMediaVariants"))
     }
 
     private fun androidRoot(): File {

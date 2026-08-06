@@ -19,6 +19,9 @@ object XdmBrowserDeepLinkContract {
     const val MediaKindParameter = "kind"
     const val StableMediaIdParameter = "stableMediaId"
     const val SessionRevisionParameter = "sessionRevision"
+    const val ContentLengthParameter = "length"
+    const val DurationMsParameter = "durationMs"
+    const val ThumbnailUrlParameter = "thumbnail"
     const val FrameUrlParameter = "frame"
 
     const val MaxDeepLinkBytes = 64 * 1024
@@ -29,6 +32,7 @@ object XdmBrowserDeepLinkContract {
     const val MaxMimeTypeCharacters = 120
     const val MaxMediaKindCharacters = 32
     const val MaxStableMediaIdCharacters = 160
+    const val MaxThumbnailUrlBytes = 8 * 1024
 
     val BuildVariantSchemes: Set<String> = setOf(ReleaseScheme, DebugScheme)
 }

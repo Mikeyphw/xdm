@@ -131,6 +131,8 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         mimeTypeHint: String? = null,
         contentLength: Long? = null,
         headers: Map<String, String> = emptyMap(),
+        durationMs: Long? = null,
+        thumbnailUrl: String? = null,
     ): MediaCaptureCandidate? {
         val normalized = url.trim()
         val facts = MediaRequestFacts(normalized, mimeTypeHint, contentLength, pageUrl, pageTitle, headers)
@@ -153,7 +155,7 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
                 url = normalized,
                 kind = MediaVariantKind.Primary,
                 mimeType = mimeType,
-                displayLabel = "Primary",
+                displayLabel = listOfNotNull("Primary", contentLength?.takeIf { it > 0L }?.let { "${it / 1024 / 1024} MB" }).joinToString(" • "),
             ),
         )
         return MediaCaptureCandidate(
@@ -163,6 +165,8 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             kind = kind,
             mimeType = mimeType,
             container = containerFor(lowerPath, kind),
+            durationMs = durationMs?.takeIf { it > 0L },
+            thumbnailUrl = thumbnailUrl?.takeIf(String::isNotBlank),
             variants = variants,
         )
     }

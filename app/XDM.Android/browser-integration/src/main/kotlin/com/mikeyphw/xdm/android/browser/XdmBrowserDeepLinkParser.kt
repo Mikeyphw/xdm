@@ -80,6 +80,19 @@ object XdmBrowserDeepLinkParser {
             else -> rawFrameUrl.strictExternalUrl(XdmBrowserDeepLinkContract.MaxPageUrlBytes)
                 ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafePageUrl)
         }
+        val rawThumbnailUrl = parameters.singleValue(XdmBrowserDeepLinkContract.ThumbnailUrlParameter)
+            ?: parameters.singleValue("poster")
+            ?: parameters.singleValue("thumbnailUrl")
+        val thumbnailUrl = when {
+            rawThumbnailUrl == null -> null
+            else -> rawThumbnailUrl.strictExternalUrl(XdmBrowserDeepLinkContract.MaxThumbnailUrlBytes)
+                ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafeMediaUrl)
+        }
+        val contentLength = parameters.singleValue(XdmBrowserDeepLinkContract.ContentLengthParameter)
+            ?: parameters.singleValue("size")
+            ?: parameters.singleValue("contentLength")
+        val durationMs = parameters.singleValue(XdmBrowserDeepLinkContract.DurationMsParameter)
+            ?: parameters.singleValue("duration")
 
         return XdmBrowserDeepLinkParseResult.Accepted(
             XdmBrowserDeepLinkPayload(
@@ -100,6 +113,9 @@ object XdmBrowserDeepLinkParser {
                 sessionRevision = parameters.singleValue(XdmBrowserDeepLinkContract.SessionRevisionParameter)
                     ?.toLongOrNull()
                     ?.takeIf { it > 0L },
+                contentLength = contentLength?.toLongOrNull()?.takeIf { it > 0L },
+                durationMs = durationMs?.toLongOrNull()?.takeIf { it > 0L },
+                thumbnailUrl = thumbnailUrl,
                 frameUrl = frameUrl,
             ),
         )

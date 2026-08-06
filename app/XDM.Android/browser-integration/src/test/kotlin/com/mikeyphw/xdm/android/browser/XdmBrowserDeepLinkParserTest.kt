@@ -173,4 +173,19 @@ class XdmBrowserDeepLinkParserTest {
         assertEquals("https://player.example/embed", result.payload.frameUrl)
     }
 
+    @Test
+    fun extensionCaptureParsesOptionalSizeDurationAndThumbnailMetadata() {
+        val raw = "xdmdownload://capture?v=1&url=https%3A%2F%2Fcdn.example%2Fmaster.m3u8&kind=hls&length=734003200&durationMs=630000&thumbnail=https%3A%2F%2Fcdn.example%2Fposter.jpg"
+        val payload = XdmBrowserDeepLinkParser.parse(raw, "xdmdownload")!!
+
+        assertEquals(734003200L, payload.contentLength)
+        assertEquals(630000L, payload.durationMs)
+        assertEquals("https://cdn.example/poster.jpg", payload.thumbnailUrl)
+
+        val draft = payload.toAutomationCommandDraft()
+        assertEquals(734003200L, draft.contentLength)
+        assertEquals(630000L, draft.durationMs)
+        assertEquals("https://cdn.example/poster.jpg", draft.thumbnailUrl)
+    }
+
 }

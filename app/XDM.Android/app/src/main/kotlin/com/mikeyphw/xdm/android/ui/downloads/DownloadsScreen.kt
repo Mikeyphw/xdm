@@ -414,6 +414,7 @@ fun DownloadsScreen(
             windowClass = windowClass,
             onDismissRequest = { actionDownloadId = null },
             title = "Actions for ${download.fileName}",
+            scrollContent = false,
         ) {
             DownloadActionsContent(
                 download = download,
@@ -476,6 +477,7 @@ fun DownloadsScreen(
             windowClass = windowClass,
             onDismissRequest = { textActionDownloadId = null; textAction = null },
             title = textSheetAction.label,
+            scrollContent = false,
         ) {
             Column(Modifier.fillMaxWidth().padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 OutlinedTextField(
@@ -510,6 +512,7 @@ fun DownloadsScreen(
         windowClass = windowClass,
         onDismissRequest = { organizeVisible = false },
         title = "Organize downloads",
+        scrollContent = false,
     ) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
@@ -555,6 +558,7 @@ fun DownloadsScreen(
         windowClass = windowClass,
         onDismissRequest = { detailDownloadId = null },
         title = "Download details",
+        scrollContent = false,
     ) {
         detailDownload?.let { download ->
             Column(

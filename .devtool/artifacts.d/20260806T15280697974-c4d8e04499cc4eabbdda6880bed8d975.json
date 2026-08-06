@@ -1,0 +1,205 @@
+{
+  "applied_at": "2026-08-06T15:28:06.979740Z",
+  "artifact": "/home/mike/Downloads/xdm_android_extension_hls_runtime_regression_hotfix_r6_js_test_overlay.zip",
+  "artifact_name": "xdm_android_extension_hls_runtime_regression_hotfix_r6_js_test_overlay.zip",
+  "type": "overlay",
+  "sha256": "f751f0c8284aee900911b3d4dc2ed72cafc3092c6a0a80d530cefb602c938284",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "Fix XDM extension HLS runtime regressions r6 js test",
+  "commit_hash": "",
+  "file_count": 20,
+  "change_counts": {
+    "add": 2,
+    "modify": 18
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Extension HLS Runtime Regression Hotfix r6 JS Test Overlay",
+    "description": "Rebases the HLS runtime regression fixes onto xdm-20260806-112958.tar.gz and fixes the browser-extension jsTest regression where absent thumbnails were resolved as page URLs.",
+    "target": "xdm_android",
+    "workspace": {
+      "root": "app/XDM.Android"
+    },
+    "apply": {
+      "atomic": true,
+      "path_policy": "repository-relative",
+      "conflict_policy": "fail",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": true,
+        "message": "Fix XDM extension HLS runtime regressions r6 js test",
+        "strategy": "single"
+      }
+    },
+    "validation": {
+      "mode": "required",
+      "required": true,
+      "restore": true,
+      "build": true,
+      "test": true,
+      "allow_deferred": false,
+      "minimum_phase": "finalize",
+      "rollback_on_failure": true,
+      "failure_action": "rollback",
+      "execution_environment": "auto",
+      "script": {
+        "path": ".devtool-artifact/validate.sh",
+        "runner": "bash",
+        "sha256": "142a5ed0cb86c6da9424a0654f89dbc7dd3da79fe5c75f2805f5b37f4e1bdc27",
+        "timeout_seconds": 120
+      },
+      "expected": {
+        "restore": "pass",
+        "build": "pass",
+        "tests": "pass"
+      }
+    },
+    "inventory": {
+      "format": 1,
+      "exhaustive": true,
+      "entries": [
+        {
+          "path": "XDM_EXTENSION_HLS_RUNTIME_R6_JS_TEST_HOTFIX_REPORT.md",
+          "action": "add",
+          "sha256": "1dc223af33e6922a9b2b7765b192ab5705abbb280b37656bc3c6866fb0060ea6",
+          "size": 1472
+        },
+        {
+          "path": "app/XDM.Android/tools/validate-extension-hls-runtime-r6-js-test-hotfix.py",
+          "action": "add",
+          "sha256": "10773db5c8162b2323e8eda2d636cb88c30a2aead755c945a3ac7722c3fb55dc",
+          "size": 8519
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+          "action": "modify",
+          "sha256": "92131201cac4edc85ccf32b8ada37b573e2ce55d3baa9987f46ddd8c8c513c34",
+          "size": 132295,
+          "source_sha256": "1c294d8a680dc6fd584064d3df21132aaba047f430077f959c4865a05a167fc2"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAdaptiveShell.kt",
+          "action": "modify",
+          "sha256": "dc3b134e06f6188419b2a27466df0958ff9b66ee92d9f4d2a763cab9718db024",
+          "size": 15950,
+          "source_sha256": "a44bf49551d7f92ad21471de8d09319edee42b94d2388e2de287b89094e04100"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+          "action": "modify",
+          "sha256": "754227250bd41e39acd058203adda372688466396d3e936475c9904c8b3fa280",
+          "size": 16387,
+          "source_sha256": "72c212bc6e6f9988bbc928affe4368947035b4b2639d48b1b20a9b04d47615ee"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+          "action": "modify",
+          "sha256": "ba09af6b3667b8c943469c613c184cd14b316305e181dc9e83b83f123a4dca41",
+          "size": 43666,
+          "source_sha256": "217b39b785bb0e94e172af02b097cd2d986f66b4b4c21ed96c16730844d48dde"
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt",
+          "action": "modify",
+          "sha256": "e92cab660ae5de011e177d406f1f7651015ba9f05933808abe8fa5b9188305fa",
+          "size": 25831,
+          "source_sha256": "9004987f1ec54edf153300d541d04c26f99f445824cbddaefd27271259e6dc85"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/frame-bridge.js",
+          "action": "modify",
+          "sha256": "e11db3e3d873d84675f6d0da85ec508390907d90473db6a494a8c1e0c4d0259d",
+          "size": 25349,
+          "source_sha256": "6950fa45b9d07471f541097bf9de99e6fe4df1e919f149a2347815cd06defe2d"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/handoff.js",
+          "action": "modify",
+          "sha256": "57e10008c9f272bf769f7d59bfe090b35c9bbbaa9fc9ab3e015f4569c4a68441",
+          "size": 4448,
+          "source_sha256": "65f47a771c350f1fd34ce8c277f09b40a9d38df728c73d708ede1937ed2d0297"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/network-observer.js",
+          "action": "modify",
+          "sha256": "07c4a153df0efb203a5e230d6b4c12d019f145ead0aba6f214bf79cea3664970",
+          "size": 21387,
+          "source_sha256": "9e798871363804ea76ac94b194e2487c5aa046dc912ad9dd3a6c3f0e846b525a"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkContract.kt",
+          "action": "modify",
+          "sha256": "46ee26bc4e66536132464be4fcee601bebb848d7eecaea72887965137d685613",
+          "size": 1427,
+          "source_sha256": "1387da9b709a3fce4bea0f02a1203608551351613f72b2e49fd0b89d7e2e8301"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkParser.kt",
+          "action": "modify",
+          "sha256": "1125970cfc8ee9df3163c6b563675732299f4ad85c369141b63e805c1e294292",
+          "size": 10110,
+          "source_sha256": "6669cd855b5fbe676e4c653fe6fbd7ab9fa003f0878a822d4b6c9c38162ff4e2"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkPayload.kt",
+          "action": "modify",
+          "sha256": "7401282f3a4bad7867d7dab9a944e0eac85e3e6dba6ec5773b11dfef1de13d7d",
+          "size": 1843,
+          "source_sha256": "81eb128203a9f8d25031645f39ceda71f1761dafdeb6da1c427fc22f91f37b72"
+        },
+        {
+          "path": "app/XDM.Android/browser-integration/src/test/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkParserTest.kt",
+          "action": "modify",
+          "sha256": "c12c48e6770ae7cd77726f844894ee5e0e61e52b85fdb2ba2dcace111599caea",
+          "size": 9028,
+          "source_sha256": "2820ded7acaa0801898060c62021b4aac25485fc0f03c6c26af2ec3b43506c61"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/AutomationModels.kt",
+          "action": "modify",
+          "sha256": "0143249ffaea34e6398c1f60692b4d98d1738cbdfd8e496aea8efbb4f46591d4",
+          "size": 13792,
+          "source_sha256": "7a9da806c3195a3ae7cfacd6bc07760af73c02a92f6468e5a43e701b207cb7a1"
+        },
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadIntake.kt",
+          "action": "modify",
+          "sha256": "3b72af3d1754d046feff18a506d417da231dd9804692b83f4e36eed8089d3fbe",
+          "size": 12181,
+          "source_sha256": "c8b75d89c69d9b76ce744f344b32d38f04a39b5c04b0e2f5debb8ddc44345500"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/ExternalMediaReviewIntake.kt",
+          "action": "modify",
+          "sha256": "f9f154c3dba7552300ceff12a99a253dee0f76d86ee23c8b7b16413209fe170a",
+          "size": 5005,
+          "source_sha256": "743bc6d6be04cd137839f1d59820c2757ea42eeb8074635b0fbdcccc686d176b"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaInboxContract.kt",
+          "action": "modify",
+          "sha256": "5c3d16b78c84cfe09ec63519437e544eafe9ec387f8b1a604b32e4bff3514a7e",
+          "size": 28141,
+          "source_sha256": "88cd7c2721394e96ad0de2dbded3e0f467e34830c5bca7d2d19a0ca92b65d373"
+        },
+        {
+          "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngine.kt",
+          "action": "modify",
+          "sha256": "22e1de125fbd553dc585c157f12c44e5a42b849c9fecfceacb17ab657694450b",
+          "size": 24579,
+          "source_sha256": "b9a09380df7f77c4c1c2523c9c3c702ebd5dc965c5c3b22240e56fc1cfa518e7"
+        },
+        {
+          "path": "app/XDM.Android/browser-extension/tests/test_release_gate.js",
+          "action": "modify",
+          "sha256": "33c54c9fed930a0178a0a3286cdc54109716f14d3bcc01d60aa01b36f00ff1e4",
+          "size": 3033,
+          "source_sha256": "2e0958e53dc5e975755a8b9447c1c1f2a5029421e95c439dbb1e6019ed91d44b"
+        }
+      ]
+    }
+  },
+  "history_id": "c4d8e04499cc4eabbdda6880bed8d975"
+}

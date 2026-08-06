@@ -54,6 +54,15 @@ assert.strictEqual(parsed.protocol, "xdmdownload:");
 assert.strictEqual(parsed.hostname, "capture");
 assert.strictEqual(parsed.searchParams.get("url"), signedUrl);
 assert.deepStrictEqual([...parsed.searchParams.keys()].sort(), ["filename", "kind", "mime", "page", "title", "url", "v"]);
+assert.strictEqual(parsed.searchParams.get("thumbnail"), null, "missing thumbnail must not resolve to the page URL");
+const thumbnailLink = handoff.buildXdmCapture({
+  url: signedUrl,
+  pageUrl: "https://page.example/watch",
+  title: "Release fixture",
+  mimeType: "application/vnd.apple.mpegurl",
+  thumbnailUrl: "https://cdn.example/poster.jpg",
+});
+assert.strictEqual(new URL(thumbnailLink).searchParams.get("thumbnail"), "https://cdn.example/poster.jpg");
 assert(!/cookie|authorization|headers/i.test(deepLink));
 assert.strictEqual(handoff.buildXdmCapture({ url: "https://user:pass@cdn.example/video.mp4" }), "");
 assert.strictEqual(handoff.buildXdmCapture({ url: "javascript:alert(1)" }), "");

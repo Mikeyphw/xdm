@@ -56,14 +56,14 @@ class Phase65DiagnosticExportDownloadActionContractTest {
     private fun source(path: String): String = File(projectRoot(), path).readText()
 
     private fun projectRoot(): File {
-        var current = File(System.getProperty("user.dir")).canonicalFile
+        var current = File(System.getProperty("user.dir") ?: ".").canonicalFile
         while (true) {
             if (File(current, "PROJECT_MANIFEST.json").isFile) {
                 return current
             }
             val nestedProject = File(current, "app/XDM.Android/PROJECT_MANIFEST.json")
             if (nestedProject.isFile) {
-                return nestedProject.parentFile
+                return requireNotNull(nestedProject.parentFile)
             }
             val parent = current.parentFile ?: break
             current = parent.canonicalFile

@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BugHuntPhase6DatabaseIntegrityContractTest {
-    private val root = File(System.getProperty("user.dir"))
+    private val root = File(System.getProperty("user.dir") ?: ".")
 
     @Test
     fun downloadDeletionUsesCompleteTransactionalGraph() {
@@ -23,11 +23,18 @@ class BugHuntPhase6DatabaseIntegrityContractTest {
     @Test
     fun mediaVariantsAreReplacedTransactionally() {
         val dao = source("src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadGraphTransactionDao.kt")
-        assertTrue(dao.contains("replaceMediaVariantsForCaptures"))
-        assertTrue(dao.contains("deleteMediaVariantsForCaptures(captureIds)"))
-        assertTrue(dao.contains("reconcileCaptureAfterVariantReplacement"))
+        val repository = source("src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt")
         val viewModel = File(root.parentFile, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
-        assertTrue(viewModel.contains("repository.replaceMediaVariants"))
+        val batchFlow = viewModel
+            .substringAfter("fun captureMediaBatchInput(text: String)")
+            .substringBefore("fun openDownloadReview")
+
+        assertTrue("DAO replacement must remain transactional", dao.contains("@Transaction") && dao.contains("replaceMediaVariantsForCaptures"))
+        assertTrue("DAO replacement must delete prior variants", dao.contains("deleteMediaVariantsForCaptures(captureIds)"))
+        assertTrue("DAO replacement must reconcile capture selection and counts", dao.contains("reconcileCaptureAfterVariantReplacement"))
+        assertTrue("Repository batch persistence must use a Room transaction", repository.contains("saveMediaCapturesWithVariants") && repository.contains("database.withTransaction"))
+        assertTrue("Batch intake must persist captures and variants atomically", batchFlow.contains("repository.saveMediaCapturesWithVariants(merged, plan.variants, now)"))
+        assertFalse("Batch intake must not return to a second variant replacement call", batchFlow.contains("repository.replaceMediaVariants"))
     }
 
     @Test

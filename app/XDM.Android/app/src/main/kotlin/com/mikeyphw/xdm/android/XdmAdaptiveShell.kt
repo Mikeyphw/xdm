@@ -128,7 +128,7 @@ fun XdmAdaptiveShell(
                 )
             },
         ) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding).imePadding()) { content() }
+            Box(Modifier.fillMaxSize().padding(padding)) { content() }
         }
     }
 }

@@ -6,8 +6,10 @@
   const MEDIA_KIND_BY_MIME = Object.freeze({ video: "video", audio: "audio" });
 
   function safeHttpUrl(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
     try {
-      const url = new URL(String(value || ""), document.baseURI);
+      const url = new URL(raw, document.baseURI);
       return /^(?:https?|ftp):$/.test(url.protocol) && !url.username && !url.password ? url.href : "";
     } catch (_) {
       return "";
@@ -61,6 +63,12 @@
     if (/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(mime)) params.set("mime", mime.slice(0, 120));
     params.set("kind", mediaKind(url, mime));
     if (input.stableMediaId) params.set("stableMediaId", String(input.stableMediaId).slice(0, 160));
+    const length = Number(input.contentLength || 0);
+    if (Number.isFinite(length) && length > 0) params.set("length", String(Math.floor(length)));
+    const durationMs = Number(input.durationMs || 0);
+    if (Number.isFinite(durationMs) && durationMs > 0) params.set("durationMs", String(Math.floor(durationMs)));
+    const thumbnail = safeHttpUrl(input.thumbnailUrl || input.poster || "");
+    if (thumbnail) params.set("thumbnail", thumbnail);
     if (input.sessionRevision) params.set("sessionRevision", String(input.sessionRevision).slice(0, 40));
     if (input.frameUrl) {
       const frame = safeHttpUrl(input.frameUrl);

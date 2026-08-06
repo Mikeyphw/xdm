@@ -29,6 +29,8 @@ data class MediaSniffingInput(
     val mimeType: String? = null,
     val contentDisposition: String? = null,
     val contentLength: Long? = null,
+    val durationMs: Long? = null,
+    val thumbnailUrl: String? = null,
     val bodyPrefix: String? = null,
     val pageUrl: String? = null,
     val pageTitle: String? = null,
@@ -322,6 +324,8 @@ class MediaSniffingEngine(
                 mimeTypeHint = candidate.mimeType,
                 contentLength = input.contentLength,
                 headers = input.requestHeaders,
+                durationMs = input.durationMs,
+                thumbnailUrl = input.thumbnailUrl,
             )
         }
         val records = captureService.recordsFor(captureCandidates)

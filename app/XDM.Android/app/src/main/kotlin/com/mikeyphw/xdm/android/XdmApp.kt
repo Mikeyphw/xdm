@@ -89,6 +89,7 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
                 windowClass = windowClass,
                 onDismissRequest = { viewModel.navigate(previousPrimaryRoute) },
                 title = "New download",
+                scrollContent = false,
             ) {
                 val externalSessionHealth = BrowserSessionHealthPlanner.evaluate(state.externalAddDraft)
                 val externalEngineEscalation = state.externalAddDraft?.let { draft ->
@@ -266,6 +267,7 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
         windowClass = LocalXdmWindowClass.current,
         onDismissRequest = { viewModel.selectActivityPanel(lastPrimary) },
         title = "Manage activity",
+        scrollContent = false,
     ) {
         Column(Modifier.fillMaxSize()) {
             XdmActionFlowRow(

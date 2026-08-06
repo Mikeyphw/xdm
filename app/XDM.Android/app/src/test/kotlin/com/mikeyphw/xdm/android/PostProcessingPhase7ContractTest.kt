@@ -217,7 +217,7 @@ exitCode=0
         resultMode = resultMode,
     )
 
-    private fun androidRoot(): File = generateSequence(File(System.getProperty("user.dir"))) { it.parentFile }
+    private fun androidRoot(): File = generateSequence(File(System.getProperty("user.dir") ?: ".")) { it.parentFile }
         .map { File(it, "app/XDM.Android") }
         .firstOrNull(File::isDirectory)
         ?: error("Unable to locate app/XDM.Android")

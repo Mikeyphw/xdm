@@ -102,6 +102,15 @@
     }
   }
 
+  function elementMetadata(video) {
+    if (!(video instanceof HTMLVideoElement)) return {};
+    const duration = Number(video.duration || 0);
+    return {
+      durationMs: Number.isFinite(duration) && duration > 0 ? Math.floor(duration * 1000) : 0,
+      thumbnailUrl: absoluteUrl(video.poster || "")
+    };
+  }
+
   function recordCandidate(value, source, bonus = 0, metadata = {}) {
     const url = absoluteUrl(value);
     if (!url || AD_RE.test(url) || isSegment(url)) return false;
@@ -117,6 +126,9 @@
       contentType: metadata.contentType || previous.contentType || "",
       headers: Object.assign({}, previous.headers || {}, metadata.headers || {}),
       manifest: Boolean(metadata.manifest || MANIFEST_RE.test(url) || MANIFEST_MIME_RE.test(contentType) || previous.manifest),
+      contentLength: Number(metadata.contentLength || previous.contentLength || 0),
+      durationMs: Number(metadata.durationMs || previous.durationMs || 0),
+      thumbnailUrl: metadata.thumbnailUrl || previous.thumbnailUrl || "",
       trusted: trusted || previous.trusted === true,
       bodyDerived: Boolean(metadata.bodyDerived || previous.bodyDerived),
       at: Date.now()
@@ -139,8 +151,9 @@
   }
 
   function collectVideoSources(video) {
-    recordCandidate(video.currentSrc, "currentSrc", 650, { trusted: true });
-    recordCandidate(video.src, "video.src", 600, { trusted: true });
+    const metadata = Object.assign({ trusted: true }, elementMetadata(video));
+    recordCandidate(video.currentSrc, "currentSrc", 650, metadata);
+    recordCandidate(video.src, "video.src", 600, metadata);
     collectElementUrls(video, "video");
     for (const source of video.querySelectorAll("source[src],track[src]")) {
       recordCandidate(source.src, source.localName, 560, { trusted: true, contentType: source.type || "" });
@@ -240,6 +253,12 @@ ${location.href}`;
         title: input.title || document.title,
         mimeType: contentType,
         pageUrl: location.href,
+        contentLength: input.contentLength,
+        durationMs: input.durationMs,
+        thumbnailUrl: input.thumbnailUrl,
+        stableMediaId: input.stableMediaId,
+        sessionRevision: input.sessionRevision,
+        frameUrl: input.frameUrl,
         scheme: globalThis.XdmExtensionConfig && globalThis.XdmExtensionConfig.xdmScheme
       };
       const links = globalThis.XdmHandoffV1.buildTargets(handoffInput);
@@ -340,6 +359,12 @@ ${location.href}`;
         label: possible ? "Possible media found" : (input.manifest ? "Video manifest detected" : (input.bodyDerived ? "Video URL found in player response" : "Video stream detected")),
         headers: input.headers || {},
         contentType: input.contentType || "",
+        contentLength: input.contentLength || 0,
+        durationMs: input.durationMs || 0,
+        thumbnailUrl: input.thumbnailUrl || "",
+        stableMediaId: input.stableMediaId || "",
+        sessionRevision: input.sessionRevision || Date.now(),
+        frameUrl: input.frameUrl || "",
         candidateCount: Math.max(1, Number(input.candidateCount || candidates.size || 1)),
         streamKind: input.streamKind || (input.manifest ? (/\.mpd(?:$|[?#])/i.test(url) ? "dash" : "hls") : "")
       });
