@@ -331,7 +331,7 @@ class Aria2ProcessManagerTest {
             processLauncher = Aria2ProcessLauncher { process },
             rpcFactory = Aria2RpcControlFactory { _, _ -> FakeRpcControl(process) },
             authenticationProbe = Aria2RpcAuthenticationProbe { true },
-            scope = this,
+            scope = backgroundScope,
             startupTimeoutMillis = 100,
             pollIntervalMillis = 1,
         )

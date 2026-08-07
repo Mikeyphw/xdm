@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RuntimeFoundationPhase55_56PromiseClosureContractTest {
-    private val root = File(System.getProperty("user.dir") ?: ".")
+    private val root = androidRoot()
     private fun source(path: String) = File(root, path).readText()
 
     @Test
@@ -60,5 +60,19 @@ class RuntimeFoundationPhase55_56PromiseClosureContractTest {
         val writer = source("storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/AndroidDestinationWriter.kt")
         assertFalse(writer.contains("File(uri.path)"))
         assertTrue(writer.contains("ContentResolver"))
+    }
+
+    private fun androidRoot(): File {
+        var cursor = File(System.getProperty("user.dir") ?: ".").canonicalFile
+        repeat(8) {
+            if (
+                File(cursor, "settings.gradle.kts").isFile &&
+                File(cursor, "app/src/main").isDirectory
+            ) {
+                return cursor
+            }
+            cursor = cursor.parentFile ?: return@repeat
+        }
+        error("Unable to locate XDM Android root")
     }
 }

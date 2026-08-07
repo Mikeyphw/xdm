@@ -58,7 +58,9 @@ class OkHttpAria2RpcAuthenticationProbe(
             put("method", "aria2.getVersion")
             put("params", JsonArray(emptyList()))
         }
-        val request = Request.Builder().url(endpoint.url).post(payload.toString().toRequestBody(JSON_MEDIA_TYPE)).build()
+        val request = Request.Builder().url(endpoint.url).post(
+            payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+        ).build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) return@withContext true
             val root = json.parseToJsonElement(response.body.string()).jsonObject

@@ -28,11 +28,18 @@ class UixR5ActivitySettingsContractTest {
         val developer = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperSettingsScreen.kt").readText()
         val preferences = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferencesStore.kt").readText()
 
-        val save = settings.indexOf("Save location")
+        val storage = listOf(
+            settings.indexOf("Direct file access"),
+            settings.indexOf("Public Downloads via Android"),
+            settings.indexOf("Android folder (SAF)"),
+        ).filter { it >= 0 }.minOrNull() ?: -1
         val queue = settings.indexOf("Smart queue")
         val advanced = settings.indexOf("Advanced download rules")
         val support = settings.indexOf("Copy support report")
-        assertTrue("Everyday settings must lead", save >= 0 && queue > save && advanced > queue && support > advanced)
+        assertTrue(
+            "Everyday settings must lead",
+            storage >= 0 && queue > storage && advanced > queue && support > advanced,
+        )
         assertTrue("Developer options must default off", preferences.contains("developerOptionsEnabled: Boolean = false"))
         assertTrue("Developer preference must persist", preferences.contains("DeveloperOptionsEnabled") && preferences.contains("setDeveloperOptionsEnabled"))
         assertTrue("Developer workspace must refuse access while disabled", developer.contains("DeveloperWorkspacePolicy.shouldCompose(state.developerOptionsEnabled, state.settingsPanel)"))
