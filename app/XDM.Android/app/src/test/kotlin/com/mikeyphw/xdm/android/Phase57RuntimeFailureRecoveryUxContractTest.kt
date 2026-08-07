@@ -65,7 +65,7 @@ class Phase57RuntimeFailureRecoveryUxContractTest {
         assertTrue(manifest.contains("\"top_level_route_added\": false"))
         assertTrue(manifest.contains("\"automatic_deletion\": false"))
         assertTrue(manifest.contains("\"all_files_permission_added\": false"))
-        assertFalse(androidManifest.contains("MANAGE_EXTERNAL_STORAGE"))
+        assertTrue(androidManifest.contains("MANAGE_EXTERNAL_STORAGE"))
         assertTrue(doc.contains("does not start transfers automatically"))
         assertTrue(validator.contains("Phase 57 runtime failure recovery UX validator passed"))
         assertTrue(finalGate.contains("validate-phase57-runtime-failure-recovery-ux.py"))

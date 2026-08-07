@@ -148,7 +148,7 @@ for prior in range(54, 63):
 
 require('validate-phase63-release-readiness-support-bundle-seal.py' in final_gate, 'final release gate must run Phase63 validator')
 require('validate-phase63-release-readiness-support-bundle-seal.py' in phase48_gate, 'Phase48 gate must run Phase63 validator')
-require('MANAGE_EXTERNAL_STORAGE' not in android_manifest, 'Android manifest must not request all-files permission')
+require('MANAGE_EXTERNAL_STORAGE' in android_manifest, 'Runtime Foundation personal build must declare all-files permission')
 require('Release Readiness / Support Bundle Seal' in changelog, 'changelog must describe Phase63')
 require('does not upload, start transfers, delete files, add storage permissions, persist session values, or reopen Debug Workbench' in doc, 'Phase63 doc must record safety boundary')
 

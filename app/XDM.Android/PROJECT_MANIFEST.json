@@ -848,6 +848,38 @@
     "version_code": 22,
     "version_name": "0.21.0"
   },
+  "bug_hunt_phase_11_validation_matrix": {
+    "ci_static_gate_included": true,
+    "contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11ValidationMatrixContractTest.kt",
+    "coverage_levels": [
+      "unit",
+      "instrumentation",
+      "device",
+      "release"
+    ],
+    "current_room_schema": 17,
+    "device_gate_included": true,
+    "doc_only_evidence_allowed": false,
+    "evidence_closure_contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11EvidenceClosureContractTest.kt",
+    "matrix_file": "tools/bug-hunt-phase11-validation-matrix.json",
+    "phase_specific_evidence_required": true,
+    "release_gate_included": true,
+    "revision": "r2_gap_closure",
+    "roadmap_phase": 11,
+    "roadmap_requirement_count": 80,
+    "runner": "tools/run-bug-hunt-phase11-validation-matrix.sh",
+    "self_only_phase11_evidence_allowed": false,
+    "self_only_rows_closed": [
+      "BH11-003",
+      "BH11-014",
+      "BH11-019",
+      "BH11-032",
+      "BH11-040",
+      "BH11-047"
+    ],
+    "status": "implemented",
+    "validator": "tools/validate-bug-hunt-phase11-validation-matrix.py"
+  },
   "bug_hunt_remediation": {
     "phases": {
       "9": "Accessibility and Adaptive Layout r2 gap closure: real fold posture source, focus restoration, Compose screenshot/semantics matrix, large-font risky surfaces, traversal order, and contrast gates."
@@ -1236,7 +1268,7 @@
     "automatic_upload": false,
     "baseline": "debug_workbench_phase_d2_shell_r4",
     "compile_hygiene": "MediaSniffingLabCard candidate row uses escaped newline; D3 app contract uses safe substring assertions that compile.",
-    "description": "Adds a Media Sniffing Lab inside Settings \u2192 Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
+    "description": "Adds a Media Sniffing Lab inside Settings → Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
     "drm_bypass": false,
     "network_page_probe": false,
     "next_phase": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
@@ -1244,7 +1276,7 @@
     "phase": "D3",
     "revision": "r4",
     "room_schema_unchanged": 14,
-    "settings_location": "Settings \u2192 Debug Workbench \u2192 Media Sniffing Lab",
+    "settings_location": "Settings → Debug Workbench → Media Sniffing Lab",
     "starts_downloads": false,
     "static_sniff_only": true,
     "status": "implemented",
@@ -2153,10 +2185,10 @@
     "automatic_upload": false,
     "base": "Phase63 Release Readiness / Support Bundle Seal r2 clean baseline",
     "built_in_browser_resurrected": false,
+    "current_overlay": "xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip",
     "debug_workbench_reopened": false,
     "final_android_downloader_rc_sealed": true,
     "name": "Final Android Downloader RC Seal",
-    "current_overlay": "xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip",
     "overlay": "xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip",
     "persisted_session_values": false,
     "release_criteria_changed": false,
@@ -2885,6 +2917,82 @@
     "schema_version_unchanged": 14,
     "top_level_route_added": false
   },
+  "runtime_foundation_2026_phase55_56": {
+    "artifact_revision": "r2_promise_closure",
+    "baseline": "xdm-20260807-110547.tar.gz",
+    "next_overlay": "runtime_foundation_phase57_58_destination_finalization_media_intake",
+    "phase55_embedded_aria2_runtime_repair": {
+      "authenticated_get_version_required": true,
+      "deep_loopback_rpc_lifecycle": true,
+      "diagnostic_categories": [
+        "connection_refused",
+        "unauthorized",
+        "http_failure",
+        "malformed_response",
+        "rpc_failure",
+        "configuration_invalid",
+        "port_unavailable",
+        "binary_load_failure",
+        "process_exited",
+        "timeout",
+        "launch_failure",
+        "configuration_cleanup",
+        "authentication_boundary",
+        "runtime_ownership",
+        "orphan_recovery"
+      ],
+      "lifecycle_operations": [
+        "addUri",
+        "tellStatus",
+        "pause",
+        "unpause",
+        "completion",
+        "saveSession",
+        "removeDownloadResult",
+        "shutdown"
+      ],
+      "loopback_only": true,
+      "rpc_failure_classification": true,
+      "rpc_secret_rotation_repair": true,
+      "runtime_log_tail_redacted": true,
+      "secret_generation_tracked": true,
+      "startup_timestamp_tracked": true,
+      "transient_launch_config_cleanup": true,
+      "unauthenticated_probe_must_be_rejected": true,
+      "runtime_ownership_lease": true,
+      "runtime_lease_contains_secret": false,
+      "app_process_restart_orphan_detection": true,
+      "owned_orphan_requires_authenticated_rpc": true,
+      "stale_marker_never_authorizes_process_kill": true
+    },
+    "phase56_personal_direct_storage": {
+      "android_data_obb_rejected": true,
+      "custom_direct_shared_storage_path": true,
+      "direct_download_destination": "Download/XDM",
+      "documents_provider_uri_to_file_path_forbidden": true,
+      "embedded_aria2_target_probe": true,
+      "manage_external_storage_declared": true,
+      "mediastore_fallback_retained": true,
+      "outside_primary_shared_storage_rejected": true,
+      "personal_sideload_build": true,
+      "relative_path_rejected": true,
+      "room_schema_unchanged": 17,
+      "saf_fallback_retained": true,
+      "storage_doctor": true,
+      "storage_doctor_filesystem_steps": [
+        "permission",
+        "mkdir",
+        "create",
+        "write_fsync",
+        "rename",
+        "read",
+        "delete"
+      ],
+      "termux_ytdlp_ffmpeg_target_probe": true
+    },
+    "program": "runtime_storage_media_reliability",
+    "promise_closure_audit": "docs/quality/RUNTIME-FOUNDATION-PHASE55-56-PROMISE-CLOSURE-AUDIT.md"
+  },
   "startup_recovery": {
     "backend_migrations": true,
     "backend_ownership": true,
@@ -3232,37 +3340,5 @@
     "native_selective_repair_planner": true,
     "repeat_verification_without_network": true,
     "trusted_block_manifest": true
-  },
-  "bug_hunt_phase_11_validation_matrix": {
-    "roadmap_phase": 11,
-    "status": "implemented",
-    "roadmap_requirement_count": 80,
-    "matrix_file": "tools/bug-hunt-phase11-validation-matrix.json",
-    "validator": "tools/validate-bug-hunt-phase11-validation-matrix.py",
-    "runner": "tools/run-bug-hunt-phase11-validation-matrix.sh",
-    "contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11ValidationMatrixContractTest.kt",
-    "coverage_levels": [
-      "unit",
-      "instrumentation",
-      "device",
-      "release"
-    ],
-    "doc_only_evidence_allowed": false,
-    "current_room_schema": 17,
-    "release_gate_included": true,
-    "device_gate_included": true,
-    "ci_static_gate_included": true,
-    "revision": "r2_gap_closure",
-    "evidence_closure_contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11EvidenceClosureContractTest.kt",
-    "phase_specific_evidence_required": true,
-    "self_only_phase11_evidence_allowed": false,
-    "self_only_rows_closed": [
-      "BH11-003",
-      "BH11-014",
-      "BH11-019",
-      "BH11-032",
-      "BH11-040",
-      "BH11-047"
-    ]
   }
 }

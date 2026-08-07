@@ -80,7 +80,7 @@ for forbidden in [
 ]:
     require(forbidden not in guard, f'guard must not contain unsafe marker: {forbidden}')
 
-require('MANAGE_EXTERNAL_STORAGE' not in android_manifest, 'Android manifest must not request all-files permission')
+require('MANAGE_EXTERNAL_STORAGE' in android_manifest, 'Runtime Foundation personal build must declare all-files permission')
 require('partialFailuresOpenRecoveryBeforeRetryOrMethodSwitch' in guard_test, 'guard tests must cover partial retry review')
 require('capturedSessionRetryIsAlwaysReviewFirst' in guard_test, 'guard tests must cover captured-session review')
 require('guidanceActionsNeverStartBackgroundWork' in guard_test, 'guard tests must cover guidance-only actions')

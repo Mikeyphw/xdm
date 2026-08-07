@@ -26,6 +26,9 @@ class Aria2RpcException(
     message: String,
 ) : IllegalStateException("aria2 RPC $code: $message")
 
+class Aria2RpcProtocolException(message: String, cause: Throwable? = null) :
+    IllegalStateException(message, cause)
+
 class OkHttpAria2RpcControlFactory(
     private val client: OkHttpClient = OkHttpClient.Builder()
         .proxy(Proxy.NO_PROXY)
@@ -38,6 +41,32 @@ class OkHttpAria2RpcControlFactory(
         OkHttpAria2RpcControl(endpoint, secret, client)
 }
 
+
+class OkHttpAria2RpcAuthenticationProbe(
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .proxy(Proxy.NO_PROXY)
+        .connectTimeout(2, TimeUnit.SECONDS)
+        .readTimeout(3, TimeUnit.SECONDS)
+        .writeTimeout(3, TimeUnit.SECONDS)
+        .build(),
+    private val json: Json = Json { ignoreUnknownKeys = true },
+) : Aria2RpcAuthenticationProbe {
+    override suspend fun rejectsUnauthenticated(endpoint: Aria2Endpoint): Boolean = withContext(Dispatchers.IO) {
+        val payload = buildJsonObject {
+            put("jsonrpc", "2.0")
+            put("id", "xdm-auth-boundary")
+            put("method", "aria2.getVersion")
+            put("params", JsonArray(emptyList()))
+        }
+        val request = Request.Builder().url(endpoint.url).post(payload.toString().toRequestBody(JSON_MEDIA_TYPE)).build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return@withContext true
+            val root = json.parseToJsonElement(response.body.string()).jsonObject
+            root["error"] != null && root["result"] == null
+        }
+    }
+}
+
 class OkHttpAria2RpcControl(
     private val endpoint: Aria2Endpoint,
     private val secret: Aria2RpcSecret,
@@ -47,10 +76,17 @@ class OkHttpAria2RpcControl(
     private val requestId = AtomicLong()
 
     override suspend fun getVersion(): Aria2Version {
-        val result = invoke("aria2.getVersion") as? JsonObject ?: error("aria2.getVersion returned an invalid result")
+        val result = invoke("aria2.getVersion")
+        val objectResult = runCatching { result.jsonObject }.getOrElse {
+            throw Aria2RpcProtocolException("aria2.getVersion returned a malformed result", it)
+        }
         return Aria2Version(
-            version = result.string("version") ?: "unknown",
-            enabledFeatures = result["enabledFeatures"]?.jsonArray?.mapNotNull { it.contentOrNull() }?.toSet().orEmpty(),
+            version = objectResult.string("version") ?: "unknown",
+            enabledFeatures = objectResult["enabledFeatures"]?.let { element ->
+                runCatching { element.jsonArray.mapNotNull { it.contentOrNull() }.toSet() }.getOrElse {
+                    throw Aria2RpcProtocolException("aria2.getVersion returned malformed enabledFeatures", it)
+                }
+            }.orEmpty(),
         )
     }
 
@@ -149,14 +185,17 @@ class OkHttpAria2RpcControl(
         val request = Request.Builder().url(endpoint.url).post(payload.toString().toRequestBody(JSON_MEDIA_TYPE)).build()
         client.newCall(request).execute().use { response ->
             check(response.isSuccessful) { "aria2 RPC HTTP ${response.code}" }
-            val root = json.parseToJsonElement(response.body.string()).jsonObject
+            val body = response.body.string()
+            val root = runCatching { json.parseToJsonElement(body).jsonObject }.getOrElse {
+                throw Aria2RpcProtocolException("aria2 RPC returned malformed JSON", it)
+            }
             root["error"]?.jsonObject?.let { error ->
                 throw Aria2RpcException(
                     code = error.string("code")?.toIntOrNull() ?: -1,
                     message = error.string("message") ?: "Unknown aria2 RPC failure",
                 )
             }
-            root["result"] ?: error("aria2 RPC response did not contain a result")
+            root["result"] ?: throw Aria2RpcProtocolException("aria2 RPC response did not contain a result")
         }
     }
 

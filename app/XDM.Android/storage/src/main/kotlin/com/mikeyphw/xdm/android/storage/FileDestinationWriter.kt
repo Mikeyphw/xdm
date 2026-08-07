@@ -11,6 +11,7 @@ import java.nio.file.StandardCopyOption
 
 class FileDestinationWriter(
     private val privateDownloadsDirectory: File? = null,
+    private val directDownloadsDirectory: File? = null,
 ) : DestinationWriter {
     override val supportsContentDestinations: Boolean = false
 
@@ -142,11 +143,15 @@ class FileDestinationWriter(
 
     private fun resolveDestination(request: DestinationRequest) = when (request.destinationUri) {
         DestinationUris.APP_PRIVATE_DOWNLOADS -> requireNotNull(privateDownloadsDirectory) { "App-private destination requires an application directory" }.resolve(request.fileName).toPath()
+        DestinationUris.DIRECT_DOWNLOADS -> requireNotNull(directDownloadsDirectory) { "Direct Downloads requires a shared-storage directory" }.resolve(request.fileName).toPath()
         else -> {
             val uri = runCatching { URI(request.destinationUri) }.getOrNull()
             when {
                 uri == null || uri.scheme == null -> File(request.destinationUri).toPath()
-                uri.scheme.equals("file", ignoreCase = true) -> File(uri).toPath()
+                uri.scheme.equals("file", ignoreCase = true) -> {
+                    val file = File(uri)
+                    if (request.destinationUri.endsWith('/')) file.resolve(request.fileName).toPath() else file.toPath()
+                }
                 else -> throw UnsupportedOperationException("Unsupported file destination ${request.destinationUri}")
             }
         }

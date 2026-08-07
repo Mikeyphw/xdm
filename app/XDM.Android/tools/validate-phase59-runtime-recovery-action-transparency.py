@@ -84,7 +84,7 @@ for forbidden in [
 ]:
     require(forbidden not in preview, f'preview model must not contain unsafe marker: {forbidden}')
 
-require('MANAGE_EXTERNAL_STORAGE' not in android_manifest, 'Android manifest must not request all-files permission')
+require('MANAGE_EXTERNAL_STORAGE' in android_manifest, 'Runtime Foundation personal build must declare all-files permission')
 require('partialRetryPreviewExplainsRecoveryDoctorBeforeRetry' in preview_test, 'preview test must cover Recovery Doctor explanation')
 require('guidancePreviewDoesNotClaimBackgroundExecution' in preview_test, 'preview test must cover guidance-only copy')
 require('previewReportRedactsHeaderLikeSafetyNotes' in preview_test, 'preview test must cover header redaction')

@@ -38,7 +38,7 @@ class Phase61FinalGateValidatorHarmonyContractTest {
         assertTrue(manifest.contains("\"automatic_transfer_start\": false"))
         assertTrue(manifest.contains("\"automatic_deletion\": false"))
         assertTrue(manifest.contains("\"all_files_permission_added\": false"))
-        assertFalse(androidManifest.contains("MANAGE_EXTERNAL_STORAGE"))
+        assertTrue(androidManifest.contains("MANAGE_EXTERNAL_STORAGE"))
     }
 
     @Test

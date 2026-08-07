@@ -7,6 +7,7 @@ import java.io.File
 
 object DestinationUris {
     const val APP_PRIVATE_DOWNLOADS = "xdm://private/downloads"
+    const val DIRECT_DOWNLOADS = "xdm://filesystem/downloads"
     const val PUBLIC_DOWNLOADS = "xdm://mediastore/downloads"
     const val MEDIA_MOVIES = "xdm://mediastore/movies"
     const val MEDIA_MUSIC = "xdm://mediastore/music"

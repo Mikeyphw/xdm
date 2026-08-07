@@ -45,12 +45,13 @@ class Phase65DiagnosticExportDownloadActionContractTest {
     @Test
     fun phase65KeepsRcBoundaries() {
         val manifest = source("PROJECT_MANIFEST.json")
+        val androidManifest = source("app/src/main/AndroidManifest.xml")
         assertTrue(manifest.contains("\"field_bugfix_phase_65\""))
         assertTrue(manifest.contains("\"room_schema_unchanged\": 14"))
         assertTrue(manifest.contains("\"automatic_transfer_start\": false"))
         assertTrue(manifest.contains("\"automatic_upload\": false"))
         assertTrue(manifest.contains("\"all_files_permission_added\": false"))
-        assertFalse(manifest.contains("MANAGE_EXTERNAL_STORAGE"))
+        assertTrue(androidManifest.contains("MANAGE_EXTERNAL_STORAGE"))
     }
 
     private fun source(path: String): String = File(projectRoot(), path).readText()

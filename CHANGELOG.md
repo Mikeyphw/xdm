@@ -1,3 +1,20 @@
+## Runtime Foundation Phases 55–56 r2 - promise closure
+- Added durable app-private aria2 runtime ownership lease and authenticated orphan-daemon recovery across XDM app-process restarts.
+
+- Supersedes the first Phase 55–56 artifact against `xdm-20260807-110547.tar.gz`.
+- Adds explicit malformed-RPC, invalid-config, occupied-port, and Android binary/linker startup diagnoses without losing earlier unauthorized/root-cause failures to timeout polling.
+- Expands aria2 smoke testing to a real loopback download lifecycle: add, inspect, pause/unpause, complete, verify bytes, save session, remove result, and managed shutdown.
+- Adds Storage Doctor coverage for permission, mkdir/create/write+fsync/rename/read/delete, embedded aria2 output, and Termux yt-dlp/FFmpeg path visibility.
+- Adds guarded custom direct shared-storage folders while rejecting relative paths, paths outside shared storage, and other apps' `Android/data` / `Android/obb`.
+- Retains MediaStore and SAF fallbacks, forbids `File(uri.path)` for DocumentsProvider URIs, and keeps Room schema 17.
+
+## Runtime Foundation Phases 55–56 - aria2 runtime + personal direct storage
+
+- Diagnose embedded aria2 startup failures without collapsing unauthorized, connection, HTTP/RPC, process-exit, and timeout cases.
+- Verify the local aria2 authentication boundary after authenticated startup and add a repair action that clears stale launch configs and rotates the RPC secret.
+- Add a personal-build Direct Downloads destination backed by Android all-files access while retaining MediaStore and SAF fallbacks.
+- Keep DocumentsProvider `content://` destinations on `ContentResolver`/SAF paths; never coerce them into filesystem paths.
+- Update active runtime/storage contracts that previously assumed the app would never request broad storage access.
 
 ## Android Bug Hunt Phase 11 Validation Matrix r2 Gap Closure
 

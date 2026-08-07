@@ -26,12 +26,28 @@ import java.net.URLConnection
 
 class AndroidDestinationWriter(private val context: Context) : DestinationWriter {
     private val resolver: ContentResolver = context.contentResolver
-    private val appPrivateWriter = FileDestinationWriter(File(context.filesDir, "downloads").apply(File::mkdirs))
+    private val fileWriter = FileDestinationWriter(
+        privateDownloadsDirectory = File(context.filesDir, "downloads").apply(File::mkdirs),
+        directDownloadsDirectory = PersonalDirectStorage.downloadsDirectory(),
+    )
     override val supportsContentDestinations: Boolean = true
 
+    fun directStorageDirectory(destinationUri: String = DestinationUris.DIRECT_DOWNLOADS): File =
+        PersonalDirectStorage.directoryForDestination(destinationUri)
+            ?: PersonalDirectStorage.downloadsDirectory().canonicalFile
+
+    fun runDirectStorageDoctor(destinationUri: String = DestinationUris.DIRECT_DOWNLOADS): DirectStorageDoctorReport {
+        val directory = directStorageDirectory(destinationUri)
+        if (!PersonalDirectStorage.isGranted(context)) {
+            return DirectStorageDoctor.run(directory, permissionGranted = false)
+        }
+        return DirectStorageDoctor.run(directory, permissionGranted = true)
+    }
+
     override fun artifactPaths(request: DestinationRequest): DestinationArtifacts {
-        if (isRegularFileDestination(request.destinationUri) || request.destinationUri == DestinationUris.APP_PRIVATE_DOWNLOADS) {
-            return appPrivateWriter.artifactPaths(request)
+        if (isFileBackedDestination(request.destinationUri)) {
+            ensureDirectAccessIfNeeded(request.destinationUri)
+            return fileWriter.artifactPaths(request)
         }
         val directory = File(context.filesDir, "transfer-staging/${collisionResistantComponent(request.downloadId)}").apply(File::mkdirs)
         val partial = File(directory, safeFileName(request.fileName) + request.stagingSuffix)
@@ -43,8 +59,9 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
     }
 
     override suspend fun prepare(request: DestinationRequest): PreparedDestination {
-        if (isRegularFileDestination(request.destinationUri) || request.destinationUri == DestinationUris.APP_PRIVATE_DOWNLOADS) {
-            return appPrivateWriter.prepare(request)
+        if (isFileBackedDestination(request.destinationUri)) {
+            ensureDirectAccessIfNeeded(request.destinationUri)
+            return fileWriter.prepare(request)
         }
         val target = resolveTarget(request)
         val artifacts = artifactPaths(request)
@@ -127,8 +144,9 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
     }
 
     override suspend fun previewConflict(request: DestinationRequest): DestinationConflict? {
-        if (isRegularFileDestination(request.destinationUri) || request.destinationUri == DestinationUris.APP_PRIVATE_DOWNLOADS) {
-            return appPrivateWriter.previewConflict(request)
+        if (isFileBackedDestination(request.destinationUri)) {
+            ensureDirectAccessIfNeeded(request.destinationUri)
+            return fileWriter.previewConflict(request)
         }
         val root = destinationRoot(request.destinationUri)
         val existing = when (root.type) {
@@ -145,8 +163,17 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
     }
 
     override suspend fun health(destinationUri: String): DestinationHealth {
-        if (isRegularFileDestination(destinationUri) || destinationUri == DestinationUris.APP_PRIVATE_DOWNLOADS) {
-            return appPrivateWriter.health(destinationUri)
+        if (isFileBackedDestination(destinationUri)) {
+            if (PersonalDirectStorage.requiresAllFilesAccess(destinationUri) && !PersonalDirectStorage.isGranted(context)) {
+                return DestinationHealth(
+                    uri = destinationUri,
+                    type = DestinationType.FileSystem,
+                    status = DestinationHealthStatus.PermissionMissing,
+                    displayName = if (destinationUri == DestinationUris.DIRECT_DOWNLOADS) "Download/XDM" else destinationUri,
+                    message = "All files access is required for the personal direct-storage destination.",
+                )
+            }
+            return fileWriter.health(destinationUri)
         }
         return runCatching {
             val root = destinationRoot(destinationUri)
@@ -386,6 +413,17 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
             else -> null
         }
     }
+
+    private fun ensureDirectAccessIfNeeded(uri: String) {
+        if (PersonalDirectStorage.requiresAllFilesAccess(uri) && !PersonalDirectStorage.isGranted(context)) {
+            throw DestinationPermissionException("Direct shared-storage destinations require Android all-files access; grant it in XDM storage settings or choose a SAF/MediaStore destination.")
+        }
+    }
+
+    private fun isFileBackedDestination(uri: String): Boolean =
+        uri == DestinationUris.APP_PRIVATE_DOWNLOADS ||
+            uri == DestinationUris.DIRECT_DOWNLOADS ||
+            isRegularFileDestination(uri)
 
     private fun isRegularFileDestination(uri: String): Boolean = uri.startsWith("file:") || !uri.contains("://")
     private fun safeComponent(value: String): String = collisionResistantComponent(value)

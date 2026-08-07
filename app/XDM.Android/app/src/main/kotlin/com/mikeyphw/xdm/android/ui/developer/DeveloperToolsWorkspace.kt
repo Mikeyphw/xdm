@@ -45,6 +45,7 @@ fun DeveloperToolsWorkspace(
     browserStatus: BrowserIntegrationStatus,
     clipboardInbox: List<ClipboardInboxItem>,
     onRunAria2SmokeTest: () -> Unit,
+    onRepairAria2: () -> Unit,
     onRunTermuxProbe: () -> Unit,
     onRunTermuxRootProbe: () -> Unit,
     onCollectRootDiagnostics: () -> Unit,
@@ -99,7 +100,7 @@ fun DeveloperToolsWorkspace(
             }
         }
         when (section) {
-            DeveloperToolSection.RuntimeEngines -> RuntimeAndEnginesSection(state, onRunAria2SmokeTest)
+            DeveloperToolSection.RuntimeEngines -> RuntimeAndEnginesSection(state, onRunAria2SmokeTest, onRepairAria2)
             DeveloperToolSection.TermuxAria2 -> TermuxAndAria2Section(
                 state = state,
                 onRunTermuxProbe = onRunTermuxProbe,
@@ -151,7 +152,11 @@ fun DeveloperToolsWorkspace(
 }
 
 @Composable
-private fun RuntimeAndEnginesSection(state: MainUiState, onRunAria2SmokeTest: () -> Unit) {
+private fun RuntimeAndEnginesSection(
+    state: MainUiState,
+    onRunAria2SmokeTest: () -> Unit,
+    onRepairAria2: () -> Unit,
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -166,8 +171,13 @@ private fun RuntimeAndEnginesSection(state: MainUiState, onRunAria2SmokeTest: ()
                     }
                     StatusPill(state.aria2Diagnostics.status, if (state.aria2Diagnostics.status.contains("ready", true)) XdmStatusTone.Success else XdmStatusTone.Info)
                 }
-                Button(onClick = onRunAria2SmokeTest, enabled = state.aria2Diagnostics.canRunSmokeTest && !state.aria2Diagnostics.smokeTestRunning) {
-                    Text(if (state.aria2Diagnostics.smokeTestRunning) "Testing…" else "Run aria2 smoke test")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onRunAria2SmokeTest, enabled = state.aria2Diagnostics.canRunSmokeTest && !state.aria2Diagnostics.smokeTestRunning) {
+                        Text(if (state.aria2Diagnostics.smokeTestRunning) "Testing…" else "Run aria2 smoke test")
+                    }
+                    TextButton(onClick = onRepairAria2, enabled = state.aria2Diagnostics.canRepair && !state.aria2Diagnostics.smokeTestRunning) {
+                        Text("Repair aria2")
+                    }
                 }
             }
         }

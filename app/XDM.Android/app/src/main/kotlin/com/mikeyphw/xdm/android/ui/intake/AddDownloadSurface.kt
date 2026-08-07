@@ -1,6 +1,7 @@
 package com.mikeyphw.xdm.android
 
 import android.os.Build
+import android.os.Environment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -48,6 +49,8 @@ import com.mikeyphw.xdm.android.model.DownloadIntakeOrigin
 import com.mikeyphw.xdm.android.model.DownloadReviewPlanner
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
+import com.mikeyphw.xdm.android.storage.DestinationUris
+import com.mikeyphw.xdm.android.storage.PersonalDirectStorage
 import com.mikeyphw.xdm.android.util.formatBytes
 
 @Composable
@@ -100,6 +103,15 @@ fun AddDownloadScreen(
         uri?.let {
             reviewConfirmed = false
             onSafDestinationSelected(it.toString())
+        }
+    }
+    val directStoragePermission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()) {
+            reviewConfirmed = false
+            onDestinationChanged(DestinationUris.DIRECT_DOWNLOADS)
+            clipboardMessage = "Direct file access granted for Download/XDM"
+        } else {
+            clipboardMessage = "Direct file access was not granted; SAF and MediaStore remain available"
         }
     }
     val recommendation = url.takeIf(String::isNotBlank)?.let {
@@ -230,7 +242,11 @@ fun AddDownloadScreen(
                                     selected = destinationUri == choice.uri,
                                     onClick = {
                                         reviewConfirmed = false
-                                        onDestinationChanged(choice.uri)
+                                        if (choice.uri == DestinationUris.DIRECT_DOWNLOADS && !PersonalDirectStorage.isGranted(context)) {
+                                            directStoragePermission.launch(PersonalDirectStorage.permissionIntent(context))
+                                        } else {
+                                            onDestinationChanged(choice.uri)
+                                        }
                                     },
                                     label = { Text(choice.label) },
                                 )

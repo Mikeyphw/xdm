@@ -102,7 +102,7 @@ for prior in [54, 55, 56, 57, 58, 59]:
     }[prior])
     require(OVERLAY in validator, f'Phase{prior} validator must tolerate Phase60 as a later overlay')
 
-require('MANAGE_EXTERNAL_STORAGE' not in android_manifest, 'Android manifest must not request all-files permission')
+require('MANAGE_EXTERNAL_STORAGE' in android_manifest, 'Runtime Foundation personal build must declare all-files permission')
 require('validate-phase60-runtime-recovery-flow-seal.py' in final_gate, 'final release gate must run Phase60 validator')
 require('validate-phase60-runtime-recovery-flow-seal.py' in phase48_gate, 'Phase48 gate must run Phase60 validator')
 require(OVERLAY in phase59_validator, 'Phase59 validator must accept Phase60 as later overlay')

@@ -33,6 +33,15 @@ class TermuxBridgeManager(context: Context) {
         }
     }
 
+    fun runStoragePathProbe(path: String): TermuxCommandRunner.LaunchResult {
+        val command = XdmTermuxCommand.StoragePathProbe(path)
+        val result = runner.run(command)
+        if (!result.started) {
+            TermuxRunStore.recordLaunchFailure(appContext, command.operation, result.error)
+        }
+        return result
+    }
+
     fun runRootProbe() {
         val result = runner.run(XdmTermuxCommand.RootProbe)
         TermuxRunStore.recordRootProbeLaunch(

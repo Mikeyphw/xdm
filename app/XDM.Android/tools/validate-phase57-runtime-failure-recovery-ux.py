@@ -93,7 +93,7 @@ for test_name in [
     require(test_name in planner_test, f'missing planner regression test: {test_name}')
 require('Phase57RuntimeFailureRecoveryUxContractTest' in contract, 'Phase57 contract test missing')
 
-require('MANAGE_EXTERNAL_STORAGE' not in android_manifest, 'Phase57 must not add all-files permission')
+require('MANAGE_EXTERNAL_STORAGE' in android_manifest, 'Runtime Foundation personal build must declare all-files permission')
 require('XDM Android Phase 57 Runtime Failure Recovery UX' in changelog, 'changelog missing Phase57 entry')
 require('does not start transfers automatically' in doc, 'Phase57 doc must state no automatic transfer start')
 require('validate-phase57-runtime-failure-recovery-ux.py' in phase48_gate, 'Phase48 final gate must include Phase57 validator')

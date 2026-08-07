@@ -63,17 +63,65 @@ data class Aria2Version(
     val enabledFeatures: Set<String> = emptySet(),
 )
 
+enum class Aria2StartupFailureKind {
+    ConnectionRefused,
+    Unauthorized,
+    HttpFailure,
+    RpcFailure,
+    MalformedResponse,
+    ConfigurationInvalid,
+    PortUnavailable,
+    BinaryLoadFailure,
+    ProcessExited,
+    Timeout,
+    LaunchFailure,
+    ConfigurationCleanup,
+    AuthenticationBoundary,
+    RuntimeOwnership,
+    OrphanRecovery,
+    Unknown,
+}
+
+data class Aria2StartupDiagnostic(
+    val kind: Aria2StartupFailureKind,
+    val detail: String,
+    val exitCode: Int? = null,
+    val logTail: String? = null,
+)
+
+enum class Aria2OrphanRecovery {
+    None,
+    RecoveredOwnedDaemon,
+    ClearedStaleMarker,
+}
+
+data class Aria2RuntimeLease(
+    val endpoint: Aria2Endpoint,
+    val secretGeneration: Long,
+    val startedAtEpochMs: Long,
+)
+
 sealed interface Aria2ProcessState {
     data object Stopped : Aria2ProcessState
     data class Unavailable(val report: Aria2CapabilityReport) : Aria2ProcessState
-    data class Starting(val endpoint: Aria2Endpoint) : Aria2ProcessState
+    data class Starting(
+        val endpoint: Aria2Endpoint,
+        val secretGeneration: Long = 0L,
+        val startedAtEpochMs: Long = 0L,
+    ) : Aria2ProcessState
     data class Running(
         val endpoint: Aria2Endpoint,
         val version: Aria2Version,
         val processId: Long?,
+        val secretGeneration: Long = 0L,
+        val startedAtEpochMs: Long = 0L,
+        val orphanRecovery: Aria2OrphanRecovery = Aria2OrphanRecovery.None,
     ) : Aria2ProcessState
     data class Stopping(val endpoint: Aria2Endpoint) : Aria2ProcessState
-    data class Failed(val message: String) : Aria2ProcessState
+    data class Failed(
+        val message: String,
+        val diagnostic: Aria2StartupDiagnostic? = null,
+    ) : Aria2ProcessState
 }
 
 data class Aria2LaunchPlan(
@@ -104,6 +152,19 @@ data class Aria2SmokeTestResult(
     val version: Aria2Version? = null,
 )
 
+data class Aria2RpcLifecycleProbeResult(
+    val successful: Boolean,
+    val summary: String,
+    val outputBytes: Long = 0L,
+)
+
+data class Aria2StorageProbeResult(
+    val successful: Boolean,
+    val summary: String,
+    val outputPath: String? = null,
+)
+
+
 data class Aria2TaskFiles(
     val directory: File,
     val output: File,
@@ -126,6 +187,12 @@ interface Aria2RuntimeFiles {
     val rootDirectory: File
     val sessionFile: File
     fun prepare()
+    fun cleanupTransientLaunchConfigurations(): Int = 0
+    fun readRuntimeLogTail(maxChars: Int = 4096): String? = null
+    val supportsRuntimeLease: Boolean get() = false
+    fun readRuntimeLease(): Aria2RuntimeLease? = null
+    fun writeRuntimeLease(lease: Aria2RuntimeLease): Boolean = false
+    fun clearRuntimeLease(): Boolean = true
     fun writeLaunchConfiguration(endpoint: Aria2Endpoint, secret: Aria2RpcSecret): File
     fun deleteLaunchConfiguration(file: File): Boolean
     fun logFile(): File
@@ -141,6 +208,11 @@ fun interface Aria2CapabilityProbe {
 
 fun interface Aria2SecretProvider {
     fun getOrCreate(): Aria2RpcSecret
+    fun generation(): Long = 0L
+}
+
+interface Aria2RotatableSecretProvider : Aria2SecretProvider {
+    fun rotate(): Aria2RpcSecret
 }
 
 fun interface Aria2PortAllocator {
@@ -213,6 +285,10 @@ interface Aria2RpcControl {
 
 fun interface Aria2RpcControlFactory {
     fun create(endpoint: Aria2Endpoint, secret: Aria2RpcSecret): Aria2RpcControl
+}
+
+fun interface Aria2RpcAuthenticationProbe {
+    suspend fun rejectsUnauthenticated(endpoint: Aria2Endpoint): Boolean
 }
 
 interface Aria2TaskEventSource {

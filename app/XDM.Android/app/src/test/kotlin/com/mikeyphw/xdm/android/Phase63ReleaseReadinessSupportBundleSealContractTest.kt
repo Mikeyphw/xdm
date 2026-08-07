@@ -52,7 +52,7 @@ class Phase63ReleaseReadinessSupportBundleSealContractTest {
         assertTrue(manifest.contains("\"automatic_deletion\": false"))
         assertTrue(manifest.contains("\"automatic_upload\": false"))
         assertTrue(manifest.contains("\"all_files_permission_added\": false"))
-        assertFalse(androidManifest.contains("MANAGE_EXTERNAL_STORAGE"))
+        assertTrue(androidManifest.contains("MANAGE_EXTERNAL_STORAGE"))
         assertTrue(doc.contains("does not upload, start transfers, delete files, add storage permissions, persist session values, or reopen Debug Workbench"))
     }
 

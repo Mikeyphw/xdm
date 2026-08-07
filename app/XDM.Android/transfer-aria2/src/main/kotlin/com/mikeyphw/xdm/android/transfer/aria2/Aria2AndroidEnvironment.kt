@@ -61,25 +61,47 @@ class AndroidAria2CapabilityProbe(
     }
 }
 
-class AppPrivateAria2SecretProvider(context: Context) : Aria2SecretProvider {
+class AppPrivateAria2SecretProvider(context: Context) : Aria2RotatableSecretProvider {
     private val preferences = context.getSharedPreferences("aria2-runtime", Context.MODE_PRIVATE)
     private val random = SecureRandom()
 
     override fun getOrCreate(): Aria2RpcSecret = synchronized(this) {
         preferences.getString(KEY, null)
             ?.takeIf { it.length >= 32 }
+            ?.also { ensureGenerationLocked() }
             ?.let(Aria2RpcSecret::from)
-            ?: ByteArray(32).also(random::nextBytes).let { bytes ->
-                Base64.getUrlEncoder().withoutPadding().encodeToString(bytes).also { encoded ->
-                    check(preferences.edit().putString(KEY, encoded).commit()) {
-                        "Unable to persist the app-private aria2 RPC secret"
-                    }
-                }.let(Aria2RpcSecret::from)
+            ?: newSecretLocked()
+    }
+
+    override fun generation(): Long = synchronized(this) {
+        preferences.getLong(GENERATION_KEY, 0L)
+    }
+
+    override fun rotate(): Aria2RpcSecret = synchronized(this) {
+        newSecretLocked()
+    }
+
+    private fun ensureGenerationLocked(): Long {
+        val current = preferences.getLong(GENERATION_KEY, 0L)
+        if (current > 0L) return current
+        check(preferences.edit().putLong(GENERATION_KEY, 1L).commit()) {
+            "Unable to persist the aria2 RPC secret generation"
+        }
+        return 1L
+    }
+
+    private fun newSecretLocked(): Aria2RpcSecret = ByteArray(32).also(random::nextBytes).let { bytes ->
+        Base64.getUrlEncoder().withoutPadding().encodeToString(bytes).also { encoded ->
+            val nextGeneration = preferences.getLong(GENERATION_KEY, 0L).coerceAtLeast(0L) + 1L
+            check(preferences.edit().putString(KEY, encoded).putLong(GENERATION_KEY, nextGeneration).commit()) {
+                "Unable to persist the app-private aria2 RPC secret"
             }
+        }.let(Aria2RpcSecret::from)
     }
 
     private companion object {
         const val KEY = "rpc-secret-v1"
+        const val GENERATION_KEY = "rpc-secret-generation-v1"
     }
 }
 

@@ -137,6 +137,7 @@ private class BackendFixture(
         portAllocator = Aria2PortAllocator { 49152 },
         processLauncher = Aria2ProcessLauncher { process },
         rpcFactory = Aria2RpcControlFactory { _, _ -> rpc },
+        authenticationProbe = Aria2RpcAuthenticationProbe { true },
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
         startupTimeoutMillis = 500,
         shutdownTimeoutMillis = 500,

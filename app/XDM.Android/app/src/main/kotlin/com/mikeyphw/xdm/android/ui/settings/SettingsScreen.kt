@@ -1,6 +1,7 @@
 package com.mikeyphw.xdm.android
 
 import android.content.Intent
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -16,8 +17,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,6 +32,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.mikeyphw.xdm.android.storage.DestinationUris
+import com.mikeyphw.xdm.android.storage.PersonalDirectStorage
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -73,6 +78,16 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
     val destinationPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.toString()?.let(viewModel::registerSafDestination)
     }
+    val directStorageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (PersonalDirectStorage.isGranted(context)) {
+            viewModel.setDestination(DestinationUris.DIRECT_DOWNLOADS)
+        }
+    }
+    val directStorageSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+    val directStorageGranted = directStorageSupported && PersonalDirectStorage.isGranted(context)
+    var showCustomDirectPath by remember { mutableStateOf(false) }
+    var customDirectPath by remember { mutableStateOf(PersonalDirectStorage.downloadsDirectory().absolutePath) }
+    var customDirectPathError by remember { mutableStateOf<String?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -84,11 +99,63 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
             XdmSupportingText("Everyday preferences first. Advanced engines and diagnostics stay one level deeper.", maxLines = 3)
         }
         item { XdmSectionHeader("Downloads") }
+        if (directStorageSupported) {
+            item {
+                SettingsActionRow(
+                    title = "Direct file access",
+                    summary = if (directStorageGranted) {
+                        "Granted. Download engines can write directly to Download/XDM."
+                    } else {
+                        "Recommended for this personal build. Grant Android all-files access for direct shared-storage paths."
+                    },
+                    actionLabel = if (directStorageGranted) "Use" else "Grant",
+                    onClick = {
+                        if (directStorageGranted) {
+                            viewModel.setDestination(DestinationUris.DIRECT_DOWNLOADS)
+                        } else {
+                            directStorageLauncher.launch(PersonalDirectStorage.permissionIntent(context))
+                        }
+                    },
+                )
+            }
+        }
+        if (directStorageSupported && directStorageGranted) {
+            item {
+                SettingsActionRow(
+                    title = "Custom direct folder",
+                    summary = if (state.destinationUri.startsWith("file://", ignoreCase = true) && state.destinationUri.endsWith('/')) {
+                        state.destinationUri.removePrefix("file://")
+                    } else {
+                        "Use another ordinary folder inside shared storage. Android/data and Android/obb are excluded."
+                    },
+                    actionLabel = "Set",
+                    onClick = { showCustomDirectPath = true },
+                )
+            }
+        }
+        if (directStorageSupported) {
+            item {
+                SettingsActionRow(
+                    title = "Storage doctor",
+                    summary = "${state.aria2Diagnostics.storageDoctor.status}. ${state.aria2Diagnostics.storageDoctor.detail}",
+                    actionLabel = if (state.aria2Diagnostics.storageDoctor.running) "Running…" else "Run",
+                    onClick = viewModel::runStorageDoctor,
+                )
+            }
+        }
         item {
             SettingsActionRow(
-                title = "Save location",
+                title = "Public Downloads via Android",
+                summary = "Use MediaStore without broad file access.",
+                actionLabel = "Use",
+                onClick = { viewModel.setDestination(DestinationUris.PUBLIC_DOWNLOADS) },
+            )
+        }
+        item {
+            SettingsActionRow(
+                title = "Android folder (SAF)",
                 summary = destinationSummary(state.destinationUri),
-                actionLabel = "Change",
+                actionLabel = "Choose",
                 onClick = { destinationPicker.launch(null) },
             )
         }
@@ -217,6 +284,40 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
                 XdmMetadataText("Downloader-only Android app with external browser handoff and no built-in browser.", maxLines = 3)
             }
         }
+    }
+
+    if (showCustomDirectPath) {
+        AlertDialog(
+            onDismissRequest = { showCustomDirectPath = false },
+            title = { Text("Custom direct folder") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Enter an absolute folder inside shared storage. XDM will use it as a directory, not as a document-provider URI.")
+                    OutlinedTextField(
+                        value = customDirectPath,
+                        onValueChange = { customDirectPath = it; customDirectPathError = null },
+                        label = { Text("Folder path") },
+                        isError = customDirectPathError != null,
+                        singleLine = true,
+                    )
+                    customDirectPathError?.let { error ->
+                        XdmMetadataText(error, maxLines = 3)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    runCatching { PersonalDirectStorage.customDirectoryUri(customDirectPath) }
+                        .onSuccess { uri ->
+                            viewModel.setDestination(uri)
+                            customDirectPathError = null
+                            showCustomDirectPath = false
+                        }
+                        .onFailure { error -> customDirectPathError = error.message ?: "Invalid shared-storage path." }
+                }) { Text("Use folder") }
+            },
+            dismissButton = { TextButton(onClick = { showCustomDirectPath = false }) { Text("Cancel") } },
+        )
     }
 }
 
@@ -376,7 +477,8 @@ private fun SettingsSwitchRow(
 }
 
 private fun destinationSummary(uri: String): String = when {
-    uri.contains("public-downloads", ignoreCase = true) -> "Public Downloads folder"
+    uri == DestinationUris.DIRECT_DOWNLOADS -> "Direct Download/XDM folder"
+    uri.contains("public-downloads", ignoreCase = true) -> "Public Downloads via MediaStore"
     uri.contains("app-private", ignoreCase = true) -> "App-private Downloads folder"
     uri.startsWith("content://") -> "Selected Android folder"
     else -> "Configured download folder"

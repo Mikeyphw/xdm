@@ -108,6 +108,8 @@ import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceCoordinator
 import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
 import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
 import com.mikeyphw.xdm.android.storage.DestinationUris
+import com.mikeyphw.xdm.android.storage.PersonalDirectStorage
+import com.mikeyphw.xdm.android.termux.TermuxRunStatus
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.newChecksumExpectationId
@@ -116,6 +118,7 @@ import com.mikeyphw.xdm.android.util.sanitizeFileName
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2CapabilityReport
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessManager
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessState
+import com.mikeyphw.xdm.android.transfer.nativeengine.NativeStoragePathProbe
 import com.mikeyphw.xdm.android.termux.TermuxRootMode
 import com.mikeyphw.xdm.android.termux.TermuxBridgeStatus
 import com.mikeyphw.xdm.android.termux.TermuxBridgeManager
@@ -134,16 +137,26 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 private val SessionHeaderAllowList = setOf("authorization", "cookie", "referer", "user-agent", "origin", "accept", "accept-language")
+
+data class StorageDoctorUi(
+    val status: String = "Not run",
+    val detail: String = "Run the storage doctor to verify the selected direct folder, native destination path, embedded aria2, yt-dlp, and FFmpeg access.",
+    val running: Boolean = false,
+)
 
 data class Aria2DiagnosticsUi(
     val status: String = "Checking",
     val detail: String = "Inspecting the packaged runtime and private session directory.",
     val canRunSmokeTest: Boolean = false,
+    val canRepair: Boolean = false,
     val smokeTestRunning: Boolean = false,
+    val storageDoctor: StorageDoctorUi = StorageDoctorUi(),
 )
 
 private const val CurrentRoomSchemaVersion = 17
@@ -300,6 +313,21 @@ class MainViewModel(
     private val aria2Capability = MutableStateFlow<Aria2CapabilityReport?>(null)
     private val aria2SmokeMessage = MutableStateFlow<String?>(null)
     private val aria2SmokeRunning = MutableStateFlow(false)
+    private val storageDoctorMessage = MutableStateFlow<String?>(null)
+    private val storageDoctorRunning = MutableStateFlow(false)
+    private val storageDoctorUi = combine(storageDoctorMessage, storageDoctorRunning) { message, running ->
+        StorageDoctorUi(
+            status = when {
+                running -> "Running"
+                message == null -> "Not run"
+                message.startsWith("PASS:") -> "Passed"
+                else -> "Needs attention"
+            },
+            detail = message?.removePrefix("PASS:")?.removePrefix("FAIL:")?.trim()
+                ?: StorageDoctorUi().detail,
+            running = running,
+        )
+    }
     private val capabilitySnapshot = MutableStateFlow<Map<BackendType, BackendCapabilities>>(emptyMap())
     private val externalAddDraft = MutableStateFlow<DownloadIntakeDraft?>(null)
     private val mediaCaptureService = MediaCaptureService()
@@ -310,6 +338,7 @@ class MainViewModel(
     private val externalMediaReviewPlanner = ExternalMediaReviewPlanner(mediaCaptureService, sniffingEngine = mediaSniffingEngine, debugRecorder = debugEventRecorder)
     private val downloadIntakePlanner = DownloadIntakePlanner(debugRecorder = debugEventRecorder)
     private val mediaExecutionPlanner = MediaExecutionLibraryPlanner()
+    private val nativeStoragePathProbe = NativeStoragePathProbe(destinationWriter)
 
     private data class RepositorySnapshot(
         val downloads: List<Download>,
@@ -437,7 +466,8 @@ class MainViewModel(
         aria2Capability,
         aria2SmokeMessage,
         aria2SmokeRunning,
-    ) { processState, capability, smokeMessage, smokeRunning ->
+        storageDoctorUi,
+    ) { processState, capability, smokeMessage, smokeRunning, storageDoctor ->
         val status = when (processState) {
             is Aria2ProcessState.Running -> "Running"
             is Aria2ProcessState.Starting -> "Starting"
@@ -447,10 +477,18 @@ class MainViewModel(
             Aria2ProcessState.Stopped -> if (capability?.isAvailable == true) "Ready" else "Unavailable"
         }
         val detail = smokeMessage ?: when (processState) {
-            is Aria2ProcessState.Running -> "aria2 ${processState.version.version} is authenticated on ${processState.endpoint.url}."
+            is Aria2ProcessState.Running -> "aria2 ${processState.version.version} is authenticated on ${processState.endpoint.url}; pid=${processState.processId ?: "unknown"}; secret generation=${processState.secretGeneration}; started=${processState.startedAtEpochMs}; orphan recovery=${processState.orphanRecovery.name}."
             is Aria2ProcessState.Starting -> "Waiting for authenticated loopback RPC."
             is Aria2ProcessState.Stopping -> "Saving the aria2 session and stopping the managed process."
-            is Aria2ProcessState.Failed -> processState.message
+            is Aria2ProcessState.Failed -> buildString {
+                append(processState.message)
+                processState.diagnostic?.let { diagnostic ->
+                    append("\nCategory: ${diagnostic.kind.name}")
+                    append("\n${diagnostic.detail}")
+                    diagnostic.exitCode?.let { append("\nExit code: $it") }
+                    diagnostic.logTail?.takeIf(String::isNotBlank)?.let { append("\nRuntime log tail: $it") }
+                }
+            }
             is Aria2ProcessState.Unavailable -> processState.report.summary
             Aria2ProcessState.Stopped -> capability?.summary ?: "Inspecting the packaged runtime."
         }
@@ -458,7 +496,9 @@ class MainViewModel(
             status = status,
             detail = detail,
             canRunSmokeTest = capability?.isAvailable == true && !smokeRunning,
+            canRepair = capability?.isAvailable == true && !smokeRunning,
             smokeTestRunning = smokeRunning,
+            storageDoctor = storageDoctor,
         )
     }
 
@@ -869,6 +909,86 @@ class MainViewModel(
                 capabilitySnapshot.value = transferRuntime.backendCapabilities()
             } finally {
                 aria2SmokeRunning.value = false
+            }
+        }
+    }
+
+    fun repairEmbeddedAria2() {
+        if (aria2SmokeRunning.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            aria2SmokeRunning.value = true
+            aria2SmokeMessage.value = "Repairing embedded aria2: stopping the managed process, clearing stale launch configs, and rotating the RPC secret."
+            try {
+                val result = aria2ProcessManager.repair()
+                aria2SmokeMessage.value = if (result.started) {
+                    "Embedded aria2 repaired: secret rotated and authenticated loopback RPC verified."
+                } else {
+                    (result.state as? Aria2ProcessState.Failed)?.message ?: "Embedded aria2 repair did not reach a running state."
+                }
+                aria2Capability.value = aria2ProcessManager.probe()
+                refreshBackendCapabilities()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                aria2SmokeMessage.value = "Embedded aria2 repair failed safely: ${error.message ?: error::class.java.simpleName}"
+                aria2Capability.value = aria2ProcessManager.probe()
+            } finally {
+                aria2SmokeRunning.value = false
+            }
+        }
+    }
+
+    fun runStorageDoctor() {
+        if (storageDoctorRunning.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            storageDoctorRunning.value = true
+            storageDoctorMessage.value = "Checking direct-storage permission and filesystem operations."
+            try {
+                val selectedDestination = uiState.value.destinationUri
+                val directDestination = if (PersonalDirectStorage.requiresAllFilesAccess(selectedDestination)) {
+                    selectedDestination
+                } else {
+                    DestinationUris.DIRECT_DOWNLOADS
+                }
+                val local = destinationWriter.runDirectStorageDoctor(directDestination)
+                if (!local.passed) {
+                    storageDoctorMessage.value = "FAIL: ${local.summary}. ${local.steps.firstOrNull { !it.passed }?.detail.orEmpty()}"
+                    return@launch
+                }
+                val directory = destinationWriter.directStorageDirectory(directDestination)
+                val native = nativeStoragePathProbe.run(directDestination)
+                if (!native.successful) {
+                    storageDoctorMessage.value = "FAIL: ${local.summary}; ${native.summary}"
+                    return@launch
+                }
+                val aria2 = aria2ProcessManager.storageProbe(directory)
+                if (!aria2.successful) {
+                    storageDoctorMessage.value = "FAIL: ${local.summary}; ${native.summary}; embedded aria2 failed: ${aria2.summary}"
+                    return@launch
+                }
+                val termuxLaunch = termuxBridgeManager.runStoragePathProbe(directory.absolutePath)
+                if (!termuxLaunch.started) {
+                    storageDoctorMessage.value = "FAIL: ${local.summary}; ${native.summary}; ${aria2.summary}; yt-dlp/FFmpeg path probe could not start: ${termuxLaunch.error}"
+                    return@launch
+                }
+                val termuxFinished = withTimeoutOrNull(20_000L) {
+                    termuxBridgeManager.status.first { status ->
+                        status.recentRuns.any { run -> run.runId == termuxLaunch.runId && run.status != TermuxRunStatus.Started }
+                    }.recentRuns.first { run -> run.runId == termuxLaunch.runId }
+                }
+                if (termuxFinished == null) {
+                    storageDoctorMessage.value = "FAIL: ${local.summary}; ${native.summary}; ${aria2.summary}; yt-dlp/FFmpeg path probe timed out."
+                } else if (termuxFinished.status != TermuxRunStatus.Succeeded) {
+                    storageDoctorMessage.value = "FAIL: ${local.summary}; ${native.summary}; ${aria2.summary}; yt-dlp/FFmpeg path probe failed: ${termuxFinished.error.ifBlank { termuxFinished.stderrPreview }}"
+                } else {
+                    storageDoctorMessage.value = "PASS: ${local.summary}; ${native.summary}; ${aria2.summary}; Termux yt-dlp and FFmpeg executed and wrote probe output in ${directory.absolutePath}."
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                storageDoctorMessage.value = "FAIL: Storage doctor failed safely: ${error.message ?: error::class.java.simpleName}"
+            } finally {
+                storageDoctorRunning.value = false
             }
         }
     }

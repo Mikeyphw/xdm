@@ -44,6 +44,7 @@ internal fun DeveloperSettingsScreen(state: MainUiState, viewModel: MainViewMode
             browserStatus = state.browserIntegrationStatus,
             clipboardInbox = state.clipboardInbox,
             onRunAria2SmokeTest = viewModel::runAria2SmokeTest,
+            onRepairAria2 = viewModel::repairEmbeddedAria2,
             onRunTermuxProbe = viewModel::runTermuxToolProbe,
             onRunTermuxRootProbe = viewModel::runTermuxRootProbe,
             onCollectRootDiagnostics = viewModel::collectTermuxRootProcessDiagnostics,

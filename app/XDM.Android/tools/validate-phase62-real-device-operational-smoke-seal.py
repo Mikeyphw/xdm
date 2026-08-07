@@ -137,7 +137,7 @@ for prior in range(54, 62):
 
 require('validate-phase62-real-device-operational-smoke-seal.py' in final_gate, 'final release gate must run Phase62 validator')
 require('validate-phase62-real-device-operational-smoke-seal.py' in phase48_gate, 'Phase48 gate must run Phase62 validator')
-require('MANAGE_EXTERNAL_STORAGE' not in android_manifest, 'Android manifest must not request all-files permission')
+require('MANAGE_EXTERNAL_STORAGE' in android_manifest, 'Runtime Foundation personal build must declare all-files permission')
 require('Real-device Operational Smoke Seal' in changelog, 'changelog must describe Phase62')
 require('does not start transfers, delete files, request all-files storage, persist browser session values, or reopen Debug Workbench' in doc, 'Phase62 doc must record safety boundary')
 

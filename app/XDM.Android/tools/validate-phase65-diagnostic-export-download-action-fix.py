@@ -75,8 +75,12 @@ has(repo, 'deleteFinalizationForDownload', 'repository finalization cleanup miss
 has(dao, 'DELETE FROM recovery_records WHERE downloadId = :downloadId', 'recovery DAO cleanup missing')
 has(contract, 'Phase65DiagnosticExportDownloadActionContractTest', 'Phase65 contract test missing')
 
+# Phase65 historically did not add broad storage access. Later Runtime Foundation Phase55-56
+# intentionally adds a personal-build direct-storage option, so keep this historical guard
+# scoped to Phase65's own download-action/runtime surfaces instead of the current Settings
+# surface or aggregate project manifest.
 for forbidden in ['MANAGE_EXTERNAL_STORAGE', 'ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION']:
-    require(forbidden not in helper + self_card + debug_screen + settings + planner + screen + vm + manifest.__str__(), f'forbidden storage permission/request found: {forbidden}')
+    require(forbidden not in helper + self_card + debug_screen + planner + screen + vm, f'Phase65 surface unexpectedly owns storage permission/request: {forbidden}')
 
 if errors:
     print('Phase65 diagnostic export/download action fix validation failed:')

@@ -32,7 +32,7 @@ class Phase64FinalAndroidDownloaderRcSealContractTest {
         val doc = source("docs/architecture/PHASE-64-FINAL-ANDROID-DOWNLOADER-RC-SEAL.md")
 
         assertTrue(manifest.contains("\"field_bugfix_phase_64\""))
-        assertTrue(manifest.contains("\"current_overlay\": \"xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip\"") || manifest.contains("\"current_overlay\": \"xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip\""))
+        assertTrue(manifest.contains("\"runtime_foundation_2026_phase55_56\""))
         assertTrue(manifest.contains("\"next_phase\": \"complete\""))
         assertTrue(manifest.contains("\"room_schema_unchanged\": 14"))
         assertTrue(manifest.contains("\"automatic_transfer_start\": false"))
@@ -40,7 +40,7 @@ class Phase64FinalAndroidDownloaderRcSealContractTest {
         assertTrue(manifest.contains("\"automatic_upload\": false"))
         assertTrue(manifest.contains("\"all_files_permission_added\": false"))
         assertTrue(manifest.contains("\"built_in_browser_resurrected\": false"))
-        assertFalse(androidManifest.contains("MANAGE_EXTERNAL_STORAGE"))
+        assertTrue(androidManifest.contains("MANAGE_EXTERNAL_STORAGE"))
         assertTrue(doc.contains("No built-in browser resurrection"))
         assertTrue(doc.contains("Deferred validation: apply with --no-validate, then run the full gate once this final overlay is applied"))
     }

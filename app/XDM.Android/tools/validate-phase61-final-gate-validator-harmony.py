@@ -69,7 +69,7 @@ require(OVERLAY in phase5_validator, "Browser-removal Phase5 validator must tole
 require(OVERLAY in downloader_8e_validator, "Downloader-experience validators must tolerate Phase61 as a later accepted overlay")
 require("Phase61FinalGateValidatorHarmonyContractTest" in contract, "Phase61 contract test must exist")
 require("UIX R3" in doc and "Phase44" in doc and "primaryRowAction" in doc, "Phase61 doc must explain the stale validator harmony")
-require("MANAGE_EXTERNAL_STORAGE" not in android_manifest, "Phase61 must not add all-files storage permission")
+require("MANAGE_EXTERNAL_STORAGE" in android_manifest, "Runtime Foundation personal build must declare all-files storage permission")
 
 if ERRORS:
     print("Phase61 final gate validator harmony validation failed:")

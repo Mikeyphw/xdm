@@ -15,6 +15,7 @@ object TermuxShellTemplates {
         is XdmTermuxCommand.YtDlpDownload -> ytdlpDownloadScript(command)
         is XdmTermuxCommand.FfprobeInspect -> ffprobeInspectScript(command.path)
         is XdmTermuxCommand.FfmpegConvert -> ffmpegConvertScript(command)
+        is XdmTermuxCommand.StoragePathProbe -> storagePathProbeScript(command.path)
         is XdmTermuxCommand.PostProcess -> postProcessScript(command.plan)
         is XdmTermuxCommand.OwnedProcessControl -> controlOwnedProcessScript(command)
         is XdmTermuxCommand.Aria2StartDaemon -> aria2StartDaemonScript(command.config)
@@ -26,6 +27,24 @@ object TermuxShellTemplates {
         is XdmTermuxCommand.Aria2ResumeAll -> aria2RpcScript(command.config, "aria2.unpauseAll", "XDM_ARIA2_TASKS\tresumed")
         XdmTermuxCommand.RootProbe -> rootProbeScript()
         is XdmTermuxCommand.RootAction -> rootActionScript(command.action)
+    }
+
+    private fun storagePathProbeScript(path: String): String = buildString {
+        appendLine("set -eu")
+        appendLine("TARGET=${shellQuote(path)}")
+        appendLine("mkdir -p \"${'$'}TARGET\"")
+        appendLine("test -d \"${'$'}TARGET\" && test -w \"${'$'}TARGET\"")
+        appendLine("BASE=\"${'$'}TARGET/.xdm-termux-storage-probe-${'$'}${'$'}\"")
+        appendLine("cleanup() { rm -f -- \"${'$'}BASE.ytdlp\" \"${'$'}BASE.ffmpeg\"; }")
+        appendLine("trap cleanup EXIT INT TERM HUP")
+        appendLine("command -v yt-dlp >/dev/null 2>&1 || { printf 'missing yt-dlp\\n' >&2; exit 127; }")
+        appendLine("yt-dlp --version > \"${'$'}BASE.ytdlp\"")
+        appendLine("test -s \"${'$'}BASE.ytdlp\"")
+        appendLine("command -v ffmpeg >/dev/null 2>&1 || { printf 'missing ffmpeg\\n' >&2; exit 127; }")
+        appendLine("ffmpeg -version > \"${'$'}BASE.ffmpeg\" 2>&1")
+        appendLine("test -s \"${'$'}BASE.ffmpeg\"")
+        appendLine("sync \"${'$'}BASE.ytdlp\" \"${'$'}BASE.ffmpeg\" 2>/dev/null || sync")
+        appendLine("printf 'XDM_STORAGE_PROBE\\tpass\\t%s\\n' \"${'$'}TARGET\"")
     }
 
     private fun managedPayload(command: XdmTermuxCommand, runtime: TermuxRuntimeArtifacts): String = when (command) {

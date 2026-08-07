@@ -6,6 +6,7 @@ internal fun destinationUiLabel(destinationUri: String): String {
     val value = destinationUri.trim()
     return when {
         value.isBlank() -> "Default save location"
+        value == DestinationUris.DIRECT_DOWNLOADS -> "Download/XDM (direct)"
         value == DestinationUris.PUBLIC_DOWNLOADS -> "Downloads folder"
         value == DestinationUris.MEDIA_MOVIES -> "Movies library"
         value == DestinationUris.MEDIA_MUSIC -> "Music library"
@@ -22,6 +23,7 @@ internal fun destinationUiLabel(destinationUri: String): String {
 internal fun destinationUiHint(destinationUri: String): String {
     val value = destinationUri.trim()
     return when {
+        value == DestinationUris.DIRECT_DOWNLOADS -> "Personal direct-storage mode; download engines use the shared filesystem path after all-files access is granted."
         value == DestinationUris.PUBLIC_DOWNLOADS -> "Visible in your Downloads folder."
         value == DestinationUris.MEDIA_MOVIES -> "Visible in Android media apps and file managers."
         value == DestinationUris.MEDIA_MUSIC -> "Visible in Android audio apps and file managers."

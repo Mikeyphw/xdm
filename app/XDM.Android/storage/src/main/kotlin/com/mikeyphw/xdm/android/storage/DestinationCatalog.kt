@@ -12,7 +12,8 @@ data class DestinationChoice(
 
 object DestinationCatalog {
     val builtIn = listOf(
-        DestinationChoice(DestinationUris.PUBLIC_DOWNLOADS, "Public Downloads", "Visible to file managers and other apps", DestinationType.PublicDownloads, minimumApi = 29),
+        DestinationChoice(DestinationUris.DIRECT_DOWNLOADS, "Direct Downloads", "Personal build: engines write directly to Download/XDM after all-files access is granted", DestinationType.FileSystem, minimumApi = 30),
+        DestinationChoice(DestinationUris.PUBLIC_DOWNLOADS, "Public Downloads", "Publish through Android MediaStore without broad file access", DestinationType.PublicDownloads, minimumApi = 29),
         DestinationChoice(DestinationUris.APP_PRIVATE_DOWNLOADS, "App-private Downloads", "Private to XDM; useful for temporary or sensitive files", DestinationType.AppPrivate),
         DestinationChoice(DestinationUris.MEDIA_MOVIES, "Movies", "Publish video files through MediaStore", DestinationType.MediaStoreMovies, minimumApi = 29),
         DestinationChoice(DestinationUris.MEDIA_MUSIC, "Music", "Publish audio files through MediaStore", DestinationType.MediaStoreMusic, minimumApi = 29),

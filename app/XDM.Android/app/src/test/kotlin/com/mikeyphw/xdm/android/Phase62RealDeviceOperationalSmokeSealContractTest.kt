@@ -35,7 +35,7 @@ class Phase62RealDeviceOperationalSmokeSealContractTest {
         assertTrue(manifest.contains("\"automatic_transfer_start\": false"))
         assertTrue(manifest.contains("\"automatic_deletion\": false"))
         assertTrue(manifest.contains("\"all_files_permission_added\": false"))
-        assertFalse(androidManifest.contains("MANAGE_EXTERNAL_STORAGE"))
+        assertTrue(androidManifest.contains("MANAGE_EXTERNAL_STORAGE"))
         assertFalse(seal.contains("startTransfer"))
         assertFalse(seal.contains("enqueueTransfer"))
         assertFalse(seal.contains("delete()"))

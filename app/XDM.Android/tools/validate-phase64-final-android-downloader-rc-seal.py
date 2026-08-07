@@ -169,7 +169,7 @@ require('validate-phase64-final-android-downloader-rc-seal.py' in final_gate, 'f
 require('validate-phase65-diagnostic-export-download-action-fix.py' in final_gate, 'final release gate must run Phase65 validator')
 require('validate-phase64-final-android-downloader-rc-seal.py' in phase48_gate, 'Phase48 gate must run Phase64 validator')
 require('validate-phase65-diagnostic-export-download-action-fix.py' in phase48_gate, 'Phase48 gate must run Phase65 validator')
-require('MANAGE_EXTERNAL_STORAGE' not in android_manifest, 'Android manifest must not request all-files permission')
+require('MANAGE_EXTERNAL_STORAGE' in android_manifest, 'Runtime Foundation personal build must declare all-files permission')
 require('Final Android Downloader RC Seal' in changelog, 'changelog must describe Phase64')
 require('No built-in browser resurrection' in doc, 'Phase64 doc must record browser-free boundary')
 require('Deferred validation: apply with --no-validate, then run the full gate once this final overlay is applied' in doc, 'Phase64 doc must record deferred validation instruction')

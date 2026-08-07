@@ -223,3 +223,13 @@ Phase 42 binds the `xdmdownload` receiver, repository-owned Firefox detector, de
 ### Phase 43 — Pre-release channel removal
 
 The Android app now carries only release and debug variants. Pre-release build types, package suffixes, browser schemes, release-gate tasks, and extension channel generation have been removed from active source.
+
+
+## Runtime Foundation Phase 55–56
+
+The personal sideload build supports repaired embedded aria2 RPC diagnostics/recovery, a deep loopback aria2 lifecycle smoke test, a first-class direct `Download/XDM` destination backed by Android All Files Access, guarded custom direct shared-storage folders, and a Storage Doctor that verifies filesystem durability plus embedded aria2 / Termux yt-dlp / FFmpeg path access while retaining MediaStore and SAF fallbacks. See `docs/quality/RUNTIME-FOUNDATION-PHASE55-56-PROMISE-CLOSURE-AUDIT.md` for the r2 promise audit.
+
+
+### App-process restart ownership closure
+
+Phase 55 now persists an app-private aria2 runtime ownership lease containing only the loopback endpoint, secret generation, and start timestamp, never the secret itself. On a later XDM process start, a matching-generation daemon must answer authenticated RPC before XDM treats it as its own. Proven XDM-owned orphan daemons are session-saved and shut down over authenticated RPC before a fresh runtime is launched; stale or unreachable markers are cleared without killing an unproven process.

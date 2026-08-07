@@ -3,6 +3,7 @@ package com.mikeyphw.xdm.android.transfer.aria2
 import com.mikeyphw.xdm.android.model.BackendArtifactIdentity
 import com.mikeyphw.xdm.android.transfer.Aria2TaskMapping
 import java.io.File
+import java.net.ConnectException
 import java.nio.file.Files
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
@@ -48,6 +49,7 @@ class Aria2ProcessManagerTest {
                 assertEquals("http://127.0.0.1:45678/jsonrpc", endpoint.url)
                 rpc
             },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
             scope = this,
             startupTimeoutMillis = 500,
             shutdownTimeoutMillis = 500,
@@ -72,6 +74,106 @@ class Aria2ProcessManagerTest {
     }
 
     @Test
+    fun smokeTestExercisesAuthenticatedRpcLifecycleAndCleanShutdown() = runTest {
+        val root = Files.createTempDirectory("aria2-smoke-lifecycle").toFile()
+        val files = FakeRuntimeFiles(root)
+        val process = FakeManagedProcess()
+        val rpc = FakeRpcControl(process)
+        val manager = Aria2ProcessManager(
+            capabilityProbe = availableProbe(root),
+            sessionStore = files,
+            secretProvider = Aria2SecretProvider { Aria2RpcSecret.from("0123456789abcdef0123456789abcdef") },
+            processLauncher = Aria2ProcessLauncher { process },
+            rpcFactory = Aria2RpcControlFactory { _, _ -> rpc },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
+            scope = this,
+            startupTimeoutMillis = 500,
+            shutdownTimeoutMillis = 500,
+            pollIntervalMillis = 1,
+        )
+
+        val result = manager.smokeTest()
+
+        assertTrue(result.summary, result.successful)
+        assertTrue(rpc.events.contains("add"))
+        assertTrue(rpc.events.contains("tell"))
+        assertTrue(rpc.events.contains("unpause"))
+        assertTrue(rpc.events.contains("pause"))
+        assertTrue(rpc.events.contains("save"))
+        assertTrue(rpc.events.contains("remove-result"))
+        assertTrue(rpc.events.contains("shutdown"))
+    }
+
+    @Test
+    fun storageProbeMakesAria2WriteIntoRequestedDirectory() = runTest {
+        val root = Files.createTempDirectory("aria2-storage-probe-runtime").toFile()
+        val destination = Files.createTempDirectory("aria2-storage-probe-destination").toFile()
+        val files = FakeRuntimeFiles(root)
+        val process = FakeManagedProcess()
+        val rpc = FakeRpcControl(process)
+        val manager = Aria2ProcessManager(
+            capabilityProbe = availableProbe(root),
+            sessionStore = files,
+            secretProvider = Aria2SecretProvider { Aria2RpcSecret.from("0123456789abcdef0123456789abcdef") },
+            processLauncher = Aria2ProcessLauncher { process },
+            rpcFactory = Aria2RpcControlFactory { _, _ -> rpc },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
+            scope = this,
+            startupTimeoutMillis = 500,
+            shutdownTimeoutMillis = 500,
+            pollIntervalMillis = 1,
+        )
+
+        val result = manager.storageProbe(destination)
+
+        assertTrue(result.summary, result.successful)
+        assertEquals(destination.canonicalPath, rpc.lastOptions?.directory)
+        assertTrue(destination.listFiles().orEmpty().none { it.name.startsWith(".xdm-aria2-probe-") })
+    }
+
+
+    @Test
+    fun appRestartReclaimsOnlyPersistedAuthenticatedOwnedDaemon() = runTest {
+        val root = Files.createTempDirectory("aria2-app-restart-orphan").toFile()
+        val files = FakeRuntimeFiles(root)
+        val secrets = FakeRotatableSecretProvider()
+        val oldProcess = FakeManagedProcess()
+        val oldRpc = FakeRpcControl(oldProcess)
+        files.runtimeLease = Aria2RuntimeLease(
+            endpoint = Aria2Endpoint(45678),
+            secretGeneration = secrets.generation(),
+            startedAtEpochMs = 1234L,
+        )
+
+        val newProcess = FakeManagedProcess()
+        val newRpc = FakeRpcControl(newProcess)
+        val newManager = Aria2ProcessManager(
+            capabilityProbe = availableProbe(root),
+            sessionStore = files,
+            secretProvider = secrets,
+            portAllocator = Aria2PortAllocator { 45679 },
+            processLauncher = Aria2ProcessLauncher { newProcess },
+            rpcFactory = Aria2RpcControlFactory { endpoint, _ -> if (endpoint.port == 45678) oldRpc else newRpc },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
+            scope = this,
+            startupTimeoutMillis = 500,
+            shutdownTimeoutMillis = 500,
+            pollIntervalMillis = 1,
+        )
+
+        val restarted = newManager.start()
+
+        assertTrue(restarted.started)
+        assertFalse(oldProcess.isAlive)
+        val running = restarted.state as Aria2ProcessState.Running
+        assertEquals(45679, running.endpoint.port)
+        assertEquals(Aria2OrphanRecovery.RecoveredOwnedDaemon, running.orphanRecovery)
+        assertEquals(45679, files.runtimeLease?.endpoint?.port)
+        assertTrue(oldRpc.events.contains("shutdown"))
+        newManager.stop()
+    }
+
+    @Test
     fun unavailableRuntimeNeverLaunchesProcess() = runTest {
         val root = Files.createTempDirectory("aria2-unavailable-test").toFile()
         var launches = 0
@@ -82,6 +184,7 @@ class Aria2ProcessManagerTest {
             secretProvider = Aria2SecretProvider { error("secret should not be requested") },
             processLauncher = Aria2ProcessLauncher { launches += 1; error("must not launch") },
             rpcFactory = Aria2RpcControlFactory { _, _ -> error("must not create RPC") },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
             scope = this,
         )
 
@@ -103,6 +206,7 @@ class Aria2ProcessManagerTest {
             secretProvider = Aria2SecretProvider { Aria2RpcSecret.from("0123456789abcdef0123456789abcdef") },
             processLauncher = Aria2ProcessLauncher { launches += 1; error("must not launch") },
             rpcFactory = Aria2RpcControlFactory { _, _ -> error("must not create RPC") },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
             scope = this,
         )
 
@@ -126,6 +230,7 @@ class Aria2ProcessManagerTest {
             portAllocator = Aria2PortAllocator { 45678 },
             processLauncher = Aria2ProcessLauncher { process },
             rpcFactory = Aria2RpcControlFactory { _, _ -> FakeRpcControl(process) },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
             scope = this,
             startupTimeoutMillis = 500,
             pollIntervalMillis = 1,
@@ -137,6 +242,106 @@ class Aria2ProcessManagerTest {
         assertTrue(result.state is Aria2ProcessState.Failed)
         assertFalse(process.isAlive)
         assertTrue(files.deleteAttempts >= 2)
+    }
+
+    @Test
+    fun startupClassifiesUnauthorizedRpcFailureInsteadOfCollapsingIt() = runTest {
+        val root = Files.createTempDirectory("aria2-auth-failure").toFile()
+        val process = FakeManagedProcess()
+        val manager = Aria2ProcessManager(
+            capabilityProbe = availableProbe(root),
+            sessionStore = FakeRuntimeFiles(root),
+            secretProvider = Aria2SecretProvider { Aria2RpcSecret.from("0123456789abcdef0123456789abcdef") },
+            processLauncher = Aria2ProcessLauncher { process },
+            rpcFactory = Aria2RpcControlFactory { _, _ -> FailingRpcControl(Aria2RpcException(1, "Unauthorized")) },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
+            scope = this,
+            startupTimeoutMillis = 25,
+            pollIntervalMillis = 1,
+        )
+
+        val result = manager.start()
+
+        assertFalse(result.started)
+        val failed = result.state as Aria2ProcessState.Failed
+        assertEquals(Aria2StartupFailureKind.Unauthorized, failed.diagnostic?.kind)
+        assertTrue(failed.message.contains("Unauthorized"))
+        process.complete(137)
+    }
+
+    @Test
+    fun startupClassifiesMalformedRpcResponse() = runTest {
+        val root = Files.createTempDirectory("aria2-malformed-rpc").toFile()
+        val process = FakeManagedProcess()
+        val manager = Aria2ProcessManager(
+            capabilityProbe = availableProbe(root),
+            sessionStore = FakeRuntimeFiles(root),
+            secretProvider = Aria2SecretProvider { Aria2RpcSecret.from("0123456789abcdef0123456789abcdef") },
+            processLauncher = Aria2ProcessLauncher { process },
+            rpcFactory = Aria2RpcControlFactory { _, _ -> FailingRpcControl(Aria2RpcProtocolException("malformed JSON")) },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
+            scope = this,
+            startupTimeoutMillis = 25,
+            pollIntervalMillis = 1,
+        )
+
+        val result = manager.start()
+
+        assertFalse(result.started)
+        assertEquals(Aria2StartupFailureKind.MalformedResponse, (result.state as Aria2ProcessState.Failed).diagnostic?.kind)
+        process.complete(137)
+    }
+
+    @Test
+    fun startupUsesRuntimeLogToClassifyConfigPortAndLinkerFailures() = runTest {
+        suspend fun classify(log: String): Aria2StartupFailureKind {
+            val root = Files.createTempDirectory("aria2-log-classifier").toFile()
+            val process = FakeManagedProcess()
+            val manager = Aria2ProcessManager(
+                capabilityProbe = availableProbe(root),
+                sessionStore = FakeRuntimeFiles(root, runtimeLogTail = log),
+                secretProvider = Aria2SecretProvider { Aria2RpcSecret.from("0123456789abcdef0123456789abcdef") },
+                processLauncher = Aria2ProcessLauncher { process },
+                rpcFactory = Aria2RpcControlFactory { _, _ -> FailingRpcControl(ConnectException("refused")) },
+                authenticationProbe = Aria2RpcAuthenticationProbe { true },
+                scope = this,
+                startupTimeoutMillis = 20,
+                pollIntervalMillis = 1,
+            )
+            val result = manager.start()
+            process.complete(137)
+            return (result.state as Aria2ProcessState.Failed).diagnostic!!.kind
+        }
+
+        assertEquals(Aria2StartupFailureKind.ConfigurationInvalid, classify("Unknown option: rpc-bogus"))
+        assertEquals(Aria2StartupFailureKind.PortUnavailable, classify("Address already in use while binding RPC listen port"))
+        assertEquals(Aria2StartupFailureKind.BinaryLoadFailure, classify("CANNOT LINK EXECUTABLE: library not found"))
+    }
+
+    @Test
+    fun repairRotatesSecretAndClearsTransientConfigurationsBeforeRestart() = runTest {
+        val root = Files.createTempDirectory("aria2-repair").toFile()
+        val files = FakeRuntimeFiles(root)
+        val process = FakeManagedProcess()
+        val secrets = FakeRotatableSecretProvider()
+        val manager = Aria2ProcessManager(
+            capabilityProbe = availableProbe(root),
+            sessionStore = files,
+            secretProvider = secrets,
+            processLauncher = Aria2ProcessLauncher { process },
+            rpcFactory = Aria2RpcControlFactory { _, _ -> FakeRpcControl(process) },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
+            scope = this,
+            startupTimeoutMillis = 100,
+            pollIntervalMillis = 1,
+        )
+
+        val result = manager.repair()
+
+        assertTrue(result.started)
+        assertEquals(1, secrets.rotations)
+        assertEquals(1L, (result.state as Aria2ProcessState.Running).secretGeneration)
+        assertEquals(1, files.transientCleanupCalls)
     }
 
     private fun availableProbe(root: File): Aria2CapabilityProbe {
@@ -155,15 +360,29 @@ private class FakeRuntimeFiles(
     override val rootDirectory: File,
     private val failPreparation: Boolean = false,
     private val deleteSucceeds: Boolean = true,
+    private val runtimeLogTail: String? = null,
 ) : Aria2RuntimeFiles {
     val configuration = rootDirectory.resolve("launch.conf")
     var configurationDeleted = false
     var deleteAttempts = 0
+    var transientCleanupCalls = 0
+    var runtimeLease: Aria2RuntimeLease? = null
+    override val supportsRuntimeLease: Boolean = true
 
     override fun prepare() {
         if (failPreparation) error("private runtime directory unavailable at ${rootDirectory.absolutePath}")
         rootDirectory.mkdirs()
     }
+
+    override fun cleanupTransientLaunchConfigurations(): Int {
+        transientCleanupCalls += 1
+        return 0
+    }
+
+    override fun readRuntimeLogTail(maxChars: Int): String? = runtimeLogTail?.takeLast(maxChars)
+    override fun readRuntimeLease(): Aria2RuntimeLease? = runtimeLease
+    override fun writeRuntimeLease(lease: Aria2RuntimeLease): Boolean { runtimeLease = lease; return true }
+    override fun clearRuntimeLease(): Boolean { runtimeLease = null; return true }
 
     override fun writeLaunchConfiguration(endpoint: Aria2Endpoint, secret: Aria2RpcSecret): File {
         prepare()
@@ -218,18 +437,79 @@ private class FakeManagedProcess : Aria2ManagedProcess {
 }
 
 private class FakeRpcControl(private val process: FakeManagedProcess) : Aria2RpcControl {
-    override suspend fun getVersion() = Aria2Version("1.37.0", setOf("Async DNS", "BitTorrent"))
-    override suspend fun addUri(uris: List<String>, options: Aria2TaskOptions): String = "gid"
+    val events = mutableListOf<String>()
+    var lastOptions: Aria2TaskOptions? = null
+    private var status = Aria2TaskStatusValue.Paused
+    private var unpauseCount = 0
+
+    override suspend fun getVersion(): Aria2Version {
+        if (!process.isAlive) throw ConnectException("aria2 process is no longer reachable")
+        return Aria2Version("1.37.0", setOf("Async DNS", "BitTorrent"))
+    }
+    override suspend fun addUri(uris: List<String>, options: Aria2TaskOptions): String {
+        events += "add"
+        lastOptions = options
+        status = if (options.pause) Aria2TaskStatusValue.Paused else Aria2TaskStatusValue.Active
+        return "gid"
+    }
+    override suspend fun pause(gid: String, force: Boolean) {
+        events += "pause"
+        status = Aria2TaskStatusValue.Paused
+    }
+    override suspend fun unpause(gid: String) {
+        events += "unpause"
+        unpauseCount += 1
+        status = if (unpauseCount >= 2) {
+            val options = requireNotNull(lastOptions)
+            val output = File(options.directory, options.outputName)
+            output.parentFile?.mkdirs()
+            output.writeText("XDM aria2 RPC lifecycle probe\n")
+            Aria2TaskStatusValue.Complete
+        } else {
+            Aria2TaskStatusValue.Active
+        }
+    }
+    override suspend fun remove(gid: String, force: Boolean) {
+        events += "remove"
+        status = Aria2TaskStatusValue.Removed
+    }
+    override suspend fun tellStatus(gid: String): Aria2TaskStatus {
+        events += "tell"
+        return taskStatus(gid, status)
+    }
+    override suspend fun tellActive(): List<Aria2TaskStatus> = emptyList()
+    override suspend fun tellWaiting(offset: Int, count: Int): List<Aria2TaskStatus> = emptyList()
+    override suspend fun tellStopped(offset: Int, count: Int): List<Aria2TaskStatus> = emptyList()
+    override suspend fun removeDownloadResult(gid: String) { events += "remove-result" }
+    override suspend fun saveSession(): Boolean { events += "save"; return true }
+    override suspend fun shutdown(force: Boolean) { events += "shutdown"; process.complete(if (force) 137 else 0) }
+}
+
+private class FakeRotatableSecretProvider : Aria2RotatableSecretProvider {
+    var rotations = 0
+    private var current = "0123456789abcdef0123456789abcdef"
+    override fun getOrCreate(): Aria2RpcSecret = Aria2RpcSecret.from(current)
+    override fun generation(): Long = rotations.toLong()
+    override fun rotate(): Aria2RpcSecret {
+        rotations += 1
+        current = "fedcba9876543210fedcba9876543210"
+        return Aria2RpcSecret.from(current)
+    }
+}
+
+private class FailingRpcControl(private val error: Throwable) : Aria2RpcControl {
+    override suspend fun getVersion(): Aria2Version = throw error
+    override suspend fun addUri(uris: List<String>, options: Aria2TaskOptions): String = throw error
     override suspend fun pause(gid: String, force: Boolean) = Unit
     override suspend fun unpause(gid: String) = Unit
     override suspend fun remove(gid: String, force: Boolean) = Unit
-    override suspend fun tellStatus(gid: String) = taskStatus(gid, Aria2TaskStatusValue.Paused)
+    override suspend fun tellStatus(gid: String): Aria2TaskStatus = throw error
     override suspend fun tellActive(): List<Aria2TaskStatus> = emptyList()
     override suspend fun tellWaiting(offset: Int, count: Int): List<Aria2TaskStatus> = emptyList()
     override suspend fun tellStopped(offset: Int, count: Int): List<Aria2TaskStatus> = emptyList()
     override suspend fun removeDownloadResult(gid: String) = Unit
     override suspend fun saveSession(): Boolean = true
-    override suspend fun shutdown(force: Boolean) { process.complete(if (force) 137 else 0) }
+    override suspend fun shutdown(force: Boolean) = Unit
 }
 
 private fun taskStatus(gid: String, status: Aria2TaskStatusValue) = Aria2TaskStatus(
