@@ -128,13 +128,22 @@ object DownloadActionPlanner {
             add(deleteFileAndHistory(context))
         }
 
-        DownloadState.RecoveryRequired -> listOf(
-            reviewRecovery(primary = true),
-            locateFile(),
-            restartFromZero(download),
-            details(),
-            deleteHistory(download),
-        )
+        DownloadState.RecoveryRequired -> if (download.isFinalSaveRecovery()) {
+            listOf(
+                retrySave(primary = true),
+                reviewRecovery(),
+                details(),
+                deleteHistory(download),
+            )
+        } else {
+            listOf(
+                reviewRecovery(primary = true),
+                locateFile(),
+                restartFromZero(download),
+                details(),
+                deleteHistory(download),
+            )
+        }
 
         DownloadState.Cancelled -> listOf(
             details(primary = true),
@@ -232,6 +241,17 @@ object DownloadActionPlanner {
         primary = primary,
         supportingText = "Create a real new network attempt with the preserved request configuration.",
     )
+
+    private fun retrySave(primary: Boolean = false) = DownloadAction(
+        DownloadActionKind.Retry,
+        "Retry save",
+        DownloadActionIcon.Refresh,
+        primary = primary,
+        supportingText = "Retry final publication from the preserved completed staging file without intentionally redownloading the payload.",
+    )
+
+    private fun Download.isFinalSaveRecovery(): Boolean =
+        errorMessage.orEmpty().startsWith("Final save failed")
 
     private fun startNow(primary: Boolean = false) = DownloadAction(
         DownloadActionKind.StartNow,

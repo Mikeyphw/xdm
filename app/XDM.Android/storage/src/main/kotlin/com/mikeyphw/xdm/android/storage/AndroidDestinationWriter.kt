@@ -77,56 +77,129 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
                 check(artifacts.stagingFile.isFile) { "Staging file is missing" }
                 val generation = PublicationGeneration(request.downloadId, attemptGeneration = 1L, artifactGeneration = artifacts.stagingFile.lastModified().coerceAtLeast(1L))
                 val expectedBytes = artifacts.stagingFile.length()
-                PublicationJournalCodec.write(
-                    artifacts.journalFile,
-                    PublicationCommitRecord(
-                        generation = generation,
-                        sourcePath = artifacts.stagingFile.absolutePath,
-                        stagingPath = artifacts.stagingFile.absolutePath,
-                        destinationSpec = request.destinationUri,
-                        committedUri = null,
-                        bytesExpected = expectedBytes,
-                        bytesCommitted = 0L,
-                        checksumAlgorithm = null,
-                        expectationId = null,
-                        expectedDigest = null,
-                        actualDigest = null,
-                        verificationTimestampEpochMs = null,
-                        boundary = PublicationCommitBoundary.BeforeDestinationCommit,
-                        health = CompletedArtifactHealthStatus.PendingPublication,
-                        message = "Content destination publication prepared before provider commit.",
-                    ),
-                )
-                val committed = target.openForCommit()
                 try {
+                    PublicationJournalCodec.write(
+                        artifacts.journalFile,
+                        PublicationCommitRecord(
+                            generation = generation,
+                            sourcePath = artifacts.stagingFile.absolutePath,
+                            stagingPath = artifacts.stagingFile.absolutePath,
+                            destinationSpec = request.destinationUri,
+                            committedUri = null,
+                            bytesExpected = expectedBytes,
+                            bytesCommitted = 0L,
+                            checksumAlgorithm = null,
+                            expectationId = null,
+                            expectedDigest = null,
+                            actualDigest = null,
+                            verificationTimestampEpochMs = null,
+                            boundary = PublicationCommitBoundary.BeforeDestinationCommit,
+                            health = CompletedArtifactHealthStatus.PendingPublication,
+                            message = "Content destination publication prepared before provider commit.",
+                        ),
+                    )
+                } catch (error: Throwable) {
+                    throw DestinationPublicationException(
+                        message = "Could not prepare final save for ${target.displayName}: ${error.message ?: error::class.java.simpleName}",
+                        destinationUri = request.destinationUri,
+                        stagingPath = artifacts.stagingFile.absolutePath,
+                        stagingPreserved = artifacts.stagingFile.isFile,
+                        cause = error,
+                    )
+                }
+                val committed = try {
+                    target.openForCommit()
+                } catch (error: Throwable) {
+                    runCatching {
+                        PublicationJournalCodec.write(
+                            artifacts.journalFile,
+                            PublicationCommitRecord(
+                                generation = generation,
+                                sourcePath = artifacts.stagingFile.absolutePath,
+                                stagingPath = artifacts.stagingFile.absolutePath,
+                                destinationSpec = request.destinationUri,
+                                committedUri = null,
+                                bytesExpected = expectedBytes,
+                                bytesCommitted = 0L,
+                                checksumAlgorithm = null,
+                                expectationId = null,
+                                expectedDigest = null,
+                                actualDigest = null,
+                                verificationTimestampEpochMs = null,
+                                boundary = PublicationCommitBoundary.BeforeDestinationCommit,
+                                health = CompletedArtifactHealthStatus.PendingPublication,
+                                message = "Content destination could not be opened or created; completed staging bytes retained for retry.",
+                            ),
+                        )
+                    }
+                    throw DestinationPublicationException(
+                        message = "Could not open ${target.displayName} for final save: ${error.message ?: error::class.java.simpleName}",
+                        destinationUri = request.destinationUri,
+                        stagingPath = artifacts.stagingFile.absolutePath,
+                        stagingPreserved = artifacts.stagingFile.isFile,
+                        cause = error,
+                    )
+                }
+                val bytes = try {
                     copyAndSync(artifacts.stagingFile, committed.uri)
                     committed.finish(true)
+                    val publishedBytes = querySize(committed.uri) ?: expectedBytes
+                    check(publishedBytes == expectedBytes) { "Published provider item reports $publishedBytes bytes, expected $expectedBytes" }
+                    publishedBytes
                 } catch (error: Throwable) {
-                    committed.finish(false)
-                    throw error
+                    runCatching { committed.finish(false) }
+                    runCatching {
+                        PublicationJournalCodec.write(
+                            artifacts.journalFile,
+                            PublicationCommitRecord(
+                                generation = generation,
+                                sourcePath = artifacts.stagingFile.absolutePath,
+                                stagingPath = artifacts.stagingFile.absolutePath,
+                                destinationSpec = request.destinationUri,
+                                committedUri = committed.uri.toString(),
+                                bytesExpected = expectedBytes,
+                                bytesCommitted = querySize(committed.uri) ?: 0L,
+                                checksumAlgorithm = null,
+                                expectationId = null,
+                                expectedDigest = null,
+                                actualDigest = null,
+                                verificationTimestampEpochMs = null,
+                                boundary = PublicationCommitBoundary.DestinationCommitInProgress,
+                                health = CompletedArtifactHealthStatus.PendingPublication,
+                                message = "Content destination publication failed; completed staging bytes retained for retry and incomplete provider output was rolled back when possible.",
+                            ),
+                        )
+                    }
+                    throw DestinationPublicationException(
+                        message = "Could not publish ${target.displayName}: ${error.message ?: error::class.java.simpleName}",
+                        destinationUri = request.destinationUri,
+                        stagingPath = artifacts.stagingFile.absolutePath,
+                        stagingPreserved = artifacts.stagingFile.isFile,
+                        cause = error,
+                    )
                 }
-                val bytes = querySize(committed.uri) ?: expectedBytes
-                check(bytes == expectedBytes) { "Published provider item reports $bytes bytes, expected $expectedBytes" }
-                PublicationJournalCodec.write(
-                    artifacts.journalFile,
-                    PublicationCommitRecord(
-                        generation = generation,
-                        sourcePath = artifacts.stagingFile.absolutePath,
-                        stagingPath = null,
-                        destinationSpec = request.destinationUri,
-                        committedUri = committed.uri.toString(),
-                        bytesExpected = expectedBytes,
-                        bytesCommitted = bytes,
-                        checksumAlgorithm = null,
-                        expectationId = null,
-                        expectedDigest = null,
-                        actualDigest = null,
-                        verificationTimestampEpochMs = System.currentTimeMillis(),
-                        boundary = PublicationCommitBoundary.MetadataReconciled,
-                        health = CompletedArtifactHealthStatus.Present,
-                        message = "Content destination committed, re-queried, and reconciled.",
-                    ),
-                )
+                runCatching {
+                    PublicationJournalCodec.write(
+                        artifacts.journalFile,
+                        PublicationCommitRecord(
+                            generation = generation,
+                            sourcePath = artifacts.stagingFile.absolutePath,
+                            stagingPath = null,
+                            destinationSpec = request.destinationUri,
+                            committedUri = committed.uri.toString(),
+                            bytesExpected = expectedBytes,
+                            bytesCommitted = bytes,
+                            checksumAlgorithm = null,
+                            expectationId = null,
+                            expectedDigest = null,
+                            actualDigest = null,
+                            verificationTimestampEpochMs = System.currentTimeMillis(),
+                            boundary = PublicationCommitBoundary.MetadataReconciled,
+                            health = CompletedArtifactHealthStatus.Present,
+                            message = "Content destination committed, re-queried, and reconciled.",
+                        ),
+                    )
+                }
                 artifacts.stagingFile.delete()
                 artifacts.checkpointFile.delete()
                 artifacts.journalFile.delete()

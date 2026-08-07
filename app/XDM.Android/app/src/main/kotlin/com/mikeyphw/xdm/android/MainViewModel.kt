@@ -61,6 +61,7 @@ import com.mikeyphw.xdm.android.media.MediaSniffingEngine
 import com.mikeyphw.xdm.android.media.MediaPageProbe
 import com.mikeyphw.xdm.android.media.BrowserHandoffMediaCoordinator
 import com.mikeyphw.xdm.android.media.MediaSniffingInput
+import com.mikeyphw.xdm.android.media.MediaSniffingPlan
 import com.mikeyphw.xdm.android.media.MediaSniffingSource
 import com.mikeyphw.xdm.android.media.ExternalMediaReviewPlanner
 import com.mikeyphw.xdm.android.media.MediaRequestFacts
@@ -167,6 +168,17 @@ private fun releaseSigningAttestationConfigured(): Boolean =
         BuildConfig.XDM_PINNED_RELEASE_SIGNER_SHA256.isNotBlank() &&
         BuildConfig.XDM_PINNED_RELEASE_SIGNER_SHA256 != UnpinnedReleaseSigner
 
+enum class MediaIntakeFeedbackKind { Idle, Working, Found, NoMediaFound, NeedsBrowserCapture, AuthenticationRequired, Unsupported, Failed }
+
+data class MediaIntakeFeedbackUi(
+    val kind: MediaIntakeFeedbackKind = MediaIntakeFeedbackKind.Idle,
+    val title: String = "",
+    val detail: String = "",
+    val diagnostics: List<String> = emptyList(),
+) {
+    val visible: Boolean get() = kind != MediaIntakeFeedbackKind.Idle
+}
+
 data class MainUiState(
     val route: AppRoute = AppRoute.Downloads,
     val compactDensity: Boolean = false,
@@ -217,6 +229,7 @@ data class MainUiState(
     val finalizationJournals: List<FinalizationJournal> = emptyList(),
     val mediaCaptures: List<MediaCaptureRecord> = emptyList(),
     val mediaVariants: List<MediaVariant> = emptyList(),
+    val mediaIntakeFeedback: MediaIntakeFeedbackUi = MediaIntakeFeedbackUi(),
     val mediaTrackSelections: Map<String, MediaTrackSelection> = emptyMap(),
     val automationCommands: List<AutomationCommandRecord> = emptyList(),
     val tags: List<DownloadTag> = emptyList(),
@@ -330,6 +343,7 @@ class MainViewModel(
     }
     private val capabilitySnapshot = MutableStateFlow<Map<BackendType, BackendCapabilities>>(emptyMap())
     private val externalAddDraft = MutableStateFlow<DownloadIntakeDraft?>(null)
+    private val mediaIntakeFeedback = MutableStateFlow(MediaIntakeFeedbackUi())
     private val mediaCaptureService = MediaCaptureService()
     private val mediaSniffingEngine = MediaSniffingEngine(mediaCaptureService, debugRecorder = debugEventRecorder)
     private val mediaPageProbe = MediaPageProbe(mediaSniffingEngine, debugRecorder = debugEventRecorder)
@@ -517,10 +531,15 @@ class MainViewModel(
         val externalAddDraft: DownloadIntakeDraft?,
         val mediaSelections: Map<String, MediaTrackSelection>,
         val activity: OperationalActivityStoreSnapshot,
+        val mediaIntakeFeedback: MediaIntakeFeedbackUi,
     )
 
-    private val reviewUi = combine(externalAddDraft, mediaResolverSelectionStore.selections, operationalActivityStore.snapshot) { draft, selections, activity ->
-        ReviewUiSnapshot(draft, selections, activity)
+    private val reviewUiBase = combine(externalAddDraft, mediaResolverSelectionStore.selections, operationalActivityStore.snapshot) { draft, selections, activity ->
+        Triple(draft, selections, activity)
+    }
+
+    private val reviewUi = combine(reviewUiBase, mediaIntakeFeedback) { base, feedback ->
+        ReviewUiSnapshot(base.first, base.second, base.third, feedback)
     }
 
     private data class TermuxUiSnapshot(
@@ -700,6 +719,7 @@ class MainViewModel(
             finalizationJournals = snapshot.finalizationJournals,
             mediaCaptures = snapshot.mediaCaptures,
             mediaVariants = snapshot.mediaVariants,
+            mediaIntakeFeedback = review.mediaIntakeFeedback,
             mediaTrackSelections = review.mediaSelections,
             automationCommands = snapshot.automationCommands,
             tags = snapshot.tags,
@@ -2274,63 +2294,160 @@ class MainViewModel(
     }
 
 
+    private fun publishMediaIntakeFeedback(feedback: MediaIntakeFeedbackUi, navigateToMedia: Boolean = true) {
+        mediaIntakeFeedback.value = feedback.copy(
+            title = BrowserBridgeDiagnosticsRedactor.sanitize(feedback.title).take(120),
+            detail = BrowserBridgeDiagnosticsRedactor.sanitize(feedback.detail).take(512),
+            diagnostics = feedback.diagnostics.map(BrowserBridgeDiagnosticsRedactor::sanitize).filter(String::isNotBlank).takeLast(6),
+        )
+        if (navigateToMedia) navigate(AppRoute.Media)
+    }
+
+    private fun mediaIntakeFailureDetail(error: Throwable): String =
+        BrowserBridgeDiagnosticsRedactor.sanitize(error.message ?: error::class.java.simpleName)
+
+    private fun feedbackForEmptyMediaPlan(plan: MediaSniffingPlan, sourceLabel: String): MediaIntakeFeedbackUi {
+        val diagnostics = plan.diagnostics.map(BrowserBridgeDiagnosticsRedactor::sanitize).filter(String::isNotBlank).takeLast(6)
+        val joined = diagnostics.joinToString(" ").lowercase()
+        return when {
+            "401" in joined || "403" in joined || "auth" in joined || "forbidden" in joined -> MediaIntakeFeedbackUi(
+                MediaIntakeFeedbackKind.AuthenticationRequired,
+                "Browser session required",
+                "$sourceLabel could not access the media with the available request context. Capture it from Firefox so XDM can use the browser-observed request in a later capture session.",
+                diagnostics,
+            )
+            "unsupported scheme" in joined || "rejected" in joined -> MediaIntakeFeedbackUi(
+                MediaIntakeFeedbackKind.Unsupported,
+                "Unsupported media input",
+                "$sourceLabel was rejected before capture. Use an HTTP(S) page or media URL.",
+                diagnostics,
+            )
+            "failed" in joined || "open failed" in joined -> MediaIntakeFeedbackUi(
+                MediaIntakeFeedbackKind.Failed,
+                "Media inspection failed",
+                "$sourceLabel could not complete the probe. The diagnostic summary is shown below.",
+                diagnostics,
+            )
+            plan.diagnostics.any { it.contains("no-js", ignoreCase = true) || it.contains("page-probe", ignoreCase = true) } -> MediaIntakeFeedbackUi(
+                MediaIntakeFeedbackKind.NeedsBrowserCapture,
+                "No media found in the static page probe",
+                "The page was fetched, but XDM does not execute page JavaScript here. If playback creates the stream dynamically, play it in Firefox and send the captured media request to XDM.",
+                diagnostics,
+            )
+            else -> MediaIntakeFeedbackUi(
+                MediaIntakeFeedbackKind.NoMediaFound,
+                "No media found",
+                "$sourceLabel completed without producing a reviewable media candidate.",
+                diagnostics,
+            )
+        }
+    }
+
     fun capturePageUrl(pageUrl: String, pageTitle: String? = null) {
         val normalized = pageUrl.trim()
-        if (normalized.isBlank()) return
+        if (normalized.isBlank()) {
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Unsupported, "Paste a page or media URL", "XDM needs a non-empty HTTP(S) URL to inspect."))
+            return
+        }
+        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Inspecting page", "Fetching a bounded page prefix and checking it for media candidates."))
         viewModelScope.launch(Dispatchers.IO) {
-            val plan = mediaPageProbe.probePage(normalized, pageTitle = pageTitle)
-            if (plan.records.isEmpty()) return@launch
-            val now = System.currentTimeMillis()
-            val merged = plan.records.map { record ->
-                val existing = repository.findMediaCapture(record.id)
-                if (existing?.downloadId != null) {
-                    record.copy(status = existing.status, downloadId = existing.downloadId, createdAtEpochMs = existing.createdAtEpochMs, updatedAtEpochMs = now)
-                } else {
-                    record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs, updatedAtEpochMs = now)
+            runCatching { mediaPageProbe.probePage(normalized, pageTitle = pageTitle) }
+                .onSuccess { plan ->
+                    if (plan.records.isEmpty()) {
+                        publishMediaIntakeFeedback(feedbackForEmptyMediaPlan(plan, "The page probe"))
+                        return@onSuccess
+                    }
+                    val now = System.currentTimeMillis()
+                    val merged = plan.records.map { record ->
+                        val existing = repository.findMediaCapture(record.id)
+                        if (existing?.downloadId != null) {
+                            record.copy(status = existing.status, downloadId = existing.downloadId, createdAtEpochMs = existing.createdAtEpochMs, updatedAtEpochMs = now)
+                        } else {
+                            record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs, updatedAtEpochMs = now)
+                        }
+                    }
+                    repository.saveMediaCapturesWithVariants(merged, plan.variants, now)
+                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media captured", "${merged.size} reviewable media item(s) were added to the Media inbox.", plan.diagnostics.takeLast(4)))
                 }
-            }
-            repository.saveMediaCapturesWithVariants(merged, plan.variants, now)
-            navigate(AppRoute.Media)
+                .onFailure { error ->
+                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Media inspection failed", mediaIntakeFailureDetail(error)))
+                }
         }
     }
 
     fun captureSharedText(text: String, pageTitle: String? = null, pageUrl: String? = null) {
-        val sniffingPlan = mediaSniffingEngine.sniff(
-            MediaSniffingInput(
-                url = pageUrl,
-                bodyPrefix = text,
-                pageUrl = pageUrl,
-                pageTitle = pageTitle,
-                source = MediaSniffingSource.SharedText,
-            ),
-        )
-        if (sniffingPlan.records.isEmpty()) return
+        if (text.isBlank() && pageUrl.isNullOrBlank()) {
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Unsupported, "Nothing to inspect", "Share page text or an HTTP(S) URL to XDM."))
+            return
+        }
+        val sniffingPlan = runCatching {
+            mediaSniffingEngine.sniff(
+                MediaSniffingInput(
+                    url = pageUrl,
+                    bodyPrefix = text,
+                    pageUrl = pageUrl,
+                    pageTitle = pageTitle,
+                    source = MediaSniffingSource.SharedText,
+                ),
+            )
+        }.getOrElse { error ->
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Shared media inspection failed", mediaIntakeFailureDetail(error)))
+            return
+        }
+        if (sniffingPlan.records.isEmpty()) {
+            publishMediaIntakeFeedback(feedbackForEmptyMediaPlan(sniffingPlan, "Shared content"))
+            return
+        }
+        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Importing shared media", "Saving detected candidates for review."))
         viewModelScope.launch(Dispatchers.IO) {
-            val now = System.currentTimeMillis()
-            val merged = sniffingPlan.records.map { record ->
-                val existing = repository.findMediaCapture(record.id)
-                if (existing?.downloadId != null) {
-                    record.copy(
-                        status = existing.status,
-                        downloadId = existing.downloadId,
-                        createdAtEpochMs = existing.createdAtEpochMs,
-                        updatedAtEpochMs = now,
-                    )
-                } else {
-                    record.copy(
-                        createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs,
-                        updatedAtEpochMs = now,
-                    )
+            runCatching {
+                val now = System.currentTimeMillis()
+                val merged = sniffingPlan.records.map { record ->
+                    val existing = repository.findMediaCapture(record.id)
+                    if (existing?.downloadId != null) {
+                        record.copy(
+                            status = existing.status,
+                            downloadId = existing.downloadId,
+                            createdAtEpochMs = existing.createdAtEpochMs,
+                            updatedAtEpochMs = now,
+                        )
+                    } else {
+                        record.copy(
+                            createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs,
+                            updatedAtEpochMs = now,
+                        )
+                    }
                 }
+                repository.saveMediaCapturesWithVariants(merged, sniffingPlan.variants, now)
+                merged
+            }.onSuccess { merged ->
+                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media captured", "${merged.size} reviewable media item(s) were added from shared content.", sniffingPlan.diagnostics.takeLast(4)))
+            }.onFailure { error ->
+                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not save captured media", mediaIntakeFailureDetail(error)))
             }
-            repository.saveMediaCapturesWithVariants(merged, sniffingPlan.variants, now)
-            navigate(AppRoute.Media)
         }
     }
 
     fun captureMediaRequest(facts: MediaRequestFacts) {
-        if (facts.requiresPageObservationProof && !browserHandoffMediaCoordinator.authenticatePageObservation(facts.pageObservationProof)) return
-        val intake = mediaCaptureIntakePlanner.plan(facts) ?: return
+        val authenticated = runCatching {
+            !facts.requiresPageObservationProof || browserHandoffMediaCoordinator.authenticatePageObservation(facts.pageObservationProof)
+        }.getOrElse { error ->
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Firefox capture authentication failed", mediaIntakeFailureDetail(error)))
+            return
+        }
+        if (!authenticated) {
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Firefox capture rejected", "The browser observation proof could not be authenticated. Refresh the extension capture and try again."))
+            return
+        }
+        val intake = runCatching { mediaCaptureIntakePlanner.plan(facts) }.getOrElse { error ->
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Firefox capture inspection failed", mediaIntakeFailureDetail(error)))
+            return
+        }
+        if (intake == null) {
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.NoMediaFound, "Firefox capture had no reviewable media", "The handoff reached XDM, but it did not contain a media request XDM can review."))
+            return
+        }
+        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Receiving Firefox capture", "Importing the browser-observed media request."))
         val proposedHeaders = facts.proposedHeaders.ifEmpty { facts.headers }
         val finalHeaders = facts.finalHeaders.takeIf { it.isNotEmpty() }
         val now = System.currentTimeMillis()
@@ -2349,65 +2466,86 @@ class MainViewModel(
             requirePageObservationProof = facts.requiresPageObservationProof,
         )
         viewModelScope.launch(Dispatchers.IO) {
-            val existing = repository.findMediaCapture(intake.record.id)
-            val merged = if (existing?.downloadId != null) {
-                intake.record.copy(
-                    status = existing.status,
-                    downloadId = existing.downloadId,
-                    createdAtEpochMs = existing.createdAtEpochMs,
-                    updatedAtEpochMs = System.currentTimeMillis(),
-                )
-            } else {
-                intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
-            }
-            val (resolved, resolvedVariants) = resolveCapturedPlaylistIfPossible(merged, session.exactRequestUrl, session.usableHeaders, now)
-            MediaRequestHandoffStore.rememberCapture(
-                captureId = resolved.id,
-                headers = session.usableHeaders,
-                redactedSummary = session.redactedSummary,
-                isExpiringUrl = true,
-                exactUrl = session.exactRequestUrl,
-                pageUrl = session.frameUrl ?: session.pageUrl,
-            )
-            val capturedVariants = (intake.candidate.variants + resolvedVariants).distinctBy(MediaVariant::id)
-            capturedVariants.forEach { variant ->
-                MediaRequestHandoffStore.rememberVariant(
-                    variantId = variant.id,
-                    exactUrl = variant.url,
+            try {
+                val existing = repository.findMediaCapture(intake.record.id)
+                val merged = if (existing?.downloadId != null) {
+                    intake.record.copy(
+                        status = existing.status,
+                        downloadId = existing.downloadId,
+                        createdAtEpochMs = existing.createdAtEpochMs,
+                        updatedAtEpochMs = System.currentTimeMillis(),
+                    )
+                } else {
+                    intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
+                }
+                val (resolved, resolvedVariants) = resolveCapturedPlaylistIfPossible(merged, session.exactRequestUrl, session.usableHeaders, now)
+                MediaRequestHandoffStore.rememberCapture(
+                    captureId = resolved.id,
                     headers = session.usableHeaders,
                     redactedSummary = session.redactedSummary,
-                    expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
+                    isExpiringUrl = true,
+                    exactUrl = session.exactRequestUrl,
+                    pageUrl = session.frameUrl ?: session.pageUrl,
                 )
+                val capturedVariants = (intake.candidate.variants + resolvedVariants).distinctBy(MediaVariant::id)
+                capturedVariants.forEach { variant ->
+                    MediaRequestHandoffStore.rememberVariant(
+                        variantId = variant.id,
+                        exactUrl = variant.url,
+                        headers = session.usableHeaders,
+                        redactedSummary = session.redactedSummary,
+                        expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
+                    )
+                }
+                repository.saveMediaCaptureWithVariants(resolved, capturedVariants, now)
+                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Firefox media captured", "The browser-observed media request is ready for review."))
+            } catch (error: Throwable) {
+                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not import Firefox capture", mediaIntakeFailureDetail(error)))
             }
-            repository.saveMediaCaptureWithVariants(resolved, capturedVariants, now)
         }
     }
 
     fun captureMediaBatchInput(text: String) {
-        val plan = mediaBatchIntakePlanner.plan(text)
-        if (plan.parse.acceptedCount == 0 && plan.parse.invalidCount == 0) return
+        val plan = runCatching { mediaBatchIntakePlanner.plan(text) }.getOrElse { error ->
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Batch inspection failed", mediaIntakeFailureDetail(error)))
+            return
+        }
+        if (plan.parse.acceptedCount == 0 && plan.parse.invalidCount == 0) {
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Unsupported, "No URLs to inspect", "The batch did not contain an HTTP(S) media or page URL."))
+            return
+        }
+        if (plan.records.isEmpty()) {
+            publishMediaIntakeFeedback(feedbackForEmptyMediaPlan(MediaSniffingPlan(plan.sniffingCandidates, plan.records, plan.variants, plan.sniffingDiagnostics), "Batch inspection"))
+        } else {
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Importing media batch", "Saving ${plan.records.size} reviewable item(s)."))
+        }
         viewModelScope.launch(Dispatchers.IO) {
-            if (plan.records.isNotEmpty()) {
-                val now = System.currentTimeMillis()
-                val merged = plan.records.map { record ->
-                    val existing = repository.findMediaCapture(record.id)
-                    if (existing?.downloadId != null) {
-                        record.copy(
-                            status = existing.status,
-                            downloadId = existing.downloadId,
-                            createdAtEpochMs = existing.createdAtEpochMs,
-                            updatedAtEpochMs = now,
-                        )
-                    } else {
-                        record.copy(
-                            createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs,
-                            updatedAtEpochMs = now,
-                        )
+            try {
+                if (plan.records.isNotEmpty()) {
+                    val now = System.currentTimeMillis()
+                    val merged = plan.records.map { record ->
+                        val existing = repository.findMediaCapture(record.id)
+                        if (existing?.downloadId != null) {
+                            record.copy(
+                                status = existing.status,
+                                downloadId = existing.downloadId,
+                                createdAtEpochMs = existing.createdAtEpochMs,
+                                updatedAtEpochMs = now,
+                            )
+                        } else {
+                            record.copy(
+                                createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs,
+                                updatedAtEpochMs = now,
+                            )
+                        }
                     }
+                    repository.saveMediaCapturesWithVariants(merged, plan.variants, now)
+                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media batch captured", "${merged.size} reviewable media item(s) were added."), navigateToMedia = false)
                 }
-                repository.saveMediaCapturesWithVariants(merged, plan.variants, now)
+                navigate(AppRoute.Media)
+            } catch (error: Throwable) {
+                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not import media batch", mediaIntakeFailureDetail(error)))
             }
-            navigate(AppRoute.Media)
         }
     }
 
@@ -2417,68 +2555,90 @@ class MainViewModel(
     }
 
     fun inspectManualMedia(url: String, fileName: String) {
-        val draft = downloadIntakePlanner.fromManual(url = url, fileName = fileName) ?: return
+        val draft = runCatching { downloadIntakePlanner.fromManual(url = url, fileName = fileName) }.getOrElse { error ->
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Media input inspection failed", mediaIntakeFailureDetail(error)))
+            return
+        }
+        if (draft == null) {
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Unsupported, "Unsupported media URL", "XDM could not create a review request from that URL."))
+            return
+        }
         inspectExternalMedia(draft)
     }
 
     fun inspectExternalMedia(draft: DownloadIntakeDraft) {
-        val intake = externalMediaReviewPlanner.plan(draft) ?: return
+        val intake = runCatching { externalMediaReviewPlanner.plan(draft) }.getOrElse { error ->
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Media inspection failed", mediaIntakeFailureDetail(error)))
+            return
+        }
+        if (intake == null) {
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.NoMediaFound, "No reviewable media found", "The supplied URL reached XDM, but it did not produce a media item that can be reviewed."))
+            return
+        }
+        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Inspecting media", "Resolving the supplied media request and saving reviewable variants."))
         viewModelScope.launch(Dispatchers.IO) {
-            val existing = repository.findMediaCapture(intake.record.id)
-            val merged = if (existing?.downloadId != null) {
-                intake.record.copy(
-                    status = existing.status,
-                    downloadId = existing.downloadId,
-                    createdAtEpochMs = existing.createdAtEpochMs,
-                    updatedAtEpochMs = System.currentTimeMillis(),
-                )
-            } else {
-                intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
-            }
-            val inspectNow = System.currentTimeMillis()
-            val (resolved, resolvedVariants) = resolveCapturedPlaylistIfPossible(merged, intake.record.sourceUrl, draft.requestHeaders, inspectNow)
-            MediaRequestHandoffStore.rememberCapture(
-                captureId = resolved.id,
-                headers = draft.requestHeaders,
-                redactedSummary = draft.redactedHeaderSummary.orEmpty(),
-                isExpiringUrl = draft.requestHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(intake.record.sourceUrl),
-                exactUrl = intake.record.sourceUrl,
-                pageUrl = resolved.pageUrl,
-                privateNetworkApproved = true,
-            )
-            intake.variants.forEach { variant ->
-                MediaRequestHandoffStore.rememberVariant(
-                    variantId = variant.id,
-                    exactUrl = variant.url,
-                    headers = draft.requestHeaders,
-                    redactedSummary = draft.redactedHeaderSummary.orEmpty(),
-                    expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
-                )
-            }
-            val externalVariants = (intake.variants + resolvedVariants).distinctBy(MediaVariant::id)
-            externalVariants.forEach { variant ->
-                MediaRequestHandoffStore.rememberVariant(
-                    variantId = variant.id,
-                    exactUrl = variant.url,
-                    headers = draft.requestHeaders,
-                    redactedSummary = draft.redactedHeaderSummary.orEmpty(),
-                    expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
-                )
-            }
-            repository.saveMediaCaptureWithVariants(resolved, externalVariants, inspectNow)
-            repository.findAutomationCommand(draft.id)?.let { command ->
-                repository.saveAutomationCommand(
-                    command.copy(
-                        status = AutomationCommandStatus.Applied,
-                        resultMessage = if (intake.isPageProbe) "External page opened in media resolver" else "External media opened in media resolver",
-                        mediaCaptureId = resolved.id,
-                        rejectionReason = AutomationRejectionReason.None,
+            runCatching {
+                val existing = repository.findMediaCapture(intake.record.id)
+                val merged = if (existing?.downloadId != null) {
+                    intake.record.copy(
+                        status = existing.status,
+                        downloadId = existing.downloadId,
+                        createdAtEpochMs = existing.createdAtEpochMs,
                         updatedAtEpochMs = System.currentTimeMillis(),
-                    ),
+                    )
+                } else {
+                    intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
+                }
+                val inspectNow = System.currentTimeMillis()
+                val (resolved, resolvedVariants) = resolveCapturedPlaylistIfPossible(merged, intake.record.sourceUrl, draft.requestHeaders, inspectNow)
+                MediaRequestHandoffStore.rememberCapture(
+                    captureId = resolved.id,
+                    headers = draft.requestHeaders,
+                    redactedSummary = draft.redactedHeaderSummary.orEmpty(),
+                    isExpiringUrl = draft.requestHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(intake.record.sourceUrl),
+                    exactUrl = intake.record.sourceUrl,
+                    pageUrl = resolved.pageUrl,
+                    privateNetworkApproved = true,
                 )
+                intake.variants.forEach { variant ->
+                    MediaRequestHandoffStore.rememberVariant(
+                        variantId = variant.id,
+                        exactUrl = variant.url,
+                        headers = draft.requestHeaders,
+                        redactedSummary = draft.redactedHeaderSummary.orEmpty(),
+                        expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
+                    )
+                }
+                val externalVariants = (intake.variants + resolvedVariants).distinctBy(MediaVariant::id)
+                externalVariants.forEach { variant ->
+                    MediaRequestHandoffStore.rememberVariant(
+                        variantId = variant.id,
+                        exactUrl = variant.url,
+                        headers = draft.requestHeaders,
+                        redactedSummary = draft.redactedHeaderSummary.orEmpty(),
+                        expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
+                    )
+                }
+                repository.saveMediaCaptureWithVariants(resolved, externalVariants, inspectNow)
+                repository.findAutomationCommand(draft.id)?.let { command ->
+                    repository.saveAutomationCommand(
+                        command.copy(
+                            status = AutomationCommandStatus.Applied,
+                            resultMessage = if (intake.isPageProbe) "External page opened in media resolver" else "External media opened in media resolver",
+                            mediaCaptureId = resolved.id,
+                            rejectionReason = AutomationRejectionReason.None,
+                            updatedAtEpochMs = System.currentTimeMillis(),
+                        ),
+                    )
+                }
+                externalAddDraft.value = null
+                Pair(resolved, externalVariants)
+            }.onSuccess { (_, externalVariants) ->
+                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media ready for review", "Saved ${externalVariants.size.coerceAtLeast(1)} media candidate(s) for review."))
+                navigate(AppRoute.Media)
+            }.onFailure { error ->
+                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not inspect media", mediaIntakeFailureDetail(error)))
             }
-            externalAddDraft.value = null
-            navigate(AppRoute.Media)
         }
     }
 
@@ -2580,21 +2740,30 @@ class MainViewModel(
     }
 
     fun resolveMediaCapture(record: MediaCaptureRecord) {
+        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Checking media again", "Refreshing the captured manifest and its selectable variants."), navigateToMedia = false)
         viewModelScope.launch(Dispatchers.IO) {
-            val handoff = MediaRequestHandoffStore.forCapture(record.id)
-            val probeUrl = handoff?.exactUrl ?: record.sourceUrl
-            val now = System.currentTimeMillis()
-            val (refreshed, variants) = resolveCapturedPlaylistIfPossible(
-                record = record.copy(sourceUrl = probeUrl),
-                exactUrl = probeUrl,
-                requestHeaders = handoff?.headers.orEmpty(),
-                now = now,
-            )
-            if (variants.isEmpty()) {
-                repository.saveMediaCapture(record.copy(resolutionStatus = MediaResolutionStatus.RequiresRefresh, updatedAtEpochMs = now))
-                return@launch
+            runCatching {
+                val handoff = MediaRequestHandoffStore.forCapture(record.id)
+                val probeUrl = handoff?.exactUrl ?: record.sourceUrl
+                val now = System.currentTimeMillis()
+                val (refreshed, variants) = resolveCapturedPlaylistIfPossible(
+                    record = record.copy(sourceUrl = probeUrl),
+                    exactUrl = probeUrl,
+                    requestHeaders = handoff?.headers.orEmpty(),
+                    now = now,
+                )
+                Triple(now, refreshed, variants)
+            }.onSuccess { (now, refreshed, variants) ->
+                if (variants.isEmpty()) {
+                    repository.saveMediaCapture(record.copy(resolutionStatus = MediaResolutionStatus.RequiresRefresh, updatedAtEpochMs = now))
+                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.NeedsBrowserCapture, "No fresh media variants found", "Check again completed, but this manifest still needs a fresh browser-observed request or session."), navigateToMedia = false)
+                } else {
+                    repository.saveMediaCaptureWithVariants(refreshed.copy(sourceUrl = record.sourceUrl), variants, now)
+                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media refreshed", "Found ${variants.size} selectable media variant(s)."), navigateToMedia = false)
+                }
+            }.onFailure { error ->
+                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Check again failed", mediaIntakeFailureDetail(error)), navigateToMedia = false)
             }
-            repository.saveMediaCaptureWithVariants(refreshed.copy(sourceUrl = record.sourceUrl), variants, now)
         }
     }
 
@@ -2682,7 +2851,7 @@ class MainViewModel(
         viewModelScope.launch {
             when (download.state) {
                 DownloadState.Downloading, DownloadState.Connecting, DownloadState.Queued, DownloadState.Finalizing -> transferRuntime.pause(download.id)
-                DownloadState.Paused, DownloadState.Failed, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower -> {
+                DownloadState.Paused, DownloadState.Failed, DownloadState.RecoveryRequired, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower -> {
                     repository.save(download.copy(state = DownloadState.Queued, errorMessage = null, updatedAtEpochMs = System.currentTimeMillis()))
                     queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
                 }

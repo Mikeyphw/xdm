@@ -34,7 +34,7 @@ class RuntimeFoundationPhase55_56ContractTest {
     private fun source(path: String): String = File(root, path).readText()
 
     private fun projectRoot(): File {
-        var cursor = File(System.getProperty("user.dir")).absoluteFile
+        var cursor = File(System.getProperty("user.dir") ?: ".").absoluteFile
         repeat(8) {
             if (File(cursor, "settings.gradle.kts").isFile && File(cursor, "app").isDirectory) return cursor
             cursor = cursor.parentFile ?: return@repeat

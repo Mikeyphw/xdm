@@ -1,4 +1,23 @@
+## 2026-08-07 — Android Runtime Foundation Phases 57–58 r2 promise closure
+
+- Wraps SAF/MediaStore destination open/create failures as recoverable final-save failures before any provider copy begins.
+- Preserves completed staging bytes and attempts rollback of incomplete provider output when publication fails.
+- Adds true native finalization-only retry; the regression test stops the HTTP server before Retry save to prove the payload is not redownloaded.
+- Makes native checkpoint cleanup and aria2 completion-metadata bookkeeping best-effort after a destination has already committed successfully.
+- Adds a visible `Retry save` action for final-save recovery in Downloads and Media surfaces.
+- Closes remaining silent media-intake seams in manual/external inspection, Firefox authentication/planning, batch intake, and Check again, with centrally redacted/bounded feedback.
+- Retains the Phase 55–56 nullable `user.dir` warning fix, Room schema 17, and the `content://`/ContentResolver boundary.
+
 ## Runtime Foundation Phases 55–56 r2 - promise closure
+
+## 2026-08-07 — Android Runtime Foundation Phases 57–58
+
+- Final destination publication failures are recoverable and preserve completed staging bytes where available.
+- Native and embedded aria2 report final-save failures as recovery-required instead of generic transfer failures.
+- Recovery-required transfers can retry through the existing resume/retry path.
+- Media page paste, shared content, Firefox handoff, batch intake, and Check again now surface explicit intake results instead of silently returning.
+- Closed the remaining nullable `user.dir` Kotlin warning from Phase 55–56 validation.
+
 - Added durable app-private aria2 runtime ownership lease and authenticated orphan-daemon recovery across XDM app-process restarts.
 
 - Supersedes the first Phase 55–56 artifact against `xdm-20260807-110547.tar.gz`.
@@ -761,3 +780,9 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 ## Phase 10 r2 release gate honesty closure
 
 - Fixed Phase 10 Kotlin contract compilation, Room schema 17 readiness reporting, signer-attestation wiring, pinned aria2 digest enforcement, truthful ARM64-only ABI scope, APK/AAB manifest/signature/page-size verification, publication SBOM/provenance stubs, and clean-install upgrade smoke coverage.
+
+### r3 navigation regression hotfix
+- Restores `navigate(AppRoute.Media)` after successful explicit external/manual media inspection.
+- Preserves Phase 58 visible intake feedback while retaining the pre-existing Phase 3 resolver navigation contract.
+- Adds artifact validation so successful media review seeding cannot become a dead-end screen again.
+

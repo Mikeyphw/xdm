@@ -7,6 +7,14 @@ import com.mikeyphw.xdm.android.model.BackendRuntimeIdentity
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
+import com.mikeyphw.xdm.android.storage.DestinationConflict
+import com.mikeyphw.xdm.android.storage.DestinationHealth
+import com.mikeyphw.xdm.android.storage.DestinationPromotionResult
+import com.mikeyphw.xdm.android.storage.DestinationPublicationException
+import com.mikeyphw.xdm.android.storage.DestinationRequest
+import com.mikeyphw.xdm.android.storage.DestinationWriter
+import com.mikeyphw.xdm.android.storage.FileDestinationWriter
+import com.mikeyphw.xdm.android.storage.PreparedDestination
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
@@ -152,6 +160,32 @@ class NativeHttpDownloadBackendTest {
         assertTrue(retryAttempts.get() >= 2)
     }
 
+
+    @Test
+    fun finalSaveRecoveryRetriesPublicationWithoutNetworkRedownload() = runBlocking {
+        val directory = Files.createTempDirectory("xdm-native-final-save")
+        val destination = directory.resolve("payload.bin")
+        val writer = FailOnceDestinationWriter(FileDestinationWriter(directory.toFile()))
+        val backend = NativeHttpDownloadBackend(
+            OkHttpClient(),
+            scope,
+            NativeTransferConfig(defaultConnections = 1, segmentThresholdBytes = Long.MAX_VALUE, maximumRetries = 0),
+            destinationWriter = writer,
+        )
+        val task = backend.add(request("final-save", "/file", destination, maxConnections = 1))
+        val recovery = withTimeout(15_000) { backend.observe(task.taskId).first { it.state == DownloadState.RecoveryRequired } }
+        assertTrue(recovery.errorMessage.orEmpty().startsWith("Final save failed"))
+        assertTrue(writer.lastPrepared?.artifacts?.stagingFile?.isFile == true)
+        assertEquals(1, writer.promotionAttempts)
+
+        server.stop(0)
+        backend.resume(task.taskId)
+        val completed = withTimeout(15_000) { backend.observe(task.taskId).first { it.state == DownloadState.Completed } }
+
+        assertEquals(2, writer.promotionAttempts)
+        assertEquals(payload.size.toLong(), completed.bytesReceived)
+        assertArrayEquals(payload, Files.readAllBytes(destination))
+    }
 
     @Test
     fun reconciliationAcceptsMatchingPhysicalPartialAndCheckpoint() = runBlocking {
@@ -347,6 +381,46 @@ class NativeHttpDownloadBackendTest {
         exchange.responseHeaders.add("Content-Range", "bytes $start-$end/${payload.size}")
         exchange.sendResponseHeaders(206, bytes.size.toLong())
         exchange.responseBody.use { it.write(bytes) }
+    }
+
+    private class FailOnceDestinationWriter(
+        private val delegate: DestinationWriter,
+    ) : DestinationWriter {
+        var promotionAttempts: Int = 0
+            private set
+        var lastPrepared: PreparedDestination? = null
+            private set
+
+        override val supportsContentDestinations: Boolean
+            get() = delegate.supportsContentDestinations
+
+        override fun artifactPaths(request: DestinationRequest) = delegate.artifactPaths(request)
+
+        override suspend fun prepare(request: DestinationRequest): PreparedDestination {
+            val prepared = delegate.prepare(request)
+            return object : PreparedDestination {
+                override val destinationKey: String = prepared.destinationKey
+                override val displayName: String = prepared.displayName
+                override val artifacts = prepared.artifacts
+                override suspend fun availableSpace(): Long? = prepared.availableSpace()
+                override suspend fun promote(): DestinationPromotionResult {
+                    promotionAttempts++
+                    if (promotionAttempts == 1) {
+                        throw DestinationPublicationException(
+                            message = "simulated provider publication failure",
+                            destinationUri = request.destinationUri,
+                            stagingPath = artifacts.stagingFile.absolutePath,
+                            stagingPreserved = artifacts.stagingFile.isFile,
+                        )
+                    }
+                    return prepared.promote()
+                }
+                override suspend fun deleteArtifacts() = prepared.deleteArtifacts()
+            }.also { lastPrepared = it }
+        }
+
+        override suspend fun previewConflict(request: DestinationRequest): DestinationConflict? = delegate.previewConflict(request)
+        override suspend fun health(destinationUri: String): DestinationHealth = delegate.health(destinationUri)
     }
 
     private companion object {

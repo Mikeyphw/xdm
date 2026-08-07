@@ -77,3 +77,18 @@ interface DestinationProvider {
 
 class DestinationConflictException(message: String, val conflict: DestinationConflict? = null) : IllegalStateException(message)
 class DestinationPermissionException(message: String, cause: Throwable? = null) : IllegalStateException(message, cause)
+
+class DestinationPublicationException(
+    message: String,
+    val destinationUri: String,
+    val stagingPath: String,
+    val stagingPreserved: Boolean,
+    cause: Throwable? = null,
+) : IllegalStateException(message, cause) {
+    val retryMessage: String
+        get() = if (stagingPreserved) {
+            "Final save failed, but the completed staging file is preserved. Retry save after fixing destination access."
+        } else {
+            "Final save failed and XDM could not confirm that the staging file is still present. Open Recovery before retrying."
+        }
+}

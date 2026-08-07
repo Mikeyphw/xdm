@@ -14,6 +14,7 @@ import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.storage.DestinationRequest
+import com.mikeyphw.xdm.android.storage.DestinationPublicationException
 import com.mikeyphw.xdm.android.storage.DestinationWriter
 import com.mikeyphw.xdm.android.storage.FileDestinationWriter
 import com.mikeyphw.xdm.android.storage.PreparedDestination
@@ -424,7 +425,27 @@ class EmbeddedAria2Backend(
                 "Recovered aria2 destination no longer resolves to the owned staging file"
             }
             snapshots[mapping.gid] = status.toSnapshot(DownloadState.Finalizing)
-            val promotion = destination.promote()
+            val promotion = try {
+                destination.promote()
+            } catch (publication: DestinationPublicationException) {
+                runCatching {
+                    updateMapping(
+                        mapping,
+                        MAPPING_FINALIZATION_FAILED,
+                        code = "DESTINATION_PUBLICATION",
+                        message = publication.retryMessage,
+                    )
+                }
+                return@withLock BackendSnapshot(
+                    taskId = mapping.gid,
+                    state = DownloadState.RecoveryRequired,
+                    bytesReceived = physicalLength,
+                    totalBytes = reportedLength ?: mapping.expectedLength ?: physicalLength,
+                    speedBytesPerSecond = 0,
+                    effectiveUrl = status.primaryUri(),
+                    errorMessage = publication.retryMessage,
+                )
+            }
             val completed = BackendSnapshot(
                 taskId = mapping.gid,
                 state = DownloadState.Completed,
@@ -434,7 +455,7 @@ class EmbeddedAria2Backend(
                 effectiveUrl = status.primaryUri(),
                 completedUri = promotion.committedUri,
             )
-            updateMapping(mapping, MAPPING_COMPLETED)
+            runCatching { updateMapping(mapping, MAPPING_COMPLETED) }
             completed
         }
 
@@ -594,6 +615,7 @@ class EmbeddedAria2Backend(
         const val MAPPING_PAUSED = "Paused"
         const val MAPPING_REMOVED = "Removed"
         const val MAPPING_COMPLETED = "Completed"
+        const val MAPPING_FINALIZATION_FAILED = "FinalizationFailed"
         val TERMINAL_RPC_STATES = setOf(Aria2TaskStatusValue.Error, Aria2TaskStatusValue.Complete, Aria2TaskStatusValue.Removed)
     }
 }

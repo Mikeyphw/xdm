@@ -346,7 +346,12 @@ class TransferExecutionRuntime(
                 DesiredTransferState.PauseRequested -> { backend.pause(mapping.second); return }
                 else -> Unit
             }
-            if (current?.state == DownloadState.Paused) backend.resume(mapping.second)
+            if (
+                current?.state == DownloadState.Paused ||
+                (mapping.first == BackendType.Native && current?.state == DownloadState.RecoveryRequired && current.errorMessage.orEmpty().startsWith("Final save failed"))
+            ) {
+                backend.resume(mapping.second)
+            }
             observeTaskUntilRunEnd(download, mapping)
         } catch (error: Throwable) {
             handleRuntimeFailure(download, error)

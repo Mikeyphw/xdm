@@ -48,59 +48,113 @@ class FileDestinationWriter(
                 check(artifacts.stagingFile.isFile) { "Staging file is missing" }
                 resolved.parentFile?.mkdirs()
                 val generation = PublicationGeneration(request.downloadId, attemptGeneration = 1L, artifactGeneration = artifacts.stagingFile.lastModified().coerceAtLeast(1L))
-                PublicationJournalCodec.write(
-                    artifacts.journalFile,
-                    PublicationCommitRecord(
-                        generation = generation,
-                        sourcePath = artifacts.stagingFile.absolutePath,
+                try {
+                    PublicationJournalCodec.write(
+                        artifacts.journalFile,
+                        PublicationCommitRecord(
+                            generation = generation,
+                            sourcePath = artifacts.stagingFile.absolutePath,
+                            stagingPath = artifacts.stagingFile.absolutePath,
+                            destinationSpec = request.destinationUri,
+                            committedUri = null,
+                            bytesExpected = artifacts.stagingFile.length(),
+                            bytesCommitted = 0L,
+                            checksumAlgorithm = null,
+                            expectationId = null,
+                            expectedDigest = null,
+                            actualDigest = null,
+                            verificationTimestampEpochMs = null,
+                            boundary = PublicationCommitBoundary.BeforeDestinationCommit,
+                            health = CompletedArtifactHealthStatus.PendingPublication,
+                            message = "Filesystem publication prepared before destination commit.",
+                        ),
+                    )
+                } catch (error: Throwable) {
+                    throw DestinationPublicationException(
+                        message = "Could not prepare filesystem final save for ${resolved.name}: ${error.message ?: error::class.java.simpleName}",
+                        destinationUri = request.destinationUri,
                         stagingPath = artifacts.stagingFile.absolutePath,
-                        destinationSpec = request.destinationUri,
-                        committedUri = null,
-                        bytesExpected = artifacts.stagingFile.length(),
-                        bytesCommitted = 0L,
-                        checksumAlgorithm = null,
-                        expectationId = null,
-                        expectedDigest = null,
-                        actualDigest = null,
-                        verificationTimestampEpochMs = null,
-                        boundary = PublicationCommitBoundary.BeforeDestinationCommit,
-                        health = CompletedArtifactHealthStatus.PendingPublication,
-                        message = "Filesystem publication prepared before destination commit.",
-                    ),
-                )
+                        stagingPreserved = artifacts.stagingFile.isFile,
+                        cause = error,
+                    )
+                }
                 val source = artifacts.stagingFile.toPath()
                 val target = resolved.toPath()
                 val expectedBytes = artifacts.stagingFile.length()
-                val atomic = runCatching {
-                    Files.move(source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-                    true
-                }.getOrElse {
-                    Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
-                    false
+                val targetExistedBeforePromotion = resolved.exists()
+                val atomic = try {
+                    val movedAtomically = runCatching {
+                        Files.move(source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                        true
+                    }.getOrElse {
+                        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
+                        false
+                    }
+                    resolved.fsyncParentDirectoryIfSupported()
+                    val health = CompletedArtifactHealthProbe.fileHealth(resolved, expectedBytes)
+                    check(health == CompletedArtifactHealthStatus.Present) { "Completed file health is $health after publication" }
+                    movedAtomically
+                } catch (error: Throwable) {
+                    if (!artifacts.stagingFile.isFile && resolved.isFile && !targetExistedBeforePromotion) {
+                        runCatching {
+                            Files.move(target, source, StandardCopyOption.REPLACE_EXISTING)
+                            artifacts.stagingFile.fsyncParentDirectoryIfSupported()
+                        }
+                    }
+                    val stagingPreserved = artifacts.stagingFile.isFile
+                    runCatching {
+                        PublicationJournalCodec.write(
+                            artifacts.journalFile,
+                            PublicationCommitRecord(
+                                generation = generation,
+                                sourcePath = artifacts.stagingFile.absolutePath,
+                                stagingPath = artifacts.stagingFile.absolutePath.takeIf { stagingPreserved },
+                                destinationSpec = request.destinationUri,
+                                committedUri = resolved.takeIf(File::isFile)?.toURI()?.toString(),
+                                bytesExpected = expectedBytes,
+                                bytesCommitted = resolved.takeIf(File::isFile)?.length() ?: 0L,
+                                checksumAlgorithm = null,
+                                expectationId = null,
+                                expectedDigest = null,
+                                actualDigest = null,
+                                verificationTimestampEpochMs = null,
+                                boundary = PublicationCommitBoundary.DestinationCommitInProgress,
+                                health = CompletedArtifactHealthStatus.PendingPublication,
+                                message = "Filesystem publication failed; staging preservation was checked before recovery.",
+                            ),
+                        )
+                    }
+                    throw DestinationPublicationException(
+                        message = "Could not finalize ${resolved.name}: ${error.message ?: error::class.java.simpleName}",
+                        destinationUri = request.destinationUri,
+                        stagingPath = artifacts.stagingFile.absolutePath,
+                        stagingPreserved = stagingPreserved,
+                        cause = error,
+                    )
                 }
-                resolved.fsyncParentDirectoryIfSupported()
                 val health = CompletedArtifactHealthProbe.fileHealth(resolved, expectedBytes)
-                check(health == CompletedArtifactHealthStatus.Present) { "Completed file health is $health after publication" }
-                PublicationJournalCodec.write(
-                    artifacts.journalFile,
-                    PublicationCommitRecord(
-                        generation = generation,
-                        sourcePath = resolved.absolutePath,
-                        stagingPath = null,
-                        destinationSpec = request.destinationUri,
-                        committedUri = resolved.toURI().toString(),
-                        bytesExpected = expectedBytes,
-                        bytesCommitted = resolved.length(),
-                        checksumAlgorithm = null,
-                        expectationId = null,
-                        expectedDigest = null,
-                        actualDigest = null,
-                        verificationTimestampEpochMs = System.currentTimeMillis(),
-                        boundary = PublicationCommitBoundary.MetadataReconciled,
-                        health = health,
-                        message = "Filesystem destination committed and parent directory sync attempted.",
-                    ),
-                )
+                runCatching {
+                    PublicationJournalCodec.write(
+                        artifacts.journalFile,
+                        PublicationCommitRecord(
+                            generation = generation,
+                            sourcePath = resolved.absolutePath,
+                            stagingPath = null,
+                            destinationSpec = request.destinationUri,
+                            committedUri = resolved.toURI().toString(),
+                            bytesExpected = expectedBytes,
+                            bytesCommitted = resolved.length(),
+                            checksumAlgorithm = null,
+                            expectationId = null,
+                            expectedDigest = null,
+                            actualDigest = null,
+                            verificationTimestampEpochMs = System.currentTimeMillis(),
+                            boundary = PublicationCommitBoundary.MetadataReconciled,
+                            health = health,
+                            message = "Filesystem destination committed and parent directory sync attempted.",
+                        ),
+                    )
+                }
                 artifacts.checkpointFile.delete()
                 artifacts.journalFile.delete()
                 return DestinationPromotionResult(resolved.toURI().toString(), resolved.name, resolved.length(), atomic)

@@ -20,6 +20,7 @@ import com.mikeyphw.xdm.android.transfer.BackendTask
 import com.mikeyphw.xdm.android.transfer.DownloadBackend
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.storage.DestinationRequest
+import com.mikeyphw.xdm.android.storage.DestinationPublicationException
 import com.mikeyphw.xdm.android.storage.DestinationWriter
 import com.mikeyphw.xdm.android.storage.FileDestinationWriter
 import com.mikeyphw.xdm.android.storage.PreparedDestination
@@ -150,7 +151,11 @@ class NativeHttpDownloadBackend(
         if (control.job?.isActive == true) return
         control.pauseRequested = false
         control.cancelRequested = false
-        launch(control)
+        if (control.state.value.isFinalSaveRecovery()) {
+            launchFinalizationRetry(control)
+        } else {
+            launch(control)
+        }
     }
 
     override suspend fun cancel(taskId: String) {
@@ -319,6 +324,12 @@ class NativeHttpDownloadBackend(
                 if (!control.pauseRequested && !control.cancelRequested) throw CancellationException()
             } catch (changed: RemoteObjectChangedException) {
                 control.state.value = control.state.value.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = changed.message)
+            } catch (publication: DestinationPublicationException) {
+                control.state.value = control.state.value.copy(
+                    state = DownloadState.RecoveryRequired,
+                    speedBytesPerSecond = 0,
+                    errorMessage = publication.retryMessage,
+                )
             } catch (error: Throwable) {
                 control.activeCalls.forEach(Call::cancel)
                 if (control.pauseRequested || control.cancelRequested) return@transfer
@@ -329,6 +340,49 @@ class NativeHttpDownloadBackend(
             }
         }
     }
+
+    private fun launchFinalizationRetry(control: TaskControl) {
+        control.job = scope.launch retry@ {
+            try {
+                val staging = control.preparedDestination.artifacts.stagingFile
+                check(staging.isFile) { "Completed staging file is missing; open Recovery before retrying final save" }
+                val completedBytes = staging.length()
+                control.state.value = control.state.value.copy(
+                    state = DownloadState.Finalizing,
+                    bytesReceived = completedBytes,
+                    totalBytes = control.state.value.totalBytes ?: completedBytes,
+                    speedBytesPerSecond = 0,
+                    errorMessage = null,
+                )
+                val promotion = control.preparedDestination.promote()
+                runCatching { checkpointStore.delete(control.preparedDestination.artifacts.checkpointFile.toPath()) }
+                control.state.value = control.state.value.copy(
+                    state = DownloadState.Completed,
+                    bytesReceived = promotion.bytesCommitted,
+                    totalBytes = control.state.value.totalBytes ?: promotion.bytesCommitted,
+                    speedBytesPerSecond = 0,
+                    completedUri = promotion.committedUri,
+                    errorMessage = null,
+                )
+            } catch (publication: DestinationPublicationException) {
+                control.state.value = control.state.value.copy(
+                    state = DownloadState.RecoveryRequired,
+                    speedBytesPerSecond = 0,
+                    errorMessage = publication.retryMessage,
+                )
+            } catch (error: Throwable) {
+                if (control.pauseRequested || control.cancelRequested) return@retry
+                control.state.value = control.state.value.copy(
+                    state = DownloadState.RecoveryRequired,
+                    speedBytesPerSecond = 0,
+                    errorMessage = error.message ?: error::class.java.simpleName,
+                )
+            }
+        }
+    }
+
+    private fun BackendSnapshot.isFinalSaveRecovery(): Boolean =
+        state == DownloadState.RecoveryRequired && errorMessage.orEmpty().startsWith("Final save failed")
 
     private suspend fun runTransfer(control: TaskControl) = withContext(Dispatchers.IO) {
         control.state.value = control.state.value.copy(state = DownloadState.Connecting, errorMessage = null)
@@ -386,7 +440,7 @@ class NativeHttpDownloadBackend(
         }
         control.state.value = control.state.value.copy(state = DownloadState.Finalizing, speedBytesPerSecond = 0)
         val promotion = preparedDestination.promote()
-        checkpointStore.delete(paths.checkpoint)
+        runCatching { checkpointStore.delete(paths.checkpoint) }
         control.state.value = control.state.value.copy(
             state = DownloadState.Completed,
             bytesReceived = promotion.bytesCommitted,

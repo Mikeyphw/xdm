@@ -2922,6 +2922,7 @@
     "baseline": "xdm-20260807-110547.tar.gz",
     "next_overlay": "runtime_foundation_phase57_58_destination_finalization_media_intake",
     "phase55_embedded_aria2_runtime_repair": {
+      "app_process_restart_orphan_detection": true,
       "authenticated_get_version_required": true,
       "deep_loopback_rpc_lifecycle": true,
       "diagnostic_categories": [
@@ -2952,18 +2953,17 @@
         "shutdown"
       ],
       "loopback_only": true,
+      "owned_orphan_requires_authenticated_rpc": true,
       "rpc_failure_classification": true,
       "rpc_secret_rotation_repair": true,
+      "runtime_lease_contains_secret": false,
       "runtime_log_tail_redacted": true,
+      "runtime_ownership_lease": true,
       "secret_generation_tracked": true,
+      "stale_marker_never_authorizes_process_kill": true,
       "startup_timestamp_tracked": true,
       "transient_launch_config_cleanup": true,
-      "unauthenticated_probe_must_be_rejected": true,
-      "runtime_ownership_lease": true,
-      "runtime_lease_contains_secret": false,
-      "app_process_restart_orphan_detection": true,
-      "owned_orphan_requires_authenticated_rpc": true,
-      "stale_marker_never_authorizes_process_kill": true
+      "unauthenticated_probe_must_be_rejected": true
     },
     "phase56_personal_direct_storage": {
       "android_data_obb_rejected": true,
@@ -2992,6 +2992,33 @@
     },
     "program": "runtime_storage_media_reliability",
     "promise_closure_audit": "docs/quality/RUNTIME-FOUNDATION-PHASE55-56-PROMISE-CLOSURE-AUDIT.md"
+  },
+  "runtime_foundation_2026_phase57_58": {
+    "aria2_publication_failure_is_recovery_required": true,
+    "batch_intake_never_silent": true,
+    "browser_extension_handoff_never_silent": true,
+    "check_again_never_silent": true,
+    "completed_staging_preserved_on_publication_failure": true,
+    "destination_finalization_recovery": true,
+    "manual_page_probe_never_silent": true,
+    "media_intake_feedback": true,
+    "native_publication_failure_is_recovery_required": true,
+    "phase55_56_warning_cleanup": true,
+    "recovery_required_retry_enabled": true,
+    "room_schema_unchanged": 17,
+    "shared_text_never_silent": true,
+    "status": "implemented",
+    "top_level_route_added": false,
+    "provider_open_create_failure_is_recoverable": true,
+    "native_final_save_retry_avoids_network_redownload": true,
+    "native_post_commit_checkpoint_cleanup_best_effort": true,
+    "aria2_post_publication_bookkeeping_best_effort": true,
+    "retry_save_user_action": true,
+    "browser_extension_planner_failures_visible": true,
+    "manual_external_media_never_silent": true,
+    "media_intake_feedback_redacted_and_bounded": true,
+    "promise_closure_revision": 3,
+    "external_media_review_navigation_retained": true
   },
   "startup_recovery": {
     "backend_migrations": true,

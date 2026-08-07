@@ -43,6 +43,7 @@ fun MediaInboxScreen(
     variants: List<MediaVariant>,
     mediaTrackSelections: Map<String, MediaTrackSelection>,
     downloads: List<Download>,
+    intakeFeedback: MediaIntakeFeedbackUi,
     onPastePageUrl: (String) -> Unit,
     onBatchInput: (String) -> Unit,
     onDownload: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
@@ -97,6 +98,30 @@ fun MediaInboxScreen(
                         XdmActionFlowRow {
                             Button(onClick = { onPastePageUrl(pageUrlText) }, enabled = pageUrlText.isNotBlank()) { Text("Sniff page URL") }
                             TextButton(onClick = { pageUrlText = "" }, enabled = pageUrlText.isNotBlank()) { Text("Clear") }
+                        }
+                    }
+                }
+            }
+
+            if (intakeFeedback.visible) {
+                item {
+                    XdmGroupedList {
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            XdmSectionLabel(intakeFeedback.title.ifBlank { "Media intake" })
+                            Text(intakeFeedback.detail)
+                            intakeFeedback.diagnostics.take(3).forEach { diagnostic ->
+                                XdmMetadataText(diagnostic)
+                            }
+                            when (intakeFeedback.kind) {
+                                MediaIntakeFeedbackKind.Working -> XdmStatusBadge("Working", tone = XdmStatusTone.Info)
+                                MediaIntakeFeedbackKind.Found -> XdmStatusBadge("Found", tone = XdmStatusTone.Success)
+                                MediaIntakeFeedbackKind.NeedsBrowserCapture,
+                                MediaIntakeFeedbackKind.AuthenticationRequired -> XdmStatusBadge("Firefox capture recommended", tone = XdmStatusTone.Warning)
+                                MediaIntakeFeedbackKind.Unsupported,
+                                MediaIntakeFeedbackKind.Failed -> XdmStatusBadge("Needs attention", tone = XdmStatusTone.Error)
+                                MediaIntakeFeedbackKind.NoMediaFound -> XdmStatusBadge("No media found", tone = XdmStatusTone.Neutral)
+                                MediaIntakeFeedbackKind.Idle -> Unit
+                            }
                         }
                     }
                 }
@@ -303,6 +328,7 @@ private fun RecentlyQueuedMediaRow(
                     DownloadState.Failed,
                     DownloadState.WaitingForNetwork,
                     DownloadState.WaitingForPower -> "Resume"
+                    DownloadState.RecoveryRequired -> if (download.errorMessage.orEmpty().startsWith("Final save failed")) "Retry save" else null
                     else -> null
                 }
                 action?.let { TextButton(onClick = onResumeOrRetry) { Text(it) } }

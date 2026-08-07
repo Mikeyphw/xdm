@@ -59,6 +59,21 @@ class DownloadActionPlannerTest {
         assertFalse(actions.first { it.kind == DownloadActionKind.DeleteFile }.enabled)
     }
 
+
+    @Test
+    fun finalSaveRecoveryOffersRetrySaveBeforeGenericRecovery() {
+        val actions = DownloadActionPlanner.actionsFor(
+            download(
+                DownloadState.RecoveryRequired,
+                errorMessage = "Final save failed, but the completed staging file is preserved. Retry save after fixing destination access.",
+            ),
+        )
+        assertEquals(DownloadActionKind.Retry, actions.first { it.primary }.kind)
+        assertEquals("Retry save", actions.first { it.primary }.label)
+        assertTrue(actions.first { it.primary }.supportingText.contains("preserved completed staging file"))
+        assertTrue(actions.any { it.kind == DownloadActionKind.ReviewRecovery })
+    }
+
     @Test
     fun recoveryActionsPreserveExactItemContext() {
         val actions = DownloadActionPlanner.actionsFor(download(DownloadState.RecoveryRequired))
@@ -67,7 +82,7 @@ class DownloadActionPlannerTest {
         assertTrue(actions.any { it.kind == DownloadActionKind.RestartFromZero })
     }
 
-    private fun download(state: DownloadState) = Download(
+    private fun download(state: DownloadState, errorMessage: String? = null) = Download(
         id = "download-id",
         fileName = "file.bin",
         sourceUrl = "https://example.test/file.bin",
@@ -81,5 +96,6 @@ class DownloadActionPlannerTest {
         priority = 0,
         createdAtEpochMs = 1,
         updatedAtEpochMs = 2,
+        errorMessage = errorMessage,
     )
 }

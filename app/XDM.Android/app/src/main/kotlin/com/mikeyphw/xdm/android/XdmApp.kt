@@ -204,6 +204,7 @@ private fun XdmRouteContent(
                 variants = state.mediaVariants,
                 mediaTrackSelections = state.mediaTrackSelections,
                 downloads = state.downloads,
+                intakeFeedback = state.mediaIntakeFeedback,
                 onPastePageUrl = viewModel::capturePageUrl,
                 onBatchInput = viewModel::captureMediaBatchInput,
                 onDownload = viewModel::downloadMediaCapture,
