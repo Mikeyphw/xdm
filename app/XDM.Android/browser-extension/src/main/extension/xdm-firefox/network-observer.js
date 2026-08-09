@@ -14,6 +14,7 @@
   const SAME_URL_SUPPRESS_MS = 90 * 1000;
   const AUTO_OFFER_THRESHOLD = 850;
   const POSSIBLE_OFFER_THRESHOLD = 700;
+  const MAX_HANDOFF_CANDIDATES = 24;
 
   const capturedHeaders = new Map();
   const tabDispatchSessions = new Map();
@@ -41,7 +42,7 @@
       await browser.storage.local.set({
         [STATUS_KEY]: Object.assign({
           active: true,
-          version: "1.1.0",
+          version: "1.2.0",
           startedAt: Date.now(),
           lastError: ""
         }, previous[STATUS_KEY] || {}, extra)
@@ -240,6 +241,23 @@
     dispatchTimers.set(numericTabId, setTimeout(() => dispatchTab(numericTabId), delay));
   }
 
+  function captureSessionFor(tabId) {
+    const numericTabId = Number(tabId);
+    const existing = tabDispatchSessions.get(numericTabId);
+    if (existing) return existing;
+    const randomPart = (() => {
+      try {
+        const bytes = crypto.getRandomValues(new Uint8Array(12));
+        return [...bytes].map(value => value.toString(16).padStart(2, "0")).join("");
+      } catch (_) {
+        return Math.random().toString(36).slice(2) + Date.now().toString(36);
+      }
+    })();
+    const created = { id: `browser-${numericTabId}-${randomPart}`.slice(0, 92), revision: Date.now() };
+    tabDispatchSessions.set(numericTabId, created);
+    return created;
+  }
+
   function candidateStreamKind(candidate) {
     const url = String(candidate && candidate.url || "");
     const mime = CORE.normalizeMime(candidate && candidate.contentType || "");
@@ -265,9 +283,36 @@
     if (candidate.quality === "possible" && !candidate.playbackObserved && rank < POSSIBLE_OFFER_THRESHOLD) return;
     if (candidate.quality !== "possible" && !candidate.playbackObserved && !candidate.autoOffer && rank < AUTO_OFFER_THRESHOLD) return;
 
+    const candidateCount = candidateStore.size(tabId);
+    const candidateRevision = Number(candidate.sessionRevision || 0);
     const previous = lastDispatchedByTab.get(tabId);
-    if (previous && previous.url === candidate.url && Date.now() - previous.at < SAME_URL_SUPPRESS_MS) return;
-    lastDispatchedByTab.set(tabId, { url: candidate.url, at: Date.now() });
+    if (previous && previous.url === candidate.url && previous.candidateCount === candidateCount &&
+        previous.revision === candidateRevision && Date.now() - previous.at < SAME_URL_SUPPRESS_MS) return;
+    lastDispatchedByTab.set(tabId, { url: candidate.url, candidateCount, revision: candidateRevision, at: Date.now() });
+
+    const session = captureSessionFor(tabId);
+    session.revision = Math.max(Number(session.revision || 0), candidateRevision, Date.now());
+    const sessionCandidates = candidateStore.snapshot(tabId, MAX_HANDOFF_CANDIDATES).map(item => Object.assign({}, item, {
+      streamKind: candidateStreamKind(item),
+    }));
+    let prebuiltXdmLink = "";
+    const handoff = globalThis.XdmHandoffV1;
+    if (handoff && typeof handoff.buildEncryptedCaptureSession === "function") {
+      try {
+        prebuiltXdmLink = await handoff.buildEncryptedCaptureSession({
+          sessionId: session.id,
+          revision: session.revision,
+          pageUrl: tab.url,
+          title: tab.title || "Detected video",
+          candidates: sessionCandidates,
+          totalCandidateCount: candidateCount,
+          truncated: candidateCount > sessionCandidates.length,
+          scheme: globalThis.XdmExtensionConfig && globalThis.XdmExtensionConfig.xdmScheme,
+        });
+      } catch (error) {
+        publishStatus({ lastError: `Encrypted capture handoff failed: ${error && error.message ? error.message : String(error)}`, lastErrorAt: Date.now() });
+      }
+    }
 
     const payload = Object.assign({}, candidate, {
       tabUrl: tab.url,
@@ -276,12 +321,15 @@
       contentLength: candidate.contentLength || 0,
       durationMs: candidate.durationMs || 0,
       thumbnailUrl: candidate.thumbnailUrl || "",
-      candidateCount: candidateStore.size(tabId),
+      candidateCount,
       streamKind: candidateStreamKind(candidate),
       rank,
       stableMediaId: candidate.stableMediaId || CORE.stableMediaIdentity(candidate.url),
-      sessionRevision: candidate.sessionRevision || Date.now(),
+      sessionRevision: candidate.sessionRevision || session.revision,
       browserHandoff: candidate.browserHandoff || null,
+      captureSessionId: session.id,
+      prebuiltXdmLink,
+      encryptedCandidateCount: sessionCandidates.length,
     });
     await updateDiagnostics(tabId, payload);
     await offerInTopFrame(tabId, payload);

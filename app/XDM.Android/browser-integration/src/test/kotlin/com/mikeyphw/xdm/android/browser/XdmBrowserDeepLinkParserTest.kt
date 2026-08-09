@@ -97,6 +97,28 @@ class XdmBrowserDeepLinkParserTest {
         assertNull(XdmBrowserDeepLinkParser.parse(oversizedEnvelope, "xdmdownload"))
     }
 
+
+    @Test
+    fun encryptedV2CaptureEnvelopeParsesWithoutExposingMediaUrl() {
+        val raw = "xdmdownload://capture?v=2&sid=browser-7-secure-session&kid=phase59-61-test-key&ek=QUJDREVGR0g&iv=QUJDREVGR0hJSktM&ct=QUJDREVGR0hJSktMTU5PUA"
+        val payload = XdmBrowserDeepLinkParser.parse(raw, "xdmdownload")!!
+
+        assertEquals(2, payload.version)
+        assertEquals(AutomationCommandAction.CaptureMedia, payload.action)
+        assertNull(payload.url)
+        assertTrue(payload.hasEncryptedCaptureEnvelope)
+        assertEquals("browser-7-secure-session", payload.captureSessionId)
+        assertEquals("phase59-61-test-key", payload.captureKeyId)
+    }
+
+    @Test
+    fun encryptedV2EnvelopeRejectsDuplicatesMissingTokensAndFutureVersion() {
+        val valid = "xdmdownload://capture?v=2&sid=browser-7-secure-session&kid=phase59-61-test-key&ek=QUJDREVGR0g&iv=QUJDREVGR0hJSktM&ct=QUJDREVGR0hJSktMTU5PUA"
+        assertNull(XdmBrowserDeepLinkParser.parse(valid + "&ct=duplicate", "xdmdownload"))
+        assertNull(XdmBrowserDeepLinkParser.parse(valid.replace("&ct=QUJDREVGR0hJSktMTU5PUA", ""), "xdmdownload"))
+        assertNull(XdmBrowserDeepLinkParser.parse(valid.replace("v=2", "v=3"), "xdmdownload"))
+    }
+
     @Test
     fun rejectsUnsafePageMetadataInsteadOfSmugglingIt() {
         val link = deepLink(

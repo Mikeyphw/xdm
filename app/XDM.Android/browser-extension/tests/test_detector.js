@@ -54,4 +54,8 @@ assert(store.merge(7, { url: "https://cdn.example/master.m3u8", confidence: 1000
 assert(store.merge(7, { url: "https://cdn.example/playback", confidence: 720, quality: "possible", frameId: 8 }));
 assert.strictEqual(store.best(7).url, "https://cdn.example/master.m3u8");
 assert.strictEqual(store.size(7), 3);
+const snapshot = store.snapshot(7, 3);
+assert.strictEqual(snapshot.length, 3);
+assert.strictEqual(snapshot[0].url, "https://cdn.example/master.m3u8");
+assert(snapshot.some(item => item.url === "https://cdn.example/video"));
 console.log("detector and candidate-store tests passed");

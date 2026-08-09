@@ -55,13 +55,23 @@ class BrowserExtensionSourceContractTest {
     }
 
     @Test
-    fun `xdm handoff is credential thin`() {
+    fun `xdm handoff keeps credentials out of plaintext URI`() {
         val handoff = extensionRoot.resolve("handoff.js").readText()
         assertTrue(handoff.contains("//capture?"))
-        assertTrue(handoff.contains("params.set(\"v\""))
-        assertTrue(handoff.contains("params.set(\"url\""))
-        assertFalse(handoff.contains("authorization"))
-        assertFalse(handoff.contains("cookie"))
+        assertTrue(handoff.contains("buildEncryptedCaptureSession"))
+        assertTrue(handoff.contains("params.set(\"ct\""))
+        assertTrue(handoff.contains("params.set(\"ek\""))
+        assertTrue(handoff.contains("params.set(\"iv\""))
+        assertFalse(handoff.contains("params.set(\"authorization\""))
+        assertFalse(handoff.contains("params.set(\"cookie\""))
+        assertFalse(handoff.contains("params.set(\"headers\""))
         assertFalse(handoff.contains("extra_headers"))
+    }
+    @Test
+    fun `background loads encrypted handoff before network observer`() {
+        val manifest = extensionRoot.resolve("manifest.template.json").readText()
+        val handoffIndex = manifest.indexOf("handoff.js")
+        val observerIndex = manifest.indexOf("network-observer.js")
+        assertTrue(handoffIndex >= 0 && observerIndex > handoffIndex)
     }
 }

@@ -76,6 +76,13 @@ open class MainActivity : ComponentActivity() {
         viewModel.recordBrowserDeepLinkResult(browserDeepLinkResult)
         when (browserDeepLinkResult) {
             is XdmBrowserDeepLinkParseResult.Accepted -> {
+                if (browserDeepLinkResult.payload.hasEncryptedCaptureEnvelope) {
+                    viewModel.ingestEncryptedBrowserCapture(
+                        browserDeepLinkResult.payload,
+                        originPackage = browserOriginPackage(incoming),
+                    )
+                    return
+                }
                 val baseDraft = browserDeepLinkResult.payload.toAutomationCommandDraft(
                     originPackage = browserOriginPackage(incoming),
                 ).copy(claimedOriginPackage = identity.claimedPackage)

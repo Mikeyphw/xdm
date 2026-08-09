@@ -28,7 +28,7 @@ REQUIRED_FILES = {
 }
 FIXED_ZIP_DATE = (1980, 1, 1, 0, 0, 0)
 EXPECTED_ID = "xdm-android-media-bridge@mikeyphw"
-EXPECTED_VERSION = "1.1.0"
+EXPECTED_VERSION = "1.2.0"
 EXPECTED_SCHEME = "xdmdownload"
 
 
@@ -98,8 +98,8 @@ def main() -> int:
     args = parser.parse_args()
 
     output_dir = args.output_dir.resolve()
-    dark = output_dir / "XDM-Android-Firefox-1.1.0-release-dark.xpi"
-    amoled = output_dir / "XDM-Android-Firefox-1.1.0-release-amoled.xpi"
+    dark = output_dir / "XDM-Android-Firefox-1.2.0-release-dark.xpi"
+    amoled = output_dir / "XDM-Android-Firefox-1.2.0-release-amoled.xpi"
     artifacts = [inspect_xpi(dark, "dark"), inspect_xpi(amoled, "amoled")]
     if artifacts[0]["sha256"] == artifacts[1]["sha256"]:
         raise SystemExit("Dark and AMOLED release XPIs must not be byte-identical.")

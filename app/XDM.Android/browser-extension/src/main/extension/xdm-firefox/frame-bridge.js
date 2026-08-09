@@ -261,7 +261,12 @@ ${location.href}`;
         frameUrl: input.frameUrl,
         scheme: globalThis.XdmExtensionConfig && globalThis.XdmExtensionConfig.xdmScheme
       };
-      const links = globalThis.XdmHandoffV1.buildTargets(handoffInput);
+      const builtLinks = globalThis.XdmHandoffV1.buildTargets(handoffInput);
+      const links = Object.freeze({
+        xdm: input.prebuiltXdmLink || builtLinks.xdm,
+        oneDm: builtLinks.oneDm,
+        filename: builtLinks.filename,
+      });
       if (!links || (!links.xdm && !links.oneDm)) throw new Error("Launcher URL generation failed.");
       const launcherInput = {
         url,
@@ -288,30 +293,30 @@ ${location.href}`;
   // All-frame playback observations are aggregated by the background candidate store.
   function presentPlayingCandidate(candidate, label) {
     if (!candidate) return false;
-    if (window.top === window) {
-      return showLauncher({
-        url: candidate.url,
-        title: document.title,
-        label: label || (candidate.manifest ? "Playing stream detected" : "Playing video detected"),
-        headers: candidate.headers || {},
-        contentType: candidate.contentType || "",
-        candidateCount: Math.max(1, candidates.size),
-        streamKind: candidate.manifest ? (/\.mpd(?:$|[?#])/i.test(candidate.url) ? "dash" : "hls") : ""
-      });
-    }
-    sendBackground({
+    const handedToBackground = sendBackground({
       type: PLAYBACK_TYPE,
       candidate: {
         url: candidate.url,
         contentType: candidate.contentType || "",
         headers: candidate.headers || {},
-        source: candidate.source || "frame-playback",
+        source: candidate.source || (window.top === window ? "top-playback" : "frame-playback"),
         confidence: score(candidate),
         manifest: Boolean(candidate.manifest),
         reason: candidate.manifest ? "frame-manifest-playback" : "frame-video-playback"
       }
     });
-    return true;
+    // Background owns the Phase 59-61 session aggregation and encrypted handoff.
+    // Only fall back to the legacy top-frame launcher when runtime messaging itself fails.
+    if (handedToBackground || window.top !== window) return true;
+    return showLauncher({
+      url: candidate.url,
+      title: document.title,
+      label: label || (candidate.manifest ? "Playing stream detected" : "Playing video detected"),
+      headers: candidate.headers || {},
+      contentType: candidate.contentType || "",
+      candidateCount: Math.max(1, candidates.size),
+      streamKind: candidate.manifest ? (/\.mpd(?:$|[?#])/i.test(candidate.url) ? "dash" : "hls") : ""
+    });
   }
 
   function evaluate(video) {
@@ -365,6 +370,7 @@ ${location.href}`;
         stableMediaId: input.stableMediaId || "",
         sessionRevision: input.sessionRevision || Date.now(),
         frameUrl: input.frameUrl || "",
+        prebuiltXdmLink: input.prebuiltXdmLink || "",
         candidateCount: Math.max(1, Number(input.candidateCount || candidates.size || 1)),
         streamKind: input.streamKind || (input.manifest ? (/\.mpd(?:$|[?#])/i.test(url) ? "dash" : "hls") : "")
       });

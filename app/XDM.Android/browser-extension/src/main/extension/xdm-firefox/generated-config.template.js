@@ -1,6 +1,6 @@
 (() => {
   globalThis.XdmExtensionConfig = Object.freeze({
-    contractVersion: 1,
+    contractVersion: @@CONTRACT_VERSION@@,
     extensionVersion: "@@EXTENSION_VERSION@@",
     appVersion: "@@APP_VERSION@@",
     extensionId: "xdm-android-media-bridge@mikeyphw",
@@ -8,6 +8,8 @@
     channel: "@@CHANNEL@@",
     xdmScheme: "@@XDM_SCHEME@@",
     defaultTarget: "@@DEFAULT_TARGET@@",
+    captureKeyId: "@@CAPTURE_KEY_ID@@",
+    capturePublicKeySpki: "@@CAPTURE_PUBLIC_KEY_SPKI@@",
     themeMode: "@@THEME_MODE@@",
     theme: Object.freeze({
       background: "@@BACKGROUND@@",

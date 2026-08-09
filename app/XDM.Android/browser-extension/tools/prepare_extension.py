@@ -15,6 +15,8 @@ TOKENS = {
     "@@CHANNEL@@": "channel",
     "@@XDM_SCHEME@@": "xdm_scheme",
     "@@DEFAULT_TARGET@@": "default_target",
+    "@@CAPTURE_KEY_ID@@": "capture_key_id",
+    "@@CAPTURE_PUBLIC_KEY_SPKI@@": "capture_public_key_spki",
     "@@THEME_MODE@@": "theme",
 }
 
@@ -95,13 +97,15 @@ def main() -> int:
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--theme-contract", type=Path)
-    parser.add_argument("--contract-version", default="1")
-    parser.add_argument("--extension-version", default="1.1.0")
+    parser.add_argument("--contract-version", default="2")
+    parser.add_argument("--extension-version", default="1.2.0")
     parser.add_argument("--app-version", default="0.20.0-rc08")
     parser.add_argument("--application-id", default="com.mikeyphw.xdm.android")
     parser.add_argument("--channel", choices=("release", "debug"), default="release")
     parser.add_argument("--xdm-scheme", default="xdmdownload")
     parser.add_argument("--default-target", choices=("xdm", "1dm", "ask"), default="xdm")
+    parser.add_argument("--capture-key-id", default="")
+    parser.add_argument("--capture-public-key-spki", default="")
     parser.add_argument("--theme", choices=("dark", "amoled"), default="dark")
     args = parser.parse_args()
 

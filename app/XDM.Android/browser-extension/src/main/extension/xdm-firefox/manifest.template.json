@@ -25,6 +25,7 @@
       "generated-config.js",
       "detector-core.js",
       "candidate-store.js",
+      "handoff.js",
       "network-observer.js"
     ]
   },

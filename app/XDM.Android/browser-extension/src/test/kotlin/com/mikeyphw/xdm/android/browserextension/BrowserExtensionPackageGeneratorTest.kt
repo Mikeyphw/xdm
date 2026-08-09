@@ -61,6 +61,17 @@ class BrowserExtensionPackageGeneratorTest {
     }
 
     @Test
+    fun `generated package embeds only configured public capture identity`() {
+        val secure = config.copy(
+            captureKeyId = "0123456789abcdef01234567",
+            capturePublicKeySpki = "A".repeat(256),
+        )
+        val result = BrowserExtensionPackageGenerator(::sourceEntry).generate(secure)
+        val report = BrowserExtensionPackageValidator.validate(result.archiveBytes, secure)
+        assertTrue(report.valid)
+    }
+
+    @Test
     fun `build configuration rejects script-breaking app versions`() {
         assertTrue(runCatching { config.copy(appVersion = "bad\nversion") }.isFailure)
         assertTrue(runCatching { config.copy(appVersion = "bad\"version") }.isFailure)

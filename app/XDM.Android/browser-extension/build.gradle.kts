@@ -30,7 +30,7 @@ val prepareFirefoxExtension by tasks.registering(Exec::class) {
         layout.projectDirectory.file("tools/prepare_extension.py").asFile.absolutePath,
         "--source", extensionSource.asFile.absolutePath,
         "--output", unpackedOutput.get().asFile.absolutePath,
-        "--extension-version", "1.1.0",
+        "--extension-version", "1.2.0",
         "--app-version", "0.20.0-rc08",
         "--application-id", "com.mikeyphw.xdm.android",
         "--channel", "release",
@@ -45,7 +45,7 @@ val jsTest by tasks.registering(Exec::class) {
     description = "Run the repository-owned detector, candidate-store, and handoff JavaScript tests."
     commandLine(
         "bash", "-lc",
-        "node tests/test_detector.js && node tests/test_handoff.js && node tests/test_fab.js && node tests/test_phase43a_bridge.js && node tests/test_background.js && node tests/test_release_gate.js",
+        "node tests/test_detector.js && node tests/test_handoff.js && node tests/test_secure_handoff.js && node tests/test_fab.js && node tests/test_phase43a_bridge.js && node tests/test_background.js && node tests/test_release_gate.js",
     )
 }
 
@@ -70,11 +70,11 @@ fun registerXpiTask(
     dependsOn(tasks.named("classes"), validateFirefoxExtension)
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("com.mikeyphw.xdm.android.browserextension.BrowserExtensionPackageCli")
-    val outputFile = xpiOutput.map { it.file("XDM-Android-Firefox-1.1.0-release-$theme.xpi") }
+    val outputFile = xpiOutput.map { it.file("XDM-Android-Firefox-1.2.0-release-$theme.xpi") }
     outputs.file(outputFile)
     args(
         "--output", outputFile.get().asFile.absolutePath,
-        "--extension-version", "1.1.0",
+        "--extension-version", "1.2.0",
         "--app-version", "0.20.0-rc08",
         "--application-id", "com.mikeyphw.xdm.android",
         "--channel", "release",
@@ -99,8 +99,8 @@ val verifyFirefoxExtensionReleaseArtifacts by tasks.registering(Exec::class) {
     dependsOn(packageFirefoxExtensionDark, packageFirefoxExtensionAmoled)
     val metadataFile = xpiOutput.map { it.file("release-artifacts.json") }
     inputs.files(
-        xpiOutput.map { it.file("XDM-Android-Firefox-1.1.0-release-dark.xpi") },
-        xpiOutput.map { it.file("XDM-Android-Firefox-1.1.0-release-amoled.xpi") },
+        xpiOutput.map { it.file("XDM-Android-Firefox-1.2.0-release-dark.xpi") },
+        xpiOutput.map { it.file("XDM-Android-Firefox-1.2.0-release-amoled.xpi") },
     )
     outputs.file(metadataFile)
     commandLine(

@@ -30,6 +30,7 @@ import com.mikeyphw.xdm.android.media.MediaConsumerWorkspacePlanner
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.BrowserCaptureSessionSummary
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaVariant
@@ -44,6 +45,7 @@ fun MediaInboxScreen(
     mediaTrackSelections: Map<String, MediaTrackSelection>,
     downloads: List<Download>,
     intakeFeedback: MediaIntakeFeedbackUi,
+    browserCaptureSessions: List<BrowserCaptureSessionSummary>,
     onPastePageUrl: (String) -> Unit,
     onBatchInput: (String) -> Unit,
     onDownload: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
@@ -61,6 +63,17 @@ fun MediaInboxScreen(
     val reviewableCaptures = remember(captures) {
         captures.filterNot { it.status == MediaCaptureStatus.DownloadCreated }
             .sortedByDescending(MediaCaptureRecord::updatedAtEpochMs)
+    }
+    val capturesById = remember(reviewableCaptures) { reviewableCaptures.associateBy(MediaCaptureRecord::id) }
+    val activeBrowserSessions = remember(browserCaptureSessions, capturesById) {
+        browserCaptureSessions.mapNotNull { session ->
+            val candidates = session.candidates.filter { it.captureId in capturesById }
+            session.copy(candidates = candidates, importedCandidateCount = candidates.size).takeIf { candidates.isNotEmpty() }
+        }
+    }
+    val browserGroupedCaptureIds = remember(activeBrowserSessions) { activeBrowserSessions.flatMap { it.captureIds }.toSet() }
+    val ungroupedCaptures = remember(reviewableCaptures, browserGroupedCaptureIds) {
+        reviewableCaptures.filterNot { it.id in browserGroupedCaptureIds }
     }
     val downloadsById = remember(downloads) { downloads.associateBy(Download::id) }
     val recentlyQueued = remember(captures, downloadsById) {
@@ -176,7 +189,7 @@ fun MediaInboxScreen(
                     XdmEmptyState(
                         title = if (captures.isEmpty()) "No media waiting" else "Everything is queued",
                         description = if (captures.isEmpty()) {
-                            "Paste a page URL or share a media link to XDM. You will review it before downloading."
+                            "Paste a page URL or share a media link to XDM. Firefox capture sessions will arrive here as grouped candidates."
                         } else {
                             "New captures will appear here when you share or inspect another media link."
                         },
@@ -185,21 +198,47 @@ fun MediaInboxScreen(
                     )
                 }
             } else {
-                item { XdmSectionLabel("Ready to download") }
-                items(reviewableCaptures, key = MediaCaptureRecord::id) { capture ->
-                    val captureVariants = variants.filter { it.captureId == capture.id }.sortedBy { it.position }
-                    MediaCaptureCard(
-                        capture = capture,
-                        captureVariants = captureVariants,
-                        persistedSelection = mediaTrackSelections[capture.id]
-                            ?: MediaTrackSelection(videoVariantId = capture.selectedVariantId),
-                        consumerPlanner = consumerPlanner,
-                        onDownload = onDownload,
-                        onResolve = onResolve,
-                        onSelectVariant = onSelectVariant,
-                        onTrackSelectionChanged = onTrackSelectionChanged,
-                        onRemove = onRemove,
-                    )
+                if (activeBrowserSessions.isNotEmpty()) {
+                    item { XdmSectionLabel("Firefox capture sessions") }
+                    activeBrowserSessions.forEach { session ->
+                        item(key = "browser-session:${session.sessionId}") {
+                            BrowserCaptureSessionHeader(session)
+                        }
+                        val sessionCaptures = session.candidates.mapNotNull { capturesById[it.captureId] }
+                        items(sessionCaptures, key = { capture -> "${session.sessionId}:${capture.id}" }) { capture ->
+                            val captureVariants = variants.filter { it.captureId == capture.id }.sortedBy { it.position }
+                            MediaCaptureCard(
+                                capture = capture,
+                                captureVariants = captureVariants,
+                                persistedSelection = mediaTrackSelections[capture.id]
+                                    ?: MediaTrackSelection(videoVariantId = capture.selectedVariantId),
+                                consumerPlanner = consumerPlanner,
+                                onDownload = onDownload,
+                                onResolve = onResolve,
+                                onSelectVariant = onSelectVariant,
+                                onTrackSelectionChanged = onTrackSelectionChanged,
+                                onRemove = onRemove,
+                            )
+                        }
+                    }
+                }
+                if (ungroupedCaptures.isNotEmpty()) {
+                    item { XdmSectionLabel(if (activeBrowserSessions.isEmpty()) "Ready to download" else "Other captured media") }
+                    items(ungroupedCaptures, key = MediaCaptureRecord::id) { capture ->
+                        val captureVariants = variants.filter { it.captureId == capture.id }.sortedBy { it.position }
+                        MediaCaptureCard(
+                            capture = capture,
+                            captureVariants = captureVariants,
+                            persistedSelection = mediaTrackSelections[capture.id]
+                                ?: MediaTrackSelection(videoVariantId = capture.selectedVariantId),
+                            consumerPlanner = consumerPlanner,
+                            onDownload = onDownload,
+                            onResolve = onResolve,
+                            onSelectVariant = onSelectVariant,
+                            onTrackSelectionChanged = onTrackSelectionChanged,
+                            onRemove = onRemove,
+                        )
+                    }
                 }
             }
 
@@ -217,6 +256,37 @@ fun MediaInboxScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrowserCaptureSessionHeader(session: BrowserCaptureSessionSummary) {
+    XdmGroupedList {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    XdmCardTitle(session.pageTitle.ifBlank { session.pageHost.ifBlank { "Firefox capture" } }, maxLines = 2)
+                    XdmMetadataText(session.pageHost.ifBlank { "Browser-observed media" })
+                }
+                XdmStatusBadge("Session available", tone = XdmStatusTone.Success)
+            }
+            Text(
+                "${session.importedCandidateCount} reviewable candidate(s) from ${session.totalCandidateCount} browser observation(s). " +
+                    "Cookies, authorization values, and exact temporary URLs remain hidden.",
+            )
+            val evidence = session.candidates.flatMap { it.evidence }.distinct().take(5)
+            if (evidence.isNotEmpty()) XdmMetadataText("Evidence: ${evidence.joinToString(" • ")}")
+            if (session.truncated) {
+                XdmNoticeRow(
+                    text = "The page exposed more candidates than the bounded encrypted Android handoff could carry. Highest-confidence candidates are shown.",
+                    tone = XdmStatusTone.Warning,
+                )
             }
         }
     }

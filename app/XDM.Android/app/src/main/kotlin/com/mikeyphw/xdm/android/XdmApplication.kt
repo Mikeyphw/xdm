@@ -34,7 +34,7 @@ import com.mikeyphw.xdm.android.model.DebugRecorderProvider
 import com.mikeyphw.xdm.android.model.RollingJsonlDebugEventRecorder
 import java.io.File
 import com.mikeyphw.xdm.android.media.BrowserHandoffMediaCoordinator
-import com.mikeyphw.xdm.android.media.FileBackedBrowserHandoffMediaSessionStore
+import com.mikeyphw.xdm.android.media.BrowserCaptureSessionRegistry
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.transfer.aria2.AndroidAria2CapabilityProbe
 import com.mikeyphw.xdm.android.transfer.aria2.AppPrivateAria2SecretProvider
@@ -155,9 +155,13 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         queueSchedulingRecoveryCoordinator = QueueSchedulingRecoveryCoordinator(
             FileBackedQueueSchedulingRecoveryStore(File(filesDir, "queue-scheduling-recovery")),
         )
-        val browserHandoffMediaCoordinator = BrowserHandoffMediaCoordinator(
-            store = FileBackedBrowserHandoffMediaSessionStore(File(filesDir, "browser-handoff-media-sessions")),
-        )
+        // Legacy v1 browser observations remain process-local. Phase 60 promotes any
+        // execution-sensitive v2 URL/header context into MediaRequestHandoffStore, whose
+        // durable implementation is protected by Android Keystore. Never persist browser
+        // Cookie/Authorization/header material in the old plaintext Properties store.
+        val browserHandoffMediaCoordinator = BrowserHandoffMediaCoordinator()
+        val browserCaptureEnvelopeManager = BrowserCaptureEnvelopeManager()
+        val browserCaptureSessionRegistry = BrowserCaptureSessionRegistry(File(filesDir, "browser-capture-session-index"))
         TransferExecutionStopReasonRecorder.installPersistentRoot(File(filesDir, "queue-scheduling-recovery"))
         TransferNotifications(this).ensureChannels()
         val executionStarter = TransferExecutionStarter(this)
@@ -187,6 +191,8 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             operationalActivityStore = operationalActivityStore,
             browserExtensionExportManager = browserExtensionExportManager,
             browserHandoffMediaCoordinator = browserHandoffMediaCoordinator,
+            browserCaptureEnvelopeManager = browserCaptureEnvelopeManager,
+            browserCaptureSessionRegistry = browserCaptureSessionRegistry,
             debugEventRecorder = debugEventRecorder,
         )
         termuxMediaPipelineManager.recoverInterruptedJobs()
@@ -232,5 +238,7 @@ data class AppContainer(
     val operationalActivityStore: OperationalActivityStore,
     val browserExtensionExportManager: BrowserExtensionExportManager,
     val browserHandoffMediaCoordinator: BrowserHandoffMediaCoordinator,
+    val browserCaptureEnvelopeManager: BrowserCaptureEnvelopeManager,
+    val browserCaptureSessionRegistry: BrowserCaptureSessionRegistry,
     val debugEventRecorder: DebugEventRecorder,
 )

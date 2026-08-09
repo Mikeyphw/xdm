@@ -65,11 +65,22 @@
     }
 
     best(tabId) {
+      return this.snapshot(tabId, 1)[0] || null;
+    }
+
+    snapshot(tabId, limit = this.maxPerTab) {
       const numericTabId = Number(tabId);
       this.trim(numericTabId);
       const bucket = this.buckets.get(numericTabId);
-      if (!bucket || !bucket.size) return null;
-      return [...bucket.values()].sort((a, b) => CORE.rankCandidate(b) - CORE.rankCandidate(a))[0] || null;
+      if (!bucket || !bucket.size) return [];
+      const safeLimit = Math.max(1, Math.min(this.maxPerTab, Number(limit || this.maxPerTab)));
+      return [...bucket.values()]
+        .sort((a, b) => CORE.rankCandidate(b) - CORE.rankCandidate(a))
+        .slice(0, safeLimit)
+        .map(candidate => Object.assign({}, candidate, {
+          headers: Object.assign({}, candidate.headers || {}),
+          browserHandoff: candidate.browserHandoff ? JSON.parse(JSON.stringify(candidate.browserHandoff)) : undefined,
+        }));
     }
 
     size(tabId) {

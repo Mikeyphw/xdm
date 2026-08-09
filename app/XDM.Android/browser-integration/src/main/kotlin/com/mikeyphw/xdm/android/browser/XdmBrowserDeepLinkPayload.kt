@@ -8,7 +8,7 @@ import com.mikeyphw.xdm.android.model.AutomationCommandSource
 data class XdmBrowserDeepLinkPayload(
     val version: Int,
     val action: AutomationCommandAction,
-    val url: String,
+    val url: String? = null,
     val pageUrl: String? = null,
     val pageTitle: String? = null,
     val fileName: String? = null,
@@ -20,7 +20,17 @@ data class XdmBrowserDeepLinkPayload(
     val durationMs: Long? = null,
     val thumbnailUrl: String? = null,
     val frameUrl: String? = null,
+    val captureSessionId: String? = null,
+    val captureKeyId: String? = null,
+    val wrappedKey: String? = null,
+    val envelopeIv: String? = null,
+    val envelopeCiphertext: String? = null,
 ) {
+    val hasEncryptedCaptureEnvelope: Boolean
+        get() = version >= XdmBrowserDeepLinkContract.CurrentVersion &&
+            !captureSessionId.isNullOrBlank() && !captureKeyId.isNullOrBlank() &&
+            !wrappedKey.isNullOrBlank() && !envelopeIv.isNullOrBlank() && !envelopeCiphertext.isNullOrBlank()
+
     fun toAutomationCommandDraft(originPackage: String? = null): AutomationCommandDraft = AutomationCommandDraft(
         source = AutomationCommandSource.BrowserExtension,
         action = action,

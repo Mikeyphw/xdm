@@ -15,6 +15,8 @@ object BrowserExtensionPackageCli {
             xdmScheme = required(options, "xdm-scheme"),
             defaultTarget = enumValue(options["default-target"] ?: "xdm", BrowserExtensionSourceContract.Target.entries) { it.wireValue },
             themeMode = enumValue(options["theme"] ?: "dark", BrowserExtensionSourceContract.ThemeMode.entries) { it.wireValue },
+            captureKeyId = options["capture-key-id"].orEmpty(),
+            capturePublicKeySpki = options["capture-public-key-spki"].orEmpty(),
         )
         val result = BrowserExtensionPackageGenerator().generateToFile(config, output)
         println("${result.fileName}\t${result.byteCount}\t${result.sha256}\t${output.absolutePath}")

@@ -1,3 +1,17 @@
+## Runtime Foundation Phases 59-61 r2 - Promise closure
+
+- Keeps exact encrypted Firefox candidate and variant URLs in the secure request handoff store instead of persisting them in ordinary MediaCaptureRecord/MediaVariant rows.
+- Adds a contract guard proving encrypted capture imports redact durable rows while preserving exact execution URLs through MediaRequestHandoffStore.
+
+
+## XDM Android runtime foundation phases 59–61
+
+- Added first-class browser capture sessions and grouped Firefox capture candidates in the Media inbox.
+- Added a v2 encrypted Firefox-to-Android capture envelope so exact media URLs and allowlisted request headers can survive handoff without exposing cookies, Authorization headers, or signed URLs in the plaintext custom URI.
+- Updated the Firefox extension to send a bounded ranked candidate set instead of only the single best candidate, while keeping v1 custom-scheme handoff as a fallback.
+- Added source and registry contracts for non-secret session indexing, credential-redacted diagnostics, and captured-media inbox grouping.
+- Kept legacy browser session coordination process-local; durable exact URLs and request headers are stored only in the Android-Keystore-backed execution envelope store.
+- Added replay suppression and session-refresh-on-candidate-growth so late browser observations update the encrypted inbox bundle even when the best URL is unchanged.
 ## 2026-08-07 — Android Runtime Foundation Phases 57–58 r2 promise closure
 
 - Wraps SAF/MediaStore destination open/create failures as recoverable final-save failures before any provider copy begins.
@@ -786,3 +800,7 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Preserves Phase 58 visible intake feedback while retaining the pre-existing Phase 3 resolver navigation contract.
 - Adds artifact validation so successful media review seeding cannot become a dead-end screen again.
 
+
+### Runtime Foundation Phases 59-61 r3
+
+- Fixed a Kotlin/JVM platform declaration clash in browser capture URL redaction helpers while preserving encrypted Firefox capture durable-row redaction.

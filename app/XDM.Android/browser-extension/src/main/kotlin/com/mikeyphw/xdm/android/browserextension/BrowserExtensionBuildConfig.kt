@@ -14,6 +14,8 @@ data class BrowserExtensionBuildConfig(
     val defaultTarget: BrowserExtensionSourceContract.Target = BrowserExtensionSourceContract.Target.Xdm,
     val themeMode: BrowserExtensionSourceContract.ThemeMode = BrowserExtensionSourceContract.ThemeMode.Dark,
     val contractVersion: Int = BrowserExtensionSourceContract.ContractVersion,
+    val captureKeyId: String = "",
+    val capturePublicKeySpki: String = "",
 ) {
     init {
         require(extensionVersionPattern.matches(extensionVersion)) { "Invalid Firefox extension version" }
@@ -21,6 +23,8 @@ data class BrowserExtensionBuildConfig(
         require(applicationIdPattern.matches(applicationId)) { "Invalid application ID" }
         require(schemePattern.matches(xdmScheme)) { "Invalid XDM browser scheme" }
         require(contractVersion == BrowserExtensionSourceContract.ContractVersion) { "Unsupported bridge contract version" }
+        require(captureKeyId.isBlank() || captureKeyId.matches(Regex("^[A-Za-z0-9._:-]{8,96}$"))) { "Invalid browser capture key id" }
+        require(capturePublicKeySpki.isBlank() || capturePublicKeySpki.matches(Regex("^[A-Za-z0-9_-]{128,2048}$"))) { "Invalid browser capture public key" }
     }
 
     val outputFileName: String

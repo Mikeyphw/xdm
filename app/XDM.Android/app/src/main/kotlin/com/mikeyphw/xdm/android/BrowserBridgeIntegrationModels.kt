@@ -80,8 +80,10 @@ object BrowserBridgeDiagnosticsRedactor {
             "PromptAddDownload" -> "add"
             else -> "handoff"
         }
-        val media = safeEndpoint(payload.url)
-        val kind = payload.mediaKind ?: payload.mimeType ?: "media"
+        val media = payload.url?.let(::safeEndpoint)
+            ?: payload.captureSessionId?.let { "session:${it.take(48)}" }
+            ?: "<encrypted-capture>"
+        val kind = payload.mediaKind ?: payload.mimeType ?: if (payload.hasEncryptedCaptureEnvelope) "capture-session" else "media"
         return sanitize("$action • $kind • $media").take(320)
     }
 

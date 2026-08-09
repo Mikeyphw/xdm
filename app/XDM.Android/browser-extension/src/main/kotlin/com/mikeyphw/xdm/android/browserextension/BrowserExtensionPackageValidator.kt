@@ -69,6 +69,8 @@ object BrowserExtensionPackageValidator {
             "channel: \"${expected.channel.wireValue}\"",
             "xdmScheme: \"${expected.xdmScheme}\"",
             "defaultTarget: \"${expected.defaultTarget.wireValue}\"",
+            "captureKeyId: \"${escapeJs(expected.captureKeyId)}\"",
+            "capturePublicKeySpki: \"${escapeJs(expected.capturePublicKeySpki)}\"",
             "themeMode: \"${expected.themeMode.wireValue}\"",
         ).forEach { token -> requireContains(config, token, "Generated config mismatch: $token", errors) }
 

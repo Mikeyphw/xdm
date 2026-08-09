@@ -91,6 +91,24 @@ assert.strictEqual(events.message.listeners.length, 1, "page observation receive
   assert.strictEqual(diagnostics["7"].reason, "xhr-media-mime");
   assert.strictEqual(diagnostics["7"].frameCount, 1);
 
+  const firstTab7DispatchCount = executeCalls.filter(call => call.tabId === 7).length;
+  events.headers.listeners[0]({
+    tabId: 7,
+    frameId: 4,
+    requestId: "r1-audio",
+    url: "https://cdn.example/audio.m4a",
+    type: "media",
+    responseHeaders: [
+      { name: "Content-Type", value: "audio/mp4" },
+      { name: "Content-Length", value: "1000000" }
+    ]
+  });
+  await new Promise(resolve => setTimeout(resolve, 650));
+  assert.ok(
+    executeCalls.filter(call => call.tabId === 7).length > firstTab7DispatchCount,
+    "session handoff refreshes when candidate count grows even if the best candidate stays unchanged"
+  );
+
   const messageListener = events.message.listeners[0];
   messageListener({
     type: "xdmPageObservationV1",

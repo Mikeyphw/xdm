@@ -1135,7 +1135,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_bug_hunt_phase11_validation_matrix_full_overlay.zip",
+  "current_overlay": "xdm_android_runtime_foundation_phase59_61_browser_capture_sessions_secure_handoff_media_inbox_overlay_r2_promise_closure.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -2685,7 +2685,7 @@
     "workmanager_foreground_fallback": true,
     "yt_dlp_launch_adapter_contract": true
   },
-  "next_phase": "complete",
+  "next_phase": "runtime_foundation_phase62_64_media_execution_hls_dash",
   "notes": [
     "Phase 1 r4 updates scheduler FileProvider contract test to match CompletedFileGrantPolicy delegation."
   ],
@@ -2994,31 +2994,78 @@
     "promise_closure_audit": "docs/quality/RUNTIME-FOUNDATION-PHASE55-56-PROMISE-CLOSURE-AUDIT.md"
   },
   "runtime_foundation_2026_phase57_58": {
+    "aria2_post_publication_bookkeeping_best_effort": true,
     "aria2_publication_failure_is_recovery_required": true,
     "batch_intake_never_silent": true,
     "browser_extension_handoff_never_silent": true,
+    "browser_extension_planner_failures_visible": true,
     "check_again_never_silent": true,
     "completed_staging_preserved_on_publication_failure": true,
     "destination_finalization_recovery": true,
+    "external_media_review_navigation_retained": true,
+    "manual_external_media_never_silent": true,
     "manual_page_probe_never_silent": true,
     "media_intake_feedback": true,
+    "media_intake_feedback_redacted_and_bounded": true,
+    "native_final_save_retry_avoids_network_redownload": true,
+    "native_post_commit_checkpoint_cleanup_best_effort": true,
     "native_publication_failure_is_recovery_required": true,
     "phase55_56_warning_cleanup": true,
+    "promise_closure_revision": 3,
+    "provider_open_create_failure_is_recoverable": true,
     "recovery_required_retry_enabled": true,
+    "retry_save_user_action": true,
     "room_schema_unchanged": 17,
     "shared_text_never_silent": true,
     "status": "implemented",
-    "top_level_route_added": false,
-    "provider_open_create_failure_is_recoverable": true,
-    "native_final_save_retry_avoids_network_redownload": true,
-    "native_post_commit_checkpoint_cleanup_best_effort": true,
-    "aria2_post_publication_bookkeeping_best_effort": true,
-    "retry_save_user_action": true,
-    "browser_extension_planner_failures_visible": true,
-    "manual_external_media_never_silent": true,
-    "media_intake_feedback_redacted_and_bounded": true,
-    "promise_closure_revision": 3,
-    "external_media_review_navigation_retained": true
+    "top_level_route_added": false
+  },
+  "runtime_foundation_2026_phase59_61": {
+    "baseline": "8303554_phase57_58_r3_navigation_hotfix",
+    "next_overlay": "runtime_foundation_phase62_64_media_execution_hls_dash",
+    "no_drm_bypass": true,
+    "phase59_first_class_capture_sessions": {
+      "capture_candidates_grouped_by_session": true,
+      "no_raw_urls_or_headers_in_session_index": true,
+      "non_secret_session_index": true,
+      "session_grouping_in_media_inbox": true,
+      "session_removal_on_capture_delete": true,
+      "replay_revision_guard": true
+    },
+    "phase60_secure_firefox_android_handoff": {
+      "aes_gcm_encrypted_candidate_payload": true,
+      "app_private_android_keystore_rsa_key": true,
+      "contract_version": 2,
+      "cookie_authorization_not_in_plaintext_uri": true,
+      "encrypted_envelope_parameters": [
+        "sid",
+        "kid",
+        "ek",
+        "iv",
+        "ct"
+      ],
+      "expired_or_stale_key_rejected": true,
+      "legacy_v1_accepted": true,
+      "public_key_embedded_in_generated_xpi": true,
+      "rsa_oaep_wraps_aes_key": true,
+      "durable_execution_context_store": "AndroidSecureRequestEnvelopeStore_AndroidKeyStore",
+      "legacy_session_coordinator_persistence": "in_memory_only"
+    },
+    "phase61_captured_media_inbox": {
+      "best_candidate_legacy_fallback": true,
+      "candidate_store_snapshot": true,
+      "credential_redacted_ui": true,
+      "full_bounded_candidate_set": 24,
+      "media_inbox_group_header": true,
+      "total_candidate_count_and_truncated_flag": true,
+      "refreshes_when_candidate_count_or_revision_changes": true,
+      "encrypted_capture_room_rows_redacted": true,
+      "exact_candidate_variant_urls_in_secure_handoff_only": true
+    },
+    "room_schema_unchanged": 17,
+    "promise_closure_revision": 2,
+    "status": "implemented",
+    "top_level_route_added": false
   },
   "startup_recovery": {
     "backend_migrations": true,

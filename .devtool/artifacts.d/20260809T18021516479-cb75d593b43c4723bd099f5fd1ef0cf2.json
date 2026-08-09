@@ -1,0 +1,15 @@
+{
+  "applied_at": "2026-08-09T18:02:15.164798Z",
+  "artifact": "/home/mike/Downloads/xdm_android_runtime_foundation_phase59_61_browser_capture_sessions_secure_handoff_media_inbox_overlay_r3_compile_hotfix.zip",
+  "artifact_name": "xdm_android_runtime_foundation_phase59_61_browser_capture_sessions_secure_handoff_media_inbox_overlay_r3_compile_hotfix.zip",
+  "type": "overlay",
+  "sha256": "",
+  "status": "failed",
+  "validation_status": "ok",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "history_id": "cb75d593b43c4723bd099f5fd1ef0cf2"
+}

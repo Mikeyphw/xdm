@@ -59,8 +59,12 @@ object XdmBrowserDeepLinkParser {
         val versionValue = parameters.singleValue(XdmBrowserDeepLinkContract.VersionParameter)
         val version = versionValue?.toIntOrNull()
             ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsupportedContract)
-        if (version != XdmBrowserDeepLinkContract.CurrentVersion) {
+        if (version !in XdmBrowserDeepLinkContract.SupportedVersions) {
             return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsupportedContract)
+        }
+
+        if (version == XdmBrowserDeepLinkContract.CurrentVersion && action == AutomationCommandAction.CaptureMedia) {
+            return parseEncryptedCaptureEnvelope(version, action, parameters)
         }
 
         val rawMediaUrl = parameters.singleValue(XdmBrowserDeepLinkContract.UrlParameter)
@@ -117,6 +121,56 @@ object XdmBrowserDeepLinkParser {
                 durationMs = durationMs?.toLongOrNull()?.takeIf { it > 0L },
                 thumbnailUrl = thumbnailUrl,
                 frameUrl = frameUrl,
+            ),
+        )
+    }
+
+
+    private fun parseEncryptedCaptureEnvelope(
+        version: Int,
+        action: AutomationCommandAction,
+        parameters: Map<String, List<String>>,
+    ): XdmBrowserDeepLinkParseResult {
+        fun required(name: String, maxCharacters: Int, pattern: Regex): String? = parameters.singleValue(name)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() && it.length <= maxCharacters && pattern.matches(it) }
+
+        val token = Regex("[A-Za-z0-9_-]+")
+        val sessionId = required(
+            XdmBrowserDeepLinkContract.CaptureSessionIdParameter,
+            XdmBrowserDeepLinkContract.MaxCaptureSessionIdCharacters,
+            Regex("[A-Za-z0-9._:-]+"),
+        ) ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafeEnvelope)
+        val keyId = required(
+            XdmBrowserDeepLinkContract.CaptureKeyIdParameter,
+            XdmBrowserDeepLinkContract.MaxCaptureKeyIdCharacters,
+            Regex("[A-Za-z0-9._:-]+"),
+        ) ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafeEnvelope)
+        val wrappedKey = required(
+            XdmBrowserDeepLinkContract.WrappedKeyParameter,
+            XdmBrowserDeepLinkContract.MaxWrappedKeyCharacters,
+            token,
+        ) ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafeEnvelope)
+        val iv = required(
+            XdmBrowserDeepLinkContract.EnvelopeIvParameter,
+            XdmBrowserDeepLinkContract.MaxEnvelopeIvCharacters,
+            token,
+        ) ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafeEnvelope)
+        val ciphertext = required(
+            XdmBrowserDeepLinkContract.EnvelopeCiphertextParameter,
+            XdmBrowserDeepLinkContract.MaxEnvelopeCiphertextCharacters,
+            token,
+        ) ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafeEnvelope)
+
+        return XdmBrowserDeepLinkParseResult.Accepted(
+            XdmBrowserDeepLinkPayload(
+                version = version,
+                action = action,
+                captureSessionId = sessionId,
+                captureKeyId = keyId,
+                wrappedKey = wrappedKey,
+                envelopeIv = iv,
+                envelopeCiphertext = ciphertext,
             ),
         )
     }
