@@ -23,6 +23,17 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:usesCleartextTraffic="false"
         android:theme="@style/Theme.XDMAndroid">
+
+        <provider
+            android:name="com.mikeyphw.xdm.android.ui.debug.DebugCenterFileProvider"
+            android:authorities="${applicationId}.debugcenter.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/debug_center_file_paths" />
+        </provider>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

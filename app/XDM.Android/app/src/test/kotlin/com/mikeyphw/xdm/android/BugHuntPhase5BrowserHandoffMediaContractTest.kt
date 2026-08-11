@@ -42,7 +42,8 @@ class BugHuntPhase5BrowserHandoffMediaContractTest {
 
     @Test fun browserSessionsUseAppPrivateFileBackedStore() {
         val app = source("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
-        assertTrue(app.contains("FileBackedBrowserHandoffMediaSessionStore(File(filesDir, \"browser-handoff-media-sessions\")"))
+        assertTrue(app.contains("MediaRequestHandoffStore.initialize(AndroidSecureRequestEnvelopeStore(this))"))
+        assertTrue(app.contains("BrowserHandoffMediaCoordinator()"))
         assertTrue(app.contains("browserHandoffMediaCoordinator = browserHandoffMediaCoordinator"))
     }
 

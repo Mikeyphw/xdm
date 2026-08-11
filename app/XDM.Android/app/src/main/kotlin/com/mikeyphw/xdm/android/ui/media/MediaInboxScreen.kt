@@ -60,9 +60,12 @@ fun MediaInboxScreen(
     var batchText by remember { mutableStateOf("") }
     var batchFeedback by remember { mutableStateOf<String?>(null) }
     var pageUrlText by remember { mutableStateOf("") }
-    val reviewableCaptures = remember(captures) {
-        captures.filterNot { it.status == MediaCaptureStatus.DownloadCreated }
-            .sortedByDescending(MediaCaptureRecord::updatedAtEpochMs)
+    val downloadsById = remember(downloads) { downloads.associateBy(Download::id) }
+    val reviewableCaptures = remember(captures, downloadsById) {
+        captures.filterNot { capture ->
+            capture.status == MediaCaptureStatus.DownloadCreated &&
+                capture.downloadId?.let(downloadsById::containsKey) == true
+        }.sortedByDescending(MediaCaptureRecord::updatedAtEpochMs)
     }
     val capturesById = remember(reviewableCaptures) { reviewableCaptures.associateBy(MediaCaptureRecord::id) }
     val activeBrowserSessions = remember(browserCaptureSessions, capturesById) {
@@ -75,7 +78,6 @@ fun MediaInboxScreen(
     val ungroupedCaptures = remember(reviewableCaptures, browserGroupedCaptureIds) {
         reviewableCaptures.filterNot { it.id in browserGroupedCaptureIds }
     }
-    val downloadsById = remember(downloads) { downloads.associateBy(Download::id) }
     val recentlyQueued = remember(captures, downloadsById) {
         captures.mapNotNull { capture ->
             capture.downloadId?.let(downloadsById::get)?.let { capture to it }

@@ -127,7 +127,7 @@ fun DownloadsScreen(
     val context = LocalContext.current
     val windowClass = LocalXdmWindowClass.current
     val windowProfile = LocalXdmWindowProfile.current
-    var filter by rememberSaveable { mutableStateOf(DownloadWorkspaceFilter.Active) }
+    var filter by rememberSaveable { mutableStateOf(DownloadWorkspaceFilter.All) }
     var query by rememberSaveable { mutableStateOf("") }
     var searchVisible by rememberSaveable { mutableStateOf(false) }
     var ordering by rememberSaveable { mutableStateOf(DownloadDashboardOrdering.Smart) }

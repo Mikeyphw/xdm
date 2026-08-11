@@ -16,6 +16,7 @@ data class BrowserExtensionBuildConfig(
     val contractVersion: Int = BrowserExtensionSourceContract.ContractVersion,
     val captureKeyId: String = "",
     val capturePublicKeySpki: String = "",
+    val captureOaepHash: String = "SHA-256",
 ) {
     init {
         require(extensionVersionPattern.matches(extensionVersion)) { "Invalid Firefox extension version" }
@@ -25,6 +26,7 @@ data class BrowserExtensionBuildConfig(
         require(contractVersion == BrowserExtensionSourceContract.ContractVersion) { "Unsupported bridge contract version" }
         require(captureKeyId.isBlank() || captureKeyId.matches(Regex("^[A-Za-z0-9._:-]{8,96}$"))) { "Invalid browser capture key id" }
         require(capturePublicKeySpki.isBlank() || capturePublicKeySpki.matches(Regex("^[A-Za-z0-9_-]{128,2048}$"))) { "Invalid browser capture public key" }
+        require(captureOaepHash in setOf("SHA-1", "SHA-256")) { "Unsupported browser capture OAEP hash" }
     }
 
     val outputFileName: String

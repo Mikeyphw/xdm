@@ -175,7 +175,9 @@
     const scheme = String(input.scheme || config.xdmScheme || "xdmdownload").toLowerCase();
     const keyId = String(config.captureKeyId || "").trim();
     const publicKeySpki = String(config.capturePublicKeySpki || "").trim();
+    const oaepHash = String(config.captureOaepHash || "SHA-256").trim().toUpperCase();
     if (!keyId || !publicKeySpki || !globalThis.crypto || !crypto.subtle) return "";
+    if (oaepHash !== "SHA-1" && oaepHash !== "SHA-256") return "";
     if (!/^[a-z][a-z0-9+.-]{1,40}$/.test(scheme)) return "";
     const sessionId = String(input.sessionId || "").trim();
     if (!/^[A-Za-z0-9._:-]{8,96}$/.test(sessionId)) return "";
@@ -192,7 +194,7 @@
     const publicKey = await crypto.subtle.importKey(
       "spki",
       base64UrlToBytes(publicKeySpki),
-      { name: "RSA-OAEP", hash: "SHA-256" },
+      { name: "RSA-OAEP", hash: oaepHash },
       false,
       ["encrypt"]
     );

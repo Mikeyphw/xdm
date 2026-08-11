@@ -14,14 +14,14 @@ function fromB64url(value) {
   return Buffer.from(raw + "=".repeat((4 - raw.length % 4) % 4), "base64");
 }
 
-(async () => {
+async function runSecureHandoff(oaepHash) {
   const pair = await webcrypto.subtle.generateKey(
-    { name: "RSA-OAEP", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+    { name: "RSA-OAEP", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: oaepHash },
     true,
     ["encrypt", "decrypt"],
   );
   const spki = new Uint8Array(await webcrypto.subtle.exportKey("spki", pair.publicKey));
-  const keyId = "phase59-61-test-key";
+  const keyId = `secure-test-${oaepHash.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
   const source = path.resolve(__dirname, "../src/main/extension/xdm-firefox");
   const context = vm.createContext({
     console, URL, URLSearchParams, Date, TextEncoder, TextDecoder,
@@ -37,6 +37,7 @@ function fromB64url(value) {
     defaultTarget: "xdm",
     captureKeyId: keyId,
     capturePublicKeySpki: b64url(spki),
+    captureOaepHash: oaepHash,
   };
   vm.runInContext(fs.readFileSync(path.join(source, "handoff.js"), "utf8"), context, { filename: "handoff.js" });
 
@@ -101,8 +102,12 @@ function fromB64url(value) {
   assert.strictEqual(payload.candidates[0].finalHeaders.authorization, "Bearer top-secret");
   assert.strictEqual(payload.totalCandidateCount, 2);
   assert.strictEqual(payload.truncated, false);
+}
 
-  console.log("secure capture-session handoff tests passed");
+(async () => {
+  await runSecureHandoff("SHA-256");
+  await runSecureHandoff("SHA-1");
+  console.log("secure capture-session handoff tests passed for SHA-256 and SHA-1");
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;

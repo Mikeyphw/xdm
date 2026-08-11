@@ -33,6 +33,8 @@ data class DebugEvent(
     val action: String,
     val result: String,
     val safeDetails: Map<String, String> = emptyMap(),
+    val operationId: String? = null,
+    val parentOperationId: String? = null,
     val id: String = DebugRedactor.fingerprint(
         listOf(sessionId, timestampMillis.toString(), area.name, severity.name, action, result, safeDetails.hashCode().toString())
             .joinToString("|"),
@@ -45,6 +47,10 @@ data class DebugEvent(
             appendJson("id", id)
             append(',')
             appendJson("sessionId", sessionId)
+            append(',')
+            appendJson("operationId", operationId?.let(DebugRedactor::redactText))
+            append(',')
+            appendJson("parentOperationId", parentOperationId?.let(DebugRedactor::redactText))
             append(',')
             append("\"timestampMillis\":").append(timestampMillis)
             append(',')
@@ -87,6 +93,8 @@ interface DebugEventRecorder {
         safeDetails: Map<String, String> = emptyMap(),
         sessionId: String = "current",
         timestampMillis: Long = System.currentTimeMillis(),
+        operationId: String? = null,
+        parentOperationId: String? = null,
     ) = record(
         DebugEvent(
             sessionId = sessionId,
@@ -96,6 +104,8 @@ interface DebugEventRecorder {
             action = action,
             result = result,
             safeDetails = safeDetails,
+            operationId = operationId,
+            parentOperationId = parentOperationId,
         ),
     )
 }

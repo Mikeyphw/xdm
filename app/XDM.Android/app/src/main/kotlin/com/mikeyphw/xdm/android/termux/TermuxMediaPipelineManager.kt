@@ -132,6 +132,7 @@ class TermuxMediaPipelineManager(
         variants: List<MediaVariant> = emptyList(),
         selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = record.selectedVariantId),
         destination: String = "",
+        downloadId: String? = record.downloadId,
     ): TermuxMediaPipelineJob {
         val plan = planner.plan(
             capture = record,
@@ -150,6 +151,7 @@ class TermuxMediaPipelineManager(
             formatSelector = plan.ytDlpFormatSelector ?: "bestvideo+bestaudio/best",
             extraArguments = plan.sessionHandoff.ytdlpArguments(),
             destinationUri = destination.takeIf { it.startsWith("content://") || it.startsWith("xdm://") },
+            downloadId = downloadId,
         )
         return enqueueAsync(spec)
     }
@@ -496,6 +498,7 @@ class TermuxMediaPipelineManager(
             return
         }
         val attachedJob = dao.findJob(reservedJob.id) ?: reservedJob
+        syncLinkedDownloadState(attachedJob, DownloadState.Downloading, null)
         if (cancelAfterLaunch) {
             requestControlNow(attachedJob, owner, TermuxProcessControlAction.Cancel, timedOut = afterLaunch.requestedControl == "Timeout")
         } else {
@@ -730,6 +733,11 @@ class TermuxMediaPipelineManager(
 
     private suspend fun finishLocalCancellation(job: PostProcessingJobEntity, operation: String) {
         val timedOut = job.requestedControl == "Timeout" || (job.timeoutAtEpochMs?.let { System.currentTimeMillis() >= it } == true)
+        syncLinkedDownloadState(
+            job,
+            if (timedOut) DownloadState.Failed else DownloadState.Cancelled,
+            if (timedOut) "$operation timed out before publication." else "$operation cancelled before completion.",
+        )
         dao.finishJob(
             jobId = job.id,
             status = if (timedOut) PostProcessingJobStatus.TimedOut.name else PostProcessingJobStatus.Cancelled.name,
@@ -1095,7 +1103,7 @@ class TermuxMediaPipelineManager(
 
     private suspend fun reconcilePublishedOutput(spec: PostProcessingJobSpec, imported: AndroidPostProcessingArtifactBridge.ImportedOutput) {
         spec.downloadId?.let { downloadId ->
-            if (spec.output.deleteOriginalAfterPublish) {
+            if (spec.output.deleteOriginalAfterPublish || spec.kind == PostProcessingActionKind.YtDlpDownload) {
                 repository.findDownload(downloadId)?.let { download ->
                     repository.save(
                         download.copy(
@@ -1104,6 +1112,7 @@ class TermuxMediaPipelineManager(
                             bytesReceived = imported.bytes,
                             totalBytes = imported.bytes,
                             state = DownloadState.Completed,
+                            errorMessage = null,
                             updatedAtEpochMs = System.currentTimeMillis(),
                         ),
                     )
@@ -1400,12 +1409,13 @@ class TermuxMediaPipelineManager(
         formatSelector: String? = null,
         extraArguments: List<String> = emptyList(),
         destinationUri: String? = null,
+        downloadId: String? = record.downloadId,
     ) = PostProcessingJobSpec(
         subjectId = record.id,
         subjectType = PostProcessingSubjectType.MediaCapture,
         subjectGeneration = PostProcessingExecutionPolicy.mediaSubjectGeneration(
             captureId = record.id,
-            linkedDownloadId = record.downloadId,
+            linkedDownloadId = downloadId,
             resolvedAtEpochMs = record.lastResolvedAtEpochMs,
             createdAtEpochMs = record.createdAtEpochMs,
         ),
@@ -1524,7 +1534,20 @@ class TermuxMediaPipelineManager(
     }
 
     private suspend fun finishFailure(job: PostProcessingJobEntity, message: String) {
+        syncLinkedDownloadState(job, DownloadState.Failed, message)
         dao.finishJob(job.id, PostProcessingJobStatus.Failed.name, null, null, null, "{}", 0, 0, message, System.currentTimeMillis())
+    }
+
+    private suspend fun syncLinkedDownloadState(job: PostProcessingJobEntity, state: DownloadState, message: String?) {
+        val downloadId = job.downloadId ?: return
+        val download = repository.findDownload(downloadId) ?: return
+        repository.save(
+            download.copy(
+                state = state,
+                errorMessage = message,
+                updatedAtEpochMs = System.currentTimeMillis(),
+            ),
+        )
     }
 
     private fun cleanupJobBridges(job: PostProcessingJobEntity?) {

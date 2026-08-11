@@ -51,7 +51,8 @@ class BrowserExtensionPackageGenerator(
                     .replace("@@XDM_SCHEME@@", jsEscape(config.xdmScheme))
                     .replace("@@DEFAULT_TARGET@@", jsEscape(config.defaultTarget.wireValue))
                     .replace("@@CAPTURE_KEY_ID@@", jsEscape(config.captureKeyId))
-                    .replace("@@CAPTURE_PUBLIC_KEY_SPKI@@", jsEscape(config.capturePublicKeySpki)),
+                    .replace("@@CAPTURE_PUBLIC_KEY_SPKI@@", jsEscape(config.capturePublicKeySpki))
+                    .replace("@@CAPTURE_OAEP_HASH@@", jsEscape(config.captureOaepHash)),
                 config.themeMode,
             )
             "generated-theme.template.css" -> XdmThemeCssGenerator.render(text, config.themeMode)

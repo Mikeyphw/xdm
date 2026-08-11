@@ -77687,6 +77687,1631 @@
         ]
       },
       "history_id": "a91348e36e84493cb1765e477a4a7245"
+    },
+    {
+      "applied_at": "2026-08-11T15:01:29.771200Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_center_v4_full_overlay.zip",
+      "artifact_name": "xdm_android_debug_center_v4_full_overlay.zip",
+      "type": "overlay",
+      "sha256": "606e61b37930cdd91bb4256b14235f3981ef560a893cf093d4ebfb45ecd76e44",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 10,
+      "change_counts": {
+        "add": 7,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Center v4 full design-plan runner polish",
+        "description": "Android-only Debug Center v4 overlay fixing the remaining v3 polish gaps: removes stale v2 contract/export labels, renames source contracts to v4, strengthens stop/cancellation checks between executable DebugTest operations, and keeps the full design-plan runner, persistent history, real checks, operation correlation, and FileProvider ZIP export.",
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugEventModels.kt",
+              "action": "modify",
+              "sha256": "cc7fff7bb19cd4ad689af88380dca16c54c78c39ca99a165271e889061b47893",
+              "size": 11800,
+              "source_sha256": "f6bc41af1ad0113ef369928fbd595dd48886524cec35ee4b0e49e174f6bd5a78"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "51e30a9eeea91d328c9ba4191293be4462c7d315b5c3ff99ae5d750e53bebb22",
+              "size": 16710,
+              "source_sha256": "c5256916af124560bca016c63d2bdd7a648094d3877827ba35d88466311f08fe"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/xml/debug_center_file_paths.xml",
+              "action": "add",
+              "sha256": "91427806bc91ee9804ec905f318ccd6635f6687834807dd28560c1da39268a60",
+              "size": 191
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "modify",
+              "sha256": "2295ec7c4d44c7d24c08130779f4ea4b8427e17e2c6af9a57fa0a7f82344e324",
+              "size": 1103,
+              "source_sha256": "dd961c299b7e9fdac62cf115966a5e58b0a488922504cab41b76be94b95e2f70"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestModels.kt",
+              "action": "add",
+              "sha256": "2f5a83e75aaa2cc172697bd37754744f63342d7f044a93094d81768639d78d4f",
+              "size": 8018
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestCatalog.kt",
+              "action": "add",
+              "sha256": "e7dadb0be0c94a649ce32344c72c600490e68a1fb13e795394556232c15cb254",
+              "size": 40547
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestRunner.kt",
+              "action": "add",
+              "sha256": "369607a1605ee07e9839ecaaa3edd4b914c87d73fbd7c872a711f4de792ea233",
+              "size": 7277
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestStore.kt",
+              "action": "add",
+              "sha256": "b2169dbf193f355e8e96b951ee85b214b7c1a62e7a0e81f0bca9080c21e7e2d7",
+              "size": 5265
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterScreen.kt",
+              "action": "add",
+              "sha256": "b7f2509bb333270713c8c348b40568522ed0f928cec00c9a8358f1265c094278",
+              "size": 16109
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugCenterV4ContractTest.kt",
+              "action": "add",
+              "sha256": "199d59888df1c920d0f7e4d84d3df47fbf2ec3d529228f9a687029229330bb11",
+              "size": 4482
+            }
+          ]
+        },
+        "validation": {
+          "recommended_tasks": [
+            ":app:compileDebugKotlin",
+            ":app:testDebugUnitTest",
+            ":app:lintDebug"
+          ],
+          "notes": "Apply after capture reliability v4 and the DebugWorkbenchSettingsScreen compile fix. This replaces debug-center v2/v3 overlays; do not apply those first."
+        }
+      },
+      "history_id": "df3aa14d590a42d8b7f6424b90c317a7"
+    },
+    {
+      "applied_at": "2026-08-11T15:08:44.336386Z",
+      "artifact": "/home/mike/Downloads/xdm_android_capture_reliability_debug_center_v4_rebased_overlay.zip",
+      "artifact_name": "xdm_android_capture_reliability_debug_center_v4_rebased_overlay.zip",
+      "type": "overlay",
+      "sha256": "a2e95ca8379613bd00256ce95757ea5d8d3f23b00af49b2f2b73c852c00b5edc",
+      "status": "failed",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 31,
+      "change_counts": {
+        "add": 8,
+        "modify": 23
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android capture reliability + Debug Center v4 rebased for uploaded snapshot",
+        "description": "Full replacement overlay rebased to xdm-20260811-120140.tar.gz. Includes capture reliability v4 bug fixes plus Debug Center v4 real runner/store/history/ZIP export. DebugWorkbenchSettingsScreen is treated as an add because it is absent in the uploaded snapshot, fixing the source SHA mismatch.",
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/androidTest/kotlin/com/mikeyphw/xdm/android/BrowserCaptureEnvelopeManagerInstrumentedTest.kt",
+              "action": "add",
+              "sha256": "66217d281464c1f198e3f0665fd8b201aac6a71fd6a5ee91d1ba2d58ce6d328c",
+              "size": 2000
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserCaptureEnvelopeManager.kt",
+              "action": "modify",
+              "sha256": "e23c362e2548730ea8aab6083d8cde7319cae9d7c06f36d3dfe96b1429894c44",
+              "size": 14563,
+              "source_sha256": "164b7d7b5e6b3f43f1c71dd84d55ac425ee393c9cdd1e7fbc3964e520bc4cbfe"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "bf02bef9dc5cc57b04aa78ea7b08739ec8c956751018b37f08425a0443a9803c",
+              "size": 167253,
+              "source_sha256": "b57ce3fc25ed481b97dccca75b36ec423d839e7d46fd5ed91355e0aff45b8ba4"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt",
+              "action": "modify",
+              "sha256": "d2c339788111f9633f4f18d5abbe98596273cbec06ab330dcdd6d8a2e94dd726",
+              "size": 82192,
+              "source_sha256": "7b386df273a58720c0250654b1a12075d237f3fcaa4177689ae38d8825f083e5"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+              "action": "modify",
+              "sha256": "9a9b4e571b64acefe4df7550f617e4246429bf972d7f0ce29dc5e7f50fc77cfb",
+              "size": 43663,
+              "source_sha256": "ba09af6b3667b8c943469c613c184cd14b316305e181dc9e83b83f123a4dca41"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt",
+              "action": "modify",
+              "sha256": "211b68c3cbc27553890723e82d283c7703950786c30dcb88c8d8181daf35c368",
+              "size": 21772,
+              "source_sha256": "b3f8de1f64aa9e7bf57598af7f25b540ea8cb2163cbfedc86e4ccabd2c799d72"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/generated-config.template.js",
+              "action": "modify",
+              "sha256": "4c8161b980af83abd1a71ec9971e9ca34d4ef4c3a43c7c83f2531c8d00ddbf57",
+              "size": 1510,
+              "source_sha256": "96313aedf66bfd0216508d9257f1c900345779de1a812a1a5c981ae85aac7bba"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/handoff.js",
+              "action": "modify",
+              "sha256": "06e41d71bb6eb60ff5eb812ba8906ae8b295e552cdd56d5123b8a58c9495fda8",
+              "size": 12119,
+              "source_sha256": "9a3ae0f8911c5a0b8645b67aa3c2c6e9285893eb98dd4230f5827408f44dd85a"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionBuildConfig.kt",
+              "action": "modify",
+              "sha256": "596d66aeb8d092fb305f70dbb424180bbc08924ff52d5546dd43d70b06d4fdc9",
+              "size": 2114,
+              "source_sha256": "d67a87016dffdbe704d275f3293efe643cf1dae574ac72c380deadc9dc1a848b"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionPackageGenerator.kt",
+              "action": "modify",
+              "sha256": "c11a6eb0edd3f66a47ecd8c92c269ebb1c810b8ca098e3a7ba119bb0e95c6019",
+              "size": 5410,
+              "source_sha256": "a502c9d712147938340094a7c31dcccae4151947d0bfe8cf1a106198ec366516"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionPackageValidator.kt",
+              "action": "modify",
+              "sha256": "f793f4a4dd61b96fd82f2ad87994b3091802211aeddc0916fcc233d8eab343c6",
+              "size": 5352,
+              "source_sha256": "f91d49869592c7cda17e8fbe36984131320bf5d372d62f193d07ce3138bbb3a5"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_secure_handoff.js",
+              "action": "modify",
+              "sha256": "c7ba8aa5380b66b033787b3d7ce25905a58d18396c779aac57b176a05a6258be",
+              "size": 4598,
+              "source_sha256": "c3116e60cff34908b6761474fed2b89686470e5ac722125e4c07c7d6fcf9c450"
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tools/prepare_extension.py",
+              "action": "modify",
+              "sha256": "bffa704b370896fea1aecf9f593ab7e26c8b083b85e7320921534a62fea5e0e6",
+              "size": 6201,
+              "source_sha256": "95044f8e806ff2c41af2c3dafe4a76e2d8470e312a307fd3bdeb966b75c2fe62"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+              "action": "modify",
+              "sha256": "e9a1c0d066ae5411eae6adea177d6890611c2911b8e694679402838834a5087b",
+              "size": 31963,
+              "source_sha256": "b0d7f29bfcaf3bb2486f78b15c5468220def93393b7a86e86b9e035d8399a4e6"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/MediaCaptureDao.kt",
+              "action": "modify",
+              "sha256": "52894192fd7bd616242be22ef24827b3cfe2c82748d9c50a30330ca83c07ff8f",
+              "size": 1690,
+              "source_sha256": "0b4b87d94599386104ebf73474baee82e5c8bf0f9ef44cc409523a1d7d3e75a9"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/BridgeAndAddDownloadDebuggerCard.kt",
+              "action": "add",
+              "sha256": "6e0ddd80a07d3773ec054edc8d26bbacaca2dd59d3f75395ca9c6ae711e2cfe3",
+              "size": 710
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/MediaSniffingLabCard.kt",
+              "action": "add",
+              "sha256": "aca182ede27d79eccc13e7d32c1c4f7482dce2a4b78f50f3b8379ba68078dfd5",
+              "size": 644
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/RuntimeSelfTestSuiteCard.kt",
+              "action": "add",
+              "sha256": "4a2d91dcab551fd83f55d2febe4185029079e572366c9afe7d375595cdca872e",
+              "size": 482
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/TransferNotificationDebuggerCard.kt",
+              "action": "add",
+              "sha256": "354d1fc7eb92f476469849eac727670bf69dd13cd476207e63a320b41078173a",
+              "size": 522
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserCapturePhases59_61ContractTest.kt",
+              "action": "modify",
+              "sha256": "4f485b0e8b652d5ef70f62ea20164eac2a66457b29e2713afcad24a85c8951e5",
+              "size": 7424,
+              "source_sha256": "7169e08f4453cc0f9b8b0653fd7cd628aef8494f6b8b9af84803a749dba3baa0"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase5BrowserHandoffMediaContractTest.kt",
+              "action": "modify",
+              "sha256": "14472af97e0250606463959b865a69f76bfdd83d344836ffb935a8cfbfb36b36",
+              "size": 3510,
+              "source_sha256": "b0fe7a2bc934b5eb93cac8c30f98acdb72a73298ee5d3b6e4b78979243f0fc52"
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugEventModels.kt",
+              "action": "modify",
+              "sha256": "cc7fff7bb19cd4ad689af88380dca16c54c78c39ca99a165271e889061b47893",
+              "size": 11800,
+              "source_sha256": "f6bc41af1ad0113ef369928fbd595dd48886524cec35ee4b0e49e174f6bd5a78"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "modify",
+              "sha256": "51e30a9eeea91d328c9ba4191293be4462c7d315b5c3ff99ae5d750e53bebb22",
+              "size": 16710,
+              "source_sha256": "c5256916af124560bca016c63d2bdd7a648094d3877827ba35d88466311f08fe"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/xml/debug_center_file_paths.xml",
+              "action": "add",
+              "sha256": "91427806bc91ee9804ec905f318ccd6635f6687834807dd28560c1da39268a60",
+              "size": 191
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "add",
+              "sha256": "2295ec7c4d44c7d24c08130779f4ea4b8427e17e2c6af9a57fa0a7f82344e324",
+              "size": 1103
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestModels.kt",
+              "action": "add",
+              "sha256": "2f5a83e75aaa2cc172697bd37754744f63342d7f044a93094d81768639d78d4f",
+              "size": 8018
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestCatalog.kt",
+              "action": "add",
+              "sha256": "e7dadb0be0c94a649ce32344c72c600490e68a1fb13e795394556232c15cb254",
+              "size": 40547
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestRunner.kt",
+              "action": "add",
+              "sha256": "369607a1605ee07e9839ecaaa3edd4b914c87d73fbd7c872a711f4de792ea233",
+              "size": 7277
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestStore.kt",
+              "action": "add",
+              "sha256": "b2169dbf193f355e8e96b951ee85b214b7c1a62e7a0e81f0bca9080c21e7e2d7",
+              "size": 5265
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterScreen.kt",
+              "action": "add",
+              "sha256": "b7f2509bb333270713c8c348b40568522ed0f928cec00c9a8358f1265c094278",
+              "size": 16109
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugCenterV4ContractTest.kt",
+              "action": "add",
+              "sha256": "199d59888df1c920d0f7e4d84d3df47fbf2ec3d529228f9a687029229330bb11",
+              "size": 4482
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": false,
+            "strategy": "single"
+          }
+        },
+        "validation": {
+          "recommended_tasks": [
+            ":browser-extension:test",
+            ":browser-extension:jsTest",
+            ":browser-extension:validateFirefoxExtension",
+            ":persistence:compileDebugKotlin",
+            ":app:compileDebugKotlin",
+            ":app:testDebugUnitTest",
+            ":app:lintDebug"
+          ],
+          "notes": "Apply to the uploaded current snapshot state. This includes capture reliability v4 and Debug Center v4; do not apply the older separate debug-center v4 overlay first."
+        },
+        "notes": [
+          "Rebased to the uploaded current snapshot after Devtool reported a source SHA mismatch for DebugWorkbenchSettingsScreen.kt.",
+          "The uploaded snapshot does not contain DebugWorkbenchSettingsScreen.kt, so this overlay adds it instead of modifying it.",
+          "Includes capture reliability v4 because the uploaded snapshot does not contain createDownloadFromMediaCapture/selfTestKeyWrap APIs required by Debug Center v4 real tests.",
+          "Regenerate the Firefox/IronFox XPI after applying because the capture key alias and OAEP contract are versioned."
+        ]
+      },
+      "history_id": "99c822d211d84be0bd48a2f64040e683"
+    },
+    {
+      "applied_at": "2026-08-11T15:15:52.244784Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_center_v5_overwrite_rebased_overlay.zip",
+      "artifact_name": "xdm_android_debug_center_v5_overwrite_rebased_overlay.zip",
+      "type": "overlay",
+      "sha256": "d6acdf2f8f4f5d46a8a7a6e8fe9b289c09c1d7bc5db6303371a16554b4d9e932",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 10,
+      "change_counts": {
+        "add": 7,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Center v5 current-state overwrite overlay",
+        "description": "Android-only Debug Center v5 overlay rebased for a repo that already contains the capture-reliability debug card files and a locally patched DebugWorkbenchSettingsScreen. Uses inventory add+overwrite for Debug Center files to avoid stale source-hash/add-conflict failures while preserving the full v4 design-plan runner, persistent history, real checks, operation correlation, and FileProvider ZIP export.",
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugEventModels.kt",
+              "action": "add",
+              "sha256": "cc7fff7bb19cd4ad689af88380dca16c54c78c39ca99a165271e889061b47893",
+              "size": 11800
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "add",
+              "sha256": "51e30a9eeea91d328c9ba4191293be4462c7d315b5c3ff99ae5d750e53bebb22",
+              "size": 16710
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/xml/debug_center_file_paths.xml",
+              "action": "add",
+              "sha256": "91427806bc91ee9804ec905f318ccd6635f6687834807dd28560c1da39268a60",
+              "size": 191
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "add",
+              "sha256": "2295ec7c4d44c7d24c08130779f4ea4b8427e17e2c6af9a57fa0a7f82344e324",
+              "size": 1103
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestModels.kt",
+              "action": "add",
+              "sha256": "2f5a83e75aaa2cc172697bd37754744f63342d7f044a93094d81768639d78d4f",
+              "size": 8018
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestCatalog.kt",
+              "action": "add",
+              "sha256": "e7dadb0be0c94a649ce32344c72c600490e68a1fb13e795394556232c15cb254",
+              "size": 40547
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestRunner.kt",
+              "action": "add",
+              "sha256": "369607a1605ee07e9839ecaaa3edd4b914c87d73fbd7c872a711f4de792ea233",
+              "size": 7277
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestStore.kt",
+              "action": "add",
+              "sha256": "b2169dbf193f355e8e96b951ee85b214b7c1a62e7a0e81f0bca9080c21e7e2d7",
+              "size": 5265
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterScreen.kt",
+              "action": "add",
+              "sha256": "b7f2509bb333270713c8c348b40568522ed0f928cec00c9a8358f1265c094278",
+              "size": 16109
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugCenterV4ContractTest.kt",
+              "action": "add",
+              "sha256": "199d59888df1c920d0f7e4d84d3df47fbf2ec3d529228f9a687029229330bb11",
+              "size": 4482
+            }
+          ]
+        },
+        "validation": {
+          "recommended_tasks": [
+            ":app:compileDebugKotlin",
+            ":app:testDebugUnitTest",
+            ":app:lintDebug"
+          ],
+          "notes": "Apply after capture reliability v4. This overlay deliberately overwrites only Debug Center owned files and avoids source SHA precheck failures caused by previous manual DebugWorkbench patches."
+        },
+        "apply": {
+          "atomic": true,
+          "path_policy": "repository-relative",
+          "conflict_policy": "overwrite",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": false,
+            "strategy": "single",
+            "message": ""
+          }
+        }
+      },
+      "history_id": "14f6bd504e884edca9bb2cba6d2b7abc"
+    },
+    {
+      "applied_at": "2026-08-11T15:22:37.864804Z",
+      "artifact": "/home/mike/Downloads/xdm_android_debug_center_v6_fileprovider_overlay.zip",
+      "artifact_name": "xdm_android_debug_center_v6_fileprovider_overlay.zip",
+      "type": "overlay",
+      "sha256": "590b500fe40c75ca7966366d1126118a9270a6f26cccd136d31c9645e30a53b1",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 11,
+      "change_counts": {
+        "add": 8,
+        "modify": 3
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android Debug Center v6 FileProvider-safe overlay",
+        "description": "Android-only Debug Center v6 overlay. Same full Debug Center runner/store/export architecture as v5, but fixes Android manifest merger failure by using a distinct DebugCenterFileProvider subclass instead of declaring a second provider with android:name=androidx.core.content.FileProvider. This avoids replacing the scheduler completed-downloads provider.",
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugEventModels.kt",
+              "action": "add",
+              "sha256": "cc7fff7bb19cd4ad689af88380dca16c54c78c39ca99a165271e889061b47893",
+              "size": 11800
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "add",
+              "sha256": "242120c8beafaaf3801d20d7490db26bf33c10a1587960cb982abaa9ce5999c8",
+              "size": 16733
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/xml/debug_center_file_paths.xml",
+              "action": "add",
+              "sha256": "91427806bc91ee9804ec905f318ccd6635f6687834807dd28560c1da39268a60",
+              "size": 191
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "add",
+              "sha256": "2295ec7c4d44c7d24c08130779f4ea4b8427e17e2c6af9a57fa0a7f82344e324",
+              "size": 1103
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestModels.kt",
+              "action": "add",
+              "sha256": "2f5a83e75aaa2cc172697bd37754744f63342d7f044a93094d81768639d78d4f",
+              "size": 8018
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestCatalog.kt",
+              "action": "add",
+              "sha256": "e7dadb0be0c94a649ce32344c72c600490e68a1fb13e795394556232c15cb254",
+              "size": 40547
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestRunner.kt",
+              "action": "add",
+              "sha256": "369607a1605ee07e9839ecaaa3edd4b914c87d73fbd7c872a711f4de792ea233",
+              "size": 7277
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestStore.kt",
+              "action": "add",
+              "sha256": "b2169dbf193f355e8e96b951ee85b214b7c1a62e7a0e81f0bca9080c21e7e2d7",
+              "size": 5265
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterScreen.kt",
+              "action": "add",
+              "sha256": "b7f2509bb333270713c8c348b40568522ed0f928cec00c9a8358f1265c094278",
+              "size": 16109
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugCenterV4ContractTest.kt",
+              "action": "add",
+              "sha256": "199d59888df1c920d0f7e4d84d3df47fbf2ec3d529228f9a687029229330bb11",
+              "size": 4482
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterFileProvider.kt",
+              "action": "add",
+              "sha256": "1dd3c01a4acc2157b38c2d4ff3498c4e95db089b14b245b0c4303a21fd967af0",
+              "size": 583
+            }
+          ]
+        },
+        "validation": {
+          "recommended_tasks": [
+            ":app:compileDebugKotlin",
+            ":app:testDebugUnitTest",
+            ":app:lintDebug"
+          ],
+          "notes": "Apply after capture reliability v4. This overlay uses overwrite conflict policy for Debug Center-owned files and fixes the FileProvider manifest-merger conflict by using a unique DebugCenterFileProvider subclass."
+        },
+        "apply": {
+          "atomic": true,
+          "path_policy": "repository-relative",
+          "conflict_policy": "overwrite",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": false,
+            "strategy": "single",
+            "message": ""
+          }
+        }
+      },
+      "history_id": "5fce2f3f2a7d4c1588d3124fe6719923"
+    },
+    {
+      "applied_at": "2026-08-11T15:34:11.005913Z",
+      "artifact": "/home/mike/Downloads/xdm_android_capture_reliability_debug_center_v7_compile_safe_overlay.zip",
+      "artifact_name": "xdm_android_capture_reliability_debug_center_v7_compile_safe_overlay.zip",
+      "type": "overlay",
+      "sha256": "fd0ed6aa1a3bf45c9225842e16c232fed746ec9c040246746e2632e8f7d37fab",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 32,
+      "change_counts": {
+        "add": 9,
+        "modify": 23
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android capture reliability + Debug Center v7 compile-safe overlay",
+        "description": "Full overwrite-safe overlay combining the capture reliability v4 APIs/fixes with Debug Center v7. Fixes v6 compile errors by importing root clipboard/share helpers and bundling the capture reliability APIs used by the real Debug Center tests.",
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/androidTest/kotlin/com/mikeyphw/xdm/android/BrowserCaptureEnvelopeManagerInstrumentedTest.kt",
+              "action": "add",
+              "sha256": "66217d281464c1f198e3f0665fd8b201aac6a71fd6a5ee91d1ba2d58ce6d328c",
+              "size": 2000
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "add",
+              "sha256": "242120c8beafaaf3801d20d7490db26bf33c10a1587960cb982abaa9ce5999c8",
+              "size": 16733
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserCaptureEnvelopeManager.kt",
+              "action": "add",
+              "sha256": "e23c362e2548730ea8aab6083d8cde7319cae9d7c06f36d3dfe96b1429894c44",
+              "size": 14563
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "add",
+              "sha256": "bf02bef9dc5cc57b04aa78ea7b08739ec8c956751018b37f08425a0443a9803c",
+              "size": 167253
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt",
+              "action": "add",
+              "sha256": "d2c339788111f9633f4f18d5abbe98596273cbec06ab330dcdd6d8a2e94dd726",
+              "size": 82192
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/BridgeAndAddDownloadDebuggerCard.kt",
+              "action": "add",
+              "sha256": "6e0ddd80a07d3773ec054edc8d26bbacaca2dd59d3f75395ca9c6ae711e2cfe3",
+              "size": 710
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterFileProvider.kt",
+              "action": "add",
+              "sha256": "1dd3c01a4acc2157b38c2d4ff3498c4e95db089b14b245b0c4303a21fd967af0",
+              "size": 583
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterScreen.kt",
+              "action": "add",
+              "sha256": "33f533abbf9d552f10a42e51be590e80462404b94117fbadc489a186a99debac",
+              "size": 16089
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestCatalog.kt",
+              "action": "add",
+              "sha256": "e7dadb0be0c94a649ce32344c72c600490e68a1fb13e795394556232c15cb254",
+              "size": 40547
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestModels.kt",
+              "action": "add",
+              "sha256": "2f5a83e75aaa2cc172697bd37754744f63342d7f044a93094d81768639d78d4f",
+              "size": 8018
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestRunner.kt",
+              "action": "add",
+              "sha256": "369607a1605ee07e9839ecaaa3edd4b914c87d73fbd7c872a711f4de792ea233",
+              "size": 7277
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestStore.kt",
+              "action": "add",
+              "sha256": "b2169dbf193f355e8e96b951ee85b214b7c1a62e7a0e81f0bca9080c21e7e2d7",
+              "size": 5265
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "add",
+              "sha256": "2295ec7c4d44c7d24c08130779f4ea4b8427e17e2c6af9a57fa0a7f82344e324",
+              "size": 1103
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/MediaSniffingLabCard.kt",
+              "action": "add",
+              "sha256": "aca182ede27d79eccc13e7d32c1c4f7482dce2a4b78f50f3b8379ba68078dfd5",
+              "size": 644
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/RuntimeSelfTestSuiteCard.kt",
+              "action": "add",
+              "sha256": "4a2d91dcab551fd83f55d2febe4185029079e572366c9afe7d375595cdca872e",
+              "size": 482
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/TransferNotificationDebuggerCard.kt",
+              "action": "add",
+              "sha256": "354d1fc7eb92f476469849eac727670bf69dd13cd476207e63a320b41078173a",
+              "size": 522
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+              "action": "add",
+              "sha256": "9a9b4e571b64acefe4df7550f617e4246429bf972d7f0ce29dc5e7f50fc77cfb",
+              "size": 43663
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt",
+              "action": "add",
+              "sha256": "211b68c3cbc27553890723e82d283c7703950786c30dcb88c8d8181daf35c368",
+              "size": 21772
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/xml/debug_center_file_paths.xml",
+              "action": "add",
+              "sha256": "91427806bc91ee9804ec905f318ccd6635f6687834807dd28560c1da39268a60",
+              "size": 191
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserCapturePhases59_61ContractTest.kt",
+              "action": "add",
+              "sha256": "4f485b0e8b652d5ef70f62ea20164eac2a66457b29e2713afcad24a85c8951e5",
+              "size": 7424
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase5BrowserHandoffMediaContractTest.kt",
+              "action": "add",
+              "sha256": "14472af97e0250606463959b865a69f76bfdd83d344836ffb935a8cfbfb36b36",
+              "size": 3510
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugCenterV4ContractTest.kt",
+              "action": "add",
+              "sha256": "199d59888df1c920d0f7e4d84d3df47fbf2ec3d529228f9a687029229330bb11",
+              "size": 4482
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/generated-config.template.js",
+              "action": "add",
+              "sha256": "4c8161b980af83abd1a71ec9971e9ca34d4ef4c3a43c7c83f2531c8d00ddbf57",
+              "size": 1510
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/handoff.js",
+              "action": "add",
+              "sha256": "06e41d71bb6eb60ff5eb812ba8906ae8b295e552cdd56d5123b8a58c9495fda8",
+              "size": 12119
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionBuildConfig.kt",
+              "action": "add",
+              "sha256": "596d66aeb8d092fb305f70dbb424180bbc08924ff52d5546dd43d70b06d4fdc9",
+              "size": 2114
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionPackageGenerator.kt",
+              "action": "add",
+              "sha256": "c11a6eb0edd3f66a47ecd8c92c269ebb1c810b8ca098e3a7ba119bb0e95c6019",
+              "size": 5410
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionPackageValidator.kt",
+              "action": "add",
+              "sha256": "f793f4a4dd61b96fd82f2ad87994b3091802211aeddc0916fcc233d8eab343c6",
+              "size": 5352
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_secure_handoff.js",
+              "action": "add",
+              "sha256": "c7ba8aa5380b66b033787b3d7ce25905a58d18396c779aac57b176a05a6258be",
+              "size": 4598
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tools/prepare_extension.py",
+              "action": "add",
+              "sha256": "bffa704b370896fea1aecf9f593ab7e26c8b083b85e7320921534a62fea5e0e6",
+              "size": 6201
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugEventModels.kt",
+              "action": "add",
+              "sha256": "cc7fff7bb19cd4ad689af88380dca16c54c78c39ca99a165271e889061b47893",
+              "size": 11800
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+              "action": "add",
+              "sha256": "e9a1c0d066ae5411eae6adea177d6890611c2911b8e694679402838834a5087b",
+              "size": 31963
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/MediaCaptureDao.kt",
+              "action": "add",
+              "sha256": "52894192fd7bd616242be22ef24827b3cfe2c82748d9c50a30330ca83c07ff8f",
+              "size": 1690
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "path_policy": "repository-relative",
+          "conflict_policy": "overwrite",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": false,
+            "strategy": "single",
+            "message": ""
+          }
+        },
+        "validation": {
+          "recommended_tasks": [
+            ":browser-extension:test",
+            ":browser-extension:jsTest",
+            ":browser-extension:validateFirefoxExtension",
+            ":persistence:compileDebugKotlin",
+            ":app:compileDebugKotlin",
+            ":app:testDebugUnitTest",
+            ":app:lintDebug"
+          ],
+          "notes": "Use this after v6 rollback or on the current app state. The overlay intentionally overwrites Debug Center/capture reliability files to avoid stale source-hash and add-conflict failures."
+        },
+        "notes": [
+          "Regenerate the Firefox/IronFox XPI after applying because the capture key alias/OAEP contract is versioned.",
+          "This overlay keeps Debug Center real tests and FileProvider ZIP export while including capture reliability APIs required by DebugTestCatalog."
+        ]
+      },
+      "history_id": "91146f3b5ee94114a4777a0a8825ba94"
+    },
+    {
+      "applied_at": "2026-08-11T15:48:49.834067Z",
+      "artifact": "/home/mike/Downloads/xdm_android_capture_reliability_debug_center_v8_contract_safe_overlay.zip",
+      "artifact_name": "xdm_android_capture_reliability_debug_center_v8_contract_safe_overlay.zip",
+      "type": "overlay",
+      "sha256": "9dcc954e6266ae7e028f6a91d937fe33ca3f85897c29db2b070e9dfd1e348354",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 33,
+      "change_counts": {
+        "add": 10,
+        "modify": 23
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "xdm_android_capture_reliability_debug_center_v8_contract_safe_overlay",
+        "description": "Capture reliability fixes plus Debug Center v8 with source-contract-safe labels, legacy workbench shell anchors, and FileProvider ZIP sharing outside ui/debug.",
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/androidTest/kotlin/com/mikeyphw/xdm/android/BrowserCaptureEnvelopeManagerInstrumentedTest.kt",
+              "action": "add",
+              "sha256": "66217d281464c1f198e3f0665fd8b201aac6a71fd6a5ee91d1ba2d58ce6d328c",
+              "size": 2000
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "add",
+              "sha256": "242120c8beafaaf3801d20d7490db26bf33c10a1587960cb982abaa9ce5999c8",
+              "size": 16733
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserCaptureEnvelopeManager.kt",
+              "action": "add",
+              "sha256": "e23c362e2548730ea8aab6083d8cde7319cae9d7c06f36d3dfe96b1429894c44",
+              "size": 14563
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugCenterExportSharing.kt",
+              "action": "add",
+              "sha256": "aa682d35f0dbbad7081f33a512e5706a97399666d6768c5b54b6299268ddea7e",
+              "size": 1069
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "add",
+              "sha256": "bf02bef9dc5cc57b04aa78ea7b08739ec8c956751018b37f08425a0443a9803c",
+              "size": 167253
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt",
+              "action": "add",
+              "sha256": "d2c339788111f9633f4f18d5abbe98596273cbec06ab330dcdd6d8a2e94dd726",
+              "size": 82192
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/BridgeAndAddDownloadDebuggerCard.kt",
+              "action": "add",
+              "sha256": "6e0ddd80a07d3773ec054edc8d26bbacaca2dd59d3f75395ca9c6ae711e2cfe3",
+              "size": 710
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterFileProvider.kt",
+              "action": "add",
+              "sha256": "1dd3c01a4acc2157b38c2d4ff3498c4e95db089b14b245b0c4303a21fd967af0",
+              "size": 583
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterScreen.kt",
+              "action": "add",
+              "sha256": "8d1fcb41bff48c4e4a9360d112ddb5d0c8b7beea6d0963bab864dd73d8f4dc7d",
+              "size": 14469
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestCatalog.kt",
+              "action": "add",
+              "sha256": "e7dadb0be0c94a649ce32344c72c600490e68a1fb13e795394556232c15cb254",
+              "size": 40547
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestModels.kt",
+              "action": "add",
+              "sha256": "74930156cdc0bc080982d3095ce90b27e9b36b33ec7650ca545c0c970fdfc659",
+              "size": 8140
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestRunner.kt",
+              "action": "add",
+              "sha256": "369607a1605ee07e9839ecaaa3edd4b914c87d73fbd7c872a711f4de792ea233",
+              "size": 7277
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestStore.kt",
+              "action": "add",
+              "sha256": "b2169dbf193f355e8e96b951ee85b214b7c1a62e7a0e81f0bca9080c21e7e2d7",
+              "size": 5265
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "add",
+              "sha256": "ec0c19b46303725006a31b01063a6e5ac5d4df8d5a60bd464b61e5d882f39bc0",
+              "size": 2510
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/MediaSniffingLabCard.kt",
+              "action": "add",
+              "sha256": "aca182ede27d79eccc13e7d32c1c4f7482dce2a4b78f50f3b8379ba68078dfd5",
+              "size": 644
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/RuntimeSelfTestSuiteCard.kt",
+              "action": "add",
+              "sha256": "4a2d91dcab551fd83f55d2febe4185029079e572366c9afe7d375595cdca872e",
+              "size": 482
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/TransferNotificationDebuggerCard.kt",
+              "action": "add",
+              "sha256": "354d1fc7eb92f476469849eac727670bf69dd13cd476207e63a320b41078173a",
+              "size": 522
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+              "action": "add",
+              "sha256": "9a9b4e571b64acefe4df7550f617e4246429bf972d7f0ce29dc5e7f50fc77cfb",
+              "size": 43663
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt",
+              "action": "add",
+              "sha256": "211b68c3cbc27553890723e82d283c7703950786c30dcb88c8d8181daf35c368",
+              "size": 21772
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/xml/debug_center_file_paths.xml",
+              "action": "add",
+              "sha256": "91427806bc91ee9804ec905f318ccd6635f6687834807dd28560c1da39268a60",
+              "size": 191
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserCapturePhases59_61ContractTest.kt",
+              "action": "add",
+              "sha256": "4f485b0e8b652d5ef70f62ea20164eac2a66457b29e2713afcad24a85c8951e5",
+              "size": 7424
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase5BrowserHandoffMediaContractTest.kt",
+              "action": "add",
+              "sha256": "14472af97e0250606463959b865a69f76bfdd83d344836ffb935a8cfbfb36b36",
+              "size": 3510
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugCenterV4ContractTest.kt",
+              "action": "add",
+              "sha256": "199d59888df1c920d0f7e4d84d3df47fbf2ec3d529228f9a687029229330bb11",
+              "size": 4482
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/generated-config.template.js",
+              "action": "add",
+              "sha256": "4c8161b980af83abd1a71ec9971e9ca34d4ef4c3a43c7c83f2531c8d00ddbf57",
+              "size": 1510
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/handoff.js",
+              "action": "add",
+              "sha256": "06e41d71bb6eb60ff5eb812ba8906ae8b295e552cdd56d5123b8a58c9495fda8",
+              "size": 12119
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionBuildConfig.kt",
+              "action": "add",
+              "sha256": "596d66aeb8d092fb305f70dbb424180bbc08924ff52d5546dd43d70b06d4fdc9",
+              "size": 2114
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionPackageGenerator.kt",
+              "action": "add",
+              "sha256": "c11a6eb0edd3f66a47ecd8c92c269ebb1c810b8ca098e3a7ba119bb0e95c6019",
+              "size": 5410
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionPackageValidator.kt",
+              "action": "add",
+              "sha256": "f793f4a4dd61b96fd82f2ad87994b3091802211aeddc0916fcc233d8eab343c6",
+              "size": 5352
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_secure_handoff.js",
+              "action": "add",
+              "sha256": "c7ba8aa5380b66b033787b3d7ce25905a58d18396c779aac57b176a05a6258be",
+              "size": 4598
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tools/prepare_extension.py",
+              "action": "add",
+              "sha256": "bffa704b370896fea1aecf9f593ab7e26c8b083b85e7320921534a62fea5e0e6",
+              "size": 6201
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugEventModels.kt",
+              "action": "add",
+              "sha256": "cc7fff7bb19cd4ad689af88380dca16c54c78c39ca99a165271e889061b47893",
+              "size": 11800
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+              "action": "add",
+              "sha256": "e9a1c0d066ae5411eae6adea177d6890611c2911b8e694679402838834a5087b",
+              "size": 31963
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/MediaCaptureDao.kt",
+              "action": "add",
+              "sha256": "52894192fd7bd616242be22ef24827b3cfe2c82748d9c50a30330ca83c07ff8f",
+              "size": 1690
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "path_policy": "repository-relative",
+          "conflict_policy": "overwrite",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": false,
+            "strategy": "single",
+            "message": ""
+          }
+        },
+        "validation": {
+          "recommended_tasks": [
+            ":browser-extension:test",
+            ":browser-extension:jsTest",
+            ":browser-extension:validateFirefoxExtension",
+            ":persistence:compileDebugKotlin",
+            ":app:compileDebugKotlin",
+            ":app:testDebugUnitTest",
+            ":app:lintDebug"
+          ],
+          "notes": "Use this after v7 rollback or on the current app state. This v8 fixes Debug Workbench D2/D7/UixR6 contract failures from v7."
+        },
+        "notes": [
+          "Regenerate the Firefox/IronFox XPI after applying because the capture key alias/OAEP contract is versioned.",
+          "This overlay keeps Debug Center real tests and FileProvider ZIP export while including capture reliability APIs required by DebugTestCatalog."
+        ]
+      },
+      "history_id": "c1718c5d21454174b4a52713c4b5bde6"
+    },
+    {
+      "applied_at": "2026-08-11T16:18:16.034784Z",
+      "artifact": "/home/mike/Downloads/xdm_android_capture_reliability_debug_center_v9_contract_warning_fix_overlay.zip",
+      "artifact_name": "xdm_android_capture_reliability_debug_center_v9_contract_warning_fix_overlay.zip",
+      "type": "overlay",
+      "sha256": "70bbf11ac60019bed51bac3b678ac85a6d957554c2271ae70009539147f8819b",
+      "status": "rolled-back",
+      "validation_status": "failed",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 33,
+      "change_counts": {
+        "add": 10,
+        "modify": 23
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "xdm_android_capture_reliability_debug_center_v9_contract_warning_fix_overlay",
+        "description": "Capture reliability fixes plus Debug Center v9 with corrected FileProvider source contract, legacy workbench anchors, no raw enum UI, and Compose warning cleanup.",
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/androidTest/kotlin/com/mikeyphw/xdm/android/BrowserCaptureEnvelopeManagerInstrumentedTest.kt",
+              "action": "add",
+              "sha256": "66217d281464c1f198e3f0665fd8b201aac6a71fd6a5ee91d1ba2d58ce6d328c",
+              "size": 2000
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "add",
+              "sha256": "242120c8beafaaf3801d20d7490db26bf33c10a1587960cb982abaa9ce5999c8",
+              "size": 16733
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserCaptureEnvelopeManager.kt",
+              "action": "add",
+              "sha256": "e23c362e2548730ea8aab6083d8cde7319cae9d7c06f36d3dfe96b1429894c44",
+              "size": 14563
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugCenterExportSharing.kt",
+              "action": "add",
+              "sha256": "aa682d35f0dbbad7081f33a512e5706a97399666d6768c5b54b6299268ddea7e",
+              "size": 1069
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "add",
+              "sha256": "bf02bef9dc5cc57b04aa78ea7b08739ec8c956751018b37f08425a0443a9803c",
+              "size": 167253
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt",
+              "action": "add",
+              "sha256": "d2c339788111f9633f4f18d5abbe98596273cbec06ab330dcdd6d8a2e94dd726",
+              "size": 82192
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/BridgeAndAddDownloadDebuggerCard.kt",
+              "action": "add",
+              "sha256": "6e0ddd80a07d3773ec054edc8d26bbacaca2dd59d3f75395ca9c6ae711e2cfe3",
+              "size": 710
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterFileProvider.kt",
+              "action": "add",
+              "sha256": "1dd3c01a4acc2157b38c2d4ff3498c4e95db089b14b245b0c4303a21fd967af0",
+              "size": 583
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterScreen.kt",
+              "action": "add",
+              "sha256": "8d1fcb41bff48c4e4a9360d112ddb5d0c8b7beea6d0963bab864dd73d8f4dc7d",
+              "size": 14469
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestCatalog.kt",
+              "action": "add",
+              "sha256": "e7dadb0be0c94a649ce32344c72c600490e68a1fb13e795394556232c15cb254",
+              "size": 40547
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestModels.kt",
+              "action": "add",
+              "sha256": "74930156cdc0bc080982d3095ce90b27e9b36b33ec7650ca545c0c970fdfc659",
+              "size": 8140
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestRunner.kt",
+              "action": "add",
+              "sha256": "369607a1605ee07e9839ecaaa3edd4b914c87d73fbd7c872a711f4de792ea233",
+              "size": 7277
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestStore.kt",
+              "action": "add",
+              "sha256": "b2169dbf193f355e8e96b951ee85b214b7c1a62e7a0e81f0bca9080c21e7e2d7",
+              "size": 5265
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "add",
+              "sha256": "5720750a3d28c2f555ae2d224f355528291a2039350691ef2f64005d4ee16682",
+              "size": 2580
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/MediaSniffingLabCard.kt",
+              "action": "add",
+              "sha256": "aca182ede27d79eccc13e7d32c1c4f7482dce2a4b78f50f3b8379ba68078dfd5",
+              "size": 644
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/RuntimeSelfTestSuiteCard.kt",
+              "action": "add",
+              "sha256": "4a2d91dcab551fd83f55d2febe4185029079e572366c9afe7d375595cdca872e",
+              "size": 482
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/TransferNotificationDebuggerCard.kt",
+              "action": "add",
+              "sha256": "354d1fc7eb92f476469849eac727670bf69dd13cd476207e63a320b41078173a",
+              "size": 522
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+              "action": "add",
+              "sha256": "9a9b4e571b64acefe4df7550f617e4246429bf972d7f0ce29dc5e7f50fc77cfb",
+              "size": 43663
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt",
+              "action": "add",
+              "sha256": "211b68c3cbc27553890723e82d283c7703950786c30dcb88c8d8181daf35c368",
+              "size": 21772
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/xml/debug_center_file_paths.xml",
+              "action": "add",
+              "sha256": "91427806bc91ee9804ec905f318ccd6635f6687834807dd28560c1da39268a60",
+              "size": 191
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserCapturePhases59_61ContractTest.kt",
+              "action": "add",
+              "sha256": "4f485b0e8b652d5ef70f62ea20164eac2a66457b29e2713afcad24a85c8951e5",
+              "size": 7424
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase5BrowserHandoffMediaContractTest.kt",
+              "action": "add",
+              "sha256": "14472af97e0250606463959b865a69f76bfdd83d344836ffb935a8cfbfb36b36",
+              "size": 3510
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugCenterV9ContractTest.kt",
+              "action": "add",
+              "sha256": "7f02fe9d82f72b12a4f9a33f86f2f2c856bb316cad515df269cf2e3aa38c6602",
+              "size": 4654
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/generated-config.template.js",
+              "action": "add",
+              "sha256": "4c8161b980af83abd1a71ec9971e9ca34d4ef4c3a43c7c83f2531c8d00ddbf57",
+              "size": 1510
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/handoff.js",
+              "action": "add",
+              "sha256": "06e41d71bb6eb60ff5eb812ba8906ae8b295e552cdd56d5123b8a58c9495fda8",
+              "size": 12119
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionBuildConfig.kt",
+              "action": "add",
+              "sha256": "596d66aeb8d092fb305f70dbb424180bbc08924ff52d5546dd43d70b06d4fdc9",
+              "size": 2114
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionPackageGenerator.kt",
+              "action": "add",
+              "sha256": "c11a6eb0edd3f66a47ecd8c92c269ebb1c810b8ca098e3a7ba119bb0e95c6019",
+              "size": 5410
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionPackageValidator.kt",
+              "action": "add",
+              "sha256": "f793f4a4dd61b96fd82f2ad87994b3091802211aeddc0916fcc233d8eab343c6",
+              "size": 5352
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_secure_handoff.js",
+              "action": "add",
+              "sha256": "c7ba8aa5380b66b033787b3d7ce25905a58d18396c779aac57b176a05a6258be",
+              "size": 4598
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tools/prepare_extension.py",
+              "action": "add",
+              "sha256": "bffa704b370896fea1aecf9f593ab7e26c8b083b85e7320921534a62fea5e0e6",
+              "size": 6201
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugEventModels.kt",
+              "action": "add",
+              "sha256": "cc7fff7bb19cd4ad689af88380dca16c54c78c39ca99a165271e889061b47893",
+              "size": 11800
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+              "action": "add",
+              "sha256": "e9a1c0d066ae5411eae6adea177d6890611c2911b8e694679402838834a5087b",
+              "size": 31963
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/MediaCaptureDao.kt",
+              "action": "add",
+              "sha256": "52894192fd7bd616242be22ef24827b3cfe2c82748d9c50a30330ca83c07ff8f",
+              "size": 1690
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "path_policy": "repository-relative",
+          "conflict_policy": "overwrite",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": false,
+            "strategy": "single",
+            "message": ""
+          }
+        },
+        "validation": {
+          "recommended_tasks": [
+            ":browser-extension:test",
+            ":browser-extension:jsTest",
+            ":browser-extension:validateFirefoxExtension",
+            ":persistence:compileDebugKotlin",
+            ":app:compileDebugKotlin",
+            ":app:testDebugUnitTest",
+            ":app:lintDebug"
+          ],
+          "notes": "Use this after v8 rollback or on the current app state. This v9 fixes the stale DebugCenterV4ContractTest FileProvider assertion and replaces deprecated Divider usage."
+        },
+        "notes": [
+          "Regenerate the Firefox/IronFox XPI after applying because the capture key alias/OAEP contract is versioned.",
+          "This overlay keeps Debug Center real tests and FileProvider ZIP export while correcting the v8 source contract and Compose warning cleanup."
+        ]
+      },
+      "history_id": "84c519ed880440c0b74dcebff40d7711"
+    },
+    {
+      "applied_at": "2026-08-11T16:35:13.924230Z",
+      "artifact": "/home/mike/Downloads/xdm_android_capture_reliability_debug_center_v10_lint_fix_overlay.zip",
+      "artifact_name": "xdm_android_capture_reliability_debug_center_v10_lint_fix_overlay.zip",
+      "type": "overlay",
+      "sha256": "663d5a67bb7b8add6df7586eba3c859f481fc0d01bae1dc9900549776897d1dd",
+      "status": "ok",
+      "validation_status": "ok",
+      "commit_message": "",
+      "commit_hash": "",
+      "file_count": 33,
+      "change_counts": {
+        "add": 10,
+        "modify": 23
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "xdm_android_capture_reliability_debug_center_v10_lint_fix_overlay",
+        "description": "Capture reliability fixes plus Debug Center v10 with contract-safe UI and lint-clean runtime suite indentation.",
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "app/XDM.Android/app/src/androidTest/kotlin/com/mikeyphw/xdm/android/BrowserCaptureEnvelopeManagerInstrumentedTest.kt",
+              "action": "add",
+              "sha256": "66217d281464c1f198e3f0665fd8b201aac6a71fd6a5ee91d1ba2d58ce6d328c",
+              "size": 2000
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+              "action": "add",
+              "sha256": "242120c8beafaaf3801d20d7490db26bf33c10a1587960cb982abaa9ce5999c8",
+              "size": 16733
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserCaptureEnvelopeManager.kt",
+              "action": "add",
+              "sha256": "e23c362e2548730ea8aab6083d8cde7319cae9d7c06f36d3dfe96b1429894c44",
+              "size": 14563
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/DebugCenterExportSharing.kt",
+              "action": "add",
+              "sha256": "aa682d35f0dbbad7081f33a512e5706a97399666d6768c5b54b6299268ddea7e",
+              "size": 1069
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "add",
+              "sha256": "bf02bef9dc5cc57b04aa78ea7b08739ec8c956751018b37f08425a0443a9803c",
+              "size": 167253
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt",
+              "action": "add",
+              "sha256": "d2c339788111f9633f4f18d5abbe98596273cbec06ab330dcdd6d8a2e94dd726",
+              "size": 82192
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/BridgeAndAddDownloadDebuggerCard.kt",
+              "action": "add",
+              "sha256": "6e0ddd80a07d3773ec054edc8d26bbacaca2dd59d3f75395ca9c6ae711e2cfe3",
+              "size": 710
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterFileProvider.kt",
+              "action": "add",
+              "sha256": "1dd3c01a4acc2157b38c2d4ff3498c4e95db089b14b245b0c4303a21fd967af0",
+              "size": 583
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterScreen.kt",
+              "action": "add",
+              "sha256": "8d1fcb41bff48c4e4a9360d112ddb5d0c8b7beea6d0963bab864dd73d8f4dc7d",
+              "size": 14469
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestCatalog.kt",
+              "action": "add",
+              "sha256": "a5f17a1ee6b4e1a4b912d0866b8a3c70ee6f16f1179d6363b166e148736ae394",
+              "size": 40543
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestModels.kt",
+              "action": "add",
+              "sha256": "74930156cdc0bc080982d3095ce90b27e9b36b33ec7650ca545c0c970fdfc659",
+              "size": 8140
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestRunner.kt",
+              "action": "add",
+              "sha256": "369607a1605ee07e9839ecaaa3edd4b914c87d73fbd7c872a711f4de792ea233",
+              "size": 7277
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestStore.kt",
+              "action": "add",
+              "sha256": "b2169dbf193f355e8e96b951ee85b214b7c1a62e7a0e81f0bca9080c21e7e2d7",
+              "size": 5265
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+              "action": "add",
+              "sha256": "5720750a3d28c2f555ae2d224f355528291a2039350691ef2f64005d4ee16682",
+              "size": 2580
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/MediaSniffingLabCard.kt",
+              "action": "add",
+              "sha256": "aca182ede27d79eccc13e7d32c1c4f7482dce2a4b78f50f3b8379ba68078dfd5",
+              "size": 644
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/RuntimeSelfTestSuiteCard.kt",
+              "action": "add",
+              "sha256": "4a2d91dcab551fd83f55d2febe4185029079e572366c9afe7d375595cdca872e",
+              "size": 482
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/TransferNotificationDebuggerCard.kt",
+              "action": "add",
+              "sha256": "354d1fc7eb92f476469849eac727670bf69dd13cd476207e63a320b41078173a",
+              "size": 522
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+              "action": "add",
+              "sha256": "9a9b4e571b64acefe4df7550f617e4246429bf972d7f0ce29dc5e7f50fc77cfb",
+              "size": 43663
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt",
+              "action": "add",
+              "sha256": "211b68c3cbc27553890723e82d283c7703950786c30dcb88c8d8181daf35c368",
+              "size": 21772
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/res/xml/debug_center_file_paths.xml",
+              "action": "add",
+              "sha256": "91427806bc91ee9804ec905f318ccd6635f6687834807dd28560c1da39268a60",
+              "size": 191
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BrowserCapturePhases59_61ContractTest.kt",
+              "action": "add",
+              "sha256": "4f485b0e8b652d5ef70f62ea20164eac2a66457b29e2713afcad24a85c8951e5",
+              "size": 7424
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase5BrowserHandoffMediaContractTest.kt",
+              "action": "add",
+              "sha256": "14472af97e0250606463959b865a69f76bfdd83d344836ffb935a8cfbfb36b36",
+              "size": 3510
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugCenterV9ContractTest.kt",
+              "action": "add",
+              "sha256": "7f02fe9d82f72b12a4f9a33f86f2f2c856bb316cad515df269cf2e3aa38c6602",
+              "size": 4654
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/generated-config.template.js",
+              "action": "add",
+              "sha256": "4c8161b980af83abd1a71ec9971e9ca34d4ef4c3a43c7c83f2531c8d00ddbf57",
+              "size": 1510
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/handoff.js",
+              "action": "add",
+              "sha256": "06e41d71bb6eb60ff5eb812ba8906ae8b295e552cdd56d5123b8a58c9495fda8",
+              "size": 12119
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionBuildConfig.kt",
+              "action": "add",
+              "sha256": "596d66aeb8d092fb305f70dbb424180bbc08924ff52d5546dd43d70b06d4fdc9",
+              "size": 2114
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionPackageGenerator.kt",
+              "action": "add",
+              "sha256": "c11a6eb0edd3f66a47ecd8c92c269ebb1c810b8ca098e3a7ba119bb0e95c6019",
+              "size": 5410
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/src/main/kotlin/com/mikeyphw/xdm/android/browserextension/BrowserExtensionPackageValidator.kt",
+              "action": "add",
+              "sha256": "f793f4a4dd61b96fd82f2ad87994b3091802211aeddc0916fcc233d8eab343c6",
+              "size": 5352
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tests/test_secure_handoff.js",
+              "action": "add",
+              "sha256": "c7ba8aa5380b66b033787b3d7ce25905a58d18396c779aac57b176a05a6258be",
+              "size": 4598
+            },
+            {
+              "path": "app/XDM.Android/browser-extension/tools/prepare_extension.py",
+              "action": "add",
+              "sha256": "bffa704b370896fea1aecf9f593ab7e26c8b083b85e7320921534a62fea5e0e6",
+              "size": 6201
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugEventModels.kt",
+              "action": "add",
+              "sha256": "cc7fff7bb19cd4ad689af88380dca16c54c78c39ca99a165271e889061b47893",
+              "size": 11800
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+              "action": "add",
+              "sha256": "e9a1c0d066ae5411eae6adea177d6890611c2911b8e694679402838834a5087b",
+              "size": 31963
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/MediaCaptureDao.kt",
+              "action": "add",
+              "sha256": "52894192fd7bd616242be22ef24827b3cfe2c82748d9c50a30330ca83c07ff8f",
+              "size": 1690
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "path_policy": "repository-relative",
+          "conflict_policy": "overwrite",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": false,
+            "strategy": "single",
+            "message": ""
+          }
+        },
+        "validation": {
+          "recommended_tasks": [
+            ":browser-extension:test",
+            ":browser-extension:jsTest",
+            ":browser-extension:validateFirefoxExtension",
+            ":persistence:compileDebugKotlin",
+            ":app:compileDebugKotlin",
+            ":app:testDebugUnitTest",
+            ":app:lintDebug"
+          ],
+          "notes": "Use this after v8 rollback or on the current app state. This v9 fixes the stale DebugCenterV4ContractTest FileProvider assertion and replaces deprecated Divider usage."
+        },
+        "notes": [
+          "Regenerate the Firefox/IronFox XPI after applying because the capture key alias/OAEP contract is versioned.",
+          "This overlay keeps Debug Center real tests and FileProvider ZIP export while correcting the v8 source contract and Compose warning cleanup."
+        ]
+      },
+      "history_id": "735aea0e40be4bd0b03e621da69bea38"
     }
   ]
 }

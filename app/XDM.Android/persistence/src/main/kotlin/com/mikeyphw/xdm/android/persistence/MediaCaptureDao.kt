@@ -32,7 +32,7 @@ interface MediaCaptureDao {
     suspend fun selectVariant(captureId: String, variantId: String, variantUrl: String, resolutionStatus: String, updatedAtEpochMs: Long)
 
     @Query("UPDATE media_captures SET status = :status, downloadId = :downloadId, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
-    suspend fun markDownloadCreated(id: String, status: String, downloadId: String, updatedAtEpochMs: Long)
+    suspend fun markDownloadCreated(id: String, status: String, downloadId: String, updatedAtEpochMs: Long): Int
 
     @Query("DELETE FROM media_captures WHERE id = :id")
     suspend fun delete(id: String)

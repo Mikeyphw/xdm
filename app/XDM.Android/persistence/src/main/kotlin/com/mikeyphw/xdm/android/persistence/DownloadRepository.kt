@@ -108,6 +108,36 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun selectMediaVariant(captureId: String, variant: MediaVariant, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().selectVariant(captureId, variant.id, ExternalUrlPolicy.persistableUrl(variant.url) ?: variant.url.substringBefore('?'), MediaResolutionStatus.Resolved.name, updatedAtEpochMs)
     suspend fun findMediaCapture(id: String): MediaCaptureRecord? = database.mediaCaptureDao().findById(id)?.toModel()
     suspend fun markMediaDownloadCreated(captureId: String, downloadId: String, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().markDownloadCreated(captureId, MediaCaptureStatus.DownloadCreated.name, downloadId, updatedAtEpochMs)
+
+    /**
+     * Atomically creates a Download and links its media capture. Any failed invariant throws so Room rolls
+     * the whole operation back, leaving the capture reviewable for retry.
+     */
+    suspend fun createDownloadFromMediaCapture(
+        captureId: String,
+        download: Download,
+        updatedAtEpochMs: Long = System.currentTimeMillis(),
+    ): Result<Download> = runCatching {
+        database.withTransaction {
+            requireNotNull(database.mediaCaptureDao().findById(captureId)) { "Media capture no longer exists" }
+            check(database.downloadGraphTransactionDao().upsertDownloadPreservingNewerState(download.redactedForPersistence().toEntity())) {
+                "Download row could not be created"
+            }
+            val linkedRows = database.mediaCaptureDao().markDownloadCreated(
+                captureId,
+                MediaCaptureStatus.DownloadCreated.name,
+                download.id,
+                updatedAtEpochMs,
+            )
+            check(linkedRows == 1) { "Media capture could not be linked to the new download" }
+            check(database.downloadDao().findById(download.id) != null) { "Created download could not be read back" }
+            val linkedCapture = requireNotNull(database.mediaCaptureDao().findById(captureId)) { "Linked media capture disappeared" }
+            check(linkedCapture.downloadId == download.id && linkedCapture.status == MediaCaptureStatus.DownloadCreated.name) {
+                "Media capture/download link failed consistency verification"
+            }
+            download
+        }
+    }
     suspend fun deleteMediaCapture(id: String) = database.mediaCaptureDao().delete(id)
     suspend fun findAutomationCommand(id: String): AutomationCommandRecord? = database.automationCommandDao().findById(id)?.toModel()
     suspend fun findAutomationCommandByKey(idempotencyKey: String): AutomationCommandRecord? = database.automationCommandDao().findByIdempotencyKey(idempotencyKey)?.toModel()

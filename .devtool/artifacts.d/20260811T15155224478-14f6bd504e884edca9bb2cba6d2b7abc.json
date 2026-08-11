@@ -1,0 +1,112 @@
+{
+  "applied_at": "2026-08-11T15:15:52.244784Z",
+  "artifact": "/home/mike/Downloads/xdm_android_debug_center_v5_overwrite_rebased_overlay.zip",
+  "artifact_name": "xdm_android_debug_center_v5_overwrite_rebased_overlay.zip",
+  "type": "overlay",
+  "sha256": "d6acdf2f8f4f5d46a8a7a6e8fe9b289c09c1d7bc5db6303371a16554b4d9e932",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 10,
+  "change_counts": {
+    "add": 7,
+    "modify": 3
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Debug Center v5 current-state overwrite overlay",
+    "description": "Android-only Debug Center v5 overlay rebased for a repo that already contains the capture-reliability debug card files and a locally patched DebugWorkbenchSettingsScreen. Uses inventory add+overwrite for Debug Center files to avoid stale source-hash/add-conflict failures while preserving the full v4 design-plan runner, persistent history, real checks, operation correlation, and FileProvider ZIP export.",
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugEventModels.kt",
+          "action": "add",
+          "sha256": "cc7fff7bb19cd4ad689af88380dca16c54c78c39ca99a165271e889061b47893",
+          "size": 11800
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+          "action": "add",
+          "sha256": "51e30a9eeea91d328c9ba4191293be4462c7d315b5c3ff99ae5d750e53bebb22",
+          "size": 16710
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/xml/debug_center_file_paths.xml",
+          "action": "add",
+          "sha256": "91427806bc91ee9804ec905f318ccd6635f6687834807dd28560c1da39268a60",
+          "size": 191
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+          "action": "add",
+          "sha256": "2295ec7c4d44c7d24c08130779f4ea4b8427e17e2c6af9a57fa0a7f82344e324",
+          "size": 1103
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestModels.kt",
+          "action": "add",
+          "sha256": "2f5a83e75aaa2cc172697bd37754744f63342d7f044a93094d81768639d78d4f",
+          "size": 8018
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestCatalog.kt",
+          "action": "add",
+          "sha256": "e7dadb0be0c94a649ce32344c72c600490e68a1fb13e795394556232c15cb254",
+          "size": 40547
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestRunner.kt",
+          "action": "add",
+          "sha256": "369607a1605ee07e9839ecaaa3edd4b914c87d73fbd7c872a711f4de792ea233",
+          "size": 7277
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestStore.kt",
+          "action": "add",
+          "sha256": "b2169dbf193f355e8e96b951ee85b214b7c1a62e7a0e81f0bca9080c21e7e2d7",
+          "size": 5265
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterScreen.kt",
+          "action": "add",
+          "sha256": "b7f2509bb333270713c8c348b40568522ed0f928cec00c9a8358f1265c094278",
+          "size": 16109
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugCenterV4ContractTest.kt",
+          "action": "add",
+          "sha256": "199d59888df1c920d0f7e4d84d3df47fbf2ec3d529228f9a687029229330bb11",
+          "size": 4482
+        }
+      ]
+    },
+    "validation": {
+      "recommended_tasks": [
+        ":app:compileDebugKotlin",
+        ":app:testDebugUnitTest",
+        ":app:lintDebug"
+      ],
+      "notes": "Apply after capture reliability v4. This overlay deliberately overwrites only Debug Center owned files and avoids source SHA precheck failures caused by previous manual DebugWorkbench patches."
+    },
+    "apply": {
+      "atomic": true,
+      "path_policy": "repository-relative",
+      "conflict_policy": "overwrite",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": false,
+        "strategy": "single",
+        "message": ""
+      }
+    }
+  },
+  "history_id": "14f6bd504e884edca9bb2cba6d2b7abc"
+}

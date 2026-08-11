@@ -1227,6 +1227,7 @@ class MainViewModel(
             themeMode = resolvedTheme,
             captureKeyId = browserCaptureEnvelopeManager.keyId,
             capturePublicKeySpki = browserCaptureEnvelopeManager.publicKeySpkiBase64Url,
+            captureOaepHash = browserCaptureEnvelopeManager.captureOaepHash,
         )
         browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
             phase = BrowserExtensionExportPhase.Exporting,
@@ -2858,9 +2859,72 @@ class MainViewModel(
             )
             val enginePlan = mediaExecutionPlanner.enginePlan(spec, androidSdkInt = android.os.Build.VERSION.SDK_INT)
             if (spec.requiresTermuxYtDlp) {
-                val job = termuxMediaPipelineManager.downloadWithYtDlp(record, variants, selection)
-                repository.markMediaDownloadCreated(record.id, job.id, now)
-                navigate(AppRoute.Media)
+                val download = Download(
+                    id = UUID.randomUUID().toString(),
+                    fileName = sanitizeFileName(spec.fileName),
+                    sourceUrl = ExternalUrlPolicy.persistableUrl(spec.sourceUrl) ?: spec.sourceUrl.substringBefore('?'),
+                    destinationUri = DestinationUris.PUBLIC_DOWNLOADS,
+                    state = DownloadState.Queued,
+                    backend = BackendType.Automatic,
+                    bytesReceived = 0,
+                    totalBytes = null,
+                    speedBytesPerSecond = 0,
+                    queueId = "termux-media",
+                    priority = 0,
+                    createdAtEpochMs = now,
+                    updatedAtEpochMs = now,
+                    conflictPolicy = FilenameConflictPolicy.Rename,
+                    mimeType = record.mimeType,
+                    requestedBackend = BackendType.Automatic,
+                    backendSelectionExplanation = listOf(
+                        "Managed by Termux yt-dlp because this media candidate requires playlist/page extraction outside the app queue.",
+                        spec.safeExplanation,
+                        enginePlan.safeSummary,
+                    ).filter(String::isNotBlank).joinToString(" ").take(900),
+                    allowBackendFallback = false,
+                    userLabel = spec.userLabel,
+                )
+                val creation = repository.createDownloadFromMediaCapture(record.id, download, now)
+                if (creation.isFailure) {
+                    val reason = creation.exceptionOrNull()?.message ?: "Download creation failed before the media capture could be linked."
+                    debugEventRecorder.record(
+                        area = com.mikeyphw.xdm.android.model.DebugArea.AddDownload,
+                        severity = com.mikeyphw.xdm.android.model.DebugSeverity.Error,
+                        action = "media-termux-download-create",
+                        result = "rolled-back",
+                        safeDetails = mapOf("captureId" to record.id, "reason" to reason),
+                    )
+                    publishMediaIntakeFeedback(
+                        MediaIntakeFeedbackUi(
+                            MediaIntakeFeedbackKind.Failed,
+                            "Could not add Termux download",
+                            reason,
+                        ),
+                        navigateToMedia = false,
+                    )
+                    navigate(AppRoute.Media)
+                    return@launch
+                }
+                val job = termuxMediaPipelineManager.downloadWithYtDlp(
+                    record = exactRecord.copy(downloadId = download.id),
+                    variants = variants,
+                    selection = selection,
+                    destination = DestinationUris.PUBLIC_DOWNLOADS,
+                    downloadId = download.id,
+                )
+                captureHandoff?.let { MediaRequestHandoffStore.forgetCapture(record.id) }
+                debugEventRecorder.record(
+                    area = com.mikeyphw.xdm.android.model.DebugArea.AddDownload,
+                    action = "media-termux-download-create",
+                    result = "committed",
+                    safeDetails = mapOf(
+                        "captureId" to record.id,
+                        "downloadId" to download.id,
+                        "postProcessingJobId" to job.id,
+                        "state" to download.state.name,
+                    ),
+                )
+                navigate(AppRoute.Downloads)
                 return@launch
             }
             if (!spec.canUseAppQueue) {
@@ -2925,9 +2989,35 @@ class MainViewModel(
                 cleanupActions = enginePlan.cleanupActions,
                 tempCookieFileName = enginePlan.tempCookieFile?.fileName,
             )
+            val creation = repository.createDownloadFromMediaCapture(record.id, download, now)
+            if (creation.isFailure) {
+                MediaRequestHandoffStore.forget(download.id)
+                val reason = creation.exceptionOrNull()?.message ?: "Download creation failed before the media capture could be linked."
+                debugEventRecorder.record(
+                    area = com.mikeyphw.xdm.android.model.DebugArea.AddDownload,
+                    severity = com.mikeyphw.xdm.android.model.DebugSeverity.Error,
+                    action = "media-download-create",
+                    result = "rolled-back",
+                    safeDetails = mapOf("captureId" to record.id, "reason" to reason),
+                )
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(
+                        MediaIntakeFeedbackKind.Failed,
+                        "Could not add download",
+                        reason,
+                    ),
+                    navigateToMedia = false,
+                )
+                navigate(AppRoute.Media)
+                return@launch
+            }
             captureHandoff?.let { MediaRequestHandoffStore.forgetCapture(record.id) }
-            repository.save(download)
-            repository.markMediaDownloadCreated(record.id, download.id, now)
+            debugEventRecorder.record(
+                area = com.mikeyphw.xdm.android.model.DebugArea.AddDownload,
+                action = "media-download-create",
+                result = "committed",
+                safeDetails = mapOf("captureId" to record.id, "downloadId" to download.id, "state" to download.state.name),
+            )
             queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
             navigate(AppRoute.Downloads)
         }

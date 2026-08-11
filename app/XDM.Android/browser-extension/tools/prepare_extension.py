@@ -17,6 +17,7 @@ TOKENS = {
     "@@DEFAULT_TARGET@@": "default_target",
     "@@CAPTURE_KEY_ID@@": "capture_key_id",
     "@@CAPTURE_PUBLIC_KEY_SPKI@@": "capture_public_key_spki",
+    "@@CAPTURE_OAEP_HASH@@": "capture_oaep_hash",
     "@@THEME_MODE@@": "theme",
 }
 
@@ -106,6 +107,7 @@ def main() -> int:
     parser.add_argument("--default-target", choices=("xdm", "1dm", "ask"), default="xdm")
     parser.add_argument("--capture-key-id", default="")
     parser.add_argument("--capture-public-key-spki", default="")
+    parser.add_argument("--capture-oaep-hash", choices=("SHA-1", "SHA-256"), default="SHA-256")
     parser.add_argument("--theme", choices=("dark", "amoled"), default="dark")
     args = parser.parse_args()
 

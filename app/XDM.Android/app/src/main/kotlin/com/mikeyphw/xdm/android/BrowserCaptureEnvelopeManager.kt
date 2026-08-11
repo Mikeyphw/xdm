@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android
 
+import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkPayload
@@ -9,6 +10,7 @@ import org.json.JSONObject
 import java.nio.charset.StandardCharsets
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.GeneralSecurityException
 import java.security.MessageDigest
 import java.security.spec.MGF1ParameterSpec
 import android.util.Base64
@@ -60,6 +62,27 @@ class BrowserCaptureEnvelopeManager {
     val publicKeySpkiBase64Url: String
         get() = base64Url(publicKey().encoded)
 
+    /** WebCrypto hash that must be used by the generated Firefox extension for RSA-OAEP. */
+    val captureOaepHash: String
+        get() = oaepDigest
+
+    /** RSA ciphertext size expected for this app-private capture key. */
+    val expectedWrappedKeyBytes: Int
+        get() = ((publicKey() as java.security.interfaces.RSAPublicKey).modulus.bitLength() + 7) / 8
+
+    /** Read-only provider smoke test used by Debug Center; no capture data or network access is involved. */
+    fun selfTestKeyWrap(): Result<Unit> = runCatching {
+        val clearKey = ByteArray(32).also(java.security.SecureRandom()::nextBytes)
+        val spec = OAEPParameterSpec(oaepDigest, "MGF1", mgf1ParameterSpec, PSource.PSpecified.DEFAULT)
+        val encrypt = Cipher.getInstance(RSA_TRANSFORMATION)
+        encrypt.init(Cipher.ENCRYPT_MODE, publicKey(), spec)
+        val wrapped = encrypt.doFinal(clearKey)
+        check(wrapped.size == expectedWrappedKeyBytes) { "RSA-OAEP produced an unexpected ciphertext size" }
+        val decrypt = Cipher.getInstance(RSA_TRANSFORMATION)
+        decrypt.init(Cipher.DECRYPT_MODE, privateKey(), spec)
+        check(decrypt.doFinal(wrapped).contentEquals(clearKey)) { "RSA-OAEP round trip did not reproduce the session key" }
+    }
+
     fun decrypt(payload: XdmBrowserDeepLinkPayload, nowEpochMs: Long = System.currentTimeMillis()): Result<DecodedSession> = runCatching {
         require(payload.hasEncryptedCaptureEnvelope) { "Encrypted capture envelope is incomplete" }
         require(payload.captureKeyId == keyId) { "Firefox capture key is stale; regenerate the XPI" }
@@ -67,25 +90,42 @@ class BrowserCaptureEnvelopeManager {
         val iv = decodeBase64Url(requireNotNull(payload.envelopeIv))
         val ciphertext = decodeBase64Url(requireNotNull(payload.envelopeCiphertext))
         require(iv.size == 12) { "Encrypted capture IV has an invalid size" }
-        require(wrappedKey.size in 256..512) { "Encrypted capture key has an invalid size" }
+        val expectedWrappedBytes = expectedWrappedKeyBytes
+        require(wrappedKey.size == expectedWrappedBytes) {
+            "Firefox secure handoff has an invalid encrypted-key size; expected $expectedWrappedBytes bytes but received ${wrappedKey.size}. Regenerate the XPI and capture the page again."
+        }
         require(ciphertext.size in 17..MAX_CIPHERTEXT_BYTES) { "Encrypted capture payload is outside the accepted size" }
 
-        val rsa = Cipher.getInstance(RSA_TRANSFORMATION)
-        val oaep = OAEPParameterSpec(
-            "SHA-256",
-            "MGF1",
-            MGF1ParameterSpec.SHA256,
-            PSource.PSpecified.DEFAULT,
-        )
-        rsa.init(Cipher.DECRYPT_MODE, privateKey(), oaep)
-        val aesKey = rsa.doFinal(wrappedKey)
+        val aesKey = try {
+            val rsa = Cipher.getInstance(RSA_TRANSFORMATION)
+            val oaep = OAEPParameterSpec(
+                oaepDigest,
+                "MGF1",
+                mgf1ParameterSpec,
+                PSource.PSpecified.DEFAULT,
+            )
+            rsa.init(Cipher.DECRYPT_MODE, privateKey(), oaep)
+            rsa.doFinal(wrappedKey)
+        } catch (error: GeneralSecurityException) {
+            throw IllegalArgumentException(
+                "Firefox secure handoff could not decrypt the session key. Regenerate the XPI in XDM and capture the page again.",
+                error,
+            )
+        }
         require(aesKey.size == 32) { "Encrypted capture session key has an invalid size" }
 
         val aad = aad(requireNotNull(payload.captureSessionId), requireNotNull(payload.captureKeyId))
-        val aes = Cipher.getInstance(AES_TRANSFORMATION)
-        aes.init(Cipher.DECRYPT_MODE, SecretKeySpec(aesKey, "AES"), GCMParameterSpec(128, iv))
-        aes.updateAAD(aad.toByteArray(StandardCharsets.UTF_8))
-        val clear = aes.doFinal(ciphertext)
+        val clear = try {
+            val aes = Cipher.getInstance(AES_TRANSFORMATION)
+            aes.init(Cipher.DECRYPT_MODE, SecretKeySpec(aesKey, "AES"), GCMParameterSpec(128, iv))
+            aes.updateAAD(aad.toByteArray(StandardCharsets.UTF_8))
+            aes.doFinal(ciphertext)
+        } catch (error: GeneralSecurityException) {
+            throw IllegalArgumentException(
+                "Firefox secure handoff payload authentication failed. Capture the page again with the current XPI.",
+                error,
+            )
+        }
         require(clear.size <= MAX_CLEAR_BYTES) { "Decrypted capture payload is too large" }
         parseSession(String(clear, StandardCharsets.UTF_8), payload.captureSessionId, nowEpochMs)
     }
@@ -151,19 +191,29 @@ class BrowserCaptureEnvelopeManager {
         )
     }
 
-    private fun publicKey() = keyStore().getCertificate(KEY_ALIAS)?.publicKey ?: generateKeyPair().public
-    private fun privateKey() = (keyStore().getKey(KEY_ALIAS, null) as? java.security.PrivateKey) ?: generateKeyPair().private
+    private val oaepDigest: String
+        get() = if (Build.VERSION.SDK_INT >= 35) KeyProperties.DIGEST_SHA256 else KeyProperties.DIGEST_SHA1
+
+    private val mgf1ParameterSpec: MGF1ParameterSpec
+        get() = if (Build.VERSION.SDK_INT >= 35) MGF1ParameterSpec.SHA256 else MGF1ParameterSpec.SHA1
+
+    private val keyAlias: String
+        get() = if (Build.VERSION.SDK_INT >= 35) KEY_ALIAS_SHA256 else KEY_ALIAS_SHA1
+
+    private fun publicKey() = keyStore().getCertificate(keyAlias)?.publicKey ?: generateKeyPair().public
+    private fun privateKey() = (keyStore().getKey(keyAlias, null) as? java.security.PrivateKey) ?: generateKeyPair().private
 
     private fun generateKeyPair(): java.security.KeyPair {
         val generator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, ANDROID_KEYSTORE)
-        generator.initialize(
-            KeyGenParameterSpec.Builder(KEY_ALIAS, KeyProperties.PURPOSE_DECRYPT)
-                .setKeySize(3072)
-                .setDigests(KeyProperties.DIGEST_SHA256)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_OAEP)
-                .setUserAuthenticationRequired(false)
-                .build(),
-        )
+        val builder = KeyGenParameterSpec.Builder(keyAlias, KeyProperties.PURPOSE_DECRYPT)
+            .setKeySize(3072)
+            .setDigests(oaepDigest)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_OAEP)
+            .setUserAuthenticationRequired(false)
+        if (Build.VERSION.SDK_INT >= 35) {
+            builder.setMgf1Digests(KeyProperties.DIGEST_SHA256)
+        }
+        generator.initialize(builder.build())
         return generator.generateKeyPair()
     }
 
@@ -209,8 +259,9 @@ class BrowserCaptureEnvelopeManager {
 
     companion object {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        private const val KEY_ALIAS = "xdm_browser_capture_v2_rsa"
-        private const val RSA_TRANSFORMATION = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
+        private const val KEY_ALIAS_SHA1 = "xdm_browser_capture_v3_rsa_sha1"
+        private const val KEY_ALIAS_SHA256 = "xdm_browser_capture_v3_rsa_sha256"
+        private const val RSA_TRANSFORMATION = "RSA/ECB/OAEPPadding"
         private const val AES_TRANSFORMATION = "AES/GCM/NoPadding"
         private const val ENVELOPE_FORMAT_VERSION = 1
         private const val MAX_CANDIDATES = 24

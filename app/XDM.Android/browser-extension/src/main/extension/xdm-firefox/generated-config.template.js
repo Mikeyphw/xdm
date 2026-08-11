@@ -10,6 +10,7 @@
     defaultTarget: "@@DEFAULT_TARGET@@",
     captureKeyId: "@@CAPTURE_KEY_ID@@",
     capturePublicKeySpki: "@@CAPTURE_PUBLIC_KEY_SPKI@@",
+    captureOaepHash: "@@CAPTURE_OAEP_HASH@@",
     themeMode: "@@THEME_MODE@@",
     theme: Object.freeze({
       background: "@@BACKGROUND@@",

@@ -1,0 +1,118 @@
+{
+  "applied_at": "2026-08-11T15:22:37.864804Z",
+  "artifact": "/home/mike/Downloads/xdm_android_debug_center_v6_fileprovider_overlay.zip",
+  "artifact_name": "xdm_android_debug_center_v6_fileprovider_overlay.zip",
+  "type": "overlay",
+  "sha256": "590b500fe40c75ca7966366d1126118a9270a6f26cccd136d31c9645e30a53b1",
+  "status": "rolled-back",
+  "validation_status": "failed",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 11,
+  "change_counts": {
+    "add": 8,
+    "modify": 3
+  },
+  "manifest": {
+    "schema_version": 2,
+    "type": "overlay",
+    "name": "XDM Android Debug Center v6 FileProvider-safe overlay",
+    "description": "Android-only Debug Center v6 overlay. Same full Debug Center runner/store/export architecture as v5, but fixes Android manifest merger failure by using a distinct DebugCenterFileProvider subclass instead of declaring a second provider with android:name=androidx.core.content.FileProvider. This avoids replacing the scheduler completed-downloads provider.",
+    "workspace": {
+      "name": "XDM Android",
+      "root": "app/XDM.Android"
+    },
+    "target": "xdm_android",
+    "inventory": {
+      "format": 1,
+      "entries": [
+        {
+          "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DebugEventModels.kt",
+          "action": "add",
+          "sha256": "cc7fff7bb19cd4ad689af88380dca16c54c78c39ca99a165271e889061b47893",
+          "size": 11800
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/AndroidManifest.xml",
+          "action": "add",
+          "sha256": "242120c8beafaaf3801d20d7490db26bf33c10a1587960cb982abaa9ce5999c8",
+          "size": 16733
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/res/xml/debug_center_file_paths.xml",
+          "action": "add",
+          "sha256": "91427806bc91ee9804ec905f318ccd6635f6687834807dd28560c1da39268a60",
+          "size": 191
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugWorkbenchSettingsScreen.kt",
+          "action": "add",
+          "sha256": "2295ec7c4d44c7d24c08130779f4ea4b8427e17e2c6af9a57fa0a7f82344e324",
+          "size": 1103
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestModels.kt",
+          "action": "add",
+          "sha256": "2f5a83e75aaa2cc172697bd37754744f63342d7f044a93094d81768639d78d4f",
+          "size": 8018
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestCatalog.kt",
+          "action": "add",
+          "sha256": "e7dadb0be0c94a649ce32344c72c600490e68a1fb13e795394556232c15cb254",
+          "size": 40547
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestRunner.kt",
+          "action": "add",
+          "sha256": "369607a1605ee07e9839ecaaa3edd4b914c87d73fbd7c872a711f4de792ea233",
+          "size": 7277
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugTestStore.kt",
+          "action": "add",
+          "sha256": "b2169dbf193f355e8e96b951ee85b214b7c1a62e7a0e81f0bca9080c21e7e2d7",
+          "size": 5265
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterScreen.kt",
+          "action": "add",
+          "sha256": "b7f2509bb333270713c8c348b40568522ed0f928cec00c9a8358f1265c094278",
+          "size": 16109
+        },
+        {
+          "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/DebugCenterV4ContractTest.kt",
+          "action": "add",
+          "sha256": "199d59888df1c920d0f7e4d84d3df47fbf2ec3d529228f9a687029229330bb11",
+          "size": 4482
+        },
+        {
+          "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterFileProvider.kt",
+          "action": "add",
+          "sha256": "1dd3c01a4acc2157b38c2d4ff3498c4e95db089b14b245b0c4303a21fd967af0",
+          "size": 583
+        }
+      ]
+    },
+    "validation": {
+      "recommended_tasks": [
+        ":app:compileDebugKotlin",
+        ":app:testDebugUnitTest",
+        ":app:lintDebug"
+      ],
+      "notes": "Apply after capture reliability v4. This overlay uses overwrite conflict policy for Debug Center-owned files and fixes the FileProvider manifest-merger conflict by using a unique DebugCenterFileProvider subclass."
+    },
+    "apply": {
+      "atomic": true,
+      "path_policy": "repository-relative",
+      "conflict_policy": "overwrite",
+      "requires_clean_worktree": false,
+      "commit": {
+        "enabled": false,
+        "strategy": "single",
+        "message": ""
+      }
+    }
+  },
+  "history_id": "5fce2f3f2a7d4c1588d3124fe6719923"
+}
