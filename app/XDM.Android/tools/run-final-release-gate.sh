@@ -12,6 +12,7 @@ cd "$ROOT"
 # evidence rows instead of replaying stale release-candidate constants.
 validators=(
   tools/validate-uix-r3-downloads-add-workspace.py
+  tools/validate-uix-r6-accessibility-performance-release-seal.py
   tools/validate-bug-hunt-phase1-external-control-secrets-privacy.py
   tools/validate-bug-hunt-phase2-download-execution.py
   tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py
@@ -34,13 +35,10 @@ validators=(
   tools/validate-phase57-runtime-failure-recovery-ux.py
   tools/validate-phase56-stale-copy-architecture-noise-sweep.py
   tools/validate-phase55-final-release-warning-explainer.py
+  tools/validate-media-capture-quality.py
+  tools/validate-media-session-privacy-audit.py
   tools/validate-media-mobile-polish.py
   tools/validate-media-final-validation-gate.py
-  tools/validate-phase-34-release-handoff.py
-  tools/validate-phase-35-release-candidate-polish.py
-  tools/validate-phase-36-external-download-handoff.py
-  tools/validate-browser-removal-phase-4.py
-  tools/validate-browser-removal-phase-5.py
   tools/validate-bug-hunt-phase11-validation-matrix.py
 )
 

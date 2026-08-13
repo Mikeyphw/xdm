@@ -22,7 +22,7 @@ def find_root() -> Path:
 ROOT = find_root()
 REPO = ROOT.parent.parent
 OVERLAY = 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip'
-ACCEPTED_CURRENT_OVERLAYS = {OVERLAY, 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip'}
+ACCEPTED_CURRENT_OVERLAYS = {'xdm_android_foundation_gate_repair_overlay.zip', OVERLAY, 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip'}
 ERRORS: list[str] = []
 
 

@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ERRORS: list[str] = []
 OVERLAY = 'xdm_android_phase61_final_gate_validator_harmony_overlay.zip'
-LATER_OVERLAYS = {'xdm_android_bug_hunt_phase11_validation_matrix_full_overlay.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_r2_gap_closure_overlay.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip', 'xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip', 'xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip', 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip', 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip'}
+LATER_OVERLAYS = {'xdm_android_foundation_gate_repair_overlay.zip', 'xdm_android_bug_hunt_phase11_validation_matrix_full_overlay.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_r2_gap_closure_overlay.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip', 'xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip', 'xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip', 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip', 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip'}
 
 def read(relative: str) -> str:
     path = ROOT / relative

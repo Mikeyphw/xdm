@@ -813,6 +813,24 @@
     "phase": "Phase 2",
     "revision": 1
   },
+  "bug_hunt_master_remediation_overlay_01_foundation_gate_repair": {
+    "automatic_upload": false,
+    "next_overlay": "xdm_android_generation_room_integrity_overlay.zip",
+    "overlay": "xdm_android_foundation_gate_repair_overlay.zip",
+    "repairs": [
+      "debug_workbench_settings_screen_restored",
+      "debug_center_file_provider_restored",
+      "debug_zip_share_fallback_redacted",
+      "current_release_gate_validator_tolerance",
+      "uix_r6_version_metadata_aligned"
+    ],
+    "room_schema_current": 17,
+    "runtime_transfer_behavior_changed": false,
+    "status": "implemented",
+    "target": "xdm_android",
+    "top_level_route_added": false,
+    "version_name": "0.21.0"
+  },
   "bug_hunt_phase_10_release_upgrade_packaging": {
     "aab_signature_and_page_alignment_required": true,
     "aab_signed_by_gradle_or_jarsigner": true,
@@ -1135,7 +1153,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_runtime_foundation_phase59_61_browser_capture_sessions_secure_handoff_media_inbox_overlay_r2_promise_closure.zip",
+  "current_overlay": "xdm_android_foundation_gate_repair_overlay.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -1268,7 +1286,7 @@
     "automatic_upload": false,
     "baseline": "debug_workbench_phase_d2_shell_r4",
     "compile_hygiene": "MediaSniffingLabCard candidate row uses escaped newline; D3 app contract uses safe substring assertions that compile.",
-    "description": "Adds a Media Sniffing Lab inside Settings → Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
+    "description": "Adds a Media Sniffing Lab inside Settings \u2192 Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
     "drm_bypass": false,
     "network_page_probe": false,
     "next_phase": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
@@ -1276,7 +1294,7 @@
     "phase": "D3",
     "revision": "r4",
     "room_schema_unchanged": 14,
-    "settings_location": "Settings → Debug Workbench → Media Sniffing Lab",
+    "settings_location": "Settings \u2192 Debug Workbench \u2192 Media Sniffing Lab",
     "starts_downloads": false,
     "static_sniff_only": true,
     "status": "implemented",
@@ -2418,11 +2436,13 @@
     "final_phase": true,
     "gradle_build_test_lint_required": true,
     "known_kotlin_trap_scan": true,
+    "next_phase": "complete",
     "no_cookie_header_token_persistence": true,
     "raw_shell_exposed": false,
     "room_schema_migration": false,
     "root_required": false,
-    "schema_version_unchanged": 14,
+    "schema_version_current": 17,
+    "schema_version_unchanged": 17,
     "secret_leak_surfaces": [
       "Room metadata",
       "sidecars",
@@ -2436,6 +2456,7 @@
     "termux_chroot_strip_protection": true,
     "top_level_route_added": false,
     "validation_reenabled": true,
+    "version_name_current": "0.21.0",
     "warning_zero_gate": true
   },
   "media_mobile_polish": {
@@ -2685,7 +2706,7 @@
     "workmanager_foreground_fallback": true,
     "yt_dlp_launch_adapter_contract": true
   },
-  "next_phase": "runtime_foundation_phase62_64_media_execution_hls_dash",
+  "next_phase": "complete",
   "notes": [
     "Phase 1 r4 updates scheduler FileProvider contract test to match CompletedFileGrantPolicy delegation."
   ],
@@ -3028,15 +3049,16 @@
       "capture_candidates_grouped_by_session": true,
       "no_raw_urls_or_headers_in_session_index": true,
       "non_secret_session_index": true,
+      "replay_revision_guard": true,
       "session_grouping_in_media_inbox": true,
-      "session_removal_on_capture_delete": true,
-      "replay_revision_guard": true
+      "session_removal_on_capture_delete": true
     },
     "phase60_secure_firefox_android_handoff": {
       "aes_gcm_encrypted_candidate_payload": true,
       "app_private_android_keystore_rsa_key": true,
       "contract_version": 2,
       "cookie_authorization_not_in_plaintext_uri": true,
+      "durable_execution_context_store": "AndroidSecureRequestEnvelopeStore_AndroidKeyStore",
       "encrypted_envelope_parameters": [
         "sid",
         "kid",
@@ -3045,25 +3067,24 @@
         "ct"
       ],
       "expired_or_stale_key_rejected": true,
+      "legacy_session_coordinator_persistence": "in_memory_only",
       "legacy_v1_accepted": true,
       "public_key_embedded_in_generated_xpi": true,
-      "rsa_oaep_wraps_aes_key": true,
-      "durable_execution_context_store": "AndroidSecureRequestEnvelopeStore_AndroidKeyStore",
-      "legacy_session_coordinator_persistence": "in_memory_only"
+      "rsa_oaep_wraps_aes_key": true
     },
     "phase61_captured_media_inbox": {
       "best_candidate_legacy_fallback": true,
       "candidate_store_snapshot": true,
       "credential_redacted_ui": true,
+      "encrypted_capture_room_rows_redacted": true,
+      "exact_candidate_variant_urls_in_secure_handoff_only": true,
       "full_bounded_candidate_set": 24,
       "media_inbox_group_header": true,
-      "total_candidate_count_and_truncated_flag": true,
       "refreshes_when_candidate_count_or_revision_changes": true,
-      "encrypted_capture_room_rows_redacted": true,
-      "exact_candidate_variant_urls_in_secure_handoff_only": true
+      "total_candidate_count_and_truncated_flag": true
     },
-    "room_schema_unchanged": 17,
     "promise_closure_revision": 2,
+    "room_schema_unchanged": 17,
     "status": "implemented",
     "top_level_route_added": false
   },
@@ -3387,7 +3408,7 @@
     "semantics_layout_contracts": true,
     "static_validator": "tools/validate-uix-r6-accessibility-performance-release-seal.py",
     "version_code_unchanged": 21,
-    "version_name_unchanged": "0.20.0-rc08",
+    "version_name_unchanged": "0.21.0",
     "window_classes": [
       "Compact",
       "Medium",

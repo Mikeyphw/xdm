@@ -29,7 +29,7 @@ fun shareDebugCenterZipExport(
         shareTextReport(
             context = context,
             title = subject,
-            value = "Debug ZIP saved in private app storage:\n${zip.absolutePath}\n\n" + reportText,
+            value = "Debug ZIP export could not be attached. Share this redacted text report instead.\n\n" + reportText,
         )
     }
 }
