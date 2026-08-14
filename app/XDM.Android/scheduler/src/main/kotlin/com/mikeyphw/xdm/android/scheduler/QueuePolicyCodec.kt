@@ -24,10 +24,15 @@ internal object QueuePolicyCodec {
         val ordered = applicable.sortedWith(compareByDescending<ScheduleRule> { it.queueId == queue.id }.thenBy { it.name.lowercase() }.thenBy { it.id })
         val active = ordered.firstOrNull { rule ->
             val json = parse(rule.constraintsJson)
-            QueueIntelligencePlanner.isWindowActive(
-                days = json.optString("days", "Every day"),
-                startTime = json.optString("startTime", ""),
-                endTime = json.optString("endTime", ""),
+            val start = json.optString("startTime", "").trim()
+            val end = json.optString("endTime", "").trim()
+            val days = json.optString("days", "Every day")
+            val structurallyValid = !json.optBoolean(INVALID_MARKER, false) && isDaysExpression(days) &&
+                ((start.isBlank() && end.isBlank()) || (start.isNotBlank() && end.isNotBlank() && isClockTime(start) && isClockTime(end)))
+            structurallyValid && QueueIntelligencePlanner.isWindowActive(
+                days = days,
+                startTime = start,
+                endTime = end,
                 nowEpochMs = nowEpochMs,
             )
         }
@@ -67,12 +72,30 @@ internal object QueuePolicyCodec {
         val days = json.optString("days", "Every day")
         val start = json.optString("startTime", "")
         val end = json.optString("endTime", "")
-        return if (start.isBlank() || end.isBlank()) days else "$days • $start–$end"
+        return when {
+            json.optBoolean(INVALID_MARKER, false) || !isDaysExpression(days) -> "Invalid schedule configuration — review required"
+            start.isBlank() xor end.isBlank() || (start.isNotBlank() && (!isClockTime(start) || !isClockTime(end))) -> "Incomplete schedule window — review required"
+            start.isBlank() && end.isBlank() -> days
+            else -> "$days • $start–$end"
+        }
     }
 
     private fun defaultPolicy(queue: QueueDefinition) = QueueExecutionPolicy(maxConcurrent = queue.maxConcurrent.coerceIn(1, 16))
 
-    private fun parse(value: String): JSONObject = runCatching { JSONObject(value.ifBlank { "{}" }) }.getOrElse { JSONObject() }
+    private fun isClockTime(value: String): Boolean = runCatching { java.time.LocalTime.parse(value) }.isSuccess
+
+    private fun isDaysExpression(value: String): Boolean {
+        val normalized = value.trim().lowercase()
+        if (normalized.isBlank()) return false
+        if (normalized in setOf("every day", "daily", "weekdays", "weekends")) return true
+        val allowed = setOf("mon", "monday", "tue", "tuesday", "wed", "wednesday", "thu", "thursday", "fri", "friday", "sat", "saturday", "sun", "sunday")
+        val tokens = normalized.split(',', ';', ' ').map(String::trim).filter(String::isNotBlank)
+        return tokens.isNotEmpty() && tokens.all(allowed::contains)
+    }
+
+    private fun parse(value: String): JSONObject = runCatching { JSONObject(value.ifBlank { "{}" }) }.getOrElse { JSONObject().put(INVALID_MARKER, true) }
+
+    private const val INVALID_MARKER = "_xdmInvalidSchedule"
 
     private fun JSONObject.optIntOrNull(key: String): Int? = if (has(key) && !isNull(key)) optInt(key) else null
     private fun JSONObject.optLongOrNull(key: String): Long? = if (has(key) && !isNull(key)) optLong(key) else null

@@ -8,8 +8,9 @@ class TransferLaunchPolicyTest {
         assertEquals(TransferLaunchMode.UserInitiatedJob, TransferLaunchPolicy.select(34, true))
     }
 
-    @Test fun olderOrBackgroundLaunchUsesForegroundService() {
+    @Test fun visibleLegacyLaunchUsesForegroundServiceButBackgroundUsesWorkManager() {
         assertEquals(TransferLaunchMode.ForegroundService, TransferLaunchPolicy.select(33, true))
-        assertEquals(TransferLaunchMode.ForegroundService, TransferLaunchPolicy.select(36, false))
+        assertEquals(TransferLaunchMode.WorkManager, TransferLaunchPolicy.select(36, false))
+        assertEquals(TransferLaunchMode.WorkManager, TransferLaunchPolicy.select(33, false))
     }
 }

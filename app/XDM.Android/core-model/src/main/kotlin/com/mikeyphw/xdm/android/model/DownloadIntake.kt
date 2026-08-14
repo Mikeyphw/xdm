@@ -34,14 +34,17 @@ object DownloadIntakeClassifier {
             ?.substringBefore(';')
             ?.trim()
             ?.lowercase(Locale.US)
-        val lowerPath = runCatching { URI(url).path.orEmpty().lowercase(Locale.US) }
-            .getOrDefault(url.lowercase(Locale.US))
+        val uri = runCatching { URI(url) }.getOrNull()
+        val scheme = uri?.scheme?.lowercase(Locale.US)
+        val lowerPath = uri?.path.orEmpty().lowercase(Locale.US).ifBlank { url.lowercase(Locale.US) }
         val lowerName = fileName?.trim()?.lowercase(Locale.US).orEmpty()
         val searchableName = lowerName.ifBlank { lowerPath }
 
         return when {
             normalizedMime in AdaptiveMimeTypes || searchableName.hasAnySuffix(AdaptiveExtensions) -> DownloadIntakeKind.AdaptiveMedia
-            normalizedMime == "application/x-bittorrent" || searchableName.hasAnySuffix(setOf(".torrent")) -> DownloadIntakeKind.Torrent
+            scheme == "magnet" || normalizedMime == "application/x-bittorrent" ||
+                normalizedMime in setOf("application/metalink4+xml", "application/metalink+xml") ||
+                searchableName.hasAnySuffix(setOf(".torrent", ".meta4", ".metalink")) -> DownloadIntakeKind.Torrent
             normalizedMime?.startsWith("video/") == true ||
                 normalizedMime?.startsWith("audio/") == true ||
                 searchableName.hasAnySuffix(MediaExtensions) -> DownloadIntakeKind.DirectMedia
@@ -222,7 +225,7 @@ class DownloadIntakePlanner(
         redactedHeaderSummary: String? = null,
         allowedSchemes: Set<String>,
     ): DownloadIntakeDraft? {
-        val normalizedUrl = ExternalUrlPolicy.normalizedUrl(url)
+        val normalizedUrl = normalizeDownloadUrl(url)
         if (normalizedUrl == null) {
             recordDebugIntake(prefix, origin, "rejected", mapOf("reason" to "invalid-url", "url" to url))
             return null
@@ -241,11 +244,11 @@ class DownloadIntakePlanner(
             sourceLabel = sourceLabel.cleanLabel() ?: "External app",
             origin = origin,
             pageTitle = pageTitle.cleanText(160),
-            pageUrl = ExternalUrlPolicy.normalizedUrl(pageUrl),
+            pageUrl = normalizeHttpUrl(pageUrl),
             mimeType = cleanMimeType,
             contentLength = contentLength?.takeIf { it > 0L },
             durationMs = durationMs?.takeIf { it > 0L },
-            thumbnailUrl = ExternalUrlPolicy.normalizedUrl(thumbnailUrl),
+            thumbnailUrl = normalizeHttpUrl(thumbnailUrl),
             requestHeaders = requestHeaders.cleanRequestHeaders(),
             redactedHeaderSummary = redactedHeaderSummary.cleanText(500),
             kind = DownloadIntakeClassifier.classify(normalizedUrl, cleanFileName, cleanMimeType),
@@ -300,11 +303,35 @@ class DownloadIntakePlanner(
     private fun Map<String, String>.cleanRequestHeaders(): Map<String, String> = entries
         .asSequence()
         .mapNotNull { (rawName, rawValue) ->
-            val name = rawName.trim().take(64).takeIf { it.isNotBlank() && it.none { char -> char == '\r' || char == '\n' } } ?: return@mapNotNull null
+            val name = rawName.trim().take(64).takeIf { candidate ->
+                candidate.isNotBlank() && candidate.none { char -> char == '\r' || char == '\n' } &&
+                    HEADER_NAME.matches(candidate) && isAllowedRequestHeader(candidate)
+            } ?: return@mapNotNull null
             val value = rawValue.trim().take(8192).takeIf { it.isNotBlank() && it.none { char -> char == '\r' || char == '\n' } } ?: return@mapNotNull null
             name to value
         }
         .toMap()
+
+    private fun isAllowedRequestHeader(name: String): Boolean {
+        val normalized = name.lowercase(Locale.US)
+        return normalized in ALLOWED_REQUEST_HEADERS || normalized.startsWith("sec-fetch-")
+    }
+
+    private fun normalizeDownloadUrl(value: String?): String? {
+        val raw = value?.trim()?.takeIf(String::isNotBlank) ?: return null
+        val uri = runCatching { URI(raw) }.getOrNull() ?: return null
+        if (uri.scheme.equals("magnet", true)) {
+            if (uri.rawFragment != null || uri.rawSchemeSpecificPart.isNullOrBlank()) return null
+            return "magnet:" + uri.rawSchemeSpecificPart
+        }
+        return ExternalUrlPolicy.normalizedUrl(raw)
+    }
+
+    private fun normalizeHttpUrl(value: String?): String? {
+        val normalized = ExternalUrlPolicy.normalizedUrl(value) ?: return null
+        val scheme = runCatching { URI(normalized).scheme?.lowercase(Locale.US) }.getOrNull()
+        return normalized.takeIf { scheme in HttpSchemes }
+    }
 
     private fun String?.cleanMimeType(): String? = this
         ?.substringBefore(';')
@@ -314,6 +341,12 @@ class DownloadIntakePlanner(
 
     private companion object {
         val HttpSchemes = setOf("http", "https")
-        val DownloadSchemes = setOf("http", "https", "ftp")
+        val DownloadSchemes = setOf("http", "https", "ftp", "magnet")
+        val HEADER_NAME = Regex("[!#$%&'*+.^_`|~0-9A-Za-z-]+")
+        val ALLOWED_REQUEST_HEADERS = setOf(
+            "accept", "accept-encoding", "accept-language", "authorization", "cookie", "origin",
+            "referer", "range", "user-agent", "if-range", "if-none-match", "if-modified-since",
+            "x-api-key", "x-auth-token", "x-access-token", "x-csrf-token",
+        )
     }
 }

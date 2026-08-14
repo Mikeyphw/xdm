@@ -19,6 +19,7 @@ import com.mikeyphw.xdm.android.transfer.BackendSnapshot
 import com.mikeyphw.xdm.android.transfer.BackendTask
 import com.mikeyphw.xdm.android.transfer.DownloadBackend
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
+import com.mikeyphw.xdm.android.transfer.DownloadRequestApprovalScope
 import com.mikeyphw.xdm.android.storage.DestinationRequest
 import com.mikeyphw.xdm.android.storage.DestinationPublicationException
 import com.mikeyphw.xdm.android.storage.DestinationWriter
@@ -29,10 +30,12 @@ import java.io.RandomAccessFile
 import java.net.URI
 import java.net.InetAddress
 import java.net.Inet6Address
+import java.net.UnknownHostException
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.min
 import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
@@ -55,6 +58,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.Call
+import okhttp3.Dns
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -123,6 +127,7 @@ class NativeHttpDownloadBackend(
         val taskId = UUID.randomUUID().toString()
         val control = TaskControl(
             request = request,
+            networkClient = client.newBuilder().dns(NativeRequestSecurityDns(securityContext(request))).build(),
             preparedDestination = nativePreparation.destination,
             artifacts = nativePreparation.artifacts,
             state = MutableStateFlow(
@@ -719,13 +724,25 @@ class NativeHttpDownloadBackend(
     }
 
     private fun Request.Builder.applySecurityContext(request: DownloadRequest): Request.Builder = apply {
-        tag(
-            NativeRequestSecurityContext::class.java,
-            NativeRequestSecurityContext(
-                originalScheme = URI(request.sourceUrl).scheme.orEmpty().lowercase(),
-                privateNetworkApproved = request.privateNetworkApproved,
-                cleartextCredentialsApproved = request.cleartextCredentialsApproved,
-            ),
+        tag(NativeRequestSecurityContext::class.java, securityContext(request))
+    }
+
+    private fun securityContext(request: DownloadRequest): NativeRequestSecurityContext {
+        val approvedPrivateHosts = buildList {
+            add(request.sourceUrl)
+            addAll(request.mirrors)
+        }.mapNotNull { target ->
+            val scope = DownloadRequestApprovalScope.forUrl(target) ?: return@mapNotNull null
+            if (!request.privateNetworkApproved || scope !in request.privateNetworkApprovalScopes) return@mapNotNull null
+            runCatching { URI(target).host?.lowercase() }.getOrNull()
+        }.toSet()
+        return NativeRequestSecurityContext(
+            privateNetworkApproved = request.privateNetworkApproved,
+            cleartextCredentialsApproved = request.cleartextCredentialsApproved,
+            privateNetworkApprovalScopes = request.privateNetworkApprovalScopes,
+            cleartextCredentialApprovalScopes = request.cleartextCredentialApprovalScopes,
+            privateApprovedHosts = approvedPrivateHosts,
+            lastObservedScheme = AtomicReference(URI(request.sourceUrl).scheme.orEmpty().lowercase()),
         )
     }
 
@@ -760,7 +777,7 @@ class NativeHttpDownloadBackend(
     }
 
     private fun execute(control: TaskControl, request: Request): Response {
-        val call = client.newCall(request)
+        val call = control.networkClient.newCall(request)
         control.activeCalls += call
         try {
             return call.execute()
@@ -880,6 +897,7 @@ class NativeHttpDownloadBackend(
 
     private class TaskControl(
         val request: DownloadRequest,
+        val networkClient: OkHttpClient,
         val preparedDestination: PreparedDestination,
         val artifacts: BackendArtifactIdentity,
         val state: MutableStateFlow<BackendSnapshot>,
@@ -935,10 +953,32 @@ private object NativeAndroidNetworkSecurityPolicy {
 }
 
 private data class NativeRequestSecurityContext(
-    val originalScheme: String,
     val privateNetworkApproved: Boolean,
     val cleartextCredentialsApproved: Boolean,
+    val privateNetworkApprovalScopes: Set<String>,
+    val cleartextCredentialApprovalScopes: Set<String>,
+    val privateApprovedHosts: Set<String>,
+    val lastObservedScheme: AtomicReference<String>,
 )
+
+/**
+ * OkHttp consumes exactly the addresses returned here for route selection. A public hostname that
+ * rebinds to a private/special address therefore cannot reach connect() unless this request's
+ * durable approval explicitly covered that hostname. Exact URL scope is checked again by the
+ * network interceptor before bytes are exchanged.
+ */
+private class NativeRequestSecurityDns(
+    private val context: NativeRequestSecurityContext,
+) : Dns {
+    override fun lookup(hostname: String): List<InetAddress> {
+        val addresses = Dns.SYSTEM.lookup(hostname)
+        if (addresses.isEmpty()) throw UnknownHostException("$hostname resolved to no addresses")
+        if (addresses.any(::isPrivateOrSpecialAddress) && hostname.lowercase() !in context.privateApprovedHosts) {
+            throw UnknownHostException("Private or special route blocked for unapproved host")
+        }
+        return addresses
+    }
+}
 
 private class NativeRequestSecurityInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -947,30 +987,50 @@ private class NativeRequestSecurityInterceptor : Interceptor {
             ?: throw IOException("Missing XDM request security context")
         val host = request.url.host
         val scheme = request.url.scheme.lowercase()
+        val targetScope = DownloadRequestApprovalScope.forUrl(request.url.toString())
+            ?: throw IOException("Request target cannot be bound to an approval scope")
+        val previousScheme = context.lastObservedScheme.getAndSet(scheme)
         if (scheme == "http") {
-            if (context.originalScheme == "https") throw IOException("HTTPS-to-HTTP redirect blocked")
+            if (previousScheme == "https") throw IOException("HTTPS-to-HTTP redirect blocked")
             if (!NativeAndroidNetworkSecurityPolicy.isCleartextTrafficPermitted(host)) {
                 throw IOException("Cleartext request blocked by Android network security policy")
             }
-            val sensitive = request.headers.names().any { it.equals("Cookie", true) || it.equals("Authorization", true) }
-            if (sensitive && !context.cleartextCredentialsApproved) {
-                throw IOException("Sensitive headers cannot be sent over cleartext transport")
+            val sensitive = request.headers.names().any(::isSensitiveRequestHeader) || ExternalUrlPolicy.hasCredentialBearingQuery(request.url.toString())
+            if (sensitive && (!context.cleartextCredentialsApproved || targetScope !in context.cleartextCredentialApprovalScopes)) {
+                throw IOException("Sensitive request credentials cannot be sent over cleartext transport without exact-target approval")
             }
         }
-        val privateTarget = runCatching { InetAddress.getAllByName(host).any(::isPrivateOrSpecialAddress) }.getOrDefault(true)
-        if (privateTarget && !context.privateNetworkApproved) throw IOException("Redirect to a private or unresolved network target blocked")
+        // A request-bound Dns implementation already rejected unapproved private resolutions
+        // before connect. Check OkHttp's actual selected route here so exact URL approval is
+        // enforced against the address that will carry this exchange, including redirects.
+        val routeAddress = chain.connection()?.route()?.socketAddress?.address
+            ?: throw IOException("Unable to verify the selected network route")
+        if (isPrivateOrSpecialAddress(routeAddress) &&
+            (!context.privateNetworkApproved || targetScope !in context.privateNetworkApprovalScopes)
+        ) {
+            throw IOException("Redirect to a private network route blocked without exact-target approval")
+        }
         return chain.proceed(request)
     }
 
-    private fun isPrivateOrSpecialAddress(address: InetAddress): Boolean {
-        if (address.isAnyLocalAddress || address.isLoopbackAddress || address.isLinkLocalAddress || address.isSiteLocalAddress || address.isMulticastAddress) return true
-        val bytes = address.address
-        if (address is Inet6Address && bytes.firstOrNull()?.toInt()?.and(0xFE) == 0xFC) return true
-        if (bytes.size == 4) {
-            val first = bytes[0].toInt() and 0xFF
-            val second = bytes[1].toInt() and 0xFF
-            if (first == 0 || first >= 224 || first == 127 || (first == 100 && second in 64..127)) return true
-        }
-        return false
+    private fun isSensitiveRequestHeader(name: String): Boolean {
+        val normalized = name.trim().lowercase()
+        return normalized in setOf(
+            "authorization", "cookie", "proxy-authorization", "x-api-key", "api-key",
+            "x-auth-token", "x-access-token", "x-csrf-token",
+        ) || normalized.contains("token") || normalized.endsWith("-key")
     }
+
+}
+
+private fun isPrivateOrSpecialAddress(address: InetAddress): Boolean {
+    if (address.isAnyLocalAddress || address.isLoopbackAddress || address.isLinkLocalAddress || address.isSiteLocalAddress || address.isMulticastAddress) return true
+    val bytes = address.address
+    if (address is Inet6Address && bytes.firstOrNull()?.toInt()?.and(0xFE) == 0xFC) return true
+    if (bytes.size == 4) {
+        val first = bytes[0].toInt() and 0xFF
+        val second = bytes[1].toInt() and 0xFF
+        if (first == 0 || first >= 224 || first == 127 || (first == 100 && second in 64..127)) return true
+    }
+    return false
 }

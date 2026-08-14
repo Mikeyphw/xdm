@@ -33,10 +33,21 @@ class QueueConditionMonitor(
 
     fun start() {
         if (started) return
-        started = true
-        runCatching { connectivity.registerDefaultNetworkCallback(networkCallback) }
-        val filter = IntentFilter().apply { MONITORED_ACTIONS.forEach(::addAction) }
-        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        var networkRegistered = false
+        var receiverRegistered = false
+        try {
+            connectivity.registerDefaultNetworkCallback(networkCallback)
+            networkRegistered = true
+            val filter = IntentFilter().apply { MONITORED_ACTIONS.forEach(::addAction) }
+            ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+            receiverRegistered = true
+            started = true
+        } catch (error: Throwable) {
+            if (networkRegistered) runCatching { connectivity.unregisterNetworkCallback(networkCallback) }
+            if (receiverRegistered) runCatching { context.unregisterReceiver(receiver) }
+            started = false
+            throw error
+        }
     }
 
     fun stop() {

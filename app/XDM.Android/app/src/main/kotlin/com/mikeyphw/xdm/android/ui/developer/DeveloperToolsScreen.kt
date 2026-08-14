@@ -838,7 +838,7 @@ fun DiagnosticsScreen(
             }
         }
         item { DiagnosticLine("Native backend", "HTTP/HTTPS, checkpoints, resume and segmentation") }
-        item { DiagnosticLine("Execution", "UIDT on Android 14+, foreground dataSync fallback") }
+        item { DiagnosticLine("Execution", "UIDT for visible Android 14+ starts; WorkManager for background/fallback; foreground dataSync on older visible starts") }
         item { DiagnosticLine("Active transfers", state.activeTransfers.activeCount.toString()) }
         item {
             Card(Modifier.fillMaxWidth()) {

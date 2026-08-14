@@ -30,12 +30,17 @@ class BugHuntPhase2DownloadExecutionContractTest {
         val job = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt")
         val service = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt")
         assertTrue(worker.contains("if (isStopped) pauseAndRecordStop()"))
-        assertTrue(worker.contains("runtime.pauseAll()"))
-        assertTrue(job.contains("withTimeoutOrNull(5_000)"))
-        assertTrue(job.contains("transferRuntime.pause(downloadId)"))
-        assertTrue(service.contains("runtime.summary.value.activeCount > 0"))
-        assertTrue(service.contains("withTimeoutOrNull(3_000)"))
-        assertTrue(service.contains("runtime.pauseAll()"))
+        assertTrue(worker.contains("ownedClaims"))
+        assertTrue(worker.contains("runtime.pauseOwned(downloadId, queueClaimToken)"))
+        assertTrue(worker.contains("attemptGeneration = durableGeneration"))
+        assertFalse(worker.contains("else runtime.pauseAll()"))
+        assertTrue(job.contains("runtime.requestPauseOwnedAsync(downloadId, queueClaimToken)"))
+        assertTrue(job.contains("attemptGeneration = attemptGeneration"))
+        assertTrue(service.contains("runtime.summary.value.activeCount == 0"))
+        assertTrue(service.contains("ownedClaims"))
+        assertTrue(service.contains("runtime.requestPauseOwnedAsync(downloadId, queueClaimToken)"))
+        assertFalse(service.contains("runtime.requestPauseAllAsync()"))
+        assertTrue(service.contains("runtime.execute(id, queueClaimToken)"))
     }
 
     @Test

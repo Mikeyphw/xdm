@@ -5,6 +5,8 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import com.mikeyphw.xdm.android.transfer.DownloadRequestKind
+import com.mikeyphw.xdm.android.transfer.inferDownloadRequestKind
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
@@ -27,12 +29,16 @@ data class SecureRequestEnvelope(
     val boundHost: String? = null,
     val pageUrl: String? = null,
     val headers: Map<String, String> = emptyMap(),
+    val requestKind: DownloadRequestKind = DownloadRequestKind.Direct,
+    val mirrors: List<String> = emptyList(),
     val redactedSummary: String = "",
     val isExpiringUrl: Boolean = false,
     val expiresAtEpochMs: Long = Long.MAX_VALUE,
     val attemptGeneration: Long = 0L,
     val privateNetworkApproved: Boolean = false,
     val cleartextCredentialsApproved: Boolean = false,
+    val privateNetworkApprovalScopes: Set<String> = emptySet(),
+    val cleartextCredentialApprovalScopes: Set<String> = emptySet(),
     val cleanupActions: List<String> = emptyList(),
     val tempCookieFileName: String? = null,
     val createdAtEpochMs: Long = System.currentTimeMillis(),
@@ -218,12 +224,16 @@ private fun SecureRequestEnvelope.toJson(): JSONObject = JSONObject()
     .put("boundHost", boundHost)
     .put("pageUrl", pageUrl)
     .put("headers", JSONObject(headers))
+    .put("requestKind", requestKind.name)
+    .put("mirrors", JSONArray(mirrors))
     .put("redactedSummary", redactedSummary)
     .put("isExpiringUrl", isExpiringUrl)
     .put("expiresAtEpochMs", expiresAtEpochMs)
     .put("attemptGeneration", attemptGeneration)
     .put("privateNetworkApproved", privateNetworkApproved)
     .put("cleartextCredentialsApproved", cleartextCredentialsApproved)
+    .put("privateNetworkApprovalScopes", JSONArray(privateNetworkApprovalScopes.toList().sorted()))
+    .put("cleartextCredentialApprovalScopes", JSONArray(cleartextCredentialApprovalScopes.toList().sorted()))
     .put("cleanupActions", JSONArray(cleanupActions))
     .put("tempCookieFileName", tempCookieFileName)
     .put("createdAtEpochMs", createdAtEpochMs)
@@ -236,12 +246,24 @@ private fun secureRequestEnvelopeFromJson(json: JSONObject): SecureRequestEnvelo
     headers = json.optJSONObject("headers")?.let { objectJson ->
         objectJson.keys().asSequence().associateWith { key -> objectJson.optString(key) }
     }.orEmpty(),
+    requestKind = json.optString("requestKind").takeIf(String::isNotBlank)
+        ?.let { persisted -> runCatching { DownloadRequestKind.valueOf(persisted) }.getOrNull() }
+        ?: inferDownloadRequestKind(json.optString("exactUrl")),
+    mirrors = json.optJSONArray("mirrors")?.let { array ->
+        (0 until array.length()).mapNotNull { index -> array.optString(index).trim().takeIf(String::isNotBlank) }
+    }.orEmpty(),
     redactedSummary = json.optString("redactedSummary"),
     isExpiringUrl = json.optBoolean("isExpiringUrl"),
     expiresAtEpochMs = json.optLong("expiresAtEpochMs", Long.MAX_VALUE),
     attemptGeneration = json.optLong("attemptGeneration", 0L),
     privateNetworkApproved = json.optBoolean("privateNetworkApproved"),
     cleartextCredentialsApproved = json.optBoolean("cleartextCredentialsApproved"),
+    privateNetworkApprovalScopes = json.optJSONArray("privateNetworkApprovalScopes")?.let { array ->
+        (0 until array.length()).mapNotNull { index -> array.optString(index).takeIf(String::isNotBlank) }.toSet()
+    }.orEmpty(),
+    cleartextCredentialApprovalScopes = json.optJSONArray("cleartextCredentialApprovalScopes")?.let { array ->
+        (0 until array.length()).mapNotNull { index -> array.optString(index).takeIf(String::isNotBlank) }.toSet()
+    }.orEmpty(),
     cleanupActions = json.optJSONArray("cleanupActions")?.let { array ->
         (0 until array.length()).mapNotNull { index -> array.optString(index).takeIf(String::isNotBlank) }
     }.orEmpty(),

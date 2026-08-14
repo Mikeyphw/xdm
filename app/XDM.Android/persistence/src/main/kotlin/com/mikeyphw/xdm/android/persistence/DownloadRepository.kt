@@ -164,6 +164,35 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun transitionAutomationCommand(id: String, from: List<AutomationCommandStatus>, to: AutomationCommandStatus, message: String): Int = database.downloadGraphTransactionDao().transitionAutomationCommand(id, from.map { it.name }, to.name, message, System.currentTimeMillis())
     suspend fun markAutomationCommandExecuting(id: String): Boolean = database.downloadGraphTransactionDao().markAutomationCommandExecuting(id, System.currentTimeMillis())
     suspend fun findDownload(id: String): Download? = database.downloadDao().findById(id)?.toModel()
+    suspend fun claimQueueSlotAtomically(
+        downloadId: String,
+        queueId: String?,
+        maxConcurrent: Int,
+        activeStates: Set<DownloadState>,
+        candidateStates: Set<DownloadState>,
+        nowEpochMs: Long = System.currentTimeMillis(),
+    ): Boolean = database.downloadGraphTransactionDao().claimQueueSlot(
+        downloadId,
+        queueId,
+        maxConcurrent,
+        activeStates.map(DownloadState::name),
+        candidateStates.map(DownloadState::name),
+        nowEpochMs,
+    )
+
+    suspend fun releaseQueueLaunchClaim(
+        downloadId: String,
+        attemptGeneration: Long,
+        queueClaimToken: Long,
+        message: String? = null,
+    ): Boolean = database.downloadGraphTransactionDao().releaseQueueLaunchClaim(
+        downloadId,
+        attemptGeneration,
+        queueClaimToken,
+        message,
+        System.currentTimeMillis(),
+    ) == 1
+
     suspend fun deleteDownload(id: String) = database.downloadGraphTransactionDao().deleteDownloadGraph(id)
     suspend fun deleteDownloadEntryIfTerminal(download: Download, terminalStates: Set<DownloadState>): Boolean =
         database.downloadGraphTransactionDao().deleteDownloadGraphIfTerminal(

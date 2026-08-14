@@ -1,11 +1,11 @@
-# XDM Android master remediation Overlay 02+03 v2: generation integrity + durable external review
+# XDM Android master remediation Overlay 04+05 v2: request security + queue/runtime ownership
 
 Target: `xdm_android`.
 
-This corrected intermediate schema-v2 devtool artifact is built on Overlay 01 / commit `c66ec424`. It supersedes `xdm_android_generation_room_integrity_durable_review_overlay_v1.zip` and combines the next two dependency-ordered remediation phases:
+This corrected intermediate schema-v2 devtool artifact supersedes v1 and is built on the successfully applied Overlay 02+03 state / commit `9d1608ec` and combines the next two dependency-ordered remediation phases:
 
-1. generation / Room graph integrity
-2. external handoff durable review
+1. request security envelope
+2. queue/runtime ownership
 
 ## Manifest-controlled defaults
 
@@ -14,45 +14,45 @@ This corrected intermediate schema-v2 devtool artifact is built on Overlay 01 / 
   - `:app:compileDebugKotlin`
   - `:app:testDebugUnitTest`
   - `:app:lintDebug`
+- `validation.allow_deferred`: `true`
 - `apply.commit.enabled`: `true`
 - `apply.commit.strategy`: `single`
-- `apply.commit.message`: `Apply XDM Android generation integrity and durable review`
+- `apply.commit.message`: `Apply XDM Android request security and queue runtime ownership`
 
-Validation is intentionally deferred for the remediation campaign. Apply this intermediate overlay with `--no-validate`; the declared task list remains in the artifact as the canonical final-validation contract.
+Validation is intentionally deferred for the remediation campaign. Apply this intermediate overlay with `--no-validate`; the declared task list remains the canonical final-validation contract.
 
-## Phase 02 — generation / Room integrity
+## Phase 04 — request security envelope
 
-- advances Room 17 -> 18 and commits exported schema 18;
-- carries attempt generation through downloads, backend ownership/migration, backend snapshots, native checkpoints, checksums, verification, trusted blocks, recovery and finalization;
-- creates backend tasks paused and requires durable ownership attachment before native/aria2 activation;
-- binds migrated target tasks to the newly transferred ownership generation rather than the source generation;
-- rejects runtime snapshots whose generation or installation identity does not match durable ownership;
-- adds Room foreign-key graph protection and transactional terminal graph deletion while preserving review/recovery history by detachment;
-- blocks terminal graph deletion while post-processing is active;
-- makes batch download upserts atomic with whole-batch stale-write preflight and requires strictly newer timestamps for same-generation writes;
-- makes transfer/runtime persistence rejection visible and prevents queue/fake-data batch writers from silently ignoring rejected saves;
-- supports explicit empty media-variant replacement;
-- adds MigrationTestHelper coverage for 17 -> 18, 14 -> 18 and the oldest authentic exported-schema chain 4 -> 18; manual legacy 1 -> 4 migration tests remain because exported schemas 1-3 do not exist in repository history.
+- exact-target approval scopes cover primary URLs, mirrors, migration, media probes, and native redirect hops;
+- sensitive/transport-owned headers and malformed URL authority are rejected before transfer;
+- Android cleartext policy is honored and sensitive cleartext requests require exact approval;
+- torrent/magnet/metalink are explicit `DownloadRequest` kinds, persisted inside the encrypted handoff so caller filename/MIME metadata cannot reclassify a reviewed request after restart;
+- backend migration reconstructs exact encrypted request context, including request kind and mirrors, instead of using only redacted Room metadata;
+- app-side media probing uses the same security boundary and bounded manual redirects;
+- media variant selection cannot widen a capture approval to a different URL;
+- sensitive legacy migration envelopes recognizable URL/header material before fail-closed redaction, uses `AtomicFile`, advances rewritten Download timestamps monotonically, and never inherits historical approval;
+- unsupported plaintext legacy capture-media handoffs are rejected on the app side.
 
-## Phase 03 — external durable review
+## Phase 05 — queue/runtime ownership
 
-- `ExternalAddDownloadActivity` is review-only and no longer subclasses `MainActivity`;
-- accepted external requests persist their exact sensitive request material in the secure durable envelope before an executable Room command is exposed;
-- `MainActivity` receives only a persisted internal command ID and does not replay the original external launch intent after recreation;
-- command side effects require an exclusive durable Room claim;
-- interrupted `Claimed`/`Executing` commands recover after process death; review commands reopen review and replay-safe executable commands reacquire the durable claim;
-- direct external enqueue uses a deterministic download ID so replay converges instead of duplicating downloads;
-- integration-token auto-execution is limited to public `EnqueueDownload`; higher-impact/private actions require user review;
-- Android-observed caller identity is separated from caller-supplied origin/referrer diagnostics;
-- reviewed Add Download remains `Executing` until a durable download row exists, while dismissal records `Rejected/UserDeclined`;
-- download/destination/queue/browser-export business decisions read authoritative Room/DataStore state rather than `MainUiState` snapshots.
+- startup and boot converge on one ownership-first recovery pipeline behind a durable startup admission hold;
+- Room transactionally owns queue slots with `Connecting` as the durable claim and unified null/default queue capacity; failed launch release requires the exact queue-claim token and later runtime transitions preserve strictly newer same-generation timestamps;
+- explicit Pause All is a committed admission gate; Resume All explicitly clears it;
+- pause/resume/cancel reconcile durable backend ownership after process death instead of mutating Room alone;
+- UIDT / foreground-service / WorkManager ownership is selected according to user visibility and platform support, with WorkManager as the legal deferrable/fallback owner; every scheduled owner reauthorizes the exact durable Connecting-row claim token and admission gate before execution; stale Android stop callbacks are serialized by that token and can pause only their own claim; backend attempt generation is bound to that exact queue token rather than download ID alone and remains a separate ownership proof created by the runtime;
+- terminal notifications use persisted idempotency and durable collision-free IDs;
+- retry generations use attempt/error identity and one-time deadline work;
+- schedule, battery, destination-storage, Pause All, and starvation policy gaps fail closed or converge on durable state;
+- notification Resume/Retry re-enter queue policy rather than directly starting an FGS.
+
+See `app/XDM.Android/docs/remediation/OVERLAY_04_05_REQUEST_SECURITY_QUEUE_RUNTIME_OWNERSHIP.md` for the implementation boundary.
 
 ## Apply
 
 ```bash
-devtool -r "$HOME/Code/xdm" --yes apply-overlays \
-  "/sdcard/Download/xdm_android_generation_room_integrity_durable_review_overlay_v2.zip" \
+devtool -r "$HOME/Code/xdm" --yes apply-overlay \
+  "/sdcard/Download/xdm_android_request_security_queue_runtime_ownership_overlay_v2.zip" \
   --no-validate
 ```
 
-Do not apply v1. Do not start Overlay 04 until this corrected artifact applies cleanly. Campaign validation remains deferred until the final overlay.
+Do not start Overlay 06 until this artifact applies cleanly. Campaign validation remains deferred until the final overlay.

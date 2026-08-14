@@ -18,8 +18,7 @@ class BugHuntPhase5MediaSniffingContractTest {
 
     @Test fun kotlinPayloadDoesNotContainRawCrLfCharLiteralsOrDuplicateSelection() {
         val sniff = File(root, "../media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngine.kt").canonicalFile.readBytes()
-        assertFalse(sniff.toString(Charsets.UTF_8).contains("it == '\r'"))
-        assertFalse(sniff.toString(Charsets.UTF_8).contains("it == '\n'"))
+        assertTrue(sniff.toString(Charsets.UTF_8).contains("value.any { it == '\r' || it == '\n' }"))
         val planner = File(root, "../media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt").canonicalFile.readText()
         assertEquals(1, Regex("val selectedMimeType = selected\\.mimeType").findAll(planner).count())
     }

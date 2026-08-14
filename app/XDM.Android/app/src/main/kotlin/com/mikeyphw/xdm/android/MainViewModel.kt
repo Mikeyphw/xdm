@@ -117,6 +117,8 @@ import com.mikeyphw.xdm.android.storage.PersonalDirectStorage
 import com.mikeyphw.xdm.android.termux.TermuxRunStatus
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
+import com.mikeyphw.xdm.android.transfer.DownloadRequestApprovalScope
+import com.mikeyphw.xdm.android.transfer.inferDownloadRequestKind
 import com.mikeyphw.xdm.android.transfer.newChecksumExpectationId
 import com.mikeyphw.xdm.android.transfer.parseExpectedChecksum
 import com.mikeyphw.xdm.android.util.sanitizeFileName
@@ -354,7 +356,11 @@ class MainViewModel(
     private val mediaIntakeFeedback = MutableStateFlow(MediaIntakeFeedbackUi())
     private val mediaCaptureService = MediaCaptureService()
     private val mediaSniffingEngine = MediaSniffingEngine(mediaCaptureService, debugRecorder = debugEventRecorder)
-    private val mediaPageProbe = MediaPageProbe(mediaSniffingEngine, debugRecorder = debugEventRecorder)
+    private val mediaPageProbe = MediaPageProbe(
+        mediaSniffingEngine,
+        debugRecorder = debugEventRecorder,
+        securityValidator = transferRuntime::validateRequestSecurity,
+    )
     private val mediaCaptureIntakePlanner = MediaCaptureIntakePlanner(mediaCaptureService)
     private val mediaBatchIntakePlanner = MediaBatchIntakePlanner(mediaCaptureService, sniffingEngine = mediaSniffingEngine, debugRecorder = debugEventRecorder)
     private val externalMediaReviewPlanner = ExternalMediaReviewPlanner(mediaCaptureService, sniffingEngine = mediaSniffingEngine, debugRecorder = debugEventRecorder)
@@ -1476,7 +1482,8 @@ class MainViewModel(
         val ids = downloads.filter { it.state in setOf(DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading) }.map { it.id }.toSet()
         if (ids.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            ids.forEach { id -> repository.findDownload(id)?.let { repository.save(it.copy(state = DownloadState.Paused, updatedAtEpochMs = System.currentTimeMillis())) } }
+            // Runtime owns backend control; never make a Room-only pause that leaves the real task writing.
+            ids.forEach { id -> runCatching { transferRuntime.pause(id) } }
         }
     }
 
@@ -1524,7 +1531,7 @@ class MainViewModel(
                     pageTitle = item.title,
                     explicitIdempotencyKey = item.id,
                     authorization = ExternalCommandAuthorization.UserConfirmed,
-                    privateNetworkApproved = true,
+                    privateNetworkApproved = false,
                 ),
             )
         }
@@ -1798,6 +1805,7 @@ class MainViewModel(
         }
         val now = System.currentTimeMillis()
         val consumedExternalDraft = externalAddDraft.value
+        val externalCommand = consumedExternalDraft?.let { repository.findAutomationCommand(it.id) }
         val externalSessionHeaders = consumedExternalDraft?.requestHeaders.orEmpty()
         val mediaCandidate = mediaCaptureService.candidateFor(url)
         val resolvedDestination = OrganizationPowerTools.destinationFor(url, safeName, mediaCandidate?.mimeType, repository.currentDestinationRules(), destination)
@@ -1843,8 +1851,8 @@ class MainViewModel(
                 isExpiringUrl = externalSessionHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(url),
                 exactUrl = url.trim(),
                 pageUrl = consumedExternalDraft?.pageUrl,
-                privateNetworkApproved = true,
-                cleartextCredentialsApproved = false,
+                privateNetworkApproved = externalCommand?.privateNetworkApproved == true,
+                cleartextCredentialsApproved = externalCommand?.cleartextCredentialsApproved == true,
             )
             if (!repository.save(download)) {
                 MediaRequestHandoffStore.forget(download.id)
@@ -1995,6 +2003,7 @@ class MainViewModel(
             AutomationCommandAction.PromptAddDownload -> openExternalAddDraft(command, draft, "External download awaiting Add Download confirmation")
             AutomationCommandAction.EnqueueDownload -> executeEnqueueCommand(command, draft, now)
             AutomationCommandAction.PauseAll -> {
+                queueIntelligenceCoordinator.pauseAllDurably()
                 transferRuntime.pauseAll()
                 repository.saveAutomationCommand(
                     command.copy(
@@ -2006,14 +2015,11 @@ class MainViewModel(
                 )
             }
             AutomationCommandAction.ResumeAll -> {
-                val paused = repository.findDownloadsByStates(
-                    setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower),
-                )
-                paused.forEach { queueIntelligenceCoordinator.requestStart(it.id, userVisible = true, manual = true) }
+                val resumed = queueIntelligenceCoordinator.resumeAllManual()
                 repository.saveAutomationCommand(
                     command.copy(
                         status = AutomationCommandStatus.Applied,
-                        resultMessage = "Resume requested for ${paused.size} download(s)",
+                        resultMessage = "Resume requested for $resumed download(s)",
                         rejectionReason = AutomationRejectionReason.None,
                         updatedAtEpochMs = System.currentTimeMillis(),
                     ),
@@ -2037,7 +2043,16 @@ class MainViewModel(
         now: Long = System.currentTimeMillis(),
     ): Pair<MediaCaptureRecord, List<MediaVariant>> {
         if (record.kind != MediaSourceKind.HlsPlaylist && record.kind != MediaSourceKind.DashManifest) return record to emptyList()
-        val plan = mediaPageProbe.probePage(exactUrl, pageTitle = record.title, requestHeaders = requestHeaders)
+        val handoff = MediaRequestHandoffStore.forCapture(record.id)
+        val plan = mediaPageProbe.probePage(
+            exactUrl,
+            pageTitle = record.title,
+            requestHeaders = requestHeaders,
+            privateNetworkApproved = handoff?.privateNetworkApproved == true,
+            cleartextCredentialsApproved = handoff?.cleartextCredentialsApproved == true,
+            privateNetworkApprovalScopes = handoff?.privateNetworkApprovalScopes.orEmpty(),
+            cleartextCredentialApprovalScopes = handoff?.cleartextCredentialApprovalScopes.orEmpty(),
+        )
         val sameCaptureVariants = plan.variants.filter { it.captureId == record.id }
         val acceptedVariants = sameCaptureVariants.ifEmpty {
             if (plan.records.size == 1 && plan.variants.isNotEmpty()) {
@@ -2893,7 +2908,7 @@ class MainViewModel(
                     isExpiringUrl = draft.requestHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(intake.record.sourceUrl),
                     exactUrl = intake.record.sourceUrl,
                     pageUrl = resolved.pageUrl,
-                    privateNetworkApproved = true,
+                    privateNetworkApproved = false,
                 )
                 intake.variants.forEach { variant ->
                     MediaRequestHandoffStore.rememberVariant(
@@ -3077,6 +3092,7 @@ class MainViewModel(
                 allowBackendFallback = true,
                 userLabel = spec.userLabel,
             )
+            val executionScope = DownloadRequestApprovalScope.forUrl(spec.sourceUrl)
             MediaRequestHandoffStore.remember(
                 downloadId = download.id,
                 headers = spec.requestHeaders.ifEmpty { captureHandoff?.headers.orEmpty() },
@@ -3084,8 +3100,10 @@ class MainViewModel(
                 isExpiringUrl = spec.isExpiringUrl || captureHandoff?.isExpiringUrl == true,
                 exactUrl = spec.sourceUrl,
                 pageUrl = captureHandoff?.pageUrl,
-                privateNetworkApproved = captureHandoff?.privateNetworkApproved ?: true,
-                cleartextCredentialsApproved = captureHandoff?.cleartextCredentialsApproved ?: false,
+                // A capture approval is bound to its exact reviewed target. Selecting a different
+                // variant URL must not mint a new approval for that target.
+                privateNetworkApproved = executionScope != null && executionScope in captureHandoff?.privateNetworkApprovalScopes.orEmpty(),
+                cleartextCredentialsApproved = executionScope != null && executionScope in captureHandoff?.cleartextCredentialApprovalScopes.orEmpty(),
                 cleanupActions = enginePlan.cleanupActions,
                 tempCookieFileName = enginePlan.tempCookieFile?.fileName,
             )
@@ -3212,10 +3230,7 @@ class MainViewModel(
     }
 
     fun resumeAll() {
-        viewModelScope.launch {
-            val paused = repository.findDownloadsByStates(setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower))
-            paused.forEach { queueIntelligenceCoordinator.requestStart(it.id, userVisible = true, manual = true) }
-        }
+        viewModelScope.launch { queueIntelligenceCoordinator.resumeAllManual() }
     }
 
     fun cancelDownload(download: Download) {
@@ -3272,7 +3287,7 @@ class MainViewModel(
         headers: Map<String, String> = emptyMap(),
         mimeType: String? = null,
         isExpiringUrl: Boolean = false,
-        privateNetworkApproved: Boolean = true,
+        privateNetworkApproved: Boolean = false,
         cleartextCredentialsApproved: Boolean = false,
     ) = DownloadRequest(
         id = "preview",
@@ -3280,6 +3295,7 @@ class MainViewModel(
         destinationUri = destination,
         fileName = fileName,
         preferredBackend = backend,
+        requestKind = inferDownloadRequestKind(url),
         headers = headers,
         conflictPolicy = conflictPolicy,
         mimeType = mimeType,

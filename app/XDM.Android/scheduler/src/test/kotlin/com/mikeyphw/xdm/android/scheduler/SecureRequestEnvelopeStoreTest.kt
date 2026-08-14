@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android.scheduler
 
+import com.mikeyphw.xdm.android.transfer.DownloadRequestKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -41,9 +42,13 @@ class SecureRequestEnvelopeStoreTest {
             redactedSummary = "Cookie: <redacted>",
             isExpiringUrl = true,
             attemptGeneration = 3L,
+            requestKind = DownloadRequestKind.Metalink,
+            mirrors = listOf("https://mirror.example/file.meta4"),
         )
         val restored = MediaRequestHandoffStore.forDownload("one")
         assertEquals("cdn.example", restored?.boundHost)
+        assertEquals(DownloadRequestKind.Metalink, restored?.requestKind)
+        assertEquals(listOf("https://mirror.example/file.meta4"), restored?.mirrors)
         assertEquals("session=secret", restored?.headers?.get("Cookie"))
         assertFalse(restored?.headers.orEmpty().containsKey("Injected\nHeader"))
         assertFalse(restored?.headers.orEmpty().containsKey("X-Test"))

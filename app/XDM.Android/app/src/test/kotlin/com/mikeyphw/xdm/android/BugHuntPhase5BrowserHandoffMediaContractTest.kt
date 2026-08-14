@@ -22,7 +22,7 @@ class BugHuntPhase5BrowserHandoffMediaContractTest {
         assertTrue("MainViewModel must expose capturePageUrl", vm.contains("fun capturePageUrl(pageUrl: String"))
         assertTrue("Pasted page URLs must probe their normalized page URL", pageCapture.contains("mediaPageProbe.probePage(normalized"))
         assertTrue("Manifest refresh must accept the exact captured candidate URL", resolver.contains("exactUrl: String"))
-        assertTrue("Manifest refresh must probe the exact captured candidate URL", resolver.contains("mediaPageProbe.probePage(exactUrl"))
+        assertTrue("Manifest refresh must probe the exact captured candidate URL", resolver.contains("mediaPageProbe.probePage(") && resolver.contains("exactUrl,"))
         assertFalse("The stale probeUrl parameter must not return", resolver.contains("mediaPageProbe.probePage(probeUrl"))
         assertFalse("Selected variants must not synthesize a fake capture ID", vm.contains("record.id + \":selected\""))
     }

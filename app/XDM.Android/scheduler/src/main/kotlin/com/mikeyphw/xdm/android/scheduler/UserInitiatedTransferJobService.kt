@@ -15,8 +15,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
 
 @SuppressLint("SpecifyJobSchedulerIdRange")
 @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
@@ -26,29 +24,34 @@ class UserInitiatedTransferJobService : JobService() {
 
     override fun onStartJob(params: JobParameters): Boolean {
         val downloadId = params.extras.getString(TransferNotifications.EXTRA_DOWNLOAD_ID) ?: return false
+        val queueClaimToken = params.extras.getLong(TransferExecutionStarter.EXTRA_QUEUE_CLAIM_TOKEN, 0L)
         val runtime = (application as TransferRuntimeProvider).transferRuntime
+        val queue = (application as QueueIntelligenceProvider).queueIntelligenceCoordinator
         val notifications = TransferNotifications(this)
-        setNotification(
-            params,
-            TransferNotifications.ACTIVE_NOTIFICATION_ID + params.jobId,
-            notifications.active(ActiveTransferSummary(activeCount = 1, primaryDownloadId = downloadId)),
-            JOB_END_NOTIFICATION_POLICY_DETACH,
-        )
+        val notificationId = TransferSystemIdRegistry(this).idFor(downloadId)
+        setNotification(params, notificationId, notifications.active(ActiveTransferSummary(activeCount = 1, primaryDownloadId = downloadId)), JOB_END_NOTIFICATION_POLICY_DETACH)
         jobs[params.jobId] = scope.launch {
+            when (queue.authorizeClaimedExecution(downloadId, queueClaimToken)) {
+                ClaimedExecutionAuthorization.TemporarilyHeld -> {
+                    jobFinished(params, true)
+                    jobs.remove(params.jobId)
+                    return@launch
+                }
+                ClaimedExecutionAuthorization.Stale -> {
+                    jobFinished(params, false)
+                    jobs.remove(params.jobId)
+                    return@launch
+                }
+                ClaimedExecutionAuthorization.Ready -> Unit
+            }
             val updater = launch {
                 runtime.summary.collectLatest { summary ->
-                    setNotification(
-                        params,
-                        TransferNotifications.ACTIVE_NOTIFICATION_ID + params.jobId,
-                        notifications.active(summary, downloadId),
-                        JOB_END_NOTIFICATION_POLICY_DETACH,
-                    )
+                    setNotification(params, notificationId, notifications.active(summary, downloadId), JOB_END_NOTIFICATION_POLICY_DETACH)
                 }
             }
-            val state = runtime.execute(downloadId)
+            val state = runtime.execute(downloadId, queueClaimToken)
             updater.cancel()
             val result = runtime.findDownload(downloadId)
-            // State-preserving terminal copy mirrors: notifications.terminal(downloadId, result?.fileName ?: "Download", state, result?.errorMessage, result?.destinationUri, result?.mimeType)
             notifications.terminalIfFirst(
                 downloadId = downloadId,
                 fileName = result?.fileName ?: "Download",
@@ -56,15 +59,9 @@ class UserInitiatedTransferJobService : JobService() {
                 message = result?.errorMessage,
                 destinationUri = result?.destinationUri,
                 mimeType = result?.mimeType,
-                attemptGeneration = params.jobId.toLong(),
-            )?.let { terminalNotification ->
-                setNotification(
-                    params,
-                    TransferNotifications.ACTIVE_NOTIFICATION_ID + params.jobId,
-                    terminalNotification,
-                    JOB_END_NOTIFICATION_POLICY_DETACH,
-                )
-            }
+                attemptGeneration = result?.attemptGeneration ?: 0L,
+            )?.let { setNotification(params, notificationId, it, JOB_END_NOTIFICATION_POLICY_DETACH) }
+            AndroidExecutionClaimRegistry.release(downloadId, queueClaimToken)
             val reschedule = state in setOf(DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)
             jobFinished(params, reschedule)
             jobs.remove(params.jobId)
@@ -74,26 +71,31 @@ class UserInitiatedTransferJobService : JobService() {
 
     override fun onStopJob(params: JobParameters): Boolean {
         val downloadId = params.extras.getString(TransferNotifications.EXTRA_DOWNLOAD_ID)
+        jobs.remove(params.jobId)?.cancel()
         if (downloadId != null) {
+            val runtime = (application as TransferRuntimeProvider).transferRuntime
+            val queueClaimToken = params.extras.getLong(TransferExecutionStarter.EXTRA_QUEUE_CLAIM_TOKEN, 0L)
             val jobStopReason = params.stopReason
+            // onStopJob may arrive after a replacement owner has been claimed. Serialize teardown
+            // against that queue-claim token so an old UIDT callback cannot pause newer work.
+            val attemptGeneration = runtime.activeAttemptGenerationOwned(downloadId, queueClaimToken) ?: 0L
             val record = (application as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator?.recordSystemStop(
                 downloadId = downloadId,
-                attemptGeneration = params.jobId.toLong(),
+                attemptGeneration = attemptGeneration,
                 owner = SystemExecutionOwner.UserInitiatedJob,
                 stopReason = jobStopReason,
                 nowEpochMs = System.currentTimeMillis(),
             ) ?: SystemStopReasonRecord(
                 downloadId = downloadId,
-                attemptGeneration = params.jobId.toLong(),
+                attemptGeneration = attemptGeneration,
                 owner = SystemExecutionOwner.UserInitiatedJob,
                 jobParametersStopReason = jobStopReason,
                 occurredAtEpochMs = System.currentTimeMillis(),
-                message = "User-initiated job stopped; JobParameters.getStopReason() captured before pausing the transfer.",
+                message = "User-initiated job stopped; only its exact queue claim may pause backend ownership.",
             )
             TransferExecutionStopReasonRecorder.record(record)
-            runBlocking { withTimeoutOrNull(5_000) { (application as TransferRuntimeProvider).transferRuntime.pause(downloadId) } }
+            runtime.requestPauseOwnedAsync(downloadId, queueClaimToken)
         }
-        jobs.remove(params.jobId)?.cancel()
         return true
     }
 

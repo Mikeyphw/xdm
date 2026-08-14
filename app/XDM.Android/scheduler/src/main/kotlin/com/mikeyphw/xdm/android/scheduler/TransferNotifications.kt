@@ -24,6 +24,7 @@ import androidx.core.content.getSystemService
 
 class TransferNotifications(private val context: Context) {
     private val manager = requireNotNull(context.getSystemService<NotificationManager>())
+    private val systemIds = TransferSystemIdRegistry(context)
     private val phase4Coordinator: QueueSchedulingRecoveryCoordinator =
         (context.applicationContext as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
             ?: QueueSchedulingRecoveryCoordinator(FileBackedQueueSchedulingRecoveryStore(java.io.File(context.filesDir, "queue-scheduling-recovery")))
@@ -78,9 +79,9 @@ class TransferNotifications(private val context: Context) {
             builder.addAction(
                 if (paused) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause,
                 if (paused) "Resume" else "Pause",
-                actionPendingIntent(if (paused) ACTION_RESUME else ACTION_PAUSE, downloadId, 13 + downloadId.hashCode()),
+                actionPendingIntent(if (paused) ACTION_RESUME else ACTION_PAUSE, downloadId, systemIds.idFor(downloadId)),
             )
-            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", actionPendingIntent(ACTION_CANCEL, downloadId, 14 + downloadId.hashCode()))
+            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", actionPendingIntent(ACTION_CANCEL, downloadId, systemIds.idFor(downloadId)))
         }
         val total = summary.totalBytes
         if (total != null && total > 0) {
@@ -154,12 +155,12 @@ class TransferNotifications(private val context: Context) {
             .apply {
                 when (state) {
                     DownloadState.Completed -> addAction(android.R.drawable.ic_menu_view, "Open XDM", openAppPendingIntent(downloadId))
-                    DownloadState.Paused -> addAction(android.R.drawable.ic_media_play, "Resume", actionPendingIntent(ACTION_RESUME, downloadId, 20 + downloadId.hashCode()))
-                    DownloadState.Failed -> addAction(android.R.drawable.ic_popup_sync, "Retry", actionPendingIntent(ACTION_RETRY, downloadId, 20 + downloadId.hashCode()))
-                    DownloadState.RecoveryRequired -> addAction(android.R.drawable.ic_menu_manage, "Review recovery", actionPendingIntent(ACTION_REVIEW_RECOVERY, downloadId, 20 + downloadId.hashCode()))
+                    DownloadState.Paused -> addAction(android.R.drawable.ic_media_play, "Resume", actionPendingIntent(ACTION_RESUME, downloadId, systemIds.idFor(downloadId)))
+                    DownloadState.Failed -> addAction(android.R.drawable.ic_popup_sync, "Retry", actionPendingIntent(ACTION_RETRY, downloadId, systemIds.idFor(downloadId)))
+                    DownloadState.RecoveryRequired -> addAction(android.R.drawable.ic_menu_manage, "Review recovery", actionPendingIntent(ACTION_REVIEW_RECOVERY, downloadId, systemIds.idFor(downloadId)))
                     else -> Unit
                 }
-                addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", actionPendingIntent(ACTION_DISMISS, downloadId, 21 + downloadId.hashCode()))
+                addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", actionPendingIntent(ACTION_DISMISS, downloadId, systemIds.idFor(downloadId)))
             }
             .build()
     }
@@ -241,14 +242,14 @@ class TransferNotifications(private val context: Context) {
             intent.action = ACTION_OPEN_DOWNLOAD_DETAILS
             intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId)
         }
-        return PendingIntent.getActivity(context, 1 + (downloadId?.hashCode() ?: 0), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return PendingIntent.getActivity(context, downloadId?.let(systemIds::idFor) ?: 1, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
     private fun openCompletedPendingIntent(downloadId: String): PendingIntent {
         val intent = Intent(context, OpenDownloadedFileActivity::class.java)
             .setAction(ACTION_OPEN_COMPLETED_DOWNLOAD)
             .putExtra(EXTRA_DOWNLOAD_ID, downloadId)
-        return PendingIntent.getActivity(context, 31 + downloadId.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return PendingIntent.getActivity(context, systemIds.idFor(downloadId), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
     private fun actionPendingIntent(action: String, downloadId: String?, requestCode: Int): PendingIntent {

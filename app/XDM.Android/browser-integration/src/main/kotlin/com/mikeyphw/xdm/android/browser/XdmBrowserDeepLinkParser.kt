@@ -63,7 +63,11 @@ object XdmBrowserDeepLinkParser {
             return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsupportedContract)
         }
 
-        if (version == XdmBrowserDeepLinkContract.CurrentVersion && action == AutomationCommandAction.CaptureMedia) {
+        if (action == AutomationCommandAction.CaptureMedia) {
+            if (version != XdmBrowserDeepLinkContract.CurrentVersion) {
+                // Legacy capture URLs carried signed media material in a browsable custom URI.
+                return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafeEnvelope)
+            }
             return parseEncryptedCaptureEnvelope(version, action, parameters)
         }
 

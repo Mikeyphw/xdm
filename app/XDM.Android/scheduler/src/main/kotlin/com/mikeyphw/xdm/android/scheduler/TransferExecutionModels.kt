@@ -16,7 +16,7 @@ data class ActiveTransferSummary(
         get() = totalBytes?.takeIf { it > 0 }?.let { ((bytesReceived * 100L) / it).coerceIn(0, 100).toInt() }
 }
 
-enum class TransferLaunchMode { UserInitiatedJob, ForegroundService }
+enum class TransferLaunchMode { UserInitiatedJob, ForegroundService, WorkManager }
 
 data class TransferLaunchResult(val accepted: Boolean, val mode: TransferLaunchMode, val systemId: Int)
 

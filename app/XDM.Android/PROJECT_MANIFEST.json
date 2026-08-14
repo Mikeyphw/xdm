@@ -3504,5 +3504,131 @@
       "legacy_1_to_4": "manual migration tests retained because authentic exported schemas 1-3 are not present in repository history",
       "exported_schema_18_committed": true
     }
+  },
+  "bug_hunt_master_remediation_overlay_04_05_request_security_queue_runtime_ownership": {
+    "base_commit": "9d1608ec",
+    "combined_phases": [
+      "request_security_envelope",
+      "queue_runtime_ownership"
+    ],
+    "master_items": {
+      "phase_04": [
+        "M-005",
+        "M-016",
+        "M-019",
+        "M-029 app-side partial",
+        "M-031 approval-default portion",
+        "M-034 app-side partial"
+      ],
+      "phase_05": [
+        "M-008",
+        "M-009",
+        "M-018",
+        "M-025",
+        "M-026",
+        "M-043"
+      ]
+    },
+    "request_security": {
+      "exact_target_approval_scopes": true,
+      "primary_and_mirrors_guarded": true,
+      "backend_migration_uses_secure_envelope": true,
+      "native_redirect_hops_rechecked": true,
+      "https_to_http_downgrade_blocked": true,
+      "android_cleartext_policy_enforced": true,
+      "dns_private_target_rechecked": true,
+      "bounded_handoff_header_surface": true,
+      "media_page_probe_uses_transfer_guard": true,
+      "media_redirects_manual_and_bounded": true,
+      "cross_origin_sensitive_headers_stripped": true,
+      "selected_variant_cannot_widen_capture_approval": true,
+      "request_kind_persisted_in_encrypted_handoff": true,
+      "caller_metadata_cannot_reclassify_protocol": true,
+      "mirrors_persisted_in_encrypted_handoff": true,
+      "native_dns_bound_to_actual_okhttp_route": true
+    },
+    "request_kinds": [
+      "Direct",
+      "Torrent",
+      "Magnet",
+      "Metalink"
+    ],
+    "sensitive_migration": {
+      "marker": "sensitive-persistence-v2.complete",
+      "legacy_approval_reset": true,
+      "recognizable_sidecar_material_enveloped_before_redaction": true,
+      "json_redaction_by_key_and_value": true,
+      "atomic_sidecar_replace": true,
+      "completion_marker_requires_all_rewrites": true,
+      "atomic_writer": "android.util.AtomicFile"
+    },
+    "browser_capture_boundary": {
+      "legacy_v1_capture_media_rejected": true,
+      "full_extension_runtime_deferred_to_overlay_08": true
+    },
+    "queue_runtime_ownership": {
+      "startup_and_boot_common_recovery_pipeline": true,
+      "durable_startup_admission_hold": true,
+      "room_transactional_slot_claim": true,
+      "connecting_is_durable_reservation": true,
+      "null_and_default_queue_ids_share_capacity": true,
+      "queue_claim_bound_to_attempt_generation": true,
+      "android_execution_owner_authority": "Connecting row updatedAt queue claim token; backend attempt generation is established separately",
+      "pause_all_process_independent_gate": true,
+      "resume_all_clears_user_pause_gate": true,
+      "restart_controls_reconcile_backend_ownership": true,
+      "unsafe_control_moves_to_recovery_required": true,
+      "background_execution_owner": "WorkManager",
+      "android_14_user_visible_owner": "UIDT",
+      "legacy_user_visible_owner": "foreground dataSync service",
+      "fgs_rejection_fallback": "WorkManager",
+      "terminal_notification_idempotency": true,
+      "durable_collision_free_system_ids": true,
+      "retry_identity": "attempt generation + failure content",
+      "deadline_driven_retry_work": true,
+      "notification_retry_reenters_queue_policy": true,
+      "direct_runtime_resume_bypass_removed": true,
+      "failed_launch_release_monotonic_same_generation": true,
+      "scheduled_execution_owner_reauthorizes_durable_claim": true,
+      "execution_owner_attempt_generation_bound": true,
+      "workmanager_claimed_owner_policy": "KEEP",
+      "runtime_state_transitions_strictly_newer_same_generation": true,
+      "startup_recovery_state_transitions_strictly_newer_same_generation": true,
+      "backend_migration_state_transitions_strictly_newer_same_generation": true,
+      "workmanager_claimed_owner_identity": "download + durable queue claim token",
+      "system_owner_teardown_scope": "exact durable queue claims only",
+      "workmanager_stop_record_generation_bound": true,
+      "workmanager_system_foreground_service_type": "dataSync",
+      "workmanager_system_foreground_service_manifest_merge": true,
+      "failed_launch_release_requires_exact_queue_claim_token": true,
+      "process_local_stale_callback_guard": "per-download coroutine Mutex keyed by durable queue claim token",
+      "periodic_workmanager_reauthorizes_each_claim": true,
+      "uidt_stop_control_uses_exact_queue_claim": true,
+      "fgs_stop_control_uses_exact_queue_claim": true,
+      "workmanager_stop_control_uses_exact_queue_claim": true
+    },
+    "queue_policy": {
+      "malformed_schedule_fails_closed": true,
+      "invalid_days_fail_closed": true,
+      "unknown_required_battery_fails_closed": true,
+      "unknown_destination_free_space_fails_closed": true,
+      "destination_aware_free_space_probe": true,
+      "unbounded_age_fairness": true,
+      "blank_days_fail_closed": true
+    },
+    "room_schema_current": 18,
+    "room_schema_changed": false,
+    "validation_deferred": true,
+    "apply_with": "apply-overlay --no-validate",
+    "declared_final_validation_tasks": [
+      ":app:compileDebugKotlin",
+      ":app:testDebugUnitTest",
+      ":app:lintDebug"
+    ],
+    "artifact_revision": 2,
+    "supersedes": "xdm_android_request_security_queue_runtime_ownership_overlay_v1.zip",
+    "backend_generation_binding_requires_exact_queue_claim_token": true,
+    "ungated_pause_all_async_helper_removed": true,
+    "pause_all_receiver_fails_closed_without_queue_authority": true
   }
 }

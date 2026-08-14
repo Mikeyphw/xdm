@@ -17,8 +17,62 @@ import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import java.net.URI
+import java.security.MessageDigest
 import java.util.Locale
 import kotlinx.coroutines.flow.Flow
+
+enum class DownloadRequestKind {
+    Direct,
+    Torrent,
+    Magnet,
+    Metalink,
+}
+
+/**
+ * Infers protocol semantics only from the request target itself. Display metadata such as a
+ * caller-supplied filename or MIME type must never change which backend protocol is executed.
+ * The optional metadata parameters remain source-compatible with older callers but are
+ * deliberately ignored.
+ */
+@Suppress("UNUSED_PARAMETER")
+fun inferDownloadRequestKind(url: String, fileName: String? = null, mimeType: String? = null): DownloadRequestKind {
+    val lowerUrl = url.trim().lowercase(Locale.US)
+    val targetWithoutQueryOrFragment = lowerUrl.substringBefore('#').substringBefore('?')
+    return when {
+        lowerUrl.startsWith("magnet:") -> DownloadRequestKind.Magnet
+        targetWithoutQueryOrFragment.endsWith(".torrent") -> DownloadRequestKind.Torrent
+        targetWithoutQueryOrFragment.endsWith(".meta4") || targetWithoutQueryOrFragment.endsWith(".metalink") -> DownloadRequestKind.Metalink
+        else -> DownloadRequestKind.Direct
+    }
+}
+
+/** Opaque binding for an explicit network-risk approval. The digest binds approval to the exact
+ * scheme/host/port/path/query target without persisting or logging the sensitive URL itself. */
+object DownloadRequestApprovalScope {
+    fun forUrl(url: String?): String? {
+        val raw = url?.trim()?.takeIf(String::isNotBlank) ?: return null
+        val uri = runCatching { URI(raw) }.getOrNull() ?: return null
+        val scheme = uri.scheme?.lowercase(Locale.US) ?: return null
+        if (scheme == "magnet") {
+            return sha256("magnet|" + uri.rawSchemeSpecificPart.orEmpty())
+        }
+        val host = uri.host?.lowercase(Locale.US) ?: return null
+        val normalizedPort = when {
+            uri.port >= 0 -> uri.port
+            scheme == "http" -> 80
+            scheme == "https" -> 443
+            scheme == "ftp" -> 21
+            else -> -1
+        }
+        val path = uri.rawPath?.takeIf(String::isNotBlank) ?: "/"
+        val query = uri.rawQuery.orEmpty()
+        return sha256(listOf(scheme, host, normalizedPort.toString(), path, query).joinToString("|"))
+    }
+
+    private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(Charsets.UTF_8))
+        .joinToString("") { byte -> "%02x".format(byte) }
+}
 
 data class DownloadRequest(
     val id: String,
@@ -27,6 +81,7 @@ data class DownloadRequest(
     val fileName: String,
     val preferredBackend: BackendType = BackendType.Automatic,
     val mirrors: List<String> = emptyList(),
+    val requestKind: DownloadRequestKind = DownloadRequestKind.Direct,
     val headers: Map<String, String> = emptyMap(),
     val expectedLength: Long? = null,
     val expectedEtag: String? = null,
@@ -43,6 +98,8 @@ data class DownloadRequest(
     val previousAria2ThroughputBytesPerSecond: Long? = null,
     val privateNetworkApproved: Boolean = false,
     val cleartextCredentialsApproved: Boolean = false,
+    val privateNetworkApprovalScopes: Set<String> = emptySet(),
+    val cleartextCredentialApprovalScopes: Set<String> = emptySet(),
     val attemptGeneration: Long = 0L,
 )
 
@@ -459,7 +516,7 @@ class BackendSelectionPolicy {
                 factors += "Authenticated or browser-captured request"
                 BackendType.Native
             }
-            scheme in setOf("ftp", "sftp", "magnet") || request.sourceUrl.endsWith(".torrent", true) || request.sourceUrl.endsWith(".meta4", true) || request.sourceUrl.endsWith(".metalink", true) -> {
+            request.requestKind in setOf(DownloadRequestKind.Torrent, DownloadRequestKind.Magnet, DownloadRequestKind.Metalink) || scheme in setOf("ftp", "sftp") -> {
                 factors += "aria2-optimized protocol"
                 BackendType.Aria2
             }

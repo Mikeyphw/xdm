@@ -10,7 +10,7 @@ class MediaProbeFieldBugfixContractTest {
     @Test
     fun pageProbeUsesBrowserLikeHeadersAndExplainsHttp403() {
         val source = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSniffingEngine.kt").readText()
-        assertTrue(source.contains("applyDefaultProbeHeaders(connection, normalized, requestHeaders)"))
+        assertTrue(source.contains("applyDefaultProbeHeaders(connection, currentUrl, hopHeaders)"))
         assertTrue(source.contains("User-Agent"))
         assertTrue(source.contains("Accept-Language"))
         assertTrue(source.contains("Accept-Encoding"))

@@ -241,6 +241,96 @@ interface DownloadGraphTransactionDao {
         return deleteQueueIfUnreferenced(queueId)
     }
 
+
+    /**
+     * Serializes queue capacity and candidate transition in one Room transaction. Connecting is
+     * the durable reservation state and is included in subsequent active counts.
+     */
+    @Transaction
+    suspend fun claimQueueSlot(
+        downloadId: String,
+        queueId: String?,
+        maxConcurrent: Int,
+        activeStates: List<String>,
+        candidateStates: List<String>,
+        newUpdatedAtEpochMs: Long,
+    ): Boolean {
+        val candidate = findDownloadRowForQueueClaim(downloadId) ?: return false
+        if (candidate.state !in candidateStates) return false
+        val normalizedQueueId = queueId ?: DEFAULT_QUEUE_ID
+        if ((candidate.queueId ?: DEFAULT_QUEUE_ID) != normalizedQueueId) return false
+        if (countQueueDownloadsInStates(normalizedQueueId, activeStates) >= maxConcurrent.coerceAtLeast(1)) return false
+        return claimDownloadForQueueLaunch(
+            downloadId = downloadId,
+            expectedAttemptGeneration = candidate.attemptGeneration,
+            expectedUpdatedAtEpochMs = candidate.updatedAtEpochMs,
+            candidateStates = candidateStates,
+            newUpdatedAtEpochMs = maxOf(newUpdatedAtEpochMs, candidate.updatedAtEpochMs + 1L),
+        ) == 1
+    }
+
+    @Query("SELECT * FROM downloads WHERE id = :downloadId LIMIT 1")
+    suspend fun findDownloadRowForQueueClaim(downloadId: String): DownloadEntity?
+
+    @Query("""SELECT COUNT(*) FROM downloads
+        WHERE state IN (:states)
+          AND ((:queueId = 'default' AND (queueId IS NULL OR queueId = 'default')) OR queueId = :queueId)""")
+    suspend fun countQueueDownloadsInStates(queueId: String, states: List<String>): Int
+
+    @Query("""UPDATE downloads
+        SET state = 'Connecting', speedBytesPerSecond = 0, errorMessage = NULL, updatedAtEpochMs = :newUpdatedAtEpochMs
+        WHERE id = :downloadId
+          AND attemptGeneration = :expectedAttemptGeneration
+          AND updatedAtEpochMs = :expectedUpdatedAtEpochMs
+          AND state IN (:candidateStates)""")
+    suspend fun claimDownloadForQueueLaunch(
+        downloadId: String,
+        expectedAttemptGeneration: Long,
+        expectedUpdatedAtEpochMs: Long,
+        candidateStates: List<String>,
+        newUpdatedAtEpochMs: Long,
+    ): Int
+
+    /** Releases only the still-current launch claim and preserves the same-generation monotonic-write invariant. */
+    @Transaction
+    suspend fun releaseQueueLaunchClaim(
+        downloadId: String,
+        attemptGeneration: Long,
+        expectedQueueClaimToken: Long,
+        message: String?,
+        requestedUpdatedAtEpochMs: Long,
+    ): Int {
+        val current = findDownloadRowForQueueClaim(downloadId) ?: return 0
+        if (current.state != "Connecting" || current.attemptGeneration != attemptGeneration ||
+            current.updatedAtEpochMs != expectedQueueClaimToken
+        ) return 0
+        return releaseQueueLaunchClaimCas(
+            downloadId = downloadId,
+            attemptGeneration = attemptGeneration,
+            expectedUpdatedAtEpochMs = expectedQueueClaimToken,
+            message = message,
+            newUpdatedAtEpochMs = maxOf(requestedUpdatedAtEpochMs, expectedQueueClaimToken + 1L),
+        )
+    }
+
+    @Query("""UPDATE downloads
+        SET state = 'Queued', speedBytesPerSecond = 0, errorMessage = :message, updatedAtEpochMs = :newUpdatedAtEpochMs
+        WHERE id = :downloadId
+          AND state = 'Connecting'
+          AND attemptGeneration = :attemptGeneration
+          AND updatedAtEpochMs = :expectedUpdatedAtEpochMs""")
+    suspend fun releaseQueueLaunchClaimCas(
+        downloadId: String,
+        attemptGeneration: Long,
+        expectedUpdatedAtEpochMs: Long,
+        message: String?,
+        newUpdatedAtEpochMs: Long,
+    ): Int
+
+    private companion object {
+        const val DEFAULT_QUEUE_ID = "default"
+    }
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAutomationIgnore(entity: AutomationCommandEntity): Long
 

@@ -49,7 +49,7 @@ class StartupRecoveryCoordinator(
                 safeToResume = false,
                 attemptGeneration = download.attemptGeneration,
             )
-            check(downloadStore.save(download.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = "Startup recovery requires validation before resuming.", updatedAtEpochMs = clock()))) {
+            check(downloadStore.save(download.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = "Startup recovery requires validation before resuming.", updatedAtEpochMs = maxOf(clock(), download.updatedAtEpochMs + 1L)))) {
                 "Startup recovery could not persist ${download.id}; a newer generation or state won the write"
             }
         }

@@ -53,7 +53,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.collectLatest
 
 class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, DebugRecorderProvider, TermuxResultRouterProvider {
@@ -113,7 +112,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val recoveryStore = RoomRecoveryWorkflowStore(database)
         val destinationWriter = AndroidDestinationWriter(this)
         MediaRequestHandoffStore.initialize(AndroidSecureRequestEnvelopeStore(this))
-        runBlocking(Dispatchers.IO) { SensitivePersistenceMigrator(this@XdmApplication, repository).migrateIfNeeded() }
+        val sensitivePersistenceMigrator = SensitivePersistenceMigrator(this, repository)
         val runtimeIdentities = BackendRuntimeIdentityStore(this)
         val aria2SessionStore = Aria2SessionStore(this)
         val termuxBridgeManager = TermuxBridgeManager(this)
@@ -172,6 +171,8 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             executionStarter = executionStarter,
             phase4Coordinator = queueSchedulingRecoveryCoordinator,
         )
+        // Queue admission remains durably closed until migration and ownership recovery both finish.
+        queueIntelligenceCoordinator.installStartupRecoveryHold()
         container = AppContainer(
             repository = repository,
             preferences = preferences,
@@ -203,11 +204,15 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         }
         QueueIntelligenceWorker.schedule(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            transferRuntime.scanStartupRecovery()
-            transferRuntime.restoreInterruptedTransfers()
-            transferRuntime.reconcilePersistedOwnership()
-            queueConditionMonitor.start()
-            QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)
+            // Each phase is isolated so one failure cannot silently suppress later reconciliation.
+            // Admission stays fail-closed unless every critical startup phase succeeds.
+            val migration = runCatching { sensitivePersistenceMigrator.migrateIfNeeded() }
+            val recovery = transferRuntime.recoverForStartup()
+            val monitor = runCatching { queueConditionMonitor.start() }
+            if (migration.isSuccess && recovery.admissionSafe && monitor.isSuccess) {
+                queueIntelligenceCoordinator.clearStartupRecoveryHold()
+                QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)
+            }
         }
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             transferRuntime.terminalEvents.collectLatest { event ->

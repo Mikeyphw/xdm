@@ -8,6 +8,8 @@ import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
+import com.mikeyphw.xdm.android.transfer.DownloadRequest
+import com.mikeyphw.xdm.android.transfer.DownloadRequestKind
 import java.io.BufferedInputStream
 import java.net.HttpURLConnection
 import java.net.URI
@@ -71,145 +73,163 @@ data class MediaPageProbePolicy(
     val bypassDrm: Boolean = false,
 )
 
-/** Bounded page fetcher for manual page URLs. It reads only a prefix and never executes JS. */
+/** Bounded page fetcher for manual page URLs. It reads only a prefix and never executes JS.
+ * Every network hop is validated by the same transfer request-security boundary used by downloads. */
 class MediaPageProbe(
     private val engine: MediaSniffingEngine = MediaSniffingEngine(),
     private val policy: MediaPageProbePolicy = MediaPageProbePolicy(),
     private val debugRecorder: DebugEventRecorder = NoOpDebugEventRecorder,
+    private val securityValidator: suspend (DownloadRequest) -> Unit = {},
 ) {
-    fun probePage(url: String, pageTitle: String? = null, requestHeaders: Map<String, String> = emptyMap()): MediaSniffingPlan {
-        val normalized = url.trim()
-        val uri = runCatching { URI(normalized) }.getOrNull()
-        val scheme = uri?.scheme?.lowercase(Locale.US)
-        if (scheme != "http" && scheme != "https") {
-            debugRecorder.record(
-                area = DebugArea.MediaSniffing,
-                severity = DebugSeverity.Warning,
-                action = "page-probe",
-                result = "rejected",
-                safeDetails = mapOf("url" to normalized, "reason" to "unsupported-scheme"),
-            )
-            return MediaSniffingPlan(
-                candidates = emptyList(),
-                records = emptyList(),
-                variants = emptyList(),
-                diagnostics = listOf("page-probe rejected unsupported scheme"),
-            )
-        }
-        val connection = runCatching { uri.toURL().openConnection() as HttpURLConnection }.getOrElse { error ->
-            debugRecorder.record(
-                area = DebugArea.MediaSniffing,
-                severity = DebugSeverity.Error,
-                action = "page-probe",
-                result = "open-failed",
-                safeDetails = mapOf("url" to normalized, "error" to error.javaClass.simpleName),
-            )
-            return MediaSniffingPlan(
-                candidates = emptyList(),
-                records = emptyList(),
-                variants = emptyList(),
-                diagnostics = listOf("page-probe open failed: ${error.javaClass.simpleName}"),
-            )
-        }
-        return try {
-            connection.instanceFollowRedirects = policy.followRedirects
-            connection.connectTimeout = policy.connectTimeoutMillis
-            connection.readTimeout = policy.readTimeoutMillis
-            connection.requestMethod = "GET"
-            applyDefaultProbeHeaders(connection, normalized, requestHeaders)
-            val statusCode = runCatching { connection.responseCode }.getOrDefault(-1)
-            val finalUrl = connection.url?.toString() ?: normalized
-            if (statusCode in 400..599) {
-                val diagnostic = pageProbeStatusDiagnostic(statusCode)
-                debugRecorder.record(
-                    area = DebugArea.MediaSniffing,
-                    severity = if (statusCode == 403) DebugSeverity.Warning else DebugSeverity.Error,
-                    action = "page-probe",
-                    result = "http-blocked",
-                    safeDetails = mapOf(
-                        "url" to normalized,
-                        "finalUrl" to finalUrl,
-                        "status" to statusCode.toString(),
-                        "policy" to "browser-like-bounded-get-no-js-no-drm",
+    suspend fun probePage(
+        url: String,
+        pageTitle: String? = null,
+        requestHeaders: Map<String, String> = emptyMap(),
+        privateNetworkApproved: Boolean = false,
+        cleartextCredentialsApproved: Boolean = false,
+        privateNetworkApprovalScopes: Set<String> = emptySet(),
+        cleartextCredentialApprovalScopes: Set<String> = emptySet(),
+    ): MediaSniffingPlan {
+        val normalized = normalizeProbeUrl(url) ?: return rejectedPlan(url, "unsafe-or-unsupported-url")
+        val sanitizedHeaders = sanitizeProbeHeaders(requestHeaders)
+        var currentUrl = normalized
+        var redirects = 0
+        val originalOrigin = originOf(normalized)
+        while (true) {
+            val hopHeaders = if (originOf(currentUrl) == originalOrigin) sanitizedHeaders else sanitizedHeaders.filterKeys { !isSensitiveProbeHeader(it) }
+            try {
+                securityValidator(
+                    DownloadRequest(
+                        id = "media-page-probe",
+                        sourceUrl = currentUrl,
+                        destinationUri = "app-private://media-page-probe",
+                        fileName = "media-page-probe.html",
+                        requestKind = DownloadRequestKind.Direct,
+                        headers = hopHeaders,
+                        privateNetworkApproved = privateNetworkApproved,
+                        cleartextCredentialsApproved = cleartextCredentialsApproved,
+                        privateNetworkApprovalScopes = privateNetworkApprovalScopes,
+                        cleartextCredentialApprovalScopes = cleartextCredentialApprovalScopes,
                     ),
                 )
-                return MediaSniffingPlan(
-                    candidates = emptyList(),
-                    records = emptyList(),
-                    variants = emptyList(),
-                    diagnostics = listOf(diagnostic),
+            } catch (error: Exception) {
+                debugRecorder.record(
+                    area = DebugArea.MediaSniffing,
+                    severity = DebugSeverity.Warning,
+                    action = "page-probe",
+                    result = "security-rejected",
+                    safeDetails = mapOf("url" to currentUrl, "error" to error.javaClass.simpleName),
                 )
+                return MediaSniffingPlan(emptyList(), emptyList(), emptyList(), listOf("page-probe rejected by transfer request security: ${error.message ?: error.javaClass.simpleName}"))
             }
-            val body = BufferedInputStream(connection.inputStream).use { stream ->
-                stream.readBoundedUtf8(policy.bodyPrefixBytes)
+
+            val uri = URI(currentUrl)
+            val connection = runCatching { uri.toURL().openConnection() as HttpURLConnection }.getOrElse { error ->
+                return failedPlan(currentUrl, "open failed: ${error.javaClass.simpleName}")
             }
-            val input = MediaSniffingInput(
-                url = normalized,
-                finalUrl = finalUrl,
-                mimeType = connection.contentType,
-                contentLength = connection.contentLengthLong.takeIf { it >= 0L },
-                bodyPrefix = body,
-                pageUrl = finalUrl,
-                pageTitle = pageTitle,
-                requestHeaders = requestHeaders,
-                source = MediaSniffingSource.AppPageProbe,
-            )
-            val plan = engine.sniff(input)
-            debugRecorder.record(
-                area = DebugArea.MediaSniffing,
-                severity = DebugSeverity.Info,
-                action = "page-probe",
-                result = if (plan.records.isEmpty()) "no-captures" else "captures-created",
-                safeDetails = mapOf(
-                    "url" to normalized,
-                    "finalUrl" to finalUrl,
-                    "status" to statusCode.toString(),
-                    "candidateCount" to plan.candidates.size.toString(),
-                    "recordCount" to plan.records.size.toString(),
-                    "policy" to "browser-like-bounded-get-no-js-no-drm",
-                ),
-            )
-            plan.copy(
-                diagnostics = plan.diagnostics + listOf(
-                    "page-probe browser-like bounded GET • timeout=${policy.connectTimeoutMillis}ms • prefix=${policy.bodyPrefixBytes} bytes • no-js=${!policy.executeJavaScript} • no-drm-bypass=${!policy.bypassDrm}",
-                ),
-            )
-        } catch (error: Exception) {
-            debugRecorder.record(
-                area = DebugArea.MediaSniffing,
-                severity = DebugSeverity.Error,
-                action = "page-probe",
-                result = "failed",
-                safeDetails = mapOf("url" to normalized, "error" to error.javaClass.simpleName),
-            )
-            MediaSniffingPlan(
-                candidates = emptyList(),
-                records = emptyList(),
-                variants = emptyList(),
-                diagnostics = listOf("page-probe failed: ${error.javaClass.simpleName}"),
-            )
-        } finally {
-            connection.disconnect()
+            try {
+                connection.instanceFollowRedirects = false
+                connection.connectTimeout = policy.connectTimeoutMillis
+                connection.readTimeout = policy.readTimeoutMillis
+                connection.requestMethod = "GET"
+                applyDefaultProbeHeaders(connection, currentUrl, hopHeaders)
+                val statusCode = connection.responseCode
+                if (statusCode in REDIRECT_STATUS_CODES && policy.followRedirects) {
+                    if (++redirects > MAX_PROBE_REDIRECTS) return failedPlan(currentUrl, "redirect limit exceeded")
+                    val location = connection.getHeaderField("Location")?.trim().orEmpty()
+                    val next = resolveProbeRedirect(currentUrl, location) ?: return rejectedPlan(currentUrl, "unsafe-redirect")
+                    currentUrl = next
+                    continue
+                }
+                if (statusCode in 400..599) {
+                    val diagnostic = pageProbeStatusDiagnostic(statusCode)
+                    debugRecorder.record(
+                        area = DebugArea.MediaSniffing,
+                        severity = if (statusCode == 403) DebugSeverity.Warning else DebugSeverity.Error,
+                        action = "page-probe",
+                        result = "http-blocked",
+                        safeDetails = mapOf("url" to normalized, "finalUrl" to currentUrl, "status" to statusCode.toString()),
+                    )
+                    return MediaSniffingPlan(emptyList(), emptyList(), emptyList(), listOf(diagnostic))
+                }
+                val body = BufferedInputStream(connection.inputStream).use { stream -> stream.readBoundedUtf8(policy.bodyPrefixBytes) }
+                val input = MediaSniffingInput(
+                    url = normalized,
+                    finalUrl = currentUrl,
+                    mimeType = connection.contentType,
+                    contentLength = connection.contentLengthLong.takeIf { it >= 0L },
+                    bodyPrefix = body,
+                    pageUrl = currentUrl,
+                    pageTitle = pageTitle,
+                    requestHeaders = hopHeaders,
+                    source = MediaSniffingSource.AppPageProbe,
+                )
+                val plan = engine.sniff(input)
+                debugRecorder.record(
+                    area = DebugArea.MediaSniffing,
+                    severity = DebugSeverity.Info,
+                    action = "page-probe",
+                    result = if (plan.records.isEmpty()) "no-captures" else "captures-created",
+                    safeDetails = mapOf("url" to normalized, "finalUrl" to currentUrl, "status" to statusCode.toString(), "candidateCount" to plan.candidates.size.toString()),
+                )
+                return plan.copy(diagnostics = plan.diagnostics + "page-probe bounded GET • redirects=$redirects/$MAX_PROBE_REDIRECTS • each-hop-security=true • no-js=${!policy.executeJavaScript} • no-drm-bypass=${!policy.bypassDrm}")
+            } catch (error: Exception) {
+                return failedPlan(currentUrl, "failed: ${error.javaClass.simpleName}")
+            } finally {
+                connection.disconnect()
+            }
         }
     }
+
+    private fun rejectedPlan(url: String, reason: String): MediaSniffingPlan {
+        debugRecorder.record(DebugArea.MediaSniffing, DebugSeverity.Warning, "page-probe", "rejected", mapOf("url" to url, "reason" to reason))
+        return MediaSniffingPlan(emptyList(), emptyList(), emptyList(), listOf("page-probe rejected: $reason"))
+    }
+
+    private fun failedPlan(url: String, reason: String): MediaSniffingPlan {
+        debugRecorder.record(DebugArea.MediaSniffing, DebugSeverity.Error, "page-probe", "failed", mapOf("url" to url, "reason" to reason))
+        return MediaSniffingPlan(emptyList(), emptyList(), emptyList(), listOf("page-probe $reason"))
+    }
 }
+
+private val SAFE_PROBE_HEADER_NAME = Regex("^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$")
+private val PROBE_HEADER_ALLOWLIST = setOf(
+    "accept", "accept-encoding", "accept-language", "authorization", "cookie", "origin", "referer", "range", "user-agent",
+    "if-range", "if-none-match", "if-modified-since", "x-api-key", "x-auth-token", "x-access-token", "x-csrf-token",
+)
+private val REDIRECT_STATUS_CODES = setOf(301, 302, 303, 307, 308)
+private const val MAX_PROBE_REDIRECTS = 5
+
+private fun sanitizeProbeHeaders(headers: Map<String, String>): Map<String, String> = headers.entries.mapNotNull { (rawName, rawValue) ->
+    val name = rawName.trim()
+    val value = rawValue.trim()
+    val lower = name.lowercase(Locale.US)
+    if (!SAFE_PROBE_HEADER_NAME.matches(name) || '\r' in value || '\n' in value || lower !in PROBE_HEADER_ALLOWLIST && !lower.startsWith("sec-fetch-")) null else name to value
+}.toMap()
+
+private fun isSensitiveProbeHeader(name: String): Boolean {
+    val lower = name.lowercase(Locale.US)
+    return lower in setOf("authorization", "cookie", "x-api-key", "x-auth-token", "x-access-token", "x-csrf-token") || lower.contains("token") || lower.endsWith("-key")
+}
+
+private fun normalizeProbeUrl(value: String): String? = runCatching {
+    val uri = URI(value.trim())
+    val scheme = uri.scheme?.lowercase(Locale.US)
+    if (scheme !in setOf("http", "https") || uri.host.isNullOrBlank() || uri.rawUserInfo != null || uri.rawFragment != null) return@runCatching null
+    URI(scheme, null, uri.host.lowercase(Locale.US), uri.port, uri.rawPath?.ifBlank { "/" } ?: "/", uri.rawQuery, null).toASCIIString()
+}.getOrNull()
+
+private fun resolveProbeRedirect(base: String, location: String): String? = runCatching { URI(base).resolve(location) }.getOrNull()?.toString()?.let(::normalizeProbeUrl)
+private fun originOf(value: String): String? = runCatching { URI(value) }.getOrNull()?.let { uri -> "${uri.scheme?.lowercase(Locale.US)}://${uri.host?.lowercase(Locale.US)}:${if (uri.port >= 0) uri.port else if (uri.scheme.equals("https", true)) 443 else 80}" }
 
 private fun applyDefaultProbeHeaders(connection: HttpURLConnection, url: String, requestHeaders: Map<String, String>) {
     fun supplied(name: String) = requestHeaders.keys.any { it.equals(name, ignoreCase = true) }
     if (!supplied("User-Agent")) connection.setRequestProperty("User-Agent", DEFAULT_MEDIA_PROBE_USER_AGENT)
-    if (!supplied("Accept")) {
-        connection.setRequestProperty(
-            "Accept",
-            "text/html,application/xhtml+xml,application/xml;q=0.9,application/vnd.apple.mpegurl;q=0.9,application/dash+xml;q=0.9,*/*;q=0.8",
-        )
-    }
+    if (!supplied("Accept")) connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/vnd.apple.mpegurl;q=0.9,application/dash+xml;q=0.9,*/*;q=0.8")
     if (!supplied("Accept-Language")) connection.setRequestProperty("Accept-Language", "en-US,en;q=0.8")
     if (!supplied("Accept-Encoding")) connection.setRequestProperty("Accept-Encoding", "identity")
     sameOriginReferer(url)?.takeIf { !supplied("Referer") }?.let { connection.setRequestProperty("Referer", it) }
-    requestHeaders
-        .filterKeys { name -> name.none { it == '\n' || it == '\n' } }
-        .filterValues { value -> value.none { it == '\n' || it == '\n' } }
-        .forEach { (name, value) -> connection.setRequestProperty(name, value) }
+    sanitizeProbeHeaders(requestHeaders).forEach { (name, value) -> connection.setRequestProperty(name, value) }
 }
 
 private fun BufferedInputStream.readBoundedUtf8(limitBytes: Int): String {
@@ -431,14 +451,15 @@ class MediaSniffingEngine(
         val scheme = resolved.scheme?.lowercase(Locale.US) ?: return null
         if (scheme != "http" && scheme != "https") return null
         val host = resolved.host?.lowercase(Locale.US) ?: return null
+        if (resolved.rawUserInfo != null) return null
         return URI(
             scheme,
-            resolved.userInfo,
+            null,
             host,
             resolved.port,
             resolved.rawPath?.ifBlank { "/" } ?: "/",
             resolved.rawQuery,
-            resolved.rawFragment,
+            null,
         ).toASCIIString().cleanExtractedUrl()
     }
 

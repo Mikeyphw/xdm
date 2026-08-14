@@ -1,6 +1,9 @@
 package com.mikeyphw.xdm.android.scheduler
 
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import com.mikeyphw.xdm.android.transfer.DownloadRequestApprovalScope
+import com.mikeyphw.xdm.android.transfer.DownloadRequestKind
+import com.mikeyphw.xdm.android.transfer.inferDownloadRequestKind
 import java.util.concurrent.ConcurrentHashMap
 
 /** Encrypted, scoped process-local handoff for browser sessions and signed URLs.
@@ -11,12 +14,16 @@ data class MediaRequestHandoff(
     val boundHost: String? = null,
     val pageUrl: String? = null,
     val headers: Map<String, String>,
+    val requestKind: DownloadRequestKind = DownloadRequestKind.Direct,
+    val mirrors: List<String> = emptyList(),
     val redactedSummary: String,
     val isExpiringUrl: Boolean,
     val expiresAtEpochMs: Long,
     val attemptGeneration: Long = 0L,
     val privateNetworkApproved: Boolean = false,
     val cleartextCredentialsApproved: Boolean = false,
+    val privateNetworkApprovalScopes: Set<String> = emptySet(),
+    val cleartextCredentialApprovalScopes: Set<String> = emptySet(),
     val cleanupActions: List<String> = emptyList(),
     val tempCookieFileName: String? = null,
     val createdAtEpochMs: Long = System.currentTimeMillis(),
@@ -40,6 +47,8 @@ object MediaRequestHandoffStore {
         isExpiringUrl: Boolean,
         exactUrl: String? = null,
         pageUrl: String? = null,
+        requestKind: DownloadRequestKind = inferDownloadRequestKind(exactUrl.orEmpty()),
+        mirrors: List<String> = emptyList(),
         expiresAtEpochMs: Long = defaultExpiry(isExpiringUrl),
         attemptGeneration: Long = 0L,
         privateNetworkApproved: Boolean = false,
@@ -53,6 +62,8 @@ object MediaRequestHandoffStore {
         isExpiringUrl = isExpiringUrl,
         exactUrl = exactUrl,
         pageUrl = pageUrl,
+        requestKind = requestKind,
+        mirrors = mirrors,
         expiresAtEpochMs = expiresAtEpochMs,
         attemptGeneration = attemptGeneration,
         privateNetworkApproved = privateNetworkApproved,
@@ -128,10 +139,12 @@ object MediaRequestHandoffStore {
             isExpiringUrl = source.isExpiringUrl || replacementExactUrl != null,
             exactUrl = replacementExactUrl ?: source.exactUrl,
             pageUrl = source.pageUrl,
+            requestKind = replacementExactUrl?.let(::inferDownloadRequestKind) ?: source.requestKind,
+            mirrors = if (replacementExactUrl == null) source.mirrors else emptyList(),
             expiresAtEpochMs = source.expiresAtEpochMs,
             attemptGeneration = 0L,
-            privateNetworkApproved = source.privateNetworkApproved,
-            cleartextCredentialsApproved = source.cleartextCredentialsApproved,
+            privateNetworkApproved = replacementExactUrl == null && source.privateNetworkApproved,
+            cleartextCredentialsApproved = replacementExactUrl == null && source.cleartextCredentialsApproved,
             cleanupActions = source.cleanupActions,
             tempCookieFileName = source.tempCookieFileName,
         )
@@ -147,10 +160,13 @@ object MediaRequestHandoffStore {
             isExpiringUrl = source?.isExpiringUrl == true || ExternalUrlPolicy.hasCredentialBearingQuery(exactUrl),
             exactUrl = exactUrl,
             pageUrl = source?.pageUrl,
+            requestKind = inferDownloadRequestKind(exactUrl),
+            mirrors = emptyList(),
             expiresAtEpochMs = source?.expiresAtEpochMs ?: defaultExpiry(true),
             attemptGeneration = source?.attemptGeneration ?: 0L,
-            privateNetworkApproved = source?.privateNetworkApproved == true,
-            cleartextCredentialsApproved = source?.cleartextCredentialsApproved == true,
+            // Approval is exact-target scoped. Changing the URL always requires a fresh review.
+            privateNetworkApproved = false,
+            cleartextCredentialsApproved = false,
             cleanupActions = source?.cleanupActions.orEmpty(),
             tempCookieFileName = source?.tempCookieFileName,
         )
@@ -176,6 +192,8 @@ object MediaRequestHandoffStore {
         isExpiringUrl: Boolean,
         exactUrl: String? = null,
         pageUrl: String? = null,
+        requestKind: DownloadRequestKind = inferDownloadRequestKind(exactUrl.orEmpty()),
+        mirrors: List<String> = emptyList(),
         expiresAtEpochMs: Long = defaultExpiry(isExpiringUrl),
         attemptGeneration: Long = 0L,
         privateNetworkApproved: Boolean = false,
@@ -184,25 +202,33 @@ object MediaRequestHandoffStore {
         tempCookieFileName: String? = null,
     ) {
         if (subjectId.substringAfter(':').isBlank()) return
-        val safeHeaders = headers.filterKeys(::isSafeHeaderName).filterValues(::isSafeHeaderValue)
+        val safeHeaders = headers.filterKeys(::isAllowedHeaderName).filterValues(::isSafeHeaderValue)
+        val exact = exactUrl?.trim()?.takeIf(String::isNotBlank)
+        val exactScope = DownloadRequestApprovalScope.forUrl(exact)
         val handoff = MediaRequestHandoff(
-            exactUrl = exactUrl?.trim()?.takeIf(String::isNotBlank),
+            exactUrl = exact,
             boundHost = ExternalUrlPolicy.originHost(exactUrl),
             pageUrl = pageUrl?.trim()?.takeIf(String::isNotBlank),
             headers = safeHeaders,
+            requestKind = requestKind,
+            mirrors = mirrors.asSequence().map(String::trim).filter(String::isNotBlank).distinct().take(MAX_MIRRORS).toList(),
             redactedSummary = redactedSummary.take(500),
             isExpiringUrl = isExpiringUrl,
             expiresAtEpochMs = expiresAtEpochMs,
             attemptGeneration = attemptGeneration,
-            privateNetworkApproved = privateNetworkApproved,
-            cleartextCredentialsApproved = cleartextCredentialsApproved,
+            privateNetworkApproved = privateNetworkApproved && exactScope != null,
+            cleartextCredentialsApproved = cleartextCredentialsApproved && exactScope != null,
+            privateNetworkApprovalScopes = if (privateNetworkApproved && exactScope != null) setOf(exactScope) else emptySet(),
+            cleartextCredentialApprovalScopes = if (cleartextCredentialsApproved && exactScope != null) setOf(exactScope) else emptySet(),
             cleanupActions = cleanupActions.map { it.take(120) },
             tempCookieFileName = tempCookieFileName?.take(96),
         )
         if (handoff.headers.isEmpty() && handoff.exactUrl == null && handoff.pageUrl == null && handoff.redactedSummary.isBlank()) return
+        // Durable encrypted persistence is authoritative. Never expose the handoff through the
+        // process cache until the encrypted write has completed successfully.
+        durableStore.put(handoff.toEnvelope(subjectId))
         evictOldestIfNeeded()
         cache[subjectId] = handoff
-        durableStore.put(handoff.toEnvelope(subjectId))
     }
 
     private fun readSubject(subjectId: String): MediaRequestHandoff? {
@@ -238,12 +264,16 @@ object MediaRequestHandoffStore {
         boundHost = boundHost,
         pageUrl = pageUrl,
         headers = headers,
+        requestKind = requestKind,
+        mirrors = mirrors,
         redactedSummary = redactedSummary,
         isExpiringUrl = isExpiringUrl,
         expiresAtEpochMs = expiresAtEpochMs,
         attemptGeneration = attemptGeneration,
         privateNetworkApproved = privateNetworkApproved,
         cleartextCredentialsApproved = cleartextCredentialsApproved,
+        privateNetworkApprovalScopes = privateNetworkApprovalScopes,
+        cleartextCredentialApprovalScopes = cleartextCredentialApprovalScopes,
         cleanupActions = cleanupActions,
         tempCookieFileName = tempCookieFileName,
         createdAtEpochMs = createdAtEpochMs,
@@ -254,19 +284,27 @@ object MediaRequestHandoffStore {
         boundHost = boundHost,
         pageUrl = pageUrl,
         headers = headers,
+        requestKind = requestKind,
+        mirrors = mirrors,
         redactedSummary = redactedSummary,
         isExpiringUrl = isExpiringUrl,
         expiresAtEpochMs = expiresAtEpochMs,
         attemptGeneration = attemptGeneration,
         privateNetworkApproved = privateNetworkApproved,
         cleartextCredentialsApproved = cleartextCredentialsApproved,
+        privateNetworkApprovalScopes = privateNetworkApprovalScopes,
+        cleartextCredentialApprovalScopes = cleartextCredentialApprovalScopes,
         cleanupActions = cleanupActions,
         tempCookieFileName = tempCookieFileName,
         createdAtEpochMs = createdAtEpochMs,
     )
 
     private fun subject(prefix: String, id: String) = "$prefix:$id"
-    private fun isSafeHeaderName(name: String): Boolean = name.isNotBlank() && name.none { it == '\r' || it == '\n' }
+    private fun isAllowedHeaderName(name: String): Boolean {
+        if (name.isBlank() || name.any { it == '\r' || it == '\n' } || !HEADER_NAME.matches(name)) return false
+        val normalized = name.lowercase()
+        return normalized in ALLOWED_HEADERS || normalized.startsWith("sec-fetch-")
+    }
     private fun isSafeHeaderValue(value: String): Boolean = value.none { it == '\r' || it == '\n' }
     private fun defaultExpiry(expiring: Boolean): Long = System.currentTimeMillis() + if (expiring) DefaultExpiryMs else 7L * DefaultExpiryMs
 
@@ -274,4 +312,12 @@ object MediaRequestHandoffStore {
     private const val CAPTURE_PREFIX = "capture"
     private const val VARIANT_PREFIX = "variant"
     private const val COMMAND_PREFIX = "command"
+    private const val MAX_MIRRORS = 32
+    private val HEADER_NAME = Regex("[!#$%&'*+.^_`|~0-9A-Za-z-]+")
+    private val ALLOWED_HEADERS = setOf(
+        "accept", "accept-encoding", "accept-language", "authorization", "cookie", "origin",
+        "referer", "range", "user-agent", "if-range", "if-none-match", "if-modified-since",
+        "x-api-key", "x-auth-token", "x-access-token", "x-csrf-token",
+    )
 }
+

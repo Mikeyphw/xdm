@@ -216,12 +216,14 @@ object QueueIntelligencePlanner {
         }
         val minimumBattery = policy.minimumBatteryPercent
         val battery = conditions.batteryPercent
-        if (minimumBattery != null && battery != null && battery < minimumBattery) {
-            return hold(QueueHoldReason.BatteryLow, "Battery below policy", "Battery is $battery%; this queue requires at least $minimumBattery%.")
+        if (minimumBattery != null) {
+            if (battery == null) return hold(QueueHoldReason.BatteryLow, "Battery status unavailable", "XDM cannot verify the configured minimum battery level, so this queue is held closed.")
+            if (battery < minimumBattery) return hold(QueueHoldReason.BatteryLow, "Battery below policy", "Battery is $battery%; this queue requires at least $minimumBattery%.")
         }
         val availableStorage = conditions.availableStorageBytes
-        if (policy.stopOnStoragePressure && availableStorage != null && availableStorage < policy.minimumFreeStorageBytes) {
-            return hold(QueueHoldReason.StoragePressure, "Storage pressure", "Free app storage is below the queue reserve. Free space or choose another destination.")
+        if (policy.stopOnStoragePressure) {
+            if (availableStorage == null) return hold(QueueHoldReason.StoragePressure, "Destination storage unavailable", "XDM cannot verify free space for this destination, so storage-pressure policy is held closed.")
+            if (availableStorage < policy.minimumFreeStorageBytes) return hold(QueueHoldReason.StoragePressure, "Storage pressure", "Free destination storage is below the queue reserve. Free space or choose another destination.")
         }
         if (failureMessage != null) {
             val assessment = assessFailure(failureMessage)
@@ -250,7 +252,9 @@ object QueueIntelligencePlanner {
 
     fun rank(downloads: List<Download>, nowEpochMs: Long): List<QueueRankedDownload> = downloads
         .map { download ->
-            val ageMinutes = ((nowEpochMs - download.createdAtEpochMs).coerceAtLeast(0L) / 60_000L).coerceAtMost(10_000L)
+            // Age is intentionally unbounded relative to priority so old low-priority work
+            // eventually outranks newer work instead of starving forever.
+            val ageMinutes = (nowEpochMs - download.createdAtEpochMs).coerceAtLeast(0L) / 60_000L
             val remainingBytes = download.totalBytes?.let { (it - download.bytesReceived).coerceAtLeast(0L) }
             val nearCompleteBonus = if (download.progressFraction >= 0.85f) 30_000L else 0L
             val smallTransferBonus = when {
@@ -259,8 +263,8 @@ object QueueIntelligencePlanner {
                 remainingBytes <= 250L * 1024L * 1024L -> 5_000L
                 else -> 0L
             }
-            val explicitPriority = download.priority.toLong() * 100_000L
-            val score = explicitPriority + nearCompleteBonus + smallTransferBonus + ageMinutes
+            val explicitPriority = download.priority.toLong() * 20_000L
+            val score = explicitPriority + nearCompleteBonus + smallTransferBonus + ageMinutes * 100L
             val explanation = buildList {
                 if (download.priority != 0) add("priority ${download.priority}")
                 if (nearCompleteBonus > 0) add("near completion")

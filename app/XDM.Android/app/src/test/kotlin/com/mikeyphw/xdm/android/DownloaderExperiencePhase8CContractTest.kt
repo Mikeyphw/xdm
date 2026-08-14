@@ -20,7 +20,7 @@ class DownloaderExperiencePhase8CContractTest {
         listOf(
             "coordinator.evaluateAndClaim()",
             "setForeground(createForegroundInfo",
-            "runtime.execute(download.id)",
+            "runtime.execute(downloadId, queueClaimToken)",
             "ExistingWorkPolicy.KEEP",
         ).forEach { assertTrue("Foreground queue worker missing $it", worker.contains(it)) }
         assertTrue(coordinator.contains("suspend fun evaluateAndClaim(): QueueReconcileOutcome"))

@@ -17,6 +17,7 @@ import com.mikeyphw.xdm.android.transfer.BackendRegistry
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
 import com.mikeyphw.xdm.android.transfer.BackendTask
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
+import com.mikeyphw.xdm.android.transfer.inferDownloadRequestKind
 import com.mikeyphw.xdm.android.transfer.OwnershipClaimResult
 import java.util.UUID
 
@@ -91,7 +92,7 @@ class BackendMigrationCoordinator(
                     speedBytesPerSecond = 0,
                     errorMessage = record.message,
                     attemptGeneration = download.attemptGeneration,
-                    updatedAtEpochMs = clock(),
+                    updatedAtEpochMs = download.nextUpdatedAt(),
                 ),
             )
             return BackendMigrationOutcome.Rejected(record)
@@ -184,7 +185,7 @@ class BackendMigrationCoordinator(
                     speedBytesPerSecond = 0,
                     errorMessage = null,
                     attemptGeneration = targetOwnership.generation,
-                    updatedAtEpochMs = clock(),
+                    updatedAtEpochMs = download.nextUpdatedAt(),
                 ),
             )
             record = record.copy(
@@ -224,7 +225,7 @@ class BackendMigrationCoordinator(
                     speedBytesPerSecond = 0,
                     errorMessage = record.message,
                     attemptGeneration = targetOwnershipGeneration ?: current.attemptGeneration,
-                    updatedAtEpochMs = clock(),
+                    updatedAtEpochMs = current.nextUpdatedAt(),
                 ),
             )
             return BackendMigrationOutcome.Rejected(record)
@@ -239,18 +240,31 @@ class BackendMigrationCoordinator(
         updatedAtEpochMs = clock(),
     )
 
-    private fun Download.toRequest(target: BackendType) = DownloadRequest(
-        id = id,
-        sourceUrl = sourceUrl,
-        destinationUri = destinationUri,
-        fileName = fileName,
-        preferredBackend = target,
-        expectedLength = totalBytes,
-        conflictPolicy = conflictPolicy,
-        mimeType = mimeType,
-        allowBackendFallback = false,
-        attemptGeneration = attemptGeneration,
-    )
+    private fun Download.toRequest(target: BackendType): DownloadRequest {
+        val handoff = MediaRequestHandoffStore.forDownload(id)
+        val exactUrl = handoff?.exactUrl?.takeIf(String::isNotBlank) ?: sourceUrl
+        return DownloadRequest(
+            id = id,
+            sourceUrl = exactUrl,
+            destinationUri = destinationUri,
+            fileName = fileName,
+            preferredBackend = target,
+            requestKind = handoff?.requestKind ?: inferDownloadRequestKind(exactUrl),
+            mirrors = handoff?.mirrors.orEmpty(),
+            headers = handoff?.headers.orEmpty(),
+            expectedLength = totalBytes,
+            conflictPolicy = conflictPolicy,
+            mimeType = mimeType,
+            allowBackendFallback = false,
+            isExpiringUrl = handoff?.isExpiringUrl == true,
+            isMediaRequest = handoff?.headers?.isNotEmpty() == true,
+            privateNetworkApproved = handoff?.privateNetworkApproved == true,
+            cleartextCredentialsApproved = handoff?.cleartextCredentialsApproved == true,
+            privateNetworkApprovalScopes = handoff?.privateNetworkApprovalScopes.orEmpty(),
+            cleartextCredentialApprovalScopes = handoff?.cleartextCredentialApprovalScopes.orEmpty(),
+            attemptGeneration = attemptGeneration,
+        )
+    }
 
     private companion object {
         val MIGRATABLE_STATES = setOf(
@@ -261,6 +275,8 @@ class BackendMigrationCoordinator(
             DownloadState.RecoveryRequired,
         )
     }
+
+    private fun Download.nextUpdatedAt(): Long = maxOf(clock(), updatedAtEpochMs + 1L)
 
     private suspend fun persistOrThrow(download: Download) {
         check(store.save(download)) {
