@@ -23,6 +23,7 @@ import com.mikeyphw.xdm.android.scheduler.QueueSchedulingRecoveryProvider
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionStopReasonRecorder
 import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceProvider
 import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceWorker
+import com.mikeyphw.xdm.android.scheduler.AndroidCompletedArtifactReader
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionStarter
 import com.mikeyphw.xdm.android.scheduler.TransferNotifications
@@ -97,6 +98,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
                 Migrations.Migration15To16,
                 Migrations.Migration16To17,
                 Migrations.Migration17To18,
+                Migrations.Migration18To19,
             )
             .build()
         val repository = DownloadRepository(database)
@@ -137,6 +139,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             finalizationStore = finalizationStore,
             recoveryStore = recoveryStore,
             artifactRoots = listOf(filesDir, cacheDir).filterNotNull(),
+            completedArtifactReader = AndroidCompletedArtifactReader(this),
             requestSecurityGuard = AndroidTransferRequestSecurityGuard(this),
             backends = listOf(
                 NativeHttpDownloadBackend(

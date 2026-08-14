@@ -21,6 +21,7 @@ import com.mikeyphw.xdm.android.transfer.DownloadBackend
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.DownloadRequestApprovalScope
 import com.mikeyphw.xdm.android.storage.DestinationRequest
+import com.mikeyphw.xdm.android.storage.DestinationCapacityPlanner
 import com.mikeyphw.xdm.android.storage.DestinationPublicationException
 import com.mikeyphw.xdm.android.storage.DestinationWriter
 import com.mikeyphw.xdm.android.storage.FileDestinationWriter
@@ -33,6 +34,10 @@ import java.net.Inet6Address
 import java.net.UnknownHostException
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.security.MessageDigest
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
@@ -91,10 +96,10 @@ class NativeHttpDownloadBackend(
         supportsSelectiveRepair = true,
         supportsSafDestination = destinationWriter.supportsContentDestinations,
         supportsAuthentication = true,
-        supportsProxy = true,
+        supportsProxy = false,
         maxConnectionsPerDownload = config.defaultConnections,
         supportsExpiringUrls = true,
-        supportsMediaPlaylists = true,
+        supportsMediaPlaylists = false,
         supportsMigrationImport = false,
         batteryImpact = BackendBatteryImpact.Low,
         diagnosticDetail = BackendDiagnosticDetail.Forensic,
@@ -102,6 +107,9 @@ class NativeHttpDownloadBackend(
 
     override suspend fun prepare(request: DownloadRequest): BackendPreparation {
         require(request.sourceUrl.startsWith("http://") || request.sourceUrl.startsWith("https://")) { "Native backend supports HTTP and HTTPS" }
+        require(destinationWriter.canWrite(request.destinationUri)) {
+            "Destination is not healthy or writable; revalidate the selected destination before starting"
+        }
         val preparedDestination = destinationWriter.prepare(request.toDestinationRequest())
         val preparationId = UUID.randomUUID().toString()
         val artifacts = preparedDestination.artifacts.toBackendArtifactIdentity()
@@ -178,9 +186,19 @@ class NativeHttpDownloadBackend(
         val control = requireTask(taskId)
         if (control.state.value.state in TERMINAL_STATES) return
         control.pauseRequested = true
+        val checkpointFlusher = control.checkpointFlusher
         control.activeCalls.forEach(Call::cancel)
         control.job?.cancelAndJoin()
-        runCatching { control.checkpointFlusher?.invoke() }
+        try {
+            checkpointFlusher?.invoke()
+        } catch (error: Throwable) {
+            control.state.value = control.state.value.copy(
+                state = DownloadState.RecoveryRequired,
+                speedBytesPerSecond = 0,
+                errorMessage = "Checkpoint flush failed; resume is blocked until recovery validates the partial file: ${error.message ?: error::class.java.simpleName}",
+            )
+            throw IOException("Native checkpoint flush failed; transfer was quarantined", error)
+        }
         control.state.value = control.state.value.copy(state = DownloadState.Paused, speedBytesPerSecond = 0, errorMessage = null)
     }
 
@@ -307,9 +325,23 @@ class NativeHttpDownloadBackend(
                 "The native checkpoint does not carry the current ownership generation and installation proof.",
             )
         }
+        val trustFailure = runCatching {
+            validateSegmentGraph(parsed.segments, parsed.expectedLength)
+            parsed.segments.filter { it.completedBytes > 0L }.forEach { segment ->
+                val expectedDigest = requireNotNull(segment.completedSha256) { "Native checkpoint range has no byte digest" }
+                val actualDigest = sha256Range(partial, segment.startByte, segment.completedBytes)
+                require(actualDigest.equals(expectedDigest, ignoreCase = true)) { "Native checkpoint range digest changed" }
+            }
+        }.exceptionOrNull()
+        if (trustFailure != null) {
+            return BackendReconciliationResult(
+                BackendReconciliationClassification.ConflictingArtifact,
+                "The native checkpoint graph or persisted byte digests are no longer trustworthy: ${trustFailure.message ?: trustFailure::class.java.simpleName}",
+            )
+        }
         return BackendReconciliationResult(
             BackendReconciliationClassification.ResumableArtifact,
-            "The previous native session ended, but its partial file and checkpoint are safe to adopt.",
+            "The previous native session ended, and its generation-bound checkpoint graph and partial-byte digests are safe to adopt.",
             safeToResume = true,
         )
     }
@@ -331,6 +363,26 @@ class NativeHttpDownloadBackend(
                 if (length == 0L) BackendMigrationReuse.Empty else BackendMigrationReuse.RestartRequired,
                 length > 0,
                 if (length == 0L) "The native staging file is empty and can switch backends safely." else "The native partial has no trustworthy checkpoint and must be preserved while the target restarts from zero.",
+            )
+        }
+        val checkpointTrustFailure = runCatching {
+            validateSegmentGraph(checkpoint.segments, checkpoint.expectedLength)
+            require(checkpoint.partialPath == partial.toString()) { "Native checkpoint partial identity changed" }
+            checkpoint.segments.filter { it.completedBytes > 0L }.forEach { segment ->
+                val expectedDigest = requireNotNull(segment.completedSha256) { "Native checkpoint range has no byte digest" }
+                val actualDigest = sha256Range(partial, segment.startByte, segment.completedBytes)
+                require(actualDigest.equals(expectedDigest, ignoreCase = true)) { "Native checkpoint range digest changed" }
+            }
+        }.exceptionOrNull()
+        if (checkpointTrustFailure != null) {
+            val length = Files.size(partial)
+            return BackendMigrationInspection(
+                BackendType.Native,
+                length,
+                checkpoint.expectedLength,
+                if (length == 0L) BackendMigrationReuse.Empty else BackendMigrationReuse.RestartRequired,
+                length > 0,
+                "Native migration cannot trust the checkpoint graph or persisted partial-byte digests: ${checkpointTrustFailure.message ?: checkpointTrustFailure::class.java.simpleName}",
             )
         }
         val completed = checkpoint.segments.sumOf(NativeSegmentCheckpoint::completedBytes)
@@ -413,6 +465,7 @@ class NativeHttpDownloadBackend(
                     totalBytes = control.state.value.totalBytes ?: promotion.bytesCommitted,
                     speedBytesPerSecond = 0,
                     completedUri = promotion.committedUri,
+                    publicationJournalPath = promotion.publicationJournalPath,
                     errorMessage = null,
                 )
             } catch (publication: DestinationPublicationException) {
@@ -449,8 +502,14 @@ class NativeHttpDownloadBackend(
         val trustedLength = metadata.totalLength ?: control.request.expectedLength ?: previous?.expectedLength
         val availableSpace = preparedDestination.availableSpace()
         val alreadyPresent = previous?.segments?.sumOf(NativeSegmentCheckpoint::completedBytes) ?: 0L
-        if (trustedLength != null && availableSpace != null && (trustedLength - alreadyPresent).coerceAtLeast(0L) > availableSpace) {
-            throw IOException("Insufficient destination space: ${(trustedLength - alreadyPresent).coerceAtLeast(0L)} bytes required, $availableSpace available")
+        val requiredCapacity = DestinationCapacityPlanner.requiredBytesForPublication(
+            expectedTotalBytes = trustedLength,
+            existingBytes = alreadyPresent,
+            resumedBytes = alreadyPresent,
+            contentDestination = preparedDestination.requiresPublicationCopy,
+        )
+        if (requiredCapacity != null && availableSpace != null && requiredCapacity > availableSpace) {
+            throw IOException("Insufficient destination space: $requiredCapacity bytes required for transfer and publication, $availableSpace available")
         }
         validateResume(control.request, paths, previous, metadata)
         val segments = createSegments(control.request, paths, previous, metadata)
@@ -498,6 +557,7 @@ class NativeHttpDownloadBackend(
             totalBytes = trustedLength ?: promotion.bytesCommitted,
             speedBytesPerSecond = 0,
             completedUri = promotion.committedUri,
+            publicationJournalPath = promotion.publicationJournalPath,
         )
     }
 
@@ -526,19 +586,19 @@ class NativeHttpDownloadBackend(
                 }
             }
             val bytesAtAttemptStart = checkpointMutex.withLock { segments.sumOf(NativeSegmentCheckpoint::completedBytes) }
-            val useRange = metadata.rangeSupported && (requestStart > 0 || requestEnd != null || segments.size > 1)
+            val useRange = metadata.rangeSupported && metadata.resumeValidator != null &&
+                (requestStart > 0 || requestEnd != null || segments.size > 1)
             val builder = newTransferRequestBuilder(control.request, metadata.effectiveUrl)
             if (useRange) {
                 builder.header("Range", "bytes=$requestStart-${requestEnd?.toString().orEmpty()}")
-                val ifRange = metadata.etag ?: metadata.lastModified
-                if (!ifRange.isNullOrBlank()) builder.header("If-Range", ifRange)
+                builder.header("If-Range", metadata.resumeValidator.value)
             }
             val host = URI(metadata.effectiveUrl).host.orEmpty().lowercase()
             val hostSemaphore = hostConnections.computeIfAbsent(host) { Semaphore(config.maximumConnectionsPerHost.coerceAtLeast(1)) }
             globalConnections.withPermit {
                 hostSemaphore.withPermit {
                     execute(control, builder.build()).use { response ->
-                        validateResponse(response, useRange, requestStart, requestEnd, trustedLength)
+                        validateResponse(response, useRange, requestStart, requestEnd, trustedLength, metadata.resumeValidator)
                         rejectUnexpectedHtmlOrCompressedResponse(response, control.request)
                         val body = requireNotNull(response.body) { "Server returned no response body" }
                         RandomAccessFile(paths.partial.toFile(), "rw").use { file ->
@@ -595,6 +655,10 @@ class NativeHttpDownloadBackend(
         segments: List<NativeSegmentCheckpoint>,
         mutex: Mutex,
     ) = mutex.withLock {
+        val persistedSegments = segments.map { segment ->
+            if (segment.completedBytes <= 0L || !Files.exists(paths.partial)) segment.copy(completedSha256 = null)
+            else segment.copy(completedSha256 = sha256Range(paths.partial, segment.startByte, segment.completedBytes))
+        }
         checkpointStore.save(
             paths.checkpoint,
             NativeCheckpoint(
@@ -602,15 +666,19 @@ class NativeHttpDownloadBackend(
                 attemptGeneration = request.attemptGeneration,
                 backendInstanceId = runtimeIdentity.instanceId,
                 backendSessionId = runtimeIdentity.sessionId,
-                sourceUrl = ExternalUrlPolicy.persistableUrl(request.sourceUrl) ?: request.sourceUrl.substringBefore('?'),
-                effectiveUrl = ExternalUrlPolicy.persistableUrl(metadata.effectiveUrl) ?: metadata.effectiveUrl.substringBefore('?'),
+                sourceUrl = ExternalUrlPolicy.persistableUrl(request.sourceUrl) ?: "redacted",
+                effectiveUrl = ExternalUrlPolicy.persistableUrl(metadata.effectiveUrl) ?: "redacted",
+                sourceIdentitySha256 = sha256Identity(request.sourceUrl),
+                effectiveIdentitySha256 = sha256Identity(metadata.effectiveUrl),
+                resumeValidatorKind = metadata.resumeValidator?.kind?.name,
+                resumeValidatorValue = metadata.resumeValidator?.value,
                 destinationPath = paths.destinationIdentity,
                 partialPath = paths.partial.toString(),
                 expectedLength = metadata.totalLength,
                 etag = metadata.etag,
                 lastModified = metadata.lastModified,
                 rangeSupported = metadata.rangeSupported,
-                segments = segments.toList(),
+                segments = persistedSegments,
                 persistedAtEpochMs = clock(),
             ),
         )
@@ -620,7 +688,7 @@ class NativeHttpDownloadBackend(
         if (previous != null) return normalizePreviousSegments(previous.segments)
         val total = metadata.totalLength
         if (Files.exists(paths.partial)) Files.delete(paths.partial)
-        if (!metadata.rangeSupported || total == null || total < config.segmentThresholdBytes || request.maxConnections <= 1) {
+        if (!metadata.rangeSupported || metadata.resumeValidator == null || total == null || total < config.segmentThresholdBytes || request.maxConnections <= 1) {
             val existing = 0L
             return listOf(NativeSegmentCheckpoint(0, 0, total?.minus(1), existing, total != null && existing == total))
         }
@@ -645,29 +713,39 @@ class NativeHttpDownloadBackend(
             if (metadata.lastModified != null && metadata.lastModified != expected) throw RemoteObjectChangedException("Remote Last-Modified differs from the expected value")
         }
         if (checkpoint == null) return
-        val requestIdentity = ExternalUrlPolicy.persistableUrl(request.sourceUrl) ?: request.sourceUrl.substringBefore('?')
-        if (checkpoint.downloadId != request.id || checkpoint.sourceUrl != requestIdentity) throw RemoteObjectChangedException("Checkpoint does not belong to this download")
+        if (checkpoint.downloadId != request.id || checkpoint.sourceIdentitySha256 != sha256Identity(request.sourceUrl)) {
+            throw RemoteObjectChangedException("Checkpoint does not belong to this exact request")
+        }
         if (checkpoint.attemptGeneration != request.attemptGeneration || checkpoint.backendInstanceId != runtimeIdentity.instanceId) {
             throw RemoteObjectChangedException("Checkpoint belongs to a stale download generation or installation")
         }
         if (!destinationIdentityMatches(checkpoint.destinationPath, paths.destinationIdentity) || checkpoint.partialPath != paths.partial.toString()) {
             throw RemoteObjectChangedException("Checkpoint destination does not match this download")
         }
-        val metadataIdentity = ExternalUrlPolicy.persistableUrl(metadata.effectiveUrl) ?: metadata.effectiveUrl.substringBefore('?')
-        if (checkpoint.effectiveUrl != metadataIdentity) throw RemoteObjectChangedException("Remote redirect target changed since the checkpoint")
-        if (checkpoint.expectedLength != null && metadata.totalLength != null && checkpoint.expectedLength != metadata.totalLength) throw RemoteObjectChangedException("Remote length changed since the checkpoint")
-        if (checkpoint.etag != null && metadata.etag == null) throw RemoteObjectChangedException("Remote ETag validator disappeared since the checkpoint")
-        if (checkpoint.etag != null && metadata.etag != checkpoint.etag) throw RemoteObjectChangedException("Remote ETag changed since the checkpoint")
-        if (checkpoint.etag == null && checkpoint.lastModified != null && metadata.lastModified == null) throw RemoteObjectChangedException("Remote Last-Modified validator disappeared since the checkpoint")
-        if (checkpoint.etag == null && checkpoint.lastModified != null && metadata.lastModified != checkpoint.lastModified) throw RemoteObjectChangedException("Remote Last-Modified changed since the checkpoint")
+        if (checkpoint.effectiveIdentitySha256 != sha256Identity(metadata.effectiveUrl)) {
+            throw RemoteObjectChangedException("Remote redirect target changed since the checkpoint")
+        }
+        if (checkpoint.expectedLength != null && metadata.totalLength != null && checkpoint.expectedLength != metadata.totalLength) {
+            throw RemoteObjectChangedException("Remote length changed since the checkpoint")
+        }
         if (!Files.exists(paths.partial)) throw RemoteObjectChangedException("Checkpoint exists but the partial file is missing")
+        validateSegmentGraph(checkpoint.segments, checkpoint.expectedLength)
         val completedBytes = checkpoint.segments.sumOf(NativeSegmentCheckpoint::completedBytes)
         if (checkpoint.segments.size > 1 && !metadata.rangeSupported) throw RemoteObjectChangedException("Server no longer supports byte ranges required by the segmented checkpoint")
-        if (completedBytes > 0 && !metadata.rangeSupported) throw RemoteObjectChangedException("Server no longer supports byte ranges required by the checkpoint")
-        checkpoint.segments.forEach { segment ->
-            require(segment.startByte >= 0 && segment.completedBytes >= 0) { "Checkpoint contains a negative segment range" }
-            val segmentLength = segment.endByteInclusive?.let { it - segment.startByte + 1 }
-            if (segmentLength != null && segment.completedBytes > segmentLength) throw RemoteObjectChangedException("Checkpoint segment exceeds its declared range")
+        if (completedBytes > 0L) {
+            val currentValidator = metadata.resumeValidator
+                ?: throw RemoteObjectChangedException("The remote object no longer exposes a strong validator; partial bytes cannot be resumed safely")
+            if (checkpoint.resumeValidatorKind != currentValidator.kind.name || checkpoint.resumeValidatorValue != currentValidator.value) {
+                throw RemoteObjectChangedException("The strong remote validator changed since the checkpoint")
+            }
+            checkpoint.segments.filter { it.completedBytes > 0L }.forEach { segment ->
+                val expectedDigest = segment.completedSha256
+                    ?: throw RemoteObjectChangedException("Legacy checkpoint has no cryptographic partial ownership proof")
+                val actualDigest = sha256Range(paths.partial, segment.startByte, segment.completedBytes)
+                if (!expectedDigest.equals(actualDigest, ignoreCase = true)) {
+                    throw RemoteObjectChangedException("Partial bytes no longer match checkpoint digest for segment ${segment.index}")
+                }
+            }
         }
         val minimumLength = checkpoint.segments.maxOfOrNull { it.startByte + it.completedBytes } ?: 0L
         val actualLength = Files.size(paths.partial)
@@ -786,15 +864,27 @@ class NativeHttpDownloadBackend(
         }
     }
 
-    private fun metadataFrom(response: Response, length: Long?, ranges: Boolean) = RemoteMetadata(
-        effectiveUrl = response.request.url.toString(),
-        totalLength = length,
-        etag = response.header("ETag"),
-        lastModified = response.header("Last-Modified"),
-        rangeSupported = ranges,
-    )
+    private fun metadataFrom(response: Response, length: Long?, ranges: Boolean): RemoteMetadata {
+        val etag = response.header("ETag")
+        val lastModified = response.header("Last-Modified")
+        return RemoteMetadata(
+            effectiveUrl = response.request.url.toString(),
+            totalLength = length,
+            etag = etag,
+            lastModified = lastModified,
+            rangeSupported = ranges,
+            resumeValidator = strongResumeValidator(etag, lastModified, response.header("Date")),
+        )
+    }
 
-    private fun validateResponse(response: Response, rangeExpected: Boolean, expectedStart: Long, expectedEnd: Long?, expectedTotal: Long?) {
+    private fun validateResponse(
+        response: Response,
+        rangeExpected: Boolean,
+        expectedStart: Long,
+        expectedEnd: Long?,
+        expectedTotal: Long?,
+        validator: ResumeValidator?,
+    ) {
         if (response.code == 429 || response.code in 500..599) throw HttpTransferException(response.code, "Retryable HTTP ${response.code}", response.retryAfterMillis())
         if (!response.isSuccessful) throw HttpTransferException(response.code, "HTTP ${response.code}")
         if (!rangeExpected) {
@@ -802,6 +892,14 @@ class NativeHttpDownloadBackend(
             return
         }
         if (response.code != 206) throw InvalidRangeResponseException("Server ignored the requested byte range")
+        requireNotNull(validator) { "Ranged transfer requires a strong representation validator" }
+        val observedValidator = when (validator.kind) {
+            ResumeValidatorKind.StrongEtag -> response.header("ETag")
+            ResumeValidatorKind.StrongLastModified -> response.header("Last-Modified")
+        }
+        if (observedValidator != validator.value) {
+            throw RemoteObjectChangedException("Ranged response does not match the representation validator")
+        }
         val (start, end, total) = parseContentRange(response.header("Content-Range"))
         if (start != expectedStart || (expectedEnd != null && end != expectedEnd)) {
             throw InvalidRangeResponseException("Content-Range does not match the requested segment")
@@ -841,6 +939,74 @@ class NativeHttpDownloadBackend(
         return false
     }
 
+    private fun strongResumeValidator(etag: String?, lastModified: String?, date: String?): ResumeValidator? {
+        val trimmedEtag = etag?.trim().orEmpty()
+        if (trimmedEtag.isNotBlank() && !trimmedEtag.startsWith("W/", ignoreCase = true)) {
+            return ResumeValidator(ResumeValidatorKind.StrongEtag, trimmedEtag)
+        }
+        val lastModifiedInstant = parseHttpDate(lastModified) ?: return null
+        val responseDate = parseHttpDate(date) ?: return null
+        // RFC 9110 permits treating Last-Modified as strong when the Date is at least 60 seconds later.
+        if (responseDate.toEpochSecond() - lastModifiedInstant.toEpochSecond() < 60L) return null
+        return ResumeValidator(ResumeValidatorKind.StrongLastModified, lastModified!!.trim())
+    }
+
+    private fun parseHttpDate(raw: String?): ZonedDateTime? = try {
+        raw?.trim()?.takeIf(String::isNotBlank)?.let { ZonedDateTime.parse(it, DateTimeFormatter.RFC_1123_DATE_TIME) }
+    } catch (_: DateTimeParseException) {
+        null
+    }
+
+    private fun sha256Identity(value: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
+
+    private fun sha256Range(path: java.nio.file.Path, start: Long, length: Long): String {
+        require(start >= 0L && length >= 0L)
+        val digest = MessageDigest.getInstance("SHA-256")
+        RandomAccessFile(path.toFile(), "r").use { file ->
+            file.seek(start)
+            val buffer = ByteArray(config.bufferBytes)
+            var remaining = length
+            while (remaining > 0L) {
+                val read = file.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                if (read < 0) throw RemoteObjectChangedException("Partial file ended while hashing checkpoint bytes")
+                digest.update(buffer, 0, read)
+                remaining -= read
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private fun validateSegmentGraph(segments: List<NativeSegmentCheckpoint>, expectedLength: Long?) {
+        if (segments.isEmpty()) throw RemoteObjectChangedException("Checkpoint segment graph is empty")
+        val sorted = segments.sortedBy(NativeSegmentCheckpoint::startByte)
+        if (sorted.map(NativeSegmentCheckpoint::index).distinct().size != sorted.size) {
+            throw RemoteObjectChangedException("Checkpoint segment indices are duplicated")
+        }
+        var cursor = 0L
+        sorted.forEachIndexed { position, segment ->
+            if (segment.startByte != cursor) throw RemoteObjectChangedException("Checkpoint segment graph has a gap or overlap")
+            if (segment.completedBytes < 0L) throw RemoteObjectChangedException("Checkpoint segment has negative progress")
+            val end = segment.endByteInclusive
+            if (end == null) {
+                if (position != sorted.lastIndex || expectedLength != null) {
+                    throw RemoteObjectChangedException("Only the final unknown-length segment may be open-ended")
+                }
+                cursor = segment.startByte + segment.completedBytes
+            } else {
+                if (end < segment.startByte) throw RemoteObjectChangedException("Checkpoint segment range is inverted")
+                val segmentLength = end - segment.startByte + 1L
+                if (segment.completedBytes > segmentLength) throw RemoteObjectChangedException("Checkpoint segment exceeds its declared range")
+                if (segment.complete && segment.completedBytes != segmentLength) throw RemoteObjectChangedException("Checkpoint marks an incomplete segment complete")
+                cursor = end + 1L
+            }
+        }
+        if (expectedLength != null && cursor != expectedLength) {
+            throw RemoteObjectChangedException("Checkpoint segment graph does not cover the expected object length")
+        }
+    }
+
     private fun parseContentRange(value: String?): Triple<Long, Long, Long?> {
         val match = CONTENT_RANGE.matchEntire(value.orEmpty()) ?: throw InvalidRangeResponseException("Missing or malformed Content-Range")
         return Triple(match.groupValues[1].toLong(), match.groupValues[2].toLong(), match.groupValues[3].takeIf { it.isNotEmpty() && it != "*" }?.toLong())
@@ -867,6 +1033,7 @@ class NativeHttpDownloadBackend(
         fileName = fileName,
         mimeType = mimeType,
         conflictPolicy = conflictPolicy,
+        attemptGeneration = attemptGeneration,
     )
 
     private fun requireTask(taskId: String): TaskControl = requireNotNull(tasks[taskId]) { "Unknown task $taskId" }

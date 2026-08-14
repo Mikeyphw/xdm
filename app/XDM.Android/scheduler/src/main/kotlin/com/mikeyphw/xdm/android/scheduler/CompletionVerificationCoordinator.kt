@@ -9,25 +9,37 @@ import com.mikeyphw.xdm.android.transfer.BackendSnapshot
 import com.mikeyphw.xdm.android.transfer.ChecksumVerificationService
 import com.mikeyphw.xdm.android.transfer.ChecksumWorkflowStore
 import com.mikeyphw.xdm.android.transfer.TrustedBlockManifestService
-import java.io.File
-import java.net.URI
-import java.nio.file.Paths
 
 class CompletionVerificationCoordinator(
     private val checksumStore: ChecksumWorkflowStore,
-    private val ownershipStore: BackendOwnershipStore,
+    @Suppress("unused") private val ownershipStore: BackendOwnershipStore,
+    private val artifactReader: CompletedArtifactReader = FileCompletedArtifactReader(),
     private val verifier: ChecksumVerificationService = ChecksumVerificationService(),
     private val blockManifestService: TrustedBlockManifestService = TrustedBlockManifestService(),
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     suspend fun complete(download: Download, snapshot: BackendSnapshot): BackendSnapshot {
         if (snapshot.state != DownloadState.Completed) return snapshot
+        val generation = snapshot.attemptGeneration.takeIf { it > 0L } ?: download.attemptGeneration
+        val completedUri = snapshot.completedUri?.trim()?.takeIf(String::isNotBlank)
+            ?: return missingArtifact(download, snapshot, generation, "Backend completed without a committed artifact URI.")
+        val artifactSize = artifactReader.size(completedUri)
+            ?: return missingArtifact(download, snapshot, generation, "Committed artifact size is unavailable, so XDM cannot prove the published byte count.")
+        val readable = runCatching { artifactReader.open(completedUri)?.use { true } == true }.getOrDefault(false)
+        if (!readable) return missingArtifact(download, snapshot, generation, "Committed artifact is no longer readable.")
+        if (snapshot.totalBytes != null && snapshot.totalBytes != artifactSize) {
+            return missingArtifact(
+                download,
+                snapshot,
+                generation,
+                "Committed artifact size $artifactSize does not match expected ${snapshot.totalBytes} bytes.",
+                status = VerificationStatus.Failed,
+            )
+        }
+
         val expectations = checksumStore.expectations(download.id).map { expectation ->
-            if (expectation.attemptGeneration == download.attemptGeneration) {
-                expectation
-            } else {
-                expectation.copy(attemptGeneration = download.attemptGeneration).also { checksumStore.saveExpectation(it) }
-            }
+            if (expectation.attemptGeneration == generation) expectation
+            else expectation.copy(attemptGeneration = generation).also { checksumStore.saveExpectation(it) }
         }
         if (expectations.isEmpty()) {
             checksumStore.saveVerification(
@@ -36,48 +48,40 @@ class CompletionVerificationCoordinator(
                     downloadId = download.id,
                     status = VerificationStatus.NoExpectation,
                     algorithm = null,
-                    bytesVerified = snapshot.bytesReceived,
-                    totalBytes = snapshot.totalBytes,
-                    message = "No checksum expectation is registered; completion remains length-based.",
+                    bytesVerified = artifactSize,
+                    totalBytes = artifactSize,
+                    message = "No checksum expectation is registered; committed artifact readability and length were validated.",
                     createdAtEpochMs = clock(),
                     updatedAtEpochMs = clock(),
-                    attemptGeneration = download.attemptGeneration,
+                    attemptGeneration = generation,
                 ),
             )
-            return snapshot
-        }
-        val file = resolveCompletedFile(download, snapshot)
-        if (file == null || !file.isFile) {
-            val message = "Completed file is unavailable for checksum verification."
-            checksumStore.saveVerification(
-                VerificationRecord(
-                    id = "verification-${download.id}",
-                    downloadId = download.id,
-                    status = VerificationStatus.MissingFile,
-                    algorithm = expectations.firstOrNull()?.algorithm,
-                    bytesVerified = 0,
-                    totalBytes = snapshot.totalBytes,
-                    message = message,
-                    createdAtEpochMs = clock(),
-                    updatedAtEpochMs = clock(),
-                    attemptGeneration = download.attemptGeneration,
-                ),
+            return snapshot.copy(
+                bytesReceived = artifactSize,
+                totalBytes = artifactSize,
+                completedUri = completedUri,
+                errorMessage = null,
             )
-            return snapshot.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = message)
         }
-        val started = snapshot.copy(state = DownloadState.Verifying, speedBytesPerSecond = 0)
-        var current = started
+
+        var current = snapshot.copy(state = DownloadState.Verifying, speedBytesPerSecond = 0)
         for (expectation in expectations) {
-            val result = verifier.verify(download.id, file, expectation) { progress -> checksumStore.saveVerification(progress) }
+            val result = verifier.verify(
+                downloadId = download.id,
+                totalBytes = artifactSize,
+                openInput = { artifactReader.open(completedUri) ?: error("Committed artifact became unreadable during verification") },
+                expectation = expectation,
+                progress = { checksumStore.saveVerification(it) },
+            )
             checksumStore.saveResult(result)
             if (result.matchesExpectation != true) {
-                val manifest = checksumStore.trustedManifest(download.id)
-                    ?.takeIf { it.attemptGeneration == download.attemptGeneration }
-                val repairMessage = if (manifest != null) {
+                val file = artifactReader.asFile(completedUri)?.takeIf { it.isFile }
+                val manifest = checksumStore.trustedManifest(download.id)?.takeIf { it.attemptGeneration == generation }
+                val repairMessage = if (file != null && manifest != null) {
                     val plan = blockManifestService.planRepair(file, manifest)
                     "Checksum mismatch; ${plan.ranges.size} trusted block(s) need native selective repair."
                 } else {
-                    "Checksum mismatch; no trusted block manifest exists yet, so restart or repair from a validated source."
+                    "Checksum mismatch; the committed provider artifact cannot be selectively repaired without trusted file-backed evidence."
                 }
                 checksumStore.saveVerification(
                     VerificationRecord(
@@ -86,48 +90,66 @@ class CompletionVerificationCoordinator(
                         status = VerificationStatus.Failed,
                         algorithm = expectation.algorithm,
                         bytesVerified = result.bytesVerified,
-                        totalBytes = file.length(),
+                        totalBytes = artifactSize,
                         message = repairMessage,
                         createdAtEpochMs = clock(),
                         updatedAtEpochMs = clock(),
-                        attemptGeneration = download.attemptGeneration,
+                        attemptGeneration = generation,
                     ),
                 )
                 return current.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = repairMessage)
             }
-            current = current.copy(bytesReceived = file.length(), totalBytes = snapshot.totalBytes ?: file.length())
+            current = current.copy(bytesReceived = result.bytesVerified, totalBytes = artifactSize)
         }
-        val manifest = blockManifestService.create(download.id, file, attemptGeneration = download.attemptGeneration)
-        checksumStore.saveTrustedManifest(manifest)
+
+        artifactReader.asFile(completedUri)?.takeIf { it.isFile }?.let { file ->
+            checksumStore.saveTrustedManifest(blockManifestService.create(download.id, file, attemptGeneration = generation))
+        }
         checksumStore.saveVerification(
             VerificationRecord(
                 id = "verification-${download.id}",
                 downloadId = download.id,
                 status = VerificationStatus.Passed,
                 algorithm = expectations.last().algorithm,
-                bytesVerified = file.length(),
-                totalBytes = file.length(),
-                message = "Checksum verification passed and trusted block manifest was recorded.",
+                bytesVerified = artifactSize,
+                totalBytes = artifactSize,
+                message = "Checksum verification passed for the committed artifact URI.",
                 createdAtEpochMs = clock(),
                 updatedAtEpochMs = clock(),
-                attemptGeneration = download.attemptGeneration,
+                attemptGeneration = generation,
             ),
         )
-        return current.copy(state = DownloadState.Completed, speedBytesPerSecond = 0, errorMessage = null, completedUri = file.toURI().toString())
+        return current.copy(
+            state = DownloadState.Completed,
+            speedBytesPerSecond = 0,
+            errorMessage = null,
+            completedUri = completedUri,
+            bytesReceived = artifactSize,
+            totalBytes = artifactSize,
+        )
     }
 
-    private suspend fun resolveCompletedFile(download: Download, snapshot: BackendSnapshot): File? {
-        snapshot.completedUri?.toFileOrNull()?.let { return it }
-        download.destinationUri.toFileOrNull()?.let { destination ->
-            if (destination.isDirectory) return File(destination, download.fileName)
-            return destination
-        }
-        val ownership = ownershipStore.findByDownload(download.id)
-        return ownership?.artifacts?.all()?.firstNotNullOfOrNull { it.toFileOrNull()?.takeIf(File::isFile) }
+    private suspend fun missingArtifact(
+        download: Download,
+        snapshot: BackendSnapshot,
+        generation: Long,
+        message: String,
+        status: VerificationStatus = VerificationStatus.MissingFile,
+    ): BackendSnapshot {
+        checksumStore.saveVerification(
+            VerificationRecord(
+                id = "verification-${download.id}",
+                downloadId = download.id,
+                status = status,
+                algorithm = checksumStore.expectations(download.id).firstOrNull()?.algorithm,
+                bytesVerified = 0,
+                totalBytes = snapshot.totalBytes,
+                message = message,
+                createdAtEpochMs = clock(),
+                updatedAtEpochMs = clock(),
+                attemptGeneration = generation,
+            ),
+        )
+        return snapshot.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = message)
     }
 }
-
-private fun String.toFileOrNull(): File? = runCatching {
-    val uri = URI(this)
-    if (!uri.scheme.equals("file", ignoreCase = true)) null else Paths.get(uri).toFile()
-}.getOrNull()

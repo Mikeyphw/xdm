@@ -78,6 +78,7 @@ import androidx.core.net.toUri
 @UiSurface(UiAudience.User, "Manage downloads and transfer state")
 fun DownloadsScreen(
     downloads: List<Download>,
+    requestedDetailDownloadId: String? = null,
     compact: Boolean,
     active: ActiveTransferSummary,
     queueIntelligence: QueueIntelligenceSummary,
@@ -211,6 +212,12 @@ fun DownloadsScreen(
         } else {
             executeDownloadAction(download, action)
         }
+    }
+
+    LaunchedEffect(requestedDetailDownloadId, downloads) {
+        requestedDetailDownloadId
+            ?.takeIf { requested -> downloads.any { it.id == requested } }
+            ?.let { detailDownloadId = it }
     }
 
     LaunchedEffect(downloads) {

@@ -252,8 +252,7 @@ class FileBackedQueueSchedulingRecoveryStore(private val root: File) : QueueSche
     }
 
     override fun saveTerminalNotification(record: TerminalNotificationRecord): Boolean = synchronized(lock) {
-        val key = encode(record.idempotencyKey)
-        if (file("terminal-notifications.log").takeIf(File::exists)?.readLines().orEmpty().any { it.split('\t').getOrNull(1) == key }) {
+        if (readLines("terminal-notifications.log").any { fields -> fields.getOrNull(1) == record.idempotencyKey }) {
             return@synchronized false
         }
         appendLocked(

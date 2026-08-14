@@ -54,12 +54,33 @@ class GenerationIntegrityMigrationTest {
     }
 
     @Test
-    fun migrate4To18ValidatesOldestExportedProductionChain() {
-        val name = "generation-integrity-4-18-${System.nanoTime()}"
+    fun migrate18To19AddsCompletedArtifactIdentityAndSingleActiveMigrationClaim() {
+        val name = "generation-integrity-18-19-${System.nanoTime()}"
+        val legacy = helper.createDatabase(name, 18)
+        legacy.execSQL(
+            """INSERT INTO downloads
+                (id,fileName,sourceUrl,destinationUri,state,backend,bytesReceived,totalBytes,speedBytesPerSecond,queueId,priority,createdAtEpochMs,updatedAtEpochMs,errorMessage,userLabel,mimeType,attemptGeneration)
+                VALUES ('download-19','file.bin','https://example.com/file.bin','content://downloads','RecoveryRequired','Native',1,1,0,'default',0,1,1,NULL,NULL,NULL,3)""",
+        )
+        legacy.close()
+
+        val db = helper.runMigrationsAndValidate(name, 19, true, Migrations.Migration18To19)
+        val columns = db.columnNames("downloads")
+        assertTrue(columns.contains("completedArtifactUri"))
+        assertTrue(columns.contains("completedArtifactGeneration"))
+        assertTrue(columns.contains("completedArtifactBytes"))
+        assertTrue(db.columnNames("backend_migrations").contains("activeClaim"))
+        assertEquals(19L, db.longValue("PRAGMA user_version"))
+        db.close()
+    }
+
+    @Test
+    fun migrate4To19ValidatesOldestExportedProductionChain() {
+        val name = "generation-integrity-4-19-${System.nanoTime()}"
         helper.createDatabase(name, 4).close()
         val db = helper.runMigrationsAndValidate(
             name,
-            18,
+            19,
             true,
             Migrations.Migration4To5,
             Migrations.Migration5To6,
@@ -75,27 +96,29 @@ class GenerationIntegrityMigrationTest {
             Migrations.Migration15To16,
             Migrations.Migration16To17,
             Migrations.Migration17To18,
+            Migrations.Migration18To19,
         )
-        assertEquals(18L, db.longValue("PRAGMA user_version"))
+        assertEquals(19L, db.longValue("PRAGMA user_version"))
         assertTrue(db.columnNames("downloads").contains("attemptGeneration"))
         assertTrue(db.hasForeignKey("checksum_expectations", "downloadId", "downloads", "CASCADE"))
         db.close()
     }
 
     @Test
-    fun migrate14To18ValidatesFullProductionChain() {
-        val name = "generation-integrity-14-18-${System.nanoTime()}"
+    fun migrate14To19ValidatesFullProductionChain() {
+        val name = "generation-integrity-14-19-${System.nanoTime()}"
         helper.createDatabase(name, 14).close()
         val db = helper.runMigrationsAndValidate(
             name,
-            18,
+            19,
             true,
             Migrations.Migration14To15,
             Migrations.Migration15To16,
             Migrations.Migration16To17,
             Migrations.Migration17To18,
+            Migrations.Migration18To19,
         )
-        assertEquals(18L, db.longValue("PRAGMA user_version"))
+        assertEquals(19L, db.longValue("PRAGMA user_version"))
         assertTrue(db.columnNames("downloads").contains("attemptGeneration"))
         db.close()
     }

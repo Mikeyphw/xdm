@@ -441,6 +441,9 @@ private fun DownloadEntity.toModel() = Download(
     allowBackendFallback = allowBackendFallback,
     archived = archived,
     attemptGeneration = attemptGeneration,
+    completedArtifactUri = completedArtifactUri,
+    completedArtifactGeneration = completedArtifactGeneration,
+    completedArtifactBytes = completedArtifactBytes,
 )
 private fun Download.toEntity() = DownloadEntity(
     id = id,
@@ -466,6 +469,9 @@ private fun Download.toEntity() = DownloadEntity(
     mimeType = mimeType,
     archived = archived,
     attemptGeneration = attemptGeneration,
+    completedArtifactUri = completedArtifactUri,
+    completedArtifactGeneration = completedArtifactGeneration,
+    completedArtifactBytes = completedArtifactBytes,
 )
 private fun QueueEntity.toModel() = QueueDefinition(id, name, isEnabled, maxConcurrent, createdAtEpochMs)
 private fun QueueDefinition.toEntity() = QueueEntity(id, name, isEnabled, maxConcurrent, createdAtEpochMs)

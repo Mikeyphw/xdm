@@ -45,6 +45,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
     }
 
     override fun artifactPaths(request: DestinationRequest): DestinationArtifacts {
+        rejectDisallowedRawFileDestination(request.destinationUri)
         if (isFileBackedDestination(request.destinationUri)) {
             ensureDirectAccessIfNeeded(request.destinationUri)
             return fileWriter.artifactPaths(request)
@@ -59,6 +60,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
     }
 
     override suspend fun prepare(request: DestinationRequest): PreparedDestination {
+        rejectDisallowedRawFileDestination(request.destinationUri)
         if (isFileBackedDestination(request.destinationUri)) {
             ensureDirectAccessIfNeeded(request.destinationUri)
             return fileWriter.prepare(request)
@@ -70,12 +72,13 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
             override val destinationKey: String = target.destinationKey
             override val displayName: String = target.displayName
             override val artifacts: DestinationArtifacts = artifacts
+            override val requiresPublicationCopy: Boolean = true
 
             override suspend fun availableSpace(): Long? = availableBytesForUri(target.rootUri)
 
             override suspend fun promote(): DestinationPromotionResult {
                 check(artifacts.stagingFile.isFile) { "Staging file is missing" }
-                val generation = PublicationGeneration(request.downloadId, attemptGeneration = 1L, artifactGeneration = artifacts.stagingFile.lastModified().coerceAtLeast(1L))
+                val generation = PublicationGeneration(request.downloadId, attemptGeneration = request.attemptGeneration, artifactGeneration = artifacts.stagingFile.lastModified().coerceAtLeast(1L))
                 val expectedBytes = artifacts.stagingFile.length()
                 try {
                     PublicationJournalCodec.write(
@@ -141,6 +144,26 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
                     )
                 }
                 val bytes = try {
+                    PublicationJournalCodec.write(
+                        artifacts.journalFile,
+                        PublicationCommitRecord(
+                            generation = generation,
+                            sourcePath = artifacts.stagingFile.absolutePath,
+                            stagingPath = artifacts.stagingFile.absolutePath,
+                            destinationSpec = request.destinationUri,
+                            committedUri = committed.uri.toString(),
+                            bytesExpected = expectedBytes,
+                            bytesCommitted = 0L,
+                            checksumAlgorithm = null,
+                            expectationId = null,
+                            expectedDigest = null,
+                            actualDigest = null,
+                            verificationTimestampEpochMs = null,
+                            boundary = PublicationCommitBoundary.DestinationCommitInProgress,
+                            health = CompletedArtifactHealthStatus.PendingPublication,
+                            message = "Provider item identity recorded before copying the committed bytes.",
+                        ),
+                    )
                     copyAndSync(artifacts.stagingFile, committed.uri)
                     committed.finish(true)
                     val publishedBytes = querySize(committed.uri) ?: expectedBytes
@@ -194,17 +217,21 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
                             expectedDigest = null,
                             actualDigest = null,
                             verificationTimestampEpochMs = System.currentTimeMillis(),
-                            boundary = PublicationCommitBoundary.MetadataReconciled,
+                            boundary = PublicationCommitBoundary.DestinationCommitted,
                             health = CompletedArtifactHealthStatus.Present,
-                            message = "Content destination committed, re-queried, and reconciled.",
+                            message = "Content destination committed and re-queried; journal retained until Room completion metadata is durable.",
                         ),
                     )
                 }
                 artifacts.stagingFile.delete()
                 artifacts.checkpointFile.delete()
-                artifacts.journalFile.delete()
-                artifacts.stagingFile.parentFile?.takeIf { it.listFiles().isNullOrEmpty() }?.delete()
-                return DestinationPromotionResult(committed.uri.toString(), committed.displayName, bytes, atomic = false)
+                return DestinationPromotionResult(
+                    committedUri = committed.uri.toString(),
+                    displayName = committed.displayName,
+                    bytesCommitted = bytes,
+                    atomic = false,
+                    publicationJournalPath = artifacts.journalFile.absolutePath,
+                )
             }
 
             override suspend fun deleteArtifacts() {
@@ -217,21 +244,23 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
     }
 
     override suspend fun previewConflict(request: DestinationRequest): DestinationConflict? {
+        rejectDisallowedRawFileDestination(request.destinationUri)
         if (isFileBackedDestination(request.destinationUri)) {
             ensureDirectAccessIfNeeded(request.destinationUri)
             return fileWriter.previewConflict(request)
         }
         val root = destinationRoot(request.destinationUri)
+        val requestedName = safeFileName(request.fileName)
         val existing = when (root.type) {
-            DestinationType.SafTree -> findTreeChild(root.uri, request.fileName)
-            DestinationType.DirectDocument -> root.uri.takeIf { queryDisplayName(it) == request.fileName }
-            else -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) findMediaItem(root, request.fileName) else null
+            DestinationType.SafTree -> findTreeChild(root.uri, requestedName)
+            DestinationType.DirectDocument -> root.uri.takeIf { queryDisplayName(it) == requestedName }
+            else -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) findMediaItem(root, requestedName) else null
         } ?: return null
         return DestinationConflict(
-            requestedName = request.fileName,
+            requestedName = requestedName,
             existingUri = existing.toString(),
             existingSize = querySize(existing),
-            suggestedName = uniqueName(root, request.fileName),
+            suggestedName = uniqueName(root, requestedName),
         )
     }
 
@@ -299,7 +328,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         return ResolvedTarget(root, displayName, destinationKey) {
             when (root.type) {
                 DestinationType.SafTree -> openTreeDocument(root.uri, displayName, request.mimeType, request.conflictPolicy)
-                DestinationType.DirectDocument -> CommitTarget(root.uri, queryDisplayName(root.uri) ?: displayName) { _ -> Unit }
+                DestinationType.DirectDocument -> openDirectDocument(root.uri, displayName, request.conflictPolicy)
                 else -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) openMediaItem(root, displayName, request.mimeType, request.conflictPolicy) else error("MediaStore destinations require Android 10")
             }
         }
@@ -332,14 +361,42 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
 
     private fun openTreeDocument(treeUri: Uri, name: String, mimeType: String?, policy: FilenameConflictPolicy): CommitTarget {
         val existing = findTreeChild(treeUri, name)
-        if (existing != null && policy != FilenameConflictPolicy.Overwrite && policy != FilenameConflictPolicy.Resume) {
-            throw DestinationConflictException("A document named $name already exists")
+        if (existing != null) {
+            val conflict = DestinationConflict(name, existing.toString(), querySize(existing), uniqueName(DestinationRoot(treeUri, DestinationType.SafTree, queryTreeName(treeUri) ?: "Selected folder", null), name))
+            throw DestinationConflictException(
+                if (policy == FilenameConflictPolicy.Overwrite || policy == FilenameConflictPolicy.Resume) {
+                    "This document provider cannot prove crash-safe replacement of an existing file; choose Rename or another destination"
+                } else {
+                    "A document named $name already exists"
+                },
+                conflict,
+            )
         }
         val parent = DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri))
-        val uri = existing ?: requireNotNull(DocumentsContract.createDocument(resolver, parent, mimeType ?: guessMimeType(name), name)) {
+        val uri = requireNotNull(DocumentsContract.createDocument(resolver, parent, mimeType ?: guessMimeType(name), name)) {
             "The document provider could not create $name"
         }
-        return CommitTarget(uri, name) { success -> if (!success && existing == null) runCatching { DocumentsContract.deleteDocument(resolver, uri) } }
+        return CommitTarget(uri, name) { success -> if (!success) runCatching { DocumentsContract.deleteDocument(resolver, uri) } }
+    }
+
+    private fun openDirectDocument(uri: Uri, name: String, policy: FilenameConflictPolicy): CommitTarget {
+        val size = querySize(uri)
+        if (size == null) {
+            throw DestinationConflictException(
+                "The selected document provider did not expose current size, so XDM cannot prove that in-place publication is safe",
+                DestinationConflict(name, uri.toString(), null, name),
+            )
+        }
+        if ((policy == FilenameConflictPolicy.Overwrite || policy == FilenameConflictPolicy.Resume) && size > 0L) {
+            throw DestinationConflictException(
+                "The selected document already contains data and cannot be replaced crash-safely in place; select a new document",
+                DestinationConflict(name, uri.toString(), size, name),
+            )
+        }
+        if (policy !in setOf(FilenameConflictPolicy.Overwrite, FilenameConflictPolicy.Resume) && size > 0L) {
+            throw DestinationConflictException("The selected document already contains data", DestinationConflict(name, uri.toString(), size, name))
+        }
+        return CommitTarget(uri, queryDisplayName(uri) ?: name) { _ -> Unit }
     }
 
     @SuppressLint("NewApi")
@@ -348,19 +405,27 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         if (existing != null && policy != FilenameConflictPolicy.Overwrite && policy != FilenameConflictPolicy.Resume) {
             throw DestinationConflictException("A media item named $name already exists")
         }
-        if (existing != null) return CommitTarget(existing, name) { _ -> Unit }
         val createdAtSeconds = System.currentTimeMillis() / 1000
+        val temporaryName = ".xdm-${System.nanoTime()}-${name}"
         val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.DISPLAY_NAME, temporaryName)
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType ?: guessMimeType(name))
             root.relativePath?.let { put(MediaStore.MediaColumns.RELATIVE_PATH, normalizedRelativePath(it)) }
             put(MediaStore.MediaColumns.DATE_ADDED, createdAtSeconds)
             put(MediaStore.MediaColumns.DATE_MODIFIED, createdAtSeconds)
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
-        val uri = requireNotNull(resolver.insert(root.uri, values)) { "MediaStore could not create $name" }
+        val uri = requireNotNull(resolver.insert(root.uri, values)) { "MediaStore could not create a pending replacement for $name" }
         return CommitTarget(uri, name) { success ->
-            if (success) publishMediaItem(uri, root, name, mimeType ?: guessMimeType(name)) else resolver.delete(uri, null, null)
+            if (success) {
+                publishMediaItem(uri, root, name, mimeType ?: guessMimeType(name))
+                if (existing != null && existing != uri) {
+                    val deleted = resolver.delete(existing, null, null)
+                    check(deleted > 0) { "New media item was published but the previous item could not be retired safely" }
+                }
+            } else {
+                resolver.delete(uri, null, null)
+            }
         }
     }
 
@@ -371,6 +436,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         val rowsUpdated = resolver.update(
             uri,
             ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, name)
                 put(MediaStore.MediaColumns.IS_PENDING, 0)
                 put(MediaStore.MediaColumns.DATE_MODIFIED, modifiedAtSeconds)
             },
@@ -417,9 +483,9 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
     private fun findMediaItem(root: DestinationRoot, name: String): Uri? {
         val normalizedPath = root.relativePath?.let(::normalizedRelativePath)
         val selection = if (normalizedPath == null) {
-            "${MediaStore.MediaColumns.DISPLAY_NAME}=?"
+            "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.IS_PENDING}=0"
         } else {
-            "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.RELATIVE_PATH}=?"
+            "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.IS_PENDING}=0"
         }
         val args = if (normalizedPath == null) arrayOf(name) else arrayOf(name, normalizedPath)
         return resolver.query(root.uri, arrayOf(MediaStore.MediaColumns._ID), selection, args, "${MediaStore.MediaColumns.DATE_MODIFIED} DESC")?.use { cursor ->
@@ -487,6 +553,12 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         }
     }
 
+    private fun rejectDisallowedRawFileDestination(uri: String) {
+        if (isRegularFileDestination(uri) && !isAllowedRegularFileDestination(uri)) {
+            throw DestinationPermissionException("Raw filesystem destinations are restricted to XDM app-owned roots or user-authorized personal shared-storage directories")
+        }
+    }
+
     private fun ensureDirectAccessIfNeeded(uri: String) {
         if (PersonalDirectStorage.requiresAllFilesAccess(uri) && !PersonalDirectStorage.isGranted(context)) {
             throw DestinationPermissionException("Direct shared-storage destinations require Android all-files access; grant it in XDM storage settings or choose a SAF/MediaStore destination.")
@@ -496,9 +568,21 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
     private fun isFileBackedDestination(uri: String): Boolean =
         uri == DestinationUris.APP_PRIVATE_DOWNLOADS ||
             uri == DestinationUris.DIRECT_DOWNLOADS ||
-            isRegularFileDestination(uri)
+            (isRegularFileDestination(uri) && isAllowedRegularFileDestination(uri))
 
     private fun isRegularFileDestination(uri: String): Boolean = uri.startsWith("file:") || !uri.contains("://")
+
+    private fun isAllowedRegularFileDestination(uri: String): Boolean {
+        val candidate = runCatching {
+            if (uri.startsWith("file:")) File(java.net.URI(uri)).canonicalFile else File(uri).canonicalFile
+        }.getOrNull() ?: return false
+        val appRoots = buildList {
+            add(File(context.filesDir, "downloads"))
+            context.getExternalFilesDir(null)?.let { add(File(it, "Download")) }
+        }.mapNotNull { runCatching { it.canonicalFile }.getOrNull() }
+        if (appRoots.any { root -> candidate.path == root.path || candidate.path.startsWith(root.path + File.separator) }) return true
+        return PersonalDirectStorage.directoryForDestination(uri) != null
+    }
     private fun safeComponent(value: String): String = collisionResistantComponent(value)
     private fun safeFileName(value: String): String = androidProviderSafeFileName(sanitizeFileName(value))
     private fun guessMimeType(name: String): String = URLConnection.guessContentTypeFromName(name) ?: "application/octet-stream"

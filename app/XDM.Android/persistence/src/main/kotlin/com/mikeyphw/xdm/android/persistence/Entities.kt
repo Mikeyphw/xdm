@@ -31,6 +31,9 @@ data class DownloadEntity(
     val mimeType: String?,
     @ColumnInfo(defaultValue = "0") val archived: Boolean = false,
     @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L,
+    val completedArtifactUri: String? = null,
+    val completedArtifactGeneration: Long? = null,
+    val completedArtifactBytes: Long? = null,
 )
 
 @Entity(tableName = "download_sources", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId")])
@@ -305,7 +308,12 @@ data class Aria2SessionMappingEntity(
 
 @Entity(
     tableName = "backend_migrations",
-    indices = [Index("downloadId"), Index("stage"), Index("updatedAtEpochMs")],
+    indices = [
+        Index("downloadId"),
+        Index("stage"),
+        Index("updatedAtEpochMs"),
+        Index(value = ["downloadId", "activeClaim"], unique = true),
+    ],
 )
 data class BackendMigrationEntity(
     @PrimaryKey val id: String,
@@ -323,6 +331,8 @@ data class BackendMigrationEntity(
     val message: String,
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
+    /** Nullable so terminal/history rows do not participate in the unique active-claim index. */
+    val activeClaim: String? = null,
 )
 
 @Entity(tableName = "destination_claims", indices = [Index("downloadId", unique = true)])

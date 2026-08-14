@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
@@ -265,6 +266,7 @@ internal fun RecoveryStorageDoctorCard(
 @Composable
 internal fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryRecord) -> Unit, onRemove: (RecoveryRecord) -> Unit, selected: Boolean = false) {
     var technicalExpanded by remember(record.id) { mutableStateOf(false) }
+    var confirmForget by remember(record.id) { mutableStateOf(false) }
     val guidance = RecoveryStorageDoctor.itemGuidance(record)
     XdmListCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -283,9 +285,20 @@ internal fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryRec
         XdmActionFlowRow {
             Button(onClick = { onValidate(record) }) { Text(recoveryPrimaryActionLabel(record)) }
             TextButton(onClick = { technicalExpanded = !technicalExpanded }) { Text(if (technicalExpanded) "Hide technical details" else "Technical details") }
-            TextButton(onClick = { onRemove(record) }) { Text("Forget record") }
+            TextButton(onClick = { confirmForget = true }) { Text("Forget record") }
         }
         XdmMetadataText("Forget record only hides this recovery item; it does not delete downloaded files or partial data.")
+        if (confirmForget) {
+            AlertDialog(
+                onDismissRequest = { confirmForget = false },
+                title = { Text("Forget unresolved recovery record?") },
+                text = { Text("This only removes the warning from Recovery. It does not validate, adopt, repair, or delete the underlying file or partial data.") },
+                confirmButton = {
+                    TextButton(onClick = { confirmForget = false; onRemove(record) }) { Text("Forget record") }
+                },
+                dismissButton = { TextButton(onClick = { confirmForget = false }) { Text("Keep record") } },
+            )
+        }
         if (technicalExpanded) {
             XdmListCard(compact = true) {
                 XdmMetadataText("Artifact: ${RecoveryStorageDoctor.safeArtifactLabel(record)}", maxLines = 3)

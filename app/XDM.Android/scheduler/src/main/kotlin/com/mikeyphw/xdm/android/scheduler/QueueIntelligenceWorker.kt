@@ -94,7 +94,13 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
             fileName = current?.fileName ?: fallbackName,
             state = state,
             message = current?.errorMessage,
-            destinationUri = current?.destinationUri,
+            destinationUri = current?.let { download ->
+                if (state == DownloadState.Completed && download.completedArtifactGeneration == download.attemptGeneration) {
+                    download.completedArtifactUri
+                } else {
+                    download.destinationUri
+                }
+            },
             mimeType = current?.mimeType,
             attemptGeneration = current?.attemptGeneration ?: 0L,
         )

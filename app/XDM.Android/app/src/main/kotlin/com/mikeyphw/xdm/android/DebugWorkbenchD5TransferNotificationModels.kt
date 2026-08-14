@@ -120,8 +120,8 @@ object TransferNotificationDebugReporter {
     private fun openFilePathLabel(download: Download?): String = when {
         download == null -> "No completed notification to inspect"
         download.state != DownloadState.Completed -> "Falls back to XDM details because the transfer is not complete"
-        download.destinationUri.isBlank() -> "Falls back to XDM details if the completed file URI is missing"
-        else -> "Completed notification uses the non-exported open-file trampoline with read permission grant"
+        download.completedArtifactUri.isNullOrBlank() || download.completedArtifactGeneration != download.attemptGeneration -> "Falls back to XDM details if the generation-bound completed artifact is missing"
+        else -> "Completed notification uses the non-exported open-file trampoline with a validated committed-artifact grant"
     }
 
     private fun failureLabel(download: Download?): String = when {

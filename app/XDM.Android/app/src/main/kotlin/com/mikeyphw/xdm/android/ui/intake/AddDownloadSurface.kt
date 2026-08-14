@@ -252,16 +252,19 @@ fun AddDownloadScreen(
                                     label = { Text(choice.label) },
                                 )
                             }
-                            savedDestinations.take(5).forEach { destination ->
-                                FilterChip(
-                                    selected = destinationUri == destination.uri,
-                                    onClick = {
-                                        reviewConfirmed = false
-                                        onDestinationChanged(destination.uri)
-                                    },
-                                    label = { Text(destination.displayName) },
-                                )
-                            }
+                            savedDestinations
+                                .filter { it.persistedWrite && it.status == com.mikeyphw.xdm.android.model.DestinationHealthStatus.Healthy }
+                                .take(5)
+                                .forEach { destination ->
+                                    FilterChip(
+                                        selected = destinationUri == destination.uri,
+                                        onClick = {
+                                            reviewConfirmed = false
+                                            onDestinationChanged(destination.uri)
+                                        },
+                                        label = { Text("${destination.displayName} · ${destination.type.name}") },
+                                    )
+                                }
                         }
                     }
                 }

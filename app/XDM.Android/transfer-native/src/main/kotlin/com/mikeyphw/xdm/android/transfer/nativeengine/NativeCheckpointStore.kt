@@ -17,6 +17,10 @@ internal class NativeCheckpointStore {
             attemptGeneration = text.optionalLong("attemptGeneration") ?: 0L,
             backendInstanceId = text.optionalString("backendInstanceId"),
             backendSessionId = text.optionalString("backendSessionId"),
+            sourceIdentitySha256 = text.optionalString("sourceIdentitySha256"),
+            effectiveIdentitySha256 = text.optionalString("effectiveIdentitySha256"),
+            resumeValidatorKind = text.optionalString("resumeValidatorKind"),
+            resumeValidatorValue = text.optionalString("resumeValidatorValue"),
             sourceUrl = text.requiredString("sourceUrl"),
             effectiveUrl = text.requiredString("effectiveUrl"),
             destinationPath = text.requiredString("destinationPath"),
@@ -39,6 +43,10 @@ internal class NativeCheckpointStore {
             append("\"attemptGeneration\":").append(checkpoint.attemptGeneration).append(',')
             appendJsonString("backendInstanceId", checkpoint.backendInstanceId); append(',')
             appendJsonString("backendSessionId", checkpoint.backendSessionId); append(',')
+            appendJsonString("sourceIdentitySha256", checkpoint.sourceIdentitySha256); append(',')
+            appendJsonString("effectiveIdentitySha256", checkpoint.effectiveIdentitySha256); append(',')
+            appendJsonString("resumeValidatorKind", checkpoint.resumeValidatorKind); append(',')
+            appendJsonString("resumeValidatorValue", checkpoint.resumeValidatorValue); append(',')
             appendJsonString("sourceUrl", checkpoint.sourceUrl); append(',')
             appendJsonString("effectiveUrl", checkpoint.effectiveUrl); append(',')
             appendJsonString("destinationPath", checkpoint.destinationPath); append(',')
@@ -55,7 +63,8 @@ internal class NativeCheckpointStore {
                 append("\"startByte\":").append(segment.startByte).append(',')
                 appendJsonLong("endByteInclusive", segment.endByteInclusive); append(',')
                 append("\"completedBytes\":").append(segment.completedBytes).append(',')
-                append("\"complete\":").append(segment.complete)
+                append("\"complete\":").append(segment.complete).append(',')
+                appendJsonString("completedSha256", segment.completedSha256)
                 append('}')
             }
             append("],\"persistedAtEpochMs\":").append(checkpoint.persistedAtEpochMs)
@@ -69,6 +78,9 @@ internal class NativeCheckpointStore {
         }
         runCatching { Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING) }
             .getOrElse { Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING) }
+        runCatching {
+            FileChannel.open(path.parent, StandardOpenOption.READ).use { it.force(true) }
+        }
     }
 
     fun delete(path: Path) {
@@ -104,6 +116,7 @@ private fun String.requiredSegments(): List<NativeSegmentCheckpoint> {
             endByteInclusive = item.optionalLong("endByteInclusive"),
             completedBytes = item.requiredLong("completedBytes"),
             complete = item.requiredBoolean("complete"),
+            completedSha256 = item.optionalString("completedSha256"),
         )
     }.toList()
 }

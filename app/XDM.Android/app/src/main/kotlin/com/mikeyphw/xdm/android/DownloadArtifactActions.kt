@@ -58,11 +58,11 @@ class DownloadArtifactActionManager(private val context: Context) {
             )
         val readable = canRead(grantUri)
         val row = queryMetadata(grantUri)
-        val expected = download.totalBytes?.takeIf { it >= 0L }
+        val expected = download.completedArtifactBytes?.takeIf { it >= 0L }
         val actual = row.size
-        val providerIdentityMatches = row.name == null || row.name == download.fileName
+        val generationMatches = download.completedArtifactGeneration == download.attemptGeneration
         val health = when {
-            !providerIdentityMatches -> CompletedArtifactHealth.ProviderChanged
+            !generationMatches -> CompletedArtifactHealth.ProviderChanged
             !readable -> CompletedArtifactHealth.PermissionLost
             expected != null && actual != null && expected != actual -> CompletedArtifactHealth.SizeMismatch
             else -> CompletedArtifactHealth.Present
@@ -97,8 +97,8 @@ class DownloadArtifactActionManager(private val context: Context) {
                 CompletedArtifactHealth.Present -> "Readable ${actual?.let { "$it-byte " }.orEmpty()}artifact from $provider."
                 CompletedArtifactHealth.SizeMismatch -> "The provider reports ${actual ?: "unknown"} bytes; XDM expected ${expected ?: "unknown"}."
                 CompletedArtifactHealth.PermissionLost -> "Android no longer grants read access to this saved artifact."
-                CompletedArtifactHealth.ProviderChanged -> if (!providerIdentityMatches) {
-                    "The provider item name no longer matches the selected completed download."
+                CompletedArtifactHealth.ProviderChanged -> if (!generationMatches) {
+                    "The saved artifact identity belongs to another download attempt and is quarantined."
                 } else {
                     "The original provider is no longer available."
                 }
@@ -151,7 +151,8 @@ class DownloadArtifactActionManager(private val context: Context) {
     fun providerLocationIntent(download: Download): Intent? = null
 
     private fun rawCanonicalUri(download: Download): Uri? {
-        val raw = download.destinationUri.trim().takeIf(String::isNotBlank) ?: return null
+        if (download.completedArtifactGeneration == null || download.completedArtifactGeneration != download.attemptGeneration) return null
+        val raw = download.completedArtifactUri?.trim()?.takeIf(String::isNotBlank) ?: return null
         val parsed = runCatching { raw.toUri() }.getOrNull()
         return when (parsed?.scheme?.lowercase()) {
             ContentResolver.SCHEME_CONTENT, ContentResolver.SCHEME_FILE -> parsed
@@ -167,7 +168,7 @@ class DownloadArtifactActionManager(private val context: Context) {
             else -> null
         } ?: return null
         val file = runCatching { candidate.canonicalFile }.getOrNull()?.takeIf(File::isFile) ?: return null
-        if (file.name != download.fileName) return null
+        download.completedArtifactBytes?.let { expected -> if (file.length() != expected) return null }
         val roots = buildList {
             add(File(context.filesDir, "downloads"))
             context.getExternalFilesDir(null)?.let { add(File(it, "Download")) }

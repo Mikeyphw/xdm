@@ -26,17 +26,18 @@ class FileDestinationWriter(
     }
 
     override suspend fun prepare(request: DestinationRequest): PreparedDestination {
-        val destination = resolveDestination(request.copy(fileName = androidProviderSafeFileName(request.fileName))).toFile()
+        val safeRequest = request.copy(fileName = androidProviderSafeFileName(request.fileName))
+        val destination = resolveDestination(safeRequest).toFile()
         destination.parentFile?.mkdirs()
-        val conflict = previewConflict(request)
+        val conflict = previewConflict(safeRequest)
         val resolved = when {
             conflict == null -> destination
-            request.conflictPolicy == FilenameConflictPolicy.Overwrite -> destination
-            request.conflictPolicy == FilenameConflictPolicy.Rename -> uniqueFile(destination)
-            request.conflictPolicy == FilenameConflictPolicy.Resume && artifactPaths(request).stagingFile.exists() -> destination
+            safeRequest.conflictPolicy == FilenameConflictPolicy.Overwrite -> destination
+            safeRequest.conflictPolicy == FilenameConflictPolicy.Rename -> uniqueFile(destination)
+            safeRequest.conflictPolicy == FilenameConflictPolicy.Resume && artifactPaths(safeRequest).stagingFile.exists() -> destination
             else -> throw DestinationConflictException("Destination already exists and requires a conflict decision", conflict)
         }
-        val resolvedRequest = request.copy(destinationUri = resolved.toURI().toString(), fileName = resolved.name)
+        val resolvedRequest = safeRequest.copy(destinationUri = resolved.toURI().toString(), fileName = resolved.name)
         val artifacts = artifactPaths(resolvedRequest)
         return object : PreparedDestination {
             override val destinationKey: String = resolved.canonicalFile.toURI().normalize().toString()
@@ -47,7 +48,7 @@ class FileDestinationWriter(
             override suspend fun promote(): DestinationPromotionResult {
                 check(artifacts.stagingFile.isFile) { "Staging file is missing" }
                 resolved.parentFile?.mkdirs()
-                val generation = PublicationGeneration(request.downloadId, attemptGeneration = 1L, artifactGeneration = artifacts.stagingFile.lastModified().coerceAtLeast(1L))
+                val generation = PublicationGeneration(request.downloadId, attemptGeneration = request.attemptGeneration, artifactGeneration = artifacts.stagingFile.lastModified().coerceAtLeast(1L))
                 try {
                     PublicationJournalCodec.write(
                         artifacts.journalFile,
@@ -83,24 +84,41 @@ class FileDestinationWriter(
                 val expectedBytes = artifacts.stagingFile.length()
                 val targetExistedBeforePromotion = resolved.exists()
                 val atomic = try {
-                    val movedAtomically = runCatching {
+                    PublicationJournalCodec.write(
+                        artifacts.journalFile,
+                        PublicationCommitRecord(
+                            generation = generation,
+                            sourcePath = artifacts.stagingFile.absolutePath,
+                            stagingPath = artifacts.stagingFile.absolutePath,
+                            destinationSpec = request.destinationUri,
+                            committedUri = resolved.toURI().toString(),
+                            bytesExpected = expectedBytes,
+                            bytesCommitted = 0L,
+                            checksumAlgorithm = null,
+                            expectationId = null,
+                            expectedDigest = null,
+                            actualDigest = null,
+                            verificationTimestampEpochMs = null,
+                            boundary = PublicationCommitBoundary.DestinationCommitInProgress,
+                            health = CompletedArtifactHealthStatus.PendingPublication,
+                            message = "Filesystem atomic replacement target recorded before the commit operation.",
+                        ),
+                    )
+                    try {
                         Files.move(source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-                        true
-                    }.getOrElse {
-                        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
-                        false
+                    } catch (unsupported: java.nio.file.AtomicMoveNotSupportedException) {
+                        // Never move an existing destination aside as a fallback. Without an atomic
+                        // replace guarantee, preserve both the old target and completed staging data.
+                        throw IllegalStateException(
+                            "Filesystem does not support atomic final replacement; existing destination and staging bytes were preserved",
+                            unsupported,
+                        )
                     }
                     resolved.fsyncParentDirectoryIfSupported()
-                    val health = CompletedArtifactHealthProbe.fileHealth(resolved, expectedBytes)
-                    check(health == CompletedArtifactHealthStatus.Present) { "Completed file health is $health after publication" }
-                    movedAtomically
+                    val committedHealth = CompletedArtifactHealthProbe.fileHealth(resolved, expectedBytes)
+                    check(committedHealth == CompletedArtifactHealthStatus.Present) { "Completed file health is $committedHealth after publication" }
+                    true
                 } catch (error: Throwable) {
-                    if (!artifacts.stagingFile.isFile && resolved.isFile && !targetExistedBeforePromotion) {
-                        runCatching {
-                            Files.move(target, source, StandardCopyOption.REPLACE_EXISTING)
-                            artifacts.stagingFile.fsyncParentDirectoryIfSupported()
-                        }
-                    }
                     val stagingPreserved = artifacts.stagingFile.isFile
                     runCatching {
                         PublicationJournalCodec.write(
@@ -120,7 +138,7 @@ class FileDestinationWriter(
                                 verificationTimestampEpochMs = null,
                                 boundary = PublicationCommitBoundary.DestinationCommitInProgress,
                                 health = CompletedArtifactHealthStatus.PendingPublication,
-                                message = "Filesystem publication failed; staging preservation was checked before recovery.",
+                                message = "Filesystem publication failed; staging preservation was checked before recovery. targetExistedBeforePromotion=$targetExistedBeforePromotion",
                             ),
                         )
                     }
@@ -149,15 +167,20 @@ class FileDestinationWriter(
                             expectedDigest = null,
                             actualDigest = null,
                             verificationTimestampEpochMs = System.currentTimeMillis(),
-                            boundary = PublicationCommitBoundary.MetadataReconciled,
+                            boundary = PublicationCommitBoundary.DestinationCommitted,
                             health = health,
-                            message = "Filesystem destination committed and parent directory sync attempted.",
+                            message = "Filesystem destination committed; journal retained until Room completion metadata is durable.",
                         ),
                     )
                 }
                 artifacts.checkpointFile.delete()
-                artifacts.journalFile.delete()
-                return DestinationPromotionResult(resolved.toURI().toString(), resolved.name, resolved.length(), atomic)
+                return DestinationPromotionResult(
+                    committedUri = resolved.toURI().toString(),
+                    displayName = resolved.name,
+                    bytesCommitted = resolved.length(),
+                    atomic = atomic,
+                    publicationJournalPath = artifacts.journalFile.absolutePath,
+                )
             }
 
             override suspend fun deleteArtifacts() {
@@ -169,7 +192,7 @@ class FileDestinationWriter(
     }
 
     override suspend fun previewConflict(request: DestinationRequest): DestinationConflict? {
-        val destination = resolveDestination(request).toFile()
+        val destination = resolveDestination(request.copy(fileName = androidProviderSafeFileName(request.fileName))).toFile()
         if (!destination.exists()) return null
         return DestinationConflict(destination.name, destination.toURI().toString(), destination.length(), uniqueFile(destination).name)
     }

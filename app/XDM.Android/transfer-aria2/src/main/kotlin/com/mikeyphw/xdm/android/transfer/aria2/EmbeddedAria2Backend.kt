@@ -14,6 +14,7 @@ import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.storage.DestinationRequest
+import com.mikeyphw.xdm.android.storage.DestinationCapacityPlanner
 import com.mikeyphw.xdm.android.storage.DestinationPublicationException
 import com.mikeyphw.xdm.android.storage.DestinationWriter
 import com.mikeyphw.xdm.android.storage.FileDestinationWriter
@@ -28,6 +29,7 @@ import com.mikeyphw.xdm.android.transfer.BackendSnapshot
 import com.mikeyphw.xdm.android.transfer.BackendTask
 import com.mikeyphw.xdm.android.transfer.DownloadBackend
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
+import com.mikeyphw.xdm.android.transfer.DownloadRequestKind
 import com.mikeyphw.xdm.android.transfer.InMemoryAria2TaskMappingStore
 import java.io.File
 import java.net.URI
@@ -64,9 +66,9 @@ class EmbeddedAria2Backend(
             supportsSelectiveRepair = false,
             supportsSafDestination = false,
             supportsAuthentication = false,
-            supportsProxy = available,
+            supportsProxy = false,
             maxConnectionsPerDownload = if (available) 16 else 0,
-            supportsMetalink = available,
+            supportsMetalink = false,
             supportsExpiringUrls = false,
             supportsMediaPlaylists = false,
             supportsMigrationImport = false,
@@ -78,6 +80,9 @@ class EmbeddedAria2Backend(
     override suspend fun prepare(request: DownloadRequest): BackendPreparation {
         val capability = processManager.probe()
         if (!capability.isAvailable) throw BackendUnavailableException(capability.summary)
+        require(request.requestKind !in setOf(DownloadRequestKind.Torrent, DownloadRequestKind.Metalink)) {
+            "Embedded aria2 integration does not implement aria2.addTorrent/addMetalink; use a backend with explicit protocol support"
+        }
         require(!ExternalUrlPolicy.hasCredentialBearingQuery(request.sourceUrl)) {
             "aria2 cannot durably own signed or credential-bearing URLs; use the native encrypted request path"
         }
@@ -87,7 +92,20 @@ class EmbeddedAria2Backend(
         require(request.destinationUri.substringBefore(':').lowercase() !in setOf("content", "xdm")) {
             "aria2 currently requires an app-private or filesystem staging destination; Android document providers use the native backend"
         }
+        require(destinationWriter.canWrite(request.destinationUri)) {
+            "Destination is not healthy or writable; revalidate the selected destination before starting"
+        }
         val destination = destinationWriter.prepare(request.toDestinationRequest())
+        val requiredCapacity = DestinationCapacityPlanner.requiredBytesForPublication(
+            expectedTotalBytes = request.expectedLength,
+            existingBytes = destination.artifacts.stagingFile.takeIf { it.isFile }?.length() ?: 0L,
+            resumedBytes = destination.artifacts.stagingFile.takeIf { it.isFile }?.length() ?: 0L,
+            contentDestination = destination.requiresPublicationCopy,
+        )
+        val availableSpace = destination.availableSpace()
+        if (requiredCapacity != null && availableSpace != null && requiredCapacity > availableSpace) {
+            throw BackendUnavailableException("Insufficient destination space: $requiredCapacity bytes required for transfer and publication, $availableSpace available")
+        }
         val files = sessionStore.taskFiles(request.id, destination.artifacts.stagingFile)
         val preparationId = UUID.randomUUID().toString()
         preparations[preparationId] = Aria2Preparation(request.id, destination, files)
@@ -184,7 +202,7 @@ class EmbeddedAria2Backend(
         require(mapping.ownershipGeneration == ownership.generation) { "aria2 mapping generation changed before activation" }
         require(mapping.backendInstanceId == ownership.runtimeIdentity.instanceId) { "aria2 mapping belongs to another installation" }
         require(ownership.artifacts.primary == File(mapping.outputPath).canonicalFile.toURI().toString()) { "aria2 output is not the owned partial file" }
-        val now = clock()
+        val now = maxOf(clock(), mapping.updatedAtEpochMs + 1L)
         val attached = mapping.copy(
             backendSessionId = ownership.runtimeIdentity.sessionId,
             status = MAPPING_ATTACHED,
@@ -213,32 +231,45 @@ class EmbeddedAria2Backend(
         val status = runCatching { rpc.tellStatus(taskId) }.getOrNull()
         if (status?.status !in TERMINAL_RPC_STATES) runCatching { rpc.pause(taskId, force = true) }.getOrThrow()
         val mapping = mappingStore.findByGid(taskId)
-        mapping?.let { updateMapping(it, MAPPING_PAUSED) }
-        snapshots[taskId] = (status?.toSnapshot(DownloadState.Paused) ?: snapshots[taskId]?.copy(state = DownloadState.Paused, speedBytesPerSecond = 0)
-            ?: BackendSnapshot(taskId, DownloadState.Paused, 0, null, 0)).let { snapshot ->
+        val terminal = status?.status in TERMINAL_RPC_STATES || mapping?.status in TERMINAL_MAPPING_STATES
+        if (!terminal) mapping?.let { updateMapping(it, MAPPING_PAUSED) }
+        snapshots[taskId] = if (terminal && status != null && mapping != null) {
+            statusToBackendSnapshot(mapping, status)
+        } else {
+            (status?.toSnapshot(DownloadState.Paused)
+                ?: snapshots[taskId]?.copy(state = DownloadState.Paused, speedBytesPerSecond = 0)
+                ?: BackendSnapshot(taskId, DownloadState.Paused, 0, null, 0)).let { snapshot ->
                 mapping?.let(snapshot::withProof) ?: snapshot
             }
-        rpc.saveSession()
+        }
+        check(rpc.saveSession()) { "aria2 session could not be durably saved while pausing" }
     }
 
     override suspend fun resume(taskId: String) {
         val mapping = requireNotNull(mappingStore.findByGid(taskId)) { "aria2 GID has no durable mapping" }
         require(mapping.ownershipGeneration > 0) { "aria2 task cannot resume without durable ownership" }
         require(mapping.status != MAPPING_CREATED_PAUSED) { "aria2 task cannot resume before durable ownership attachment" }
+        require(mapping.status !in TERMINAL_MAPPING_STATES) { "Terminal aria2 mappings cannot be resumed" }
+        require(mapping.status != MAPPING_RETIRED_FOR_MIGRATION) { "A migration-retired aria2 source cannot be resumed" }
         require(mapping.backendInstanceId == runtimeIdentity.instanceId) { "aria2 task belongs to another installation" }
         val rpc = processManager.rpc()
         val status = rpc.tellStatus(taskId)
+        require(status.status !in TERMINAL_RPC_STATES) { "Terminal aria2 tasks cannot be resumed" }
         if (status.status in setOf(Aria2TaskStatusValue.Paused, Aria2TaskStatusValue.Waiting)) rpc.unpause(taskId)
         updateMapping(mapping, MAPPING_ACTIVE)
-        rpc.saveSession()
+        check(rpc.saveSession()) { "aria2 session could not be durably saved while resuming" }
     }
 
     override suspend fun cancel(taskId: String) {
         val rpc = processManager.rpc()
-        val status = runCatching { rpc.tellStatus(taskId) }.getOrNull()
-        if (status?.status !in TERMINAL_RPC_STATES) rpc.remove(taskId, force = true)
-        rpc.saveSession()
         val mapping = mappingStore.findByGid(taskId)
+        val status = runCatching { rpc.tellStatus(taskId) }.getOrNull()
+        if (status?.status in TERMINAL_RPC_STATES || mapping?.status in TERMINAL_MAPPING_STATES) {
+            if (mapping != null && status != null) snapshots[taskId] = statusToBackendSnapshot(mapping, status)
+            return
+        }
+        if (status != null) rpc.remove(taskId, force = true)
+        check(rpc.saveSession()) { "aria2 session could not be durably saved while cancelling" }
         mapping?.let { updateMapping(it, MAPPING_REMOVED) }
         snapshots[taskId] = BackendSnapshot(taskId, DownloadState.Cancelled, status?.completedLength ?: 0, status?.totalLength, 0).let { snapshot ->
             mapping?.let(snapshot::withProof) ?: snapshot
@@ -271,12 +302,28 @@ class EmbeddedAria2Backend(
     }.getOrDefault(false)
 
     override suspend fun retireForMigration(taskId: String): Boolean = runCatching {
-        cancel(taskId)
+        val mapping = requireNotNull(mappingStore.findByGid(taskId)) { "aria2 migration source mapping is missing" }
+        val rpc = processManager.rpc()
+        val status = rpc.tellStatus(taskId)
+        if (status.status !in TERMINAL_RPC_STATES) rpc.pause(taskId, force = true)
+        check(rpc.saveSession()) { "aria2 session could not be durably saved before migration" }
+        updateMapping(mapping, MAPPING_RETIRED_FOR_MIGRATION)
+        snapshots[taskId] = status.toSnapshot(DownloadState.Paused).withProof(mapping)
+        true
+    }.getOrDefault(false)
+
+    override suspend fun finalizeMigrationRetirement(taskId: String): Boolean = runCatching {
+        val mapping = requireNotNull(mappingStore.findByGid(taskId)) { "aria2 migration source mapping is missing during final retirement" }
+        require(mapping.status == MAPPING_RETIRED_FOR_MIGRATION) { "aria2 source was not durably retired for migration" }
+        val rpc = processManager.rpc()
+        val status = runCatching { rpc.tellStatus(taskId) }.getOrNull()
+        if (status != null && status.status !in TERMINAL_RPC_STATES) rpc.remove(taskId, force = true)
+        check(rpc.saveSession()) { "aria2 session could not be saved after target attachment" }
+        runCatching { rpc.removeDownloadResult(taskId) }
         controls.remove(taskId)
         snapshots.remove(taskId)
         finalizationGates.remove(taskId)
         mappingStore.deleteByGid(taskId)
-        processManager.rpc().saveSession()
         true
     }.getOrDefault(false)
 
@@ -308,10 +355,14 @@ class EmbeddedAria2Backend(
         val mapping = requireNotNull(mappingStore.findByGid(taskId)) { "aria2 GID has no durable mapping" }
         try {
             eventSource.observe(taskId).collect { status ->
+                val current = requireNotNull(mappingStore.findByGid(taskId)) { "aria2 mapping disappeared while observing its GID" }
+                require(current.gid == taskId && current.ownershipGeneration == mapping.ownershipGeneration) { "aria2 observer crossed a mapping generation boundary" }
+                require(current.backendInstanceId == mapping.backendInstanceId) { "aria2 observer crossed an installation boundary" }
+                validateRpcStatus(current, status)?.let { throw Aria2RpcProtocolException(it) }
                 if (status.status == Aria2TaskStatusValue.Complete) {
-                    emit(status.toSnapshot(DownloadState.Verifying).withProof(mappingStore.findByGid(taskId) ?: mapping))
+                    emit(status.toSnapshot(DownloadState.Verifying).withProof(current))
                 }
-                emit(statusToBackendSnapshot(mappingStore.findByGid(taskId) ?: mapping, status))
+                emit(statusToBackendSnapshot(current, status))
             }
         } catch (error: Throwable) {
             emit(
@@ -419,7 +470,7 @@ class EmbeddedAria2Backend(
     override suspend fun shutdown(): BackendShutdownResult {
         val active = mappingStore.listAll().map(Aria2TaskMapping::gid)
         val stop = processManager.stop()
-        return BackendShutdownResult(clean = stop.clean || (stop.sessionSaved && stop.exitCode == null), activeTaskIds = active)
+        return BackendShutdownResult(clean = stop.clean, activeTaskIds = active)
     }
 
     private suspend fun statusToBackendSnapshot(mapping: Aria2TaskMapping, status: Aria2TaskStatus): BackendSnapshot {
@@ -497,6 +548,7 @@ class EmbeddedAria2Backend(
                 speedBytesPerSecond = 0,
                 effectiveUrl = status.primaryUri(),
                 completedUri = promotion.committedUri,
+                publicationJournalPath = promotion.publicationJournalPath,
                 attemptGeneration = mapping.ownershipGeneration,
                 backendInstanceId = mapping.backendInstanceId,
                 backendSessionId = mapping.backendSessionId,
@@ -514,11 +566,12 @@ class EmbeddedAria2Backend(
                 mimeType = mapping.mimeType,
                 conflictPolicy = runCatching { FilenameConflictPolicy.valueOf(mapping.conflictPolicy) }.getOrDefault(FilenameConflictPolicy.Rename),
                 stagingSuffix = ARIA2_STAGING_SUFFIX,
+                attemptGeneration = mapping.ownershipGeneration,
             ),
         )
 
     private suspend fun updateMapping(mapping: Aria2TaskMapping, status: String, code: String? = null, message: String? = null) {
-        val now = clock()
+        val now = maxOf(clock(), mapping.updatedAtEpochMs + 1L)
         val updated = mapping.copy(
             status = status,
             updatedAtEpochMs = now,
@@ -531,11 +584,12 @@ class EmbeddedAria2Backend(
     }
 
     private suspend fun updateMappingFromStatus(mapping: Aria2TaskMapping, status: Aria2TaskStatus) {
+        if (mapping.status in TERMINAL_MAPPING_STATES || mapping.status == MAPPING_RETIRED_FOR_MIGRATION) return
         updateMapping(mapping, status.status.name, status.errorCode, status.errorMessage)
     }
 
     private suspend fun refreshRecoveredMapping(mapping: Aria2TaskMapping, status: Aria2TaskStatus) {
-        val now = clock()
+        val now = maxOf(clock(), mapping.updatedAtEpochMs + 1L)
         val refreshed = mapping.copy(
             backendSessionId = runtimeIdentity.sessionId,
             status = status.status.name,
@@ -621,6 +675,7 @@ class EmbeddedAria2Backend(
         mimeType = mimeType,
         conflictPolicy = conflictPolicy,
         stagingSuffix = ARIA2_STAGING_SUFFIX,
+        attemptGeneration = attemptGeneration,
     )
 
     private fun Aria2TaskMapping.files(): Aria2TaskFiles {
@@ -668,6 +723,8 @@ class EmbeddedAria2Backend(
         const val MAPPING_REMOVED = "Removed"
         const val MAPPING_COMPLETED = "Completed"
         const val MAPPING_FINALIZATION_FAILED = "FinalizationFailed"
+        const val MAPPING_RETIRED_FOR_MIGRATION = "RetiredForMigration"
+        val TERMINAL_MAPPING_STATES = setOf(MAPPING_REMOVED, MAPPING_COMPLETED, MAPPING_FINALIZATION_FAILED, "Error")
         val TERMINAL_RPC_STATES = setOf(Aria2TaskStatusValue.Error, Aria2TaskStatusValue.Complete, Aria2TaskStatusValue.Removed)
     }
 }

@@ -167,7 +167,7 @@ data class Aria2DiagnosticsUi(
     val storageDoctor: StorageDoctorUi = StorageDoctorUi(),
 )
 
-private const val CurrentRoomSchemaVersion = 18
+private const val CurrentRoomSchemaVersion = 19
 private const val UnpinnedReleaseSigner = "UNPINNED"
 
 private fun releaseSigningAttestationConfigured(): Boolean =
@@ -202,6 +202,7 @@ data class MainUiState(
     val activeTransfers: ActiveTransferSummary = ActiveTransferSummary(),
     val queueIntelligence: QueueIntelligenceSummary = QueueIntelligenceSummary(),
     val activityPanel: ActivityPanel = ActivityPanel.Attention,
+    val selectedDownloadDetailId: String? = null,
     val selectedRecoveryDownloadId: String? = null,
     val selectedRecoveryAction: String? = null,
     val settingsPanel: SettingsPanel = SettingsPanel.Overview,
@@ -321,6 +322,7 @@ class MainViewModel(
         val route: AppRoute? = null,
         val activityPanel: ActivityPanel = ActivityPanel.Attention,
         val settingsPanel: SettingsPanel = SettingsPanel.Overview,
+        val selectedDownloadDetailId: String? = null,
         val selectedRecoveryDownloadId: String? = null,
         val selectedRecoveryAction: String? = null,
     )
@@ -397,12 +399,24 @@ class MainViewModel(
         val destinationPermissions: List<DestinationPermission>,
     )
 
+    /** Content-provider destinations remain hidden from offer surfaces until this process has
+     * revalidated them against the live provider. Persisted Healthy state is not authority. */
+    private val liveValidatedDestinationUris = MutableStateFlow<Set<String>>(emptySet())
+    private val revalidatedDestinationPermissions = combine(
+        repository.destinationPermissions,
+        liveValidatedDestinationUris,
+    ) { permissions, validated ->
+        permissions.filter { permission ->
+            !permission.uri.startsWith("content://", ignoreCase = true) || permission.uri in validated
+        }
+    }
+
     private val repositoryBaseSnapshot = combine(
         repository.downloads,
         repository.queues,
         repository.schedules,
         repository.recoveryRecords,
-        repository.destinationPermissions,
+        revalidatedDestinationPermissions,
     ) { downloads, queues, schedules, recovery, permissions -> RepositoryBaseSnapshot(downloads, queues, schedules, recovery, permissions) }
 
     private val verificationSnapshot = combine(repository.checksumResults, repository.verificationRecords) { results, records -> results to records }
@@ -700,6 +714,7 @@ class MainViewModel(
             activeTransfers = runtime.activeTransfers,
             queueIntelligence = runtime.queueIntelligence,
             activityPanel = navigation.activityPanel.normalized(prefs.developerOptionsEnabled),
+            selectedDownloadDetailId = navigation.selectedDownloadDetailId,
             selectedRecoveryDownloadId = navigation.selectedRecoveryDownloadId,
             selectedRecoveryAction = navigation.selectedRecoveryAction,
             settingsPanel = navigation.settingsPanel,
@@ -790,6 +805,7 @@ class MainViewModel(
         termuxBridgeManager.refreshStatus()
         termuxMediaPipelineManager.refreshStatus()
         postProcessingAutomationManager.refreshStatus()
+        viewModelScope.launch(Dispatchers.IO) { refreshSavedDestinations() }
         viewModelScope.launch(Dispatchers.IO) {
             preferences.values.collectLatest(::refreshBrowserBridgeStatus)
         }
@@ -826,6 +842,23 @@ class MainViewModel(
 
     fun selectActivityPanel(panel: ActivityPanel) {
         navigationOverride.value = navigationOverride.value.copy(activityPanel = panel.normalized(uiState.value.developerOptionsEnabled))
+    }
+
+    fun openDownloadFromNotification(downloadId: String) {
+        val normalized = downloadId.trim().takeIf(String::isNotBlank) ?: return
+        navigationOverride.value = NavigationOverride(route = AppRoute.Downloads, selectedDownloadDetailId = normalized)
+        viewModelScope.launch { preferences.setRoute(AppRoute.Downloads) }
+    }
+
+    fun openRecoveryFromNotification(downloadId: String) {
+        val normalized = downloadId.trim().takeIf(String::isNotBlank) ?: return
+        navigationOverride.value = NavigationOverride(
+            route = AppRoute.Activity,
+            activityPanel = ActivityPanel.Recovery,
+            selectedRecoveryDownloadId = normalized,
+            selectedRecoveryAction = DownloadActionKind.ReviewRecovery.name,
+        )
+        viewModelScope.launch { preferences.setRoute(AppRoute.Activity) }
     }
 
     fun openRecoveryFor(download: Download, action: DownloadActionKind = DownloadActionKind.ReviewRecovery) {
@@ -1006,11 +1039,16 @@ class MainViewModel(
             storageDoctorMessage.value = "Checking direct-storage permission and filesystem operations."
             try {
                 val selectedDestination = preferences.values.first().destinationUri
-                val directDestination = if (PersonalDirectStorage.requiresAllFilesAccess(selectedDestination)) {
-                    selectedDestination
-                } else {
-                    DestinationUris.DIRECT_DOWNLOADS
+                if (!PersonalDirectStorage.requiresAllFilesAccess(selectedDestination)) {
+                    val health = destinationWriter.health(selectedDestination)
+                    storageDoctorMessage.value = if (health.status == com.mikeyphw.xdm.android.model.DestinationHealthStatus.Healthy) {
+                        "PASS: ${health.displayName} (${health.type.name}) is currently writable. Direct filesystem engine probes are not applicable to this destination type."
+                    } else {
+                        "FAIL: ${health.displayName} (${health.type.name}) is ${health.status.name}: ${health.message ?: "destination is not writable"}"
+                    }
+                    return@launch
                 }
+                val directDestination = selectedDestination
                 val local = destinationWriter.runDirectStorageDoctor(directDestination)
                 if (!local.passed) {
                     storageDoctorMessage.value = "FAIL: ${local.summary}. ${local.steps.firstOrNull { !it.passed }?.detail.orEmpty()}"
@@ -1619,7 +1657,10 @@ class MainViewModel(
                             state = DownloadState.RecoveryRequired,
                             speedBytesPerSecond = 0L,
                             errorMessage = "Saved artifact deleted; the download entry was retained.",
-                            updatedAtEpochMs = System.currentTimeMillis(),
+                            completedArtifactUri = null,
+                            completedArtifactGeneration = null,
+                            completedArtifactBytes = null,
+                            updatedAtEpochMs = maxOf(System.currentTimeMillis(), current.updatedAtEpochMs + 1L),
                         ),
                     )
                     "Deleted the saved file. The retained entry now opens Recovery."
@@ -1638,8 +1679,8 @@ class MainViewModel(
                     repository.save(
                         current.copy(
                             fileName = outcome.displayName ?: current.fileName,
-                            destinationUri = outcome.canonicalUri ?: current.destinationUri,
-                            updatedAtEpochMs = System.currentTimeMillis(),
+                            completedArtifactUri = outcome.canonicalUri ?: current.completedArtifactUri,
+                            updatedAtEpochMs = maxOf(System.currentTimeMillis(), current.updatedAtEpochMs + 1L),
                         ),
                     )
                 }
@@ -1679,65 +1720,7 @@ class MainViewModel(
             return
         }
         viewModelScope.launch {
-            val message = kotlinx.coroutines.withContext(Dispatchers.IO) {
-                val current = repository.findDownload(download.id) ?: download
-                val now = System.currentTimeMillis()
-                val newId = UUID.randomUUID().toString()
-                val exactUrl = MediaRequestHandoffStore.forDownload(current.id)?.exactUrl ?: current.sourceUrl
-                val originalDestination = repository.finalizationForDownload(current.id)
-                    ?.destinationUri
-                    ?.takeIf(String::isNotBlank)
-                    ?: current.destinationUri
-                val request = previewRequest(
-                    exactUrl,
-                    current.fileName,
-                    current.requestedBackend,
-                    originalDestination,
-                    current.conflictPolicy,
-                    current.allowBackendFallback,
-                    isMediaRequest = current.mimeType?.startsWith("video/") == true || current.mimeType?.startsWith("audio/") == true,
-                    headers = MediaRequestHandoffStore.forDownload(current.id)?.headers.orEmpty(),
-                    mimeType = current.mimeType,
-                    isExpiringUrl = MediaRequestHandoffStore.forDownload(current.id)?.isExpiringUrl == true,
-                )
-                val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
-                if (!recommendation.compatible) return@withContext "No compatible backend can preserve this download's current requirements."
-                val retry = current.copy(
-                    id = newId,
-                    sourceUrl = ExternalUrlPolicy.persistableUrl(exactUrl) ?: exactUrl.substringBefore('?'),
-                    destinationUri = originalDestination,
-                    state = DownloadState.Queued,
-                    backend = recommendation.backend,
-                    bytesReceived = 0L,
-                    totalBytes = null,
-                    speedBytesPerSecond = 0L,
-                    createdAtEpochMs = now,
-                    updatedAtEpochMs = now,
-                    errorMessage = null,
-                    backendSelectionReason = recommendation.reason,
-                    backendSelectionExplanation = recommendation.explanation,
-                    archived = false,
-                    attemptGeneration = 1L,
-                )
-                repository.save(retry)
-                MediaRequestHandoffStore.cloneDownload(current.id, newId, exactUrl)
-                repository.checksumExpectations(current.id).forEach { expectation ->
-                    repository.saveChecksumExpectation(
-                        expectation.copy(
-                            id = newChecksumExpectationId(newId, expectation.algorithm),
-                            downloadId = newId,
-                            createdAtEpochMs = now,
-                            attemptGeneration = retry.attemptGeneration,
-                        ),
-                    )
-                }
-                repository.currentTagAssignments().filter { it.downloadId == current.id }.forEach { assignment ->
-                    repository.assignTag(newId, assignment.tagId)
-                }
-                val clonedPostProcessingJobs = repository.clonePostProcessingJobsForRedownload(current.id, newId, now)
-                queueIntelligenceCoordinator.requestStart(newId, userVisible = true, manual = true)
-                "Created a fresh download generation with the original destination, queue, conflict policy, backend preference, checksums, request session, tags, global post-processing rules, and $clonedPostProcessingJobs explicit post-processing job/rule record(s)."
-            }
+            val (message, _) = kotlinx.coroutines.withContext(Dispatchers.IO) { createFreshRedownload(download) }
             navigate(AppRoute.Downloads)
             onResult(message)
         }
@@ -1745,13 +1728,94 @@ class MainViewModel(
 
     fun restartFromZero(download: Download, onResult: (String) -> Unit) {
         viewModelScope.launch {
-            kotlinx.coroutines.withContext(Dispatchers.IO) {
-                runCatching { transferRuntime.cancel(download.id) }
-                repository.deleteBackendTask(download.id)
-                repository.deleteFinalizationForDownload(download.id)
-            }
-            redownloadPreserving(download, onResult)
+            val message = kotlinx.coroutines.withContext(Dispatchers.IO) { restartDownloadFromZero(download) }
+            navigate(AppRoute.Downloads)
+            onResult(message)
         }
+    }
+
+    private suspend fun restartDownloadFromZero(download: Download): String {
+        val current = repository.findDownload(download.id) ?: download
+        // Persist the replacement and its durable request context before retiring any recovery
+        // evidence for the existing attempt. If preparation fails, the old attempt remains intact.
+        val (message, replacementId) = createFreshRedownload(current, startImmediately = false)
+        if (replacementId == null) return message
+        runCatching { transferRuntime.cancel(current.id) }
+        repository.deleteBackendTask(current.id)
+        repository.deleteFinalizationForDownload(current.id)
+        queueIntelligenceCoordinator.requestStart(replacementId, userVisible = true, manual = true)
+        return message
+    }
+
+    private suspend fun createFreshRedownload(
+        download: Download,
+        startImmediately: Boolean = true,
+    ): Pair<String, String?> {
+        val current = repository.findDownload(download.id) ?: download
+        if (current.sourceUrl.isBlank()) return "This entry has no reusable source URL." to null
+        val now = System.currentTimeMillis()
+        val newId = UUID.randomUUID().toString()
+        val handoff = MediaRequestHandoffStore.forDownload(current.id)
+        val exactUrl = handoff?.exactUrl ?: current.sourceUrl
+        // destinationUri is the durable destination specification. Never seed a new attempt from
+        // a prior finalization journal or completed-artifact identity.
+        val originalDestination = current.destinationUri
+        val request = previewRequest(
+            exactUrl,
+            current.fileName,
+            current.requestedBackend,
+            originalDestination,
+            current.conflictPolicy,
+            current.allowBackendFallback,
+            isMediaRequest = current.mimeType?.startsWith("video/") == true || current.mimeType?.startsWith("audio/") == true,
+            headers = handoff?.headers.orEmpty(),
+            mimeType = current.mimeType,
+            isExpiringUrl = handoff?.isExpiringUrl == true,
+        )
+        val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
+        if (!recommendation.compatible) return "No compatible backend can preserve this download's current requirements." to null
+        val retry = current.copy(
+            id = newId,
+            sourceUrl = ExternalUrlPolicy.persistableUrl(exactUrl) ?: exactUrl.substringBefore('?'),
+            destinationUri = originalDestination,
+            state = DownloadState.Queued,
+            backend = recommendation.backend,
+            bytesReceived = 0L,
+            totalBytes = null,
+            speedBytesPerSecond = 0L,
+            createdAtEpochMs = now,
+            updatedAtEpochMs = now,
+            errorMessage = null,
+            backendSelectionReason = recommendation.reason,
+            backendSelectionExplanation = recommendation.explanation,
+            archived = false,
+            attemptGeneration = 1L,
+            completedArtifactUri = null,
+            completedArtifactGeneration = null,
+            completedArtifactBytes = null,
+        )
+        if (!repository.save(retry)) {
+            return "A newer durable state prevented XDM from creating the replacement download. Nothing was restarted." to null
+        }
+        MediaRequestHandoffStore.cloneDownload(current.id, newId, exactUrl)
+        repository.checksumExpectations(current.id).forEach { expectation ->
+            repository.saveChecksumExpectation(
+                expectation.copy(
+                    id = newChecksumExpectationId(newId, expectation.algorithm),
+                    downloadId = newId,
+                    createdAtEpochMs = now,
+                    attemptGeneration = retry.attemptGeneration,
+                ),
+            )
+        }
+        repository.currentTagAssignments().filter { it.downloadId == current.id }.forEach { assignment ->
+            repository.assignTag(newId, assignment.tagId)
+        }
+        val clonedPostProcessingJobs = repository.clonePostProcessingJobsForRedownload(current.id, newId, now)
+        if (startImmediately) {
+            queueIntelligenceCoordinator.requestStart(newId, userVisible = true, manual = true)
+        }
+        return "Created a fresh download generation with the original destination, queue, conflict policy, backend preference, checksums, request session, tags, global post-processing rules, and $clonedPostProcessingJobs explicit post-processing job/rule record(s)." to newId
     }
 
     fun moveDownloadInQueue(download: Download, kind: DownloadActionKind) {
@@ -1928,28 +1992,155 @@ class MainViewModel(
     }
 
     fun validateRecoveryRecord(record: RecoveryRecord) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val downloadId = record.downloadId ?: return@launch
-            val current = repository.findDownload(downloadId) ?: return@launch
-            repository.save(current.copy(state = DownloadState.Queued, errorMessage = null, updatedAtEpochMs = System.currentTimeMillis()))
-            queueIntelligenceCoordinator.requestStart(downloadId, userVisible = true, manual = true)
-        }
+        viewModelScope.launch(Dispatchers.IO) { executeRecoveryRecord(record) }
     }
 
     fun validateAllRecoveryRecords(records: List<RecoveryRecord>) {
-        viewModelScope.launch(Dispatchers.IO) {
-            records.forEach { record ->
-                val downloadId = record.downloadId ?: return@forEach
-                val current = repository.findDownload(downloadId) ?: return@forEach
+        viewModelScope.launch(Dispatchers.IO) { records.forEach { executeRecoveryRecord(it) } }
+    }
+
+    private suspend fun executeRecoveryRecord(record: RecoveryRecord) {
+        val downloadId = record.downloadId
+        val current = downloadId?.let { repository.findDownload(it) }
+        when (record.recommendedAction) {
+            com.mikeyphw.xdm.android.model.RecoveryAction.Resume -> {
+                if (
+                    current == null ||
+                    record.classification != com.mikeyphw.xdm.android.model.RecoveryClassification.ReadyToResume ||
+                    !record.safeToResume ||
+                    current.attemptGeneration != record.attemptGeneration
+                ) {
+                    current?.let { stale ->
+                        repository.save(
+                            stale.copy(
+                                state = DownloadState.RecoveryRequired,
+                                errorMessage = "Resume was blocked because the recovery record no longer proves the current attempt is safe to resume.",
+                                updatedAtEpochMs = maxOf(System.currentTimeMillis(), stale.updatedAtEpochMs + 1L),
+                            ),
+                        )
+                    }
+                    return
+                }
+                if (repository.save(
+                        current.copy(
+                            state = DownloadState.Queued,
+                            errorMessage = null,
+                            updatedAtEpochMs = maxOf(System.currentTimeMillis(), current.updatedAtEpochMs + 1L),
+                        ),
+                    )
+                ) {
+                    repository.deleteRecovery(record.id)
+                    queueIntelligenceCoordinator.requestStart(downloadId, userVisible = true, manual = true)
+                }
+            }
+
+            com.mikeyphw.xdm.android.model.RecoveryAction.RestartFromZero -> {
+                if (current == null) return
+                val message = restartDownloadFromZero(current)
+                if (message.startsWith("Created a fresh download generation")) {
+                    repository.deleteRecovery(record.id)
+                } else {
+                    repository.findDownload(current.id)?.let { refreshed ->
+                        repository.save(
+                            refreshed.copy(
+                                state = DownloadState.RecoveryRequired,
+                                errorMessage = message,
+                                updatedAtEpochMs = maxOf(System.currentTimeMillis(), refreshed.updatedAtEpochMs + 1L),
+                            ),
+                        )
+                    }
+                }
+            }
+
+            com.mikeyphw.xdm.android.model.RecoveryAction.Validate -> when (record.classification) {
+                com.mikeyphw.xdm.android.model.RecoveryClassification.NeedsRemoteValidation,
+                com.mikeyphw.xdm.android.model.RecoveryClassification.BackendTaskOrphaned,
+                com.mikeyphw.xdm.android.model.RecoveryClassification.ReadyToResume,
+                -> {
+                    transferRuntime.reconcilePersistedOwnership()
+                    current?.let { stale ->
+                        repository.findDownload(stale.id)?.let { refreshed ->
+                            if (refreshed.state == DownloadState.RecoveryRequired) {
+                                repository.save(
+                                    refreshed.copy(
+                                        errorMessage = "Recovery validation reconciled durable backend ownership. Review the resulting ownership proof before starting again.",
+                                        updatedAtEpochMs = maxOf(System.currentTimeMillis(), refreshed.updatedAtEpochMs + 1L),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                com.mikeyphw.xdm.android.model.RecoveryClassification.CompletionRecovered,
+                com.mikeyphw.xdm.android.model.RecoveryClassification.FinalizationInterrupted,
+                -> {
+                    transferRuntime.scanStartupRecovery()
+                    current?.let { stale ->
+                        repository.findDownload(stale.id)?.let { refreshed ->
+                            if (refreshed.state == DownloadState.Completed) {
+                                repository.deleteRecovery(record.id)
+                            } else {
+                                repository.save(
+                                    refreshed.copy(
+                                        state = DownloadState.RecoveryRequired,
+                                        errorMessage = "Finalization recovery was rescanned. XDM will not requeue until committed artifact metadata is proven complete.",
+                                        updatedAtEpochMs = maxOf(System.currentTimeMillis(), refreshed.updatedAtEpochMs + 1L),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                else -> current?.let { stale ->
+                    repository.save(
+                        stale.copy(
+                            state = DownloadState.RecoveryRequired,
+                            errorMessage = "This recovery classification requires its dedicated action; generic validation is intentionally blocked.",
+                            updatedAtEpochMs = maxOf(System.currentTimeMillis(), stale.updatedAtEpochMs + 1L),
+                        ),
+                    )
+                }
+            }
+
+            com.mikeyphw.xdm.android.model.RecoveryAction.VerifyAndRepair -> current?.let { stale ->
+                // Repair is intentionally not synthesized from a generic Retry action. The native repair
+                // path requires the exact request envelope, strong remote validator, trusted block manifest,
+                // and a file-backed artifact. Preserve recovery state until all evidence is available.
+                transferRuntime.reconcilePersistedOwnership()
+                repository.findDownload(stale.id)?.let { refreshed ->
+                    repository.save(
+                        refreshed.copy(
+                            state = DownloadState.RecoveryRequired,
+                            errorMessage = "Selective repair requires exact request identity, a strong remote validator, and trusted block evidence. XDM kept this attempt quarantined instead of requeueing it generically.",
+                            updatedAtEpochMs = maxOf(System.currentTimeMillis(), refreshed.updatedAtEpochMs + 1L),
+                        ),
+                    )
+                }
+            }
+
+            com.mikeyphw.xdm.android.model.RecoveryAction.AdoptOrphan -> current?.let { stale ->
                 repository.save(
-                    current.copy(
-                        state = DownloadState.Queued,
-                        errorMessage = null,
-                        updatedAtEpochMs = System.currentTimeMillis(),
+                    stale.copy(
+                        state = DownloadState.RecoveryRequired,
+                        errorMessage = "Orphan adoption requires explicit artifact identity validation and user consent. XDM will not attach an unproven file automatically.",
+                        updatedAtEpochMs = maxOf(System.currentTimeMillis(), stale.updatedAtEpochMs + 1L),
                     ),
                 )
-                queueIntelligenceCoordinator.requestStart(downloadId, userVisible = true, manual = true)
             }
+
+            com.mikeyphw.xdm.android.model.RecoveryAction.LocateFile -> current?.let { stale ->
+                repository.save(
+                    stale.copy(
+                        state = DownloadState.RecoveryRequired,
+                        errorMessage = "Locate-file recovery requires an explicit Android document selection matching this attempt. Automatic path substitution is blocked.",
+                        updatedAtEpochMs = maxOf(System.currentTimeMillis(), stale.updatedAtEpochMs + 1L),
+                    ),
+                )
+            }
+
+            com.mikeyphw.xdm.android.model.RecoveryAction.RemoveRecord -> repository.deleteRecovery(record.id)
         }
     }
 
@@ -3193,7 +3384,38 @@ class MainViewModel(
     }
 
     fun setDestination(uri: String) {
-        viewModelScope.launch { preferences.setDestination(uri) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val health = runCatching { destinationWriter.health(uri) }.getOrNull() ?: return@launch
+            refreshSavedDestination(uri, health)
+            if (runCatching { destinationWriter.canWrite(uri) }.getOrDefault(false)) preferences.setDestination(uri)
+        }
+    }
+
+    private suspend fun refreshSavedDestinations() {
+        repository.destinationPermissions.first().forEach { permission ->
+            val health = runCatching { destinationWriter.health(permission.uri) }.getOrNull() ?: return@forEach
+            refreshSavedDestination(permission.uri, health, permission)
+        }
+    }
+
+    private suspend fun refreshSavedDestination(
+        uri: String,
+        health: com.mikeyphw.xdm.android.storage.DestinationHealth,
+        existing: DestinationPermission? = null,
+    ) {
+        if (!uri.startsWith("content://", ignoreCase = true)) return
+        val permission = existing ?: repository.destinationPermissions.first().firstOrNull { it.uri == uri } ?: return
+        repository.saveDestinationPermission(
+            permission.copy(
+                displayName = health.displayName,
+                type = health.type,
+                persistedWrite = health.status == com.mikeyphw.xdm.android.model.DestinationHealthStatus.Healthy,
+                status = health.status,
+                lastValidatedAtEpochMs = System.currentTimeMillis(),
+                lastError = health.message,
+            ),
+        )
+        liveValidatedDestinationUris.value = liveValidatedDestinationUris.value + uri
     }
 
     fun setConflictPolicy(policy: FilenameConflictPolicy) {
@@ -3201,23 +3423,25 @@ class MainViewModel(
     }
 
     fun registerSafDestination(uri: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val parsed = Uri.parse(uri)
             destinationWriter.persistTreePermission(parsed)
-            val health = destinationWriter.health(uri)
+            val health = runCatching { destinationWriter.health(uri) }.getOrNull() ?: return@launch
+            val writable = runCatching { destinationWriter.canWrite(uri) }.getOrDefault(false)
             repository.saveDestinationPermission(
                 DestinationPermission(
                     uri = uri,
                     displayName = health.displayName,
                     type = health.type,
                     persistedRead = true,
-                    persistedWrite = health.status == com.mikeyphw.xdm.android.model.DestinationHealthStatus.Healthy,
+                    persistedWrite = writable,
                     status = health.status,
                     lastValidatedAtEpochMs = System.currentTimeMillis(),
                     lastError = health.message,
                 ),
             )
-            preferences.setDestination(uri)
+            liveValidatedDestinationUris.value = liveValidatedDestinationUris.value + uri
+            if (writable) preferences.setDestination(uri)
         }
     }
 

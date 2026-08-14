@@ -30,10 +30,17 @@ class NativeCheckpointStoreTest {
             lastModified = "Mon, 13 Jul 2026 12:00:00 GMT",
             rangeSupported = true,
             segments = listOf(
-                NativeSegmentCheckpoint(0, 0, 2047, 2048, true),
-                NativeSegmentCheckpoint(1, 2048, 4095, 256, false),
+                NativeSegmentCheckpoint(0, 0, 2047, 2048, true, completedSha256 = "a".repeat(64)),
+                NativeSegmentCheckpoint(1, 2048, 4095, 256, false, completedSha256 = "b".repeat(64)),
             ),
             persistedAtEpochMs = 42,
+            attemptGeneration = 9L,
+            backendInstanceId = "install-1",
+            backendSessionId = "session-1",
+            sourceIdentitySha256 = "c".repeat(64),
+            effectiveIdentitySha256 = "d".repeat(64),
+            resumeValidatorKind = ResumeValidatorKind.StrongEtag.name,
+            resumeValidatorValue = "\"etag-value\"",
         )
         val store = NativeCheckpointStore()
         store.save(path, original)

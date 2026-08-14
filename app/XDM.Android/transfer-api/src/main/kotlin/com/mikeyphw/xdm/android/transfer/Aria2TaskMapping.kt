@@ -43,6 +43,13 @@ class InMemoryAria2TaskMappingStore : Aria2TaskMappingStore {
         mappings.values.firstOrNull { it.gid == mapping.gid && it.downloadId != mapping.downloadId }?.let {
             error("aria2 GID ${mapping.gid} is already mapped to ${it.downloadId}")
         }
+        mappings[mapping.downloadId]?.let { current ->
+            require(mapping.ownershipGeneration >= current.ownershipGeneration) { "aria2 mapping cannot regress ownership generation" }
+            if (mapping.ownershipGeneration == current.ownershipGeneration) {
+                require(mapping.updatedAtEpochMs > current.updatedAtEpochMs || mapping == current) { "aria2 mapping writes must advance monotonically within a generation" }
+                require(current.status !in TERMINAL_MAPPING_STATES || mapping.status == current.status) { "aria2 mapping cannot leave a terminal state in the same generation" }
+            }
+        }
         mappings[mapping.downloadId] = mapping
     }
 
@@ -52,3 +59,6 @@ class InMemoryAria2TaskMappingStore : Aria2TaskMappingStore {
     override suspend fun deleteByDownload(downloadId: String) { synchronized(this) { mappings.remove(downloadId) } }
     override suspend fun deleteByGid(gid: String) { synchronized(this) { mappings.entries.removeIf { it.value.gid == gid } } }
 }
+
+
+private val TERMINAL_MAPPING_STATES = setOf("Completed", "Removed", "Error", "FinalizationFailed")

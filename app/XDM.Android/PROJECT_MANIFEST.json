@@ -831,6 +831,304 @@
     "top_level_route_added": false,
     "version_name": "0.21.0"
   },
+  "bug_hunt_master_remediation_overlay_02_03_generation_integrity_durable_review": {
+    "apply_with": "--no-validate",
+    "artifact_revision": 2,
+    "attempt_generation_bound_records": [
+      "downloads",
+      "checkpoints",
+      "checksum_expectations",
+      "checksum_results",
+      "verification_records",
+      "trusted_block_manifests",
+      "recovery_records",
+      "finalization_journals"
+    ],
+    "base_commit": "c66ec424",
+    "combined_phases": [
+      "generation_room_integrity",
+      "external_durable_review"
+    ],
+    "external_handoff": {
+      "accepted_command_persisted_before_main_activity_dispatch": true,
+      "add_prompt_applied_only_after_download_creation": true,
+      "authoritative_business_state_source": "Room/DataStore rather than MainUiState snapshots",
+      "caller_claims_are_diagnostics_only": true,
+      "durable_exclusive_execution_claim": true,
+      "enqueue_replay_uses_deterministic_download_id": true,
+      "exported_add_activity_review_only": true,
+      "external_enqueue_uses_persisted_preferences": true,
+      "interrupted_claim_recovery": true,
+      "main_activity_payload": "internal persisted command id only",
+      "main_activity_recreation_replay_blocked": true,
+      "secure_request_envelope_required_for_exact_request_material": true,
+      "tasker_token_auto_scope": "public EnqueueDownload only"
+    },
+    "generation_integrity": {
+      "aria2_mapping_generation_bound_before_activation": true,
+      "backend_migration_target_uses_transferred_generation": true,
+      "backend_snapshot_generation_proof": true,
+      "backend_write_requires_ownership_attachment": true,
+      "download_row_tracks_current_ownership_generation": true,
+      "native_checkpoint_generation_proof": true,
+      "runtime_rejects_stale_generation_or_installation_snapshots": true
+    },
+    "graph_integrity": {
+      "atomic_download_batch_upsert": true,
+      "empty_media_variant_replacement_supported": true,
+      "foreign_keys_added": true,
+      "persistence_outcomes_visible_to_transfer_runtime": true,
+      "review_and_recovery_history_detached_instead_of_destroyed": true,
+      "stale_same_generation_writes_rejected": true,
+      "terminal_delete_blocks_active_post_processing": true
+    },
+    "migration": "17_to_18",
+    "migration_coverage": {
+      "exported_schema_18_committed": true,
+      "latest_edge": "17_to_18",
+      "legacy_1_to_4": "manual migration tests retained because authentic exported schemas 1-3 are not present in repository history",
+      "oldest_exported_schema_chain": "4_to_18"
+    },
+    "room_schema_current": 18,
+    "supersedes": "xdm_android_generation_room_integrity_durable_review_overlay_v1.zip",
+    "validation_deferred": true
+  },
+  "bug_hunt_master_remediation_overlay_04_05_request_security_queue_runtime_ownership": {
+    "apply_with": "apply-overlay --no-validate",
+    "artifact_revision": 2,
+    "backend_generation_binding_requires_exact_queue_claim_token": true,
+    "base_commit": "9d1608ec",
+    "browser_capture_boundary": {
+      "full_extension_runtime_deferred_to_overlay_08": true,
+      "legacy_v1_capture_media_rejected": true
+    },
+    "combined_phases": [
+      "request_security_envelope",
+      "queue_runtime_ownership"
+    ],
+    "declared_final_validation_tasks": [
+      ":app:compileDebugKotlin",
+      ":app:testDebugUnitTest",
+      ":app:lintDebug"
+    ],
+    "master_items": {
+      "phase_04": [
+        "M-005",
+        "M-016",
+        "M-019",
+        "M-029 app-side partial",
+        "M-031 approval-default portion",
+        "M-034 app-side partial"
+      ],
+      "phase_05": [
+        "M-008",
+        "M-009",
+        "M-018",
+        "M-025",
+        "M-026",
+        "M-043"
+      ]
+    },
+    "pause_all_receiver_fails_closed_without_queue_authority": true,
+    "queue_policy": {
+      "blank_days_fail_closed": true,
+      "destination_aware_free_space_probe": true,
+      "invalid_days_fail_closed": true,
+      "malformed_schedule_fails_closed": true,
+      "unbounded_age_fairness": true,
+      "unknown_destination_free_space_fails_closed": true,
+      "unknown_required_battery_fails_closed": true
+    },
+    "queue_runtime_ownership": {
+      "android_14_user_visible_owner": "UIDT",
+      "android_execution_owner_authority": "Connecting row updatedAt queue claim token; backend attempt generation is established separately",
+      "backend_migration_state_transitions_strictly_newer_same_generation": true,
+      "background_execution_owner": "WorkManager",
+      "connecting_is_durable_reservation": true,
+      "deadline_driven_retry_work": true,
+      "direct_runtime_resume_bypass_removed": true,
+      "durable_collision_free_system_ids": true,
+      "durable_startup_admission_hold": true,
+      "execution_owner_attempt_generation_bound": true,
+      "failed_launch_release_monotonic_same_generation": true,
+      "failed_launch_release_requires_exact_queue_claim_token": true,
+      "fgs_rejection_fallback": "WorkManager",
+      "fgs_stop_control_uses_exact_queue_claim": true,
+      "legacy_user_visible_owner": "foreground dataSync service",
+      "notification_retry_reenters_queue_policy": true,
+      "null_and_default_queue_ids_share_capacity": true,
+      "pause_all_process_independent_gate": true,
+      "periodic_workmanager_reauthorizes_each_claim": true,
+      "process_local_stale_callback_guard": "per-download coroutine Mutex keyed by durable queue claim token",
+      "queue_claim_bound_to_attempt_generation": true,
+      "restart_controls_reconcile_backend_ownership": true,
+      "resume_all_clears_user_pause_gate": true,
+      "retry_identity": "attempt generation + failure content",
+      "room_transactional_slot_claim": true,
+      "runtime_state_transitions_strictly_newer_same_generation": true,
+      "scheduled_execution_owner_reauthorizes_durable_claim": true,
+      "startup_and_boot_common_recovery_pipeline": true,
+      "startup_recovery_state_transitions_strictly_newer_same_generation": true,
+      "system_owner_teardown_scope": "exact durable queue claims only",
+      "terminal_notification_idempotency": true,
+      "uidt_stop_control_uses_exact_queue_claim": true,
+      "unsafe_control_moves_to_recovery_required": true,
+      "workmanager_claimed_owner_identity": "download + durable queue claim token",
+      "workmanager_claimed_owner_policy": "KEEP",
+      "workmanager_stop_control_uses_exact_queue_claim": true,
+      "workmanager_stop_record_generation_bound": true,
+      "workmanager_system_foreground_service_manifest_merge": true,
+      "workmanager_system_foreground_service_type": "dataSync"
+    },
+    "request_kinds": [
+      "Direct",
+      "Torrent",
+      "Magnet",
+      "Metalink"
+    ],
+    "request_security": {
+      "android_cleartext_policy_enforced": true,
+      "backend_migration_uses_secure_envelope": true,
+      "bounded_handoff_header_surface": true,
+      "caller_metadata_cannot_reclassify_protocol": true,
+      "cross_origin_sensitive_headers_stripped": true,
+      "dns_private_target_rechecked": true,
+      "exact_target_approval_scopes": true,
+      "https_to_http_downgrade_blocked": true,
+      "media_page_probe_uses_transfer_guard": true,
+      "media_redirects_manual_and_bounded": true,
+      "mirrors_persisted_in_encrypted_handoff": true,
+      "native_dns_bound_to_actual_okhttp_route": true,
+      "native_redirect_hops_rechecked": true,
+      "primary_and_mirrors_guarded": true,
+      "request_kind_persisted_in_encrypted_handoff": true,
+      "selected_variant_cannot_widen_capture_approval": true
+    },
+    "room_schema_changed": false,
+    "room_schema_current": 18,
+    "sensitive_migration": {
+      "atomic_sidecar_replace": true,
+      "atomic_writer": "android.util.AtomicFile",
+      "completion_marker_requires_all_rewrites": true,
+      "json_redaction_by_key_and_value": true,
+      "legacy_approval_reset": true,
+      "marker": "sensitive-persistence-v2.complete",
+      "recognizable_sidecar_material_enveloped_before_redaction": true
+    },
+    "supersedes": "xdm_android_request_security_queue_runtime_ownership_overlay_v1.zip",
+    "ungated_pause_all_async_helper_removed": true,
+    "validation_deferred": true
+  },
+  "bug_hunt_master_remediation_overlay_06_07_backend_resume_storage_finalization": {
+    "apply_with": "apply-overlay --no-validate",
+    "aria2": {
+      "migration_source_gid_retained_until_target_proof": true,
+      "runtime_lease_and_ownership_metadata_atomic": true,
+      "strict_numeric_rpc_parsing": true,
+      "terminal_state_transitions_guarded": true,
+      "unsupported_proxy_torrent_metalink_not_advertised": true
+    },
+    "artifact_revision": 2,
+    "backend_migration": {
+      "completed_cleanup_failure_retains_backend_mapping_for_reconciliation": true,
+      "durable_single_active_claim": true,
+      "exact_secure_request_reconstruction": true,
+      "process_mutex_is_not_authority": true,
+      "request_security_revalidated_before_source_mutation": true,
+      "source_mapping_retained_until_target_attached": true,
+      "target_ownership_persisted_before_source_cleanup": true
+    },
+    "base_commit": "5c64cc6c",
+    "combined_phases": [
+      "backend_resume_migration",
+      "storage_finalization_publication"
+    ],
+    "completed_artifact_identity": {
+      "atomic_move_in_progress_recovery_uses_committed_artifact": true,
+      "completion_runtime_uses_atomic_finalization_coordinator": true,
+      "content_uri_checksum_streaming": true,
+      "finalization_journal_created_before_checksum_verification": true,
+      "fresh_redownload_clears_completed_artifact": true,
+      "incomplete_journal_reconciled_from_durable_completed_metadata": true,
+      "media_library_playback_uses_completed_artifact": true,
+      "open_share_requires_generation_and_size_match": true,
+      "pause_cancel_after_commit_quarantine_instead_of_relabel": true,
+      "post_processing_uses_completed_artifact": true,
+      "provider_size_must_be_provable": true,
+      "room_completed_truth_not_downgraded_by_journal_close_or_backend_cleanup_failure": true,
+      "room_generation_bound": true,
+      "separate_from_destination_spec": true,
+      "startup_imports_storage_publication_journal_if_room_handoff_was_interrupted": true,
+      "storage_publication_journal_bridges_backend_to_room_crash_window": true,
+      "terminal_completed_event_uses_committed_artifact": true,
+      "verifying_state_persisted_before_checksum_work": true
+    },
+    "declared_final_validation_tasks": [
+      ":app:compileDebugKotlin",
+      ":app:testDebugUnitTest",
+      ":app:lintDebug"
+    ],
+    "exported_schema_19_committed": true,
+    "master_items": {
+      "phase_06": [
+        "M-022",
+        "M-023",
+        "M-024",
+        "M-044"
+      ],
+      "phase_07": [
+        "M-007",
+        "M-010",
+        "M-027",
+        "M-028",
+        "M-035",
+        "M-045"
+      ]
+    },
+    "migration": "18_to_19",
+    "native_resume": {
+      "checkpoint_flush_failure_quarantines": true,
+      "completed_range_sha256": true,
+      "effective_representation_identity_sha256": true,
+      "exact_segment_graph_validation": true,
+      "exact_source_identity_sha256": true,
+      "repair_replacement_crash_safe": true,
+      "repair_verified_backup_retained_until_atomic_commit": true,
+      "selective_repair_requires_security_validator_and_trusted_blocks": true,
+      "strong_if_range_validator_required": true,
+      "weak_etag_rejected": true
+    },
+    "notification_recovery": {
+      "download_detail_action_consumed": true,
+      "fresh_launch_and_on_new_intent_only": true,
+      "manual_recovery_warning_dismissal_requires_confirmation": true,
+      "recovery_action_consumed": true,
+      "recovery_dispatches_by_recommended_action": true,
+      "restart_persists_replacement_before_retiring_old_evidence": true,
+      "scanner_owned_records_reconciled_after_successful_scan": true,
+      "terminal_notification_idempotency_encoding_fixed": true,
+      "unsupported_automatic_repairs_fail_closed_with_truthful_review_labels": true
+    },
+    "room_schema_current": 19,
+    "schema_19_note": "Schema structure is committed now; compiler-emitted identity hash is intentionally deferred to final campaign validation.",
+    "storage_publication": {
+      "destination_provider_can_write_is_central_start_gate": true,
+      "direct_document_existing_overwrite_fails_closed": true,
+      "direct_paths_policy_bounded": true,
+      "exact_commit_target_recorded_before_move_or_provider_copy": true,
+      "mediastore_fresh_pending_item_then_publish": true,
+      "provider_copy_capacity_accounted": true,
+      "publication_journal_retained_until_room_terminal": true,
+      "publication_journal_uses_actual_attempt_generation": true,
+      "saf_existing_overwrite_fails_closed_without_atomic_replace": true,
+      "sanitized_filename_conflict_identity": true,
+      "saved_provider_destinations_revalidated_before_offer_and_selection": true,
+      "stale_pending_rows_not_reused": true,
+      "storage_doctor_probes_selected_destination_type": true
+    },
+    "supersedes": "xdm_android_backend_resume_storage_finalization_overlay_v1.zip",
+    "validation_deferred": true
+  },
   "bug_hunt_phase_10_release_upgrade_packaging": {
     "aab_signature_and_page_alignment_required": true,
     "aab_signed_by_gradle_or_jarsigner": true,
@@ -910,6 +1208,7 @@
     "base": "XDM Android Phase65 diagnostic export/download action baseline",
     "browser_removal_contracts_preserved": true,
     "completed_file_grant_ownership_validation": true,
+    "current_external_add_download_boundary": "ExternalHandoffReviewActivity",
     "encoded_credential_query_names_redacted": true,
     "encrypted_request_envelopes": true,
     "exported_control_surface_separated": true,
@@ -920,6 +1219,7 @@
     "https_downgrade_credentials_blocked": true,
     "integration_secret_supported": true,
     "jvm_network_security_policy_stub_safe": true,
+    "main_activity_external_payload_policy": "persisted command id only",
     "name": "External Control, Secrets, and Privacy",
     "network_security_config_restrictive": true,
     "observed_claimed_verified_identity_separated": true,
@@ -936,6 +1236,7 @@
     "sensitive_clipboard_metadata": true,
     "status": "implemented",
     "substring_false_positive_tests": true,
+    "superseded_by_master_durable_external_review": true,
     "supersedes": [
       "xdm_android_bug_hunt_phase1_external_control_secrets_privacy_overlay.zip",
       "xdm_android_bug_hunt_phase1_external_control_secrets_privacy_r2_overlay.zip",
@@ -953,10 +1254,7 @@
     ],
     "top_level_route_added": false,
     "transfer_native_local_unit_tests_unblocked": true,
-    "untrusted_handoff_user_review": true,
-    "superseded_by_master_durable_external_review": true,
-    "current_external_add_download_boundary": "ExternalHandoffReviewActivity",
-    "main_activity_external_payload_policy": "persisted command id only"
+    "untrusted_handoff_user_review": true
   },
   "bug_hunt_remediation_phase_3": {
     "all_files_permission_added": false,
@@ -1293,7 +1591,7 @@
     "automatic_upload": false,
     "baseline": "debug_workbench_phase_d2_shell_r4",
     "compile_hygiene": "MediaSniffingLabCard candidate row uses escaped newline; D3 app contract uses safe substring assertions that compile.",
-    "description": "Adds a Media Sniffing Lab inside Settings → Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
+    "description": "Adds a Media Sniffing Lab inside Settings \u2192 Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
     "drm_bypass": false,
     "network_page_probe": false,
     "next_phase": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
@@ -1301,7 +1599,7 @@
     "phase": "D3",
     "revision": "r4",
     "room_schema_unchanged": 14,
-    "settings_location": "Settings → Debug Workbench → Media Sniffing Lab",
+    "settings_location": "Settings \u2192 Debug Workbench \u2192 Media Sniffing Lab",
     "starts_downloads": false,
     "static_sniff_only": true,
     "status": "implemented",
@@ -3442,193 +3740,5 @@
     "native_selective_repair_planner": true,
     "repeat_verification_without_network": true,
     "trusted_block_manifest": true
-  },
-  "bug_hunt_master_remediation_overlay_02_03_generation_integrity_durable_review": {
-    "base_commit": "c66ec424",
-    "combined_phases": [
-      "generation_room_integrity",
-      "external_durable_review"
-    ],
-    "room_schema_current": 18,
-    "migration": "17_to_18",
-    "attempt_generation_bound_records": [
-      "downloads",
-      "checkpoints",
-      "checksum_expectations",
-      "checksum_results",
-      "verification_records",
-      "trusted_block_manifests",
-      "recovery_records",
-      "finalization_journals"
-    ],
-    "graph_integrity": {
-      "foreign_keys_added": true,
-      "terminal_delete_blocks_active_post_processing": true,
-      "review_and_recovery_history_detached_instead_of_destroyed": true,
-      "atomic_download_batch_upsert": true,
-      "empty_media_variant_replacement_supported": true,
-      "stale_same_generation_writes_rejected": true,
-      "persistence_outcomes_visible_to_transfer_runtime": true
-    },
-    "external_handoff": {
-      "exported_add_activity_review_only": true,
-      "accepted_command_persisted_before_main_activity_dispatch": true,
-      "secure_request_envelope_required_for_exact_request_material": true,
-      "main_activity_recreation_replay_blocked": true,
-      "durable_exclusive_execution_claim": true,
-      "tasker_token_auto_scope": "public EnqueueDownload only",
-      "caller_claims_are_diagnostics_only": true,
-      "add_prompt_applied_only_after_download_creation": true,
-      "external_enqueue_uses_persisted_preferences": true,
-      "interrupted_claim_recovery": true,
-      "enqueue_replay_uses_deterministic_download_id": true,
-      "authoritative_business_state_source": "Room/DataStore rather than MainUiState snapshots",
-      "main_activity_payload": "internal persisted command id only"
-    },
-    "validation_deferred": true,
-    "apply_with": "--no-validate",
-    "artifact_revision": 2,
-    "supersedes": "xdm_android_generation_room_integrity_durable_review_overlay_v1.zip",
-    "generation_integrity": {
-      "backend_snapshot_generation_proof": true,
-      "native_checkpoint_generation_proof": true,
-      "backend_write_requires_ownership_attachment": true,
-      "aria2_mapping_generation_bound_before_activation": true,
-      "backend_migration_target_uses_transferred_generation": true,
-      "runtime_rejects_stale_generation_or_installation_snapshots": true,
-      "download_row_tracks_current_ownership_generation": true
-    },
-    "migration_coverage": {
-      "latest_edge": "17_to_18",
-      "oldest_exported_schema_chain": "4_to_18",
-      "legacy_1_to_4": "manual migration tests retained because authentic exported schemas 1-3 are not present in repository history",
-      "exported_schema_18_committed": true
-    }
-  },
-  "bug_hunt_master_remediation_overlay_04_05_request_security_queue_runtime_ownership": {
-    "base_commit": "9d1608ec",
-    "combined_phases": [
-      "request_security_envelope",
-      "queue_runtime_ownership"
-    ],
-    "master_items": {
-      "phase_04": [
-        "M-005",
-        "M-016",
-        "M-019",
-        "M-029 app-side partial",
-        "M-031 approval-default portion",
-        "M-034 app-side partial"
-      ],
-      "phase_05": [
-        "M-008",
-        "M-009",
-        "M-018",
-        "M-025",
-        "M-026",
-        "M-043"
-      ]
-    },
-    "request_security": {
-      "exact_target_approval_scopes": true,
-      "primary_and_mirrors_guarded": true,
-      "backend_migration_uses_secure_envelope": true,
-      "native_redirect_hops_rechecked": true,
-      "https_to_http_downgrade_blocked": true,
-      "android_cleartext_policy_enforced": true,
-      "dns_private_target_rechecked": true,
-      "bounded_handoff_header_surface": true,
-      "media_page_probe_uses_transfer_guard": true,
-      "media_redirects_manual_and_bounded": true,
-      "cross_origin_sensitive_headers_stripped": true,
-      "selected_variant_cannot_widen_capture_approval": true,
-      "request_kind_persisted_in_encrypted_handoff": true,
-      "caller_metadata_cannot_reclassify_protocol": true,
-      "mirrors_persisted_in_encrypted_handoff": true,
-      "native_dns_bound_to_actual_okhttp_route": true
-    },
-    "request_kinds": [
-      "Direct",
-      "Torrent",
-      "Magnet",
-      "Metalink"
-    ],
-    "sensitive_migration": {
-      "marker": "sensitive-persistence-v2.complete",
-      "legacy_approval_reset": true,
-      "recognizable_sidecar_material_enveloped_before_redaction": true,
-      "json_redaction_by_key_and_value": true,
-      "atomic_sidecar_replace": true,
-      "completion_marker_requires_all_rewrites": true,
-      "atomic_writer": "android.util.AtomicFile"
-    },
-    "browser_capture_boundary": {
-      "legacy_v1_capture_media_rejected": true,
-      "full_extension_runtime_deferred_to_overlay_08": true
-    },
-    "queue_runtime_ownership": {
-      "startup_and_boot_common_recovery_pipeline": true,
-      "durable_startup_admission_hold": true,
-      "room_transactional_slot_claim": true,
-      "connecting_is_durable_reservation": true,
-      "null_and_default_queue_ids_share_capacity": true,
-      "queue_claim_bound_to_attempt_generation": true,
-      "android_execution_owner_authority": "Connecting row updatedAt queue claim token; backend attempt generation is established separately",
-      "pause_all_process_independent_gate": true,
-      "resume_all_clears_user_pause_gate": true,
-      "restart_controls_reconcile_backend_ownership": true,
-      "unsafe_control_moves_to_recovery_required": true,
-      "background_execution_owner": "WorkManager",
-      "android_14_user_visible_owner": "UIDT",
-      "legacy_user_visible_owner": "foreground dataSync service",
-      "fgs_rejection_fallback": "WorkManager",
-      "terminal_notification_idempotency": true,
-      "durable_collision_free_system_ids": true,
-      "retry_identity": "attempt generation + failure content",
-      "deadline_driven_retry_work": true,
-      "notification_retry_reenters_queue_policy": true,
-      "direct_runtime_resume_bypass_removed": true,
-      "failed_launch_release_monotonic_same_generation": true,
-      "scheduled_execution_owner_reauthorizes_durable_claim": true,
-      "execution_owner_attempt_generation_bound": true,
-      "workmanager_claimed_owner_policy": "KEEP",
-      "runtime_state_transitions_strictly_newer_same_generation": true,
-      "startup_recovery_state_transitions_strictly_newer_same_generation": true,
-      "backend_migration_state_transitions_strictly_newer_same_generation": true,
-      "workmanager_claimed_owner_identity": "download + durable queue claim token",
-      "system_owner_teardown_scope": "exact durable queue claims only",
-      "workmanager_stop_record_generation_bound": true,
-      "workmanager_system_foreground_service_type": "dataSync",
-      "workmanager_system_foreground_service_manifest_merge": true,
-      "failed_launch_release_requires_exact_queue_claim_token": true,
-      "process_local_stale_callback_guard": "per-download coroutine Mutex keyed by durable queue claim token",
-      "periodic_workmanager_reauthorizes_each_claim": true,
-      "uidt_stop_control_uses_exact_queue_claim": true,
-      "fgs_stop_control_uses_exact_queue_claim": true,
-      "workmanager_stop_control_uses_exact_queue_claim": true
-    },
-    "queue_policy": {
-      "malformed_schedule_fails_closed": true,
-      "invalid_days_fail_closed": true,
-      "unknown_required_battery_fails_closed": true,
-      "unknown_destination_free_space_fails_closed": true,
-      "destination_aware_free_space_probe": true,
-      "unbounded_age_fairness": true,
-      "blank_days_fail_closed": true
-    },
-    "room_schema_current": 18,
-    "room_schema_changed": false,
-    "validation_deferred": true,
-    "apply_with": "apply-overlay --no-validate",
-    "declared_final_validation_tasks": [
-      ":app:compileDebugKotlin",
-      ":app:testDebugUnitTest",
-      ":app:lintDebug"
-    ],
-    "artifact_revision": 2,
-    "supersedes": "xdm_android_request_security_queue_runtime_ownership_overlay_v1.zip",
-    "backend_generation_binding_requires_exact_queue_claim_token": true,
-    "ungated_pause_all_async_helper_removed": true,
-    "pause_all_receiver_fails_closed_without_queue_authority": true
   }
 }

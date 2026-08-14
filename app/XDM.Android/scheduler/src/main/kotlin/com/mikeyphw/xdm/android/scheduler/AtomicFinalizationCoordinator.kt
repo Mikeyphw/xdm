@@ -34,6 +34,38 @@ class AtomicFinalizationCoordinator(
         return journal
     }
 
+
+    /** Records a provider/file commit that already happened inside DestinationWriter promotion.
+     * This journal then makes the verification -> Room metadata portion restart-recoverable. */
+    suspend fun prepareCommitted(
+        download: Download,
+        committedUri: String,
+        bytesCommitted: Long,
+        attemptGeneration: Long = download.attemptGeneration,
+    ): FinalizationJournal {
+        require(committedUri.isNotBlank()) { "Committed artifact URI is required" }
+        require(attemptGeneration > 0L) { "Finalization requires a durable attempt generation" }
+        val now = clock()
+        val journal = FinalizationJournal(
+            id = "finalize-${download.id}-${UUID.randomUUID()}",
+            downloadId = download.id,
+            stage = FinalizationJournalStage.Prepared,
+            sourcePath = committedUri,
+            stagingPath = null,
+            destinationUri = committedUri,
+            bytesExpected = bytesCommitted,
+            bytesPromoted = bytesCommitted,
+            checksumAlgorithm = null,
+            checksumHex = null,
+            message = "Observed committed artifact before durable completion metadata.",
+            createdAtEpochMs = now,
+            updatedAtEpochMs = now,
+            attemptGeneration = attemptGeneration,
+        )
+        journalStore.save(journal)
+        return journal
+    }
+
     suspend fun advance(journal: FinalizationJournal, stage: FinalizationJournalStage, message: String, bytesPromoted: Long = journal.bytesPromoted): FinalizationJournal {
         require(stage.ordinal >= journal.stage.ordinal || stage == FinalizationJournalStage.RecoveryRequired) {
             "Finalization journal stages must move forward deterministically"
@@ -44,7 +76,7 @@ class AtomicFinalizationCoordinator(
     }
 
     suspend fun markVerificationComplete(journal: FinalizationJournal, checksumHex: String? = null): FinalizationJournal =
-        advance(journal.copy(checksumHex = checksumHex), FinalizationJournalStage.VerificationComplete, "Verification completed before promotion.")
+        advance(journal.copy(checksumHex = checksumHex), FinalizationJournalStage.VerificationComplete, "Verification completed for the committed artifact.")
 
     suspend fun recordPromotionStarted(journal: FinalizationJournal): FinalizationJournal =
         advance(journal, FinalizationJournalStage.PromotionStarted, "Destination promotion has started.")
@@ -63,8 +95,13 @@ class AtomicFinalizationCoordinator(
         journalStore.save(completed)
     }
 
-    suspend fun recover(journal: FinalizationJournal): FinalizationJournal =
-        advance(journal, FinalizationJournalStage.RecoveryRequired, "Startup found an interrupted finalization journal.")
+    suspend fun recover(
+        journal: FinalizationJournal,
+        message: String = "Startup found an interrupted finalization journal.",
+    ): FinalizationJournal = advance(journal, FinalizationJournalStage.RecoveryRequired, message)
+
+    suspend fun findIncomplete(downloadId: String): FinalizationJournal? =
+        journalStore.find(downloadId)?.takeIf(FinalizationJournal::needsRecovery)
 
     fun finalizedState(download: Download): Download = download.copy(state = DownloadState.Completed, speedBytesPerSecond = 0, errorMessage = null, updatedAtEpochMs = clock())
 }

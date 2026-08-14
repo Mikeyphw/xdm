@@ -221,17 +221,17 @@ class OkHttpAria2RpcControl(
             "removed" -> Aria2TaskStatusValue.Removed
             else -> Aria2TaskStatusValue.Unknown
         },
-        totalLength = long("totalLength"),
-        completedLength = long("completedLength"),
-        downloadSpeed = long("downloadSpeed"),
+        totalLength = requiredNonNegativeLong("totalLength"),
+        completedLength = requiredNonNegativeLong("completedLength"),
+        downloadSpeed = requiredNonNegativeLong("downloadSpeed"),
         dir = string("dir"),
         files = get("files")?.jsonArray?.map { fileElement ->
             val file = fileElement.jsonObject
             Aria2RpcFile(
-                index = file.string("index")?.toIntOrNull() ?: 0,
+                index = file.requiredPositiveInt("index"),
                 path = file.string("path").orEmpty(),
-                length = file.long("length"),
-                completedLength = file.long("completedLength"),
+                length = file.requiredNonNegativeLong("length"),
+                completedLength = file.requiredNonNegativeLong("completedLength"),
                 selected = file.string("selected") != "false",
                 uris = file["uris"]?.jsonArray?.map { uriElement ->
                     val uri = uriElement.jsonObject
@@ -247,7 +247,16 @@ class OkHttpAria2RpcControl(
     )
 
     private fun JsonObject.string(key: String): String? = get(key)?.contentOrNull()
-    private fun JsonObject.long(key: String): Long = string(key)?.toLongOrNull() ?: 0L
+    private fun JsonObject.requiredNonNegativeLong(key: String): Long {
+        val value = string(key)?.toLongOrNull() ?: throw Aria2RpcProtocolException("aria2 status field '$key' is missing or non-numeric")
+        if (value < 0L) throw Aria2RpcProtocolException("aria2 status field '$key' is negative")
+        return value
+    }
+    private fun JsonObject.requiredPositiveInt(key: String): Int {
+        val value = string(key)?.toIntOrNull() ?: throw Aria2RpcProtocolException("aria2 file field '$key' is missing or non-numeric")
+        if (value <= 0) throw Aria2RpcProtocolException("aria2 file field '$key' is not positive")
+        return value
+    }
     private fun JsonElement.contentOrNull(): String? = runCatching { jsonPrimitive.content }.getOrNull()
     private fun JsonElement.requiredString(method: String): String = contentOrNull()?.takeIf(String::isNotBlank)
         ?: error("$method returned an invalid result")

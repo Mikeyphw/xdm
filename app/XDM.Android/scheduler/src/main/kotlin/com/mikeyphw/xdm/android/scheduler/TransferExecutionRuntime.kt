@@ -7,6 +7,8 @@ import com.mikeyphw.xdm.android.model.BackendReconciliationClassification
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.FinalizationJournal
+import com.mikeyphw.xdm.android.model.FinalizationJournalStage
 import com.mikeyphw.xdm.android.transfer.BackendCoordinator
 import com.mikeyphw.xdm.android.transfer.BackendMigrationStore
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
@@ -50,6 +52,7 @@ class TransferExecutionRuntime(
     recoveryStore: RecoveryWorkflowStore = InMemoryRecoveryWorkflowStore(),
     backends: Collection<DownloadBackend>,
     artifactRoots: List<File> = emptyList(),
+    completedArtifactReader: CompletedArtifactReader = FileCompletedArtifactReader(),
     private val requestSecurityGuard: TransferRequestSecurityGuard = TransferRequestSecurityGuard.AllowAll,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) {
@@ -58,8 +61,9 @@ class TransferExecutionRuntime(
     private val coordinator = BackendCoordinator(registry, ownershipStore, selectionPolicy)
     private val reconciler = BackendOwnershipReconciler(registry, ownershipStore)
     private val ownershipStore = ownershipStore
-    private val migrationCoordinator = BackendMigrationCoordinator(store, ownershipStore, migrationStore, registry, selectionPolicy)
-    private val completionVerifier = CompletionVerificationCoordinator(checksumStore, ownershipStore)
+    private val migrationCoordinator = BackendMigrationCoordinator(store, ownershipStore, migrationStore, registry, selectionPolicy, requestSecurityGuard)
+    private val completionVerifier = CompletionVerificationCoordinator(checksumStore, ownershipStore, completedArtifactReader)
+    private val finalizationCoordinator = AtomicFinalizationCoordinator(finalizationStore)
     private val startupRecoveryCoordinator = StartupRecoveryCoordinator(store, ownershipStore, migrationStore, finalizationStore, recoveryStore, artifactRoots)
     private val jobs = ConcurrentHashMap<String, Job>()
     private val commandControls = ConcurrentHashMap<String, DownloadCommandControl>()
@@ -163,6 +167,14 @@ class TransferExecutionRuntime(
     suspend fun pause(downloadId: String) {
         val control = commandControl(downloadId)
         val generation = control.request(DesiredTransferState.PauseRequested)
+        if (finalizationCoordinator.findIncomplete(downloadId) != null) {
+            jobs[downloadId]?.join()
+            quarantineInterruptedFinalization(
+                downloadId,
+                "Pause was requested after the destination artifact committed; XDM preserved the artifact and requires recovery verification instead of relabeling it Paused.",
+            )
+            return
+        }
         when (val resolution = resolveBackendControl(downloadId)) {
             is BackendControlResolution.Live -> registry.require(resolution.mapping.first).pause(resolution.mapping.second)
             is BackendControlResolution.InactiveSafe -> jobs[downloadId]?.cancel()
@@ -183,6 +195,14 @@ class TransferExecutionRuntime(
     suspend fun cancel(downloadId: String) {
         val control = commandControl(downloadId)
         val generation = control.request(DesiredTransferState.CancelRequested)
+        if (finalizationCoordinator.findIncomplete(downloadId) != null) {
+            jobs[downloadId]?.join()
+            quarantineInterruptedFinalization(
+                downloadId,
+                "Cancel was requested after the destination artifact committed; XDM preserved the artifact and requires recovery review instead of falsely recording it Cancelled.",
+            )
+            return
+        }
         when (val resolution = resolveBackendControl(downloadId)) {
             is BackendControlResolution.Live -> registry.require(resolution.mapping.first).cancel(resolution.mapping.second)
             is BackendControlResolution.InactiveSafe -> {
@@ -494,6 +514,19 @@ class TransferExecutionRuntime(
         }
         val message = reconciliation?.message ?: error.message ?: error::class.java.simpleName
         val current = store.find(download.id) ?: download
+        if (current.state == DownloadState.Completed &&
+            current.completedArtifactGeneration == current.attemptGeneration &&
+            !current.completedArtifactUri.isNullOrBlank()
+        ) {
+            // Completion metadata is authoritative once durably committed. Cleanup/journal-close
+            // failures must not rewrite a verified artifact into Paused/Failed/RecoveryRequired.
+            // If detach itself failed, preserve the task mapping so final cleanup cannot release
+            // durable ownership while a backend task may still exist.
+            if (mapping != null && reconciliation?.classification == BackendReconciliationClassification.BackendTaskOrphaned) {
+                backendTaskIds[download.id] = mapping
+            }
+            return
+        }
         val storedMessage = if (state == DownloadState.Paused) null else message
         persistOrThrow(
             current.copy(
@@ -517,7 +550,13 @@ class TransferExecutionRuntime(
         val finalState = storedAfterCompletion?.state ?: finalSnapshot.state
         val finalMessage = storedAfterCompletion?.errorMessage ?: finalSnapshot.errorMessage
         if (finalState in TERMINAL_STATES || finalState == DownloadState.Paused || finalState == DownloadState.RecoveryRequired) {
-            val storedDestination = storedAfterCompletion?.destinationUri ?: download.destinationUri
+            val storedDestination = storedAfterCompletion?.let { stored ->
+                if (finalState == DownloadState.Completed && stored.completedArtifactGeneration == stored.attemptGeneration) {
+                    stored.completedArtifactUri
+                } else {
+                    stored.destinationUri
+                }
+            } ?: download.destinationUri
             val storedMimeType = storedAfterCompletion?.mimeType ?: download.mimeType
             _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage, storedDestination, storedMimeType, attemptGenerations[download.id] ?: requestGeneration(download.id)))
         }
@@ -538,10 +577,29 @@ class TransferExecutionRuntime(
                 coordinator.release(downloadId)
             } else {
                 store.find(downloadId)?.let { current ->
-                    persistOrThrow(current.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = "Backend ownership could not be removed safely; artifacts remain quarantined.", updatedAtEpochMs = current.nextUpdatedAt()))
+                    if (current.state == DownloadState.Completed &&
+                        current.completedArtifactGeneration == current.attemptGeneration &&
+                        !current.completedArtifactUri.isNullOrBlank()
+                    ) {
+                        ownershipStore.findByDownload(downloadId)?.let { ownership ->
+                            runCatching {
+                                ownershipStore.recordReconciliation(
+                                    downloadId,
+                                    ownership.generation,
+                                    BackendReconciliationResult(
+                                        classification = BackendReconciliationClassification.BackendTaskOrphaned,
+                                        message = "Completed artifact metadata is durable, but backend ownership cleanup still requires reconciliation.",
+                                        backendTaskId = mapping?.second,
+                                    ),
+                                )
+                            }
+                        }
+                    } else {
+                        persistOrThrow(current.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = "Backend ownership could not be removed safely; artifacts remain quarantined.", updatedAtEpochMs = current.nextUpdatedAt()))
+                    }
                 }
             }
-            if (state == DownloadState.Completed || state == DownloadState.Cancelled) {
+            if (removed && (state == DownloadState.Completed || state == DownloadState.Cancelled)) {
                 MediaRequestHandoffStore.forget(downloadId)
             }
             snapshots.value = snapshots.value - downloadId
@@ -593,33 +651,150 @@ class TransferExecutionRuntime(
             }
             return
         }
+
         val generationBeforeVerification = control.generation.get()
-        val verifiedSnapshot = completionVerifier.complete(original, snapshot)
-        if (control.desired == DesiredTransferState.CancelRequested && control.generation.get() != generationBeforeVerification) {
-            store.find(original.id)?.let { current ->
-                persistOrThrow(current.copy(state = DownloadState.Cancelled, speedBytesPerSecond = 0, updatedAtEpochMs = current.nextUpdatedAt()))
-            }
+        var journal: FinalizationJournal? = null
+        if (snapshot.state == DownloadState.Completed) {
+            val committedUri = snapshot.completedUri?.trim()?.takeIf(String::isNotBlank)
+                ?: run {
+                    val reason = "Backend completed without a committed artifact identity."
+                    val current = store.find(original.id) ?: original
+                    persistOrThrow(current.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = reason, updatedAtEpochMs = current.nextUpdatedAt()))
+                    snapshots.value = snapshots.value + (original.id to snapshot.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = reason))
+                    return
+                }
+            val current = store.find(original.id) ?: original
+            journal = finalizationCoordinator.prepareCommitted(
+                download = current,
+                committedUri = committedUri,
+                bytesCommitted = snapshot.bytesReceived,
+                attemptGeneration = ownership.generation,
+            )
+            persistOrThrow(
+                current.copy(
+                    state = DownloadState.Verifying,
+                    backend = backendTaskIds[original.id]?.first ?: current.backend,
+                    bytesReceived = snapshot.bytesReceived,
+                    totalBytes = snapshot.totalBytes ?: current.totalBytes,
+                    speedBytesPerSecond = 0,
+                    errorMessage = null,
+                    updatedAtEpochMs = current.nextUpdatedAt(),
+                ),
+            )
+            snapshots.value = snapshots.value + (original.id to snapshot.copy(state = DownloadState.Verifying, speedBytesPerSecond = 0))
+        }
+
+        val verifiedSnapshot = try {
+            completionVerifier.complete(original, snapshot)
+        } catch (error: Throwable) {
+            val activeJournal = journal ?: throw error
+            val reason = "Committed artifact verification was interrupted: ${error.message ?: error::class.java.simpleName}"
+            finalizationCoordinator.recover(activeJournal, reason)
+            val current = store.find(original.id) ?: original
+            persistOrThrow(current.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = reason, updatedAtEpochMs = current.nextUpdatedAt()))
+            snapshots.value = snapshots.value + (original.id to snapshot.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = reason))
+            updateSummary()
             return
         }
+
+        if (journal != null && control.generation.get() != generationBeforeVerification &&
+            control.desired in setOf(DesiredTransferState.PauseRequested, DesiredTransferState.CancelRequested)
+        ) {
+            val reason = if (control.desired == DesiredTransferState.CancelRequested) {
+                "Cancel was requested while validating a committed artifact; the artifact is preserved for explicit recovery review."
+            } else {
+                "Pause was requested while validating a committed artifact; the artifact is preserved for recovery verification."
+            }
+            finalizationCoordinator.recover(journal, reason)
+            val current = store.find(original.id) ?: original
+            persistOrThrow(current.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = reason, updatedAtEpochMs = current.nextUpdatedAt()))
+            snapshots.value = snapshots.value + (original.id to verifiedSnapshot.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = reason))
+            updateSummary()
+            return
+        }
+
         snapshots.value = snapshots.value + (original.id to verifiedSnapshot)
         val current = store.find(original.id) ?: original
-        persistOrThrow(
-            current.copy(
-                state = verifiedSnapshot.state,
-                destinationUri = if (verifiedSnapshot.state == DownloadState.Completed) {
-                    verifiedSnapshot.completedUri?.takeIf { it.isNotBlank() } ?: current.destinationUri
-                } else {
-                    current.destinationUri
-                },
-                backend = backendTaskIds[original.id]?.first ?: current.backend,
-                bytesReceived = verifiedSnapshot.bytesReceived,
-                totalBytes = verifiedSnapshot.totalBytes ?: current.totalBytes,
-                speedBytesPerSecond = verifiedSnapshot.speedBytesPerSecond,
-                errorMessage = verifiedSnapshot.errorMessage,
-                updatedAtEpochMs = current.nextUpdatedAt(),
-            ),
-        )
+        if (verifiedSnapshot.state == DownloadState.Completed) {
+            val committedUri = verifiedSnapshot.completedUri?.trim()?.takeIf(String::isNotBlank)
+                ?: error("Verified completion is missing committed artifact identity")
+            val committedBytes = verifiedSnapshot.bytesReceived
+            var activeJournal = requireNotNull(journal) { "Completed publication must own a durable finalization journal before verification" }
+            activeJournal = finalizationCoordinator.markVerificationComplete(activeJournal)
+            activeJournal = finalizationCoordinator.recordDestinationCommitted(activeJournal, committedBytes)
+            persistOrThrow(
+                current.copy(
+                    state = DownloadState.Completed,
+                    backend = backendTaskIds[original.id]?.first ?: current.backend,
+                    bytesReceived = committedBytes,
+                    totalBytes = verifiedSnapshot.totalBytes ?: committedBytes,
+                    speedBytesPerSecond = 0,
+                    errorMessage = null,
+                    completedArtifactUri = committedUri,
+                    completedArtifactGeneration = ownership.generation,
+                    completedArtifactBytes = committedBytes,
+                    updatedAtEpochMs = current.nextUpdatedAt(),
+                ),
+            )
+            val journalClosed = runCatching {
+                activeJournal = finalizationCoordinator.recordMetadataCommitted(activeJournal)
+                finalizationCoordinator.complete(activeJournal)
+            }.isSuccess
+            if (journalClosed) {
+                retirePublicationJournal(verifiedSnapshot.publicationJournalPath)
+            }
+        } else {
+            journal?.let { activeJournal ->
+                finalizationCoordinator.recover(
+                    activeJournal,
+                    verifiedSnapshot.errorMessage ?: "Committed artifact did not pass completion verification.",
+                )
+            }
+            val clearStaleArtifact = current.completedArtifactGeneration != null && current.completedArtifactGeneration != ownership.generation
+            persistOrThrow(
+                current.copy(
+                    state = verifiedSnapshot.state,
+                    backend = backendTaskIds[original.id]?.first ?: current.backend,
+                    bytesReceived = verifiedSnapshot.bytesReceived,
+                    totalBytes = verifiedSnapshot.totalBytes ?: current.totalBytes,
+                    speedBytesPerSecond = verifiedSnapshot.speedBytesPerSecond,
+                    errorMessage = verifiedSnapshot.errorMessage,
+                    completedArtifactUri = if (clearStaleArtifact) null else current.completedArtifactUri,
+                    completedArtifactGeneration = if (clearStaleArtifact) null else current.completedArtifactGeneration,
+                    completedArtifactBytes = if (clearStaleArtifact) null else current.completedArtifactBytes,
+                    updatedAtEpochMs = current.nextUpdatedAt(),
+                ),
+            )
+        }
         updateSummary()
+    }
+
+    private suspend fun quarantineInterruptedFinalization(downloadId: String, message: String) {
+        val journal = finalizationCoordinator.findIncomplete(downloadId) ?: return
+        if (journal.stage != FinalizationJournalStage.RecoveryRequired) {
+            finalizationCoordinator.recover(journal, message)
+        }
+        store.find(downloadId)?.let { current ->
+            if (current.state != DownloadState.Completed && current.state != DownloadState.RecoveryRequired) {
+                persistOrThrow(
+                    current.copy(
+                        state = DownloadState.RecoveryRequired,
+                        speedBytesPerSecond = 0,
+                        errorMessage = message,
+                        updatedAtEpochMs = current.nextUpdatedAt(),
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun retirePublicationJournal(path: String?) {
+        val journal = path?.trim()?.takeIf(String::isNotBlank)?.let(::File) ?: return
+        if (!journal.name.endsWith(".finalization.json")) return
+        runCatching {
+            if (journal.isFile) journal.delete()
+            journal.parentFile?.takeIf { it.isDirectory && it.listFiles().isNullOrEmpty() }?.delete()
+        }
     }
 
     private fun updateSummary() {

@@ -15,6 +15,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mikeyphw.xdm.android.scheduler.TransferNotifications
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
@@ -37,13 +38,36 @@ class MainActivity : ComponentActivity() {
         }
         requestLegacyStoragePermissionsIfNeeded()
         // A recreated Activity must not replay the launch intent. New deliveries arrive in onNewIntent.
-        if (savedInstanceState == null) consumeInternalAutomation(intent)
+        if (savedInstanceState == null) consumeLaunchIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        consumeInternalAutomation(intent)
+        consumeLaunchIntent(intent)
+    }
+
+    private fun consumeLaunchIntent(incoming: Intent?): Boolean =
+        consumeInternalAutomation(incoming) || consumeNotificationNavigation(incoming)
+
+    private fun consumeNotificationNavigation(incoming: Intent?): Boolean {
+        val downloadId = incoming?.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.trim()?.takeIf(String::isNotBlank)
+        val consumed = when (incoming?.action) {
+            TransferNotifications.ACTION_OPEN_DOWNLOAD_DETAILS -> {
+                downloadId?.let(viewModel::openDownloadFromNotification)
+                true
+            }
+            TransferNotifications.ACTION_REVIEW_RECOVERY -> {
+                downloadId?.let(viewModel::openRecoveryFromNotification)
+                true
+            }
+            else -> false
+        }
+        if (consumed) {
+            incoming?.removeExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)
+            setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+        }
+        return consumed
     }
 
     private fun consumeInternalAutomation(incoming: Intent?): Boolean {

@@ -118,6 +118,33 @@ class EmbeddedAria2BackendTest {
     }
 
     @Test
+    fun terminalMappingCannotBeReactivatedOrCancelledIntoAnotherState() = runTest {
+        val fixture = BackendFixture()
+        val request = fixture.request(expectedLength = 4).copy(attemptGeneration = 10L)
+        val preparation = fixture.backend.prepare(request)
+        val task = fixture.backend.add(request, preparation)
+        fixture.backend.onOwnershipAttached(task.taskId, fixture.ownership(preparation, task.taskId, generation = 10))
+        fixture.backend.activate(task.taskId)
+        val mapping = requireNotNull(fixture.store.findByGid(task.taskId))
+        File(mapping.outputPath).writeBytes(byteArrayOf(1, 2, 3, 4))
+        fixture.rpc.complete(task.taskId, totalLength = 4)
+        assertEquals(DownloadState.Completed, fixture.backend.query(task.taskId)?.state)
+        assertEquals("Completed", fixture.store.findByGid(task.taskId)?.status)
+
+        val pauseEvents = fixture.rpc.events.count { it == "pause:${task.taskId}" }
+        val removeEvents = fixture.rpc.events.count { it == "remove:${task.taskId}" }
+        fixture.backend.pause(task.taskId)
+        fixture.backend.cancel(task.taskId)
+        val resumeFailure = runCatching { fixture.backend.resume(task.taskId) }.exceptionOrNull()
+
+        assertEquals("Completed", fixture.store.findByGid(task.taskId)?.status)
+        assertEquals(pauseEvents, fixture.rpc.events.count { it == "pause:${task.taskId}" })
+        assertEquals(removeEvents, fixture.rpc.events.count { it == "remove:${task.taskId}" })
+        assertTrue(resumeFailure is IllegalArgumentException)
+        fixture.close()
+    }
+
+    @Test
     fun changedAria2OutputPathIsQuarantinedDuringReconciliation() = runTest {
         val fixture = BackendFixture()
         val request = fixture.request().copy(attemptGeneration = 9L)

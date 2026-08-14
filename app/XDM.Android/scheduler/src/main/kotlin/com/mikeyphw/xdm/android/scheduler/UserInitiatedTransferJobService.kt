@@ -57,7 +57,13 @@ class UserInitiatedTransferJobService : JobService() {
                 fileName = result?.fileName ?: "Download",
                 state = state,
                 message = result?.errorMessage,
-                destinationUri = result?.destinationUri,
+                destinationUri = result?.let { download ->
+                    if (state == DownloadState.Completed && download.completedArtifactGeneration == download.attemptGeneration) {
+                        download.completedArtifactUri
+                    } else {
+                        download.destinationUri
+                    }
+                },
                 mimeType = result?.mimeType,
                 attemptGeneration = result?.attemptGeneration ?: 0L,
             )?.let { setNotification(params, notificationId, it, JOB_END_NOTIFICATION_POLICY_DETACH) }

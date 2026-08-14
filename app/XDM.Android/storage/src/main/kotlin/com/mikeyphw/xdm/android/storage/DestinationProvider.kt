@@ -22,6 +22,8 @@ data class DestinationRequest(
     val mimeType: String? = null,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val stagingSuffix: String = ".xdm.part",
+    /** Durable backend-attempt generation owning the staged and committed artifact. */
+    val attemptGeneration: Long = 1L,
 )
 
 data class DestinationArtifacts(
@@ -35,6 +37,8 @@ data class DestinationPromotionResult(
     val displayName: String,
     val bytesCommitted: Long,
     val atomic: Boolean,
+    /** Local crash-recovery journal retained until Room completion metadata is durable. */
+    val publicationJournalPath: String? = null,
 )
 
 data class DestinationConflict(
@@ -57,22 +61,27 @@ interface PreparedDestination {
     val destinationKey: String
     val displayName: String
     val artifacts: DestinationArtifacts
+    /** True when final publication needs a second full copy in addition to app-private staging. */
+    val requiresPublicationCopy: Boolean get() = false
     suspend fun availableSpace(): Long?
     suspend fun promote(): DestinationPromotionResult
     suspend fun deleteArtifacts()
 }
 
-interface DestinationWriter {
+interface DestinationProvider {
+    val providerId: String
+    suspend fun canWrite(destinationUri: String): Boolean
+}
+
+interface DestinationWriter : DestinationProvider {
+    override val providerId: String get() = "destination-writer"
     val supportsContentDestinations: Boolean
     fun artifactPaths(request: DestinationRequest): DestinationArtifacts
     suspend fun prepare(request: DestinationRequest): PreparedDestination
     suspend fun previewConflict(request: DestinationRequest): DestinationConflict?
     suspend fun health(destinationUri: String): DestinationHealth
-}
-
-interface DestinationProvider {
-    val providerId: String
-    suspend fun canWrite(destinationUri: String): Boolean
+    override suspend fun canWrite(destinationUri: String): Boolean =
+        health(destinationUri).status == DestinationHealthStatus.Healthy
 }
 
 class DestinationConflictException(message: String, val conflict: DestinationConflict? = null) : IllegalStateException(message)

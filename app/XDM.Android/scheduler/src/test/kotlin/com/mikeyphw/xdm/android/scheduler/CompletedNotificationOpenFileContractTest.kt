@@ -44,9 +44,11 @@ class CompletedNotificationOpenFileContractTest {
         assertTrue(activity.contains("uri-permission-lost"))
     }
 
-    @Test fun runtimePersistsConcreteCompletedUriForLaterNotificationTap() {
-        assertTrue(runtime.contains("destinationUri = if (verifiedSnapshot.state == DownloadState.Completed"))
-        assertTrue(runtime.contains("verifiedSnapshot.completedUri"))
+    @Test fun runtimePersistsGenerationBoundCompletedArtifactForLaterNotificationTap() {
+        assertTrue(runtime.contains("completedArtifactUri = committedUri"))
+        assertTrue(runtime.contains("completedArtifactGeneration = ownership.generation"))
+        assertTrue(runtime.contains("stored.completedArtifactGeneration == stored.attemptGeneration"))
+        assertTrue(runtime.contains("stored.completedArtifactUri"))
         assertTrue(runtime.contains("TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage, storedDestination, storedMimeType, attemptGenerations[download.id]"))
     }
 }

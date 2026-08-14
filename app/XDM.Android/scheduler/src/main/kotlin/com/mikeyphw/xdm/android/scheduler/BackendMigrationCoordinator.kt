@@ -20,6 +20,9 @@ import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.inferDownloadRequestKind
 import com.mikeyphw.xdm.android.transfer.OwnershipClaimResult
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 sealed interface BackendMigrationOutcome {
     data class Started(val task: BackendTask, val record: BackendMigrationRecord) : BackendMigrationOutcome
@@ -32,9 +35,17 @@ class BackendMigrationCoordinator(
     private val migrationStore: BackendMigrationStore,
     private val registry: BackendRegistry,
     private val selectionPolicy: BackendSelectionPolicy = BackendSelectionPolicy(),
+    private val requestSecurityGuard: TransferRequestSecurityGuard = TransferRequestSecurityGuard.AllowAll,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
-    suspend fun migrate(downloadId: String, targetBackend: BackendType, restartFromZero: Boolean): BackendMigrationOutcome {
+    private val migrationLocks = ConcurrentHashMap<String, Mutex>()
+
+    suspend fun migrate(downloadId: String, targetBackend: BackendType, restartFromZero: Boolean): BackendMigrationOutcome =
+        migrationLocks.computeIfAbsent(downloadId) { Mutex() }.withLock {
+            migrateLocked(downloadId, targetBackend, restartFromZero)
+        }
+
+    private suspend fun migrateLocked(downloadId: String, targetBackend: BackendType, restartFromZero: Boolean): BackendMigrationOutcome {
         require(targetBackend != BackendType.Automatic) { "Migration target must be an explicit backend" }
         val download = requireNotNull(store.find(downloadId)) { "Unknown download $downloadId" }
         require(download.backend != targetBackend) { "Download already uses $targetBackend" }
@@ -59,9 +70,30 @@ class BackendMigrationCoordinator(
             createdAtEpochMs = now,
             updatedAtEpochMs = now,
         )
-        migrationStore.save(record)
+        if (!migrationStore.tryCreate(record)) {
+            return migrationStore.listForDownload(downloadId)
+                .firstOrNull { it.stage !in TERMINAL_MIGRATION_STAGES }
+                ?.let(BackendMigrationOutcome::Rejected)
+                ?: BackendMigrationOutcome.Rejected(
+                    record.copy(
+                        stage = BackendMigrationStage.Failed,
+                        message = "A concurrent backend migration already owns this download.",
+                        updatedAtEpochMs = clock(),
+                    ),
+                )
+        }
 
         val request = download.toRequest(targetBackend)
+        try {
+            requestSecurityGuard.validate(request)
+        } catch (error: Throwable) {
+            record = record.advance(
+                BackendMigrationStage.Failed,
+                "Migration request security validation failed: ${error.message ?: error::class.java.simpleName}",
+            )
+            migrationStore.save(record)
+            return BackendMigrationOutcome.Rejected(record)
+        }
         val capabilities = registry.capabilitySnapshot()
         val compatibilityIssue = selectionPolicy.compatibilityIssue(request, capabilities[targetBackend])
         if (compatibilityIssue != null) {
@@ -128,10 +160,9 @@ class BackendMigrationCoordinator(
 
             sourceOwnership.backendTaskId?.let { taskId ->
                 val retired = sourceBackend.retireForMigration(taskId)
-                check(retired) { "The source backend could not be retired safely" }
+                check(retired) { "The source backend could not be quiesced safely" }
                 sourceRetired = true
             }
-            store.deleteBackendTask(downloadId)
             ownershipStore.recordReconciliation(
                 downloadId,
                 sourceOwnership.generation,
@@ -168,6 +199,13 @@ class BackendMigrationCoordinator(
             targetTask = started
             val active = ownershipStore.attachTask(downloadId, targetOwnership.generation, started.taskId)
             target.onOwnershipAttached(started.taskId, active)
+            record = record.copy(
+                stage = BackendMigrationStage.TargetAttached,
+                targetTaskId = started.taskId,
+                message = "The target task is durably attached; source recovery metadata is still retained until target persistence completes.",
+                updatedAtEpochMs = clock(),
+            )
+            migrationStore.save(record)
             if (started.requiresActivation) target.activate(started.taskId)
             store.saveBackendTask(downloadId, targetBackend, started.taskId, active)
             persistOrThrow(
@@ -188,10 +226,17 @@ class BackendMigrationCoordinator(
                     updatedAtEpochMs = download.nextUpdatedAt(),
                 ),
             )
+            val sourceCleanup = sourceOwnership.backendTaskId?.let { taskId ->
+                runCatching { sourceBackend.finalizeMigrationRetirement(taskId) }.getOrDefault(false)
+            } ?: true
             record = record.copy(
                 stage = BackendMigrationStage.Completed,
                 targetTaskId = started.taskId,
-                message = "The target task is durably attached and owns the destination. Source artifacts were never reused silently.",
+                message = if (sourceCleanup) {
+                    "The target task is durably attached and owns the destination; source runtime control was retired after target proof."
+                } else {
+                    "The target task is durably attached and owns the destination; stale source control remains paused for startup reconciliation."
+                },
                 updatedAtEpochMs = clock(),
             )
             migrationStore.save(record)
@@ -257,7 +302,7 @@ class BackendMigrationCoordinator(
             mimeType = mimeType,
             allowBackendFallback = false,
             isExpiringUrl = handoff?.isExpiringUrl == true,
-            isMediaRequest = handoff?.headers?.isNotEmpty() == true,
+            isMediaRequest = handoff != null,
             privateNetworkApproved = handoff?.privateNetworkApproved == true,
             cleartextCredentialsApproved = handoff?.cleartextCredentialsApproved == true,
             privateNetworkApprovalScopes = handoff?.privateNetworkApprovalScopes.orEmpty(),
@@ -267,6 +312,7 @@ class BackendMigrationCoordinator(
     }
 
     private companion object {
+        val TERMINAL_MIGRATION_STAGES = setOf(BackendMigrationStage.Completed, BackendMigrationStage.Failed)
         val MIGRATABLE_STATES = setOf(
             DownloadState.Created,
             DownloadState.Queued,

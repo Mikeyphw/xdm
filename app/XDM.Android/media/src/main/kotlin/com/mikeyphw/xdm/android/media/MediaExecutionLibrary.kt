@@ -547,14 +547,30 @@ class MediaExecutionLibraryPlanner(
     private fun libraryDetail(capture: MediaCaptureRecord, download: Download?): String = when {
         download == null && capture.downloadId != null -> "External media job ${capture.downloadId}; check Termux media pipeline for output."
         download == null -> "Captured from ${hostFor(capture.pageUrl ?: capture.sourceUrl)}; not queued yet."
-        download.state == DownloadState.Completed -> "Completed in ${download.destinationUri}; local sidecar metadata is redacted."
+        download.state == DownloadState.Completed -> {
+            val artifact = download.completedArtifactUri
+                ?.takeIf { download.completedArtifactGeneration == download.attemptGeneration }
+                ?.let(::mediaLocationLabel)
+                ?: "committed artifact unavailable"
+            "Completed artifact: $artifact; local sidecar metadata is redacted."
+        }
         download.state == DownloadState.Failed -> download.errorMessage?.take(180) ?: "Failed; retry from the media library."
         else -> "${download.state.name} through ${download.backend.name}."
     }
 
-    private fun completedPlaybackUrl(download: Download): String? = if (download.destinationUri.startsWith("content://") || download.destinationUri.startsWith("file://")) {
-        download.destinationUri
-    } else null
+    private fun completedPlaybackUrl(download: Download): String? {
+        if (download.completedArtifactGeneration != download.attemptGeneration) return null
+        return download.completedArtifactUri
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+            ?.takeIf { it.startsWith("content://") || it.startsWith("file://") }
+    }
+
+    private fun mediaLocationLabel(uri: String): String = when {
+        uri.startsWith("content://") -> "Android document"
+        uri.startsWith("file://") -> "XDM-managed file"
+        else -> "committed artifact"
+    }
 
     companion object {
         private val resumableStates = setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)

@@ -292,6 +292,10 @@ data class Download(
     val archived: Boolean = false,
     /** Monotonic generation for the current transfer attempt. Evidence must bind to this value. */
     val attemptGeneration: Long = 1L,
+    /** Validated, committed artifact identity. Destination specification remains separate. */
+    val completedArtifactUri: String? = null,
+    val completedArtifactGeneration: Long? = null,
+    val completedArtifactBytes: Long? = null,
 ) {
     val progressFraction: Float
         get() = totalBytes?.takeIf { it > 0 }?.let { (bytesReceived.toDouble() / it).coerceIn(0.0, 1.0).toFloat() } ?: 0f

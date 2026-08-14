@@ -626,4 +626,26 @@ object Migrations {
         indices.forEach(db::execSQL)
     }
 
+    val Migration18To19 = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE downloads ADD COLUMN completedArtifactUri TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE downloads ADD COLUMN completedArtifactGeneration INTEGER DEFAULT NULL")
+            db.execSQL("ALTER TABLE downloads ADD COLUMN completedArtifactBytes INTEGER DEFAULT NULL")
+            db.execSQL("ALTER TABLE backend_migrations ADD COLUMN activeClaim TEXT DEFAULT NULL")
+            // Collapse any historical duplicate in-flight rows before enforcing one durable claim.
+            db.execSQL(
+                """UPDATE backend_migrations SET stage = 'Failed', message = message || ' [superseded during v19 migration]'
+                   WHERE stage NOT IN ('Completed','Failed') AND id NOT IN (
+                       SELECT bm.id FROM backend_migrations bm
+                       WHERE bm.stage NOT IN ('Completed','Failed')
+                         AND bm.id = (SELECT bm2.id FROM backend_migrations bm2
+                                      WHERE bm2.downloadId = bm.downloadId AND bm2.stage NOT IN ('Completed','Failed')
+                                      ORDER BY bm2.updatedAtEpochMs DESC, bm2.createdAtEpochMs DESC, bm2.id DESC LIMIT 1)
+                   )""".trimIndent(),
+            )
+            db.execSQL("UPDATE backend_migrations SET activeClaim = 'active' WHERE stage NOT IN ('Completed','Failed')")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_backend_migrations_downloadId_activeClaim ON backend_migrations(downloadId, activeClaim)")
+        }
+    }
+
 }

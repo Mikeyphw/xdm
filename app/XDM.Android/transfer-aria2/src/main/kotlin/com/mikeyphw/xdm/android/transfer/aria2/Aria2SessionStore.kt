@@ -1,6 +1,7 @@
 package com.mikeyphw.xdm.android.transfer.aria2
 
 import android.content.Context
+import android.util.AtomicFile
 import com.mikeyphw.xdm.android.model.BackendArtifactIdentity
 import com.mikeyphw.xdm.android.transfer.Aria2TaskMapping
 import com.mikeyphw.xdm.android.util.sanitizeFileName
@@ -77,23 +78,15 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
 
     override fun writeRuntimeLease(lease: Aria2RuntimeLease): Boolean = runCatching {
         prepare()
-        val temporary = File(rootDirectory, "runtime-owner.properties.tmp")
-        temporary.writeText(
+        atomicWrite(
+            runtimeLeaseFile,
             buildString {
                 appendLine("schema=1")
                 appendLine("port=${lease.endpoint.port}")
                 appendLine("secretGeneration=${lease.secretGeneration}")
                 appendLine("startedAtEpochMs=${lease.startedAtEpochMs}")
             },
-            Charsets.UTF_8,
         )
-        temporary.restrictToOwner()
-        check(temporary.renameTo(runtimeLeaseFile) || runCatching {
-            temporary.copyTo(runtimeLeaseFile, overwrite = true)
-            temporary.delete()
-            true
-        }.getOrDefault(false)) { "Unable to persist aria2 runtime ownership lease" }
-        runtimeLeaseFile.restrictToOwner()
         true
     }.getOrDefault(false)
 
@@ -183,15 +176,7 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
             put("status", mapping.status)
             put("updatedAtEpochMs", mapping.updatedAtEpochMs)
         }
-        val temporary = File(files.directory, "ownership.json.tmp")
-        temporary.writeText(payload.toString(), Charsets.UTF_8)
-        temporary.restrictToOwner()
-        check(temporary.renameTo(files.ownershipMetadata) || runCatching {
-            temporary.copyTo(files.ownershipMetadata, overwrite = true)
-            temporary.delete()
-            true
-        }.getOrDefault(false)) { "Unable to persist aria2 ownership metadata" }
-        files.ownershipMetadata.restrictToOwner()
+        atomicWrite(files.ownershipMetadata, payload.toString())
     }
 
     override fun deleteTaskMetadata(files: Aria2TaskFiles) {
@@ -203,6 +188,22 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
         val safeName = safeFileName(fileName)
         val output = File(stagingDirectory, "$downloadId-$safeName.xdm.aria2.part")
         return taskFiles(downloadId, output).artifacts()
+    }
+
+
+    private fun atomicWrite(target: File, contents: String) {
+        target.parentFile?.let { parent -> check(parent.isDirectory || parent.mkdirs()) { "Unable to create ${parent.name}" } }
+        val atomic = AtomicFile(target)
+        val output = atomic.startWrite()
+        try {
+            output.write(contents.toByteArray(Charsets.UTF_8))
+            output.fd.sync()
+            atomic.finishWrite(output)
+            target.restrictToOwner()
+        } catch (error: Throwable) {
+            atomic.failWrite(output)
+            throw error
+        }
     }
 
     private fun safeFileName(value: String): String = sanitizeFileName(value)

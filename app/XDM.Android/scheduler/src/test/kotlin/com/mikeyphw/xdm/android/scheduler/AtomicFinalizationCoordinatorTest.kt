@@ -24,4 +24,34 @@ class AtomicFinalizationCoordinatorTest {
         assertEquals(FinalizationJournalStage.DestinationCommitted, committed.stage)
         assertEquals(3L, store.find(download.id)?.bytesPromoted)
     }
+    @Test
+    fun committedJournalRemainsRecoverableUntilCompletion() = kotlinx.coroutines.test.runTest {
+        val store = InMemoryFinalizationJournalStore()
+        var now = 20L
+        val coordinator = AtomicFinalizationCoordinator(store) { now++ }
+        val download = Download(
+            "committed",
+            "file.bin",
+            "https://example.test/file.bin",
+            "file:///tmp/file.bin",
+            DownloadState.Verifying,
+            BackendType.Native,
+            3,
+            3,
+            0,
+            null,
+            0,
+            1,
+            1,
+            attemptGeneration = 7L,
+        )
+
+        val prepared = coordinator.prepareCommitted(download, "file:///tmp/file.bin", 3L, 7L)
+        assertEquals(prepared, coordinator.findIncomplete(download.id))
+
+        val recovered = coordinator.recover(prepared, "verification interrupted")
+        assertEquals(FinalizationJournalStage.RecoveryRequired, recovered.stage)
+        assertEquals("verification interrupted", store.find(download.id)?.message)
+    }
+
 }

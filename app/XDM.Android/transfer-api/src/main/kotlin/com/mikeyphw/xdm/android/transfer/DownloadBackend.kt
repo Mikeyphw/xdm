@@ -131,6 +131,8 @@ data class BackendSnapshot(
     val rangeSupported: Boolean? = null,
     val errorMessage: String? = null,
     val completedUri: String? = null,
+    /** Local publication journal retained until Room finalization metadata is committed. */
+    val publicationJournalPath: String? = null,
     /** Durable attempt/ownership generation that authorized this backend task. */
     val attemptGeneration: Long = 0L,
     /** Installation identity that owns the task. */
@@ -174,11 +176,16 @@ interface DownloadBackend {
     suspend fun remove(taskId: String)
     /** Stops and forgets an in-process task while preserving its backend artifacts for recovery. */
     suspend fun detach(taskId: String): Boolean
-    /** Permanently retires backend control of a task while preserving its physical artifacts for migration recovery. */
+    /**
+     * Quiesces a source task for migration without destroying its recovery metadata. The target
+     * must be durably attached before [finalizeMigrationRetirement] is called.
+     */
     suspend fun retireForMigration(taskId: String): Boolean = runCatching {
-        cancel(taskId)
-        detach(taskId)
+        pause(taskId)
+        true
     }.getOrDefault(false)
+    /** Drops source runtime control only after the replacement task is durably proven. */
+    suspend fun finalizeMigrationRetirement(taskId: String): Boolean = detach(taskId)
     suspend fun query(taskId: String): BackendSnapshot?
     fun observe(taskId: String): Flow<BackendSnapshot>
     suspend fun reconcile(ownership: BackendOwnership): BackendReconciliationResult

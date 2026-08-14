@@ -8,6 +8,7 @@ import com.mikeyphw.xdm.android.transfer.BackendMigrationStore
 class RoomBackendMigrationStore(private val database: AppDatabase) : BackendMigrationStore {
     private val dao get() = database.backendMigrationDao()
 
+    override suspend fun tryCreate(record: BackendMigrationRecord): Boolean = dao.insertIfAbsent(record.toEntity()) != -1L
     override suspend fun save(record: BackendMigrationRecord) = dao.upsert(record.toEntity())
     override suspend fun find(id: String): BackendMigrationRecord? = dao.find(id)?.toModel()
     override suspend fun listForDownload(downloadId: String): List<BackendMigrationRecord> =
@@ -50,8 +51,10 @@ internal fun BackendMigrationRecord.toEntity() = BackendMigrationEntity(
     message = message,
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
+    activeClaim = if (stage in setOf(BackendMigrationStage.Completed, BackendMigrationStage.Failed)) null else ACTIVE_MIGRATION_CLAIM,
 )
 
+private const val ACTIVE_MIGRATION_CLAIM = "active"
 
 private inline fun <reified T : Enum<T>> safeEnum(raw: String?, fallback: T): T = raw
     ?.trim()

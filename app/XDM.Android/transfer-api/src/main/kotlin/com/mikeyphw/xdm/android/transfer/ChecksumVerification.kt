@@ -12,6 +12,7 @@ import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.model.VerificationStatus
 import java.io.File
 import java.io.FileInputStream
+import java.io.InputStream
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.UUID
@@ -70,9 +71,25 @@ class ChecksumVerificationService(
         file: File,
         expectation: ChecksumExpectation,
         progress: suspend (VerificationRecord) -> Unit = {},
-    ): ChecksumResult = withContext(Dispatchers.IO) {
+    ): ChecksumResult {
         require(file.isFile) { "Verification file is missing: ${file.absolutePath}" }
-        val total = file.length()
+        return verify(
+            downloadId = downloadId,
+            totalBytes = file.length(),
+            openInput = { FileInputStream(file) },
+            expectation = expectation,
+            progress = progress,
+        )
+    }
+
+    suspend fun verify(
+        downloadId: String,
+        totalBytes: Long?,
+        openInput: suspend () -> InputStream,
+        expectation: ChecksumExpectation,
+        progress: suspend (VerificationRecord) -> Unit = {},
+    ): ChecksumResult = withContext(Dispatchers.IO) {
+        val createdAt = clock()
         progress(
             VerificationRecord(
                 id = "verification-$downloadId",
@@ -80,40 +97,48 @@ class ChecksumVerificationService(
                 status = VerificationStatus.Running,
                 algorithm = expectation.algorithm,
                 bytesVerified = 0,
-                totalBytes = total,
+                totalBytes = totalBytes,
                 message = "Calculating ${expectation.algorithm.displayName()} checksum.",
-                createdAtEpochMs = clock(),
-                updatedAtEpochMs = clock(),
+                createdAtEpochMs = createdAt,
+                updatedAtEpochMs = createdAt,
                 attemptGeneration = expectation.attemptGeneration,
             ),
         )
-        val calculated = digestFile(file, expectation.algorithm) { verified ->
-            progress(
-                VerificationRecord(
-                    id = "verification-$downloadId",
-                    downloadId = downloadId,
-                    status = VerificationStatus.Running,
-                    algorithm = expectation.algorithm,
-                    bytesVerified = verified,
-                    totalBytes = total,
-                    message = "Verified $verified of $total bytes.",
-                    createdAtEpochMs = clock(),
-                    updatedAtEpochMs = clock(),
-                    attemptGeneration = expectation.attemptGeneration,
-                ),
-            )
+        var verified = 0L
+        val digest = MessageDigest.getInstance(expectation.algorithm.messageDigestName())
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        openInput().use { input ->
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+                verified += read.toLong()
+                progress(
+                    VerificationRecord(
+                        id = "verification-$downloadId",
+                        downloadId = downloadId,
+                        status = VerificationStatus.Running,
+                        algorithm = expectation.algorithm,
+                        bytesVerified = verified,
+                        totalBytes = totalBytes,
+                        message = totalBytes?.let { "Verified $verified of $it bytes." } ?: "Verified $verified bytes.",
+                        createdAtEpochMs = createdAt,
+                        updatedAtEpochMs = clock(),
+                        attemptGeneration = expectation.attemptGeneration,
+                    ),
+                )
+            }
         }
+        val calculated = digest.digest().toHex()
         val expected = normalizeHex(expectation.expectedHex)
-        val matches = calculated == expected
-        val now = clock()
         ChecksumResult(
             id = "${downloadId}-${expectation.algorithm.name}",
             downloadId = downloadId,
             algorithm = expectation.algorithm,
             calculatedHex = calculated,
-            matchesExpectation = matches,
-            verifiedAtEpochMs = now,
-            bytesVerified = total,
+            matchesExpectation = calculated == expected,
+            verifiedAtEpochMs = clock(),
+            bytesVerified = verified,
             expectedHex = expected,
             attemptGeneration = expectation.attemptGeneration,
         )

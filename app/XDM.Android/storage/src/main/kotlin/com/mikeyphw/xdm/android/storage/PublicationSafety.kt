@@ -2,6 +2,11 @@ package com.mikeyphw.xdm.android.storage
 
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.channels.FileChannel
+import java.nio.file.StandardOpenOption
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 
 /**
@@ -81,11 +86,18 @@ object PublicationJournalCodec {
     fun write(file: File, record: PublicationCommitRecord) {
         file.parentFile?.mkdirs()
         val bytes = encode(record).toByteArray(Charsets.UTF_8)
-        FileOutputStream(file, false).use { output ->
+        val temp = File(file.parentFile, file.name + ".tmp")
+        FileOutputStream(temp, false).use { output ->
             output.write(bytes)
             output.flush()
             output.fd.sync()
         }
+        try {
+            Files.move(temp.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        } catch (_: AtomicMoveNotSupportedException) {
+            Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        }
+        file.fsyncParentDirectoryIfSupported()
     }
 }
 
@@ -117,7 +129,7 @@ object CompletedArtifactHealthProbe {
 fun File.fsyncParentDirectoryIfSupported() {
     val parent = parentFile ?: return
     runCatching {
-        FileOutputStream(parent, true).use { stream -> stream.fd.sync() }
+        FileChannel.open(parent.toPath(), StandardOpenOption.READ).use { channel -> channel.force(true) }
     }
 }
 

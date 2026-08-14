@@ -21,6 +21,8 @@ data class NativeSegmentCheckpoint(
     val endByteInclusive: Long?,
     val completedBytes: Long,
     val complete: Boolean,
+    /** Digest of exactly [completedBytes] bytes beginning at [startByte]. */
+    val completedSha256: String? = null,
 )
 
 data class NativeCheckpoint(
@@ -38,7 +40,16 @@ data class NativeCheckpoint(
     val attemptGeneration: Long = 0L,
     val backendInstanceId: String? = null,
     val backendSessionId: String? = null,
+    /** Exact request identities are hashes so signed URLs are never persisted in plaintext. */
+    val sourceIdentitySha256: String? = null,
+    val effectiveIdentitySha256: String? = null,
+    val resumeValidatorKind: String? = null,
+    val resumeValidatorValue: String? = null,
 )
+
+enum class ResumeValidatorKind { StrongEtag, StrongLastModified }
+
+data class ResumeValidator(val kind: ResumeValidatorKind, val value: String)
 
 data class RemoteMetadata(
     val effectiveUrl: String,
@@ -46,6 +57,7 @@ data class RemoteMetadata(
     val etag: String?,
     val lastModified: String?,
     val rangeSupported: Boolean,
+    val resumeValidator: ResumeValidator? = null,
 )
 
 data class NativeArtifactPaths(val destinationIdentity: String, val partial: Path, val checkpoint: Path) {

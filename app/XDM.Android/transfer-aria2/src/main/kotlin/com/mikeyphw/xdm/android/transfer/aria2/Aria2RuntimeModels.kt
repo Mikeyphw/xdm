@@ -179,6 +179,7 @@ data class Aria2TaskFiles(
             control.canonicalFile.toURI().toString(),
             ownershipMetadata.canonicalFile.toURI().toString(),
             session.canonicalFile.toURI().toString(),
+            File(output.parentFile, output.name + ".finalization.json").canonicalFile.toURI().toString(),
         ),
     )
 }

@@ -242,9 +242,14 @@ class PostProcessingAutomationManager(
         attemptGeneration: Long,
         inputOverride: String? = null,
     ): PostProcessingJobSpec {
-        val input = inputOverride?.trim().takeUnless { it.isNullOrBlank() } ?: download.destinationUri.trim()
+        val committedInput = download.completedArtifactUri
+            ?.takeIf { download.completedArtifactGeneration == attemptGeneration }
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+        val input = inputOverride?.trim().takeUnless { it.isNullOrBlank() } ?: committedInput
+            ?: error("Completed download has no generation-bound committed artifact URI. Locate or re-grant the file before post-processing.")
         require(input.startsWith("content://") || input.startsWith("file://") || input.startsWith("/")) {
-            "Completed download has no Android-readable artifact URI. Locate or re-grant the file before post-processing."
+            "Completed download has no Android-readable committed artifact URI. Locate or re-grant the file before post-processing."
         }
         val base = sanitizeFileName(download.fileName.substringBeforeLast('.', download.fileName), "xdm-download", 96)
         val outputName = outputNameFor(action, base, download.fileName)
