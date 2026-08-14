@@ -107,6 +107,7 @@ data class ChecksumExpectation(
     val expectedHex: String,
     val source: ChecksumSource,
     val createdAtEpochMs: Long,
+    val attemptGeneration: Long = 1L,
 )
 
 data class ChecksumResult(
@@ -118,6 +119,7 @@ data class ChecksumResult(
     val verifiedAtEpochMs: Long,
     val bytesVerified: Long,
     val expectedHex: String? = null,
+    val attemptGeneration: Long = 1L,
 )
 
 data class VerificationRecord(
@@ -130,6 +132,7 @@ data class VerificationRecord(
     val message: String,
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
+    val attemptGeneration: Long = 1L,
 )
 
 data class TrustedBlock(
@@ -148,6 +151,7 @@ data class TrustedBlockManifest(
     val algorithm: ChecksumAlgorithm,
     val blocks: List<TrustedBlock>,
     val createdAtEpochMs: Long,
+    val attemptGeneration: Long = 1L,
 )
 
 data class SelectiveRepairRange(
@@ -286,6 +290,8 @@ data class Download(
     val backendSelectionExplanation: String = "",
     val allowBackendFallback: Boolean = true,
     val archived: Boolean = false,
+    /** Monotonic generation for the current transfer attempt. Evidence must bind to this value. */
+    val attemptGeneration: Long = 1L,
 ) {
     val progressFraction: Float
         get() = totalBytes?.takeIf { it > 0 }?.let { (bytesReceived.toDouble() / it).coerceIn(0.0, 1.0).toFloat() } ?: 0f
@@ -367,6 +373,7 @@ data class RecoveryRecord(
     val createdAtEpochMs: Long,
     val recommendedAction: RecoveryAction = RecoveryAction.Validate,
     val safeToResume: Boolean = false,
+    val attemptGeneration: Long = 1L,
 )
 
 data class FinalizationJournal(
@@ -383,6 +390,7 @@ data class FinalizationJournal(
     val message: String,
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
+    val attemptGeneration: Long = 1L,
 ) {
     val isTerminal: Boolean get() = stage == FinalizationJournalStage.Completed
     val needsRecovery: Boolean get() = !isTerminal

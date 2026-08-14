@@ -67,8 +67,17 @@ class DownloadRepository(private val database: AppDatabase) {
 
     suspend fun countDownloads(): Int = database.downloadDao().count()
     suspend fun countQueues(): Int = database.queueDao().count()
+    suspend fun countSchedules(): Int = database.scheduleDao().count()
+    suspend fun currentTagAssignments(): List<DownloadTagAssignment> =
+        database.organizationDao().listTagAssignments().map { DownloadTagAssignment(it.downloadId, it.tagId) }
+    suspend fun currentDestinationRules(): List<DestinationRule> =
+        database.organizationDao().listDestinationRules().map(DestinationRuleEntity::toModel)
+    suspend fun currentClipboardInbox(): List<ClipboardInboxItem> =
+        database.organizationDao().listClipboardInbox().map(ClipboardInboxEntity::toModel)
     suspend fun save(download: Download): Boolean = database.downloadGraphTransactionDao().upsertDownloadPreservingNewerState(download.redactedForPersistence().toEntity())
-    suspend fun saveAll(downloads: List<Download>) { downloads.forEach { save(it) } }
+    /** Persists a coherent download snapshot. A stale row makes the batch fail atomically. */
+    suspend fun saveAll(downloads: List<Download>): Boolean = database.downloadGraphTransactionDao()
+        .upsertDownloadsPreservingNewerState(downloads.map { it.redactedForPersistence().toEntity() })
     suspend fun saveQueue(queue: QueueDefinition) = database.queueDao().upsertAll(listOf(queue.toEntity()))
     suspend fun saveQueues(queues: List<QueueDefinition>) = database.queueDao().upsertAll(queues.map { it.toEntity() })
     suspend fun deleteQueue(id: String) = database.downloadGraphTransactionDao().deleteQueueIfUnreferenced(id)
@@ -91,11 +100,18 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun saveMediaCapture(record: MediaCaptureRecord) = database.mediaCaptureDao().upsert(record.redactedForPersistence().toEntity())
     suspend fun saveMediaCaptures(records: List<MediaCaptureRecord>) = database.mediaCaptureDao().upsertAll(records.map { it.redactedForPersistence().toEntity() })
     suspend fun saveMediaVariants(records: List<MediaVariant>) = database.mediaCaptureDao().upsertVariants(records.map { it.redactedForPersistence().toEntity() })
-    suspend fun replaceMediaVariants(records: List<MediaVariant>) = database.downloadGraphTransactionDao().replaceMediaVariantsForCaptures(records.map { it.redactedForPersistence().toEntity() }, System.currentTimeMillis())
+    suspend fun replaceMediaVariants(records: List<MediaVariant>) = database.downloadGraphTransactionDao()
+        .replaceMediaVariantsForCaptures(records.map { it.redactedForPersistence().toEntity() }, System.currentTimeMillis())
+    suspend fun replaceMediaVariants(captureId: String, records: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) =
+        database.downloadGraphTransactionDao().replaceMediaVariantsForCapture(
+            captureId,
+            records.filter { it.captureId == captureId }.map { it.redactedForPersistence().toEntity() },
+            updatedAtEpochMs,
+        )
     suspend fun saveMediaCaptureWithVariants(record: MediaCaptureRecord, variants: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.withTransaction {
         database.mediaCaptureDao().upsert(record.redactedForPersistence().toEntity())
         if (variants.isNotEmpty()) {
-            database.downloadGraphTransactionDao().replaceMediaVariantsForCaptures(variants.map { it.redactedForPersistence().toEntity() }, updatedAtEpochMs)
+            database.downloadGraphTransactionDao().replaceMediaVariantsForCapture(record.id, variants.map { it.redactedForPersistence().toEntity() }, updatedAtEpochMs)
         }
     }
     suspend fun saveMediaCapturesWithVariants(records: List<MediaCaptureRecord>, variants: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.withTransaction {
@@ -141,7 +157,10 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun deleteMediaCapture(id: String) = database.mediaCaptureDao().delete(id)
     suspend fun findAutomationCommand(id: String): AutomationCommandRecord? = database.automationCommandDao().findById(id)?.toModel()
     suspend fun findAutomationCommandByKey(idempotencyKey: String): AutomationCommandRecord? = database.automationCommandDao().findByIdempotencyKey(idempotencyKey)?.toModel()
-    suspend fun saveAutomationCommand(record: AutomationCommandRecord) = database.downloadGraphTransactionDao().upsertAutomationCommandStatefully(record.redactedForPersistence().toEntity())
+    suspend fun saveAutomationCommand(record: AutomationCommandRecord): Boolean =
+        database.downloadGraphTransactionDao().upsertAutomationCommandStatefully(record.redactedForPersistence().toEntity())
+    suspend fun pendingAutomationCommands(limit: Int = 16): List<AutomationCommandRecord> =
+        database.automationCommandDao().findPending(limit).map(AutomationCommandEntity::toModel)
     suspend fun transitionAutomationCommand(id: String, from: List<AutomationCommandStatus>, to: AutomationCommandStatus, message: String): Int = database.downloadGraphTransactionDao().transitionAutomationCommand(id, from.map { it.name }, to.name, message, System.currentTimeMillis())
     suspend fun markAutomationCommandExecuting(id: String): Boolean = database.downloadGraphTransactionDao().markAutomationCommandExecuting(id, System.currentTimeMillis())
     suspend fun findDownload(id: String): Download? = database.downloadDao().findById(id)?.toModel()
@@ -339,6 +358,7 @@ private fun AutomationCommandEntity.toModel() = AutomationCommandRecord(
     originHost = originHost,
     sanitizedHeaders = sanitizedHeaders,
     rejectionReason = safeEnum(rejectionReason, AutomationRejectionReason.None),
+    metadataJson = metadataJson,
 )
 
 private fun AutomationCommandRecord.toEntity() = AutomationCommandEntity(
@@ -365,6 +385,7 @@ private fun AutomationCommandRecord.toEntity() = AutomationCommandEntity(
     originHost = originHost,
     sanitizedHeaders = sanitizedHeaders,
     rejectionReason = rejectionReason.name,
+    metadataJson = metadataJson,
 )
 
 private fun DownloadEntity.toModel() = Download(
@@ -390,6 +411,7 @@ private fun DownloadEntity.toModel() = Download(
     backendSelectionExplanation = backendSelectionExplanation,
     allowBackendFallback = allowBackendFallback,
     archived = archived,
+    attemptGeneration = attemptGeneration,
 )
 private fun Download.toEntity() = DownloadEntity(
     id = id,
@@ -414,6 +436,7 @@ private fun Download.toEntity() = DownloadEntity(
     conflictPolicy = conflictPolicy.name,
     mimeType = mimeType,
     archived = archived,
+    attemptGeneration = attemptGeneration,
 )
 private fun QueueEntity.toModel() = QueueDefinition(id, name, isEnabled, maxConcurrent, createdAtEpochMs)
 private fun QueueDefinition.toEntity() = QueueEntity(id, name, isEnabled, maxConcurrent, createdAtEpochMs)

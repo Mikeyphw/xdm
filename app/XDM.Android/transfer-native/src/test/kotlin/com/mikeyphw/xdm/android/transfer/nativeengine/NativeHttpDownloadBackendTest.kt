@@ -76,7 +76,7 @@ class NativeHttpDownloadBackendTest {
             OkHttpClient(), scope,
             NativeTransferConfig(defaultConnections = 4, segmentThresholdBytes = 64 * 1024, checkpointIntervalBytes = 32 * 1024, maximumRetries = 1, baseRetryDelayMillis = 1),
         )
-        val task = backend.add(request("segmented", "/file", destination, maxConnections = 4))
+        val task = startOwned(backend, request("segmented", "/file", destination, maxConnections = 4))
         val completed = withTimeout(15_000) { backend.observe(task.taskId).first { it.state in terminalStates } }
         assertEquals(completed.errorMessage, DownloadState.Completed, completed.state)
         assertArrayEquals(payload, Files.readAllBytes(destination))
@@ -104,10 +104,12 @@ class NativeHttpDownloadBackendTest {
                 rangeSupported = true,
                 segments = listOf(NativeSegmentCheckpoint(0, 0, payload.size.toLong() - 1, prefix.toLong(), false)),
                 persistedAtEpochMs = 1,
+                attemptGeneration = 7L,
+                backendInstanceId = "native-default",
             ),
         )
         val backend = NativeHttpDownloadBackend(OkHttpClient(), scope, NativeTransferConfig(defaultConnections = 1, segmentThresholdBytes = Long.MAX_VALUE, maximumRetries = 1, baseRetryDelayMillis = 1))
-        val task = backend.add(request("resume", "/file", destination, maxConnections = 1))
+        val task = startOwned(backend, request("resume", "/file", destination, maxConnections = 1))
         val completed = withTimeout(15_000) { backend.observe(task.taskId).first { it.state in terminalStates } }
         assertEquals(completed.errorMessage, DownloadState.Completed, completed.state)
         assertArrayEquals(payload, Files.readAllBytes(destination))
@@ -122,10 +124,24 @@ class NativeHttpDownloadBackendTest {
         Files.write(paths.partial, payload.copyOfRange(0, 32))
         NativeCheckpointStore().save(
             paths.checkpoint,
-            NativeCheckpoint("changed", url("/changed"), url("/changed"), destination.toString(), paths.partial.toString(), payload.size.toLong(), "\"old\"", null, true, listOf(NativeSegmentCheckpoint(0, 0, payload.size.toLong() - 1, 32, false)), 1),
+            NativeCheckpoint(
+                downloadId = "changed",
+                sourceUrl = url("/changed"),
+                effectiveUrl = url("/changed"),
+                destinationPath = destination.toString(),
+                partialPath = paths.partial.toString(),
+                expectedLength = payload.size.toLong(),
+                etag = "\"old\"",
+                lastModified = null,
+                rangeSupported = true,
+                segments = listOf(NativeSegmentCheckpoint(0, 0, payload.size.toLong() - 1, 32, false)),
+                persistedAtEpochMs = 1,
+                attemptGeneration = 7L,
+                backendInstanceId = "native-default",
+            ),
         )
         val backend = NativeHttpDownloadBackend(OkHttpClient(), scope, NativeTransferConfig(maximumRetries = 0))
-        val task = backend.add(request("changed", "/changed", destination, maxConnections = 1))
+        val task = startOwned(backend, request("changed", "/changed", destination, maxConnections = 1))
         val terminal = withTimeout(15_000) { backend.observe(task.taskId).first { it.state in terminalStates } }
         assertEquals(DownloadState.RecoveryRequired, terminal.state)
         assertTrue(terminal.errorMessage.orEmpty().contains("ETag"))
@@ -137,7 +153,7 @@ class NativeHttpDownloadBackendTest {
         val directory = Files.createTempDirectory("xdm-native-invalid-range")
         val destination = directory.resolve("payload.bin")
         val backend = NativeHttpDownloadBackend(OkHttpClient(), scope, NativeTransferConfig(defaultConnections = 1, maximumRetries = 0))
-        val task = backend.add(request("invalid-range", "/invalid-range", destination, maxConnections = 1))
+        val task = startOwned(backend, request("invalid-range", "/invalid-range", destination, maxConnections = 1))
         val terminal = withTimeout(15_000) { backend.observe(task.taskId).first { it.state in terminalStates } }
         assertEquals(DownloadState.Failed, terminal.state)
         assertTrue(terminal.errorMessage.orEmpty().contains("Content-Range"))
@@ -153,7 +169,7 @@ class NativeHttpDownloadBackendTest {
             scope,
             NativeTransferConfig(defaultConnections = 1, segmentThresholdBytes = Long.MAX_VALUE, maximumRetries = 2, baseRetryDelayMillis = 1),
         )
-        val task = backend.add(request("retry", "/retry", destination, maxConnections = 1))
+        val task = startOwned(backend, request("retry", "/retry", destination, maxConnections = 1))
         val terminal = withTimeout(15_000) { backend.observe(task.taskId).first { it.state in terminalStates } }
         assertEquals(terminal.errorMessage, DownloadState.Completed, terminal.state)
         assertArrayEquals(payload, Files.readAllBytes(destination))
@@ -172,7 +188,7 @@ class NativeHttpDownloadBackendTest {
             NativeTransferConfig(defaultConnections = 1, segmentThresholdBytes = Long.MAX_VALUE, maximumRetries = 0),
             destinationWriter = writer,
         )
-        val task = backend.add(request("final-save", "/file", destination, maxConnections = 1))
+        val task = startOwned(backend, request("final-save", "/file", destination, maxConnections = 1))
         val recovery = withTimeout(15_000) { backend.observe(task.taskId).first { it.state == DownloadState.RecoveryRequired } }
         assertTrue(recovery.errorMessage.orEmpty().startsWith("Final save failed"))
         assertTrue(writer.lastPrepared?.artifacts?.stagingFile?.isFile == true)
@@ -212,6 +228,9 @@ class NativeHttpDownloadBackendTest {
                 rangeSupported = true,
                 segments = listOf(NativeSegmentCheckpoint(0, 0, payload.size.toLong() - 1, 64, false)),
                 persistedAtEpochMs = 1,
+                attemptGeneration = 7L,
+                backendInstanceId = "native-install",
+                backendSessionId = "old-session",
             ),
         )
 
@@ -306,6 +325,28 @@ class NativeHttpDownloadBackendTest {
         claimedAtEpochMs = 1,
         synchronizedAtEpochMs = 1,
     )
+
+    private suspend fun startOwned(backend: NativeHttpDownloadBackend, request: DownloadRequest): com.mikeyphw.xdm.android.transfer.BackendTask {
+        val generation = 7L
+        val ownedRequest = request.copy(attemptGeneration = generation)
+        val preparation = backend.prepare(ownedRequest)
+        val task = backend.add(ownedRequest, preparation)
+        val ownership = BackendOwnership(
+            downloadId = ownedRequest.id,
+            destinationKey = preparation.destinationKey,
+            artifacts = preparation.artifacts,
+            backend = BackendType.Native,
+            generation = generation,
+            status = BackendOwnershipStatus.Active,
+            runtimeIdentity = backend.runtimeIdentity,
+            backendTaskId = task.taskId,
+            claimedAtEpochMs = 1L,
+            synchronizedAtEpochMs = 1L,
+        )
+        backend.onOwnershipAttached(task.taskId, ownership)
+        backend.activate(task.taskId)
+        return task
+    }
 
     private fun request(id: String, path: String, destination: java.nio.file.Path, maxConnections: Int) = DownloadRequest(
         id = id,

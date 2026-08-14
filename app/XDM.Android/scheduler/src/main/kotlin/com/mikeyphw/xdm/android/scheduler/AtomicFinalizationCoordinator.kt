@@ -28,6 +28,7 @@ class AtomicFinalizationCoordinator(
             message = "Prepared finalization journal before destination promotion.",
             createdAtEpochMs = now,
             updatedAtEpochMs = now,
+            attemptGeneration = download.attemptGeneration,
         )
         journalStore.save(journal)
         return journal

@@ -815,7 +815,7 @@
   },
   "bug_hunt_master_remediation_overlay_01_foundation_gate_repair": {
     "automatic_upload": false,
-    "next_overlay": "xdm_android_generation_room_integrity_overlay.zip",
+    "next_overlay": "xdm_android_generation_room_integrity_durable_review_overlay_v2.zip",
     "overlay": "xdm_android_foundation_gate_repair_overlay.zip",
     "repairs": [
       "debug_workbench_settings_screen_restored",
@@ -824,7 +824,7 @@
       "current_release_gate_validator_tolerance",
       "uix_r6_version_metadata_aligned"
     ],
-    "room_schema_current": 17,
+    "room_schema_current": 18,
     "runtime_transfer_behavior_changed": false,
     "status": "implemented",
     "target": "xdm_android",
@@ -852,7 +852,7 @@
     "release_runtime_readiness_uses_attestation": true,
     "release_signing_required": true,
     "roadmap_phase": 10,
-    "room_schema_current": 17,
+    "room_schema_current": 18,
     "sbom_provenance_required": true,
     "signed_checksums_required": true,
     "status": "implemented",
@@ -875,7 +875,7 @@
       "device",
       "release"
     ],
-    "current_room_schema": 17,
+    "current_room_schema": 18,
     "device_gate_included": true,
     "doc_only_evidence_allowed": false,
     "evidence_closure_contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase11EvidenceClosureContractTest.kt",
@@ -913,10 +913,10 @@
     "encoded_credential_query_names_redacted": true,
     "encrypted_request_envelopes": true,
     "exported_control_surface_separated": true,
-    "external_add_download_activity_reuses_main_activity_shell": true,
+    "external_add_download_activity_reuses_main_activity_shell": false,
     "failure_repaired": "r5 preserves r2 query redaction, r3 JVM-safe NetworkSecurityPolicy handling, r4 FileProvider grant architecture, and restores existing browser-removal/external-handoff app contract markers without reintroducing auto-queue execution.",
     "fileprovider_roots_narrowed": true,
-    "handoff_metadata_preserved_in_main_activity": true,
+    "handoff_metadata_preserved_in_main_activity": false,
     "https_downgrade_credentials_blocked": true,
     "integration_secret_supported": true,
     "jvm_network_security_policy_stub_safe": true,
@@ -925,7 +925,7 @@
     "observed_claimed_verified_identity_separated": true,
     "overlay": "xdm_android_bug_hunt_phase1_external_control_secrets_privacy_r5_overlay.zip",
     "private_network_review_required": true,
-    "process_local_handoff_marker_preserved": true,
+    "process_local_handoff_marker_preserved": false,
     "query_redaction_preserves_public_parameters": true,
     "revision": 5,
     "roadmap_scope": "Phase 1 complete",
@@ -953,7 +953,10 @@
     ],
     "top_level_route_added": false,
     "transfer_native_local_unit_tests_unblocked": true,
-    "untrusted_handoff_user_review": true
+    "untrusted_handoff_user_review": true,
+    "superseded_by_master_durable_external_review": true,
+    "current_external_add_download_boundary": "ExternalHandoffReviewActivity",
+    "main_activity_external_payload_policy": "persisted command id only"
   },
   "bug_hunt_remediation_phase_3": {
     "all_files_permission_added": false,
@@ -1172,10 +1175,14 @@
       "10_to_11",
       "11_to_12",
       "12_to_13",
-      "13_to_14"
+      "13_to_14",
+      "14_to_15",
+      "15_to_16",
+      "16_to_17",
+      "17_to_18"
     ],
     "organization_power_tools": true,
-    "version": 17
+    "version": 18
   },
   "debug_workbench_phase_d1_compile_hygiene": {
     "fixes": [
@@ -1286,7 +1293,7 @@
     "automatic_upload": false,
     "baseline": "debug_workbench_phase_d2_shell_r4",
     "compile_hygiene": "MediaSniffingLabCard candidate row uses escaped newline; D3 app contract uses safe substring assertions that compile.",
-    "description": "Adds a Media Sniffing Lab inside Settings \u2192 Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
+    "description": "Adds a Media Sniffing Lab inside Settings → Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
     "drm_bypass": false,
     "network_page_probe": false,
     "next_phase": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
@@ -1294,7 +1301,7 @@
     "phase": "D3",
     "revision": "r4",
     "room_schema_unchanged": 14,
-    "settings_location": "Settings \u2192 Debug Workbench \u2192 Media Sniffing Lab",
+    "settings_location": "Settings → Debug Workbench → Media Sniffing Lab",
     "starts_downloads": false,
     "static_sniff_only": true,
     "status": "implemented",
@@ -2441,8 +2448,8 @@
     "raw_shell_exposed": false,
     "room_schema_migration": false,
     "root_required": false,
-    "schema_version_current": 17,
-    "schema_version_unchanged": 17,
+    "schema_version_current": 18,
+    "schema_version_unchanged": 18,
     "secret_leak_surfaces": [
       "Room metadata",
       "sidecars",
@@ -3404,7 +3411,7 @@
     "normal_ui_debug_language_banned": true,
     "normal_ui_raw_machine_values_banned": true,
     "program": "android_uix_redesign",
-    "room_schema_current": 17,
+    "room_schema_current": 18,
     "semantics_layout_contracts": true,
     "static_validator": "tools/validate-uix-r6-accessibility-performance-release-seal.py",
     "version_code_unchanged": 21,
@@ -3435,5 +3442,67 @@
     "native_selective_repair_planner": true,
     "repeat_verification_without_network": true,
     "trusted_block_manifest": true
+  },
+  "bug_hunt_master_remediation_overlay_02_03_generation_integrity_durable_review": {
+    "base_commit": "c66ec424",
+    "combined_phases": [
+      "generation_room_integrity",
+      "external_durable_review"
+    ],
+    "room_schema_current": 18,
+    "migration": "17_to_18",
+    "attempt_generation_bound_records": [
+      "downloads",
+      "checkpoints",
+      "checksum_expectations",
+      "checksum_results",
+      "verification_records",
+      "trusted_block_manifests",
+      "recovery_records",
+      "finalization_journals"
+    ],
+    "graph_integrity": {
+      "foreign_keys_added": true,
+      "terminal_delete_blocks_active_post_processing": true,
+      "review_and_recovery_history_detached_instead_of_destroyed": true,
+      "atomic_download_batch_upsert": true,
+      "empty_media_variant_replacement_supported": true,
+      "stale_same_generation_writes_rejected": true,
+      "persistence_outcomes_visible_to_transfer_runtime": true
+    },
+    "external_handoff": {
+      "exported_add_activity_review_only": true,
+      "accepted_command_persisted_before_main_activity_dispatch": true,
+      "secure_request_envelope_required_for_exact_request_material": true,
+      "main_activity_recreation_replay_blocked": true,
+      "durable_exclusive_execution_claim": true,
+      "tasker_token_auto_scope": "public EnqueueDownload only",
+      "caller_claims_are_diagnostics_only": true,
+      "add_prompt_applied_only_after_download_creation": true,
+      "external_enqueue_uses_persisted_preferences": true,
+      "interrupted_claim_recovery": true,
+      "enqueue_replay_uses_deterministic_download_id": true,
+      "authoritative_business_state_source": "Room/DataStore rather than MainUiState snapshots",
+      "main_activity_payload": "internal persisted command id only"
+    },
+    "validation_deferred": true,
+    "apply_with": "--no-validate",
+    "artifact_revision": 2,
+    "supersedes": "xdm_android_generation_room_integrity_durable_review_overlay_v1.zip",
+    "generation_integrity": {
+      "backend_snapshot_generation_proof": true,
+      "native_checkpoint_generation_proof": true,
+      "backend_write_requires_ownership_attachment": true,
+      "aria2_mapping_generation_bound_before_activation": true,
+      "backend_migration_target_uses_transferred_generation": true,
+      "runtime_rejects_stale_generation_or_installation_snapshots": true,
+      "download_row_tracks_current_ownership_generation": true
+    },
+    "migration_coverage": {
+      "latest_edge": "17_to_18",
+      "oldest_exported_schema_chain": "4_to_18",
+      "legacy_1_to_4": "manual migration tests retained because authentic exported schemas 1-3 are not present in repository history",
+      "exported_schema_18_committed": true
+    }
   }
 }

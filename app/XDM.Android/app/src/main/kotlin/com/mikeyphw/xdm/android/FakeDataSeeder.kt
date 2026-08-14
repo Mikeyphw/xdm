@@ -28,16 +28,18 @@ class FakeDataSeeder(private val repository: DownloadRepository) {
         }
         if (repository.countDownloads() > 0) return
 
-        repository.saveAll(
-            listOf(
-                sample("ubuntu.iso", DownloadState.Downloading, BackendType.Native, 2_450_000_000, 5_200_000_000, 18_300_000, now, "default"),
-                sample("game-assets.meta4", DownloadState.Queued, BackendType.Aria2, 0, 8_400_000_000, 0, now - 1_000, "overnight"),
-                sample("conference-video.mp4", DownloadState.Verifying, BackendType.Native, 1_260_000_000, 1_260_000_000, 0, now - 2_000, "default"),
-                sample("android-sdk.zip", DownloadState.Completed, BackendType.Native, 1_850_000_000, 1_850_000_000, 0, now - 3_000, null),
-                sample("expired-link.bin", DownloadState.Failed, BackendType.Native, 38_000_000, 440_000_000, 0, now - 4_000, null, "Remote URL expired"),
-                sample("recovered.part", DownloadState.RecoveryRequired, BackendType.Native, 620_000_000, 1_100_000_000, 0, now - 5_000, null, "Remote identity requires validation"),
+        check(
+            repository.saveAll(
+                listOf(
+                    sample("ubuntu.iso", DownloadState.Downloading, BackendType.Native, 2_450_000_000, 5_200_000_000, 18_300_000, now, "default"),
+                    sample("game-assets.meta4", DownloadState.Queued, BackendType.Aria2, 0, 8_400_000_000, 0, now - 1_000, "overnight"),
+                    sample("conference-video.mp4", DownloadState.Verifying, BackendType.Native, 1_260_000_000, 1_260_000_000, 0, now - 2_000, "default"),
+                    sample("android-sdk.zip", DownloadState.Completed, BackendType.Native, 1_850_000_000, 1_850_000_000, 0, now - 3_000, null),
+                    sample("expired-link.bin", DownloadState.Failed, BackendType.Native, 38_000_000, 440_000_000, 0, now - 4_000, null, "Remote URL expired"),
+                    sample("recovered.part", DownloadState.RecoveryRequired, BackendType.Native, 620_000_000, 1_100_000_000, 0, now - 5_000, null, "Remote identity requires validation"),
+                ),
             ),
-        )
+        ) { "Sample download batch was rejected because a newer database generation already exists." }
         repository.saveRecovery(
             listOf(
                 RecoveryRecord(

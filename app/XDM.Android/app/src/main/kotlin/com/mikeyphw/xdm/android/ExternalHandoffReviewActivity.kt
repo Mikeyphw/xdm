@@ -4,8 +4,15 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.lifecycle.lifecycleScope
+import com.mikeyphw.xdm.android.model.AutomationCommandAction
+import com.mikeyphw.xdm.android.model.AutomationCommandDraft
+import com.mikeyphw.xdm.android.model.AutomationRejectionReason
 import com.mikeyphw.xdm.android.model.ExternalCommandAuthorization
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Exported review-only surface for browser, share-sheet, and generic VIEW handoffs. */
 open class ExternalHandoffReviewActivity : ComponentActivity() {
@@ -19,34 +26,54 @@ open class ExternalHandoffReviewActivity : ComponentActivity() {
         AlertDialog.Builder(this)
             .setTitle("Open in XDM")
             .setMessage(ExternalIntentDraftFactory.displaySummary(draft))
-            .setNegativeButton("Cancel") { _, _ -> finish() }
+            .setNegativeButton("Cancel") { _, _ -> rejectAndFinish(draft) }
             .setPositiveButton("Continue") { _, _ ->
-                val approved = draft.approvedForDispatch(
-                    authorization = ExternalCommandAuthorization.UserConfirmed,
-                    privateNetworkApproved = draft.normalizedUrl != null && ExternalUrlPolicy.requiresPrivateNetworkApproval(draft.normalizedUrl),
-                    cleartextCredentialsApproved = false,
+                dispatch(
+                    draft.approvedForDispatch(
+                        authorization = ExternalCommandAuthorization.UserConfirmed,
+                        privateNetworkApproved = draft.normalizedUrl != null && ExternalUrlPolicy.requiresPrivateNetworkApproval(draft.normalizedUrl),
+                        cleartextCredentialsApproved = false,
+                    ),
                 )
-                dispatch(approved)
             }
-            .setOnCancelListener { finish() }
+            .setOnCancelListener { rejectAndFinish(draft) }
             .show()
     }
 
-    protected fun dispatch(draft: com.mikeyphw.xdm.android.model.AutomationCommandDraft) {
-        val nonce = InternalAutomationDispatchStore.issue(draft)
-        startActivity(
-            Intent(this, MainActivity::class.java)
-                .setAction(MainActivity.ACTION_INTERNAL_AUTOMATION_DISPATCH)
-                .putExtra(MainActivity.EXTRA_INTERNAL_DISPATCH_NONCE, nonce)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
-        )
-        finish()
+    protected fun dispatch(draft: AutomationCommandDraft) {
+        lifecycleScope.launch {
+            val repository = (application as XdmApplication).container.repository
+            val commandId = withContext(Dispatchers.IO) { ExternalAutomationDispatch.persist(repository, draft) }
+            if (commandId != null) {
+                startActivity(
+                    Intent(this@ExternalHandoffReviewActivity, MainActivity::class.java)
+                        .setAction(MainActivity.ACTION_INTERNAL_AUTOMATION_DISPATCH)
+                        .putExtra(MainActivity.EXTRA_INTERNAL_COMMAND_ID, commandId)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                )
+            }
+            finish()
+        }
+    }
+
+    private fun rejectAndFinish(draft: AutomationCommandDraft) {
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                ExternalAutomationDispatch.persistRejected(
+                    (application as XdmApplication).container.repository,
+                    draft,
+                    AutomationRejectionReason.UserDeclined,
+                    "User declined external handoff",
+                )
+            }
+            finish()
+        }
     }
 }
 
-private fun com.mikeyphw.xdm.android.model.AutomationCommandAction.requiresUrl(): Boolean = when (this) {
-    com.mikeyphw.xdm.android.model.AutomationCommandAction.PauseAll,
-    com.mikeyphw.xdm.android.model.AutomationCommandAction.ResumeAll,
+private fun AutomationCommandAction.requiresUrl(): Boolean = when (this) {
+    AutomationCommandAction.PauseAll,
+    AutomationCommandAction.ResumeAll,
     -> false
     else -> true
 }

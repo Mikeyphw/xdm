@@ -87,7 +87,10 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
             XdmAdaptiveSheet(
                 visible = state.route == AppRoute.Add,
                 windowClass = windowClass,
-                onDismissRequest = { viewModel.navigate(previousPrimaryRoute) },
+                onDismissRequest = {
+                    viewModel.dismissExternalAddDraft()
+                    viewModel.navigate(previousPrimaryRoute)
+                },
                 title = "New download",
                 scrollContent = false,
             ) {
@@ -127,7 +130,10 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
                         state.externalAddDraft?.let(viewModel::inspectExternalMedia)
                             ?: viewModel.inspectManualMedia(url, fileName)
                     },
-                    onCancel = { viewModel.navigate(previousPrimaryRoute) },
+                    onCancel = {
+                        viewModel.dismissExternalAddDraft()
+                        viewModel.navigate(previousPrimaryRoute)
+                    },
                     onDestinationChanged = viewModel::setDestination,
                     onSafDestinationSelected = viewModel::registerSafDestination,
                     onConflictPolicyChanged = viewModel::setConflictPolicy,

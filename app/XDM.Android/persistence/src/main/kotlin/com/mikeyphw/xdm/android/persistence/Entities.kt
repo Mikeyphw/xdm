@@ -30,6 +30,7 @@ data class DownloadEntity(
     @ColumnInfo(defaultValue = "'Rename'") val conflictPolicy: String,
     val mimeType: String?,
     @ColumnInfo(defaultValue = "0") val archived: Boolean = false,
+    @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L,
 )
 
 @Entity(tableName = "download_sources", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId")])
@@ -41,16 +42,16 @@ data class MirrorEntity(@PrimaryKey val id: String, val downloadId: String, val 
 @Entity(tableName = "transfer_segments", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId")])
 data class TransferSegmentEntity(@PrimaryKey val id: String, val downloadId: String, val startByte: Long, val endByteInclusive: Long, val bytesReceived: Long, val state: String)
 
-@Entity(tableName = "checkpoints", indices = [Index("downloadId", unique = true)])
-data class CheckpointEntity(@PrimaryKey val id: String, val downloadId: String, val checkpointJson: String, val persistedAtEpochMs: Long)
+@Entity(tableName = "checkpoints", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId", unique = true)])
+data class CheckpointEntity(@PrimaryKey val id: String, val downloadId: String, val checkpointJson: String, val persistedAtEpochMs: Long, @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L)
 
-@Entity(tableName = "checksum_expectations", indices = [Index("downloadId"), Index(value = ["downloadId", "algorithm"], unique = true)])
-data class ChecksumExpectationEntity(@PrimaryKey val id: String, val downloadId: String, val algorithm: String, val expectedHex: String, val source: String)
+@Entity(tableName = "checksum_expectations", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId"), Index(value = ["downloadId", "algorithm"], unique = true)])
+data class ChecksumExpectationEntity(@PrimaryKey val id: String, val downloadId: String, val algorithm: String, val expectedHex: String, val source: String, @ColumnInfo(defaultValue = "0") val createdAtEpochMs: Long = 0L, @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L)
 
-@Entity(tableName = "checksum_results", indices = [Index("downloadId"), Index(value = ["downloadId", "algorithm"], unique = true)])
-data class ChecksumResultEntity(@PrimaryKey val id: String, val downloadId: String, val algorithm: String, val calculatedHex: String, val matchesExpectation: Boolean?, val verifiedAtEpochMs: Long, @ColumnInfo(defaultValue = "0") val bytesVerified: Long, val expectedHex: String?)
+@Entity(tableName = "checksum_results", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId"), Index(value = ["downloadId", "algorithm"], unique = true)])
+data class ChecksumResultEntity(@PrimaryKey val id: String, val downloadId: String, val algorithm: String, val calculatedHex: String, val matchesExpectation: Boolean?, val verifiedAtEpochMs: Long, @ColumnInfo(defaultValue = "0") val bytesVerified: Long, val expectedHex: String?, @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L)
 
-@Entity(tableName = "verification_records", indices = [Index("downloadId"), Index("status"), Index("updatedAtEpochMs")])
+@Entity(tableName = "verification_records", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId"), Index("status"), Index("updatedAtEpochMs")])
 data class VerificationRecordEntity(
     @PrimaryKey val id: String,
     val downloadId: String,
@@ -61,9 +62,10 @@ data class VerificationRecordEntity(
     val message: String,
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
+    @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L,
 )
 
-@Entity(tableName = "trusted_block_manifests", indices = [Index("downloadId", unique = true), Index("createdAtEpochMs")])
+@Entity(tableName = "trusted_block_manifests", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId", unique = true), Index("createdAtEpochMs")])
 data class TrustedBlockManifestEntity(
     @PrimaryKey val id: String,
     val downloadId: String,
@@ -72,12 +74,13 @@ data class TrustedBlockManifestEntity(
     val algorithm: String,
     val blocksJson: String,
     val createdAtEpochMs: Long,
+    @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L,
 )
 
 @Entity(tableName = "queues")
 data class QueueEntity(@PrimaryKey val id: String, val name: String, val isEnabled: Boolean, val maxConcurrent: Int, val createdAtEpochMs: Long)
 
-@Entity(tableName = "schedule_rules", indices = [Index("queueId")])
+@Entity(tableName = "schedule_rules", foreignKeys = [ForeignKey(entity = QueueEntity::class, parentColumns = ["id"], childColumns = ["queueId"], onDelete = ForeignKey.SET_NULL)], indices = [Index("queueId")])
 data class ScheduleRuleEntity(@PrimaryKey val id: String, val queueId: String?, val name: String, val enabled: Boolean, val constraintsJson: String)
 
 @Entity(tableName = "backend_tasks", indices = [Index("downloadId", unique = true), Index("backendTaskId")])
@@ -110,9 +113,10 @@ data class RecoveryRecordEntity(
     val createdAtEpochMs: Long,
     @ColumnInfo(defaultValue = "'Validate'") val recommendedAction: String,
     @ColumnInfo(defaultValue = "0") val safeToResume: Boolean,
+    @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L,
 )
 
-@Entity(tableName = "finalization_journals", indices = [Index("downloadId", unique = true), Index("stage"), Index("updatedAtEpochMs")])
+@Entity(tableName = "finalization_journals", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId", unique = true), Index("stage"), Index("updatedAtEpochMs")])
 data class FinalizationJournalEntity(
     @PrimaryKey val id: String,
     val downloadId: String,
@@ -127,9 +131,10 @@ data class FinalizationJournalEntity(
     val checksumHex: String?,
     @ColumnInfo(defaultValue = "''") val message: String,
     @ColumnInfo(defaultValue = "0") val createdAtEpochMs: Long,
+    @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L,
 )
 
-@Entity(tableName = "media_captures", indices = [Index("downloadId"), Index("status"), Index("kind"), Index("updatedAtEpochMs")])
+@Entity(tableName = "media_captures", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.SET_NULL)], indices = [Index("downloadId"), Index("status"), Index("kind"), Index("updatedAtEpochMs")])
 data class MediaCaptureEntity(
     @PrimaryKey val id: String,
     val sourceUrl: String,
@@ -154,7 +159,7 @@ data class MediaCaptureEntity(
     @ColumnInfo(defaultValue = "'Unresolved'") val resolutionStatus: String,
 )
 
-@Entity(tableName = "media_variants", indices = [Index("captureId"), Index("kind"), Index("position")])
+@Entity(tableName = "media_variants", foreignKeys = [ForeignKey(entity = MediaCaptureEntity::class, parentColumns = ["id"], childColumns = ["captureId"], onDelete = ForeignKey.CASCADE)], indices = [Index("captureId"), Index("kind"), Index("position")])
 data class MediaVariantEntity(
     @PrimaryKey val id: String,
     val captureId: String,
@@ -172,7 +177,14 @@ data class MediaVariantEntity(
 )
 
 
-@Entity(tableName = "automation_commands", indices = [Index(value = ["idempotencyKey"], unique = true), Index("source"), Index("action"), Index("status"), Index("updatedAtEpochMs")])
+@Entity(
+    tableName = "automation_commands",
+    foreignKeys = [
+        ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.SET_NULL),
+        ForeignKey(entity = MediaCaptureEntity::class, parentColumns = ["id"], childColumns = ["mediaCaptureId"], onDelete = ForeignKey.SET_NULL),
+    ],
+    indices = [Index(value = ["idempotencyKey"], unique = true), Index("source"), Index("action"), Index("status"), Index("updatedAtEpochMs"), Index("downloadId"), Index("mediaCaptureId")],
+)
 data class AutomationCommandEntity(
     @PrimaryKey val id: String,
     val idempotencyKey: String,
@@ -197,15 +209,16 @@ data class AutomationCommandEntity(
     @ColumnInfo(defaultValue = "NULL") val originHost: String? = null,
     @ColumnInfo(defaultValue = "NULL") val sanitizedHeaders: String? = null,
     @ColumnInfo(defaultValue = "'None'") val rejectionReason: String = "None",
+    @ColumnInfo(defaultValue = "NULL") val metadataJson: String? = null,
 )
 
-@Entity(tableName = "notification_records", indices = [Index("downloadId"), Index("createdAtEpochMs")])
+@Entity(tableName = "notification_records", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.SET_NULL)], indices = [Index("downloadId"), Index("createdAtEpochMs")])
 data class NotificationRecordEntity(@PrimaryKey val id: String, val downloadId: String?, val title: String, val message: String, val severity: String, val dismissed: Boolean, val createdAtEpochMs: Long)
 
 @Entity(tableName = "tags")
 data class TagEntity(@PrimaryKey val id: String, val name: String, val colorArgb: Long)
 
-@Entity(tableName = "download_tags", primaryKeys = ["downloadId", "tagId"], indices = [Index("tagId")])
+@Entity(tableName = "download_tags", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE), ForeignKey(entity = TagEntity::class, parentColumns = ["id"], childColumns = ["tagId"], onDelete = ForeignKey.CASCADE)], primaryKeys = ["downloadId", "tagId"], indices = [Index("tagId")])
 data class DownloadTagCrossRef(val downloadId: String, val tagId: String)
 
 @Entity(tableName = "saved_searches", indices = [Index("name")])

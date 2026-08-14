@@ -116,6 +116,7 @@ class NativeHttpDownloadBackend(
         require(preparation.backend == BackendType.Native) { "Native backend received a foreign preparation" }
         require(preparation.downloadId == request.id) { "Native preparation belongs to a different download" }
         require(preparation.runtimeIdentity == runtimeIdentity) { "Native preparation belongs to a stale runtime session" }
+        require(request.attemptGeneration > 0L) { "Native task requires a durable ownership generation before creation" }
         val nativePreparation = requireNotNull(preparations.remove(preparation.preparationId)) { "Unknown or already consumed native preparation" }
         require(nativePreparation.downloadId == request.id) { "Native preparation download mismatch" }
         require(nativePreparation.artifacts == preparation.artifacts) { "Native preparation artifact identity changed" }
@@ -124,15 +125,48 @@ class NativeHttpDownloadBackend(
             request = request,
             preparedDestination = nativePreparation.destination,
             artifacts = nativePreparation.artifacts,
-            state = MutableStateFlow(BackendSnapshot(taskId, DownloadState.Queued, 0, request.expectedLength, 0)),
+            state = MutableStateFlow(
+                BackendSnapshot(
+                    taskId = taskId,
+                    state = DownloadState.Paused,
+                    bytesReceived = 0,
+                    totalBytes = request.expectedLength,
+                    speedBytesPerSecond = 0,
+                    attemptGeneration = request.attemptGeneration,
+                    backendInstanceId = runtimeIdentity.instanceId,
+                    backendSessionId = runtimeIdentity.sessionId,
+                ),
+            ),
         )
         tasks[taskId] = control
-        launch(control)
-        return BackendTask(taskId, BackendType.Native)
+        return BackendTask(taskId, BackendType.Native, requiresActivation = true)
     }
 
     override suspend fun discardPreparation(preparation: BackendPreparation) {
         preparations.remove(preparation.preparationId)
+    }
+
+    override suspend fun onOwnershipAttached(taskId: String, ownership: BackendOwnership) {
+        val control = requireTask(taskId)
+        require(ownership.backend == BackendType.Native) { "Native task received foreign ownership" }
+        require(ownership.downloadId == control.request.id) { "Native ownership belongs to another download" }
+        require(ownership.generation == control.request.attemptGeneration) { "Native ownership generation changed before activation" }
+        require(ownership.artifacts == control.artifacts) { "Native ownership artifact identity changed before activation" }
+        require(ownership.runtimeIdentity.instanceId == runtimeIdentity.instanceId) { "Native ownership belongs to another installation" }
+        control.attachedOwnershipGeneration = ownership.generation
+        control.state.value = control.state.value.copy(
+            attemptGeneration = ownership.generation,
+            backendInstanceId = ownership.runtimeIdentity.instanceId,
+            backendSessionId = runtimeIdentity.sessionId,
+        )
+    }
+
+    override suspend fun activate(taskId: String) {
+        val control = requireTask(taskId)
+        require(control.attachedOwnershipGeneration == control.request.attemptGeneration) {
+            "Native task cannot write before its ownership generation is durably attached"
+        }
+        if (control.job?.isActive != true) launch(control)
     }
 
     override suspend fun pause(taskId: String) {
@@ -149,6 +183,9 @@ class NativeHttpDownloadBackend(
         val control = requireTask(taskId)
         require(control.state.value.state != DownloadState.Cancelled) { "Cancelled tasks cannot be resumed" }
         if (control.job?.isActive == true) return
+        require(control.attachedOwnershipGeneration == control.request.attemptGeneration) {
+            "Native task cannot resume without its durable ownership generation"
+        }
         control.pauseRequested = false
         control.cancelRequested = false
         if (control.state.value.isFinalSaveRecovery()) {
@@ -208,7 +245,10 @@ class NativeHttpDownloadBackend(
         }
         val activeTask = ownership.backendTaskId?.let(tasks::get)
         if (activeTask != null) {
-            return if (activeTask.artifacts == ownership.artifacts) {
+            return if (activeTask.artifacts == ownership.artifacts &&
+                activeTask.request.attemptGeneration == ownership.generation &&
+                activeTask.attachedOwnershipGeneration == ownership.generation
+            ) {
                 BackendReconciliationResult(
                     BackendReconciliationClassification.ActiveTaskVerified,
                     "The native task is active and its physical artifacts match the ownership record.",
@@ -256,6 +296,12 @@ class NativeHttpDownloadBackend(
                 "The native checkpoint belongs to another download or partial file.",
             )
         }
+        if (parsed.attemptGeneration != ownership.generation || parsed.backendInstanceId != ownership.runtimeIdentity.instanceId) {
+            return BackendReconciliationResult(
+                BackendReconciliationClassification.ConflictingArtifact,
+                "The native checkpoint does not carry the current ownership generation and installation proof.",
+            )
+        }
         return BackendReconciliationResult(
             BackendReconciliationClassification.ResumableArtifact,
             "The previous native session ended, but its partial file and checkpoint are safe to adopt.",
@@ -271,7 +317,7 @@ class NativeHttpDownloadBackend(
         }
         val checkpointPath = ownership.artifacts.companions.firstOrNull { it.endsWith(".checkpoint.json") }?.toFilePathOrNull()
         val checkpoint = checkpointPath?.takeIf(Files::exists)?.let { runCatching { checkpointStore.load(it) }.getOrNull() }
-        if (checkpoint == null) {
+        if (checkpoint == null || checkpoint.attemptGeneration != ownership.generation || checkpoint.backendInstanceId != ownership.runtimeIdentity.instanceId) {
             val length = Files.size(partial)
             return BackendMigrationInspection(
                 BackendType.Native,
@@ -548,6 +594,9 @@ class NativeHttpDownloadBackend(
             paths.checkpoint,
             NativeCheckpoint(
                 downloadId = request.id,
+                attemptGeneration = request.attemptGeneration,
+                backendInstanceId = runtimeIdentity.instanceId,
+                backendSessionId = runtimeIdentity.sessionId,
                 sourceUrl = ExternalUrlPolicy.persistableUrl(request.sourceUrl) ?: request.sourceUrl.substringBefore('?'),
                 effectiveUrl = ExternalUrlPolicy.persistableUrl(metadata.effectiveUrl) ?: metadata.effectiveUrl.substringBefore('?'),
                 destinationPath = paths.destinationIdentity,
@@ -593,6 +642,9 @@ class NativeHttpDownloadBackend(
         if (checkpoint == null) return
         val requestIdentity = ExternalUrlPolicy.persistableUrl(request.sourceUrl) ?: request.sourceUrl.substringBefore('?')
         if (checkpoint.downloadId != request.id || checkpoint.sourceUrl != requestIdentity) throw RemoteObjectChangedException("Checkpoint does not belong to this download")
+        if (checkpoint.attemptGeneration != request.attemptGeneration || checkpoint.backendInstanceId != runtimeIdentity.instanceId) {
+            throw RemoteObjectChangedException("Checkpoint belongs to a stale download generation or installation")
+        }
         if (!destinationIdentityMatches(checkpoint.destinationPath, paths.destinationIdentity) || checkpoint.partialPath != paths.partial.toString()) {
             throw RemoteObjectChangedException("Checkpoint destination does not match this download")
         }
@@ -836,6 +888,7 @@ class NativeHttpDownloadBackend(
         @Volatile var cancelRequested: Boolean = false,
         val activeCalls: MutableSet<Call> = ConcurrentHashMap.newKeySet(),
         @Volatile var checkpointFlusher: (suspend () -> Unit)? = null,
+        @Volatile var attachedOwnershipGeneration: Long? = null,
     )
 
     private fun com.mikeyphw.xdm.android.storage.DestinationArtifacts.toBackendArtifactIdentity() = BackendArtifactIdentity(

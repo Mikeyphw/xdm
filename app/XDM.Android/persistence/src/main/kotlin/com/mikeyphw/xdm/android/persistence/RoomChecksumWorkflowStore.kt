@@ -38,7 +38,8 @@ fun ChecksumExpectationEntity.toModel() = ChecksumExpectation(
     algorithm = runCatching { ChecksumAlgorithm.valueOf(algorithm) }.getOrDefault(ChecksumAlgorithm.Sha256),
     expectedHex = expectedHex,
     source = runCatching { ChecksumSource.valueOf(source) }.getOrDefault(ChecksumSource.UserInput),
-    createdAtEpochMs = 0L,
+    createdAtEpochMs = createdAtEpochMs,
+    attemptGeneration = attemptGeneration,
 )
 
 fun ChecksumExpectation.toEntity() = ChecksumExpectationEntity(
@@ -47,6 +48,8 @@ fun ChecksumExpectation.toEntity() = ChecksumExpectationEntity(
     algorithm = algorithm.name,
     expectedHex = expectedHex,
     source = source.name,
+    createdAtEpochMs = createdAtEpochMs,
+    attemptGeneration = attemptGeneration,
 )
 
 fun ChecksumResultEntity.toModel() = ChecksumResult(
@@ -58,6 +61,7 @@ fun ChecksumResultEntity.toModel() = ChecksumResult(
     verifiedAtEpochMs = verifiedAtEpochMs,
     bytesVerified = bytesVerified,
     expectedHex = expectedHex,
+    attemptGeneration = attemptGeneration,
 )
 
 fun ChecksumResult.toEntity() = ChecksumResultEntity(
@@ -69,6 +73,7 @@ fun ChecksumResult.toEntity() = ChecksumResultEntity(
     verifiedAtEpochMs = verifiedAtEpochMs,
     bytesVerified = bytesVerified,
     expectedHex = expectedHex,
+    attemptGeneration = attemptGeneration,
 )
 
 fun VerificationRecordEntity.toModel() = VerificationRecord(
@@ -81,6 +86,7 @@ fun VerificationRecordEntity.toModel() = VerificationRecord(
     message = message,
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
+    attemptGeneration = attemptGeneration,
 )
 
 fun VerificationRecord.toEntity() = VerificationRecordEntity(
@@ -93,6 +99,7 @@ fun VerificationRecord.toEntity() = VerificationRecordEntity(
     message = message,
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
+    attemptGeneration = attemptGeneration,
 )
 
 fun TrustedBlockManifestEntity.toModel() = TrustedBlockManifest(
@@ -103,6 +110,7 @@ fun TrustedBlockManifestEntity.toModel() = TrustedBlockManifest(
     algorithm = runCatching { ChecksumAlgorithm.valueOf(algorithm) }.getOrDefault(ChecksumAlgorithm.Sha256),
     blocks = blocksJson.lineSequence().filter(String::isNotBlank).mapNotNull(::parseBlock).toList(),
     createdAtEpochMs = createdAtEpochMs,
+    attemptGeneration = attemptGeneration,
 )
 
 fun TrustedBlockManifest.toEntity() = TrustedBlockManifestEntity(
@@ -115,6 +123,7 @@ fun TrustedBlockManifest.toEntity() = TrustedBlockManifestEntity(
         listOf(block.index, block.startByte, block.endByteInclusive, block.checksumHex, block.status.name).joinToString("|")
     },
     createdAtEpochMs = createdAtEpochMs,
+    attemptGeneration = attemptGeneration,
 )
 
 private fun parseBlock(line: String): TrustedBlock? {

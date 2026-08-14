@@ -22,7 +22,13 @@ class CompletionVerificationCoordinator(
 ) {
     suspend fun complete(download: Download, snapshot: BackendSnapshot): BackendSnapshot {
         if (snapshot.state != DownloadState.Completed) return snapshot
-        val expectations = checksumStore.expectations(download.id)
+        val expectations = checksumStore.expectations(download.id).map { expectation ->
+            if (expectation.attemptGeneration == download.attemptGeneration) {
+                expectation
+            } else {
+                expectation.copy(attemptGeneration = download.attemptGeneration).also { checksumStore.saveExpectation(it) }
+            }
+        }
         if (expectations.isEmpty()) {
             checksumStore.saveVerification(
                 VerificationRecord(
@@ -35,6 +41,7 @@ class CompletionVerificationCoordinator(
                     message = "No checksum expectation is registered; completion remains length-based.",
                     createdAtEpochMs = clock(),
                     updatedAtEpochMs = clock(),
+                    attemptGeneration = download.attemptGeneration,
                 ),
             )
             return snapshot
@@ -53,6 +60,7 @@ class CompletionVerificationCoordinator(
                     message = message,
                     createdAtEpochMs = clock(),
                     updatedAtEpochMs = clock(),
+                    attemptGeneration = download.attemptGeneration,
                 ),
             )
             return snapshot.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = message)
@@ -64,6 +72,7 @@ class CompletionVerificationCoordinator(
             checksumStore.saveResult(result)
             if (result.matchesExpectation != true) {
                 val manifest = checksumStore.trustedManifest(download.id)
+                    ?.takeIf { it.attemptGeneration == download.attemptGeneration }
                 val repairMessage = if (manifest != null) {
                     val plan = blockManifestService.planRepair(file, manifest)
                     "Checksum mismatch; ${plan.ranges.size} trusted block(s) need native selective repair."
@@ -81,13 +90,14 @@ class CompletionVerificationCoordinator(
                         message = repairMessage,
                         createdAtEpochMs = clock(),
                         updatedAtEpochMs = clock(),
+                        attemptGeneration = download.attemptGeneration,
                     ),
                 )
                 return current.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = repairMessage)
             }
             current = current.copy(bytesReceived = file.length(), totalBytes = snapshot.totalBytes ?: file.length())
         }
-        val manifest = blockManifestService.create(download.id, file)
+        val manifest = blockManifestService.create(download.id, file, attemptGeneration = download.attemptGeneration)
         checksumStore.saveTrustedManifest(manifest)
         checksumStore.saveVerification(
             VerificationRecord(
@@ -100,6 +110,7 @@ class CompletionVerificationCoordinator(
                 message = "Checksum verification passed and trusted block manifest was recorded.",
                 createdAtEpochMs = clock(),
                 updatedAtEpochMs = clock(),
+                attemptGeneration = download.attemptGeneration,
             ),
         )
         return current.copy(state = DownloadState.Completed, speedBytesPerSecond = 0, errorMessage = null, completedUri = file.toURI().toString())

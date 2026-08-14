@@ -26,6 +26,7 @@ fun RecoveryRecordEntity.toModel() = RecoveryRecord(
     createdAtEpochMs = createdAtEpochMs,
     recommendedAction = runCatching { RecoveryAction.valueOf(recommendedAction) }.getOrDefault(RecoveryAction.Validate),
     safeToResume = safeToResume,
+    attemptGeneration = attemptGeneration,
 )
 
 fun RecoveryRecord.toEntity() = RecoveryRecordEntity(
@@ -37,4 +38,5 @@ fun RecoveryRecord.toEntity() = RecoveryRecordEntity(
     createdAtEpochMs = createdAtEpochMs,
     recommendedAction = recommendedAction.name,
     safeToResume = safeToResume,
+    attemptGeneration = attemptGeneration,
 )

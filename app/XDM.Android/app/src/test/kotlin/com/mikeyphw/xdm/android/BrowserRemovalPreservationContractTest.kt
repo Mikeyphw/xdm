@@ -28,14 +28,15 @@ class BrowserRemovalPreservationContractTest {
     fun dedicatedExternalReceiverRemainsReviewFirst() {
         val root = androidRoot()
         val receiver = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAddDownloadActivity.kt").readText()
+        val review = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalHandoffReviewActivity.kt").readText()
         val activity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
 
-        assertTrue(receiver.contains("class ExternalAddDownloadActivity : MainActivity()"))
-        assertTrue(activity.contains("AutomationCommandAction.PromptAddDownload"))
-        assertTrue(activity.contains("AutomationCommandAction.CaptureMedia"))
-        assertTrue(activity.contains("viewModel.ingestAutomationCommand(draft)"))
-        assertFalse("External intent intake must not start transfers directly", activity.contains("executionStarter.start"))
-        assertFalse("External intent intake must not call the download creator directly", activity.contains("viewModel.addDownload("))
+        assertTrue(receiver.contains("class ExternalAddDownloadActivity : ExternalHandoffReviewActivity()"))
+        assertTrue(review.contains("ExternalAutomationDispatch.persist"))
+        assertTrue(review.contains("ExternalCommandAuthorization.UserConfirmed"))
+        assertTrue(activity.contains("viewModel::ingestPersistedAutomationCommand"))
+        assertFalse("External intent intake must not start transfers directly", review.contains("executionStarter.start"))
+        assertFalse("External intent intake must not call the download creator directly", review.contains("viewModel.addDownload("))
     }
 
     @Test

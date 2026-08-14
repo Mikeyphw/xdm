@@ -14,6 +14,9 @@ internal class NativeCheckpointStore {
         val text = String(Files.readAllBytes(path), StandardCharsets.UTF_8)
         return NativeCheckpoint(
             downloadId = text.requiredString("downloadId"),
+            attemptGeneration = text.optionalLong("attemptGeneration") ?: 0L,
+            backendInstanceId = text.optionalString("backendInstanceId"),
+            backendSessionId = text.optionalString("backendSessionId"),
             sourceUrl = text.requiredString("sourceUrl"),
             effectiveUrl = text.requiredString("effectiveUrl"),
             destinationPath = text.requiredString("destinationPath"),
@@ -33,6 +36,9 @@ internal class NativeCheckpointStore {
         val document = buildString {
             append('{')
             appendJsonString("downloadId", checkpoint.downloadId); append(',')
+            append("\"attemptGeneration\":").append(checkpoint.attemptGeneration).append(',')
+            appendJsonString("backendInstanceId", checkpoint.backendInstanceId); append(',')
+            appendJsonString("backendSessionId", checkpoint.backendSessionId); append(',')
             appendJsonString("sourceUrl", checkpoint.sourceUrl); append(',')
             appendJsonString("effectiveUrl", checkpoint.effectiveUrl); append(',')
             appendJsonString("destinationPath", checkpoint.destinationPath); append(',')

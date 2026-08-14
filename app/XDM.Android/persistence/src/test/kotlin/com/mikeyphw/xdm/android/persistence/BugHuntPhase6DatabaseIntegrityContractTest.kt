@@ -12,9 +12,19 @@ class BugHuntPhase6DatabaseIntegrityContractTest {
     fun downloadDeletionUsesCompleteTransactionalGraph() {
         val dao = source("src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadGraphTransactionDao.kt")
         assertTrue(dao.contains("suspend fun deleteDownloadGraph"))
-        listOf("deleteMediaVariantsForDownload", "deleteMediaCapturesForDownload", "deleteAutomationCommandsForDownload", "deleteNotificationRecordsForDownload", "deleteDownloadTagsForDownload", "deleteBackendMigrationsForDownload", "deleteAria2MappingsForDownload", "deleteDestinationClaimsForDownload", "deleteFinalizationForDownload", "deleteRecoveryForDownload", "deleteBackendTasksForDownload", "deleteTrustedManifestsForDownload", "deleteVerificationRecordsForDownload", "deleteChecksumResultsForDownload", "deleteChecksumExpectationsForDownload", "deleteCheckpointsForDownload", "deleteTransferSegmentsForDownload", "deleteMirrorsForDownload", "deleteSourcesForDownload", "deleteDownloadRow").forEach {
-            assertTrue("Download graph deletion must cover $it", dao.contains(it))
+        listOf(
+            "countActivePostProcessingForDownload",
+            "detachPostProcessingForDownload",
+            "detachRecoveryForDownload",
+            "deleteBackendMigrationsForDownload",
+            "deleteAria2MappingsForDownload",
+            "deleteDestinationClaimsForDownload",
+            "deleteBackendTasksForDownload",
+            "deleteDownloadRow",
+        ).forEach {
+            assertTrue("Download graph deletion must protect or reconcile $it", dao.contains(it))
         }
+        assertTrue("True child rows must be protected by Room foreign keys", source("src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt").contains("ForeignKey.CASCADE"))
         val repository = source("src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt")
         assertTrue(repository.contains("deleteDownloadGraph(id)"))
         assertFalse(repository.contains("downloadDao().delete(id)"))
@@ -54,7 +64,7 @@ class BugHuntPhase6DatabaseIntegrityContractTest {
         val migrationTest = source("src/androidTest/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabaseMigrationTest.kt")
         assertTrue(migrationTest.contains("migrate5To6PreservesLegacyAria2MappingsAsRecoveryRequired"))
         val schemas = File(root, "schemas/com.mikeyphw.xdm.android.persistence.AppDatabase")
-        (4..14).forEach { version -> assertTrue("Schema $version must be exported", File(schemas, "$version.json").isFile) }
+        (4..18).forEach { version -> assertTrue("Schema $version must be exported", File(schemas, "$version.json").isFile) }
     }
 
     private fun source(path: String): String = File(root, path).readText()
@@ -70,8 +80,8 @@ class BugHuntPhase6DatabaseIntegrityContractTest {
         val ownershipStore = File("src/main/kotlin/com/mikeyphw/xdm/android/persistence/RoomBackendOwnershipStore.kt").readText()
 
         assertTrue("download save must go through stale-write guarded transaction", repo.contains("upsertDownloadPreservingNewerState"))
-        assertTrue("DAO must insert first and update only when stored row is not newer", graph.contains("insertDownloadIgnore") && graph.contains("updatedAtEpochMs <= :updatedAtEpochMs"))
-        assertTrue("automation execution must claim before executing", main.contains("markAutomationCommandExecuting(accepted)"))
+        assertTrue("DAO must insert first and update only when stored row is not newer", graph.contains("insertDownloadIgnore") && graph.contains("updatedAtEpochMs < :updatedAtEpochMs") && graph.contains("attemptGeneration < :attemptGeneration"))
+        assertTrue("automation execution must claim before executing", main.contains("markAutomationCommandExecuting(commandId)"))
         assertTrue("automation lifecycle must perform Received/Accepted -> Claimed", main.contains("AutomationCommandStatus.Accepted") && main.contains("AutomationCommandStatus.Claimed"))
         assertTrue("queue reassignment deletion must use transactional repository helper", queue.contains("repository.reassignQueueThenDelete(queueId, replacementQueueId)"))
         assertFalse("Download model conversion must not crash on malformed stored state", repo.contains("DownloadState.valueOf(state)"))

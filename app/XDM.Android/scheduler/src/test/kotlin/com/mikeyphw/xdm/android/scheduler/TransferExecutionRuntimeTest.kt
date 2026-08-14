@@ -34,7 +34,7 @@ class TransferExecutionRuntimeTest {
         val items = downloads.associateByTo(linkedMapOf(), Download::id)
         override suspend fun find(downloadId: String) = items[downloadId]
         override suspend fun findByStates(states: Set<DownloadState>) = items.values.filter { it.state in states }
-        override suspend fun save(download: Download) { items[download.id] = download }
+        override suspend fun save(download: Download): Boolean { items[download.id] = download; return true }
         override suspend fun saveBackendTask(downloadId: String, backend: BackendType, backendTaskId: String, ownership: BackendOwnership) = Unit
         override suspend fun deleteBackendTask(downloadId: String) = Unit
     }

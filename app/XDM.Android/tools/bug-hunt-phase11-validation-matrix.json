@@ -3,7 +3,7 @@
   "roadmap_phase": 11,
   "name": "XDM Android Bug Hunt Phase 11 Validation Matrix",
   "baseline_commit": "7b7926c",
-  "current_room_schema": 17,
+  "current_room_schema": 18,
   "total_requirements": 80,
   "definition_of_done": [
     "implementation merged",

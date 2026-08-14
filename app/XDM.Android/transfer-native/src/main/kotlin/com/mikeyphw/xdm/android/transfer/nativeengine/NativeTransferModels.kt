@@ -35,6 +35,9 @@ data class NativeCheckpoint(
     val rangeSupported: Boolean,
     val segments: List<NativeSegmentCheckpoint>,
     val persistedAtEpochMs: Long,
+    val attemptGeneration: Long = 0L,
+    val backendInstanceId: String? = null,
+    val backendSessionId: String? = null,
 )
 
 data class RemoteMetadata(

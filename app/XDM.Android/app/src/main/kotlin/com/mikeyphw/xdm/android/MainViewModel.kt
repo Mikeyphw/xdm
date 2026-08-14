@@ -165,7 +165,7 @@ data class Aria2DiagnosticsUi(
     val storageDoctor: StorageDoctorUi = StorageDoctorUi(),
 )
 
-private const val CurrentRoomSchemaVersion = 17
+private const val CurrentRoomSchemaVersion = 18
 private const val UnpinnedReleaseSigner = "UNPINNED"
 
 private fun releaseSigningAttestationConfigured(): Boolean =
@@ -787,6 +787,25 @@ class MainViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             preferences.values.collectLatest(::refreshBrowserBridgeStatus)
         }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.pendingAutomationCommands().forEach { command ->
+                when {
+                    command.status == AutomationCommandStatus.Received || command.status == AutomationCommandStatus.Accepted ->
+                        processPersistedAutomationCommand(command.id)
+                    command.status in setOf(AutomationCommandStatus.Claimed, AutomationCommandStatus.Executing) && command.action == AutomationCommandAction.PromptAddDownload ->
+                        openExternalAddDraft(command, ExternalAutomationDispatch.restore(command), "Recovered Add Download confirmation after process restart")
+                    command.status == AutomationCommandStatus.Claimed || command.status == AutomationCommandStatus.Executing -> {
+                        val recovered = repository.transitionAutomationCommand(
+                            command.id,
+                            listOf(AutomationCommandStatus.Claimed, AutomationCommandStatus.Executing),
+                            AutomationCommandStatus.Received,
+                            "Recovered interrupted durable automation claim after process restart.",
+                        )
+                        if (recovered == 1) processPersistedAutomationCommand(command.id)
+                    }
+                }
+            }
+        }
     }
 
     fun navigate(route: AppRoute) {
@@ -842,15 +861,18 @@ class MainViewModel(
 
 
     fun createQueue(name: String, maxConcurrent: Int) {
-        val trimmed = name.trim().ifBlank { "Queue ${uiState.value.queues.size + 1}" }
-        val queue = QueueDefinition(
-            id = "queue-${UUID.randomUUID()}",
-            name = trimmed.take(48),
-            isEnabled = true,
-            maxConcurrent = maxConcurrent.coerceIn(1, 16),
-            createdAtEpochMs = System.currentTimeMillis(),
-        )
-        viewModelScope.launch(Dispatchers.IO) { repository.saveQueue(queue); queueIntelligenceCoordinator.reconcile() }
+        viewModelScope.launch(Dispatchers.IO) {
+            val trimmed = name.trim().ifBlank { "Queue ${repository.countQueues() + 1}" }
+            val queue = QueueDefinition(
+                id = "queue-${UUID.randomUUID()}",
+                name = trimmed.take(48),
+                isEnabled = true,
+                maxConcurrent = maxConcurrent.coerceIn(1, 16),
+                createdAtEpochMs = System.currentTimeMillis(),
+            )
+            repository.saveQueue(queue)
+            queueIntelligenceCoordinator.reconcile()
+        }
     }
 
     fun updateQueue(queue: QueueDefinition, name: String, maxConcurrent: Int, enabled: Boolean) {
@@ -875,15 +897,18 @@ class MainViewModel(
     }
 
     fun createSchedule(name: String, queueId: String?, constraintsJson: String) {
-        val trimmed = name.trim().ifBlank { "Schedule ${uiState.value.schedules.size + 1}" }
-        val rule = ScheduleRule(
-            id = "schedule-${UUID.randomUUID()}",
-            queueId = queueId,
-            name = trimmed.take(48),
-            enabled = true,
-            constraintsJson = constraintsJson.ifBlank { "{}" },
-        )
-        viewModelScope.launch(Dispatchers.IO) { repository.saveSchedule(rule); queueIntelligenceCoordinator.reconcile() }
+        viewModelScope.launch(Dispatchers.IO) {
+            val trimmed = name.trim().ifBlank { "Schedule ${repository.countSchedules() + 1}" }
+            val rule = ScheduleRule(
+                id = "schedule-${UUID.randomUUID()}",
+                queueId = queueId,
+                name = trimmed.take(48),
+                enabled = true,
+                constraintsJson = constraintsJson.ifBlank { "{}" },
+            )
+            repository.saveSchedule(rule)
+            queueIntelligenceCoordinator.reconcile()
+        }
     }
 
     fun updateSchedule(rule: ScheduleRule, name: String, queueId: String?, enabled: Boolean, constraintsJson: String) {
@@ -974,7 +999,7 @@ class MainViewModel(
             storageDoctorRunning.value = true
             storageDoctorMessage.value = "Checking direct-storage permission and filesystem operations."
             try {
-                val selectedDestination = uiState.value.destinationUri
+                val selectedDestination = preferences.values.first().destinationUri
                 val directDestination = if (PersonalDirectStorage.requiresAllFilesAccess(selectedDestination)) {
                     selectedDestination
                 } else {
@@ -1204,36 +1229,37 @@ class MainViewModel(
 
     fun generateBrowserExtensionXpi() {
         if (browserExtensionRuntime.value.phase == BrowserExtensionExportPhase.Exporting) return
-        val current = uiState.value.browserExtension
-        if (current.exportTreeUri.isBlank()) {
-            browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
-                phase = BrowserExtensionExportPhase.Failed,
-                message = "Choose an export folder before generating the XPI.",
-            )
-            return
-        }
-        val channel = when (BuildConfig.BUILD_TYPE.lowercase()) {
-            "debug" -> BrowserExtensionSourceContract.Channel.Debug
-            else -> BrowserExtensionSourceContract.Channel.Release
-        }
-        val resolvedTheme = current.resolvedTheme(uiState.value.themeMode)
-        val config = BrowserExtensionBuildConfig(
-            extensionVersion = BrowserExtensionSourceContract.DevelopmentVersion,
-            appVersion = BuildConfig.VERSION_NAME,
-            applicationId = BuildConfig.APPLICATION_ID,
-            channel = channel,
-            xdmScheme = BuildConfig.XDM_BROWSER_SCHEME,
-            defaultTarget = current.defaultTarget,
-            themeMode = resolvedTheme,
-            captureKeyId = browserCaptureEnvelopeManager.keyId,
-            capturePublicKeySpki = browserCaptureEnvelopeManager.publicKeySpkiBase64Url,
-            captureOaepHash = browserCaptureEnvelopeManager.captureOaepHash,
-        )
-        browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
-            phase = BrowserExtensionExportPhase.Exporting,
-            message = "Generating and validating the Firefox XPI…",
-        )
         viewModelScope.launch(Dispatchers.IO) {
+            val preferenceSnapshot = preferences.values.first()
+            val current = preferenceSnapshot.browserExtension
+            if (current.exportTreeUri.isBlank()) {
+                browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
+                    phase = BrowserExtensionExportPhase.Failed,
+                    message = "Choose an export folder before generating the XPI.",
+                )
+                return@launch
+            }
+            val channel = when (BuildConfig.BUILD_TYPE.lowercase()) {
+                "debug" -> BrowserExtensionSourceContract.Channel.Debug
+                else -> BrowserExtensionSourceContract.Channel.Release
+            }
+            val resolvedTheme = current.resolvedTheme(preferenceSnapshot.themeMode)
+            val config = BrowserExtensionBuildConfig(
+                extensionVersion = BrowserExtensionSourceContract.DevelopmentVersion,
+                appVersion = BuildConfig.VERSION_NAME,
+                applicationId = BuildConfig.APPLICATION_ID,
+                channel = channel,
+                xdmScheme = BuildConfig.XDM_BROWSER_SCHEME,
+                defaultTarget = current.defaultTarget,
+                themeMode = resolvedTheme,
+                captureKeyId = browserCaptureEnvelopeManager.keyId,
+                capturePublicKeySpki = browserCaptureEnvelopeManager.publicKeySpkiBase64Url,
+                captureOaepHash = browserCaptureEnvelopeManager.captureOaepHash,
+            )
+            browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
+                phase = BrowserExtensionExportPhase.Exporting,
+                message = "Generating and validating the Firefox XPI…",
+            )
             preferences.recordBrowserBridgeGeneration(
                 phase = "exporting",
                 message = "Generating and validating the Firefox XPI.",
@@ -1308,15 +1334,24 @@ class MainViewModel(
     }
 
     fun openBrowserExtensionXpi() {
-        val uri = uiState.value.browserBridgeStatus.currentExportUri
-        if (uri.isBlank()) {
-            browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
-                phase = BrowserExtensionExportPhase.Failed,
-                message = "The last verified XPI is unavailable. Regenerate it.",
-            )
-            return
-        }
         viewModelScope.launch(Dispatchers.IO) {
+            val preferenceSnapshot = preferences.values.first()
+            val status = browserExtensionExportManager.inspect(
+                preferences = preferenceSnapshot.browserExtension,
+                diagnostics = preferenceSnapshot.browserBridgeDiagnostics,
+                appTheme = preferenceSnapshot.themeMode,
+                appVersion = BuildConfig.VERSION_NAME,
+                applicationId = BuildConfig.APPLICATION_ID,
+                scheme = BuildConfig.XDM_BROWSER_SCHEME,
+            )
+            val uri = status.currentExportUri
+            if (uri.isBlank()) {
+                browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
+                    phase = BrowserExtensionExportPhase.Failed,
+                    message = "The last verified XPI is unavailable. Regenerate it.",
+                )
+                return@launch
+            }
             val result = browserExtensionExportManager.openExportedFile(uri)
             browserExtensionRuntime.value = if (result.isSuccess) {
                 BrowserExtensionRuntimeStatus(
@@ -1336,8 +1371,8 @@ class MainViewModel(
     }
 
     fun clearBrowserExtensionExportFolder() {
-        val currentTree = uiState.value.browserExtension.exportTreeUri
         viewModelScope.launch(Dispatchers.IO) {
+            val currentTree = preferences.values.first().browserExtension.exportTreeUri
             if (currentTree.isNotBlank()) browserExtensionExportManager.releaseDirectoryPermission(currentTree)
             preferences.setBrowserExtensionExportTreeUri("")
             preferences.recordBrowserBridgeGeneration(
@@ -1349,7 +1384,7 @@ class MainViewModel(
     }
 
     private suspend fun refreshBrowserBridgeStatusFromCurrent() {
-        val snapshot = uiState.value
+        val snapshot = preferences.values.first()
         browserBridgeStatus.value = browserExtensionExportManager.inspect(
             preferences = snapshot.browserExtension,
             diagnostics = snapshot.browserBridgeDiagnostics,
@@ -1457,8 +1492,8 @@ class MainViewModel(
         val trimmed = name.trim().take(48)
         val matchText = pattern.trim().take(96)
         if (trimmed.isBlank() || matchText.isBlank() || destinationUri.isBlank()) return
-        val priority = uiState.value.destinationRules.size + 1
         viewModelScope.launch(Dispatchers.IO) {
+            val priority = (repository.currentDestinationRules().maxOfOrNull(DestinationRule::priority) ?: 0) + 1
             repository.saveDestinationRule(DestinationRule("dest-${UUID.randomUUID()}", trimmed, match, matchText, destinationUri, true, priority))
         }
     }
@@ -1472,9 +1507,10 @@ class MainViewModel(
     }
 
     fun scanClipboardText(text: String) {
-        val items = ClipboardInboxPolicy.itemsFromText(text, uiState.value.clipboardInbox, System.currentTimeMillis())
-        if (items.isEmpty()) return
-        viewModelScope.launch(Dispatchers.IO) { repository.saveClipboardItems(items) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val items = ClipboardInboxPolicy.itemsFromText(text, repository.currentClipboardInbox(), System.currentTimeMillis())
+            if (items.isNotEmpty()) repository.saveClipboardItems(items)
+        }
     }
 
     fun acceptClipboardItem(item: ClipboardInboxItem) {
@@ -1500,9 +1536,11 @@ class MainViewModel(
 
     fun clearFinishedHistory() {
         val finished = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)
-        val candidates = uiState.value.downloads.filter { it.state in finished }
-        if (candidates.isEmpty()) return
-        viewModelScope.launch(Dispatchers.IO) { candidates.forEach { repository.deleteDownload(it.id) } }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.findDownloadsByStates(finished).forEach { candidate ->
+                repository.deleteDownloadEntryIfTerminal(candidate, finished)
+            }
+        }
     }
 
     suspend fun inspectCompletedArtifact(download: Download): CompletedArtifactCapabilities =
@@ -1672,6 +1710,7 @@ class MainViewModel(
                     backendSelectionReason = recommendation.reason,
                     backendSelectionExplanation = recommendation.explanation,
                     archived = false,
+                    attemptGeneration = 1L,
                 )
                 repository.save(retry)
                 MediaRequestHandoffStore.cloneDownload(current.id, newId, exactUrl)
@@ -1681,10 +1720,11 @@ class MainViewModel(
                             id = newChecksumExpectationId(newId, expectation.algorithm),
                             downloadId = newId,
                             createdAtEpochMs = now,
+                            attemptGeneration = retry.attemptGeneration,
                         ),
                     )
                 }
-                uiState.value.tagAssignments.filter { it.downloadId == current.id }.forEach { assignment ->
+                repository.currentTagAssignments().filter { it.downloadId == current.id }.forEach { assignment ->
                     repository.assignTag(newId, assignment.tagId)
                 }
                 val clonedPostProcessingJobs = repository.clonePostProcessingJobsForRedownload(current.id, newId, now)
@@ -1710,25 +1750,32 @@ class MainViewModel(
     fun moveDownloadInQueue(download: Download, kind: DownloadActionKind) {
         val queueId = download.queueId ?: "default"
         val movableStates = setOf(DownloadState.Created, DownloadState.Queued, DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)
-        val current = uiState.value.downloads
-            .filter { (it.queueId ?: "default") == queueId && it.state in movableStates }
-            .sortedWith(compareByDescending<Download> { it.priority }.thenBy { it.createdAtEpochMs })
-        val from = current.indexOfFirst { it.id == download.id }
-        if (from < 0) return
-        val to = when (kind) {
-            DownloadActionKind.MoveToTop -> 0
-            DownloadActionKind.MoveUp -> (from - 1).coerceAtLeast(0)
-            DownloadActionKind.MoveDown -> (from + 1).coerceAtMost(current.lastIndex)
-            DownloadActionKind.MoveToBottom -> current.lastIndex
-            else -> from
+        viewModelScope.launch(Dispatchers.IO) {
+            val current = repository.findDownloadsByStates(movableStates)
+                .filter { (it.queueId ?: "default") == queueId }
+                .sortedWith(compareByDescending<Download> { it.priority }.thenBy { it.createdAtEpochMs })
+            val from = current.indexOfFirst { it.id == download.id }
+            if (from < 0) return@launch
+            val to = when (kind) {
+                DownloadActionKind.MoveToTop -> 0
+                DownloadActionKind.MoveUp -> (from - 1).coerceAtLeast(0)
+                DownloadActionKind.MoveDown -> (from + 1).coerceAtMost(current.lastIndex)
+                DownloadActionKind.MoveToBottom -> current.lastIndex
+                else -> from
+            }
+            if (from == to) return@launch
+            val reordered = current.toMutableList().apply { add(to, removeAt(from)) }
+            val now = System.currentTimeMillis()
+            val reprioritized = reordered.mapIndexed { index, item ->
+                item.copy(priority = (reordered.size - index) * 10, updatedAtEpochMs = now)
+            }
+            if (!repository.saveAll(reprioritized)) {
+                android.util.Log.w(
+                    "XDMQueueMutation",
+                    "Queue reprioritization was rejected because a newer download generation or state already exists.",
+                )
+            }
         }
-        if (from == to) return
-        val reordered = current.toMutableList().apply { add(to, removeAt(from)) }
-        val now = System.currentTimeMillis()
-        val reprioritized = reordered.mapIndexed { index, item ->
-            item.copy(priority = (reordered.size - index) * 10, updatedAtEpochMs = now)
-        }
-        viewModelScope.launch(Dispatchers.IO) { repository.saveAll(reprioritized) }
     }
 
     fun addDownload(
@@ -1743,16 +1790,17 @@ class MainViewModel(
     ) {
         if (url.isBlank() || destination.isBlank()) return
         val safeName = resolveFileName(url, fileName)
-        val duplicate = OrganizationPowerTools.duplicateFor(url, uiState.value.downloads)
+        viewModelScope.launch {
+        val duplicate = OrganizationPowerTools.duplicateFor(url, repository.findDownloadsByStates(DownloadState.entries.toSet()))
         if (duplicate != null) {
             navigate(AppRoute.Downloads)
-            return
+            return@launch
         }
         val now = System.currentTimeMillis()
         val consumedExternalDraft = externalAddDraft.value
         val externalSessionHeaders = consumedExternalDraft?.requestHeaders.orEmpty()
         val mediaCandidate = mediaCaptureService.candidateFor(url)
-        val resolvedDestination = OrganizationPowerTools.destinationFor(url, safeName, mediaCandidate?.mimeType, uiState.value.destinationRules, destination)
+        val resolvedDestination = OrganizationPowerTools.destinationFor(url, safeName, mediaCandidate?.mimeType, repository.currentDestinationRules(), destination)
         val request = previewRequest(
             url,
             safeName,
@@ -1765,7 +1813,7 @@ class MainViewModel(
             isExpiringUrl = externalSessionHeaders.isNotEmpty(),
         )
         val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
-        if (!recommendation.compatible) return
+        if (!recommendation.compatible) return@launch
         val resolvedBackend = recommendation.backend
         val download = Download(
             id = UUID.randomUUID().toString(),
@@ -1788,8 +1836,6 @@ class MainViewModel(
             backendSelectionExplanation = recommendation.explanation,
             allowBackendFallback = allowFallback,
         )
-        viewModelScope.launch {
-            repository.save(download)
             MediaRequestHandoffStore.remember(
                 downloadId = download.id,
                 headers = externalSessionHeaders,
@@ -1800,6 +1846,22 @@ class MainViewModel(
                 privateNetworkApproved = true,
                 cleartextCredentialsApproved = false,
             )
+            if (!repository.save(download)) {
+                MediaRequestHandoffStore.forget(download.id)
+                consumedExternalDraft?.let { draft ->
+                    repository.findAutomationCommand(draft.id)?.let { command ->
+                        repository.saveAutomationCommand(
+                            command.copy(
+                                status = AutomationCommandStatus.Failed,
+                                resultMessage = "Download persistence rejected the reviewed Add Download request",
+                                rejectionReason = AutomationRejectionReason.ClaimLost,
+                                updatedAtEpochMs = System.currentTimeMillis(),
+                            ),
+                        )
+                    }
+                }
+                return@launch
+            }
             consumedExternalDraft?.let { markExternalDraftDownloadCreated(it, download.id) }
             val normalizedChecksum = expectedChecksum.trim().takeIf { it.isNotBlank() }?.let { parseExpectedChecksum(it, checksumAlgorithm) }.orEmpty()
             if (normalizedChecksum.isNotBlank()) {
@@ -1887,119 +1949,85 @@ class MainViewModel(
 
     fun ingestAutomationCommand(draft: AutomationCommandDraft) {
         viewModelScope.launch(Dispatchers.IO) {
-            processAutomationCommand(draft)
+            val commandId = ExternalAutomationDispatch.persist(repository, draft) ?: return@launch
+            processPersistedAutomationCommand(commandId)
         }
     }
 
-    private suspend fun processAutomationCommand(draft: AutomationCommandDraft) {
-        val key = draft.stableIdempotencyKey
-        val now = System.currentTimeMillis()
-        if (draft.authorization == ExternalCommandAuthorization.Untrusted && draft.source != AutomationCommandSource.Internal) return
-        val existing = repository.findAutomationCommandByKey(key)
-        if (existing != null) {
-            if (existing.mediaCaptureId != null) {
-                repository.saveAutomationCommand(existing.copy(status = AutomationCommandStatus.Duplicate, resultMessage = "Duplicate media handoff reopened", rejectionReason = AutomationRejectionReason.Duplicate, updatedAtEpochMs = now))
-                navigate(AppRoute.Media)
-                return
-            }
-            if (existing.downloadId != null) {
-                repository.saveAutomationCommand(existing.copy(status = AutomationCommandStatus.Duplicate, resultMessage = "Duplicate download handoff reopened", rejectionReason = AutomationRejectionReason.Duplicate, updatedAtEpochMs = now))
-                navigate(AppRoute.Downloads)
-                return
-            }
-            val commandHandoff = MediaRequestHandoffStore.forCommand(existing.id)
-            val url = commandHandoff?.exactUrl ?: existing.url
-            if (!url.isNullOrBlank()) {
-                externalAddDraft.value = downloadIntakePlanner.fromExternal(
-                    id = existing.id,
-                    url = url,
-                    fileName = existing.fileName,
-                    sourceLabel = sourceLabelFor(existing.source, existing.originPackage, existing.verifiedIntegrationId),
-                    origin = intakeOriginFor(existing.source),
-                    pageTitle = existing.pageTitle,
-                    pageUrl = existing.pageUrl,
-                )
-                repository.saveAutomationCommand(existing.copy(status = AutomationCommandStatus.Duplicate, resultMessage = "Duplicate link reopened in Add Download", rejectionReason = AutomationRejectionReason.Duplicate, updatedAtEpochMs = now))
-                navigate(AppRoute.Add)
-                return
-            }
-            repository.saveAutomationCommand(existing.copy(status = AutomationCommandStatus.Duplicate, resultMessage = "Duplicate command ignored", rejectionReason = AutomationRejectionReason.Duplicate, updatedAtEpochMs = now))
-            return
+    fun ingestPersistedAutomationCommand(commandId: String) {
+        val normalizedId = commandId.trim().takeIf(String::isNotBlank) ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            processPersistedAutomationCommand(normalizedId)
         }
-        val commandId = AutomationCommandIds.commandId(key)
-        val commandHeaders = transientSessionHeaders(
-            rawHeaders = draft.rawHeaders,
-            pageUrl = draft.pageUrl,
-            targetUrl = draft.normalizedUrl,
-            cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
-        )
-        val accepted = AutomationCommandRecord(
-            id = commandId,
-            idempotencyKey = key,
-            source = draft.source,
-            action = draft.action,
-            url = ExternalUrlPolicy.persistableUrl(draft.normalizedUrl),
-            fileName = draft.fileName?.trim()?.takeIf { it.isNotBlank() },
-            pageTitle = draft.pageTitle?.trim()?.takeIf { it.isNotBlank() },
-            pageUrl = ExternalUrlPolicy.persistableUrl(draft.normalizedPageUrl),
-            mediaCaptureId = null,
-            downloadId = null,
-            status = AutomationCommandStatus.Received,
-            resultMessage = "Received through ${draft.authorization.name}",
-            createdAtEpochMs = now,
-            updatedAtEpochMs = now,
-            originPackage = draft.originPackage?.trim()?.takeIf { it.isNotBlank() },
-            claimedOriginPackage = draft.claimedOriginPackage?.trim()?.takeIf { it.isNotBlank() },
-            verifiedIntegrationId = draft.verifiedIntegrationId?.trim()?.takeIf { it.isNotBlank() },
-            authorization = draft.authorization,
-            privateNetworkApproved = draft.privateNetworkApproved,
-            cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
-            originHost = draft.originHost,
-            sanitizedHeaders = draft.sanitizedHeaders,
-        )
-        MediaRequestHandoffStore.rememberCommand(
-            commandId = commandId,
-            exactUrl = draft.normalizedUrl,
-            pageUrl = draft.normalizedPageUrl,
-            headers = commandHeaders,
-            redactedSummary = redactedSessionSummary(draft.rawHeaders, draft.pageUrl),
-            privateNetworkApproved = draft.privateNetworkApproved,
-            cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
-        )
-        repository.saveAutomationCommand(accepted)
-        markAutomationCommandExecuting(accepted)
-        when (draft.action) {
-            AutomationCommandAction.CaptureMedia -> executeCaptureMediaCommand(accepted, draft, now)
-            AutomationCommandAction.PromptAddDownload -> openExternalAddDraft(accepted, draft, "External download opened Add Download prompt")
-            AutomationCommandAction.EnqueueDownload -> executeEnqueueCommand(accepted, draft, now)
+    }
+
+    private suspend fun processPersistedAutomationCommand(commandId: String) {
+        val existing = repository.findAutomationCommand(commandId) ?: return
+        when (existing.status) {
+            AutomationCommandStatus.Applied,
+            AutomationCommandStatus.Executed,
+            -> {
+                when {
+                    existing.mediaCaptureId != null -> navigate(AppRoute.Media)
+                    existing.downloadId != null -> navigate(AppRoute.Downloads)
+                }
+                return
+            }
+            AutomationCommandStatus.Duplicate,
+            AutomationCommandStatus.Rejected,
+            AutomationCommandStatus.Failed,
+            -> return
+            AutomationCommandStatus.Claimed,
+            AutomationCommandStatus.Executing,
+            -> return
+            AutomationCommandStatus.Received,
+            AutomationCommandStatus.Accepted,
+            -> Unit
+        }
+
+        // This transaction is the durable single-consumer claim. Only its winner may run effects.
+        if (!repository.markAutomationCommandExecuting(commandId)) return
+        val command = repository.findAutomationCommand(commandId) ?: return
+        val draft = ExternalAutomationDispatch.restore(command)
+        val now = System.currentTimeMillis()
+        when (command.action) {
+            AutomationCommandAction.CaptureMedia -> executeCaptureMediaCommand(command, draft, now)
+            AutomationCommandAction.PromptAddDownload -> openExternalAddDraft(command, draft, "External download awaiting Add Download confirmation")
+            AutomationCommandAction.EnqueueDownload -> executeEnqueueCommand(command, draft, now)
             AutomationCommandAction.PauseAll -> {
                 transferRuntime.pauseAll()
-                repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Applied, resultMessage = "Pause all requested", updatedAtEpochMs = System.currentTimeMillis()))
+                repository.saveAutomationCommand(
+                    command.copy(
+                        status = AutomationCommandStatus.Applied,
+                        resultMessage = "Pause all requested",
+                        rejectionReason = AutomationRejectionReason.None,
+                        updatedAtEpochMs = System.currentTimeMillis(),
+                    ),
+                )
             }
             AutomationCommandAction.ResumeAll -> {
-                val paused = repository.findDownloadsByStates(setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower))
+                val paused = repository.findDownloadsByStates(
+                    setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower),
+                )
                 paused.forEach { queueIntelligenceCoordinator.requestStart(it.id, userVisible = true, manual = true) }
-                repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Applied, resultMessage = "Resume requested for ${paused.size} download(s)", updatedAtEpochMs = System.currentTimeMillis()))
+                repository.saveAutomationCommand(
+                    command.copy(
+                        status = AutomationCommandStatus.Applied,
+                        resultMessage = "Resume requested for ${paused.size} download(s)",
+                        rejectionReason = AutomationRejectionReason.None,
+                        updatedAtEpochMs = System.currentTimeMillis(),
+                    ),
+                )
             }
-            AutomationCommandAction.Unknown -> repository.saveAutomationCommand(accepted.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Unsupported automation action", rejectionReason = AutomationRejectionReason.UnsupportedAction, updatedAtEpochMs = System.currentTimeMillis()))
+            AutomationCommandAction.Unknown -> repository.saveAutomationCommand(
+                command.copy(
+                    status = AutomationCommandStatus.Rejected,
+                    resultMessage = "Unsupported automation action",
+                    rejectionReason = AutomationRejectionReason.UnsupportedAction,
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                ),
+            )
         }
-    }
-
-
-
-    private suspend fun markAutomationCommandExecuting(command: AutomationCommandRecord) {
-        repository.transitionAutomationCommand(
-            command.id,
-            from = listOf(AutomationCommandStatus.Received, AutomationCommandStatus.Accepted),
-            to = AutomationCommandStatus.Claimed,
-            message = "Command claimed by MainViewModel.",
-        )
-        repository.transitionAutomationCommand(
-            command.id,
-            from = listOf(AutomationCommandStatus.Claimed),
-            to = AutomationCommandStatus.Executing,
-            message = "Command side effects are executing.",
-        )
     }
 
     private suspend fun resolveCapturedPlaylistIfPossible(
@@ -2034,9 +2062,13 @@ class MainViewModel(
     }
 
     private suspend fun executeCaptureMediaCommand(command: AutomationCommandRecord, draft: AutomationCommandDraft, now: Long) {
-        val text = draft.normalizedUrl ?: return repository.saveAutomationCommand(
-            command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing media URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = now),
-        )
+        val text = draft.normalizedUrl
+        if (text == null) {
+            repository.saveAutomationCommand(
+                command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing media URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = now),
+            )
+            return
+        }
         val proposedHeaders = transientSessionHeaders(draft.proposedHeaders ?: draft.rawHeaders, draft.frameUrl ?: draft.pageUrl, text, draft.cleartextCredentialsApproved)
         val finalHeaders = transientSessionHeaders(draft.finalHeaders, draft.frameUrl ?: draft.pageUrl, text, draft.cleartextCredentialsApproved).takeIf { it.isNotEmpty() }
         val requestHeaders = finalHeaders ?: proposedHeaders
@@ -2122,11 +2154,15 @@ class MainViewModel(
     }
 
     private suspend fun openExternalAddDraft(command: AutomationCommandRecord, draft: AutomationCommandDraft, message: String) {
-        val url = draft.normalizedUrl ?: return repository.saveAutomationCommand(
-            command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing download URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = System.currentTimeMillis()),
-        )
+        val url = draft.normalizedUrl
+        if (url == null) {
+            repository.saveAutomationCommand(
+                command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing download URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = System.currentTimeMillis()),
+            )
+            return
+        }
         val requestHeaders = transientSessionHeaders(draft.rawHeaders, draft.pageUrl, url, draft.cleartextCredentialsApproved)
-        externalAddDraft.value = downloadIntakePlanner.fromExternal(
+        val intakeDraft = downloadIntakePlanner.fromExternal(
             id = command.id,
             url = url,
             fileName = draft.fileName,
@@ -2140,10 +2176,22 @@ class MainViewModel(
             thumbnailUrl = draft.thumbnailUrl,
             requestHeaders = requestHeaders,
             redactedHeaderSummary = redactedSessionSummary(draft.rawHeaders, draft.pageUrl),
-        ) ?: return repository.saveAutomationCommand(
-            command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Unsupported download URL", rejectionReason = AutomationRejectionReason.UnsupportedUrl, updatedAtEpochMs = System.currentTimeMillis()),
         )
-        repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Applied, resultMessage = message, updatedAtEpochMs = System.currentTimeMillis()))
+        if (intakeDraft == null) {
+            repository.saveAutomationCommand(
+                command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Unsupported download URL", rejectionReason = AutomationRejectionReason.UnsupportedUrl, updatedAtEpochMs = System.currentTimeMillis()),
+            )
+            return
+        }
+        externalAddDraft.value = intakeDraft
+        repository.saveAutomationCommand(
+            command.copy(
+                status = AutomationCommandStatus.Executing,
+                resultMessage = message,
+                rejectionReason = AutomationRejectionReason.None,
+                updatedAtEpochMs = System.currentTimeMillis(),
+            ),
+        )
         navigate(AppRoute.Add)
     }
 
@@ -2158,6 +2206,25 @@ class MainViewModel(
                 updatedAtEpochMs = System.currentTimeMillis(),
             ),
         )
+    }
+
+    fun dismissExternalAddDraft() {
+        val draft = externalAddDraft.value ?: return
+        externalAddDraft.value = null
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.findAutomationCommand(draft.id)?.let { command ->
+                if (command.status == AutomationCommandStatus.Executing || command.status == AutomationCommandStatus.Claimed) {
+                    repository.saveAutomationCommand(
+                        command.copy(
+                            status = AutomationCommandStatus.Rejected,
+                            resultMessage = "User dismissed Add Download review",
+                            rejectionReason = AutomationRejectionReason.UserDeclined,
+                            updatedAtEpochMs = System.currentTimeMillis(),
+                        ),
+                    )
+                }
+            }
+        }
     }
 
     private fun AutomationCommandDraft.toPageObservationProof(): PageObservationProof? {
@@ -2245,14 +2312,19 @@ class MainViewModel(
     }
 
     private suspend fun executeEnqueueCommand(command: AutomationCommandRecord, draft: AutomationCommandDraft, now: Long) {
-        val url = draft.normalizedUrl ?: return repository.saveAutomationCommand(
-            command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing download URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = now),
-        )
+        val url = draft.normalizedUrl
+        if (url == null) {
+            repository.saveAutomationCommand(
+                command.copy(status = AutomationCommandStatus.Rejected, resultMessage = "Missing download URL", rejectionReason = AutomationRejectionReason.MissingUrl, updatedAtEpochMs = now),
+            )
+            return
+        }
         val safeName = resolveFileName(url, draft.fileName.orEmpty())
         val sessionHeaders = transientSessionHeaders(draft.rawHeaders, draft.pageUrl, url, draft.cleartextCredentialsApproved)
         val mediaCandidate = mediaCaptureService.candidateFor(url)
-        val destination = uiState.value.destinationUri.ifBlank { DestinationUris.PUBLIC_DOWNLOADS }
-        val conflictPolicy = uiState.value.conflictPolicy
+        val currentPreferences = preferences.values.first()
+        val destination = currentPreferences.destinationUri.ifBlank { DestinationUris.PUBLIC_DOWNLOADS }
+        val conflictPolicy = currentPreferences.conflictPolicy
         val request = previewRequest(
             url,
             safeName,
@@ -2269,8 +2341,9 @@ class MainViewModel(
             repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Rejected, resultMessage = recommendation.explanation, rejectionReason = AutomationRejectionReason.BackendUnavailable, updatedAtEpochMs = System.currentTimeMillis()))
             return
         }
+        val durableDownloadId = UUID.nameUUIDFromBytes("automation:${command.id}".toByteArray()).toString()
         val download = Download(
-            id = UUID.randomUUID().toString(),
+            id = durableDownloadId,
             fileName = safeName,
             sourceUrl = ExternalUrlPolicy.persistableUrl(url) ?: url.substringBefore('?'),
             destinationUri = destination,
@@ -2290,7 +2363,6 @@ class MainViewModel(
             backendSelectionExplanation = recommendation.explanation,
             allowBackendFallback = true,
         )
-        repository.save(download)
         MediaRequestHandoffStore.remember(
             downloadId = download.id,
             headers = sessionHeaders,
@@ -2301,8 +2373,36 @@ class MainViewModel(
             privateNetworkApproved = draft.privateNetworkApproved,
             cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
         )
-        repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Applied, resultMessage = "Queued download", downloadId = download.id, updatedAtEpochMs = System.currentTimeMillis()))
-        queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
+        val existingDownload = repository.findDownload(durableDownloadId)
+        if (existingDownload == null && !repository.save(download)) {
+            MediaRequestHandoffStore.forget(download.id)
+            repository.saveAutomationCommand(
+                command.copy(
+                    status = AutomationCommandStatus.Failed,
+                    resultMessage = "Download persistence lost the execution claim",
+                    rejectionReason = AutomationRejectionReason.ClaimLost,
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                ),
+            )
+            return
+        }
+        val durableDownload = repository.findDownload(durableDownloadId)
+        if (durableDownload == null) {
+            MediaRequestHandoffStore.forget(download.id)
+            repository.saveAutomationCommand(
+                command.copy(
+                    status = AutomationCommandStatus.Failed,
+                    resultMessage = "Durable enqueue could not read back its deterministic download row",
+                    rejectionReason = AutomationRejectionReason.ClaimLost,
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                ),
+            )
+            return
+        }
+        if (!repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Applied, resultMessage = "Queued download", downloadId = durableDownload.id, updatedAtEpochMs = System.currentTimeMillis()))) {
+            return
+        }
+        queueIntelligenceCoordinator.requestStart(durableDownload.id, userVisible = true, manual = true)
         navigate(AppRoute.Downloads)
     }
 

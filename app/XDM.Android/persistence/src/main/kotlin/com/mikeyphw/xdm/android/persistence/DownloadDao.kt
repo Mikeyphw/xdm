@@ -43,17 +43,26 @@ interface OrganizationDao {
     @Query("SELECT * FROM download_tags")
     fun observeTagAssignments(): Flow<List<DownloadTagCrossRef>>
 
+    @Query("SELECT * FROM download_tags")
+    suspend fun listTagAssignments(): List<DownloadTagCrossRef>
+
     @Query("SELECT * FROM saved_searches ORDER BY createdAtEpochMs DESC")
     fun observeSavedSearches(): Flow<List<SavedSearchEntity>>
 
     @Query("SELECT * FROM destination_rules ORDER BY priority DESC, name")
     fun observeDestinationRules(): Flow<List<DestinationRuleEntity>>
 
+    @Query("SELECT * FROM destination_rules ORDER BY priority DESC, name")
+    suspend fun listDestinationRules(): List<DestinationRuleEntity>
+
     @Query("SELECT * FROM duplicate_url_rules ORDER BY hostPattern")
     fun observeDuplicateRules(): Flow<List<DuplicateUrlRuleEntity>>
 
     @Query("SELECT * FROM clipboard_inbox ORDER BY updatedAtEpochMs DESC")
     fun observeClipboardInbox(): Flow<List<ClipboardInboxEntity>>
+
+    @Query("SELECT * FROM clipboard_inbox ORDER BY updatedAtEpochMs DESC")
+    suspend fun listClipboardInbox(): List<ClipboardInboxEntity>
 
     @Upsert
     suspend fun upsertTag(entity: TagEntity)
@@ -102,6 +111,9 @@ interface QueueDao {
 interface ScheduleDao {
     @Query("SELECT * FROM schedule_rules ORDER BY name")
     fun observeAll(): Flow<List<ScheduleRuleEntity>>
+
+    @Query("SELECT COUNT(*) FROM schedule_rules")
+    suspend fun count(): Int
 
     @Upsert
     suspend fun upsertAll(entities: List<ScheduleRuleEntity>)

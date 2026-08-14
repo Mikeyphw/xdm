@@ -119,7 +119,7 @@ class UixR6ReleaseSealContractTest {
             assertFalse("Normal UI constructs $planner", constructor.containsMatchIn(user))
         }
         assertEquals(6, Regex("^[ ]{4}[A-Z][A-Za-z]+\\(\"", RegexOption.MULTILINE).findAll(routes).count())
-        assertTrue(database.contains("version = 17"))
+        assertTrue(database.contains("version = 18"))
         assertTrue(build.contains("versionName = \"0.21.0\""))
         assertTrue(build.contains("versionCode = 22"))
     }

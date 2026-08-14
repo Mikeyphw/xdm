@@ -15,7 +15,7 @@ enum class AutomationCommandAction { EnqueueDownload, PromptAddDownload, Capture
 enum class AutomationCommandStatus { Received, Claimed, Executing, Applied, Accepted, Duplicate, Rejected, Executed, Failed }
 enum class ExternalCommandAuthorization { Untrusted, UserConfirmed, IntegrationToken }
 enum class ExternalNetworkTarget { Public, Loopback, PrivateAddress, LinkLocal, LocalHostname, Reserved, Unknown }
-enum class AutomationRejectionReason { None, MissingUrl, UnsupportedAction, UnsupportedUrl, SensitivePayloadRejected, BackendUnavailable, NoMediaDetected, Duplicate }
+enum class AutomationRejectionReason { None, MissingUrl, UnsupportedAction, UnsupportedUrl, SensitivePayloadRejected, BackendUnavailable, NoMediaDetected, Duplicate, UserDeclined, DurableHandoffFailed, ClaimLost }
 
 data class AutomationCommandDraft(
     val source: AutomationCommandSource,
@@ -83,6 +83,8 @@ data class AutomationCommandRecord(
     val originHost: String? = null,
     val sanitizedHeaders: String? = null,
     val rejectionReason: AutomationRejectionReason = AutomationRejectionReason.None,
+    /** Redacted, non-secret metadata needed to reconstruct an accepted external command after process death. */
+    val metadataJson: String? = null,
 )
 
 object ExternalUrlPolicy {

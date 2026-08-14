@@ -459,4 +459,171 @@ object Migrations {
         }
     }
 
+
+    val Migration17To18 = object : Migration(17, 18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE downloads ADD COLUMN attemptGeneration INTEGER NOT NULL DEFAULT 1")
+            db.execSQL("ALTER TABLE recovery_records ADD COLUMN attemptGeneration INTEGER NOT NULL DEFAULT 1")
+
+            rebuild(
+                db,
+                "checkpoints",
+                """CREATE TABLE checkpoints_new (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `checkpointJson` TEXT NOT NULL, `persistedAtEpochMs` INTEGER NOT NULL, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""",
+                """INSERT INTO checkpoints_new (id, downloadId, checkpointJson, persistedAtEpochMs, attemptGeneration)
+                    SELECT id, downloadId, checkpointJson, persistedAtEpochMs, 1 FROM checkpoints
+                    WHERE EXISTS(SELECT 1 FROM downloads WHERE downloads.id = checkpoints.downloadId)""",
+                listOf("CREATE UNIQUE INDEX index_checkpoints_downloadId ON checkpoints(downloadId)"),
+            )
+            rebuild(
+                db,
+                "checksum_expectations",
+                """CREATE TABLE checksum_expectations_new (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `algorithm` TEXT NOT NULL, `expectedHex` TEXT NOT NULL, `source` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL DEFAULT 0, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""",
+                """INSERT INTO checksum_expectations_new (id, downloadId, algorithm, expectedHex, source, createdAtEpochMs, attemptGeneration)
+                    SELECT id, downloadId, algorithm, expectedHex, source, 0, 1 FROM checksum_expectations
+                    WHERE EXISTS(SELECT 1 FROM downloads WHERE downloads.id = checksum_expectations.downloadId)""",
+                listOf(
+                    "CREATE INDEX index_checksum_expectations_downloadId ON checksum_expectations(downloadId)",
+                    "CREATE UNIQUE INDEX index_checksum_expectations_downloadId_algorithm ON checksum_expectations(downloadId, algorithm)",
+                ),
+            )
+            rebuild(
+                db,
+                "checksum_results",
+                """CREATE TABLE checksum_results_new (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `algorithm` TEXT NOT NULL, `calculatedHex` TEXT NOT NULL, `matchesExpectation` INTEGER, `verifiedAtEpochMs` INTEGER NOT NULL, `bytesVerified` INTEGER NOT NULL DEFAULT 0, `expectedHex` TEXT, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""",
+                """INSERT INTO checksum_results_new (id, downloadId, algorithm, calculatedHex, matchesExpectation, verifiedAtEpochMs, bytesVerified, expectedHex, attemptGeneration)
+                    SELECT id, downloadId, algorithm, calculatedHex, matchesExpectation, verifiedAtEpochMs, bytesVerified, expectedHex, 1 FROM checksum_results
+                    WHERE EXISTS(SELECT 1 FROM downloads WHERE downloads.id = checksum_results.downloadId)""",
+                listOf(
+                    "CREATE INDEX index_checksum_results_downloadId ON checksum_results(downloadId)",
+                    "CREATE UNIQUE INDEX index_checksum_results_downloadId_algorithm ON checksum_results(downloadId, algorithm)",
+                ),
+            )
+            rebuild(
+                db,
+                "verification_records",
+                """CREATE TABLE verification_records_new (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `status` TEXT NOT NULL, `algorithm` TEXT, `bytesVerified` INTEGER NOT NULL, `totalBytes` INTEGER, `message` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""",
+                """INSERT INTO verification_records_new (id, downloadId, status, algorithm, bytesVerified, totalBytes, message, createdAtEpochMs, updatedAtEpochMs, attemptGeneration)
+                    SELECT id, downloadId, status, algorithm, bytesVerified, totalBytes, message, createdAtEpochMs, updatedAtEpochMs, 1 FROM verification_records
+                    WHERE EXISTS(SELECT 1 FROM downloads WHERE downloads.id = verification_records.downloadId)""",
+                listOf(
+                    "CREATE INDEX index_verification_records_downloadId ON verification_records(downloadId)",
+                    "CREATE INDEX index_verification_records_status ON verification_records(status)",
+                    "CREATE INDEX index_verification_records_updatedAtEpochMs ON verification_records(updatedAtEpochMs)",
+                ),
+            )
+            rebuild(
+                db,
+                "trusted_block_manifests",
+                """CREATE TABLE trusted_block_manifests_new (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `fileLength` INTEGER NOT NULL, `blockSize` INTEGER NOT NULL, `algorithm` TEXT NOT NULL, `blocksJson` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""",
+                """INSERT INTO trusted_block_manifests_new (id, downloadId, fileLength, blockSize, algorithm, blocksJson, createdAtEpochMs, attemptGeneration)
+                    SELECT id, downloadId, fileLength, blockSize, algorithm, blocksJson, createdAtEpochMs, 1 FROM trusted_block_manifests
+                    WHERE EXISTS(SELECT 1 FROM downloads WHERE downloads.id = trusted_block_manifests.downloadId)""",
+                listOf(
+                    "CREATE UNIQUE INDEX index_trusted_block_manifests_downloadId ON trusted_block_manifests(downloadId)",
+                    "CREATE INDEX index_trusted_block_manifests_createdAtEpochMs ON trusted_block_manifests(createdAtEpochMs)",
+                ),
+            )
+            rebuild(
+                db,
+                "schedule_rules",
+                """CREATE TABLE schedule_rules_new (`id` TEXT NOT NULL, `queueId` TEXT, `name` TEXT NOT NULL, `enabled` INTEGER NOT NULL, `constraintsJson` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`queueId`) REFERENCES `queues`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL)""",
+                """INSERT INTO schedule_rules_new (id, queueId, name, enabled, constraintsJson)
+                    SELECT id, CASE WHEN queueId IS NULL OR EXISTS(SELECT 1 FROM queues WHERE queues.id = schedule_rules.queueId) THEN queueId ELSE NULL END, name, enabled, constraintsJson FROM schedule_rules""",
+                listOf("CREATE INDEX index_schedule_rules_queueId ON schedule_rules(queueId)"),
+            )
+            rebuild(
+                db,
+                "finalization_journals",
+                """CREATE TABLE finalization_journals_new (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `stage` TEXT NOT NULL, `sourcePath` TEXT NOT NULL, `destinationUri` TEXT NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `stagingPath` TEXT NOT NULL DEFAULT '', `bytesExpected` INTEGER, `bytesPromoted` INTEGER NOT NULL DEFAULT 0, `checksumAlgorithm` TEXT, `checksumHex` TEXT, `message` TEXT NOT NULL DEFAULT '', `createdAtEpochMs` INTEGER NOT NULL DEFAULT 0, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""",
+                """INSERT INTO finalization_journals_new (id, downloadId, stage, sourcePath, destinationUri, updatedAtEpochMs, stagingPath, bytesExpected, bytesPromoted, checksumAlgorithm, checksumHex, message, createdAtEpochMs, attemptGeneration)
+                    SELECT id, downloadId, stage, sourcePath, destinationUri, updatedAtEpochMs, stagingPath, bytesExpected, bytesPromoted, checksumAlgorithm, checksumHex, message, createdAtEpochMs, 1 FROM finalization_journals
+                    WHERE EXISTS(SELECT 1 FROM downloads WHERE downloads.id = finalization_journals.downloadId)""",
+                listOf(
+                    "CREATE UNIQUE INDEX index_finalization_journals_downloadId ON finalization_journals(downloadId)",
+                    "CREATE INDEX index_finalization_journals_stage ON finalization_journals(stage)",
+                    "CREATE INDEX index_finalization_journals_updatedAtEpochMs ON finalization_journals(updatedAtEpochMs)",
+                ),
+            )
+            rebuild(
+                db,
+                "media_captures",
+                """CREATE TABLE media_captures_new (`id` TEXT NOT NULL, `sourceUrl` TEXT NOT NULL, `pageUrl` TEXT, `title` TEXT NOT NULL, `status` TEXT NOT NULL, `kind` TEXT NOT NULL, `mimeType` TEXT, `container` TEXT, `codecs` TEXT, `durationMs` INTEGER, `thumbnailUrl` TEXT, `fileName` TEXT NOT NULL, `variantCount` INTEGER NOT NULL, `downloadId` TEXT, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `selectedVariantId` TEXT DEFAULT NULL, `selectedVariantUrl` TEXT DEFAULT NULL, `manifestExpiresAtEpochMs` INTEGER DEFAULT NULL, `lastResolvedAtEpochMs` INTEGER DEFAULT NULL, `resolutionStatus` TEXT NOT NULL DEFAULT 'Unresolved', PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL)""",
+                """INSERT INTO media_captures_new SELECT id, sourceUrl, pageUrl, title, status, kind, mimeType, container, codecs, durationMs, thumbnailUrl, fileName, variantCount,
+                    CASE WHEN downloadId IS NULL OR EXISTS(SELECT 1 FROM downloads WHERE downloads.id = media_captures.downloadId) THEN downloadId ELSE NULL END,
+                    createdAtEpochMs, updatedAtEpochMs, selectedVariantId, selectedVariantUrl, manifestExpiresAtEpochMs, lastResolvedAtEpochMs, resolutionStatus FROM media_captures""",
+                listOf(
+                    "CREATE INDEX index_media_captures_downloadId ON media_captures(downloadId)",
+                    "CREATE INDEX index_media_captures_status ON media_captures(status)",
+                    "CREATE INDEX index_media_captures_kind ON media_captures(kind)",
+                    "CREATE INDEX index_media_captures_updatedAtEpochMs ON media_captures(updatedAtEpochMs)",
+                ),
+            )
+            rebuild(
+                db,
+                "media_variants",
+                """CREATE TABLE media_variants_new (`id` TEXT NOT NULL, `captureId` TEXT NOT NULL, `url` TEXT NOT NULL, `kind` TEXT NOT NULL, `mimeType` TEXT, `width` INTEGER, `height` INTEGER, `bitrateBitsPerSecond` INTEGER, `codecs` TEXT, `language` TEXT, `position` INTEGER NOT NULL, `displayLabel` TEXT NOT NULL DEFAULT '', `expiresAtEpochMs` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`captureId`) REFERENCES `media_captures`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""",
+                """INSERT INTO media_variants_new SELECT * FROM media_variants WHERE EXISTS(SELECT 1 FROM media_captures WHERE media_captures.id = media_variants.captureId)""",
+                listOf(
+                    "CREATE INDEX index_media_variants_captureId ON media_variants(captureId)",
+                    "CREATE INDEX index_media_variants_kind ON media_variants(kind)",
+                    "CREATE INDEX index_media_variants_position ON media_variants(position)",
+                ),
+            )
+            rebuild(
+                db,
+                "automation_commands",
+                """CREATE TABLE automation_commands_new (`id` TEXT NOT NULL, `idempotencyKey` TEXT NOT NULL, `source` TEXT NOT NULL, `action` TEXT NOT NULL, `url` TEXT, `fileName` TEXT, `pageTitle` TEXT, `pageUrl` TEXT, `mediaCaptureId` TEXT, `downloadId` TEXT, `status` TEXT NOT NULL, `resultMessage` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `originPackage` TEXT DEFAULT NULL, `claimedOriginPackage` TEXT DEFAULT NULL, `verifiedIntegrationId` TEXT DEFAULT NULL, `authorization` TEXT NOT NULL DEFAULT 'Untrusted', `privateNetworkApproved` INTEGER NOT NULL DEFAULT 0, `cleartextCredentialsApproved` INTEGER NOT NULL DEFAULT 0, `originHost` TEXT DEFAULT NULL, `sanitizedHeaders` TEXT DEFAULT NULL, `rejectionReason` TEXT NOT NULL DEFAULT 'None', `metadataJson` TEXT DEFAULT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL, FOREIGN KEY(`mediaCaptureId`) REFERENCES `media_captures`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL)""",
+                """INSERT INTO automation_commands_new (id, idempotencyKey, source, action, url, fileName, pageTitle, pageUrl, mediaCaptureId, downloadId, status, resultMessage, createdAtEpochMs, updatedAtEpochMs, originPackage, claimedOriginPackage, verifiedIntegrationId, authorization, privateNetworkApproved, cleartextCredentialsApproved, originHost, sanitizedHeaders, rejectionReason, metadataJson)
+                    SELECT id, idempotencyKey, source, action, url, fileName, pageTitle, pageUrl,
+                    CASE WHEN mediaCaptureId IS NULL OR EXISTS(SELECT 1 FROM media_captures WHERE media_captures.id = automation_commands.mediaCaptureId) THEN mediaCaptureId ELSE NULL END,
+                    CASE WHEN downloadId IS NULL OR EXISTS(SELECT 1 FROM downloads WHERE downloads.id = automation_commands.downloadId) THEN downloadId ELSE NULL END,
+                    status, resultMessage, createdAtEpochMs, updatedAtEpochMs, originPackage, claimedOriginPackage, verifiedIntegrationId, authorization, privateNetworkApproved, cleartextCredentialsApproved, originHost, sanitizedHeaders, rejectionReason, NULL FROM automation_commands""",
+                listOf(
+                    "CREATE UNIQUE INDEX index_automation_commands_idempotencyKey ON automation_commands(idempotencyKey)",
+                    "CREATE INDEX index_automation_commands_source ON automation_commands(source)",
+                    "CREATE INDEX index_automation_commands_action ON automation_commands(action)",
+                    "CREATE INDEX index_automation_commands_status ON automation_commands(status)",
+                    "CREATE INDEX index_automation_commands_updatedAtEpochMs ON automation_commands(updatedAtEpochMs)",
+                    "CREATE INDEX index_automation_commands_downloadId ON automation_commands(downloadId)",
+                    "CREATE INDEX index_automation_commands_mediaCaptureId ON automation_commands(mediaCaptureId)",
+                ),
+            )
+            rebuild(
+                db,
+                "notification_records",
+                """CREATE TABLE notification_records_new (`id` TEXT NOT NULL, `downloadId` TEXT, `title` TEXT NOT NULL, `message` TEXT NOT NULL, `severity` TEXT NOT NULL, `dismissed` INTEGER NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL)""",
+                """INSERT INTO notification_records_new SELECT id,
+                    CASE WHEN downloadId IS NULL OR EXISTS(SELECT 1 FROM downloads WHERE downloads.id = notification_records.downloadId) THEN downloadId ELSE NULL END,
+                    title, message, severity, dismissed, createdAtEpochMs FROM notification_records""",
+                listOf(
+                    "CREATE INDEX index_notification_records_downloadId ON notification_records(downloadId)",
+                    "CREATE INDEX index_notification_records_createdAtEpochMs ON notification_records(createdAtEpochMs)",
+                ),
+            )
+            rebuild(
+                db,
+                "download_tags",
+                """CREATE TABLE download_tags_new (`downloadId` TEXT NOT NULL, `tagId` TEXT NOT NULL, PRIMARY KEY(`downloadId`, `tagId`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(`tagId`) REFERENCES `tags`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""",
+                """INSERT INTO download_tags_new SELECT downloadId, tagId FROM download_tags
+                    WHERE EXISTS(SELECT 1 FROM downloads WHERE downloads.id = download_tags.downloadId)
+                      AND EXISTS(SELECT 1 FROM tags WHERE tags.id = download_tags.tagId)""",
+                listOf("CREATE INDEX index_download_tags_tagId ON download_tags(tagId)"),
+            )
+        }
+    }
+
+    private fun rebuild(
+        db: SupportSQLiteDatabase,
+        table: String,
+        createSql: String,
+        copySql: String,
+        indices: List<String>,
+    ) {
+        db.execSQL(createSql)
+        db.execSQL(copySql)
+        db.execSQL("DROP TABLE $table")
+        db.execSQL("ALTER TABLE ${table}_new RENAME TO $table")
+        indices.forEach(db::execSQL)
+    }
+
 }

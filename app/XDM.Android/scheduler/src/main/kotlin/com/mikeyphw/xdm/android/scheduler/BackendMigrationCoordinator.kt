@@ -85,11 +85,12 @@ class BackendMigrationCoordinator(
                 "The source backend could not be stopped and inspected safely: ${error.message ?: error::class.java.simpleName}",
             )
             migrationStore.save(record)
-            store.save(
+            persistOrThrow(
                 download.copy(
                     state = DownloadState.RecoveryRequired,
                     speedBytesPerSecond = 0,
                     errorMessage = record.message,
+                    attemptGeneration = download.attemptGeneration,
                     updatedAtEpochMs = clock(),
                 ),
             )
@@ -162,13 +163,13 @@ class BackendMigrationCoordinator(
             )
             migrationStore.save(record)
 
-            val started = target.add(request, prepared)
+            val started = target.add(request.copy(attemptGeneration = targetOwnership.generation), prepared)
             targetTask = started
             val active = ownershipStore.attachTask(downloadId, targetOwnership.generation, started.taskId)
             target.onOwnershipAttached(started.taskId, active)
             if (started.requiresActivation) target.activate(started.taskId)
             store.saveBackendTask(downloadId, targetBackend, started.taskId, active)
-            store.save(
+            persistOrThrow(
                 download.copy(
                     backend = targetBackend,
                     requestedBackend = targetBackend,
@@ -182,6 +183,7 @@ class BackendMigrationCoordinator(
                     bytesReceived = 0,
                     speedBytesPerSecond = 0,
                     errorMessage = null,
+                    attemptGeneration = targetOwnership.generation,
                     updatedAtEpochMs = clock(),
                 ),
             )
@@ -216,11 +218,12 @@ class BackendMigrationCoordinator(
             )
             migrationStore.save(record)
             val current = store.find(downloadId) ?: download
-            store.save(
+            persistOrThrow(
                 current.copy(
                     state = if (recoveryRequired) DownloadState.RecoveryRequired else DownloadState.Paused,
                     speedBytesPerSecond = 0,
                     errorMessage = record.message,
+                    attemptGeneration = targetOwnershipGeneration ?: current.attemptGeneration,
                     updatedAtEpochMs = clock(),
                 ),
             )
@@ -246,6 +249,7 @@ class BackendMigrationCoordinator(
         conflictPolicy = conflictPolicy,
         mimeType = mimeType,
         allowBackendFallback = false,
+        attemptGeneration = attemptGeneration,
     )
 
     private companion object {
@@ -257,4 +261,11 @@ class BackendMigrationCoordinator(
             DownloadState.RecoveryRequired,
         )
     }
+
+    private suspend fun persistOrThrow(download: Download) {
+        check(store.save(download)) {
+            "Rejected stale backend-migration write for ${download.id} generation ${download.attemptGeneration} at ${download.updatedAtEpochMs}"
+        }
+    }
+
 }

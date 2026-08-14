@@ -105,6 +105,7 @@ class EmbeddedAria2Backend(
         require(preparation.backend == BackendType.Aria2) { "aria2 received a foreign preparation" }
         require(preparation.downloadId == request.id) { "aria2 preparation belongs to a different download" }
         require(preparation.runtimeIdentity == runtimeIdentity) { "aria2 preparation belongs to a stale application session" }
+        require(request.attemptGeneration > 0L) { "aria2 task requires a durable ownership generation before creation" }
         val prepared = requireNotNull(preparations.remove(preparation.preparationId)) { "Unknown or consumed aria2 preparation" }
         require(prepared.files.artifacts() == preparation.artifacts) { "aria2 artifact identity changed after ownership preparation" }
         val rpc = processManager.rpc()
@@ -142,7 +143,7 @@ class EmbeddedAria2Backend(
             ownershipMetadataPath = prepared.files.ownershipMetadata.canonicalPath,
             sessionFilePath = prepared.files.session.canonicalPath,
             expectedLength = request.expectedLength,
-            ownershipGeneration = 0,
+            ownershipGeneration = request.attemptGeneration,
             backendInstanceId = runtimeIdentity.instanceId,
             backendSessionId = runtimeIdentity.sessionId,
             status = MAPPING_CREATED_PAUSED,
@@ -162,7 +163,16 @@ class EmbeddedAria2Backend(
             throw error
         }
         controls[gid] = Aria2Control(request, prepared.destination, prepared.files)
-        val paused = BackendSnapshot(gid, DownloadState.Paused, 0, request.expectedLength, 0)
+        val paused = BackendSnapshot(
+            taskId = gid,
+            state = DownloadState.Paused,
+            bytesReceived = 0,
+            totalBytes = request.expectedLength,
+            speedBytesPerSecond = 0,
+            attemptGeneration = request.attemptGeneration,
+            backendInstanceId = runtimeIdentity.instanceId,
+            backendSessionId = runtimeIdentity.sessionId,
+        )
         snapshots[gid] = paused
         return BackendTask(gid, BackendType.Aria2, requiresActivation = true)
     }
@@ -171,11 +181,11 @@ class EmbeddedAria2Backend(
         val mapping = requireNotNull(mappingStore.findByGid(taskId)) { "aria2 GID has no durable application mapping" }
         require(mapping.downloadId == ownership.downloadId) { "aria2 GID belongs to another download" }
         require(mapping.destinationKey == ownership.destinationKey) { "aria2 destination identity changed before activation" }
+        require(mapping.ownershipGeneration == ownership.generation) { "aria2 mapping generation changed before activation" }
+        require(mapping.backendInstanceId == ownership.runtimeIdentity.instanceId) { "aria2 mapping belongs to another installation" }
         require(ownership.artifacts.primary == File(mapping.outputPath).canonicalFile.toURI().toString()) { "aria2 output is not the owned partial file" }
         val now = clock()
         val attached = mapping.copy(
-            ownershipGeneration = ownership.generation,
-            backendInstanceId = ownership.runtimeIdentity.instanceId,
             backendSessionId = ownership.runtimeIdentity.sessionId,
             status = MAPPING_ATTACHED,
             updatedAtEpochMs = now,
@@ -188,6 +198,8 @@ class EmbeddedAria2Backend(
     override suspend fun activate(taskId: String) {
         val mapping = requireNotNull(mappingStore.findByGid(taskId)) { "aria2 GID has no durable mapping" }
         require(mapping.ownershipGeneration > 0) { "aria2 task cannot write before ownership attachment" }
+        require(mapping.status == MAPPING_ATTACHED) { "aria2 task cannot activate before durable ownership attachment" }
+        require(mapping.backendInstanceId == runtimeIdentity.instanceId) { "aria2 task belongs to another installation" }
         processManager.rpc().unpause(taskId)
         updateMapping(mapping, MAPPING_ACTIVE)
     }
@@ -200,17 +212,24 @@ class EmbeddedAria2Backend(
         val rpc = processManager.rpc()
         val status = runCatching { rpc.tellStatus(taskId) }.getOrNull()
         if (status?.status !in TERMINAL_RPC_STATES) runCatching { rpc.pause(taskId, force = true) }.getOrThrow()
-        mappingStore.findByGid(taskId)?.let { updateMapping(it, MAPPING_PAUSED) }
-        snapshots[taskId] = status?.toSnapshot(DownloadState.Paused) ?: snapshots[taskId]?.copy(state = DownloadState.Paused, speedBytesPerSecond = 0)
-            ?: BackendSnapshot(taskId, DownloadState.Paused, 0, null, 0)
+        val mapping = mappingStore.findByGid(taskId)
+        mapping?.let { updateMapping(it, MAPPING_PAUSED) }
+        snapshots[taskId] = (status?.toSnapshot(DownloadState.Paused) ?: snapshots[taskId]?.copy(state = DownloadState.Paused, speedBytesPerSecond = 0)
+            ?: BackendSnapshot(taskId, DownloadState.Paused, 0, null, 0)).let { snapshot ->
+                mapping?.let(snapshot::withProof) ?: snapshot
+            }
         rpc.saveSession()
     }
 
     override suspend fun resume(taskId: String) {
+        val mapping = requireNotNull(mappingStore.findByGid(taskId)) { "aria2 GID has no durable mapping" }
+        require(mapping.ownershipGeneration > 0) { "aria2 task cannot resume without durable ownership" }
+        require(mapping.status != MAPPING_CREATED_PAUSED) { "aria2 task cannot resume before durable ownership attachment" }
+        require(mapping.backendInstanceId == runtimeIdentity.instanceId) { "aria2 task belongs to another installation" }
         val rpc = processManager.rpc()
         val status = rpc.tellStatus(taskId)
         if (status.status in setOf(Aria2TaskStatusValue.Paused, Aria2TaskStatusValue.Waiting)) rpc.unpause(taskId)
-        mappingStore.findByGid(taskId)?.let { updateMapping(it, MAPPING_ACTIVE) }
+        updateMapping(mapping, MAPPING_ACTIVE)
         rpc.saveSession()
     }
 
@@ -219,8 +238,11 @@ class EmbeddedAria2Backend(
         val status = runCatching { rpc.tellStatus(taskId) }.getOrNull()
         if (status?.status !in TERMINAL_RPC_STATES) rpc.remove(taskId, force = true)
         rpc.saveSession()
-        mappingStore.findByGid(taskId)?.let { updateMapping(it, MAPPING_REMOVED) }
-        snapshots[taskId] = BackendSnapshot(taskId, DownloadState.Cancelled, status?.completedLength ?: 0, status?.totalLength, 0)
+        val mapping = mappingStore.findByGid(taskId)
+        mapping?.let { updateMapping(it, MAPPING_REMOVED) }
+        snapshots[taskId] = BackendSnapshot(taskId, DownloadState.Cancelled, status?.completedLength ?: 0, status?.totalLength, 0).let { snapshot ->
+            mapping?.let(snapshot::withProof) ?: snapshot
+        }
     }
 
     override suspend fun remove(taskId: String) {
@@ -268,7 +290,17 @@ class EmbeddedAria2Backend(
                 state = DownloadState.RecoveryRequired,
                 speedBytesPerSecond = 0,
                 errorMessage = safeMessage(error),
-            ) ?: BackendSnapshot(taskId, DownloadState.RecoveryRequired, 0, mapping.expectedLength, 0, errorMessage = safeMessage(error))
+            ) ?: BackendSnapshot(
+                taskId = taskId,
+                state = DownloadState.RecoveryRequired,
+                bytesReceived = 0,
+                totalBytes = mapping.expectedLength,
+                speedBytesPerSecond = 0,
+                errorMessage = safeMessage(error),
+                attemptGeneration = mapping.ownershipGeneration,
+                backendInstanceId = mapping.backendInstanceId,
+                backendSessionId = mapping.backendSessionId,
+            )
         }
     }
 
@@ -277,7 +309,7 @@ class EmbeddedAria2Backend(
         try {
             eventSource.observe(taskId).collect { status ->
                 if (status.status == Aria2TaskStatusValue.Complete) {
-                    emit(status.toSnapshot(DownloadState.Verifying))
+                    emit(status.toSnapshot(DownloadState.Verifying).withProof(mappingStore.findByGid(taskId) ?: mapping))
                 }
                 emit(statusToBackendSnapshot(mappingStore.findByGid(taskId) ?: mapping, status))
             }
@@ -290,6 +322,9 @@ class EmbeddedAria2Backend(
                     totalBytes = mapping.expectedLength,
                     speedBytesPerSecond = 0,
                     errorMessage = safeMessage(error),
+                    attemptGeneration = mapping.ownershipGeneration,
+                    backendInstanceId = mapping.backendInstanceId,
+                    backendSessionId = mapping.backendSessionId,
                 ),
             )
         }
@@ -397,11 +432,16 @@ class EmbeddedAria2Backend(
             Aria2TaskStatusValue.Unknown -> status.toSnapshot(DownloadState.RecoveryRequired, "aria2 returned an unknown task state")
             Aria2TaskStatusValue.Complete -> finalizeCompleted(mapping, status)
         }
-        snapshots[status.gid] = snapshot
+        val boundSnapshot = snapshot.copy(
+            attemptGeneration = mapping.ownershipGeneration,
+            backendInstanceId = mapping.backendInstanceId,
+            backendSessionId = mapping.backendSessionId,
+        )
+        snapshots[status.gid] = boundSnapshot
         if (status.status != Aria2TaskStatusValue.Complete) {
             updateMappingFromStatus(mapping, status)
         }
-        return snapshot
+        return boundSnapshot
     }
 
     private suspend fun finalizeCompleted(mapping: Aria2TaskMapping, status: Aria2TaskStatus): BackendSnapshot =
@@ -424,7 +464,7 @@ class EmbeddedAria2Backend(
             require(destination.artifacts.stagingFile.canonicalFile == output.canonicalFile) {
                 "Recovered aria2 destination no longer resolves to the owned staging file"
             }
-            snapshots[mapping.gid] = status.toSnapshot(DownloadState.Finalizing)
+            snapshots[mapping.gid] = status.toSnapshot(DownloadState.Finalizing).withProof(mapping)
             val promotion = try {
                 destination.promote()
             } catch (publication: DestinationPublicationException) {
@@ -444,6 +484,9 @@ class EmbeddedAria2Backend(
                     speedBytesPerSecond = 0,
                     effectiveUrl = status.primaryUri(),
                     errorMessage = publication.retryMessage,
+                    attemptGeneration = mapping.ownershipGeneration,
+                    backendInstanceId = mapping.backendInstanceId,
+                    backendSessionId = mapping.backendSessionId,
                 )
             }
             val completed = BackendSnapshot(
@@ -454,6 +497,9 @@ class EmbeddedAria2Backend(
                 speedBytesPerSecond = 0,
                 effectiveUrl = status.primaryUri(),
                 completedUri = promotion.committedUri,
+                attemptGeneration = mapping.ownershipGeneration,
+                backendInstanceId = mapping.backendInstanceId,
+                backendSessionId = mapping.backendSessionId,
             )
             runCatching { updateMapping(mapping, MAPPING_COMPLETED) }
             completed
@@ -549,6 +595,12 @@ class EmbeddedAria2Backend(
             )
         }
     }
+
+    private fun BackendSnapshot.withProof(mapping: Aria2TaskMapping) = copy(
+        attemptGeneration = mapping.ownershipGeneration,
+        backendInstanceId = mapping.backendInstanceId,
+        backendSessionId = mapping.backendSessionId,
+    )
 
     private fun Aria2TaskStatus.toSnapshot(state: DownloadState, error: String? = null) = BackendSnapshot(
         taskId = gid,

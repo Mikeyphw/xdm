@@ -47,7 +47,7 @@ RELEASE_VALIDATORS=(
   tools/verify-phase10-release-artifacts.py
 )
 
-# Historical validators referenced by matrix rows are superseded by current bug-hunt validators when their original phase assumptions (for example Room schema 14/current_overlay) are no longer true in schema 17. Kept here so matrix rows have an explicit owning runner while static mode does not execute stale historical gates.
+# Historical validators referenced by matrix rows are superseded by current bug-hunt validators when their original phase assumptions (for example Room schema 14/current_overlay) are no longer true in schema 18. Kept here so matrix rows have an explicit owning runner while static mode does not execute stale historical gates.
 LEGACY_VALIDATORS_REFERENCED_BY_MATRIX=(
   tools/validate-phase60-runtime-recovery-flow-seal.py
   tools/validate-phase51-recovery-storage-doctor.py

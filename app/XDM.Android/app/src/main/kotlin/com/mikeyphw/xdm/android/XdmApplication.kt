@@ -97,6 +97,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
                 Migrations.Migration14To15,
                 Migrations.Migration15To16,
                 Migrations.Migration16To17,
+                Migrations.Migration17To18,
             )
             .build()
         val repository = DownloadRepository(database)

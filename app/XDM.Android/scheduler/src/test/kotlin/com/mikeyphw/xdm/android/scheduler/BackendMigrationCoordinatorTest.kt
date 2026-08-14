@@ -58,6 +58,8 @@ class BackendMigrationCoordinatorTest {
         val ownership = requireNotNull(fixture.ownership.findByDownload("download"))
         assertEquals(BackendType.Aria2, ownership.backend)
         assertTrue(ownership.generation > 1)
+        assertEquals(ownership.generation, fixture.target.lastAddAttemptGeneration)
+        assertEquals(ownership.generation, fixture.store.items.getValue("download").attemptGeneration)
         assertEquals(BackendType.Aria2, fixture.store.items.getValue("download").backend)
     }
 
@@ -141,7 +143,7 @@ private class FakeStore(download: Download) : TransferDownloadStore {
     val deletedBackendTasks = mutableListOf<String>()
     override suspend fun find(downloadId: String) = items[downloadId]
     override suspend fun findByStates(states: Set<DownloadState>) = items.values.filter { it.state in states }
-    override suspend fun save(download: Download) { items[download.id] = download }
+    override suspend fun save(download: Download): Boolean { items[download.id] = download; return true }
     override suspend fun saveBackendTask(downloadId: String, backend: BackendType, backendTaskId: String, ownership: BackendOwnership) = Unit
     override suspend fun deleteBackendTask(downloadId: String) { deletedBackendTasks += downloadId }
 }
@@ -154,6 +156,8 @@ private class MigrationBackend(
     override val backendId = type.name.lowercase()
     override val runtimeIdentity = BackendRuntimeIdentity("instance-$backendId", "session-$backendId")
     val events = mutableListOf<String>()
+    var lastAddAttemptGeneration: Long? = null
+        private set
     private val snapshot = MutableStateFlow(BackendSnapshot("task-$backendId", DownloadState.Paused, 0, 1024, 0))
 
     override suspend fun capabilities() = BackendCapabilities(
@@ -179,6 +183,7 @@ private class MigrationBackend(
 
     override suspend fun add(request: DownloadRequest, preparation: BackendPreparation): BackendTask {
         events += "add"
+        lastAddAttemptGeneration = request.attemptGeneration
         if (failAdd) error("target add failed")
         return BackendTask("task-$backendId", type, requiresActivation = true)
     }

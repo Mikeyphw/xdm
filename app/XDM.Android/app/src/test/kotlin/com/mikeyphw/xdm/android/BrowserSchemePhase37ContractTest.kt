@@ -65,15 +65,15 @@ class BrowserSchemePhase37ContractTest {
 
     @Test
     fun customSchemeIsParsedBeforeGenericExternalReceiverRouting() {
-        val mainActivity = File(
+        val externalSecurity = File(
             androidRoot(),
-            "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+            "app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationSecurity.kt",
         ).readText()
-        val parserIndex = mainActivity.indexOf("XdmBrowserDeepLinkParser.parse")
-        val genericIndex = mainActivity.indexOf("shouldOpenExternalAddPrompt")
+        val parserIndex = externalSecurity.indexOf("XdmBrowserDeepLinkParser.parseDetailed")
+        val genericIndex = externalSecurity.indexOf("val action = intent.action.orEmpty()")
         assertTrue("Custom scheme parser must run before generic receiver routing", parserIndex in 0 until genericIndex)
-        assertTrue(mainActivity.contains("BuildConfig.XDM_BROWSER_SCHEME"))
-        assertTrue(mainActivity.contains("toAutomationCommandDraft"))
+        assertTrue(externalSecurity.contains("BuildConfig.XDM_BROWSER_SCHEME"))
+        assertTrue(externalSecurity.contains("toAutomationCommandDraft"))
     }
 
     @Test

@@ -44,8 +44,8 @@ termux_templates = text("app/src/main/kotlin/com/mikeyphw/xdm/android/termux/Ter
 
 media_gate = manifest.get("media_final_validation_gate", {})
 require('versionName = "0.21.0"' in build, "media final gate must track current app version 0.21.0")
-require(re.search(r"version\s*=\s*17\b", database) is not None, "media final gate must track current Room schema 17")
-require(media_gate.get("schema_version_current") in {17, None} or media_gate.get("schema_version_unchanged") == 17, "PROJECT_MANIFEST media gate must be current-schema aware")
+require(re.search(r"version\s*=\s*18\b", database) is not None, "media final gate must track current Room schema 18")
+require(media_gate.get("schema_version_current") in {18, None} or media_gate.get("schema_version_unchanged") == 18, "PROJECT_MANIFEST media gate must be current-schema aware")
 require(media_gate.get("validation_reenabled") is True, "PROJECT_MANIFEST media gate must keep validation enabled")
 for marker in [
     "MediaFinalValidationGatePlanner",

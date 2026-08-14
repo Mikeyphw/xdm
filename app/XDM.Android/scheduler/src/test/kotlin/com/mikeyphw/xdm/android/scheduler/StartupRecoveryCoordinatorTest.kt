@@ -48,7 +48,7 @@ class StartupRecoveryCoordinatorTest {
 private class InMemoryTransferDownloadStore(initial: List<Download> = emptyList()) : TransferDownloadStore {
     private val rows = initial.associateBy { it.id }.toMutableMap()
     override suspend fun find(downloadId: String): Download? = rows[downloadId]
-    override suspend fun save(download: Download) { rows[download.id] = download }
+    override suspend fun save(download: Download): Boolean { rows[download.id] = download; return true }
     override suspend fun findByStates(states: Set<DownloadState>): List<Download> = rows.values.filter { it.state in states }
     override suspend fun saveBackendTask(downloadId: String, backend: BackendType, backendTaskId: String, ownership: BackendOwnership) = Unit
     override suspend fun deleteBackendTask(downloadId: String) = Unit

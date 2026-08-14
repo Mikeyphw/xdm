@@ -47,8 +47,11 @@ class StartupRecoveryCoordinator(
                 reason = "Download was ${download.state.name} when the previous process stopped; it remains paused until the user acts.",
                 action = if (classification == RecoveryClassification.FinalizationInterrupted) RecoveryAction.Validate else RecoveryAction.Resume,
                 safeToResume = false,
+                attemptGeneration = download.attemptGeneration,
             )
-            downloadStore.save(download.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = "Startup recovery requires validation before resuming.", updatedAtEpochMs = clock()))
+            check(downloadStore.save(download.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = "Startup recovery requires validation before resuming.", updatedAtEpochMs = clock()))) {
+                "Startup recovery could not persist ${download.id}; a newer generation or state won the write"
+            }
         }
     }
 
@@ -57,11 +60,11 @@ class StartupRecoveryCoordinator(
             val primary = ownership.artifacts.primary
             val file = primary.toFileOrNull()
             when {
-                ownership.reconciliation == BackendReconciliationClassification.MissingArtifact -> records.putRecord(ownership.downloadId, primary, RecoveryClassification.MissingPartialFile, ownership.reconciliationMessage ?: "Backend ownership points to a missing artifact.", RecoveryAction.RestartFromZero)
-                file != null && !file.exists() -> records.putRecord(ownership.downloadId, primary, RecoveryClassification.MissingPartialFile, "The owned backend artifact no longer exists.", RecoveryAction.RestartFromZero)
-                ownership.reconciliation == BackendReconciliationClassification.BackendTaskOrphaned -> records.putRecord(ownership.downloadId, primary, RecoveryClassification.BackendTaskOrphaned, ownership.reconciliationMessage ?: "A backend task exists without a verified active owner.", RecoveryAction.Validate)
-                ownership.reconciliation == BackendReconciliationClassification.ResumableArtifact -> records.putRecord(ownership.downloadId, primary, RecoveryClassification.ReadyToResume, ownership.reconciliationMessage ?: "A resumable backend artifact is available.", RecoveryAction.Resume, safeToResume = true)
-                ownership.reconciliation == BackendReconciliationClassification.ConflictingArtifact -> records.putRecord(ownership.downloadId, primary, RecoveryClassification.OrphanedArtifact, ownership.reconciliationMessage ?: "Conflicting backend artifacts require review.", RecoveryAction.AdoptOrphan)
+                ownership.reconciliation == BackendReconciliationClassification.MissingArtifact -> records.putRecord(ownership.downloadId, primary, RecoveryClassification.MissingPartialFile, ownership.reconciliationMessage ?: "Backend ownership points to a missing artifact.", RecoveryAction.RestartFromZero, attemptGeneration = ownership.generation)
+                file != null && !file.exists() -> records.putRecord(ownership.downloadId, primary, RecoveryClassification.MissingPartialFile, "The owned backend artifact no longer exists.", RecoveryAction.RestartFromZero, attemptGeneration = ownership.generation)
+                ownership.reconciliation == BackendReconciliationClassification.BackendTaskOrphaned -> records.putRecord(ownership.downloadId, primary, RecoveryClassification.BackendTaskOrphaned, ownership.reconciliationMessage ?: "A backend task exists without a verified active owner.", RecoveryAction.Validate, attemptGeneration = ownership.generation)
+                ownership.reconciliation == BackendReconciliationClassification.ResumableArtifact -> records.putRecord(ownership.downloadId, primary, RecoveryClassification.ReadyToResume, ownership.reconciliationMessage ?: "A resumable backend artifact is available.", RecoveryAction.Resume, safeToResume = true, attemptGeneration = ownership.generation)
+                ownership.reconciliation == BackendReconciliationClassification.ConflictingArtifact -> records.putRecord(ownership.downloadId, primary, RecoveryClassification.OrphanedArtifact, ownership.reconciliationMessage ?: "Conflicting backend artifacts require review.", RecoveryAction.AdoptOrphan, attemptGeneration = ownership.generation)
             }
         }
     }
@@ -75,6 +78,7 @@ class StartupRecoveryCoordinator(
                 classification = classification,
                 reason = "Backend migration stopped at ${migration.stage.name}: ${migration.message}",
                 action = RecoveryAction.Validate,
+                attemptGeneration = migration.targetGeneration ?: migration.sourceGeneration,
             )
         }
     }
@@ -91,6 +95,7 @@ class StartupRecoveryCoordinator(
                 classification = classification,
                 reason = "Finalization stopped at ${journal.stage.name}: ${journal.message}",
                 action = if (classification == RecoveryClassification.CompletionRecovered) RecoveryAction.Validate else RecoveryAction.VerifyAndRepair,
+                attemptGeneration = journal.attemptGeneration,
             )
         }
     }
@@ -111,9 +116,23 @@ class StartupRecoveryCoordinator(
         reason: String,
         action: RecoveryAction,
         safeToResume: Boolean = false,
+        attemptGeneration: Long = 1L,
     ) {
         val id = "recovery-${downloadId ?: artifactPath.hashCode()}-${classification.name}"
-        put(id, RecoveryRecord(id, downloadId, artifactPath, classification, reason, clock(), action, safeToResume))
+        put(
+            id,
+            RecoveryRecord(
+                id = id,
+                downloadId = downloadId,
+                artifactPath = artifactPath,
+                classification = classification,
+                reason = reason,
+                createdAtEpochMs = clock(),
+                recommendedAction = action,
+                safeToResume = safeToResume,
+                attemptGeneration = attemptGeneration,
+            ),
+        )
     }
 }
 

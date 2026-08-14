@@ -16,6 +16,12 @@ interface AutomationCommandDao {
     @Query("SELECT * FROM automation_commands WHERE id = :id LIMIT 1")
     suspend fun findById(id: String): AutomationCommandEntity?
 
+    @Query("""SELECT * FROM automation_commands
+        WHERE status IN ('Received', 'Claimed', 'Executing')
+          AND downloadId IS NULL AND mediaCaptureId IS NULL
+        ORDER BY createdAtEpochMs ASC LIMIT :limit""")
+    suspend fun findPending(limit: Int): List<AutomationCommandEntity>
+
     @Upsert
     suspend fun upsert(entity: AutomationCommandEntity)
 }

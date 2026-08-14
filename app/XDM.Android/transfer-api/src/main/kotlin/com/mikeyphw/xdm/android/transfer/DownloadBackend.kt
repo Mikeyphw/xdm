@@ -74,6 +74,12 @@ data class BackendSnapshot(
     val rangeSupported: Boolean? = null,
     val errorMessage: String? = null,
     val completedUri: String? = null,
+    /** Durable attempt/ownership generation that authorized this backend task. */
+    val attemptGeneration: Long = 0L,
+    /** Installation identity that owns the task. */
+    val backendInstanceId: String? = null,
+    /** Runtime session currently observing the task. */
+    val backendSessionId: String? = null,
 )
 
 data class BackendShutdownResult(val clean: Boolean, val activeTaskIds: List<String>)
@@ -751,7 +757,7 @@ class BackendCoordinator(
                 is OwnershipClaimResult.Conflict -> throw DestinationOwnershipConflictException(claim.existing)
             }
             ownership = claimedOwnership
-            val startedTask = backend.add(selectedRequest, preparation)
+            val startedTask = backend.add(selectedRequest.copy(attemptGeneration = claimedOwnership.generation), preparation)
             task = startedTask
             val active = ownershipStore.attachTask(request.id, claimedOwnership.generation, startedTask.taskId)
             backend.onOwnershipAttached(startedTask.taskId, active)

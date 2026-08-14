@@ -43,7 +43,7 @@ class BrowserRemovalPhase4ContractTest {
 
         listOf("shouldOpenBrowserUrl", "openBrowserUrlFromIntent", "browserStartUrl", "consumeBrowserStartUrl", "openBrowserUrl(url: String)")
             .forEach { marker -> assertFalse("Browser startup marker remains: $marker", mainActivity.contains(marker) || viewModel.contains(marker)) }
-        assertTrue(mainActivity.contains("handleExternalIntent(intent)"))
+        assertTrue(mainActivity.contains("consumeInternalAutomation(intent)"))
         assertTrue(preferences.contains("lastRoute = AppRoute.restore(preferences[Keys.LastRoute])"))
         assertTrue(routes.contains("fun restore(storedName: String?): AppRoute"))
         assertTrue(routes.contains("?: Downloads"))
@@ -57,7 +57,7 @@ class BrowserRemovalPhase4ContractTest {
         val receiver = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAddDownloadActivity.kt").readText()
         val block = activityBlock(manifest, ".ExternalAddDownloadActivity")
 
-        assertTrue(receiver.contains("class ExternalAddDownloadActivity : MainActivity()"))
+        assertTrue(receiver.contains("class ExternalAddDownloadActivity : ExternalHandoffReviewActivity()"))
         listOf(
             "android.intent.action.SEND",
             "android.intent.action.SEND_MULTIPLE",
@@ -66,11 +66,12 @@ class BrowserRemovalPhase4ContractTest {
             "android:scheme=\"https\"",
             "android:scheme=\"ftp\"",
         ).forEach { marker -> assertTrue("External receiver lost $marker", block.contains(marker)) }
-        assertTrue(activity.contains("AutomationCommandAction.PromptAddDownload"))
-        assertTrue(activity.contains("AutomationCommandAction.CaptureMedia"))
-        assertTrue(activity.contains("viewModel.ingestAutomationCommand(draft)"))
-        assertFalse(activity.contains("executionStarter.start"))
-        assertFalse(activity.contains("viewModel.addDownload("))
+        val review = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalHandoffReviewActivity.kt").readText()
+        assertTrue(review.contains("ExternalIntentDraftFactory.general"))
+        assertTrue(review.contains("ExternalAutomationDispatch.persist"))
+        assertTrue(activity.contains("viewModel::ingestPersistedAutomationCommand"))
+        assertFalse(review.contains("executionStarter.start"))
+        assertFalse(review.contains("viewModel.addDownload("))
     }
 
     @Test

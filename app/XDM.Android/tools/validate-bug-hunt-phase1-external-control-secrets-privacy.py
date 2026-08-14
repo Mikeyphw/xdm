@@ -65,36 +65,48 @@ require(
     "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalHandoffReviewActivity.kt",
     "ExternalCommandAuthorization.UserConfirmed",
     "Open in XDM",
-    "InternalAutomationDispatchStore.issue",
+    "ExternalAutomationDispatch.persist",
+    "EXTRA_INTERNAL_COMMAND_ID",
 )
 require(
     "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
     "ACTION_INTERNAL_AUTOMATION_DISPATCH",
-    "InternalAutomationDispatchStore.consume",
+    "EXTRA_INTERNAL_COMMAND_ID",
+    "viewModel::ingestPersistedAutomationCommand",
+    "savedInstanceState == null",
 )
 forbid(
     "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
     "TaskerContract.draftFor(",
 )
-require(
+forbid(
     "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
-    "handleExternalIntent(intent)",
-    "parseDetailed",
-    "is XdmBrowserDeepLinkParseResult.Rejected -> return",
-    "sharedText(incoming)",
+    "XdmBrowserDeepLinkParser",
+    "TaskerContract",
     "Intent.EXTRA_TEXT",
     "clipData",
-    "shouldOpenExternalAddPrompt",
+)
+require(
+    "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationSecurity.kt",
+    "parseDetailed",
+    "XdmBrowserDeepLinkParseResult.Rejected",
+    "sharedText(activity, intent)",
+    "Intent.EXTRA_TEXT",
+    "clipData",
     "handoffMimeType",
     "handoffContentLength",
     "handoffPageUrl",
-    "mimeType = mimeType",
-    "contentLength = contentLength",
-    "viewModel.ingestAutomationCommand(draft)",
 )
 require(
     "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAddDownloadActivity.kt",
-    "class ExternalAddDownloadActivity : MainActivity()",
+    "class ExternalAddDownloadActivity : ExternalHandoffReviewActivity()",
+)
+require(
+    "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationDispatch.kt",
+    "MediaRequestHandoffStore.rememberCommand",
+    "AutomationCommandStatus.Received",
+    "AutomationCommandStatus.Failed",
+    "AutomationRejectionReason.DurableHandoffFailed",
 )
 require(
     "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationSecurity.kt",
@@ -103,7 +115,13 @@ require(
     "claimedPackage",
     "MessageDigest.isEqual",
     "noBackupFilesDir",
-    "One-use",
+    "activity.callingPackage",
+)
+
+forbid(
+    "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationSecurity.kt",
+    "InternalAutomationDispatchStore",
+    "activity.referrer",
 )
 
 # URL/network target policy and request execution gates.
@@ -293,8 +311,14 @@ if manifest_json:
             errors.append("PROJECT_MANIFEST must record JVM-safe NetworkSecurityPolicy boundary")
         if phase.get("scheduler_fileprovider_contract_test_aligned") is not True:
             errors.append("PROJECT_MANIFEST must record scheduler FileProvider contract alignment")
-        if phase.get("external_add_download_activity_reuses_main_activity_shell") is not True:
-            errors.append("PROJECT_MANIFEST must record ExternalAddDownloadActivity shell reuse")
+        if phase.get("external_add_download_activity_reuses_main_activity_shell") is not False:
+            errors.append("PROJECT_MANIFEST must record that ExternalAddDownloadActivity no longer reuses MainActivity")
+        master = parsed.get("bug_hunt_master_remediation_overlay_02_03_generation_integrity_durable_review", {})
+        external = master.get("external_handoff", {})
+        if external.get("exported_add_activity_review_only") is not True:
+            errors.append("PROJECT_MANIFEST must record the dedicated durable external review boundary")
+        if external.get("main_activity_payload") != "internal persisted command id only":
+            errors.append("PROJECT_MANIFEST must record persisted-command-id-only MainActivity dispatch")
     except json.JSONDecodeError as exc:
         errors.append(f"PROJECT_MANIFEST.json invalid JSON: {exc}")
 

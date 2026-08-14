@@ -214,8 +214,8 @@ for route in ("Downloads", "Add", "Media", "Library", "Activity", "Settings"):
 if len(re.findall(r'^    [A-Z][A-Za-z]+\("', routes, re.MULTILINE)) != 6:
     ERRORS.append("UIX R6 must not add a top-level route")
 database = read("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt")
-if not re.search(r"version\s*=\s*17\b", database):
-    ERRORS.append("Room schema must remain 17 after Phase 7 publication journaling")
+if not re.search(r"version\s*=\s*18\b", database):
+    ERRORS.append("Room schema must be 18 after generation-integrity migration")
 build = read("app/build.gradle.kts")
 if 'versionName = "0.21.0"' not in build or not re.search(r"versionCode\s*=\s*22\b", build):
     ERRORS.append("App version must remain 0.21.0 / 21")
@@ -236,7 +236,7 @@ expected = {
     "manual_clean_install_upgrade_checklist": True,
     "external_handoff_manual_gate": True,
     "full_validation_required": True,
-    "room_schema_current": 17,
+    "room_schema_current": 18,
     "version_name_unchanged": "0.21.0",
     "version_code_unchanged": 21,
     "depends_on": "uix_r5_activity_settings_developer_boundary",

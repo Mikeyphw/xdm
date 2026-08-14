@@ -28,14 +28,14 @@ class EmbeddedAria2BackendTest {
     @Test
     fun taskRemainsPausedUntilOwnershipIsDurablyAttached() = runTest {
         val fixture = BackendFixture()
-        val request = fixture.request(expectedLength = 4)
+        val request = fixture.request(expectedLength = 4).copy(attemptGeneration = 41L)
         val preparation = fixture.backend.prepare(request)
 
         val task = fixture.backend.add(request, preparation)
 
         assertTrue(task.requiresActivation)
         assertEquals(listOf("add:paused"), fixture.rpc.events.filter { it.startsWith("add:") || it.startsWith("unpause:") })
-        assertEquals(0L, fixture.store.findByGid(task.taskId)?.ownershipGeneration)
+        assertEquals(41L, fixture.store.findByGid(task.taskId)?.ownershipGeneration)
 
         val ownership = fixture.ownership(preparation, task.taskId, generation = 41)
         fixture.backend.onOwnershipAttached(task.taskId, ownership)
@@ -46,6 +46,21 @@ class EmbeddedAria2BackendTest {
 
         assertEquals(listOf("add:paused", "unpause:${task.taskId}"), fixture.rpc.events.filter { it.startsWith("add:") || it.startsWith("unpause:") })
         assertEquals(DownloadState.Downloading, fixture.backend.query(task.taskId)?.state)
+        fixture.close()
+    }
+
+
+    @Test
+    fun activationBeforeOwnershipAttachmentIsRejected() = runTest {
+        val fixture = BackendFixture()
+        val request = fixture.request().copy(attemptGeneration = 42L)
+        val preparation = fixture.backend.prepare(request)
+        val task = fixture.backend.add(request, preparation)
+
+        val failure = runCatching { fixture.backend.activate(task.taskId) }.exceptionOrNull()
+
+        assertTrue(failure is IllegalArgumentException)
+        assertFalse(fixture.rpc.events.any { it.startsWith("unpause:") })
         fixture.close()
     }
 
@@ -67,7 +82,7 @@ class EmbeddedAria2BackendTest {
     @Test
     fun reconciliationRejectsAStaleOwnershipGeneration() = runTest {
         val fixture = BackendFixture()
-        val request = fixture.request()
+        val request = fixture.request().copy(attemptGeneration = 7L)
         val preparation = fixture.backend.prepare(request)
         val task = fixture.backend.add(request, preparation)
         fixture.backend.onOwnershipAttached(task.taskId, fixture.ownership(preparation, task.taskId, generation = 7))
@@ -83,7 +98,7 @@ class EmbeddedAria2BackendTest {
     @Test
     fun validatedCompletionPromotesOnlyTheOwnedStagingFile() = runTest {
         val fixture = BackendFixture()
-        val request = fixture.request(expectedLength = 4)
+        val request = fixture.request(expectedLength = 4).copy(attemptGeneration = 8L)
         val preparation = fixture.backend.prepare(request)
         val task = fixture.backend.add(request, preparation)
         fixture.backend.onOwnershipAttached(task.taskId, fixture.ownership(preparation, task.taskId, generation = 8))
@@ -105,7 +120,7 @@ class EmbeddedAria2BackendTest {
     @Test
     fun changedAria2OutputPathIsQuarantinedDuringReconciliation() = runTest {
         val fixture = BackendFixture()
-        val request = fixture.request()
+        val request = fixture.request().copy(attemptGeneration = 9L)
         val preparation = fixture.backend.prepare(request)
         val task = fixture.backend.add(request, preparation)
         val ownership = fixture.ownership(preparation, task.taskId, generation = 9)
@@ -162,6 +177,7 @@ private class BackendFixture(
         fileName = finalFile.name,
         preferredBackend = BackendType.Aria2,
         expectedLength = expectedLength,
+        attemptGeneration = 7L,
     )
 
     fun ownership(

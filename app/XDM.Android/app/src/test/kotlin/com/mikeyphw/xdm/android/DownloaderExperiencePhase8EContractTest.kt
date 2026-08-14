@@ -62,7 +62,7 @@ class DownloaderExperiencePhase8EContractTest {
         for (route in listOf("Downloads", "Add", "Media", "Library", "Activity", "Settings")) {
             assertTrue(routes.contains("$route(\"$route\""))
         }
-        assertTrue(database.contains("version = 17"))
+        assertTrue(database.contains("version = 18"))
         assertTrue(root.resolve("transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt").isFile)
         assertTrue(root.resolve("transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt").isFile)
         assertTrue(root.resolve("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaResolverWorkspace.kt").isFile)

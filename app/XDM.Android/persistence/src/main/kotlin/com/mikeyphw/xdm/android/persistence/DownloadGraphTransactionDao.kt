@@ -13,75 +13,45 @@ interface DownloadGraphTransactionDao {
     suspend fun deleteDownloadGraphIfTerminal(downloadId: String, expectedUpdatedAtEpochMs: Long, terminalStates: List<String>): Boolean {
         val row = findDownloadRowForGraphDeletion(downloadId) ?: return true
         if (row.updatedAtEpochMs != expectedUpdatedAtEpochMs || row.state !in terminalStates) return false
+        if (countActivePostProcessingForDownload(downloadId) > 0) return false
         deleteDownloadGraph(downloadId)
         return findDownloadRowForGraphDeletion(downloadId) == null
     }
 
+    /**
+     * Removes transfer-owned state while retaining review/recovery history. Foreign keys cascade
+     * true child rows (segments/checksums/finalization) and SET NULL on review records.
+     */
     @Transaction
     suspend fun deleteDownloadGraph(downloadId: String) {
-        deletePostProcessingForDownload(downloadId)
-        deleteMediaVariantsForDownload(downloadId)
-        deleteMediaCapturesForDownload(downloadId)
-        deleteAutomationCommandsForDownload(downloadId)
-        deleteNotificationRecordsForDownload(downloadId)
-        deleteDownloadTagsForDownload(downloadId)
+        if (countActivePostProcessingForDownload(downloadId) > 0) return
+        detachPostProcessingForDownload(downloadId)
+        detachRecoveryForDownload(downloadId)
         deleteBackendMigrationsForDownload(downloadId)
         deleteAria2MappingsForDownload(downloadId)
         deleteDestinationClaimsForDownload(downloadId)
-        deleteFinalizationForDownload(downloadId)
-        deleteRecoveryForDownload(downloadId)
         deleteBackendTasksForDownload(downloadId)
-        deleteTrustedManifestsForDownload(downloadId)
-        deleteVerificationRecordsForDownload(downloadId)
-        deleteChecksumResultsForDownload(downloadId)
-        deleteChecksumExpectationsForDownload(downloadId)
-        deleteCheckpointsForDownload(downloadId)
-        deleteTransferSegmentsForDownload(downloadId)
-        deleteMirrorsForDownload(downloadId)
-        deleteSourcesForDownload(downloadId)
         deleteDownloadRow(downloadId)
     }
 
-    @Query("DELETE FROM post_processing_jobs WHERE downloadId = :downloadId OR captureId IN (SELECT id FROM media_captures WHERE downloadId = :downloadId)")
-    suspend fun deletePostProcessingForDownload(downloadId: String)
-    @Query("DELETE FROM media_variants WHERE captureId IN (SELECT id FROM media_captures WHERE downloadId = :downloadId)")
-    suspend fun deleteMediaVariantsForDownload(downloadId: String)
-    @Query("DELETE FROM media_captures WHERE downloadId = :downloadId")
-    suspend fun deleteMediaCapturesForDownload(downloadId: String)
-    @Query("DELETE FROM automation_commands WHERE downloadId = :downloadId OR mediaCaptureId IN (SELECT id FROM media_captures WHERE downloadId = :downloadId)")
-    suspend fun deleteAutomationCommandsForDownload(downloadId: String)
-    @Query("DELETE FROM notification_records WHERE downloadId = :downloadId")
-    suspend fun deleteNotificationRecordsForDownload(downloadId: String)
-    @Query("DELETE FROM download_tags WHERE downloadId = :downloadId")
-    suspend fun deleteDownloadTagsForDownload(downloadId: String)
+    @Query("""SELECT COUNT(*) FROM post_processing_jobs
+        WHERE (downloadId = :downloadId OR captureId IN (SELECT id FROM media_captures WHERE downloadId = :downloadId))
+          AND status NOT IN ('Completed', 'Failed', 'Cancelled', 'TimedOut')""")
+    suspend fun countActivePostProcessingForDownload(downloadId: String): Int
+
+    @Query("""UPDATE post_processing_jobs SET downloadId = NULL, captureId = NULL
+        WHERE downloadId = :downloadId OR captureId IN (SELECT id FROM media_captures WHERE downloadId = :downloadId)""")
+    suspend fun detachPostProcessingForDownload(downloadId: String)
+    @Query("UPDATE recovery_records SET downloadId = NULL WHERE downloadId = :downloadId")
+    suspend fun detachRecoveryForDownload(downloadId: String)
     @Query("DELETE FROM backend_migrations WHERE downloadId = :downloadId")
     suspend fun deleteBackendMigrationsForDownload(downloadId: String)
     @Query("DELETE FROM aria2_session_mappings WHERE downloadId = :downloadId")
     suspend fun deleteAria2MappingsForDownload(downloadId: String)
     @Query("DELETE FROM destination_claims WHERE downloadId = :downloadId")
     suspend fun deleteDestinationClaimsForDownload(downloadId: String)
-    @Query("DELETE FROM finalization_journals WHERE downloadId = :downloadId")
-    suspend fun deleteFinalizationForDownload(downloadId: String)
-    @Query("DELETE FROM recovery_records WHERE downloadId = :downloadId")
-    suspend fun deleteRecoveryForDownload(downloadId: String)
     @Query("DELETE FROM backend_tasks WHERE downloadId = :downloadId")
     suspend fun deleteBackendTasksForDownload(downloadId: String)
-    @Query("DELETE FROM trusted_block_manifests WHERE downloadId = :downloadId")
-    suspend fun deleteTrustedManifestsForDownload(downloadId: String)
-    @Query("DELETE FROM verification_records WHERE downloadId = :downloadId")
-    suspend fun deleteVerificationRecordsForDownload(downloadId: String)
-    @Query("DELETE FROM checksum_results WHERE downloadId = :downloadId")
-    suspend fun deleteChecksumResultsForDownload(downloadId: String)
-    @Query("DELETE FROM checksum_expectations WHERE downloadId = :downloadId")
-    suspend fun deleteChecksumExpectationsForDownload(downloadId: String)
-    @Query("DELETE FROM checkpoints WHERE downloadId = :downloadId")
-    suspend fun deleteCheckpointsForDownload(downloadId: String)
-    @Query("DELETE FROM transfer_segments WHERE downloadId = :downloadId")
-    suspend fun deleteTransferSegmentsForDownload(downloadId: String)
-    @Query("DELETE FROM mirrors WHERE downloadId = :downloadId")
-    suspend fun deleteMirrorsForDownload(downloadId: String)
-    @Query("DELETE FROM download_sources WHERE downloadId = :downloadId")
-    suspend fun deleteSourcesForDownload(downloadId: String)
     @Query("DELETE FROM downloads WHERE id = :downloadId")
     suspend fun deleteDownloadRow(downloadId: String)
 
@@ -120,8 +90,29 @@ interface DownloadGraphTransactionDao {
             conflictPolicy = entity.conflictPolicy,
             mimeType = entity.mimeType,
             archived = entity.archived,
+            attemptGeneration = entity.attemptGeneration,
         ) == 1
     }
+
+    @Transaction
+    suspend fun upsertDownloadsPreservingNewerState(entities: List<DownloadEntity>): Boolean {
+        // Preflight the whole batch before mutating anything. Returning false after partial writes
+        // would still commit a Room transaction, so all stale-write checks must happen first.
+        if (entities.any { !canAcceptDownloadWrite(it.id, it.attemptGeneration, it.updatedAtEpochMs) }) return false
+        entities.forEach { entity ->
+            check(upsertDownloadPreservingNewerState(entity)) { "Download batch changed after transactional preflight" }
+        }
+        return true
+    }
+
+    @Query("""SELECT CASE
+        WHEN NOT EXISTS(SELECT 1 FROM downloads WHERE id = :id) THEN 1
+        WHEN EXISTS(SELECT 1 FROM downloads WHERE id = :id AND (
+            attemptGeneration < :attemptGeneration OR
+            (attemptGeneration = :attemptGeneration AND updatedAtEpochMs < :updatedAtEpochMs)
+        )) THEN 1
+        ELSE 0 END""")
+    suspend fun canAcceptDownloadWrite(id: String, attemptGeneration: Long, updatedAtEpochMs: Long): Boolean
 
     @Query("""UPDATE downloads
         SET fileName = :fileName,
@@ -144,8 +135,12 @@ interface DownloadGraphTransactionDao {
             userLabel = :userLabel,
             conflictPolicy = :conflictPolicy,
             mimeType = :mimeType,
-            archived = :archived
-        WHERE id = :id AND updatedAtEpochMs <= :updatedAtEpochMs""")
+            archived = :archived,
+            attemptGeneration = :attemptGeneration
+        WHERE id = :id AND (
+            attemptGeneration < :attemptGeneration OR
+            (attemptGeneration = :attemptGeneration AND updatedAtEpochMs < :updatedAtEpochMs)
+        )""")
     suspend fun updateDownloadIfNotNewer(
         id: String,
         fileName: String,
@@ -169,6 +164,7 @@ interface DownloadGraphTransactionDao {
         conflictPolicy: String,
         mimeType: String?,
         archived: Boolean,
+        attemptGeneration: Long,
     ): Int
 
     @Query("""UPDATE downloads
@@ -189,6 +185,14 @@ interface DownloadGraphTransactionDao {
         errorMessage: String?,
         newUpdatedAtEpochMs: Long,
     ): Int
+
+    @Transaction
+    suspend fun replaceMediaVariantsForCapture(captureId: String, variants: List<MediaVariantEntity>, updatedAtEpochMs: Long) {
+        require(variants.all { it.captureId == captureId }) { "Variant belongs to another capture" }
+        deleteMediaVariantsForCaptures(listOf(captureId))
+        if (variants.isNotEmpty()) upsertMediaVariants(variants)
+        reconcileCaptureAfterVariantReplacement(captureId, updatedAtEpochMs)
+    }
 
     @Transaction
     suspend fun replaceMediaVariantsForCaptures(variants: List<MediaVariantEntity>, updatedAtEpochMs: Long) {
@@ -239,11 +243,13 @@ interface DownloadGraphTransactionDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAutomationIgnore(entity: AutomationCommandEntity): Long
+
     @Transaction
-    suspend fun upsertAutomationCommandStatefully(entity: AutomationCommandEntity) {
+    suspend fun upsertAutomationCommandStatefully(entity: AutomationCommandEntity): Boolean {
         val durable = entity.withDurableStatus()
         val inserted = insertAutomationIgnore(durable)
-        if (inserted == -1L) updateAutomationCommandFields(
+        if (inserted != -1L) return true
+        return updateAutomationCommandFields(
             id = durable.id,
             url = durable.url,
             fileName = durable.fileName,
@@ -255,11 +261,18 @@ interface DownloadGraphTransactionDao {
             resultMessage = durable.resultMessage,
             updatedAtEpochMs = durable.updatedAtEpochMs,
             originPackage = durable.originPackage,
+            claimedOriginPackage = durable.claimedOriginPackage,
+            verifiedIntegrationId = durable.verifiedIntegrationId,
+            authorization = durable.authorization,
+            privateNetworkApproved = durable.privateNetworkApproved,
+            cleartextCredentialsApproved = durable.cleartextCredentialsApproved,
             originHost = durable.originHost,
             sanitizedHeaders = durable.sanitizedHeaders,
             rejectionReason = durable.rejectionReason,
-        )
+            metadataJson = durable.metadataJson,
+        ) == 1
     }
+
     @Query("""UPDATE automation_commands
         SET url = :url,
             fileName = :fileName,
@@ -271,9 +284,15 @@ interface DownloadGraphTransactionDao {
             resultMessage = :resultMessage,
             updatedAtEpochMs = :updatedAtEpochMs,
             originPackage = :originPackage,
+            claimedOriginPackage = :claimedOriginPackage,
+            verifiedIntegrationId = :verifiedIntegrationId,
+            authorization = :authorization,
+            privateNetworkApproved = :privateNetworkApproved,
+            cleartextCredentialsApproved = :cleartextCredentialsApproved,
             originHost = :originHost,
             sanitizedHeaders = :sanitizedHeaders,
-            rejectionReason = :rejectionReason
+            rejectionReason = :rejectionReason,
+            metadataJson = :metadataJson
         WHERE id = :id""")
     suspend fun updateAutomationCommandFields(
         id: String,
@@ -287,17 +306,22 @@ interface DownloadGraphTransactionDao {
         resultMessage: String,
         updatedAtEpochMs: Long,
         originPackage: String?,
+        claimedOriginPackage: String?,
+        verifiedIntegrationId: String?,
+        authorization: String,
+        privateNetworkApproved: Boolean,
+        cleartextCredentialsApproved: Boolean,
         originHost: String?,
         sanitizedHeaders: String?,
         rejectionReason: String,
+        metadataJson: String?,
     ): Int
 
 
     @Transaction
     suspend fun markAutomationCommandExecuting(id: String, updatedAtEpochMs: Long): Boolean {
-        transitionAutomationCommand(id, listOf("Received", "Accepted"), "Claimed", "Command claimed for execution.", updatedAtEpochMs)
-        transitionAutomationCommand(id, listOf("Claimed"), "Executing", "Command side effects executing.", updatedAtEpochMs)
-        return automationCommandStatus(id) == "Executing"
+        if (transitionAutomationCommand(id, listOf("Received", "Accepted"), "Claimed", "Command claimed for execution.", updatedAtEpochMs) != 1) return false
+        return transitionAutomationCommand(id, listOf("Claimed"), "Executing", "Command side effects executing.", updatedAtEpochMs) == 1
     }
 
     @Query("SELECT status FROM automation_commands WHERE id = :id")

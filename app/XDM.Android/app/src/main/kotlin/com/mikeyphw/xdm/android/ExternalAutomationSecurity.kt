@@ -3,9 +3,7 @@ package com.mikeyphw.xdm.android
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.util.Base64
-import androidx.core.content.IntentCompat
 import com.mikeyphw.xdm.android.browser.BrowserHandoffContract
 import com.mikeyphw.xdm.android.model.AutomationCommandAction
 import com.mikeyphw.xdm.android.model.AutomationCommandDraft
@@ -19,7 +17,6 @@ import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 import org.json.JSONObject
 
 internal data class ExternalCallerIdentity(
@@ -28,19 +25,13 @@ internal data class ExternalCallerIdentity(
 ) {
     companion object {
         fun from(activity: Activity, intent: Intent): ExternalCallerIdentity {
-            val observed = sequenceOf(
-                activity.callingPackage,
-                activity.referrer?.takeIf { it.scheme == "android-app" }?.host,
-                IntentCompat.getParcelableExtra(intent, Intent.EXTRA_REFERRER, Uri::class.java)
-                    ?.takeIf { it.scheme == "android-app" }
-                    ?.host,
-            ).firstOrNull { !it.isNullOrBlank() }
-                ?.trim()
-                ?.take(160)
-            val claimed = intent.getStringExtra(BrowserHandoffContract.ExtraOriginPackage)
-                ?.trim()
-                ?.takeIf(String::isNotBlank)
-                ?.take(160)
+            // Only Android's callingPackage is treated as observed provenance. Referrer/origin
+            // extras are caller-controlled diagnostics and must never become authority.
+            val observed = activity.callingPackage?.trim()?.takeIf(String::isNotBlank)?.take(160)
+            val claimed = sequenceOf(
+                intent.getStringExtra(BrowserHandoffContract.ExtraOriginPackage),
+                intent.getStringExtra(Intent.EXTRA_REFERRER_NAME),
+            ).firstOrNull { !it.isNullOrBlank() }?.trim()?.take(160)
             return ExternalCallerIdentity(observed, claimed)
         }
     }
@@ -114,39 +105,6 @@ internal class ExternalAutomationTrustStore(context: Context) {
     private companion object {
         const val FILE_NAME = "external-automation-verifier-v1.json"
     }
-}
-
-/** One-use, process-local capability connecting exported review activities to MainActivity.
- * External callers cannot manufacture a valid nonce because the draft itself never travels back
- * through intent extras. */
-internal object InternalAutomationDispatchStore {
-    private const val TTL_MS = 2L * 60L * 1000L
-    private const val MAX_ENTRIES = 32
-    private val random = SecureRandom()
-    private val entries = ConcurrentHashMap<String, Entry>()
-
-    fun issue(draft: AutomationCommandDraft, nowEpochMs: Long = System.currentTimeMillis()): String {
-        prune(nowEpochMs)
-        if (entries.size >= MAX_ENTRIES) {
-            entries.entries.minByOrNull { it.value.createdAtEpochMs }?.let { entries.remove(it.key) }
-        }
-        val nonce = ByteArray(32).also(random::nextBytes)
-            .let { Base64.encodeToString(it, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING) }
-        entries[nonce] = Entry(draft, nowEpochMs)
-        return nonce
-    }
-
-    fun consume(nonce: String?, nowEpochMs: Long = System.currentTimeMillis()): AutomationCommandDraft? {
-        val key = nonce?.takeIf { it.length in 32..128 } ?: return null
-        val entry = entries.remove(key) ?: return null
-        return entry.draft.takeIf { nowEpochMs - entry.createdAtEpochMs <= TTL_MS }
-    }
-
-    private fun prune(nowEpochMs: Long) {
-        entries.entries.removeAll { nowEpochMs - it.value.createdAtEpochMs > TTL_MS }
-    }
-
-    private data class Entry(val draft: AutomationCommandDraft, val createdAtEpochMs: Long)
 }
 
 internal object ExternalIntentDraftFactory {

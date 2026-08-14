@@ -27,7 +27,7 @@ except Exception as exc:
     raise SystemExit(f'cannot parse Phase 11 matrix: {exc}')
 entries=matrix.get('entries', [])
 require(matrix.get('roadmap_phase') == 11, 'matrix must declare roadmap phase 11')
-require(matrix.get('current_room_schema') == 17, 'matrix must bind current Room schema 17')
+require(matrix.get('current_room_schema') == 18, 'matrix must bind current Room schema 18')
 require(matrix.get('total_requirements') == 80, 'matrix must declare all 80 roadmap requirements')
 require(len(entries) == 80, f'matrix must contain 80 entries, found {len(entries)}')
 ids=[e.get('id') for e in entries]

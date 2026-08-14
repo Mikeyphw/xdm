@@ -84,6 +84,7 @@ class ChecksumVerificationService(
                 message = "Calculating ${expectation.algorithm.displayName()} checksum.",
                 createdAtEpochMs = clock(),
                 updatedAtEpochMs = clock(),
+                attemptGeneration = expectation.attemptGeneration,
             ),
         )
         val calculated = digestFile(file, expectation.algorithm) { verified ->
@@ -98,6 +99,7 @@ class ChecksumVerificationService(
                     message = "Verified $verified of $total bytes.",
                     createdAtEpochMs = clock(),
                     updatedAtEpochMs = clock(),
+                    attemptGeneration = expectation.attemptGeneration,
                 ),
             )
         }
@@ -113,6 +115,7 @@ class ChecksumVerificationService(
             verifiedAtEpochMs = now,
             bytesVerified = total,
             expectedHex = expected,
+            attemptGeneration = expectation.attemptGeneration,
         )
     }
 
@@ -140,7 +143,12 @@ class ChecksumVerificationService(
 class TrustedBlockManifestService(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
-    suspend fun create(downloadId: String, file: File, blockSize: Long = DEFAULT_BLOCK_SIZE): TrustedBlockManifest = withContext(Dispatchers.IO) {
+    suspend fun create(
+        downloadId: String,
+        file: File,
+        blockSize: Long = DEFAULT_BLOCK_SIZE,
+        attemptGeneration: Long = 1L,
+    ): TrustedBlockManifest = withContext(Dispatchers.IO) {
         require(blockSize > 0) { "Block size must be positive" }
         require(file.isFile) { "Cannot create a trusted-block manifest for a missing file" }
         val length = file.length()
@@ -173,6 +181,7 @@ class TrustedBlockManifestService(
             algorithm = ChecksumAlgorithm.Sha256,
             blocks = blocks,
             createdAtEpochMs = clock(),
+            attemptGeneration = attemptGeneration,
         )
     }
 

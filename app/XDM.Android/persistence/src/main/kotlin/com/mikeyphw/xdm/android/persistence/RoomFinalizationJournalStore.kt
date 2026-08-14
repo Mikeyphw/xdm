@@ -31,6 +31,7 @@ fun FinalizationJournalEntity.toModel() = FinalizationJournal(
     message = message,
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
+    attemptGeneration = attemptGeneration,
 )
 
 fun FinalizationJournal.toEntity() = FinalizationJournalEntity(
@@ -47,4 +48,5 @@ fun FinalizationJournal.toEntity() = FinalizationJournalEntity(
     checksumHex = checksumHex,
     message = message,
     createdAtEpochMs = createdAtEpochMs,
+    attemptGeneration = attemptGeneration,
 )

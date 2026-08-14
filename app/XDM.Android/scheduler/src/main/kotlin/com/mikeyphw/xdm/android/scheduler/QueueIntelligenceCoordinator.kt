@@ -323,13 +323,15 @@ class QueueIntelligenceCoordinator(
     private suspend fun claimForLaunch(download: Download, decision: QueueLaunchDecision, manual: Boolean) {
         if (manual) retryLedger.clear(download.id)
         val current = repository.findDownload(download.id) ?: download
-        repository.save(
-            current.copy(
-                state = DownloadState.Queued,
-                errorMessage = if (decision.policyOverridden) "Queue policy override: starting by explicit user request." else null,
-                updatedAtEpochMs = System.currentTimeMillis(),
+        check(
+            repository.save(
+                current.copy(
+                    state = DownloadState.Queued,
+                    errorMessage = if (decision.policyOverridden) "Queue policy override: starting by explicit user request." else null,
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                ),
             ),
-        )
+        ) { "Queue launch claim was rejected because a newer durable download state exists." }
     }
 
     private suspend fun applyHold(download: Download, decision: QueueLaunchDecision) {
@@ -345,14 +347,16 @@ class QueueIntelligenceCoordinator(
         }
         val message = POLICY_PREFIX + decision.detail
         if (download.state != state || download.errorMessage != message) {
-            repository.save(
-                download.copy(
-                    state = state,
-                    errorMessage = message,
-                    speedBytesPerSecond = 0,
-                    updatedAtEpochMs = System.currentTimeMillis(),
+            check(
+                repository.save(
+                    download.copy(
+                        state = state,
+                        errorMessage = message,
+                        speedBytesPerSecond = 0,
+                        updatedAtEpochMs = System.currentTimeMillis(),
+                    ),
                 ),
-            )
+            ) { "Queue hold persistence was rejected because a newer durable download state exists." }
         }
     }
 

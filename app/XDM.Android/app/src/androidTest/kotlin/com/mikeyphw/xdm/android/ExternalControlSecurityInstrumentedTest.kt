@@ -4,15 +4,11 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.mikeyphw.xdm.android.model.AutomationCommandAction
-import com.mikeyphw.xdm.android.model.AutomationCommandDraft
-import com.mikeyphw.xdm.android.model.AutomationCommandSource
 import com.mikeyphw.xdm.android.scheduler.AndroidSecureRequestEnvelopeStore
 import com.mikeyphw.xdm.android.scheduler.SecureRequestEnvelope
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,16 +42,9 @@ class ExternalControlSecurityInstrumentedTest {
     }
 
     @Test
-    fun internalDispatchCapabilityIsOneUseAndExpires() {
-        val draft = AutomationCommandDraft(
-            source = AutomationCommandSource.Internal,
-            action = AutomationCommandAction.PauseAll,
-        )
-        val nonce = InternalAutomationDispatchStore.issue(draft, nowEpochMs = 1_000L)
-        assertEquals(draft, InternalAutomationDispatchStore.consume(nonce, nowEpochMs = 1_001L))
-        assertNull(InternalAutomationDispatchStore.consume(nonce, nowEpochMs = 1_002L))
-        val expired = InternalAutomationDispatchStore.issue(draft, nowEpochMs = 2_000L)
-        assertNull(InternalAutomationDispatchStore.consume(expired, nowEpochMs = 2_000L + 2L * 60L * 1000L + 1L))
+    fun exportedReviewActivitiesDoNotInheritMainActivity() {
+        assertFalse(MainActivity::class.java.isAssignableFrom(ExternalAutomationActivity::class.java))
+        assertFalse(MainActivity::class.java.isAssignableFrom(ExternalAddDownloadActivity::class.java))
     }
 
     @Test
