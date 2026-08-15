@@ -1300,6 +1300,31 @@ class MediaCaptureServiceTest {
         assertTrue(items.isEmpty())
     }
 
+
+    @Test
+    fun protectionClassificationUsesStructuredMarkersNotDisplayLabelSubstrings() {
+        val service = MediaCaptureService(clock = { 8_100L })
+        val record = service.detect("https://cdn.example.test/movie.mp4", pageTitle = "Marker safety").single()
+        val planner = MediaDownloadPlanner()
+        val harmlessVariant = com.mikeyphw.xdm.android.model.MediaVariant(
+            id = "harmless",
+            captureId = record.id,
+            url = record.sourceUrl,
+            kind = com.mikeyphw.xdm.android.model.MediaVariantKind.Video,
+            mimeType = "video/notwidevinecodec",
+            codecs = "avc1.unprotectedprofile",
+            displayLabel = "protected-looking marketing label",
+        )
+        val protectedVariant = harmlessVariant.copy(
+            id = "protected",
+            codecs = "avc1.640028, widevine",
+            displayLabel = "ordinary",
+        )
+
+        assertFalse(planner.plan(record, listOf(harmlessVariant)).protectedDiagnostic.protected)
+        assertTrue(planner.plan(record, listOf(protectedVariant)).protectedDiagnostic.protected)
+    }
+
     @Test
     fun mediaFailureClassificationUsesStructuredBackendAndStateNotErrorText() {
         val record = MediaCaptureService(clock = { 8_000L })

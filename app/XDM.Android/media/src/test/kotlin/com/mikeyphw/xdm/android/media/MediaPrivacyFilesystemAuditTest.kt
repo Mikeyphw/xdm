@@ -52,6 +52,49 @@ class MediaPrivacyFilesystemAuditTest {
         }
     }
 
+
+    @Test
+    fun oversizedRelevantFileMakesCoverageIncompleteEvenWhenPrefixIsClean() {
+        val root = Files.createTempDirectory("media-privacy-oversized").toFile()
+        try {
+            root.resolve("large.sidecar").writeText("A".repeat(300 * 1024))
+            val audit = MediaSessionPrivacyAuditPlanner().audit(
+                captures = emptyList(),
+                variants = emptyList(),
+                libraryItems = emptyList(),
+                executionJobs = emptyList(),
+                filesystemRoots = listOf(root),
+            )
+            assertFalse(audit.filesystemCoverageComplete)
+            assertTrue(audit.filesystemCoverageIssueCount >= 1)
+            assertFalse(audit.durableSecretSafe)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun depthTruncationMakesCoverageIncomplete() {
+        val root = Files.createTempDirectory("media-privacy-depth").toFile()
+        try {
+            var current = root
+            repeat(7) { depth -> current = current.resolve("level-$depth").apply { mkdir() } }
+            current.resolve("deep.journal").writeText("ciphertext=ABCDEF")
+            val audit = MediaSessionPrivacyAuditPlanner().audit(
+                captures = emptyList(),
+                variants = emptyList(),
+                libraryItems = emptyList(),
+                executionJobs = emptyList(),
+                filesystemRoots = listOf(root),
+            )
+            assertFalse(audit.filesystemCoverageComplete)
+            assertTrue(audit.filesystemCoverageIssueCount >= 1)
+            assertFalse(audit.durableSecretSafe)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     @Test
     fun ciphertextOnlyJournalAndAbsentSurfaceAreSafe() {
         val root = Files.createTempDirectory("secure-request-envelopes-v1").toFile()

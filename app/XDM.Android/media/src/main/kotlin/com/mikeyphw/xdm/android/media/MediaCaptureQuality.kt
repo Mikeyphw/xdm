@@ -7,6 +7,7 @@ import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import java.net.URI
+import java.security.MessageDigest
 import java.util.Locale
 
 /**
@@ -217,9 +218,13 @@ class MediaCaptureQualityPlanner {
 
     private fun groupKeyFor(capture: MediaCaptureRecord): String {
         val host = hostFor(capture.sourceUrl).ifBlank { hostFor(capture.pageUrl.orEmpty()) }
-        val path = runCatching { URI(capture.sourceUrl).path.orEmpty().lowercase(Locale.US) }.getOrDefault(capture.sourceUrl.substringBefore('?').lowercase(Locale.US))
-        val cleanPath = path.replace(Regex("/[0-9a-f]{12,}(?=/|$)", RegexOption.IGNORE_CASE), "/<id>")
-        return listOf(host, capture.kind.name, cleanPath.substringBeforeLast('/').ifBlank { cleanPath }).joinToString("|").take(160)
+        // Group only the same exact request identity. Signed/query-distinct media must not collapse
+        // merely because it shares a host/path; the hash preserves that distinction without leaking it.
+        val requestFingerprint = MessageDigest.getInstance("SHA-256")
+            .digest(capture.sourceUrl.toByteArray(Charsets.UTF_8))
+            .take(12)
+            .joinToString("") { "%02x".format(it) }
+        return listOf(host, capture.kind.name, "request=$requestFingerprint").joinToString("|").take(160)
     }
 
     private fun hostFor(url: String): String = runCatching { URI(url).host.orEmpty().removePrefix("www.").lowercase(Locale.US) }.getOrDefault("")
@@ -236,9 +241,27 @@ class MediaCaptureQualityPlanner {
     }
 
     private fun isProtected(capture: MediaCaptureRecord, variants: List<MediaVariant>): Boolean {
-        val merged = (capture.sourceUrl + " " + capture.pageUrl.orEmpty() + " " + capture.codecs.orEmpty() + " " + variants.joinToString(" ") { it.url + " " + it.codecs.orEmpty() }).lowercase(Locale.US)
-        return listOf("widevine", "playready", "fairplay", "drm", "contentprotection", "license").any { merged.contains(it) }
+        val structuredTokens = buildSet {
+            addAll(uriPathTokens(capture.sourceUrl))
+            capture.pageUrl?.let { addAll(uriPathTokens(it)) }
+            capture.codecs?.let { addAll(codecTokens(it)) }
+            variants.forEach { variant ->
+                addAll(uriPathTokens(variant.url))
+                variant.codecs?.let { addAll(codecTokens(it)) }
+            }
+        }
+        return structuredTokens.any { it in protectionTokens }
     }
+
+    private fun uriPathTokens(raw: String): Set<String> = runCatching {
+        URI(raw).path.orEmpty().split('/', '.', '-', '_').map { it.lowercase(Locale.US) }.filter(String::isNotBlank).toSet()
+    }.getOrDefault(emptySet())
+
+    private fun codecTokens(raw: String): Set<String> = raw
+        .split(',', '.', '-', '_', ' ', ';')
+        .map { it.trim().lowercase(Locale.US) }
+        .filter(String::isNotBlank)
+        .toSet()
 
     private fun isLive(capture: MediaCaptureRecord): Boolean {
         val merged = (capture.title + " " + capture.sourceUrl + " " + capture.pageUrl.orEmpty()).lowercase(Locale.US)
@@ -257,6 +280,7 @@ class MediaCaptureQualityPlanner {
 
     private companion object {
         val noiseTokens = listOf("/analytics", "/beacon", "/collect", "/metrics", "/telemetry", "/ads/", "/adserver", "doubleclick", "googletag", "pixel")
+        val protectionTokens = setOf("widevine", "playready", "fairplay", "drm", "contentprotection", "license")
         val secretPatterns = listOf(
             Regex("""Bearer\s+(?!<redacted(?:-[A-Za-z]+)?>)(?:secret-[A-Za-z0-9._-]+|[A-Za-z0-9._~+/=-]{16,})""", RegexOption.IGNORE_CASE),
             Regex("""Cookie\s*[:=](?!\s*<redacted(?:-[A-Za-z]+)?>)\s*[^\n;]+""", RegexOption.IGNORE_CASE),

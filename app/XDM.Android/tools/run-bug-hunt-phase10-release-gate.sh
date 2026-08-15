@@ -2,11 +2,24 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+# Final publication must first prove the current Overlay-13 contracts. This gate is
+# intentionally static/fail-closed and does not self-certify runtime evidence.
+bash tools/run-final-release-gate.sh --ci
 python3 tools/validate-bug-hunt-phase10-release-upgrade-packaging.py
 python3 tools/verify-phase10-backup-policy.py
 : "${XDM_ARIA2_ARCHIVE_SHA256:?XDM_ARIA2_ARCHIVE_SHA256 pins the trusted aria2 official archive digest}"
 python3 tools/install-aria2-runtime.py --download-official --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256" --require-trusted-digest
-./gradlew -Pxdm.requireAria2Runtime=true :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts lintRelease testReleaseUnitTest :app:assembleRelease :app:bundleRelease
+python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-trusted-archive-digest --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256"
+# Run the complete Overlay-13 common matrix before release artifacts are assembled.
+bash tools/run-final-common-validation.sh
+
+# Only after the common matrix is green do we compile/package the signed release. Static/full
+# evidence is therefore earned by an earlier invocation rather than asserted optimistically.
+./gradlew -Pxdm.requireAria2Runtime=true \
+  -Pxdm.validation.staticPassed=true -Pxdm.validation.fullPassed=true -Pxdm.validation.aria2PayloadVerified=true \
+  :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark \
+  :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts \
+  lintRelease testReleaseUnitTest :app:assembleRelease :app:bundleRelease
 APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
 AAB="$(find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -print -quit)"
 test -n "$APK"

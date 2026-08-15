@@ -79,10 +79,12 @@ for needle, label in [
     require(coordinator + notifications + application, needle, label)
 
 
-require(queue_coordinator, "recordQueueReservation(reservation)", "queue admission reservation wired")
+require(queue_coordinator, "reserveSlotAtomically", "queue admission uses atomic reservation planner")
+require(queue_coordinator, "recordQueueReservation(audit)", "accepted queue reservation audit is persisted")
 require(queue_coordinator, "deleteQueueSafely", "queue deletion anti-dangling runtime path")
 require(foreground_service, "queueIntelligence.pauseAllDurably(); runtime.pauseAll()", "foreground Pause All durable hold ordering")
-require(worker, "queue?.pauseAllDurably()", "WorkManager stop Pause All durable hold ordering")
+require(worker, "recordSystemStop", "WorkManager persists exact-owner stop reason")
+require(worker, "runtime.pauseOwned(downloadId, queueClaimToken)", "WorkManager stop pauses only exact owned claim")
 require(receiver, "pauseAllDurably()", "broadcast Pause All durable hold ordering")
 require(view_model, "queueIntelligenceCoordinator.pauseAllDurably()", "UI Pause All durable hold ordering")
 require(view_model, "deleteQueueSafely(queue.id)", "UI queue delete goes through anti-dangling plan")

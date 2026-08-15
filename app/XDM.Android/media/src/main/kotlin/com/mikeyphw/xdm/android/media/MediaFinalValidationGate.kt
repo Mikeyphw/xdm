@@ -1,12 +1,11 @@
 package com.mikeyphw.xdm.android.media
 
 /**
- * Phase 33 Media Final Validation Gate.
+ * Final media/remediation validation gate.
  *
- * This planner is deliberately pure Kotlin. It does not execute Gradle, shell commands, workers,
- * WebView hooks, or native downloads. Its job is to model the final gate surface that stitches the
- * Phase 18-32 media stack back into full validation: all validators present, Gradle/lint expected,
- * no secret persistence, no new top-level routes, and Termux/chroot strip hardening retained.
+ * This planner is deliberately pure Kotlin. It never treats "validation enabled" as evidence that
+ * validation passed. The current remediation overlay, Room schema, static validator result, and
+ * full build/test/lint result are explicit inputs so release-readiness cannot self-certify.
  */
 enum class MediaFinalValidationSeverity(val label: String) {
     Pass("pass"),
@@ -52,7 +51,7 @@ data class MediaFinalValidationDashboard(
     val commands: List<MediaFinalValidationCommand>,
     val implementedPhaseCount: Int,
     val expectedFinalPhase: Int,
-    val readyForFullValidation: Boolean,
+    val releaseReady: Boolean,
     val warningGate: Boolean,
     val noNewTopLevelRoutes: Boolean,
     val secretSafe: Boolean,
@@ -77,7 +76,8 @@ data class MediaFinalValidationDashboard(
 
 class MediaFinalValidationGatePlanner {
     fun dashboard(
-        implementedPhases: List<Int>,
+        currentOverlay: String,
+        currentRoomSchemaVersion: Int,
         mediaMobilePolish: MediaMobilePolishDashboard,
         privacyAudit: MediaSessionPrivacyAuditDashboard,
         captureQuality: MediaCaptureQualityDashboard,
@@ -87,20 +87,23 @@ class MediaFinalValidationGatePlanner {
         nativeDirect: NativeDirectDashboard,
         validatorCommands: List<String> = defaultValidatorCommands(),
         gradleCommand: String = DefaultGradleCommand,
-        fullValidationEnabled: Boolean = true,
-        noNewTopLevelRoutes: Boolean = true,
-        keepDebugSymbolsProtected: Boolean = true,
-        warningsAsErrors: Boolean = true,
+        staticValidationPassed: Boolean = false,
+        fullValidationPassed: Boolean = false,
+        noNewTopLevelRoutes: Boolean = false,
+        keepDebugSymbolsProtected: Boolean = false,
+        warningsAsErrors: Boolean = false,
     ): MediaFinalValidationDashboard {
-        val expectedPhases = (18..33).toList()
-        val phaseSet = implementedPhases.toSet()
-        val missingPhases = expectedPhases.filterNot { it in phaseSet }
+        val overlayCurrent = currentOverlay == FinalOverlayArtifact
+        val schemaCurrent = currentRoomSchemaVersion == CurrentRoomSchema
         val commands = validatorCommands.map { command -> MediaFinalValidationCommand(labelForCommand(command), command, required = true) } +
             MediaFinalValidationCommand("Gradle build/test/lint", gradleCommand, required = true)
         val commandText = commands.joinToString("\n") { it.safePreview }
         val secretSafe = mediaMobilePolish.secretSafe &&
             privacyAudit.durableSecretSafe &&
             privacyAudit.transientCleanupHealthy &&
+            privacyAudit.filesystemCoverageComplete &&
+            privacyAudit.filesystemCoverageIssueCount == 0 &&
+            privacyAudit.scannedFilesystemRootCount >= RequiredFilesystemRoots &&
             captureQuality.secretSafe &&
             library.secretSafe &&
             termuxRuntime.secretSafe &&
@@ -110,20 +113,20 @@ class MediaFinalValidationGatePlanner {
         val checks = listOf(
             MediaFinalValidationCheck(
                 id = "phase-ledger",
-                title = "Phase 18-33 ledger complete",
+                title = "Current remediation overlay and schema",
                 surface = MediaFinalValidationSurface.PhaseLedger,
                 severity = MediaFinalValidationSeverity.Blocker,
-                passing = missingPhases.isEmpty() && implementedPhases.lastOrNull() == 33,
-                summary = if (missingPhases.isEmpty()) "all media phases recorded" else "missing ${missingPhases.joinToString()}",
-                evidence = "implemented=${implementedPhases.joinToString()}",
+                passing = overlayCurrent && schemaCurrent,
+                summary = if (overlayCurrent && schemaCurrent) "final overlay/schema current" else "overlay or schema is stale",
+                evidence = "overlay=$currentOverlay schema=$currentRoomSchemaVersion",
             ),
             MediaFinalValidationCheck(
                 id = "static-validators",
                 title = "All media validators wired",
                 surface = MediaFinalValidationSurface.StaticValidators,
                 severity = MediaFinalValidationSeverity.Blocker,
-                passing = validatorCommands.any { it.contains("validate-media-final-validation-gate.py") } && validatorCommands.count { it.contains("validate-media-") } >= 15,
-                summary = "${validatorCommands.size} validator commands modeled",
+                passing = staticValidationPassed && validatorCommands.any { it.contains("validate-media-final-validation-gate.py") } && validatorCommands.any { it.contains("run-final-release-gate.sh") },
+                summary = if (staticValidationPassed) "static validator evidence passed" else "static validation evidence pending",
                 evidence = validatorCommands.joinToString(" | "),
             ),
             MediaFinalValidationCheck(
@@ -131,8 +134,8 @@ class MediaFinalValidationGatePlanner {
                 title = "Gradle/lint/test gate restored",
                 surface = MediaFinalValidationSurface.GradleGate,
                 severity = MediaFinalValidationSeverity.Blocker,
-                passing = fullValidationEnabled && warningsAsErrors && gradleCommand.contains("lintDebug") && gradleCommand.contains(":media:test") && gradleCommand.contains("testDebugUnitTest"),
-                summary = if (fullValidationEnabled) "full validation expected" else "validation still deferred",
+                passing = fullValidationPassed && warningsAsErrors && REQUIRED_FULL_VALIDATION_TASKS.all(gradleCommand::contains),
+                summary = if (fullValidationPassed) "full build/test/lint evidence passed" else "full validation evidence pending",
                 evidence = gradleCommand,
             ),
             MediaFinalValidationCheck(
@@ -140,7 +143,7 @@ class MediaFinalValidationGatePlanner {
                 title = "No durable cookies, headers, or tokens",
                 surface = MediaFinalValidationSurface.PrivacyLeakScan,
                 severity = MediaFinalValidationSeverity.Blocker,
-                passing = secretSafe && privacyAudit.blockerCount == 0,
+                passing = secretSafe && privacyAudit.blockerCount == 0 && privacyAudit.filesystemCoverageComplete,
                 summary = privacyAudit.summary,
                 evidence = listOf(captureQuality.summary, library.summary, termuxRuntime.summary, nativeDirect.summary).joinToString(" • "),
             ),
@@ -181,13 +184,13 @@ class MediaFinalValidationGatePlanner {
                 evidence = commands.joinToString("\n") { it.safePreview },
             ),
         )
-        val ready = checks.none { it.blocking } && fullValidationEnabled
+        val ready = checks.none { it.blocking } && staticValidationPassed && fullValidationPassed
         return MediaFinalValidationDashboard(
             checks = checks,
             commands = commands,
-            implementedPhaseCount = implementedPhases.distinct().size,
-            expectedFinalPhase = 33,
-            readyForFullValidation = ready,
+            implementedPhaseCount = if (overlayCurrent) 1 else 0,
+            expectedFinalPhase = 13,
+            releaseReady = ready,
             warningGate = warningsAsErrors,
             noNewTopLevelRoutes = noNewTopLevelRoutes,
             secretSafe = secretSafe,
@@ -220,9 +223,23 @@ class MediaFinalValidationGatePlanner {
     }
 
     companion object {
-        const val DefaultGradleCommand: String = "./gradlew -Pxdm.requireAria2Runtime=true --stacktrace lintDebug :media:test :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :persistence:testDebugUnitTest testDebugUnitTest assembleDebug"
+        const val FinalOverlayArtifact: String = "xdm_android_privacy_quality_final_gate_overlay_v2.zip"
+        const val CurrentRoomSchema: Int = 20
+        const val RequiredFilesystemRoots: Int = 4
+        const val DefaultGradleCommand: String = "./gradlew -Pxdm.requireAria2Runtime=true --stacktrace :app:compileDebugKotlin :core-model:test :core-utils:test :transfer-api:test :browser-integration:testDebugUnitTest :storage:testDebugUnitTest :transfer-native:testDebugUnitTest :transfer-aria2:test :scheduler:testDebugUnitTest :media:test :persistence:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug :browser-extension:test :browser-extension:jsTest :browser-extension:validateFirefoxExtension :app:checkBrowserIntegration assembleDebug :app:assembleDebugAndroidTest"
+        val REQUIRED_FULL_VALIDATION_TASKS: List<String> = listOf(
+            ":core-model:test",
+            ":media:test",
+            ":persistence:testDebugUnitTest",
+            ":app:testDebugUnitTest",
+            ":app:lintDebug",
+            "assembleDebug",
+            ":app:assembleDebugAndroidTest",
+            ":browser-extension:validateFirefoxExtension",
+        )
 
         fun defaultValidatorCommands(): List<String> = listOf(
+            "bash tools/run-final-release-gate.sh --ci",
             "python3 tools/validate-browser-removal-phase-0-1.py",
             "python3 tools/validate-browser-removal-phase-2.py",
             "python3 tools/validate-browser-removal-phase-3.py",

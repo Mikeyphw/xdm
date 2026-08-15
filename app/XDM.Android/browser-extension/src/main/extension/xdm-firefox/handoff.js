@@ -17,6 +17,13 @@
     }
   }
 
+  function encodeSchemeData(value) {
+    // Preserve the HTTP(S)/FTP URL shape expected by the optional 1DM custom scheme while
+    // encoding whitespace/control characters and preventing a URL fragment from becoming
+    // the custom-scheme fragment. XDM capture URLs never use this compatibility path.
+    return encodeURI(String(value || "")).replace(/#/g, "%23");
+  }
+
   function cleanFilename(title, url, mimeType = "") {
     let suffix = "";
     try {
@@ -47,6 +54,26 @@
     return "media";
   }
 
+  function buildXdmAdd(input = {}) {
+    const url = safeHttpUrl(input.url);
+    if (!url) return "";
+    const config = globalThis.XdmExtensionConfig || CONFIG || {};
+    const scheme = String(input.scheme || config.xdmScheme || "xdmdownload").toLowerCase();
+    if (!/^[a-z][a-z0-9+.-]{1,40}$/.test(scheme)) return "";
+    const params = new URLSearchParams();
+    params.set("v", "1");
+    params.set("url", url);
+    const pageUrl = safeHttpUrl(input.pageUrl || "");
+    if (pageUrl) params.set("page", pageUrl);
+    const title = String(input.title || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 240);
+    if (title) params.set("title", title);
+    const filename = cleanFilename(input.title, url, input.mimeType);
+    if (filename) params.set("filename", filename);
+    const mime = String(input.mimeType || "").split(";", 1)[0].trim().toLowerCase().slice(0, 120);
+    if (mime) params.set("mime", mime);
+    return `${scheme}://add?${params.toString()}`;
+  }
+
   function buildXdmCapture(_input = {}) {
     // Encrypted v2 capture is the only supported XDM media handoff. Never place the
     // media URL, page URL, signed query, headers, or credentials in a custom-scheme URI.
@@ -60,7 +87,7 @@
 
   function buildTargets(input = {}) {
     return Object.freeze({
-      xdm: "",
+      xdm: buildXdmAdd(input),
       oneDm: buildOneDm(input),
       filename: cleanFilename(input.title, input.url, input.mimeType)
     });
@@ -210,5 +237,5 @@
     const url = `${scheme}://capture?${params.toString()}`;
     return url.length <= 64 * 1024 ? url : "";
   }
-  globalThis.XdmHandoffV1 = Object.freeze({ TARGETS, safeHttpUrl, buildXdmCapture, buildEncryptedCaptureSession, buildOneDm, buildTargets, cleanFilename, mediaKind });
+  globalThis.XdmHandoffV1 = Object.freeze({ TARGETS, safeHttpUrl, buildXdmAdd, buildXdmCapture, buildEncryptedCaptureSession, buildOneDm, buildTargets, cleanFilename, mediaKind });
 })();

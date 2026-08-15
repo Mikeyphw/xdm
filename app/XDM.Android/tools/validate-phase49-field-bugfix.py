@@ -82,7 +82,7 @@ def main() -> int:
     for symbol in ['viewModel::cancelDownload', 'viewModel::redownload', 'viewModel::moveDownloadInQueue', 'viewModel::deleteSavedFile']:
         require(symbol in app, f'XdmApp missing {symbol}')
 
-    require('applyDefaultProbeHeaders(connection, normalized, requestHeaders)' in media, 'Media probe must apply default headers')
+    require('applyDefaultProbeHeaders(connection, currentUrl, hopHeaders)' in media and 'sanitizeProbeHeaders(requestHeaders)' in media, 'Media probe must apply sanitized default headers to the current redirect hop')
     require('connection.responseCode' in media and media.index('connection.responseCode') < media.index('connection.inputStream'), 'HTTP status must be checked before body read')
     require('page-probe blocked by the site (HTTP' in media, '403 diagnostic must be explicit')
     require('browser extension capture so cookies, referer, and the active session stay in the browser' in media, '403 diagnostic must direct to extension capture')

@@ -35,7 +35,7 @@ for needle, label in [
     ("AtomicLong", "control generation"),
     ("DesiredTransferState.PauseRequested", "pause intent"),
     ("DesiredTransferState.CancelRequested", "cancel intent"),
-    ("ensureExecutionJob(downloadId)", "single execution entrypoint"),
+    ("ensureExecutionJob(downloadId, queueClaimToken)", "single token-bound execution entrypoint"),
     ("current.state in TERMINAL_STATES", "terminal guard"),
     ("current?.state == DownloadState.Failed", "fresh retry from failed backend"),
     ("generationBeforeVerification", "cancel during verification generation guard"),
@@ -45,12 +45,13 @@ for needle, label in [
 
 for text, needle, label in [
     (worker, "if (isStopped) pauseAndRecordStop()", "WorkManager stop handling"),
-    (worker, "runtime.pauseAll()", "WorkManager pauses runtime"),
-    (job, "withTimeoutOrNull(5_000)", "UIDT stop wait"),
-    (job, "transferRuntime.pause(downloadId)", "UIDT pauses item"),
-    (service, "runtime.summary.value.activeCount > 0", "foreground destruction guard"),
-    (service, "withTimeoutOrNull(3_000)", "bounded foreground pause"),
-    (service, "runtime.pauseAll()", "foreground service pauses active transfers"),
+    (worker, "runtime.pauseOwned(downloadId, queueClaimToken)", "WorkManager pauses only exact owned claims"),
+    (worker, "recordSystemStop", "WorkManager records durable stop reason"),
+    (job, "runtime.requestPauseOwnedAsync(downloadId, queueClaimToken)", "UIDT pauses only exact owned claim"),
+    (job, "params.stopReason", "UIDT records platform stop reason"),
+    (service, "runtime.summary.value.activeCount == 0", "foreground self-stop waits for no active transfers"),
+    (service, "runtime.pauseOwned(downloadId, queueClaimToken)", "foreground timeout pauses exact owned claims"),
+    (service, "queueIntelligence.pauseAllDurably(); runtime.pauseAll()", "explicit user Pause All persists hold before broad pause"),
 ]:
     require(text, needle, label)
 
@@ -58,7 +59,7 @@ for needle, label in [
     ("newTransferRequestBuilder", "shared request builder"),
     ("isEngineOwnedHeader", "engine-owned header filtering"),
     ("If-Range", "If-Range on resume"),
-    ("Remote ETag validator disappeared", "validator fail-closed"),
+    ("The remote object no longer exposes a strong validator; partial bytes cannot be resumed safely", "validator fail-closed"),
     ("Remote redirect target changed", "redirect identity check"),
     ("Server no longer supports byte ranges required by the segmented checkpoint", "zero-byte segmented range-loss guard"),
     ("normalizePreviousSegments", "complete segment normalization"),

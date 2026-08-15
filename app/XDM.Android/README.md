@@ -248,3 +248,11 @@ Navigation/UI remediation keeps Add ephemeral while persisting actual Activity/S
 
 Campaign Gradle/unit/lint and final validator harmony remain deferred to Overlay 13.
 
+
+## Master remediation Overlay 13 — privacy, quality, final gate
+
+The final remediation stage makes validation evidence fail-closed, audits real app-private media/browser persistence roots, groups media quality by exact request identity, and keeps player/execution failure classification on structured Media3/state/backend signals. The final media gate now targets Overlay 13 and Room schema 20 instead of the historical media phase ledger.
+
+The final gate also repaired the browser bridge after direct JS testing: popup/page/manual/probe Add uses the separate `xdmdownload://add?v=1` compatibility contract, while detected media requires a prebuilt encrypted-v2 capture link and fails closed without one. The optional `idmdownload:` route is restored without reintroducing plaintext XDM capture.
+
+`finalRemediationStaticGate` is wired into Devtool validation. The final Overlay-13 artifact does not allow deferred validation: Android compile/unit/lint and browser-extension Gradle gates must pass in the target environment before the final remediation commit is accepted.

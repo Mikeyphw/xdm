@@ -13,6 +13,7 @@ cd "$ROOT"
 validators=(
   tools/validate-uix-r3-downloads-add-workspace.py
   tools/validate-uix-r6-accessibility-performance-release-seal.py
+  tools/validate-debug-workbench-d7-final-debug-seal.py
   tools/validate-bug-hunt-phase1-external-control-secrets-privacy.py
   tools/validate-bug-hunt-phase2-download-execution.py
   tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py
@@ -39,6 +40,7 @@ validators=(
   tools/validate-media-session-privacy-audit.py
   tools/validate-media-mobile-polish.py
   tools/validate-media-final-validation-gate.py
+  tools/validate-remediation-phase13-final-gate.py
   tools/validate-bug-hunt-phase11-validation-matrix.py
 )
 
@@ -48,7 +50,7 @@ done
 
 bash tools/run-bug-hunt-phase11-validation-matrix.sh --static-only --ci
 
-FULL_GRADLE_GATE='bash tools/run-bug-hunt-phase11-validation-matrix.sh && bash tools/run-bug-hunt-phase11-validation-matrix.sh --device-only && bash tools/run-bug-hunt-phase11-validation-matrix.sh --release-only'
+FULL_GRADLE_GATE='bash tools/run-final-common-validation.sh && bash tools/run-bug-hunt-phase11-validation-matrix.sh --device-only && bash tools/run-bug-hunt-phase11-validation-matrix.sh --release-only'
 
 if [[ "${1:-}" == "--ci" ]]; then
   echo "CI final static gate passed"
@@ -62,5 +64,5 @@ Run the full matrix in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Phase 11 is the source of truth for bug-hunt acceptance: 80 roadmap rows, executable evidence for every row, a static CI gate, device/instrumentation mode, and signed-release mode. Documentation-only coverage is rejected.
+Overlay 13 is the current final source of truth. Its common validation runner plus the retained Phase-11 80-row device/release matrix provide executable evidence; documentation-only coverage is rejected.
 EOF2

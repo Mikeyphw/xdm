@@ -142,8 +142,6 @@ require(
 require(
     "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/AndroidTransferRequestSecurityGuard.kt",
     "NetworkSecurityPolicy",
-    "isAndroidJvmUnitTestStub",
-    "not mocked",
     "cleartextCredentialsApproved",
     "privateNetworkApproved",
     "InetAddress.getAllByName",
@@ -152,10 +150,8 @@ require(
     "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt",
     "NativeRequestSecurityInterceptor",
     "NativeAndroidNetworkSecurityPolicy",
-    "isAndroidJvmUnitTestStub",
-    "not mocked",
     "HTTPS-to-HTTP redirect blocked",
-    "Redirect to a private or unresolved network target blocked",
+    "Redirect to a private network route blocked without exact-target approval",
 )
 require(
     "app/XDM.Android/transfer-api/src/main/kotlin/com/mikeyphw/xdm/android/transfer/DownloadBackend.kt",
@@ -256,8 +252,10 @@ forbid(paths_rel, "<root-path", 'path="."')
 require(
     "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/CompletedFileGrantPolicy.kt",
     "DownloadState.Completed",
+    "completedArtifactGeneration",
+    "completedArtifactBytes",
     "canonicalFile",
-    "file.name != download.fileName",
+    "file.path.startsWith(root.path + File.separator)",
     "FileProvider.getUriForFile",
 )
 require(

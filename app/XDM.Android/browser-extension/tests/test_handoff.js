@@ -20,6 +20,6 @@ assert.strictEqual(
   "plaintext v1 XDM capture must stay disabled",
 );
 const targets = handoff.buildTargets({ url: "https://cdn.example/master.m3u8?token=abc" });
-assert.strictEqual(targets.xdm, "", "generic target builder cannot manufacture plaintext XDM handoff");
+assert.match(targets.xdm, /^xdmdownload:\/\/add\?v=1&url=/, "generic direct-add target must use the separate add?v=1 contract");
 assert.strictEqual(handoff.buildOneDm({ url: "https://cdn.example/video.mp4" }), "idmdownload:https://cdn.example/video.mp4");
 console.log("handoff tests passed");

@@ -96,6 +96,6 @@ const fpB = core.requestFingerprint({ url: signedB, requestId: "request-b", tabI
 assert.notStrictEqual(fpA, fpB, "signed requests must retain distinct browser request identity");
 assert.notStrictEqual(core.stableMediaIdentity(signedA, fpA), core.stableMediaIdentity(signedB, fpB));
 assert.strictEqual(handoff.buildXdmCapture({ url: signedA }), "", "release path must not emit plaintext capture v1");
-assert.strictEqual(handoff.buildTargets({ url: signedA }).xdm, "");
+assert.match(handoff.buildTargets({ url: signedA }).xdm, /^xdmdownload:\/\/add\?v=1&url=/, "direct add remains separate from encrypted media capture");
 assert.strictEqual(handoff.buildOneDm({ url: "https://cdn.example/video.mp4" }), "idmdownload:https://cdn.example/video.mp4");
 console.log("browser bridge release-gate JavaScript tests passed");

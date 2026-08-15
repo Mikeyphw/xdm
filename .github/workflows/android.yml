@@ -48,8 +48,8 @@ jobs:
         run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.4.1
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
-      - name: Debug validation matrix
-        run: ./gradlew -Pxdm.requireAria2Runtime=true :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts lintDebug :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test :persistence:testDebugUnitTest testDebugUnitTest :app:assembleDebugAndroidTest assembleDebug
+      - name: Overlay 13 final common validation
+        run: bash tools/run-final-common-validation.sh
       - uses: actions/upload-artifact@v4
         with:
           name: xdm-android-debug-artifacts
@@ -77,6 +77,10 @@ jobs:
       XDM_RELEASE_KEY_PASSWORD: ${{ secrets.XDM_RELEASE_KEY_PASSWORD }}
       XDM_RELEASE_SIGNER_SHA256: ${{ secrets.XDM_RELEASE_SIGNER_SHA256 }}
       XDM_RELEASE_BUILD_ID: ${{ github.sha }}
+      XDM_ARIA2_ARCHIVE_SHA256: ${{ secrets.XDM_ARIA2_ARCHIVE_SHA256 }}
+      XDM_CAPTURE_KEY_ID: ${{ secrets.XDM_CAPTURE_KEY_ID }}
+      XDM_CAPTURE_PUBLIC_KEY_SPKI: ${{ secrets.XDM_CAPTURE_PUBLIC_KEY_SPKI }}
+      XDM_CAPTURE_OAEP_HASH: ${{ secrets.XDM_CAPTURE_OAEP_HASH }}
       BUNDLETOOL_JAR: ${{ secrets.BUNDLETOOL_JAR_PATH }}
     steps:
       - uses: actions/checkout@v4
@@ -99,8 +103,15 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.4.1'
-      - name: Install official ARM64 aria2 runtime
-        run: python3 tools/install-aria2-runtime.py --download-official
+      - name: Install pinned official ARM64 aria2 runtime
+        run: |
+          test -n "$XDM_ARIA2_ARCHIVE_SHA256"
+          python3 tools/install-aria2-runtime.py --download-official --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256" --require-trusted-digest
+      - name: Require browser capture release key inputs
+        run: |
+          test -n "$XDM_CAPTURE_KEY_ID"
+          test -n "$XDM_CAPTURE_PUBLIC_KEY_SPKI"
+          test -n "$XDM_CAPTURE_OAEP_HASH"
       - name: Require bundletool input
         run: test -n "${BUNDLETOOL_JAR:-}" || command -v bundletool
       - name: Signed release gate

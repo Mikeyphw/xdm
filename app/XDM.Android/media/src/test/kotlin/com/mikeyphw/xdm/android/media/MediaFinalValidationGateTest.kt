@@ -9,7 +9,8 @@ class MediaFinalValidationGateTest {
     @Test
     fun finalGateDashboardBlocksLeaksAndRequiresGradleValidation() {
         val dashboard = MediaFinalValidationGatePlanner().dashboard(
-            implementedPhases = (18..33).toList(),
+            currentOverlay = MediaFinalValidationGatePlanner.FinalOverlayArtifact,
+            currentRoomSchemaVersion = MediaFinalValidationGatePlanner.CurrentRoomSchema,
             mediaMobilePolish = mobilePolish(secretSafe = true),
             privacyAudit = privacy(secretSafe = true),
             captureQuality = captureQuality(secretSafe = true),
@@ -18,13 +19,14 @@ class MediaFinalValidationGateTest {
             termuxRuntime = termux(secretSafe = true),
             nativeDirect = native(secretSafe = true),
             validatorCommands = MediaFinalValidationGatePlanner.defaultValidatorCommands(),
-            fullValidationEnabled = true,
+            staticValidationPassed = true,
+            fullValidationPassed = true,
             noNewTopLevelRoutes = true,
             keepDebugSymbolsProtected = true,
             warningsAsErrors = true,
         )
 
-        assertTrue(dashboard.readyForFullValidation)
+        assertTrue(dashboard.releaseReady)
         assertTrue(dashboard.secretSafe)
         assertTrue(dashboard.warningGate)
         assertEquals(0, dashboard.blockerCount)
@@ -33,9 +35,10 @@ class MediaFinalValidationGateTest {
     }
 
     @Test
-    fun finalGateBlocksSecretLeakAndMissingPhase() {
+    fun finalGateBlocksSecretLeakAndStaleOverlaySchema() {
         val dashboard = MediaFinalValidationGatePlanner().dashboard(
-            implementedPhases = (18..32).toList(),
+            currentOverlay = "stale-overlay.zip",
+            currentRoomSchemaVersion = 19,
             mediaMobilePolish = mobilePolish(secretSafe = false),
             privacyAudit = privacy(secretSafe = false),
             captureQuality = captureQuality(secretSafe = false),
@@ -45,13 +48,14 @@ class MediaFinalValidationGateTest {
             nativeDirect = native(secretSafe = false),
             validatorCommands = listOf("python3 tools/validate-media-final-validation-gate.py"),
             gradleCommand = "./gradlew assembleDebug authorization=BearerSecret",
-            fullValidationEnabled = false,
+            staticValidationPassed = false,
+            fullValidationPassed = false,
             noNewTopLevelRoutes = false,
             keepDebugSymbolsProtected = false,
             warningsAsErrors = false,
         )
 
-        assertFalse(dashboard.readyForFullValidation)
+        assertFalse(dashboard.releaseReady)
         assertFalse(dashboard.secretSafe)
         assertTrue(dashboard.blockerCount >= 4)
         assertTrue(dashboard.checks.any { it.id == "phase-ledger" && it.blocking })
@@ -103,6 +107,9 @@ class MediaFinalValidationGateTest {
         scannedSurfaceCount = 8,
         durableSecretSafe = secretSafe,
         transientCleanupHealthy = secretSafe,
+        scannedFilesystemRootCount = 4,
+        scannedFilesystemFileCount = 1,
+        filesystemCoverageComplete = secretSafe,
     )
 
     private fun captureQuality(secretSafe: Boolean): MediaCaptureQualityDashboard = MediaCaptureQualityDashboard(

@@ -262,9 +262,11 @@ ${location.href}`;
         scheme: globalThis.XdmExtensionConfig && globalThis.XdmExtensionConfig.xdmScheme
       };
       const builtLinks = globalThis.XdmHandoffV1.buildTargets(handoffInput);
+      const allowDirectAdd = Boolean(input.manualAdd || isProbe);
       const links = Object.freeze({
-        // XDM is encrypted-v2 only. buildTargets intentionally cannot manufacture a plaintext fallback.
-        xdm: input.prebuiltXdmLink || "",
+        // Detected media is encrypted-v2 only. Manual/page/probe actions may use the
+        // separate non-sensitive add?v=1 contract; never use it as a capture fallback.
+        xdm: input.prebuiltXdmLink || (allowDirectAdd ? builtLinks.xdm : ""),
         oneDm: builtLinks.oneDm,
         filename: builtLinks.filename,
       });
@@ -558,6 +560,7 @@ ${location.href}`;
       title: value.title || document.title,
       label: value.label || "",
       mode: value.mode || "",
+      manualAdd: true,
       headers: value.headers || {},
       candidateCount: value.candidateCount || 1,
       streamKind: value.streamKind || "",

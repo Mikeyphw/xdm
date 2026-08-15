@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.Delete
+import org.gradle.api.tasks.Exec
 
 plugins {
     alias(libs.plugins.android.application)
@@ -33,6 +34,16 @@ val requireAlignedAria2Runtime = providers.gradleProperty("xdm.requireAria2Runti
     .map(String::toBoolean)
     .orElse(false)
 
+fun validationEvidence(propertyName: String): Boolean = providers.gradleProperty(propertyName)
+    .map(String::toBoolean)
+    .orElse(false)
+    .get()
+
+val staticValidationPassed = validationEvidence("xdm.validation.staticPassed")
+val fullValidationPassed = validationEvidence("xdm.validation.fullPassed")
+val realDeviceSmokePassed = validationEvidence("xdm.validation.realDeviceSmokePassed")
+val aria2PayloadVerified = validationEvidence("xdm.validation.aria2PayloadVerified")
+
 android {
     namespace = "com.mikeyphw.xdm.android"
     compileSdk = 36
@@ -50,6 +61,11 @@ android {
         buildConfigField("String", "XDM_PINNED_RELEASE_SIGNER_SHA256", buildConfigString(pinnedReleaseSignerSha256 ?: "UNPINNED"))
         buildConfigField("String", "XDM_RELEASE_CERTIFICATE_NOT_AFTER", buildConfigString(releaseCertificateNotAfter ?: "UNKNOWN"))
         buildConfigField("Boolean", "XDM_RELEASE_SIGNING_CONFIGURED", hasReleaseSigning.toString())
+        // Validation evidence is fail-closed. Release tooling must opt in only after the named gate has passed.
+        buildConfigField("Boolean", "XDM_STATIC_VALIDATION_PASSED", staticValidationPassed.toString())
+        buildConfigField("Boolean", "XDM_FULL_VALIDATION_PASSED", fullValidationPassed.toString())
+        buildConfigField("Boolean", "XDM_REAL_DEVICE_SMOKE_PASSED", realDeviceSmokePassed.toString())
+        buildConfigField("Boolean", "XDM_ARIA2_PAYLOAD_VERIFIED", aria2PayloadVerified.toString())
         ndk {
             abiFilters += setOf("arm64-v8a")
         }
@@ -183,6 +199,14 @@ dependencies {
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+}
+
+
+tasks.register<Exec>("finalRemediationStaticGate") {
+    group = "verification"
+    description = "Run the Overlay 13 final static remediation gate."
+    workingDir(rootProject.projectDir)
+    commandLine("bash", "tools/run-final-release-gate.sh", "--ci")
 }
 
 

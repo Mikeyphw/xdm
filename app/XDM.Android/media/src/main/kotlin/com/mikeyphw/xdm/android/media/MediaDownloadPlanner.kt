@@ -6,6 +6,7 @@ import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.BrowserHandoffMediaPolicy
 import com.mikeyphw.xdm.android.model.MediaTransferShape
 import com.mikeyphw.xdm.android.model.MediaVariantKind
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import java.util.Locale
 
 /**
@@ -193,7 +194,7 @@ class MediaDownloadPlanner {
             canQueueDirectly = strategy != MediaDownloadStrategy.UnsupportedProtected,
             explanation = explanationFor(strategy, capture.kind, intent, capture, variants, normalizedSelection, session),
             metadataProbeUrl = metadataProbeUrl(capture),
-            needsCookieContext = session.needsSession || capture.sourceUrl.contains("token", ignoreCase = true) || variants.any { it.url.contains("token", ignoreCase = true) },
+            needsCookieContext = session.needsSession || ExternalUrlPolicy.hasCredentialBearingQuery(capture.sourceUrl) || variants.any { ExternalUrlPolicy.hasCredentialBearingQuery(it.url) },
             trackSelection = normalizedSelection,
             sessionHandoff = session,
             ytDlpFormatSelector = ytdlpFormatSelector(variants, normalizedSelection, intent),
@@ -310,21 +311,22 @@ class MediaDownloadPlanner {
 
     private fun metadataProbeUrl(capture: MediaCaptureRecord): String = capture.pageUrl?.takeIf { it.isNotBlank() } ?: capture.sourceUrl
 
-    private fun isLive(capture: MediaCaptureRecord): Boolean = capture.container?.contains("live", ignoreCase = true) == true
+    private fun isLive(capture: MediaCaptureRecord): Boolean = listOfNotNull(capture.container, capture.mimeType)
+        .flatMap(::structuredTokens)
+        .any { it == "LIVE" }
 
     private fun protectedDiagnostic(capture: MediaCaptureRecord, variants: List<MediaVariant>): ProtectedMediaDiagnostic {
-        val hlsEvidence = listOf(capture.container, capture.codecs, capture.mimeType)
+        val hlsEvidence = (listOf(capture.container, capture.codecs, capture.mimeType) + variants.flatMap { listOf(it.codecs, it.mimeType) })
             .filterNotNull()
-            .firstOrNull { it.contains("EXT-X-KEY", ignoreCase = true) || it.contains("SAMPLE-AES", ignoreCase = true) || it.contains("widevine", ignoreCase = true) || it.contains("cenc", ignoreCase = true) }
-        val dashEvidence = listOf(capture.container, capture.codecs)
+            .firstNotNullOfOrNull { structuredProtectionMarker(it, HLS_PROTECTION_MARKERS) }
+        val dashEvidence = (listOf(capture.container, capture.codecs, capture.mimeType) + variants.flatMap { listOf(it.codecs, it.mimeType) })
             .filterNotNull()
-            .firstOrNull { it.contains("ContentProtection", ignoreCase = true) || it.contains("urn:uuid:", ignoreCase = true) || it.contains("widevine", ignoreCase = true) || it.contains("cenc", ignoreCase = true) }
-        val resolverEvidence = variants.firstOrNull { it.displayLabel.contains("protected", ignoreCase = true) }?.displayLabel
+            .firstNotNullOfOrNull { structuredProtectionMarker(it, DASH_PROTECTION_MARKERS) }
         val evidence = BrowserHandoffMediaPolicy.classifyProtection(
             hlsKeyMetadata = hlsEvidence,
             dashContentProtection = dashEvidence,
             browserEncryptionEvent = null,
-            resolverReport = resolverEvidence,
+            resolverReport = null,
         )
         return if (evidence.protected) {
             ProtectedMediaDiagnostic(true, evidence.evidence.firstOrNull()?.scheme, "Authoritative protection evidence is present. XDM keeps this diagnostic-only and will not attempt DRM bypass.", "View diagnostics; XDM does not bypass DRM or download protected media.")
@@ -386,9 +388,27 @@ private fun MediaDownloadIntent.humanLabel(): String = when (this) {
         MediaVariantKind.Thumbnail -> 1
     }
 
+    private fun structuredTokens(value: String): List<String> = value
+        .uppercase(Locale.US)
+        .split(Regex("[^A-Z0-9:-]+"))
+        .filter { it.isNotBlank() }
+
+    private fun structuredProtectionMarker(value: String, markers: Set<String>): String? {
+        val normalized = value.uppercase(Locale.US)
+        val tokens = structuredTokens(value).toSet()
+        return markers.firstOrNull { marker ->
+            when {
+                marker == "URN:UUID:" -> Regex("(?:^|[^A-Z0-9])URN:UUID:[0-9A-F-]+(?:$|[^A-Z0-9])").containsMatchIn(normalized)
+                marker.contains('-') -> Regex("(?:^|[^A-Z0-9])${Regex.escape(marker)}(?:$|[^A-Z0-9])").containsMatchIn(normalized)
+                else -> marker in tokens
+            }
+        }
+    }
+
     companion object {
         private val adaptiveMimeTypes = setOf("application/vnd.apple.mpegurl", "application/x-mpegurl", "application/dash+xml")
-        private val protectedMarkers = setOf("drm", "widevine", "playready", "fairplay", "protected", "sample-aes", "cenc")
+        private val HLS_PROTECTION_MARKERS = setOf("EXT-X-KEY", "SAMPLE-AES", "WIDEVINE", "CENC")
+        private val DASH_PROTECTION_MARKERS = setOf("CONTENTPROTECTION", "URN:UUID:", "WIDEVINE", "CENC")
 
         @Suppress("UNUSED_PARAMETER")
         fun defaultSessionHeaders(capture: MediaCaptureRecord): List<MediaSessionHeader> = emptyList()

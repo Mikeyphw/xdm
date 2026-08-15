@@ -1454,7 +1454,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_browser_secure_runtime_media_capture_import_overlay_v3.zip",
+  "current_overlay": "xdm_android_privacy_quality_final_gate_overlay_v2.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -1477,10 +1477,12 @@
       "14_to_15",
       "15_to_16",
       "16_to_17",
-      "17_to_18"
+      "17_to_18",
+      "18_to_19",
+      "19_to_20"
     ],
     "organization_power_tools": true,
-    "version": 18
+    "version": 20
   },
   "debug_workbench_phase_d1_compile_hygiene": {
     "fixes": [
@@ -2576,17 +2578,22 @@
     "diagnostics_redacted": true,
     "full_validation_gate_script": true,
     "full_validation_required": true,
-    "install_update_ready": true,
+    "install_update_ready": false,
     "package_identity_locked": "com.mikeyphw.xdm.android",
     "release_candidate": true,
     "release_docs_complete": true,
-    "room_schema_locked": 14,
-    "schema_version_unchanged": 14,
+    "room_schema_locked": 20,
+    "schema_version_unchanged": 20,
     "signed_release_verification_documented": true,
     "static_validators_complete": true,
     "top_level_route_added": false,
-    "version_code": 18,
-    "version_name": "0.17.0-rc01"
+    "version_code": 22,
+    "version_name": "0.21.0",
+    "static_validation_passed_by_default": false,
+    "full_validation_passed_by_default": false,
+    "real_device_smoke_passed_by_default": false,
+    "aria2_payload_verified_by_default": false,
+    "readiness_evidence_fail_closed": true
   },
   "implemented_phases": [
     26,
@@ -2746,8 +2753,8 @@
     "raw_shell_exposed": false,
     "room_schema_migration": false,
     "root_required": false,
-    "schema_version_current": 18,
-    "schema_version_unchanged": 18,
+    "schema_version_current": 20,
+    "schema_version_unchanged": 20,
     "secret_leak_surfaces": [
       "Room metadata",
       "sidecars",
@@ -2762,7 +2769,13 @@
     "top_level_route_added": false,
     "validation_reenabled": true,
     "version_name_current": "0.21.0",
-    "warning_zero_gate": true
+    "warning_zero_gate": true,
+    "static_validation_evidence_required": true,
+    "full_validation_evidence_required": true,
+    "validation_evidence_defaults_false": true,
+    "real_filesystem_privacy_coverage_required": true,
+    "exact_request_identity_quality_grouping": true,
+    "structured_failure_classification_required": true
   },
   "media_mobile_polish": {
     "accessibility_labels": true,
@@ -3935,5 +3948,59 @@
     "yt_dlp_shared_metadata": "restricted --print projection only; raw -J metadata cannot enter shared staging",
     "termux_terminal_reconciliation": "delayed control/result callbacks cannot transition Completed/Failed/Cancelled/TimedOut jobs back to active/recovery states",
     "historical_schema_contracts": "schema-18 tests retain the generation-integrity migration floor while accepting current schema 20"
+  },
+  "bug_hunt_master_remediation_overlay_13_privacy_quality_final_gate": {
+    "base_commit": "aef30699",
+    "overlay": 13,
+    "master_items": [
+      "M-036-final",
+      "M-046-final",
+      "M-048",
+      "M-055-final",
+      "M-001-final"
+    ],
+    "room_schema_current": 20,
+    "readiness_evidence": "static/full/device/aria2 inputs default false; no runtime self-certification",
+    "filesystem_privacy_roots": [
+      "noBackupFilesDir/secure-request-envelopes-v1",
+      "filesDir/browser-capture-import-journal",
+      "filesDir/browser-capture-session-index",
+      "filesDir/queue-scheduling-recovery"
+    ],
+    "filesystem_privacy_coverage_required": true,
+    "capture_quality_identity": "SHA-256 exact request URL fingerprint; no host/parent-path collapse",
+    "failure_classification": "structured Media3 error code/cause plus strategy/protection/DownloadState/BackendType",
+    "browser_direct_add_contract": "xdmdownload://add?v=1 remains distinct from encrypted media capture",
+    "browser_media_capture_contract": "encrypted v2 only; automatic media fails closed without prebuilt capture link",
+    "final_static_gate": ":app:finalRemediationStaticGate",
+    "required_final_validation_tasks": [
+      ":app:finalRemediationStaticGate",
+      ":app:compileDebugKotlin",
+      ":core-model:test",
+      ":core-utils:test",
+      ":transfer-api:test",
+      ":browser-integration:testDebugUnitTest",
+      ":storage:testDebugUnitTest",
+      ":transfer-native:testDebugUnitTest",
+      ":transfer-aria2:test",
+      ":scheduler:testDebugUnitTest",
+      ":media:test",
+      ":persistence:testDebugUnitTest",
+      ":app:testDebugUnitTest",
+      ":app:lintDebug",
+      ":browser-extension:test",
+      ":browser-extension:jsTest",
+      ":browser-extension:validateFirefoxExtension",
+      ":app:checkBrowserIntegration",
+      "assembleDebug",
+      ":app:assembleDebugAndroidTest"
+    ],
+    "validation_deferred": false,
+    "allow_deferred": false,
+    "manual_real_device_smoke_is_separate_evidence": true,
+    "artifact": "xdm_android_privacy_quality_final_gate_overlay_v2.zip",
+    "filesystem_privacy_coverage": "fail closed on traversal/file/depth/size/read/path-node truncation",
+    "signed_publication_gate": "final Overlay-13 static/common validation is mandatory before release packaging",
+    "key_bound_browser_release_gate": "signed publication only; requires XDM_CAPTURE_KEY_ID/XDM_CAPTURE_PUBLIC_KEY_SPKI/XDM_CAPTURE_OAEP_HASH and is not part of ordinary Devtool validation"
   }
 }

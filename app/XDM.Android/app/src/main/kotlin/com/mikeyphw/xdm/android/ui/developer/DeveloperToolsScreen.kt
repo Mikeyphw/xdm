@@ -194,11 +194,11 @@ internal fun MediaFinalValidationGateCard(dashboard: MediaFinalValidationDashboa
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Media final validation gate")
             XdmSupportingText(
-                "Phase 33 re-enables validation for the complete Media stack: static validators, Gradle build/test/lint, warning-zero policy, route contracts, Termux/chroot safety, and secret-leak scans.",
+                "Overlay 13 is the final remediation gate: static validators, Gradle build/test/lint, warning-zero policy, route contracts, Termux/chroot safety, and real-filesystem privacy scans must all provide evidence before release readiness.",
                 maxLines = 4,
             )
             XdmActionFlowRow {
-                StatusPill(if (dashboard.readyForFullValidation) "ready for full validation" else "validation blockers", if (dashboard.readyForFullValidation) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.releaseReady) "release-ready" else "validation pending or blocked", if (dashboard.releaseReady) XdmStatusTone.Success else XdmStatusTone.Warning)
                 dashboard.blockerCount.takeIf { it > 0 }?.let { StatusPill("$it blocker", tone = XdmStatusTone.Error) }
                 dashboard.reviewCount.takeIf { it > 0 }?.let { StatusPill("$it review", tone = XdmStatusTone.Warning) }
                 StatusPill("${dashboard.commandCount} commands", tone = XdmStatusTone.Info)
@@ -1399,7 +1399,8 @@ internal fun MediaDeveloperToolsSection(
     }
     val finalValidation = remember(mobilePolish, privacyAudit, captureQuality, playerDiagnostics, libraryV2, termuxRuntime, nativeDirect) {
         MediaFinalValidationGatePlanner().dashboard(
-            implementedPhases = (18..33).toList(),
+            currentOverlay = MediaFinalValidationGatePlanner.FinalOverlayArtifact,
+            currentRoomSchemaVersion = 20,
             mediaMobilePolish = mobilePolish,
             privacyAudit = privacyAudit,
             captureQuality = captureQuality,
@@ -1407,10 +1408,11 @@ internal fun MediaDeveloperToolsSection(
             library = libraryV2,
             termuxRuntime = termuxRuntime,
             nativeDirect = nativeDirect,
-            fullValidationEnabled = true,
-            noNewTopLevelRoutes = true,
-            keepDebugSymbolsProtected = true,
-            warningsAsErrors = true,
+            staticValidationPassed = BuildConfig.XDM_STATIC_VALIDATION_PASSED,
+            fullValidationPassed = BuildConfig.XDM_FULL_VALIDATION_PASSED,
+            noNewTopLevelRoutes = BuildConfig.XDM_STATIC_VALIDATION_PASSED,
+            keepDebugSymbolsProtected = BuildConfig.XDM_STATIC_VALIDATION_PASSED,
+            warningsAsErrors = BuildConfig.XDM_STATIC_VALIDATION_PASSED,
         )
     }
 

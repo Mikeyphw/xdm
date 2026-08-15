@@ -12,7 +12,7 @@ class ReleaseReadinessModelsTest {
             versionName = "0.21.0-rc01",
             versionCode = 22,
             packageId = "com.mikeyphw.xdm.android",
-            schemaVersion = 17,
+            schemaVersion = 20,
             buildType = "release",
             releaseSafetyComplete = true,
             recoverySurfaceReady = true,

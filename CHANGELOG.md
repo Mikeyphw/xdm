@@ -814,3 +814,24 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 ### Runtime Foundation Phases 59-61 r3
 
 - Fixed a Kotlin/JVM platform declaration clash in browser capture URL redaction helpers while preserving encrypted Firefox capture durable-row redaction.
+
+## XDM Android master remediation Overlay 13 — privacy, quality, final gate
+
+- Made static/full/device/aria2 release-readiness evidence explicit and fail-closed; removed remaining optimistic runtime readiness constants.
+- Replaced the obsolete media phase-ledger final gate with current Overlay-13 / Room-schema-20 evidence and non-deferable Devtool validation.
+- Added bounded real-filesystem privacy coverage metrics for secure browser/import/session/queue persistence roots.
+- Changed media duplicate grouping to exact-request SHA-256 identity and moved credential-query/protected/failure classification onto structured policies/state.
+- Rebaselined stale final validators to current ownership/schema contracts without weakening their underlying security invariants.
+- Added a Gradle `finalRemediationStaticGate` and Phase-13 source/JUnit contracts to the final validation path.
+- Fixed final browser-gate regressions: restored the optional 1DM URL encoder and the distinct `add?v=1` direct-Add route while retaining encrypted-v2-only detected-media capture.
+- Final artifact validation is mandatory (`allow_deferred=false`) and includes static gate, Android compile/unit/lint, and Firefox extension test/js/validation tasks.
+
+### Overlay 13 v2 second promise-audit closure
+
+- Made bounded media filesystem privacy coverage fail closed when relevant files exceed the complete-scan cap, traversal/file/depth limits truncate inspection, paths cannot be enumerated/read/canonicalized, or non-regular/path-escape nodes are encountered.
+- Removed display-label and arbitrary protection-substring authority from media planning; protection now requires boundary-aware structured container/codec markers.
+- Expanded the mandatory final Devtool matrix to current JVM/Android modules, lint, debug packaging/Android-test assembly, browser integration/tests, and keyless rendered-extension validation; key-bound Firefox release packaging stays signed-publication-only.
+- Added a shared `run-final-common-validation.sh` used by final runbook, CI, and signed publication so the complete non-device matrix cannot drift between release paths.
+- Made the signed publication entrypoint execute Overlay 13 static/common validation before release packaging and require the Android-bound Firefox capture key/SPKI/OAEP inputs for release XPI verification.
+- Harmonized current `PROJECT_MANIFEST.json` database/release state to Room schema 20, version `0.21.0`, versionCode 22, and fail-closed readiness evidence rather than historical schema/version claims.
+- Strengthened Phase-13 Python/JUnit contracts and privacy/structured-protection regression coverage for the second promise audit.

@@ -69,14 +69,14 @@ for needle in ['signed-release:', 'XDM_RELEASE_KEYSTORE_BASE64', 'XDM_RELEASE_SI
 require('app/build/outputs/apk/release/*.apk' not in workflow.split('xdm-android-debug-artifacts',1)[0], 'debug validation job must not search release APK output')
 for needle in ['versionCode 22','versionName 0.21.0','APK-set','16 KB native alignment','device-to-device transfer','SBOM','provenance','checksum attestation','Phase 10 r2 gap closure','Room schema 17','XDM_ARIA2_ARCHIVE_SHA256']:
     require(needle in doc, f'Phase10 doc missing {needle}')
-for needle in ['Phase10ReleaseUpgradePackagingContractTest','releaseBuildRequiresSigningAndNamedUnsignedVariant','releaseGateBuildsSignedApkAndBundleBeforePublication','runtimeReleaseReadinessUsesSchema17AndBuildAttestation','cloudBackupAndDeviceTransferExcludeSensitiveState']:
+for needle in ['Phase10ReleaseUpgradePackagingContractTest','releaseBuildRequiresSigningAndNamedUnsignedVariant','releaseGateBuildsSignedApkAndBundleBeforePublication','runtimeReleaseReadinessUsesCurrentSchemaAndBuildAttestation','cloudBackupAndDeviceTransferExcludeSensitiveState']:
     require(needle in contract, f'Phase10 contract test missing {needle}')
 
 require(10 in project.get('project',{}).get('implemented_phases',[]), 'PROJECT_MANIFEST must include bug-hunt Phase 10')
 require(phase.get('status') == 'implemented', 'PROJECT_MANIFEST Phase10 status missing')
 require(phase.get('release_signing_required') is True, 'manifest must require release signing')
 require(phase.get('version_code') == 22 and phase.get('version_name') == '0.21.0', 'manifest must record Phase10 version bump')
-require(phase.get('room_schema_current', 0) >= 17 and project.get('database',{}).get('version', 0) >= 18, 'manifest must report current Room schema 18 or newer while retaining Phase 10 schema provenance')
+require(phase.get('room_schema_current', 0) >= 17 and project.get('database',{}).get('version', 0) >= 18, 'manifest must report current Room schema 20 or newer while retaining Phase 10 schema provenance')
 require(phase.get('supported_abis') == ['arm64-v8a'], 'manifest must truthfully scope supported ABIs to attested arm64-v8a')
 require(phase.get('aria2_archive_digest_required') is True, 'manifest must require pinned aria2 archive digest')
 require('requiredApkEntries' in release_inventory and 'forbiddenNameFragments' in release_inventory, 'release inventory must define allow/deny entries')
@@ -85,7 +85,7 @@ require(phase.get('signed_checksums_required') is True, 'manifest must require s
 
 
 main_vm=text('app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt')
-for needle in ['CurrentRoomSchemaVersion = 18','BuildConfig.XDM_RELEASE_SIGNING_CONFIGURED','BuildConfig.XDM_PINNED_RELEASE_SIGNER_SHA256','releaseSigningAttestationConfigured()']:
+for needle in ['CurrentRoomSchemaVersion = 20','BuildConfig.XDM_RELEASE_SIGNING_CONFIGURED','BuildConfig.XDM_PINNED_RELEASE_SIGNER_SHA256','releaseSigningAttestationConfigured()']:
     require(needle in main_vm, f'MainViewModel release readiness missing {needle}')
 require('releaseSigningConfigured = !BuildConfig.DEBUG' not in main_vm, 'MainViewModel must not derive release signing from !BuildConfig.DEBUG')
 require('schemaVersion = 14' not in main_vm, 'MainViewModel must not hardcode old schema 14')

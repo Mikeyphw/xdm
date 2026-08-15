@@ -59,11 +59,9 @@ build = [
   ":transfer-aria2:installOfficialAria2Runtime",
   "assembleDebug",
   ":app:assembleDebugAndroidTest",
-  ":browser-extension:packageFirefoxExtensionDark",
-  ":browser-extension:packageFirefoxExtensionAmoled",
-  ":browser-extension:verifyFirefoxExtensionReleaseArtifacts",
 ]
 test = [
+  ":app:finalRemediationStaticGate",
   ":browser-extension:test",
   ":browser-extension:jsTest",
   ":browser-extension:validateFirefoxExtension",
@@ -92,6 +90,7 @@ dependencies = ["dependencies"]
 compile = [":app:resetKotlinValidationState", ":app:compileDebugSources"]
 resources = [":app:processDebugResources"]
 unit-test = [
+  ":app:finalRemediationStaticGate",
   ":browser-extension:test",
   ":browser-extension:jsTest",
   ":browser-extension:validateFirefoxExtension",
@@ -111,9 +110,6 @@ unit-test = [
 package = [
   "assembleDebug",
   ":app:assembleDebugAndroidTest",
-  ":browser-extension:packageFirefoxExtensionDark",
-  ":browser-extension:packageFirefoxExtensionAmoled",
-  ":browser-extension:verifyFirefoxExtensionReleaseArtifacts",
 ]
 lint = ["lintDebug"]
 

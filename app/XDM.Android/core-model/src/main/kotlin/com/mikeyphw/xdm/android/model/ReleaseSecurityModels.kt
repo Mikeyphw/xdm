@@ -55,13 +55,13 @@ object ReleaseSecurityGate {
                     ),
                 )
             }
-            if (schemaVersion != 17) {
+            if (schemaVersion != 20) {
                 add(
                     ReleaseSecurityFinding(
                         id = "database.schema",
                         severity = ReleaseSecuritySeverity.Blocking,
                         title = "Unexpected schema version",
-                        detail = "Release hardening must report reviewed Room schema v17 after the Phase 7 publication-journal migration chain.",
+                        detail = "Release hardening must report reviewed Room schema v20 after the reviewed media-output migration chain.",
                     ),
                 )
             }
