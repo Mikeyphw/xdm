@@ -212,10 +212,10 @@ tasks.register<Exec>("finalRemediationStaticGate") {
 
 tasks.register("checkBrowserIntegration") {
     group = "verification"
-    description = "Run the Android browser bridge unit checks and build the deterministic default XPI."
+    description = "Run Android browser bridge unit checks and validate the keyless development Firefox extension."
     dependsOn(
         "testDebugUnitTest",
-        ":browser-extension:packageFirefoxExtension",
+        ":browser-extension:validateFirefoxExtension",
     )
 }
 

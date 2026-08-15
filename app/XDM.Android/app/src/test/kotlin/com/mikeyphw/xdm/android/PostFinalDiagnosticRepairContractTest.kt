@@ -24,6 +24,22 @@ class PostFinalDiagnosticRepairContractTest {
     }
 
     @Test
+    fun `scheduler browser packaging manifest and chroot timezone diagnostics stay fixed`() {
+        val coordinator = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt")
+        val worker = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt")
+        val appBuild = source("app/build.gradle.kts")
+        val manifest = source("app/src/main/AndroidManifest.xml")
+        val devtool = File(repositoryRoot, ".devtool.toml").readText()
+
+        assertTrue(coordinator.contains("val nextEligibleAtEpochMs = decision.nextEligibleAtEpochMs"))
+        assertTrue(worker.contains("import com.mikeyphw.xdm.android.model.DownloadState"))
+        assertTrue(appBuild.contains(":browser-extension:validateFirefoxExtension"))
+        assertFalse(appBuild.contains(":browser-extension:packageFirefoxExtension"))
+        assertFalse(manifest.contains("android:extractNativeLibs"))
+        assertTrue(devtool.contains("TZ = \"\""))
+    }
+
+    @Test
     fun `devtool aapt2 override suppresses its own experimental warning`() {
         val devtool = File(repositoryRoot, ".devtool.toml").readText()
         assertTrue(

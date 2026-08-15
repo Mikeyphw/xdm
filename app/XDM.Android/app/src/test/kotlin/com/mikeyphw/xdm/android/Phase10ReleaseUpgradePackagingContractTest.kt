@@ -21,7 +21,7 @@ class Phase10ReleaseUpgradePackagingContractTest {
         assertTrue(build.contains("versionName = \"0.21.0\""))
         assertTrue(build.contains("abiFilters += setOf(\"arm64-v8a\")"))
         assertTrue(build.contains("jniLibs.useLegacyPackaging = true"))
-        assertTrue(manifest.contains("android:extractNativeLibs=\"true\""))
+        assertFalse(manifest.contains("android:extractNativeLibs"))
     }
 
     @Test

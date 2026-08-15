@@ -41,7 +41,7 @@ for needle in ['versionCode = 22','versionName = "0.21.0"','XDM_RELEASE_BUILD_ID
     require(needle in build, f'app build missing {needle}')
 require('jniLibs.useLegacyPackaging = true' in build, 'app release packaging must extract JNI libraries')
 require('jniLibs.keepDebugSymbols += "**/libaria2c.so"' in build, 'debug symbols must be scoped to aria2 runtime only')
-require('android:extractNativeLibs="true"' in manifest, 'manifest must enable native extraction for executable aria2')
+require('android:extractNativeLibs' not in manifest, 'manifest must delegate native extraction policy to AGP jniLibs.useLegacyPackaging')
 require('android:allowBackup="false"' in manifest, 'allowBackup must remain false')
 require('android:dataExtractionRules="@xml/data_extraction_rules"' in manifest, 'manifest must reference data extraction rules')
 require('jniLibs.useLegacyPackaging = true' in aria_build, 'aria2 module must extract JNI libraries')

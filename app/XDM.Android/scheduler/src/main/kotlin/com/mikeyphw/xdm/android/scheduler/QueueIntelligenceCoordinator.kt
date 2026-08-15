@@ -100,7 +100,8 @@ class QueueIntelligenceCoordinator(
                     policyOverride = policyOverride,
                 )
             }
-            if (decision.nextEligibleAtEpochMs != null) QueueIntelligenceWorker.scheduleRetry(appContext, download.id, decision.nextEligibleAtEpochMs)
+            val nextEligibleAtEpochMs = decision.nextEligibleAtEpochMs
+            if (nextEligibleAtEpochMs != null) QueueIntelligenceWorker.scheduleRetry(appContext, download.id, nextEligibleAtEpochMs)
             if (decision.canStart) {
                 val claimed = claimForLaunch(download, queue, decision, manual, activeCount)
                 if (claimed) {

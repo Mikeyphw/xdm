@@ -13,6 +13,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.SystemExecutionOwner
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
