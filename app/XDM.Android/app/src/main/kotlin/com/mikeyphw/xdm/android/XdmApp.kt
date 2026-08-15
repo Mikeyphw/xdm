@@ -27,6 +27,10 @@ import com.mikeyphw.xdm.android.model.BrowserSessionHealthPlanner
 import com.mikeyphw.xdm.android.model.EngineEscalationPlanner
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.OperationalActivityEvent
+import com.mikeyphw.xdm.android.media.MediaExternalJobSnapshot
+import com.mikeyphw.xdm.android.termux.TermuxMediaJobKind
+import com.mikeyphw.xdm.android.termux.TermuxMediaJobStatus
+import com.mikeyphw.xdm.android.ui.library.MediaLibraryScreen as OutputMediaLibraryScreen
 
 private val routeTopology = AppRoute.entries
 private val primaryRoutes = routeTopology.filterNot { it == AppRoute.Add }
@@ -222,12 +226,29 @@ private fun XdmRouteContent(
                 onTrackSelectionChanged = viewModel::updateMediaTrackSelection,
                 onRemove = viewModel::removeMediaCapture,
             )
-            AppRoute.Library -> MediaLibraryScreen(
+            AppRoute.Library -> OutputMediaLibraryScreen(
                 captures = state.mediaCaptures,
                 variants = state.mediaVariants,
                 downloads = state.downloads,
+                outputs = state.mediaOutputs,
+                externalJobs = state.termuxMediaPipeline.jobs.map { job ->
+                    MediaExternalJobSnapshot(
+                        id = job.id,
+                        captureId = job.captureId,
+                        kindLabel = job.kind.label,
+                        statusLabel = job.status.label,
+                        running = job.status in setOf(TermuxMediaJobStatus.Preparing, TermuxMediaJobStatus.Running, TermuxMediaJobStatus.Publishing),
+                        completed = job.status == TermuxMediaJobStatus.Completed,
+                        failed = job.status in setOf(TermuxMediaJobStatus.Failed, TermuxMediaJobStatus.Cancelled, TermuxMediaJobStatus.TimedOut, TermuxMediaJobStatus.RecoveryRequired),
+                        metadataOnly = job.kind in setOf(TermuxMediaJobKind.YtDlpMetadata, TermuxMediaJobKind.FfprobeInspect),
+                        attemptGeneration = job.attemptGeneration.toLong(),
+                        output = job.output,
+                        message = job.message,
+                    )
+                },
                 onResumeOrRetryDownload = viewModel::togglePause,
-                onRemoveRecord = viewModel::removeMediaCapture,
+                onRetryExternalJob = viewModel::retryTermuxMediaJob,
+                onRemoveRecord = viewModel::removeMediaLibraryRecord,
             )
             AppRoute.Activity -> ActivityHub(state, viewModel)
             AppRoute.Settings -> SettingsScreen(state, viewModel)

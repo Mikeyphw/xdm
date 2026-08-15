@@ -74,13 +74,40 @@ class GenerationIntegrityMigrationTest {
         db.close()
     }
 
+
     @Test
-    fun migrate4To19ValidatesOldestExportedProductionChain() {
-        val name = "generation-integrity-4-19-${System.nanoTime()}"
+    fun migrate19To20BackfillsDurableMediaOutputHistory() {
+        val name = "generation-integrity-19-20-${System.nanoTime()}"
+        val legacy = helper.createDatabase(name, 19)
+        legacy.execSQL(
+            """INSERT INTO downloads
+                (id,fileName,sourceUrl,destinationUri,state,backend,bytesReceived,totalBytes,speedBytesPerSecond,queueId,priority,createdAtEpochMs,updatedAtEpochMs,errorMessage,userLabel,mimeType,attemptGeneration,completedArtifactUri,completedArtifactGeneration,completedArtifactBytes)
+                VALUES ('download-20','movie.mp4','https://example.com/movie.mp4','content://downloads/tree','Completed','Native',100,100,0,'default',0,10,20,NULL,'Movie','video/mp4',3,'content://downloads/movie',3,100)""",
+        )
+        legacy.execSQL(
+            """INSERT INTO media_captures
+                (id,sourceUrl,pageUrl,title,status,kind,mimeType,container,codecs,durationMs,thumbnailUrl,fileName,variantCount,downloadId,createdAtEpochMs,updatedAtEpochMs,selectedVariantId,selectedVariantUrl,manifestExpiresAtEpochMs,lastResolvedAtEpochMs,resolutionStatus)
+                VALUES ('capture-20','https://example.com/movie.mp4','https://example.com/watch','Movie','DownloadCreated','ProgressiveMedia','video/mp4','mp4',NULL,60000,NULL,'movie.mp4',1,'download-20',5,20,'variant-20',NULL,NULL,15,'Resolved')""",
+        )
+        legacy.close()
+
+        val db = helper.runMigrationsAndValidate(name, 20, true, Migrations.Migration19To20)
+        assertEquals(20L, db.longValue("PRAGMA user_version"))
+        assertTrue(db.columnNames("media_outputs").contains("attemptGeneration"))
+        assertTrue(db.hasForeignKey("media_outputs", "captureId", "media_captures", "CASCADE"))
+        assertTrue(db.hasForeignKey("media_outputs", "downloadId", "downloads", "SET NULL"))
+        assertEquals(3L, db.longValue("SELECT attemptGeneration FROM media_outputs WHERE captureId='capture-20'"))
+        assertEquals(1L, db.longValue("SELECT COUNT(*) FROM media_outputs WHERE captureId='capture-20' AND ownerKind='AppDownload' AND ownerId='download-20'"))
+        db.close()
+    }
+
+    @Test
+    fun migrate4To20ValidatesOldestExportedProductionChain() {
+        val name = "generation-integrity-4-20-${System.nanoTime()}"
         helper.createDatabase(name, 4).close()
         val db = helper.runMigrationsAndValidate(
             name,
-            19,
+            20,
             true,
             Migrations.Migration4To5,
             Migrations.Migration5To6,
@@ -97,29 +124,32 @@ class GenerationIntegrityMigrationTest {
             Migrations.Migration16To17,
             Migrations.Migration17To18,
             Migrations.Migration18To19,
+            Migrations.Migration19To20,
         )
-        assertEquals(19L, db.longValue("PRAGMA user_version"))
+        assertEquals(20L, db.longValue("PRAGMA user_version"))
         assertTrue(db.columnNames("downloads").contains("attemptGeneration"))
         assertTrue(db.hasForeignKey("checksum_expectations", "downloadId", "downloads", "CASCADE"))
         db.close()
     }
 
     @Test
-    fun migrate14To19ValidatesFullProductionChain() {
-        val name = "generation-integrity-14-19-${System.nanoTime()}"
+    fun migrate14To20ValidatesFullProductionChain() {
+        val name = "generation-integrity-14-20-${System.nanoTime()}"
         helper.createDatabase(name, 14).close()
         val db = helper.runMigrationsAndValidate(
             name,
-            19,
+            20,
             true,
             Migrations.Migration14To15,
             Migrations.Migration15To16,
             Migrations.Migration16To17,
             Migrations.Migration17To18,
             Migrations.Migration18To19,
+            Migrations.Migration19To20,
         )
-        assertEquals(19L, db.longValue("PRAGMA user_version"))
+        assertEquals(20L, db.longValue("PRAGMA user_version"))
         assertTrue(db.columnNames("downloads").contains("attemptGeneration"))
+        assertTrue(db.columnNames("media_outputs").contains("ownerKind"))
         db.close()
     }
 

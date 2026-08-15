@@ -4,6 +4,9 @@ import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
+import com.mikeyphw.xdm.android.model.MediaOutputRecord
+import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import java.net.URI
@@ -25,6 +28,22 @@ enum class MediaExecutionStage(val label: String) {
     Failed("Failed"),
     Blocked("Blocked"),
 }
+
+enum class MediaExecutionFailureKind(val label: String) {
+    None("No failure"),
+    Protected("Protected media"),
+    LiveRequiresExternalJob("Live recording requires external job"),
+    MetadataRefreshRequired("Metadata refresh required"),
+    AppDownloadFailed("App download failed"),
+    Aria2DownloadFailed("aria2 download failed"),
+    YtDlpRequired("yt-dlp resolver required"),
+}
+
+data class MediaExecutionFailure(
+    val kind: MediaExecutionFailureKind,
+    val message: String,
+    val retryable: Boolean,
+)
 
 enum class MediaExecutionLane(val label: String) {
     DirectNative("Direct native"),
@@ -108,6 +127,7 @@ data class MediaExecutionEnginePlan(
 data class MediaQueuedDownloadSpec(
     val captureId: String,
     val sourceUrl: String,
+    val destinationUri: String,
     val fileName: String,
     val requestedBackend: BackendType,
     val userLabel: String,
@@ -120,12 +140,14 @@ data class MediaQueuedDownloadSpec(
     val requiresTermuxYtDlp: Boolean,
     val strategy: MediaDownloadStrategy,
     val intent: MediaDownloadIntent,
+    val ytDlpFormatSelector: String?,
     val sidecar: OfflineMediaSidecarMetadata,
 ) {
     val safeQueuedJobSummary: String
         get() = listOf(
             "capture=$captureId",
             "backend=${requestedBackend.name}",
+            "destination=${destinationUri.take(96)}",
             "tracks=${selectedTrackIds.size}",
             "source=${sidecar.redactedSourceUrl}",
             "session=$redactedSessionSummary",
@@ -140,6 +162,8 @@ data class MediaExternalJobSnapshot(
     val running: Boolean,
     val completed: Boolean,
     val failed: Boolean,
+    val metadataOnly: Boolean = false,
+    val attemptGeneration: Long = 1L,
     val output: String,
     val message: String,
 )
@@ -190,7 +214,11 @@ data class OfflineMediaSidecarMetadata(
 }
 
 data class OfflineMediaLibraryItem(
+    val outputId: String,
     val captureId: String,
+    val ownerKind: MediaOutputOwnerKind,
+    val ownerId: String,
+    val attemptGeneration: Long,
     val downloadId: String?,
     val title: String,
     val fileName: String,
@@ -229,8 +257,15 @@ class MediaExecutionLibraryPlanner(
         selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = capture.selectedVariantId),
         destinationUri: String,
         sessionHeaders: List<MediaSessionHeader> = emptyList(),
+        variantSessionHeaders: Map<String, List<MediaSessionHeader>> = emptyMap(),
     ): MediaQueuedDownloadSpec {
-        val plan = resolver.plan(capture, variants, selection = selection, sessionHeaders = sessionHeaders)
+        val plan = resolver.plan(
+            capture = capture,
+            variants = variants,
+            selection = selection,
+            sessionHeaders = sessionHeaders,
+            variantSessionHeaders = variantSessionHeaders,
+        )
         val backend = when (plan.strategy) {
             MediaDownloadStrategy.Native -> BackendType.Native
             MediaDownloadStrategy.Aria2 -> BackendType.Aria2
@@ -245,6 +280,7 @@ class MediaExecutionLibraryPlanner(
         return MediaQueuedDownloadSpec(
             captureId = capture.id,
             sourceUrl = plan.primaryUrl,
+            destinationUri = destinationUri,
             fileName = safeMediaFileName(capture, plan),
             requestedBackend = backend,
             userLabel = "Media: ${capture.title.ifBlank { capture.fileName }}",
@@ -262,6 +298,7 @@ class MediaExecutionLibraryPlanner(
             requiresTermuxYtDlp = needsTermux && !blocked,
             strategy = plan.strategy,
             intent = plan.intent,
+            ytDlpFormatSelector = plan.ytDlpFormatSelector,
             sidecar = sidecar,
         )
     }
@@ -307,28 +344,122 @@ class MediaExecutionLibraryPlanner(
         downloads: List<Download>,
         variants: List<MediaVariant>,
         externalJobs: List<MediaExternalJobSnapshot> = emptyList(),
-    ): List<MediaExecutionJob> = captures.map { capture ->
-        val download = capture.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }
-        val external = externalJobs.firstOrNull { it.captureId == capture.id || it.id == capture.downloadId }
-        val plan = resolver.plan(capture, variants.filter { it.captureId == capture.id })
-        when {
-            download != null -> executionJobForDownload(capture, download, plan)
-            external != null -> executionJobForExternal(capture, external)
-            plan.protectedDiagnostic.protected -> MediaExecutionJob(capture.id, capture.title.ifBlank { capture.fileName }, MediaExecutionStage.Blocked, "resolver", failureReason(capture, plan, null))
-            capture.resolutionStatus.name == "Unresolved" -> MediaExecutionJob(capture.id, capture.title.ifBlank { capture.fileName }, MediaExecutionStage.Probing, "resolver", "Metadata probe is ready before queueing.")
-            else -> MediaExecutionJob(capture.id, capture.title.ifBlank { capture.fileName }, MediaExecutionStage.Queued, "resolver", "Ready to queue selected media tracks.")
+        outputs: List<MediaOutputRecord> = emptyList(),
+    ): List<MediaExecutionJob> {
+        if (outputs.isEmpty()) {
+            return captures.map { capture ->
+                val download = capture.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }
+                val external = externalJobs.firstOrNull { it.captureId == capture.id || it.id == capture.downloadId }
+                val plan = resolver.plan(capture, variants.filter { it.captureId == capture.id })
+                when {
+                    download != null -> executionJobForDownload(capture, download, plan)
+                    external != null -> executionJobForExternal(capture, external)
+                    plan.protectedDiagnostic.protected -> MediaExecutionJob(capture.id, capture.title.ifBlank { capture.fileName }, MediaExecutionStage.Blocked, "resolver", failureReason(capture, plan, null))
+                    capture.resolutionStatus.name == "Unresolved" -> MediaExecutionJob(capture.id, capture.title.ifBlank { capture.fileName }, MediaExecutionStage.Probing, "resolver", "Metadata probe is ready before queueing.")
+                    else -> MediaExecutionJob(capture.id, capture.title.ifBlank { capture.fileName }, MediaExecutionStage.Queued, "resolver", "Ready to queue selected media tracks.")
+                }
+            }
         }
+        val captureById = captures.associateBy(MediaCaptureRecord::id)
+        return outputs.asSequence()
+            .filterNot { it.state == MediaOutputState.Hidden }
+            .mapNotNull { output ->
+                val capture = captureById[output.captureId] ?: return@mapNotNull null
+                val plan = resolver.plan(capture, variants.filter { it.captureId == capture.id })
+                when (output.ownerKind) {
+                    MediaOutputOwnerKind.AppDownload -> {
+                        val download = output.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }
+                        if (download != null && download.attemptGeneration == output.attemptGeneration) {
+                            executionJobForDownload(capture, download, plan)
+                        } else {
+                            historicalAppExecutionJob(capture, output)
+                        }
+                    }
+                    MediaOutputOwnerKind.TermuxJob -> externalJobs.firstOrNull { it.id == output.ownerId }
+                        ?.let { executionJobForExternal(capture, it) }
+                        ?: MediaExecutionJob(
+                            captureId = capture.id,
+                            title = capture.title.ifBlank { output.fileName },
+                            stage = when (output.state) {
+                                MediaOutputState.Completed -> MediaExecutionStage.Completed
+                                MediaOutputState.Failed, MediaOutputState.Cancelled, MediaOutputState.RecoveryRequired -> MediaExecutionStage.Failed
+                                MediaOutputState.Active -> MediaExecutionStage.Downloading
+                                MediaOutputState.Queued -> MediaExecutionStage.Queued
+                                MediaOutputState.Hidden -> return@mapNotNull null
+                            },
+                            engine = "Termux external job",
+                            detail = "Durable external output generation ${output.attemptGeneration} is recorded; runtime status will reconnect when available.",
+                            downloadId = output.ownerId,
+                            canRetry = output.state in setOf(MediaOutputState.Failed, MediaOutputState.Cancelled, MediaOutputState.RecoveryRequired),
+                        )
+                }
+            }
+            .toList()
     }
 
-    fun offlineLibraryItems(captures: List<MediaCaptureRecord>, downloads: List<Download>, variants: List<MediaVariant>): List<OfflineMediaLibraryItem> = captures.mapNotNull { capture ->
-        val download = capture.downloadId?.let { id -> downloads.firstOrNull { it.id == id } } ?: return@mapNotNull null
+    fun offlineLibraryItems(
+        captures: List<MediaCaptureRecord>,
+        downloads: List<Download>,
+        variants: List<MediaVariant>,
+        outputs: List<MediaOutputRecord> = emptyList(),
+        externalJobs: List<MediaExternalJobSnapshot> = emptyList(),
+        allowLegacyFallback: Boolean = true,
+    ): List<OfflineMediaLibraryItem> {
+        val captureById = captures.associateBy(MediaCaptureRecord::id)
+        val rows = if (outputs.isEmpty() && allowLegacyFallback) {
+            // Compatibility path for pre-v20 in-memory fixtures only. Production disables this
+            // fallback so deleting the final output generation cannot resurrect capture.downloadId.
+            captures.mapNotNull { capture ->
+                val download = capture.downloadId?.let { id -> downloads.firstOrNull { it.id == id } } ?: return@mapNotNull null
+                legacyLibraryItem(capture, download, variants.filter { it.captureId == capture.id })
+            }
+        } else {
+            outputs.asSequence()
+                .filterNot { it.state == MediaOutputState.Hidden }
+                .mapNotNull { output ->
+                    val capture = captureById[output.captureId] ?: return@mapNotNull null
+                    when (output.ownerKind) {
+                        MediaOutputOwnerKind.AppDownload -> {
+                            val download = output.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }
+                            if (download != null && download.attemptGeneration == output.attemptGeneration) {
+                                outputLibraryItem(capture, output, download, variants.filter { it.captureId == capture.id })
+                            } else {
+                                historicalAppOutputLibraryItem(capture, output)
+                            }
+                        }
+                        MediaOutputOwnerKind.TermuxJob -> externalOutputLibraryItem(
+                            capture = capture,
+                            output = output,
+                            external = externalJobs.firstOrNull { it.id == output.ownerId },
+                        )
+                    }
+                }
+                .toList()
+        }
+        return rows.sortedWith(
+            compareByDescending<OfflineMediaLibraryItem> { it.isCompleted }
+                .thenByDescending { it.sidecar.completedAtEpochMs ?: 0L }
+                .thenByDescending { it.attemptGeneration }
+                .thenBy { it.title.lowercase(Locale.US) },
+        )
+    }
+
+    private fun legacyLibraryItem(
+        capture: MediaCaptureRecord,
+        download: Download,
+        captureVariants: List<MediaVariant>,
+    ): OfflineMediaLibraryItem? {
         val completed = download.state == DownloadState.Completed
-        if (!completed && download.state !in retryableStates) return@mapNotNull null
+        if (!completed && download.state !in retryableStates) return null
         val playback = download.takeIf { completed }?.let(::completedPlaybackUrl)
-        val selectedIds = selectedTrackIds(capture, variants.filter { it.captureId == capture.id })
+        val selectedIds = selectedTrackIds(capture, captureVariants)
         val sidecar = sidecar(capture, download.id, selectedIds, download.updatedAtEpochMs.takeIf { completed })
-        OfflineMediaLibraryItem(
+        return OfflineMediaLibraryItem(
+            outputId = "legacy:${capture.id}:${download.id}:${download.attemptGeneration}",
             captureId = capture.id,
+            ownerKind = MediaOutputOwnerKind.AppDownload,
+            ownerId = download.id,
+            attemptGeneration = download.attemptGeneration,
             downloadId = download.id,
             title = capture.title.ifBlank { capture.fileName },
             fileName = download.fileName,
@@ -345,7 +476,139 @@ class MediaExecutionLibraryPlanner(
             canRetry = download.state in retryableStates,
             sidecar = sidecar,
         )
-    }.sortedWith(compareByDescending<OfflineMediaLibraryItem> { it.isCompleted }.thenBy { it.title.lowercase(Locale.US) })
+    }
+
+    private fun outputLibraryItem(
+        capture: MediaCaptureRecord,
+        output: MediaOutputRecord,
+        download: Download,
+        captureVariants: List<MediaVariant>,
+    ): OfflineMediaLibraryItem? {
+        // App-owned execution state belongs to the Download row. media_outputs is the durable
+        // one-to-many capture/output identity and may intentionally retain the enqueue-time state
+        // snapshot while transfer state advances through compare-and-swap paths outside this DAO.
+        val completed = download.state == DownloadState.Completed
+        val retryable = download.state in retryableStates
+        if (!completed && !retryable) return null
+        val playback = download.takeIf { completed }?.let(::completedPlaybackUrl)
+        val selectedIds = output.selectedTrackIds.ifEmpty { selectedTrackIds(capture, captureVariants) }
+        val sidecar = sidecar(capture, download.id, selectedIds, output.updatedAtEpochMs.takeIf { completed })
+        return OfflineMediaLibraryItem(
+            outputId = output.id,
+            captureId = capture.id,
+            ownerKind = output.ownerKind,
+            ownerId = output.ownerId,
+            attemptGeneration = output.attemptGeneration,
+            downloadId = download.id,
+            title = capture.title.ifBlank { capture.fileName },
+            fileName = output.fileName,
+            sourceHost = sidecar.sourceHost,
+            pageHost = sidecar.pageHost,
+            durationLabel = capture.durationMs?.let(::formatDurationForUi) ?: "duration unknown",
+            thumbnailUrl = capture.thumbnailUrl,
+            state = download.state,
+            detail = "Generation ${output.attemptGeneration} • ${libraryDetail(capture, download)}",
+            playbackUrl = playback,
+            isCompleted = completed,
+            canPlayDirect = completed && playback != null,
+            canResume = download.state in resumableStates,
+            canRetry = retryable,
+            sidecar = sidecar,
+        )
+    }
+
+    private fun historicalAppExecutionJob(
+        capture: MediaCaptureRecord,
+        output: MediaOutputRecord,
+    ): MediaExecutionJob? {
+        val stage = when (output.state) {
+            MediaOutputState.Completed -> MediaExecutionStage.Completed
+            MediaOutputState.Failed, MediaOutputState.Cancelled, MediaOutputState.RecoveryRequired -> MediaExecutionStage.Failed
+            MediaOutputState.Queued, MediaOutputState.Active, MediaOutputState.Hidden -> return null
+        }
+        return MediaExecutionJob(
+            captureId = capture.id,
+            title = capture.title.ifBlank { output.fileName },
+            stage = stage,
+            engine = "App download history",
+            detail = "Historical app output generation ${output.attemptGeneration}; the owning Download has advanced or left active history.",
+            downloadId = output.downloadId,
+            canRetry = false,
+        )
+    }
+
+    private fun historicalAppOutputLibraryItem(
+        capture: MediaCaptureRecord,
+        output: MediaOutputRecord,
+    ): OfflineMediaLibraryItem? {
+        val state = when (output.state) {
+            MediaOutputState.Completed -> DownloadState.Completed
+            MediaOutputState.Failed -> DownloadState.Failed
+            MediaOutputState.Cancelled -> DownloadState.Cancelled
+            MediaOutputState.RecoveryRequired -> DownloadState.RecoveryRequired
+            MediaOutputState.Queued, MediaOutputState.Active, MediaOutputState.Hidden -> return null
+        }
+        val completed = state == DownloadState.Completed
+        val sidecar = sidecar(capture, output.downloadId, output.selectedTrackIds, output.updatedAtEpochMs.takeIf { completed })
+        return OfflineMediaLibraryItem(
+            outputId = output.id,
+            captureId = capture.id,
+            ownerKind = MediaOutputOwnerKind.AppDownload,
+            ownerId = output.ownerId,
+            attemptGeneration = output.attemptGeneration,
+            downloadId = output.downloadId,
+            title = capture.title.ifBlank { output.fileName },
+            fileName = output.fileName,
+            sourceHost = sidecar.sourceHost,
+            pageHost = sidecar.pageHost,
+            durationLabel = capture.durationMs?.let(::formatDurationForUi) ?: "duration unknown",
+            thumbnailUrl = capture.thumbnailUrl,
+            state = state,
+            detail = "Historical app output generation ${output.attemptGeneration}; playback is intentionally unavailable without a current validated Download artifact.",
+            playbackUrl = null,
+            isCompleted = completed,
+            canPlayDirect = false,
+            canResume = false,
+            canRetry = false,
+            sidecar = sidecar,
+        )
+    }
+
+    private fun externalOutputLibraryItem(
+        capture: MediaCaptureRecord,
+        output: MediaOutputRecord,
+        external: MediaExternalJobSnapshot?,
+    ): OfflineMediaLibraryItem? {
+        val completed = output.state == MediaOutputState.Completed || external?.completed == true
+        val retryable = output.state in setOf(MediaOutputState.Failed, MediaOutputState.Cancelled, MediaOutputState.RecoveryRequired) || external?.failed == true
+        if (!completed && !retryable) return null
+        val playback = listOfNotNull(output.completedArtifactUri, external?.output)
+            .firstOrNull { it.startsWith("content://") || it.startsWith("file://") }
+        val sidecar = sidecar(capture, null, output.selectedTrackIds, output.updatedAtEpochMs.takeIf { completed })
+        return OfflineMediaLibraryItem(
+            outputId = output.id,
+            captureId = capture.id,
+            ownerKind = MediaOutputOwnerKind.TermuxJob,
+            ownerId = output.ownerId,
+            attemptGeneration = output.attemptGeneration,
+            downloadId = null,
+            title = capture.title.ifBlank { output.fileName },
+            fileName = output.fileName,
+            sourceHost = sidecar.sourceHost,
+            pageHost = sidecar.pageHost,
+            durationLabel = capture.durationMs?.let(::formatDurationForUi) ?: "duration unknown",
+            thumbnailUrl = capture.thumbnailUrl,
+            state = null,
+            detail = external?.message?.ifBlank { null }
+                ?: "External generation ${output.attemptGeneration} • ${output.state.name}",
+            playbackUrl = playback,
+            isCompleted = completed,
+            canPlayDirect = completed && playback != null,
+            canResume = false,
+            canRetry = retryable,
+            sidecar = sidecar,
+        )
+    }
 
     private fun laneFor(spec: MediaQueuedDownloadSpec): MediaExecutionLane = when {
         spec.strategy == MediaDownloadStrategy.UnsupportedProtected || !spec.canUseAppQueue && !spec.requiresTermuxYtDlp -> MediaExecutionLane.ProtectedBlocked
@@ -428,7 +691,7 @@ class MediaExecutionLibraryPlanner(
             MediaExecutionLane.LiveRecording -> {
                 args += listOf("--no-progress", "--newline")
                 tempCookie?.let { args += listOf("--cookies", it.fileName) }
-                spec.selectedTrackIds.takeIf { it.isNotEmpty() }?.let { ids -> args += listOf("--format", ids.sorted().joinToString("+")) }
+                spec.ytDlpFormatSelector?.takeIf(String::isNotBlank)?.let { selector -> args += listOf("--format", selector) }
                 if (lane == MediaExecutionLane.LiveRecording) args += "--live-from-start"
                 args += listOf("--output", spec.fileName, spec.sidecar.redactedSourceUrl)
             }
@@ -459,18 +722,42 @@ class MediaExecutionLibraryPlanner(
         )
     }
 
-    fun failureReason(capture: MediaCaptureRecord, plan: MediaDownloadPlan, download: Download?): String {
-        val errorMessage = download?.errorMessage.orEmpty()
-        return when {
-            plan.protectedDiagnostic.protected -> "Unsupported DRM/protected media. Diagnostics only; no bypass or queue action."
-            plan.strategy == MediaDownloadStrategy.FfmpegLive -> "Live stream requires an explicit yt-dlp/FFmpeg recording job instead of a normal finite download."
-            capture.needsManifestRefresh(System.currentTimeMillis()) -> "Manifest/session may be expired; refresh metadata before retrying."
-            errorMessage.contains("aria2", ignoreCase = true) -> "aria2 failure: ${errorMessage.take(180)}"
-            download?.state == DownloadState.Failed -> errorMessage.take(180).ifBlank { "Download failed; retry will requeue with the saved media plan." }
-            plan.strategy == MediaDownloadStrategy.YtDlp -> "yt-dlp extractor is required. Check Termux tool probe if the job fails."
-            else -> ""
-        }
+    fun classifyFailure(capture: MediaCaptureRecord, plan: MediaDownloadPlan, download: Download?): MediaExecutionFailure = when {
+        plan.protectedDiagnostic.protected -> MediaExecutionFailure(
+            MediaExecutionFailureKind.Protected,
+            "Unsupported DRM/protected media. Diagnostics only; no bypass or queue action.",
+            retryable = false,
+        )
+        plan.strategy == MediaDownloadStrategy.FfmpegLive -> MediaExecutionFailure(
+            MediaExecutionFailureKind.LiveRequiresExternalJob,
+            "Live stream requires an explicit yt-dlp/FFmpeg recording job instead of a normal finite download.",
+            retryable = false,
+        )
+        capture.needsManifestRefresh(System.currentTimeMillis()) -> MediaExecutionFailure(
+            MediaExecutionFailureKind.MetadataRefreshRequired,
+            "Manifest/session may be expired; refresh metadata before retrying.",
+            retryable = true,
+        )
+        download?.state == DownloadState.Failed && download.backend == BackendType.Aria2 -> MediaExecutionFailure(
+            MediaExecutionFailureKind.Aria2DownloadFailed,
+            download.errorMessage?.take(180).orEmpty().ifBlank { "aria2 transfer failed; retry uses the saved media request plan." },
+            retryable = true,
+        )
+        download?.state == DownloadState.Failed -> MediaExecutionFailure(
+            MediaExecutionFailureKind.AppDownloadFailed,
+            download.errorMessage?.take(180).orEmpty().ifBlank { "Download failed; retry will requeue with the saved media plan." },
+            retryable = true,
+        )
+        plan.strategy == MediaDownloadStrategy.YtDlp -> MediaExecutionFailure(
+            MediaExecutionFailureKind.YtDlpRequired,
+            "yt-dlp extractor is required. Check the verified Termux tool probe before launch.",
+            retryable = true,
+        )
+        else -> MediaExecutionFailure(MediaExecutionFailureKind.None, "", retryable = false)
     }
+
+    fun failureReason(capture: MediaCaptureRecord, plan: MediaDownloadPlan, download: Download?): String =
+        classifyFailure(capture, plan, download).message
 
     private fun executionJobForDownload(capture: MediaCaptureRecord, download: Download, plan: MediaDownloadPlan): MediaExecutionJob {
         val stage = when (download.state) {
@@ -494,7 +781,7 @@ class MediaExecutionLibraryPlanner(
 
     private fun executionJobForExternal(capture: MediaCaptureRecord, external: MediaExternalJobSnapshot): MediaExecutionJob {
         val stage = when {
-            external.kindLabel.contains("metadata", ignoreCase = true) && external.running -> MediaExecutionStage.Probing
+            external.metadataOnly && external.running -> MediaExecutionStage.Probing
             external.running -> MediaExecutionStage.Downloading
             external.completed -> MediaExecutionStage.Completed
             external.failed -> MediaExecutionStage.Failed

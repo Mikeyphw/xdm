@@ -32,7 +32,6 @@ import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.BrowserCaptureSessionSummary
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
-import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.util.formatBytes
 import com.mikeyphw.xdm.android.util.formatSpeed
@@ -61,11 +60,10 @@ fun MediaInboxScreen(
     var batchFeedback by remember { mutableStateOf<String?>(null) }
     var pageUrlText by remember { mutableStateOf("") }
     val downloadsById = remember(downloads) { downloads.associateBy(Download::id) }
-    val reviewableCaptures = remember(captures, downloadsById) {
-        captures.filterNot { capture ->
-            capture.status == MediaCaptureStatus.DownloadCreated &&
-                capture.downloadId?.let(downloadsById::containsKey) == true
-        }.sortedByDescending(MediaCaptureRecord::updatedAtEpochMs)
+    val reviewableCaptures = remember(captures) {
+        // DownloadCreated records remain reviewable: one capture may intentionally produce multiple
+        // output records/generations with different track selections or destinations.
+        captures.sortedByDescending(MediaCaptureRecord::updatedAtEpochMs)
     }
     val capturesById = remember(reviewableCaptures) { reviewableCaptures.associateBy(MediaCaptureRecord::id) }
     val activeBrowserSessions = remember(browserCaptureSessions, capturesById) {

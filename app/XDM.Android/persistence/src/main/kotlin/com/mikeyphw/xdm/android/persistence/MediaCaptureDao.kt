@@ -13,6 +13,15 @@ interface MediaCaptureDao {
     @Query("SELECT * FROM media_variants ORDER BY captureId, position")
     fun observeVariants(): Flow<List<MediaVariantEntity>>
 
+    @Query("SELECT * FROM media_outputs ORDER BY updatedAtEpochMs DESC, createdAtEpochMs DESC")
+    fun observeOutputs(): Flow<List<MediaOutputEntity>>
+
+    @Query("SELECT * FROM media_outputs WHERE captureId = :captureId ORDER BY createdAtEpochMs DESC")
+    suspend fun outputsForCapture(captureId: String): List<MediaOutputEntity>
+
+    @Query("SELECT * FROM media_outputs WHERE ownerKind = 'AppDownload' AND downloadId = :downloadId ORDER BY attemptGeneration DESC, createdAtEpochMs DESC")
+    suspend fun appOutputsForDownload(downloadId: String): List<MediaOutputEntity>
+
     @Query("SELECT * FROM media_variants WHERE captureId = :captureId ORDER BY position")
     suspend fun variantsForCapture(captureId: String): List<MediaVariantEntity>
 
@@ -27,6 +36,15 @@ interface MediaCaptureDao {
 
     @Upsert
     suspend fun upsertVariants(entities: List<MediaVariantEntity>)
+
+    @Upsert
+    suspend fun upsertOutput(entity: MediaOutputEntity)
+
+    @Query("DELETE FROM media_outputs WHERE id = :id")
+    suspend fun deleteOutput(id: String): Int
+
+    @Query("UPDATE media_outputs SET state = 'Hidden', updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id AND ownerKind = 'AppDownload'")
+    suspend fun hideAppOutput(id: String, updatedAtEpochMs: Long): Int
 
     @Query("UPDATE media_captures SET selectedVariantId = :variantId, selectedVariantUrl = :variantUrl, resolutionStatus = :resolutionStatus, lastResolvedAtEpochMs = :updatedAtEpochMs, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :captureId")
     suspend fun selectVariant(captureId: String, variantId: String, variantUrl: String, resolutionStatus: String, updatedAtEpochMs: Long)

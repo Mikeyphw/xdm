@@ -156,6 +156,7 @@ class MediaDownloadPlanner {
         intent: MediaDownloadIntent = MediaDownloadIntent.BestVideo,
         selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = capture.selectedVariantId),
         sessionHeaders: List<MediaSessionHeader> = defaultSessionHeaders(capture),
+        variantSessionHeaders: Map<String, List<MediaSessionHeader>> = emptyMap(),
     ): MediaDownloadPlan {
         val selected = selectedVariant(capture, variants, intent, selection)
         val primaryUrl = selected?.url ?: capture.selectedVariantUrl ?: capture.sourceUrl
@@ -174,11 +175,13 @@ class MediaDownloadPlanner {
             else -> MediaDownloadStrategy.YtDlp
         }
         val normalizedSelection = normalizeSelection(capture, variants, selection, selected)
+        val selectedVariantHeaders = selected?.id?.let(variantSessionHeaders::get).orEmpty()
+        val effectiveSessionHeaders = mergeSessionHeaders(sessionHeaders, selectedVariantHeaders)
         val session = MediaSessionHandoff(
             pageUrl = capture.pageUrl,
             sourceUrl = capture.sourceUrl,
             selectedVariantUrl = primaryUrl,
-            headers = sessionHeaders,
+            headers = effectiveSessionHeaders,
         )
         return MediaDownloadPlan(
             strategy = strategy,
@@ -196,6 +199,17 @@ class MediaDownloadPlanner {
             ytDlpFormatSelector = ytdlpFormatSelector(variants, normalizedSelection, intent),
             protectedDiagnostic = protectedDiagnostic,
         )
+    }
+
+    private fun mergeSessionHeaders(
+        captureHeaders: List<MediaSessionHeader>,
+        selectedVariantHeaders: List<MediaSessionHeader>,
+    ): List<MediaSessionHeader> {
+        val merged = linkedMapOf<String, MediaSessionHeader>()
+        captureHeaders.forEach { header -> merged[header.name.lowercase(Locale.US)] = header }
+        // Variant evidence is more specific than capture-level evidence for the selected request.
+        selectedVariantHeaders.forEach { header -> merged[header.name.lowercase(Locale.US)] = header }
+        return merged.values.toList()
     }
 
     fun pickerGroups(capture: MediaCaptureRecord, variants: List<MediaVariant>, selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = capture.selectedVariantId)): List<MediaVariantPickerGroup> =

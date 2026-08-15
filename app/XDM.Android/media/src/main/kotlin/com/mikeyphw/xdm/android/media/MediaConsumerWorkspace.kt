@@ -51,7 +51,6 @@ class MediaConsumerWorkspacePlanner(
         val selectedSubtitle = variants.firstOrNull { it.id == plan.trackSelection.subtitleVariantId }
         val estimatedSize = estimateSizeBytes(capture.durationMs, selectedVideo?.bitrateBitsPerSecond)
         val state = when {
-            capture.status == MediaCaptureStatus.DownloadCreated -> MediaConsumerState.Added
             plan.protectedDiagnostic.protected -> MediaConsumerState.Protected
             capture.status == MediaCaptureStatus.Expired || capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh -> MediaConsumerState.NeedsRefresh
             capture.resolutionStatus == MediaResolutionStatus.Failed -> MediaConsumerState.Failed
@@ -59,7 +58,9 @@ class MediaConsumerWorkspacePlanner(
             else -> MediaConsumerState.Ready
         }
         val notice = when (state) {
-            MediaConsumerState.Ready -> null
+            MediaConsumerState.Ready -> if (capture.status == MediaCaptureStatus.DownloadCreated) {
+                "This capture already has an output. Downloading again creates another output generation."
+            } else null
             MediaConsumerState.Added -> "This media is already in Downloads."
             MediaConsumerState.Protected -> "This media is protected. XDM can inspect it, but does not bypass DRM."
             MediaConsumerState.NeedsRefresh -> "This media link expired. Refresh it before downloading."
@@ -74,7 +75,7 @@ class MediaConsumerWorkspacePlanner(
             notice = notice,
             canDownload = state == MediaConsumerState.Ready && plan.canQueueDirectly,
             primaryActionLabel = when (state) {
-                MediaConsumerState.Ready -> "Download"
+                MediaConsumerState.Ready -> if (capture.status == MediaCaptureStatus.DownloadCreated) "Download again" else "Download"
                 MediaConsumerState.Added -> "Added"
                 MediaConsumerState.NeedsRefresh -> "Refresh"
                 MediaConsumerState.Failed, MediaConsumerState.NeedsResolution -> "Check media"

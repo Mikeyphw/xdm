@@ -3825,5 +3825,75 @@
     "room_schema_changed": false,
     "room_schema_current": 19,
     "validation_deferred": true
+  },
+  "bug_hunt_master_remediation_overlay_10_media_resolver_execution": {
+    "apply_with": "apply-overlay --no-validate",
+    "base_commit": "79df336c",
+    "declared_final_validation_tasks": [
+      ":app:compileDebugKotlin",
+      ":app:testDebugUnitTest",
+      ":app:lintDebug"
+    ],
+    "master_items": [
+      "M-031",
+      "M-032 app/media side",
+      "M-047",
+      "M-055 media side"
+    ],
+    "selected_request_execution": {
+      "selected_variant_exact_url_preserved": true,
+      "selected_variant_headers_override_capture_headers": true,
+      "configured_destination_preserved": true,
+      "dispatch_readiness_precedes_queue_mutation": true,
+      "yt_dlp_format_selector_is_executable_selector": true
+    },
+    "execution_ownership": {
+      "app_media_owner": "Download",
+      "termux_media_owner": "durable PostProcessingJob",
+      "synthetic_termux_download_row": false,
+      "external_job_and_output_insert_atomic": true,
+      "external_retry_and_output_generation_atomic": true,
+      "authenticated_termux_session_bridge": "deferred to Overlay 11; readiness holds rather than command-line secret downgrade"
+    },
+    "media_output_history": {
+      "table": "media_outputs",
+      "one_capture_many_outputs": true,
+      "owner_generation_unique": true,
+      "legacy_capture_download_links_backfilled": true,
+      "library_identity": "outputId + attemptGeneration",
+      "app_download_state_authoritative": true,
+      "termux_output_state_synchronized": true,
+      "library_removal_identity": "selected media_outputs.id only; parent capture retained",
+      "termux_removal_atomic": true,
+      "legacy_fallback_disabled_in_production": true,
+      "stale_observer_resurrection_guard": true,
+      "app_download_generation_synchronized": true,
+      "app_fresh_redownload_lineage_preserved": true,
+      "capture_repeat_output_enabled": true,
+      "capture_request_handoff_retained_until_removal_or_expiry": true,
+      "app_library_removal_identity": "selected output generation tombstoned Hidden; Download/file retained",
+      "historical_generation_never_borrows_newer_download_state": true,
+      "current_app_playback_uses_validated_download_artifact": true
+    },
+    "failure_classification": {
+      "message_substring_is_category_authority": false,
+      "structured_inputs": [
+        "protection state",
+        "media strategy",
+        "manifest freshness",
+        "DownloadState",
+        "BackendType"
+      ],
+      "media3_structured_error_classification_preserved": true
+    },
+    "room_schema_changed": true,
+    "room_schema_current": 20,
+    "validation_deferred": true,
+    "next_overlay": "termux_postprocessing_security",
+    "download_completion_persistence": {
+      "completed_artifact_uri_persisted_on_state_upsert": true,
+      "completed_artifact_generation_persisted_on_state_upsert": true,
+      "completed_artifact_bytes_persisted_on_state_upsert": true
+    }
   }
 }

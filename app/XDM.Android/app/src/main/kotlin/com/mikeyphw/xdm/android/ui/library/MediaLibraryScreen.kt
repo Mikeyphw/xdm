@@ -31,9 +31,12 @@ import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.media.MediaConsumerWorkspacePlanner
 import com.mikeyphw.xdm.android.media.MediaExecutionLibraryPlanner
 import com.mikeyphw.xdm.android.media.MediaLibraryFilter
+import com.mikeyphw.xdm.android.media.MediaExternalJobSnapshot
 import com.mikeyphw.xdm.android.media.OfflineMediaLibraryItem
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
+import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaVariant
 import java.time.Instant
 import java.time.ZoneId
@@ -45,13 +48,23 @@ fun MediaLibraryScreen(
     captures: List<MediaCaptureRecord>,
     variants: List<MediaVariant>,
     downloads: List<Download>,
+    outputs: List<MediaOutputRecord>,
+    externalJobs: List<MediaExternalJobSnapshot>,
     onResumeOrRetryDownload: (Download) -> Unit,
-    onRemoveRecord: (MediaCaptureRecord) -> Unit,
+    onRetryExternalJob: (String) -> Unit,
+    onRemoveRecord: (OfflineMediaLibraryItem) -> Unit,
 ) {
     val executionPlanner = remember { MediaExecutionLibraryPlanner() }
     val consumerPlanner = remember { MediaConsumerWorkspacePlanner() }
-    val allItems = remember(captures, downloads, variants) {
-        executionPlanner.offlineLibraryItems(captures, downloads, variants)
+    val allItems = remember(captures, downloads, variants, outputs, externalJobs) {
+        executionPlanner.offlineLibraryItems(
+            captures = captures,
+            downloads = downloads,
+            variants = variants,
+            outputs = outputs,
+            externalJobs = externalJobs,
+            allowLegacyFallback = false,
+        )
     }
     var filter by rememberSaveable { mutableStateOf(MediaLibraryFilter.All) }
     var selectedPlayerItem by remember { mutableStateOf<OfflineMediaLibraryItem?>(null) }
@@ -103,12 +116,15 @@ fun MediaLibraryScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                items(visibleItems, key = OfflineMediaLibraryItem::captureId) { item ->
+                items(visibleItems, key = OfflineMediaLibraryItem::outputId) { item ->
                     MediaLibraryListItem(
                         item = item,
                         consumerPlanner = consumerPlanner,
                         onPlay = { selectedPlayerItem = item },
-                        onResumeOrRetry = { item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload) },
+                        onResumeOrRetry = {
+                            if (item.ownerKind == MediaOutputOwnerKind.TermuxJob) onRetryExternalJob(item.ownerId)
+                            else item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload)
+                        },
                         onMore = { selectedDetailsItem = item },
                     )
                 }
@@ -124,12 +140,15 @@ fun MediaLibraryScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                gridItems(visibleItems, key = OfflineMediaLibraryItem::captureId) { item ->
+                gridItems(visibleItems, key = OfflineMediaLibraryItem::outputId) { item ->
                     MediaLibraryGridItem(
                         item = item,
                         consumerPlanner = consumerPlanner,
                         onPlay = { selectedPlayerItem = item },
-                        onResumeOrRetry = { item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload) },
+                        onResumeOrRetry = {
+                            if (item.ownerKind == MediaOutputOwnerKind.TermuxJob) onRetryExternalJob(item.ownerId)
+                            else item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload)
+                        },
                         onMore = { selectedDetailsItem = item },
                     )
                 }
@@ -151,21 +170,19 @@ fun MediaLibraryScreen(
     }
 
     selectedDetailsItem?.let { item ->
-        val capture = captures.firstOrNull { it.id == item.captureId }
         LibraryItemDetailsSheet(
             item = item,
             consumerPlanner = consumerPlanner,
             visible = true,
             onDismiss = { selectedDetailsItem = null },
             onResumeOrRetry = {
-                item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload)
+                if (item.ownerKind == MediaOutputOwnerKind.TermuxJob) onRetryExternalJob(item.ownerId)
+                else item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload)
                 selectedDetailsItem = null
             },
-            onRemoveRecord = capture?.let { record ->
-                {
-                    onRemoveRecord(record)
-                    selectedDetailsItem = null
-                }
+            onRemoveRecord = {
+                onRemoveRecord(item)
+                selectedDetailsItem = null
             },
         )
     }

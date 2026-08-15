@@ -648,4 +648,69 @@ object Migrations {
         }
     }
 
+    val Migration19To20 = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS media_outputs (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    captureId TEXT NOT NULL,
+                    ownerKind TEXT NOT NULL,
+                    ownerId TEXT NOT NULL,
+                    downloadId TEXT,
+                    attemptGeneration INTEGER NOT NULL,
+                    destinationUri TEXT NOT NULL,
+                    fileName TEXT NOT NULL,
+                    mimeType TEXT,
+                    selectedTrackIds TEXT NOT NULL DEFAULT '',
+                    state TEXT NOT NULL,
+                    completedArtifactUri TEXT,
+                    completedArtifactGeneration INTEGER,
+                    createdAtEpochMs INTEGER NOT NULL,
+                    updatedAtEpochMs INTEGER NOT NULL,
+                    FOREIGN KEY(captureId) REFERENCES media_captures(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(downloadId) REFERENCES downloads(id) ON UPDATE NO ACTION ON DELETE SET NULL
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_media_outputs_captureId ON media_outputs(captureId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_media_outputs_downloadId ON media_outputs(downloadId)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_media_outputs_ownerKind_ownerId_attemptGeneration ON media_outputs(ownerKind, ownerId, attemptGeneration)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_media_outputs_state ON media_outputs(state)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_media_outputs_updatedAtEpochMs ON media_outputs(updatedAtEpochMs)")
+            // Preserve the existing one-download compatibility link as the first durable output row.
+            db.execSQL(
+                """INSERT OR IGNORE INTO media_outputs (
+                    id, captureId, ownerKind, ownerId, downloadId, attemptGeneration, destinationUri,
+                    fileName, mimeType, selectedTrackIds, state, completedArtifactUri,
+                    completedArtifactGeneration, createdAtEpochMs, updatedAtEpochMs
+                )
+                SELECT
+                    'media-output:appdownload:' || d.id || ':' || CASE WHEN d.attemptGeneration > 0 THEN d.attemptGeneration ELSE 1 END,
+                    c.id,
+                    'AppDownload',
+                    d.id,
+                    d.id,
+                    CASE WHEN d.attemptGeneration > 0 THEN d.attemptGeneration ELSE 1 END,
+                    d.destinationUri,
+                    d.fileName,
+                    d.mimeType,
+                    COALESCE(c.selectedVariantId, ''),
+                    CASE
+                        WHEN d.state = 'Completed' THEN 'Completed'
+                        WHEN d.state = 'Cancelled' THEN 'Cancelled'
+                        WHEN d.state = 'RecoveryRequired' THEN 'RecoveryRequired'
+                        WHEN d.state = 'Failed' THEN 'Failed'
+                        WHEN d.state IN ('Connecting','Downloading','Verifying','Repairing','Finalizing') THEN 'Active'
+                        ELSE 'Queued'
+                    END,
+                    d.completedArtifactUri,
+                    d.completedArtifactGeneration,
+                    d.createdAtEpochMs,
+                    CASE WHEN d.updatedAtEpochMs > c.updatedAtEpochMs THEN d.updatedAtEpochMs ELSE c.updatedAtEpochMs END
+                FROM media_captures c
+                JOIN downloads d ON d.id = c.downloadId
+                WHERE c.downloadId IS NOT NULL""".trimIndent(),
+            )
+        }
+    }
+
 }

@@ -21,6 +21,7 @@ import androidx.room.RoomDatabase
         FinalizationJournalEntity::class,
         MediaCaptureEntity::class,
         MediaVariantEntity::class,
+        MediaOutputEntity::class,
         AutomationCommandEntity::class,
         NotificationRecordEntity::class,
         TagEntity::class,
@@ -37,7 +38,7 @@ import androidx.room.RoomDatabase
         PostProcessingJobEntity::class,
         PostProcessingClaimEntity::class,
     ],
-    version = 19,
+    version = 20,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {

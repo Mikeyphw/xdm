@@ -94,7 +94,8 @@ class MediaExecutionDispatcher {
         nowEpochMs: Long = System.currentTimeMillis(),
     ): MediaDispatchPlan {
         val warnings = mutableListOf<String>()
-        val requiresChoice = spec.selectedTrackIds.isEmpty() && (spec.requiresTermuxYtDlp || spec.strategy == MediaDownloadStrategy.YtDlp)
+        val requiresChoice = spec.selectedTrackIds.isEmpty() && spec.ytDlpFormatSelector.isNullOrBlank() &&
+            (spec.requiresTermuxYtDlp || spec.strategy == MediaDownloadStrategy.YtDlp)
         val captureNeedsRefresh = capture?.needsManifestRefresh(nowEpochMs) == true || capture?.resolutionStatus == MediaResolutionStatus.RequiresRefresh
         val needsRefresh = captureNeedsRefresh || (capture == null && spec.isExpiringUrl)
         val leakSafe = enginePlan.leakReport.safe

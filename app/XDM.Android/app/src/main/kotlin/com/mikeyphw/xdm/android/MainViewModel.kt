@@ -56,6 +56,8 @@ import com.mikeyphw.xdm.android.model.DuplicateUrlRule
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
+import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.media.MediaCaptureService
@@ -72,6 +74,9 @@ import com.mikeyphw.xdm.android.media.ExternalMediaReviewPlanner
 import com.mikeyphw.xdm.android.media.MediaRequestFacts
 import com.mikeyphw.xdm.android.media.MediaSessionHeader
 import com.mikeyphw.xdm.android.media.MediaExecutionLibraryPlanner
+import com.mikeyphw.xdm.android.media.OfflineMediaLibraryItem
+import com.mikeyphw.xdm.android.media.MediaExecutionDispatcher
+import com.mikeyphw.xdm.android.media.MediaDispatchReadiness
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
@@ -170,7 +175,7 @@ data class Aria2DiagnosticsUi(
     val storageDoctor: StorageDoctorUi = StorageDoctorUi(),
 )
 
-private const val CurrentRoomSchemaVersion = 19
+private const val CurrentRoomSchemaVersion = 20
 private const val UnpinnedReleaseSigner = "UNPINNED"
 
 private fun releaseSigningAttestationConfigured(): Boolean =
@@ -240,6 +245,7 @@ data class MainUiState(
     val finalizationJournals: List<FinalizationJournal> = emptyList(),
     val mediaCaptures: List<MediaCaptureRecord> = emptyList(),
     val mediaVariants: List<MediaVariant> = emptyList(),
+    val mediaOutputs: List<MediaOutputRecord> = emptyList(),
     val mediaIntakeFeedback: MediaIntakeFeedbackUi = MediaIntakeFeedbackUi(),
     val browserCaptureSessions: List<BrowserCaptureSessionSummary> = emptyList(),
     val mediaTrackSelections: Map<String, MediaTrackSelection> = emptyMap(),
@@ -387,6 +393,7 @@ class MainViewModel(
     private val externalMediaReviewPlanner = ExternalMediaReviewPlanner(mediaCaptureService, sniffingEngine = mediaSniffingEngine, debugRecorder = debugEventRecorder)
     private val downloadIntakePlanner = DownloadIntakePlanner(debugRecorder = debugEventRecorder)
     private val mediaExecutionPlanner = MediaExecutionLibraryPlanner()
+    private val mediaExecutionDispatcher = MediaExecutionDispatcher()
     private val nativeStoragePathProbe = NativeStoragePathProbe(destinationWriter)
 
     private data class RepositorySnapshot(
@@ -401,6 +408,7 @@ class MainViewModel(
         val finalizationJournals: List<FinalizationJournal>,
         val mediaCaptures: List<MediaCaptureRecord>,
         val mediaVariants: List<MediaVariant>,
+        val mediaOutputs: List<MediaOutputRecord>,
         val automationCommands: List<AutomationCommandRecord>,
         val tags: List<DownloadTag>,
         val tagAssignments: List<DownloadTagAssignment>,
@@ -440,9 +448,24 @@ class MainViewModel(
 
     private val verificationSnapshot = combine(repository.checksumResults, repository.verificationRecords) { results, records -> results to records }
 
-    private val mediaSnapshot = combine(repository.mediaCaptures, repository.mediaVariants) { captures, variants -> captures to variants }
+    private data class MediaRepositorySnapshot(
+        val captures: List<MediaCaptureRecord>,
+        val variants: List<MediaVariant>,
+        val outputs: List<MediaOutputRecord>,
+    )
 
-    private val mediaAutomationSnapshot = combine(mediaSnapshot, repository.automationCommands) { media, automation -> media to automation }
+    private data class MediaAutomationSnapshot(
+        val media: MediaRepositorySnapshot,
+        val automation: List<AutomationCommandRecord>,
+    )
+
+    private val mediaSnapshot = combine(repository.mediaCaptures, repository.mediaVariants, repository.mediaOutputs) { captures, variants, outputs ->
+        MediaRepositorySnapshot(captures, variants, outputs)
+    }
+
+    private val mediaAutomationSnapshot = combine(mediaSnapshot, repository.automationCommands) { media, automation ->
+        MediaAutomationSnapshot(media, automation)
+    }
 
     private data class OrganizationSnapshot(
         val tags: List<DownloadTag>,
@@ -483,7 +506,7 @@ class MainViewModel(
 
     private data class RepositoryMediaSnapshot(
         val finalization: List<FinalizationJournal>,
-        val mediaAutomation: Pair<Pair<List<MediaCaptureRecord>, List<MediaVariant>>, List<AutomationCommandRecord>>,
+        val mediaAutomation: MediaAutomationSnapshot,
         val organization: OrganizationSnapshot,
     )
 
@@ -498,8 +521,8 @@ class MainViewModel(
         val finalization = extra.finalization
         val mediaAutomation = extra.mediaAutomation
         val organization = extra.organization
-        val media = mediaAutomation.first
-        val automation = mediaAutomation.second
+        val media = mediaAutomation.media
+        val automation = mediaAutomation.automation
         RepositorySnapshot(
             base.downloads,
             base.queues,
@@ -510,8 +533,9 @@ class MainViewModel(
             verification.first,
             verification.second,
             finalization,
-            media.first,
-            media.second,
+            media.captures,
+            media.variants,
+            media.outputs,
             automation,
             organization.tags,
             organization.tagAssignments,
@@ -768,6 +792,7 @@ class MainViewModel(
             finalizationJournals = snapshot.finalizationJournals,
             mediaCaptures = snapshot.mediaCaptures,
             mediaVariants = snapshot.mediaVariants,
+            mediaOutputs = snapshot.mediaOutputs,
             mediaIntakeFeedback = review.mediaIntakeFeedback,
             browserCaptureSessions = review.browserCaptureSessions,
             mediaTrackSelections = review.mediaSelections,
@@ -1814,7 +1839,7 @@ class MainViewModel(
             completedArtifactGeneration = null,
             completedArtifactBytes = null,
         )
-        if (!repository.save(retry)) {
+        if (!repository.createReplacementDownloadPreservingMediaLineage(current.id, retry, now)) {
             return "A newer durable state prevented XDM from creating the replacement download. Nothing was restarted." to null
         }
         MediaRequestHandoffStore.cloneDownload(current.id, newId, exactUrl)
@@ -3361,94 +3386,112 @@ class MainViewModel(
         mediaResolverSelectionStore.save(record.id, selection)
         viewModelScope.launch(Dispatchers.IO) {
             val now = System.currentTimeMillis()
+            val prefs = preferences.values.first()
             val storedVariants = repository.variantsForMediaCapture(record.id)
             val captureHandoff = MediaRequestHandoffStore.forCapture(record.id)
             val exactRecord = record.copy(
                 sourceUrl = captureHandoff?.exactUrl ?: record.sourceUrl,
                 pageUrl = captureHandoff?.pageUrl ?: record.pageUrl,
             )
+            val variantHandoffs = storedVariants.associate { variant -> variant.id to MediaRequestHandoffStore.forVariant(variant.id) }
             val variants = storedVariants.map { variant ->
-                variant.copy(url = MediaRequestHandoffStore.forVariant(variant.id)?.exactUrl ?: variant.url)
+                variant.copy(url = variantHandoffs[variant.id]?.exactUrl ?: variant.url)
+            }
+            val captureSessionHeaders = captureHandoff?.headers.orEmpty().map { (name, value) -> MediaSessionHeader(name, value) }
+            val variantSessionHeaders = variantHandoffs.mapValues { (_, handoff) ->
+                handoff?.headers.orEmpty().map { (name, value) -> MediaSessionHeader(name, value) }
             }
             val spec = mediaExecutionPlanner.queueSpec(
                 capture = exactRecord,
                 variants = variants,
                 selection = selection,
-                destinationUri = DestinationUris.PUBLIC_DOWNLOADS,
-                sessionHeaders = captureHandoff?.headers.orEmpty().map { (name, value) -> MediaSessionHeader(name, value) },
+                destinationUri = prefs.destinationUri,
+                sessionHeaders = captureSessionHeaders,
+                variantSessionHeaders = variantSessionHeaders,
             )
             val enginePlan = mediaExecutionPlanner.enginePlan(spec, androidSdkInt = android.os.Build.VERSION.SDK_INT)
-            if (spec.requiresTermuxYtDlp) {
-                val download = Download(
-                    id = UUID.randomUUID().toString(),
-                    fileName = sanitizeFileName(spec.fileName),
-                    sourceUrl = ExternalUrlPolicy.persistableUrl(spec.sourceUrl) ?: spec.sourceUrl.substringBefore('?'),
-                    destinationUri = DestinationUris.PUBLIC_DOWNLOADS,
-                    state = DownloadState.Queued,
-                    backend = BackendType.Automatic,
-                    bytesReceived = 0,
-                    totalBytes = null,
-                    speedBytesPerSecond = 0,
-                    queueId = "termux-media",
-                    priority = 0,
-                    createdAtEpochMs = now,
-                    updatedAtEpochMs = now,
-                    conflictPolicy = FilenameConflictPolicy.Rename,
-                    mimeType = record.mimeType,
-                    requestedBackend = BackendType.Automatic,
-                    backendSelectionExplanation = listOf(
-                        "Managed by Termux yt-dlp because this media candidate requires playlist/page extraction outside the app queue.",
-                        spec.safeExplanation,
-                        enginePlan.safeSummary,
-                    ).filter(String::isNotBlank).joinToString(" ").take(900),
-                    allowBackendFallback = false,
-                    userLabel = spec.userLabel,
+            val termuxReady = !spec.requiresTermuxYtDlp || termuxMediaPipelineManager.ytDlpExecutionReady(spec.requestHeaders, exactRecord.pageUrl ?: exactRecord.sourceUrl, now)
+            val dispatchPlan = mediaExecutionDispatcher.dispatchPlan(
+                spec = spec,
+                enginePlan = enginePlan,
+                capture = exactRecord,
+                termuxReady = termuxReady,
+                nowEpochMs = now,
+            )
+            if (dispatchPlan.readiness != MediaDispatchReadiness.Ready) {
+                val detail = when (dispatchPlan.readiness) {
+                    MediaDispatchReadiness.NeedsTermuxSetup -> termuxMediaPipelineManager.ytDlpReadinessIssue(spec.requestHeaders, exactRecord.pageUrl ?: exactRecord.sourceUrl, now)
+                        ?: dispatchPlan.warnings.joinToString(" ").ifBlank { dispatchPlan.readiness.label }
+                    else -> dispatchPlan.warnings.joinToString(" ").ifBlank { dispatchPlan.readiness.label }
+                }
+                if (dispatchPlan.readiness == MediaDispatchReadiness.NeedsMetadataRefresh) {
+                    repository.saveMediaCapture(exactRecord.copy(resolutionStatus = MediaResolutionStatus.RequiresRefresh, updatedAtEpochMs = now))
+                }
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(
+                        kind = when (dispatchPlan.readiness) {
+                            MediaDispatchReadiness.NeedsMetadataRefresh -> MediaIntakeFeedbackKind.NeedsBrowserCapture
+                            MediaDispatchReadiness.NeedsTermuxSetup -> if (spec.requestHeaders.keys.any { it.equals("Cookie", true) || it.equals("Authorization", true) }) MediaIntakeFeedbackKind.AuthenticationRequired else MediaIntakeFeedbackKind.Unsupported
+                            MediaDispatchReadiness.BlockedProtected, MediaDispatchReadiness.AwaitingUserChoice -> MediaIntakeFeedbackKind.Unsupported
+                            MediaDispatchReadiness.BlockedSecretLeak -> MediaIntakeFeedbackKind.Failed
+                            MediaDispatchReadiness.Ready -> MediaIntakeFeedbackKind.Found
+                        },
+                        title = dispatchPlan.primaryActionLabel,
+                        detail = detail,
+                        diagnostics = dispatchPlan.safeDiagnostics.lines().take(8),
+                    ),
+                    navigateToMedia = false,
                 )
-                val creation = repository.createDownloadFromMediaCapture(record.id, download, now)
-                if (creation.isFailure) {
-                    val reason = creation.exceptionOrNull()?.message ?: "Download creation failed before the media capture could be linked."
-                    debugEventRecorder.record(
-                        area = com.mikeyphw.xdm.android.model.DebugArea.AddDownload,
-                        severity = com.mikeyphw.xdm.android.model.DebugSeverity.Error,
-                        action = "media-termux-download-create",
-                        result = "rolled-back",
-                        safeDetails = mapOf("captureId" to record.id, "reason" to reason),
+                navigate(AppRoute.Media)
+                return@launch
+            }
+            if (spec.requiresTermuxYtDlp) {
+                val outcome = runCatching {
+                    termuxMediaPipelineManager.enqueueYtDlpDownload(
+                        record = exactRecord,
+                        variants = variants,
+                        selection = selection,
+                        destination = spec.destinationUri,
+                        sessionHeaders = captureSessionHeaders,
+                        variantSessionHeaders = variantSessionHeaders,
                     )
+                }.getOrElse { error ->
                     publishMediaIntakeFeedback(
-                        MediaIntakeFeedbackUi(
-                            MediaIntakeFeedbackKind.Failed,
-                            "Could not add Termux download",
-                            reason,
-                        ),
+                        MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not queue Termux media", error.message ?: "Durable external media enqueue failed."),
                         navigateToMedia = false,
                     )
                     navigate(AppRoute.Media)
                     return@launch
                 }
-                val job = termuxMediaPipelineManager.downloadWithYtDlp(
-                    record = exactRecord.copy(downloadId = download.id),
-                    variants = variants,
-                    selection = selection,
-                    destination = DestinationUris.PUBLIC_DOWNLOADS,
-                    downloadId = download.id,
-                )
-                captureHandoff?.let { MediaRequestHandoffStore.forgetCapture(record.id) }
+                if (!outcome.accepted) {
+                    publishMediaIntakeFeedback(
+                        MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not queue Termux media", outcome.message),
+                        navigateToMedia = false,
+                    )
+                    navigate(AppRoute.Media)
+                    return@launch
+                }
+                // Keep capture/variant handoffs for additional output generations. They are encrypted,
+                // bounded by expiry, and explicitly removed with the capture.
                 debugEventRecorder.record(
                     area = com.mikeyphw.xdm.android.model.DebugArea.AddDownload,
-                    action = "media-termux-download-create",
+                    action = "media-termux-external-enqueue",
                     result = "committed",
                     safeDetails = mapOf(
                         "captureId" to record.id,
-                        "downloadId" to download.id,
-                        "postProcessingJobId" to job.id,
-                        "state" to download.state.name,
+                        "postProcessingJobId" to outcome.job.id,
+                        "attemptGeneration" to outcome.job.attemptGeneration.toString(),
+                        "owner" to "TermuxJob",
                     ),
                 )
-                navigate(AppRoute.Downloads)
+                navigate(AppRoute.Media)
                 return@launch
             }
             if (!spec.canUseAppQueue) {
-                repository.saveMediaCapture(record.copy(resolutionStatus = com.mikeyphw.xdm.android.model.MediaResolutionStatus.Failed, updatedAtEpochMs = now))
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Unsupported, "Media cannot be queued", "The resolver did not produce an app-owned executable plan."),
+                    navigateToMedia = false,
+                )
                 navigate(AppRoute.Media)
                 return@launch
             }
@@ -3456,8 +3499,8 @@ class MainViewModel(
                 url = spec.sourceUrl,
                 fileName = spec.fileName,
                 backend = spec.requestedBackend,
-                destination = DestinationUris.PUBLIC_DOWNLOADS,
-                conflictPolicy = FilenameConflictPolicy.Rename,
+                destination = spec.destinationUri,
+                conflictPolicy = prefs.conflictPolicy,
                 allowFallback = true,
                 isMediaRequest = true,
                 headers = spec.requestHeaders,
@@ -3466,11 +3509,10 @@ class MainViewModel(
             )
             val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
             if (!recommendation.compatible) {
-                repository.saveMediaCapture(
-                    record.copy(
-                        resolutionStatus = MediaResolutionStatus.Failed,
-                        updatedAtEpochMs = now,
-                    ),
+                repository.saveMediaCapture(exactRecord.copy(resolutionStatus = MediaResolutionStatus.Failed, updatedAtEpochMs = now))
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Unsupported, "No compatible media backend", recommendation.explanation),
+                    navigateToMedia = false,
                 )
                 navigate(AppRoute.Media)
                 return@launch
@@ -3479,7 +3521,7 @@ class MainViewModel(
                 id = UUID.randomUUID().toString(),
                 fileName = sanitizeFileName(spec.fileName),
                 sourceUrl = ExternalUrlPolicy.persistableUrl(spec.sourceUrl) ?: spec.sourceUrl.substringBefore('?'),
-                destinationUri = DestinationUris.PUBLIC_DOWNLOADS,
+                destinationUri = spec.destinationUri,
                 state = DownloadState.Queued,
                 backend = recommendation.backend,
                 bytesReceived = 0,
@@ -3489,11 +3531,11 @@ class MainViewModel(
                 priority = 0,
                 createdAtEpochMs = now,
                 updatedAtEpochMs = now,
-                conflictPolicy = FilenameConflictPolicy.Rename,
+                conflictPolicy = prefs.conflictPolicy,
                 mimeType = record.mimeType,
                 requestedBackend = spec.requestedBackend,
                 backendSelectionReason = recommendation.reason,
-                backendSelectionExplanation = listOf(recommendation.explanation, spec.safeExplanation, enginePlan.safeSummary).filter(String::isNotBlank).joinToString(" ").take(900),
+                backendSelectionExplanation = listOf(recommendation.explanation, spec.safeExplanation, enginePlan.safeSummary, dispatchPlan.summary).filter(String::isNotBlank).joinToString(" ").take(900),
                 allowBackendFallback = true,
                 userLabel = spec.userLabel,
             )
@@ -3505,14 +3547,12 @@ class MainViewModel(
                 isExpiringUrl = spec.isExpiringUrl || captureHandoff?.isExpiringUrl == true,
                 exactUrl = spec.sourceUrl,
                 pageUrl = captureHandoff?.pageUrl,
-                // A capture approval is bound to its exact reviewed target. Selecting a different
-                // variant URL must not mint a new approval for that target.
                 privateNetworkApproved = executionScope != null && executionScope in captureHandoff?.privateNetworkApprovalScopes.orEmpty(),
                 cleartextCredentialsApproved = executionScope != null && executionScope in captureHandoff?.cleartextCredentialApprovalScopes.orEmpty(),
                 cleanupActions = enginePlan.cleanupActions,
                 tempCookieFileName = enginePlan.tempCookieFile?.fileName,
             )
-            val creation = repository.createDownloadFromMediaCapture(record.id, download, now)
+            val creation = repository.createDownloadFromMediaCapture(record.id, download, now, selectedTrackIds = spec.selectedTrackIds)
             if (creation.isFailure) {
                 MediaRequestHandoffStore.forget(download.id)
                 val reason = creation.exceptionOrNull()?.message ?: "Download creation failed before the media capture could be linked."
@@ -3524,17 +3564,14 @@ class MainViewModel(
                     safeDetails = mapOf("captureId" to record.id, "reason" to reason),
                 )
                 publishMediaIntakeFeedback(
-                    MediaIntakeFeedbackUi(
-                        MediaIntakeFeedbackKind.Failed,
-                        "Could not add download",
-                        reason,
-                    ),
+                    MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not add download", reason),
                     navigateToMedia = false,
                 )
                 navigate(AppRoute.Media)
                 return@launch
             }
-            captureHandoff?.let { MediaRequestHandoffStore.forgetCapture(record.id) }
+            // Keep capture/variant handoffs for additional output generations. The per-download
+            // execution handoff is still isolated under the new Download id.
             debugEventRecorder.record(
                 area = com.mikeyphw.xdm.android.model.DebugArea.AddDownload,
                 action = "media-download-create",
@@ -3591,9 +3628,20 @@ class MainViewModel(
     fun removeMediaCapture(record: MediaCaptureRecord) {
         mediaResolverSelectionStore.remove(record.id)
         viewModelScope.launch(Dispatchers.IO) {
+            val variantIds = repository.variantsForMediaCapture(record.id).map { it.id }
             repository.deleteMediaCapture(record.id)
             MediaRequestHandoffStore.forgetCapture(record.id)
+            variantIds.forEach(MediaRequestHandoffStore::forgetVariant)
             browserCaptureSessionRegistry.removeCapture(record.id)
+        }
+    }
+
+    fun removeMediaLibraryRecord(item: OfflineMediaLibraryItem) {
+        viewModelScope.launch(Dispatchers.IO) {
+            when (item.ownerKind) {
+                MediaOutputOwnerKind.AppDownload -> repository.hideAppMediaOutput(item.outputId)
+                MediaOutputOwnerKind.TermuxJob -> termuxMediaPipelineManager.removeLibraryOutput(item.ownerId, item.outputId)
+            }
         }
     }
 

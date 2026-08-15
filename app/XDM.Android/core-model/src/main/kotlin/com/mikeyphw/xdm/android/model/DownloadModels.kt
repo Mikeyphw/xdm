@@ -32,6 +32,37 @@ enum class MediaResolutionStatus { Unresolved, Resolved, RequiresRefresh, Failed
 enum class MediaSourceKind { DirectFile, ProgressiveMedia, HlsPlaylist, DashManifest, AudioStream, VideoStream, Unknown }
 enum class MediaVariantKind { Primary, Video, Audio, Subtitle, Thumbnail }
 
+enum class MediaOutputOwnerKind { AppDownload, TermuxJob }
+enum class MediaOutputState {
+    Queued,
+    Active,
+    Completed,
+    Failed,
+    Cancelled,
+    RecoveryRequired,
+    /** Library-only tombstone: preserve lineage without resurfacing a user-removed generation. */
+    Hidden,
+}
+
+/** Durable one-to-many execution/output identity for a media capture. */
+data class MediaOutputRecord(
+    val id: String,
+    val captureId: String,
+    val ownerKind: MediaOutputOwnerKind,
+    val ownerId: String,
+    val downloadId: String?,
+    val attemptGeneration: Long,
+    val destinationUri: String,
+    val fileName: String,
+    val mimeType: String?,
+    val selectedTrackIds: Set<String>,
+    val state: MediaOutputState,
+    val completedArtifactUri: String? = null,
+    val completedArtifactGeneration: Long? = null,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+)
+
 data class MediaVariant(
     val id: String,
     val captureId: String,

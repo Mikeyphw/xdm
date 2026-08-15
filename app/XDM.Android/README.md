@@ -233,3 +233,10 @@ The personal sideload build supports repaired embedded aria2 RPC diagnostics/rec
 ### App-process restart ownership closure
 
 Phase 55 now persists an app-private aria2 runtime ownership lease containing only the loopback endpoint, secret generation, and start timestamp, never the secret itself. On a later XDM process start, a matching-generation daemon must answer authenticated RPC before XDM treats it as its own. Proven XDM-owned orphan daemons are session-saved and shut down over authenticated RPC before a fresh runtime is launched; stale or unreachable markers are cleared without killing an unproven process.
+
+
+## Master remediation Overlay 10 — media resolver/execution
+
+The remediation campaign's media execution phase now makes the real download button honor the selected variant's exact request headers and the configured destination, and it enforces the existing dispatch-readiness plan before queue state changes. App-owned direct/aria2 media creates the normal XDM `Download`; adaptive/live yt-dlp work is represented only by its durable Termux job, avoiding a second synthetic queue owner.
+
+Room schema 20 adds `media_outputs`, a one-capture-to-many output/generation history that preserves app-download and Termux-job ownership separately. Migration 19→20 backfills the legacy capture→download link, and Library rows are keyed by output generation so multiple successful/retry outputs from one capture can coexist. “Remove library record” now removes only the selected generation rather than cascading the parent capture; Termux owner/output metadata is removed atomically and production disables legacy-link fallback so deleted final generations do not reappear. Media execution failure categories now come from structured strategy/state/backend signals rather than error-message substring matching. Authenticated Termux session transport remains intentionally held for Overlay 11 rather than placing secrets on command lines.

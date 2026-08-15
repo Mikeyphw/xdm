@@ -91,6 +91,9 @@ interface DownloadGraphTransactionDao {
             mimeType = entity.mimeType,
             archived = entity.archived,
             attemptGeneration = entity.attemptGeneration,
+            completedArtifactUri = entity.completedArtifactUri,
+            completedArtifactGeneration = entity.completedArtifactGeneration,
+            completedArtifactBytes = entity.completedArtifactBytes,
         ) == 1
     }
 
@@ -136,7 +139,10 @@ interface DownloadGraphTransactionDao {
             conflictPolicy = :conflictPolicy,
             mimeType = :mimeType,
             archived = :archived,
-            attemptGeneration = :attemptGeneration
+            attemptGeneration = :attemptGeneration,
+            completedArtifactUri = :completedArtifactUri,
+            completedArtifactGeneration = :completedArtifactGeneration,
+            completedArtifactBytes = :completedArtifactBytes
         WHERE id = :id AND (
             attemptGeneration < :attemptGeneration OR
             (attemptGeneration = :attemptGeneration AND updatedAtEpochMs < :updatedAtEpochMs)
@@ -165,6 +171,9 @@ interface DownloadGraphTransactionDao {
         mimeType: String?,
         archived: Boolean,
         attemptGeneration: Long,
+        completedArtifactUri: String?,
+        completedArtifactGeneration: Long?,
+        completedArtifactBytes: Long?,
     ): Int
 
     @Query("""UPDATE downloads

@@ -1168,4 +1168,167 @@ class MediaCaptureServiceTest {
         assertFalse(deck.summary.contains("token=secret"))
     }
 
+    @Test
+    fun selectedVariantHeadersOverrideCaptureHeadersAndDestinationIsPreserved() {
+        val service = MediaCaptureService(clock = { 6_000L })
+        val record = service.detect("https://cdn.example.test/master.m3u8", pageTitle = "Header episode").single()
+        val variants = service.parseHlsPlaylist(
+            captureId = record.id,
+            playlistUrl = record.sourceUrl,
+            playlistText = """
+                #EXTM3U
+                #EXT-X-STREAM-INF:BANDWIDTH=1800000,RESOLUTION=1280x720
+                video/720.m3u8
+            """.trimIndent(),
+        )
+        val selected = variants.single()
+        val planner = MediaExecutionLibraryPlanner()
+        val destination = "content://com.example.documents/tree/Media"
+        val spec = planner.queueSpec(
+            capture = record,
+            variants = variants,
+            selection = MediaTrackSelection(videoVariantId = selected.id),
+            destinationUri = destination,
+            sessionHeaders = listOf(
+                MediaSessionHeader("User-Agent", "capture-agent"),
+                MediaSessionHeader("X-Capture", "capture-value"),
+            ),
+            variantSessionHeaders = mapOf(
+                selected.id to listOf(
+                    MediaSessionHeader("User-Agent", "variant-agent"),
+                    MediaSessionHeader("X-Variant", "variant-value"),
+                ),
+            ),
+        )
+        val engine = planner.enginePlan(spec, androidSdkInt = 35)
+
+        assertEquals(destination, spec.destinationUri)
+        assertEquals("variant-agent", spec.requestHeaders["User-Agent"])
+        assertEquals("capture-value", spec.requestHeaders["X-Capture"])
+        assertEquals("variant-value", spec.requestHeaders["X-Variant"])
+        assertTrue(spec.ytDlpFormatSelector?.isNotBlank() == true)
+        val formatIndex = engine.typedArguments.indexOf("--format")
+        assertTrue(formatIndex >= 0)
+        assertEquals(spec.ytDlpFormatSelector, engine.typedArguments.getOrNull(formatIndex + 1))
+    }
+
+    @Test
+    fun oneCaptureCanExposeMultipleCompletedAppOutputsEvenWhenOutputSnapshotsAreStale() {
+        val record = MediaCaptureService(clock = { 7_000L })
+            .detect("https://cdn.example.test/movie.mp4", pageTitle = "Movie history")
+            .single()
+        fun completed(id: String, uri: String, at: Long) = com.mikeyphw.xdm.android.model.Download(
+            id = id,
+            fileName = "$id.mp4",
+            sourceUrl = record.sourceUrl,
+            destinationUri = "content://downloads",
+            state = com.mikeyphw.xdm.android.model.DownloadState.Completed,
+            backend = com.mikeyphw.xdm.android.model.BackendType.Aria2,
+            bytesReceived = 100,
+            totalBytes = 100,
+            speedBytesPerSecond = 0,
+            queueId = "default",
+            priority = 0,
+            createdAtEpochMs = at - 10,
+            updatedAtEpochMs = at,
+            completedArtifactUri = uri,
+            completedArtifactGeneration = 1L,
+        )
+        val first = completed("download-a", "content://downloads/a.mp4", 7_100L)
+        val second = completed("download-b", "content://downloads/b.mp4", 7_200L)
+        fun output(download: com.mikeyphw.xdm.android.model.Download) = com.mikeyphw.xdm.android.model.MediaOutputRecord(
+            id = "media-output:appdownload:${download.id}:1",
+            captureId = record.id,
+            ownerKind = com.mikeyphw.xdm.android.model.MediaOutputOwnerKind.AppDownload,
+            ownerId = download.id,
+            downloadId = download.id,
+            attemptGeneration = 1L,
+            destinationUri = download.destinationUri,
+            fileName = download.fileName,
+            mimeType = "video/mp4",
+            selectedTrackIds = emptySet(),
+            // Enqueue-time snapshots may remain queued; Download is the app-owned state authority.
+            state = com.mikeyphw.xdm.android.model.MediaOutputState.Queued,
+            createdAtEpochMs = download.createdAtEpochMs,
+            updatedAtEpochMs = download.createdAtEpochMs,
+        )
+        val items = MediaExecutionLibraryPlanner().offlineLibraryItems(
+            captures = listOf(record),
+            downloads = listOf(first, second),
+            variants = emptyList(),
+            outputs = listOf(output(first), output(second)),
+        )
+
+        assertEquals(2, items.size)
+        assertEquals(setOf(first.id, second.id), items.map { it.ownerId }.toSet())
+        assertEquals(2, items.map { it.outputId }.distinct().size)
+        assertTrue(items.all { it.isCompleted && it.canPlayDirect })
+    }
+
+    @Test
+    fun productionLibraryDoesNotResurrectDeletedLastOutputFromLegacyCaptureLink() {
+        val record = MediaCaptureService(clock = { 7_500L })
+            .detect("https://cdn.example.test/movie.mp4", pageTitle = "Removed history")
+            .single()
+            .copy(downloadId = "download-legacy")
+        val download = com.mikeyphw.xdm.android.model.Download(
+            id = "download-legacy",
+            fileName = "legacy.mp4",
+            sourceUrl = record.sourceUrl,
+            destinationUri = "content://downloads",
+            state = com.mikeyphw.xdm.android.model.DownloadState.Completed,
+            backend = com.mikeyphw.xdm.android.model.BackendType.Native,
+            bytesReceived = 10,
+            totalBytes = 10,
+            speedBytesPerSecond = 0,
+            queueId = "default",
+            priority = 0,
+            createdAtEpochMs = 7_400L,
+            updatedAtEpochMs = 7_500L,
+            completedArtifactUri = "content://downloads/legacy.mp4",
+            completedArtifactGeneration = 1L,
+        )
+
+        val items = MediaExecutionLibraryPlanner().offlineLibraryItems(
+            captures = listOf(record),
+            downloads = listOf(download),
+            variants = emptyList(),
+            outputs = emptyList(),
+            allowLegacyFallback = false,
+        )
+
+        assertTrue(items.isEmpty())
+    }
+
+    @Test
+    fun mediaFailureClassificationUsesStructuredBackendAndStateNotErrorText() {
+        val record = MediaCaptureService(clock = { 8_000L })
+            .detect("https://cdn.example.test/movie.mp4", pageTitle = "Structured failure")
+            .single()
+        val planner = MediaExecutionLibraryPlanner()
+        val plan = MediaDownloadPlanner().plan(record, emptyList())
+        val base = com.mikeyphw.xdm.android.model.Download(
+            id = "failed",
+            fileName = "movie.mp4",
+            sourceUrl = record.sourceUrl,
+            destinationUri = "content://downloads",
+            state = com.mikeyphw.xdm.android.model.DownloadState.Failed,
+            backend = com.mikeyphw.xdm.android.model.BackendType.Native,
+            bytesReceived = 0,
+            totalBytes = null,
+            speedBytesPerSecond = 0,
+            queueId = "default",
+            priority = 0,
+            createdAtEpochMs = 1,
+            updatedAtEpochMs = 2,
+            errorMessage = "aria2 metadata timeout text should not select the classifier",
+        )
+
+        assertEquals(MediaExecutionFailureKind.AppDownloadFailed, planner.classifyFailure(record, plan, base).kind)
+        assertEquals(
+            MediaExecutionFailureKind.Aria2DownloadFailed,
+            planner.classifyFailure(record, plan, base.copy(backend = com.mikeyphw.xdm.android.model.BackendType.Aria2)).kind,
+        )
+    }
+
 }

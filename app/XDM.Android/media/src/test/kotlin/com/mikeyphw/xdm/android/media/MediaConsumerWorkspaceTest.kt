@@ -5,6 +5,7 @@ import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
+import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import org.junit.Assert.assertEquals
@@ -36,6 +37,19 @@ class MediaConsumerWorkspaceTest {
         assertEquals(240_000_000L, summary.estimatedSizeBytes)
         assertTrue(summary.canDownload)
         assertEquals("Download", summary.primaryActionLabel)
+    }
+
+    @Test
+    fun captureWithExistingDownloadRemainsReadyForAnotherOutputGeneration() {
+        val capture = capture(status = MediaCaptureStatus.DownloadCreated)
+        val variants = listOf(variant("video-1080", MediaVariantKind.Video, "1080p"))
+
+        val summary = planner.summarizeCapture(capture, variants, MediaTrackSelection(videoVariantId = "video-1080"))
+
+        assertEquals(MediaConsumerState.Ready, summary.state)
+        assertTrue(summary.canDownload)
+        assertEquals("Download again", summary.primaryActionLabel)
+        assertTrue(summary.notice.orEmpty().contains("another output generation"))
     }
 
     @Test
@@ -137,7 +151,11 @@ class MediaConsumerWorkspaceTest {
             completedAtEpochMs = completedAt,
         )
         return OfflineMediaLibraryItem(
+            outputId = "output-$id",
             captureId = id,
+            ownerKind = MediaOutputOwnerKind.AppDownload,
+            ownerId = "download-$id",
+            attemptGeneration = 1L,
             downloadId = "download-$id",
             title = id,
             fileName = fileName,

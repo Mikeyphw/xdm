@@ -82622,6 +82622,285 @@
         ]
       },
       "history_id": "814004831074461aa032928812f6b10c"
+    },
+    {
+      "applied_at": "2026-08-15T04:17:02.277221Z",
+      "artifact": "/storage/emulated/0/Download/xdm_android_media_resolver_execution_overlay_v2.zip",
+      "artifact_name": "xdm_android_media_resolver_execution_overlay_v2.zip",
+      "type": "overlay",
+      "sha256": "c01ddae2843e256505f20dc3e2adec1df4a659c6120fdd73448cf8d3c4d2e735",
+      "status": "ok",
+      "validation_status": "not-run",
+      "commit_message": "Apply XDM Android media resolver execution remediation v2",
+      "commit_hash": "",
+      "file_count": 29,
+      "change_counts": {
+        "add": 4,
+        "modify": 25
+      },
+      "manifest": {
+        "schema_version": 2,
+        "type": "overlay",
+        "name": "XDM Android media resolver execution overlay v2",
+        "description": "Corrected roadmap Overlay 10 on applied commit 79df336c: exact selected-variant request execution and configured destination; authoritative pre-mutation dispatch gating; single app-vs-Termux execution ownership; Room schema-20 one-to-many media output generations; synchronized app retry/completion generations and fresh-redownload lineage; repeat-output capture workflow with retained secure handoffs; generation-scoped library removal/history; durable completion artifact persistence; and structured media execution failure classification. Intermediate campaign artifact; apply with --no-validate.",
+        "repository": {
+          "name": "xdm"
+        },
+        "workspace": {
+          "name": "XDM Android",
+          "root": "app/XDM.Android"
+        },
+        "target": "xdm_android",
+        "inventory": {
+          "format": 1,
+          "entries": [
+            {
+              "path": "DEVTOOL_OVERLAY.md",
+              "action": "modify",
+              "sha256": "9517f3a9e0f664d55f4635abf0067caa844049114e98d86ef7f4f51e1c40e709",
+              "size": 4141,
+              "source_sha256": "335e251100687e47a14d70c1f1efc443f1e37136868b7b8f6d11ca049fa8ea5d"
+            },
+            {
+              "path": "XDM_MEDIA_RESOLVER_EXECUTION_PHASE10_REPORT.md",
+              "action": "add",
+              "sha256": "5ae49184dc085117f2c9f9ebbb893e4fd9d70634d3e89039aefc532bdb586170",
+              "size": 3293
+            },
+            {
+              "path": "app/XDM.Android/PROJECT_MANIFEST.json",
+              "action": "modify",
+              "sha256": "f654f032f96d704e7ba0adfed0da85b0ea375a2a2e572004c9b5d72368407efb",
+              "size": 153335,
+              "source_sha256": "5ccbdaaac6d01e48dd03160fcc8e9e429cb71ff8b1fd3ae6ed6e922509d0ba83"
+            },
+            {
+              "path": "app/XDM.Android/README.md",
+              "action": "modify",
+              "sha256": "069771410dacdcc28a74dda0c5a7b4f160a44e1c6ac9124e29f9c71c0e0aed80",
+              "size": 24198,
+              "source_sha256": "879951a1c57a49b33702f43b8ce7bca03fa0ac38a9ef45825ede4b7836ef7b47"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+              "action": "modify",
+              "sha256": "1221a13e87c108c900126244b3806cfdf3bf1ce89fd56f91ad1df72e2d530c1e",
+              "size": 199071,
+              "source_sha256": "9e77e6616cccf489b0d6cad8f80e0b28973e53198b87b9e051bafa7c30e1818c"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+              "action": "modify",
+              "sha256": "5efe3f49f8872328b0d3e3b2b64148e8c7ae559717c49847c6c17c3f00b6ceff",
+              "size": 18258,
+              "source_sha256": "3babd4689db34a6574e207632c1b2cea32e7c05c9c6b9107df08a9452cf0b38c"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+              "action": "modify",
+              "sha256": "bdfa9d02271a05dcf9e182f3c84697ff8c8018f257eb5519d2223a441bc8ab54",
+              "size": 14484,
+              "source_sha256": "15102bba8487b866f027810ffcbd33dd7d9ebd02583d1f93844502d72c411d50"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt",
+              "action": "modify",
+              "sha256": "a3f3f31677a4cd4a053a05e7e01b06f243459240c43b9e003a03b5db58775e4d",
+              "size": 93180,
+              "source_sha256": "d2c339788111f9633f4f18d5abbe98596273cbec06ab330dcdd6d8a2e94dd726"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsScreen.kt",
+              "action": "modify",
+              "sha256": "47b970f35e8827f6ebc17539e83084abce5e9cd1d3cba9820a0132411502054b",
+              "size": 96895,
+              "source_sha256": "b30b65a4643ad7c326aa99aa11393769caec8ab18b66e68066c0eeb92c006eef"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/library/MediaLibraryScreen.kt",
+              "action": "modify",
+              "sha256": "abbc1137a721fe63c00055d79fa47db94e681c2acae5f43b3f712fe9e2ea4b56",
+              "size": 13712,
+              "source_sha256": "23c31b3ae53934ab5332ea43967b82062957f91798e70d09a9baa9157ece5d89"
+            },
+            {
+              "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaInboxScreen.kt",
+              "action": "modify",
+              "sha256": "5d09bb7d2a5450a6099c87f354ce8b87e3e279fb53a9e720e64079d286a0f564",
+              "size": 21711,
+              "source_sha256": "211b68c3cbc27553890723e82d283c7703950786c30dcb88c8d8181daf35c368"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/RemediationPhase06_07ContractTest.kt",
+              "action": "modify",
+              "sha256": "54f2e072dab52dd947b81c65da398e161b9ee1ce7a489d38a507463f6864537a",
+              "size": 17392,
+              "source_sha256": "a4bbcd2b12b91c8bb8a5bfd7e85feae97fe8eb3c5940e3a732946fee8d5222a9"
+            },
+            {
+              "path": "app/XDM.Android/app/src/test/kotlin/com/mikeyphw/xdm/android/RemediationPhase10ContractTest.kt",
+              "action": "add",
+              "sha256": "7d7767d021eb45247cca162b386b50f93245218216351fdedeadf60635b6abc8",
+              "size": 11316
+            },
+            {
+              "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadModels.kt",
+              "action": "modify",
+              "sha256": "d44d6d5505d5fb767b3c0b0f90bb95cb3518c11c1e84e99dd03df9b8c42be73b",
+              "size": 15937,
+              "source_sha256": "0ba230d7eea9d2f34dff2b7187b74c9b00a496d959de63dda3c7d9a3eb665e7e"
+            },
+            {
+              "path": "app/XDM.Android/docs/remediation/OVERLAY_10_MEDIA_RESOLVER_EXECUTION.md",
+              "action": "add",
+              "sha256": "484e7a3ef4a3e94f7a2982445c75ab2ae9b69231fd54280a47a6dd17d72b91a4",
+              "size": 5258
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaConsumerWorkspace.kt",
+              "action": "modify",
+              "sha256": "7ba31ffc268f194acf1a21824023e59ac600bf87c7983cb352cc0b183795bd63",
+              "size": 6643,
+              "source_sha256": "a2bfb888ba9aa9c38035e76dd083f6011a386c4f7e38a92ba68d60041ae89e7c"
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt",
+              "action": "modify",
+              "sha256": "199125f4e8794e8c8c8a3917608f4d348f1bac9d20fcf3e393ec4837065db3f6",
+              "size": 24133,
+              "source_sha256": "e3299e526939b930f0416a8a7ae1c7e6f09e1506b28b4307fdcf5297a17d35c6"
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionDispatcher.kt",
+              "action": "modify",
+              "sha256": "a5ec6028d57779a97363a62dd179b640e85afff75454af3001d341bc32db8dd1",
+              "size": 17488,
+              "source_sha256": "1f6071d4d81a474843ef7e6593de78df08c2899ef4643b1bf4d9cd5db313733e"
+            },
+            {
+              "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionLibrary.kt",
+              "action": "modify",
+              "sha256": "b2861cc0e879ebd9a4b545dc253d2c60b5e5a8875d86e20f6ed2c8e751c4b957",
+              "size": 43549,
+              "source_sha256": "da0392e20515385b499b097d32d23a77724c600b9eb92c8f93d4136f8d5fd77c"
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt",
+              "action": "modify",
+              "sha256": "7f9bd68b2b25572f5eaa948bbd1910b7b76f3f8d763eaf8cf03a7918806f1492",
+              "size": 68857,
+              "source_sha256": "89a66bee60b3407a80ba37d1bfad68ad37461f63c91fe34231ee264eaa6b5dfe"
+            },
+            {
+              "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaConsumerWorkspaceTest.kt",
+              "action": "modify",
+              "sha256": "905594eeb74de321e63fc6c8908a3fb5adc5e59af5c17e460fd808cbba82b5a9",
+              "size": 7135,
+              "source_sha256": "b95faa24c0d836f0846a1c907092eeb02196e065c6d5bbb2a556b77116c2e6c1"
+            },
+            {
+              "path": "app/XDM.Android/persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/20.json",
+              "action": "add",
+              "sha256": "3d5d4ee42db32140da5b9dc14b128f40bb4a988a571300984680cb87d6855ef6",
+              "size": 117790
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/androidTest/kotlin/com/mikeyphw/xdm/android/persistence/GenerationIntegrityMigrationTest.kt",
+              "action": "modify",
+              "sha256": "cd79490ce14ab5b1d54cb465b588ec5e37071c265ea63db4e8865c22c7ebdb0b",
+              "size": 9980,
+              "source_sha256": "1441638a158ffd1d6f6bc4379c3e55dd24c3b8b27b71af8b119b8255ad361964"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt",
+              "action": "modify",
+              "sha256": "c68ae6d181f360acd879d1bcd021c1ab2cf7fba658e44869aeec32b7865d0db6",
+              "size": 2296,
+              "source_sha256": "abe7cb1bd047b0f85872de1d0e0b97a3cea05956ec5eec6bf047d20ded3dcd86"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadGraphTransactionDao.kt",
+              "action": "modify",
+              "sha256": "f20d22f8660b82a72e1c72ad729830667902fad09b972e198079d50ecc929d64",
+              "size": 20188,
+              "source_sha256": "9f8334fefa798abf6efbdcf1156099ad2d904a30d348eb7aaeb653b4f64842da"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+              "action": "modify",
+              "sha256": "d9a1b2d10441bc0ddeed81ccd01028a33c8a8e81ff3d1d49bb8bbbab0f04120e",
+              "size": 45114,
+              "source_sha256": "5d48d041b2c35740c5489ff1ae59768caff438a2564e1b51bf4c418dc56ec04a"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt",
+              "action": "modify",
+              "sha256": "2ce9be139edc2baef92073bd3bcce15ab7201b942b767b10dc67f3b43e5977d4",
+              "size": 21569,
+              "source_sha256": "75463e67a22b1e63342ac613f265c7770dbece2b269aecb3ad681237a195fd87"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/MediaCaptureDao.kt",
+              "action": "modify",
+              "sha256": "ecb7cde9d8a98fcb11b14ce999789fed5c4a5233b0ea5832c063c0565c1c32b5",
+              "size": 2648,
+              "source_sha256": "52894192fd7bd616242be22ef24827b3cfe2c82748d9c50a30330ca83c07ff8f"
+            },
+            {
+              "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt",
+              "action": "modify",
+              "sha256": "ffbb6af19fcaaa504b48c087bfc2de62ec1bf12a08b7a4e95a258c0e31a2b89d",
+              "size": 48474,
+              "source_sha256": "fc0ba279135d5d3418ad0cc15810213e706ba8f6c8f30f0931eed3afb62536d7"
+            }
+          ]
+        },
+        "apply": {
+          "atomic": true,
+          "conflict_policy": "fail",
+          "path_policy": "repository-relative",
+          "requires_clean_worktree": false,
+          "commit": {
+            "enabled": true,
+            "strategy": "single",
+            "message": "Apply XDM Android media resolver execution remediation v2"
+          }
+        },
+        "validation": {
+          "mode": "required",
+          "required": true,
+          "tasks": [
+            ":app:compileDebugKotlin",
+            ":app:testDebugUnitTest",
+            ":app:lintDebug"
+          ],
+          "failure_action": "pause",
+          "allow_deferred": true,
+          "minimum_phase": "finalize",
+          "expected": {
+            "build": "pass",
+            "tests": "pass"
+          }
+        },
+        "notes": [
+          "Built against the exact source-equivalent post-Phase-08+09-v3 baseline committed by Devtool as 79df336c; every modified source preimage is SHA-256 pinned.",
+          "Corrected replacement for the un-applied Overlay 10 v1; apply v2 directly and do not apply v1 first.",
+          "Intermediate campaign overlay: apply with --no-validate; declared Gradle tasks are retained for the final campaign validation gate.",
+          "M-031: the real media action preserves the selected variant exact URL/headers and configured destination, evaluates dispatch readiness before mutation, and retains the encrypted/expiry-bounded capture/variant handoff so the same capture can create later outputs.",
+          "M-032 app/media side: direct/native/aria2 media is app-owned; yt-dlp/live media is Termux-owned through a real durable post-processing job and never creates a synthetic queued Download.",
+          "M-047: Room schema 20 adds media_outputs as one capture to many owner/generation records; migration 19->20 backfills existing capture/download links.",
+          "App-owned media_outputs now follow accepted Download retry/completion generations; fresh replacement Download IDs clone the media lineage instead of orphaning it.",
+          "A DownloadCreated capture remains reviewable and can create another output generation; secure request handoffs survive successful enqueue until capture removal or expiry.",
+          "Download CAS persistence now retains completedArtifactUri, completedArtifactGeneration, and completedArtifactBytes for existing rows so verified completion identity is not discarded.",
+          "Library rows are generation-aware. Current app playback is derived only from the validated Download artifact; historical generations do not borrow newer Download state.",
+          "Removing an app-owned Library record writes a durable Hidden tombstone for only that generation, preserving the parent capture/file and preventing synchronization resurrection.",
+          "Termux terminal/recovery library removal deletes durable job metadata and its output row in one Room transaction; synchronization re-resolves the durable job in-transaction to prevent stale observer resurrection.",
+          "M-055 media side: media execution failure categories derive from structured protection/strategy/freshness/DownloadState/BackendType signals; free text is detail rather than classifier authority.",
+          "Authenticated Termux session transport remains intentionally held for Overlay 11 rather than placing Cookie/Authorization/Proxy-Authorization or credential-bearing inputs on command lines.",
+          "No Gradle compile, unit-test, lint, or project validation tasks were run for this intermediate overlay; targeted Kotlin/static contract, migration/schema, promise, and artifact-integrity checks were performed."
+        ]
+      },
+      "history_id": "474ece1b45a1474fa46e3e9b845b85f9"
     }
   ]
 }

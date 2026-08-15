@@ -3,6 +3,7 @@ package com.mikeyphw.xdm.android.termux
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import androidx.room.withTransaction
 import com.mikeyphw.xdm.android.media.MediaDownloadPlanner
 import com.mikeyphw.xdm.android.media.MediaSessionHeader
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
@@ -11,6 +12,9 @@ import com.mikeyphw.xdm.android.model.ConversionPreset
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
+import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
+import com.mikeyphw.xdm.android.model.MediaOutputRecord
+import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
@@ -44,6 +48,14 @@ class TermuxMediaPipelineManager(
 ) : TermuxResultRouter {
     data class EnqueueOutcome(val accepted: Boolean, val job: TermuxMediaPipelineJob, val message: String)
 
+    private data class MediaOutputSeed(
+        val captureId: String,
+        val destinationUri: String,
+        val fileName: String,
+        val mimeType: String?,
+        val selectedTrackIds: Set<String>,
+    )
+
     private val appContext = context.applicationContext
     private val dao = database.postProcessingDao()
     private val runner = TermuxCommandRunner(appContext)
@@ -58,6 +70,7 @@ class TermuxMediaPipelineManager(
     init {
         scope.launch {
             dao.observeJobs().collectLatest { rows ->
+                rows.forEach { row -> synchronizeMediaOutput(row) }
                 statusFlow.value = TermuxMediaPipelineStatus(
                     enabled = true,
                     lastAction = rows.firstOrNull()?.message ?: "No durable Termux media job has run yet.",
@@ -94,6 +107,29 @@ class TermuxMediaPipelineManager(
             }
         }
     }
+
+    fun ytDlpReadinessIssue(
+        requestHeaders: Map<String, String> = emptyMap(),
+        inputUrl: String? = null,
+        nowEpochMs: Long = System.currentTimeMillis(),
+    ): String? {
+        if (requestHeaders.keys.any(::isSensitiveExternalHeader) || inputUrl?.let(PostProcessingExecutionPolicy::inputContainsBearerSecret) == true) {
+            return "Authenticated media needs the secure transient Termux session bridge before external execution."
+        }
+        val bridge = TermuxRunStore.status.value
+        if (!bridge.termuxInstalled) return "Termux is not installed."
+        if (!bridge.runCommandPermissionGranted) return "Termux RUN_COMMAND permission is not granted."
+        if (!bridge.hasFreshSuccessfulToolProbe(nowEpochMs)) return "Run a fresh successful Termux tool probe."
+        val required = setOf(ExternalTool.YtDlp, ExternalTool.Ffmpeg, ExternalTool.Ffprobe)
+        val available = bridge.toolRows.filter(TermuxToolProbeRow::available).map(TermuxToolProbeRow::tool).toSet()
+        return if (required.all(available::contains)) null else "yt-dlp, FFmpeg, and FFprobe must all be verified before media dispatch."
+    }
+
+    fun ytDlpExecutionReady(
+        requestHeaders: Map<String, String> = emptyMap(),
+        inputUrl: String? = null,
+        nowEpochMs: Long = System.currentTimeMillis(),
+    ): Boolean = ytDlpReadinessIssue(requestHeaders, inputUrl, nowEpochMs) == null
 
     fun extractMetadata(
         record: MediaCaptureRecord,
@@ -133,28 +169,71 @@ class TermuxMediaPipelineManager(
         selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = record.selectedVariantId),
         destination: String = "",
         downloadId: String? = record.downloadId,
+        sessionHeaders: List<MediaSessionHeader> = MediaDownloadPlanner.defaultSessionHeaders(record) + sessionHintHeaders(record),
+        variantSessionHeaders: Map<String, List<MediaSessionHeader>> = emptyMap(),
     ): TermuxMediaPipelineJob {
         val plan = planner.plan(
             capture = record,
             variants = variants,
             selection = selection,
-            sessionHeaders = MediaDownloadPlanner.defaultSessionHeaders(record) + sessionHintHeaders(record),
+            sessionHeaders = sessionHeaders,
+            variantSessionHeaders = variantSessionHeaders,
         )
         val outputName = "${safeBase(record)}.mp4"
-        val spec = manualSpec(
-            record = record,
-            kind = PostProcessingActionKind.YtDlpDownload,
-            input = plan.metadataProbeUrl,
-            outputName = outputName,
-            mimeType = "video/mp4",
-            requiredTools = setOf(ExternalTool.YtDlp, ExternalTool.Ffmpeg, ExternalTool.Ffprobe),
-            formatSelector = plan.ytDlpFormatSelector ?: "bestvideo+bestaudio/best",
-            extraArguments = plan.sessionHandoff.ytdlpArguments(),
-            destinationUri = destination.takeIf { it.startsWith("content://") || it.startsWith("xdm://") },
-            downloadId = downloadId,
+        val spec = ytDlpDownloadSpec(record, plan, outputName, destination, downloadId)
+        return enqueueAsync(
+            spec,
+            MediaOutputSeed(record.id, destination.ifBlank { "xdm://post-processing" }, outputName, "video/mp4", plan.trackSelection.selectedIds()),
         )
-        return enqueueAsync(spec)
     }
+
+    suspend fun enqueueYtDlpDownload(
+        record: MediaCaptureRecord,
+        variants: List<MediaVariant>,
+        selection: MediaTrackSelection,
+        destination: String,
+        sessionHeaders: List<MediaSessionHeader>,
+        variantSessionHeaders: Map<String, List<MediaSessionHeader>>,
+    ): EnqueueOutcome {
+        val plan = planner.plan(
+            capture = record,
+            variants = variants,
+            selection = selection,
+            sessionHeaders = sessionHeaders,
+            variantSessionHeaders = variantSessionHeaders,
+        )
+        val outputName = "${safeBase(record)}.mp4"
+        val spec = ytDlpDownloadSpec(record, plan, outputName, destination, downloadId = null)
+        val seed = MediaOutputSeed(
+            captureId = record.id,
+            destinationUri = destination.ifBlank { "xdm://post-processing" },
+            fileName = outputName,
+            mimeType = "video/mp4",
+            selectedTrackIds = plan.trackSelection.selectedIds(),
+        )
+        return enqueueInternal(spec, durableClaim = false, mediaOutputSeed = seed)
+    }
+
+    private fun ytDlpDownloadSpec(
+        record: MediaCaptureRecord,
+        plan: com.mikeyphw.xdm.android.media.MediaDownloadPlan,
+        outputName: String,
+        destination: String,
+        downloadId: String?,
+    ): PostProcessingJobSpec = manualSpec(
+        record = record,
+        kind = PostProcessingActionKind.YtDlpDownload,
+        input = plan.metadataProbeUrl,
+        outputName = outputName,
+        mimeType = "video/mp4",
+        requiredTools = setOf(ExternalTool.YtDlp, ExternalTool.Ffmpeg, ExternalTool.Ffprobe),
+        formatSelector = plan.ytDlpFormatSelector ?: "bestvideo+bestaudio/best",
+        // Sensitive Cookie/Authorization material is intentionally not placed on a Termux command
+        // surface. Overlay 11 owns the transient secret bridge; readiness blocks that case here.
+        extraArguments = plan.sessionHandoff.ytdlpArguments().filterSafeExternalSessionArguments(),
+        destinationUri = destination.takeIf { it.startsWith("content://") || it.startsWith("xdm://") },
+        downloadId = downloadId,
+    )
 
     fun convert(record: MediaCaptureRecord, preset: ConversionPreset, destination: String = ""): TermuxMediaPipelineJob {
         val base = safeBase(record)
@@ -177,7 +256,14 @@ class TermuxMediaPipelineManager(
         )
     }
 
-    suspend fun enqueue(spec: PostProcessingJobSpec, durableClaim: Boolean = spec.ruleId != null): EnqueueOutcome {
+    suspend fun enqueue(spec: PostProcessingJobSpec, durableClaim: Boolean = spec.ruleId != null): EnqueueOutcome =
+        enqueueInternal(spec, durableClaim, mediaOutputSeed = null)
+
+    private suspend fun enqueueInternal(
+        spec: PostProcessingJobSpec,
+        durableClaim: Boolean,
+        mediaOutputSeed: MediaOutputSeed?,
+    ): EnqueueOutcome {
         val now = System.currentTimeMillis()
         val jobId = "post-${UUID.randomUUID()}"
         runner.refreshStatus()
@@ -214,6 +300,12 @@ class TermuxMediaPipelineManager(
                 ),
                 entity,
             )
+        } else if (mediaOutputSeed != null) {
+            database.withTransaction {
+                dao.insertJob(entity)
+                repository.saveMediaOutput(mediaOutputRecord(entity, spec, mediaOutputSeed))
+            }
+            true
         } else {
             dao.insertJob(entity)
             true
@@ -231,6 +323,21 @@ class TermuxMediaPipelineManager(
         }
         scope.launch { launchJob(jobId) }
         return EnqueueOutcome(true, entity.toPipelineJob(), "Queued durable post-processing job.")
+    }
+
+    suspend fun removeLibraryOutput(jobId: String, outputId: String): Boolean = database.withTransaction {
+        val job = dao.findJob(jobId)
+        if (job != null) {
+            val status = PostProcessingJobStatus.entries.firstOrNull { it.name == job.status }
+            if (status?.terminal != true && status != PostProcessingJobStatus.RecoveryRequired) {
+                return@withTransaction false
+            }
+            // Delete the durable owner in the same transaction as its library identity. This keeps
+            // observeJobs() from recreating a user-removed Termux media output after commit.
+            dao.deleteJob(jobId)
+        }
+        val outputDeleted = database.mediaCaptureDao().deleteOutput(outputId) > 0
+        job != null || outputDeleted
     }
 
     fun retryLastFailed() {
@@ -267,7 +374,26 @@ class TermuxMediaPipelineManager(
             val generation = (dao.maxAttemptGeneration(failed.rootJobId) ?: failed.attemptGeneration) + 1
             val now = System.currentTimeMillis()
             val retryId = "post-${UUID.randomUUID()}"
-            dao.insertJob(newJobEntity(spec, retryId, failed.rootJobId, failed.id, generation, null, now))
+            val retryEntity = newJobEntity(spec, retryId, failed.rootJobId, failed.id, generation, null, now)
+            val captureId = failed.captureId
+            if (failed.kind == PostProcessingActionKind.YtDlpDownload.name && !captureId.isNullOrBlank()) {
+                val priorOutput = repository.mediaOutputsForCapture(captureId).firstOrNull {
+                    it.ownerKind == MediaOutputOwnerKind.TermuxJob && it.ownerId == failed.id
+                }
+                val seed = MediaOutputSeed(
+                    captureId = captureId,
+                    destinationUri = spec.output.destinationUri ?: priorOutput?.destinationUri ?: "xdm://post-processing",
+                    fileName = spec.output.displayName,
+                    mimeType = spec.output.mimeType,
+                    selectedTrackIds = priorOutput?.selectedTrackIds.orEmpty(),
+                )
+                database.withTransaction {
+                    dao.insertJob(retryEntity)
+                    repository.saveMediaOutput(mediaOutputRecord(retryEntity, spec, seed))
+                }
+            } else {
+                dao.insertJob(retryEntity)
+            }
             launchJob(retryId)
         }
     }
@@ -349,7 +475,7 @@ class TermuxMediaPipelineManager(
         issue.startsWith("The probed FFmpeg build does not advertise") ||
         issue.startsWith("Waiting for the redownloaded artifact")
 
-    private fun enqueueAsync(spec: PostProcessingJobSpec): TermuxMediaPipelineJob {
+    private fun enqueueAsync(spec: PostProcessingJobSpec, mediaOutputSeed: MediaOutputSeed? = null): TermuxMediaPipelineJob {
         val now = System.currentTimeMillis()
         val provisional = TermuxMediaPipelineJob(
             id = "post-pending-${UUID.randomUUID()}",
@@ -365,11 +491,91 @@ class TermuxMediaPipelineManager(
             updatedAtEpochMs = now,
         )
         scope.launch {
-            runCatching { enqueue(spec, durableClaim = false) }.onFailure {
+            runCatching { enqueueInternal(spec, durableClaim = false, mediaOutputSeed = mediaOutputSeed) }.onFailure {
                 statusFlow.value = statusFlow.value.copy(lastAction = it.message ?: "Unable to create post-processing job", updatedAtEpochMs = System.currentTimeMillis())
             }
         }
         return provisional
+    }
+
+    private suspend fun synchronizeMediaOutput(job: PostProcessingJobEntity) {
+        if (job.kind != PostProcessingActionKind.YtDlpDownload.name) return
+        database.withTransaction {
+            // Re-resolve the durable owner inside the same transaction as the output upsert. A stale
+            // observeJobs() emission after user removal therefore cannot resurrect its output row.
+            val durableJob = dao.findJob(job.id) ?: return@withTransaction
+            val captureId = durableJob.captureId?.takeIf { it.isNotBlank() } ?: return@withTransaction
+            val spec = runCatching { PostProcessingJobSpec.fromJson(durableJob.immutableSpecJson) }.getOrNull()
+                ?: return@withTransaction
+            val outputs = repository.mediaOutputsForCapture(captureId)
+            val existing = outputs.firstOrNull {
+                it.ownerKind == MediaOutputOwnerKind.TermuxJob && it.ownerId == durableJob.id && it.attemptGeneration == durableJob.attemptGeneration.toLong()
+            }
+            val predecessor = durableJob.retryOfJobId?.let { retryOf ->
+                outputs.firstOrNull { it.ownerKind == MediaOutputOwnerKind.TermuxJob && it.ownerId == retryOf }
+            }
+            val seed = MediaOutputSeed(
+                captureId = captureId,
+                destinationUri = spec.output.destinationUri ?: existing?.destinationUri ?: predecessor?.destinationUri ?: "xdm://post-processing",
+                fileName = spec.output.displayName,
+                mimeType = spec.output.mimeType,
+                selectedTrackIds = existing?.selectedTrackIds?.ifEmpty { predecessor?.selectedTrackIds.orEmpty() }
+                    ?: predecessor?.selectedTrackIds.orEmpty(),
+            )
+            repository.saveMediaOutput(mediaOutputRecord(durableJob, spec, seed, existing))
+        }
+    }
+
+    private fun mediaOutputRecord(
+        job: PostProcessingJobEntity,
+        spec: PostProcessingJobSpec,
+        seed: MediaOutputSeed,
+        existing: MediaOutputRecord? = null,
+    ): MediaOutputRecord = MediaOutputRecord(
+        id = existing?.id ?: "media-output:termuxjob:${job.id}:${job.attemptGeneration}",
+        captureId = seed.captureId,
+        ownerKind = MediaOutputOwnerKind.TermuxJob,
+        ownerId = job.id,
+        downloadId = null,
+        attemptGeneration = job.attemptGeneration.toLong(),
+        destinationUri = seed.destinationUri,
+        fileName = seed.fileName,
+        mimeType = seed.mimeType,
+        selectedTrackIds = seed.selectedTrackIds.ifEmpty { existing?.selectedTrackIds.orEmpty() },
+        state = when (PostProcessingJobStatus.entries.firstOrNull { it.name == job.status } ?: PostProcessingJobStatus.RecoveryRequired) {
+            PostProcessingJobStatus.Completed -> MediaOutputState.Completed
+            PostProcessingJobStatus.Failed, PostProcessingJobStatus.TimedOut -> MediaOutputState.Failed
+            PostProcessingJobStatus.Cancelled -> MediaOutputState.Cancelled
+            PostProcessingJobStatus.RecoveryRequired -> MediaOutputState.RecoveryRequired
+            PostProcessingJobStatus.Preparing, PostProcessingJobStatus.Running, PostProcessingJobStatus.Publishing, PostProcessingJobStatus.Cancelling -> MediaOutputState.Active
+            PostProcessingJobStatus.Queued, PostProcessingJobStatus.WaitingForPrerequisites, PostProcessingJobStatus.Paused -> MediaOutputState.Queued
+        },
+        completedArtifactUri = job.finalOutputUri ?: existing?.completedArtifactUri,
+        completedArtifactGeneration = (job.attemptGeneration.toLong()).takeIf { !job.finalOutputUri.isNullOrBlank() } ?: existing?.completedArtifactGeneration,
+        createdAtEpochMs = existing?.createdAtEpochMs ?: job.createdAtEpochMs,
+        updatedAtEpochMs = job.updatedAtEpochMs,
+    )
+
+    private fun isSensitiveExternalHeader(name: String): Boolean = name.equals("Cookie", ignoreCase = true) ||
+        name.equals("Authorization", ignoreCase = true) ||
+        name.equals("Proxy-Authorization", ignoreCase = true)
+
+    private fun List<String>.filterSafeExternalSessionArguments(): List<String> {
+        val result = mutableListOf<String>()
+        var index = 0
+        while (index < size) {
+            val token = this[index]
+            if (token == "--add-header" && index + 1 < size) {
+                val headerLine = this[index + 1]
+                val name = headerLine.substringBefore(':').trim()
+                if (!isSensitiveExternalHeader(name)) result += listOf(token, headerLine)
+                index += 2
+            } else {
+                result += token
+                index += 1
+            }
+        }
+        return result
     }
 
     private suspend fun launchJob(jobId: String) {

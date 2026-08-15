@@ -33,6 +33,9 @@ import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
+import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
+import com.mikeyphw.xdm.android.model.MediaOutputRecord
+import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.DestinationHealthStatus
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.DestinationType
@@ -57,6 +60,7 @@ class DownloadRepository(private val database: AppDatabase) {
     val finalizationJournals: Flow<List<FinalizationJournal>> = database.finalizationDao().observeAll().map { rows -> rows.map(FinalizationJournalEntity::toModel) }
     val mediaCaptures: Flow<List<MediaCaptureRecord>> = database.mediaCaptureDao().observeAll().map { rows -> rows.map(MediaCaptureEntity::toModel) }
     val mediaVariants: Flow<List<MediaVariant>> = database.mediaCaptureDao().observeVariants().map { rows -> rows.map(MediaVariantEntity::toModel) }
+    val mediaOutputs: Flow<List<MediaOutputRecord>> = database.mediaCaptureDao().observeOutputs().map { rows -> rows.map(MediaOutputEntity::toModel) }
     val automationCommands: Flow<List<AutomationCommandRecord>> = database.automationCommandDao().observeAll().map { rows -> rows.map(AutomationCommandEntity::toModel) }
     val tags: Flow<List<DownloadTag>> = database.organizationDao().observeTags().map { rows -> rows.map(TagEntity::toModel) }
     val tagAssignments: Flow<List<DownloadTagAssignment>> = database.organizationDao().observeTagAssignments().map { rows -> rows.map { DownloadTagAssignment(it.downloadId, it.tagId) } }
@@ -74,10 +78,19 @@ class DownloadRepository(private val database: AppDatabase) {
         database.organizationDao().listDestinationRules().map(DestinationRuleEntity::toModel)
     suspend fun currentClipboardInbox(): List<ClipboardInboxItem> =
         database.organizationDao().listClipboardInbox().map(ClipboardInboxEntity::toModel)
-    suspend fun save(download: Download): Boolean = database.downloadGraphTransactionDao().upsertDownloadPreservingNewerState(download.redactedForPersistence().toEntity())
+    suspend fun save(download: Download): Boolean = database.withTransaction {
+        val accepted = database.downloadGraphTransactionDao().upsertDownloadPreservingNewerState(download.redactedForPersistence().toEntity())
+        if (accepted) synchronizeAppMediaOutputLocked(download)
+        accepted
+    }
+
     /** Persists a coherent download snapshot. A stale row makes the batch fail atomically. */
-    suspend fun saveAll(downloads: List<Download>): Boolean = database.downloadGraphTransactionDao()
-        .upsertDownloadsPreservingNewerState(downloads.map { it.redactedForPersistence().toEntity() })
+    suspend fun saveAll(downloads: List<Download>): Boolean = database.withTransaction {
+        val accepted = database.downloadGraphTransactionDao()
+            .upsertDownloadsPreservingNewerState(downloads.map { it.redactedForPersistence().toEntity() })
+        if (accepted) downloads.forEach { synchronizeAppMediaOutputLocked(it) }
+        accepted
+    }
     suspend fun saveQueue(queue: QueueDefinition) = database.queueDao().upsertAll(listOf(queue.toEntity()))
     suspend fun saveQueues(queues: List<QueueDefinition>) = database.queueDao().upsertAll(queues.map { it.toEntity() })
     suspend fun deleteQueue(id: String) = database.downloadGraphTransactionDao().deleteQueueIfUnreferenced(id)
@@ -128,9 +141,92 @@ class DownloadRepository(private val database: AppDatabase) {
         }
     }
     suspend fun variantsForMediaCapture(captureId: String): List<MediaVariant> = database.mediaCaptureDao().variantsForCapture(captureId).map { it.toModel() }
+    suspend fun mediaOutputsForCapture(captureId: String): List<MediaOutputRecord> = database.mediaCaptureDao().outputsForCapture(captureId).map { it.toModel() }
+    suspend fun saveMediaOutput(record: MediaOutputRecord) = database.mediaCaptureDao().upsertOutput(record.toEntity())
+    suspend fun deleteMediaOutput(id: String): Boolean = database.mediaCaptureDao().deleteOutput(id) > 0
+    suspend fun hideAppMediaOutput(id: String, updatedAtEpochMs: Long = System.currentTimeMillis()): Boolean =
+        database.mediaCaptureDao().hideAppOutput(id, updatedAtEpochMs) > 0
+
+    suspend fun recordExternalMediaOutput(
+        captureId: String,
+        ownerId: String,
+        attemptGeneration: Long,
+        destinationUri: String,
+        fileName: String,
+        mimeType: String?,
+        selectedTrackIds: Set<String>,
+        state: MediaOutputState = MediaOutputState.Queued,
+        updatedAtEpochMs: Long = System.currentTimeMillis(),
+    ): Result<MediaOutputRecord> = runCatching {
+        database.withTransaction {
+            requireNotNull(database.mediaCaptureDao().findById(captureId)) { "Media capture no longer exists" }
+            val output = MediaOutputRecord(
+                id = mediaOutputId(MediaOutputOwnerKind.TermuxJob, ownerId, attemptGeneration),
+                captureId = captureId,
+                ownerKind = MediaOutputOwnerKind.TermuxJob,
+                ownerId = ownerId,
+                downloadId = null,
+                attemptGeneration = attemptGeneration,
+                destinationUri = destinationUri,
+                fileName = fileName,
+                mimeType = mimeType,
+                selectedTrackIds = selectedTrackIds,
+                state = state,
+                createdAtEpochMs = updatedAtEpochMs,
+                updatedAtEpochMs = updatedAtEpochMs,
+            )
+            database.mediaCaptureDao().upsertOutput(output.toEntity())
+            check(database.mediaCaptureDao().outputsForCapture(captureId).any { it.id == output.id }) {
+                "External media output could not be read back after durable job creation"
+            }
+            output
+        }
+    }
     suspend fun selectMediaVariant(captureId: String, variant: MediaVariant, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().selectVariant(captureId, variant.id, ExternalUrlPolicy.persistableUrl(variant.url) ?: variant.url.substringBefore('?'), MediaResolutionStatus.Resolved.name, updatedAtEpochMs)
     suspend fun findMediaCapture(id: String): MediaCaptureRecord? = database.mediaCaptureDao().findById(id)?.toModel()
     suspend fun markMediaDownloadCreated(captureId: String, downloadId: String, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().markDownloadCreated(captureId, MediaCaptureStatus.DownloadCreated.name, downloadId, updatedAtEpochMs)
+
+    /**
+     * Persists a fresh Download id and, when the source Download belongs to a media capture, clones that
+     * lineage into a distinct output record in the same Room transaction. Non-media downloads keep the
+     * ordinary replacement behavior.
+     */
+    suspend fun createReplacementDownloadPreservingMediaLineage(
+        sourceDownloadId: String,
+        replacement: Download,
+        updatedAtEpochMs: Long = System.currentTimeMillis(),
+    ): Boolean = database.withTransaction {
+        val sourceOutput = database.mediaCaptureDao().appOutputsForDownload(sourceDownloadId)
+            .firstOrNull { it.state != MediaOutputState.Hidden.name }
+            ?: database.mediaCaptureDao().appOutputsForDownload(sourceDownloadId).firstOrNull()
+        val accepted = database.downloadGraphTransactionDao()
+            .upsertDownloadPreservingNewerState(replacement.redactedForPersistence().toEntity())
+        if (!accepted) return@withTransaction false
+        if (sourceOutput != null) {
+            val replacementOutput = sourceOutput.copy(
+                id = mediaOutputId(MediaOutputOwnerKind.AppDownload, replacement.id, replacement.attemptGeneration),
+                ownerId = replacement.id,
+                downloadId = replacement.id,
+                attemptGeneration = replacement.attemptGeneration,
+                destinationUri = replacement.destinationUri,
+                fileName = replacement.fileName,
+                mimeType = replacement.mimeType,
+                state = replacement.state.toMediaOutputState().name,
+                completedArtifactUri = replacement.completedArtifactUri,
+                completedArtifactGeneration = replacement.completedArtifactGeneration,
+                createdAtEpochMs = replacement.createdAtEpochMs,
+                updatedAtEpochMs = updatedAtEpochMs,
+            )
+            database.mediaCaptureDao().upsertOutput(replacementOutput)
+            database.mediaCaptureDao().markDownloadCreated(
+                sourceOutput.captureId,
+                MediaCaptureStatus.DownloadCreated.name,
+                replacement.id,
+                updatedAtEpochMs,
+            )
+        }
+        true
+    }
 
     /**
      * Atomically creates a Download and links its media capture. Any failed invariant throws so Room rolls
@@ -140,6 +236,7 @@ class DownloadRepository(private val database: AppDatabase) {
         captureId: String,
         download: Download,
         updatedAtEpochMs: Long = System.currentTimeMillis(),
+        selectedTrackIds: Set<String> = emptySet(),
     ): Result<Download> = runCatching {
         database.withTransaction {
             requireNotNull(database.mediaCaptureDao().findById(captureId)) { "Media capture no longer exists" }
@@ -157,6 +254,27 @@ class DownloadRepository(private val database: AppDatabase) {
             val linkedCapture = requireNotNull(database.mediaCaptureDao().findById(captureId)) { "Linked media capture disappeared" }
             check(linkedCapture.downloadId == download.id && linkedCapture.status == MediaCaptureStatus.DownloadCreated.name) {
                 "Media capture/download link failed consistency verification"
+            }
+            val output = MediaOutputRecord(
+                id = mediaOutputId(MediaOutputOwnerKind.AppDownload, download.id, download.attemptGeneration),
+                captureId = captureId,
+                ownerKind = MediaOutputOwnerKind.AppDownload,
+                ownerId = download.id,
+                downloadId = download.id,
+                attemptGeneration = download.attemptGeneration,
+                destinationUri = download.destinationUri,
+                fileName = download.fileName,
+                mimeType = download.mimeType,
+                selectedTrackIds = selectedTrackIds,
+                state = download.state.toMediaOutputState(),
+                completedArtifactUri = download.completedArtifactUri,
+                completedArtifactGeneration = download.completedArtifactGeneration,
+                createdAtEpochMs = download.createdAtEpochMs,
+                updatedAtEpochMs = updatedAtEpochMs,
+            )
+            database.mediaCaptureDao().upsertOutput(output.toEntity())
+            check(database.mediaCaptureDao().outputsForCapture(captureId).any { it.id == output.id }) {
+                "Media output relation could not be created atomically with the download"
             }
             download
         }
@@ -334,6 +452,36 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun deleteBackendTask(downloadId: String) = database.backendTaskDao().deleteByDownload(downloadId)
     suspend fun saveDestinationPermission(permission: DestinationPermission) = database.destinationPermissionDao().upsert(permission.toEntity())
     suspend fun deleteDestinationPermission(uri: String) = database.destinationPermissionDao().delete(uri)
+
+    /** Synchronizes only Downloads that already have media lineage. New ownership generations
+     * receive a distinct child row; a user-hidden generation keeps its tombstone state. */
+    private suspend fun synchronizeAppMediaOutputLocked(download: Download) {
+        val dao = database.mediaCaptureDao()
+        val lineage = dao.appOutputsForDownload(download.id)
+        if (lineage.isEmpty()) return
+        val existing = lineage.firstOrNull { it.attemptGeneration == download.attemptGeneration }
+        val source = existing ?: lineage.first()
+        val synchronizedState = if (existing?.state == MediaOutputState.Hidden.name) {
+            MediaOutputState.Hidden.name
+        } else {
+            download.state.toMediaOutputState().name
+        }
+        val output = source.copy(
+            id = mediaOutputId(MediaOutputOwnerKind.AppDownload, download.id, download.attemptGeneration),
+            ownerId = download.id,
+            downloadId = download.id,
+            attemptGeneration = download.attemptGeneration,
+            destinationUri = download.destinationUri,
+            fileName = download.fileName,
+            mimeType = download.mimeType,
+            state = synchronizedState,
+            completedArtifactUri = download.completedArtifactUri,
+            completedArtifactGeneration = download.completedArtifactGeneration,
+            createdAtEpochMs = existing?.createdAtEpochMs ?: download.updatedAtEpochMs,
+            updatedAtEpochMs = download.updatedAtEpochMs,
+        )
+        dao.upsertOutput(output)
+    }
 }
 
 
@@ -616,6 +764,55 @@ private fun MediaVariant.toEntity() = MediaVariantEntity(
     expiresAtEpochMs = expiresAtEpochMs,
 )
 
+
+
+private fun MediaOutputEntity.toModel() = MediaOutputRecord(
+    id = id,
+    captureId = captureId,
+    ownerKind = safeEnum(ownerKind, MediaOutputOwnerKind.AppDownload),
+    ownerId = ownerId,
+    downloadId = downloadId,
+    attemptGeneration = attemptGeneration.coerceAtLeast(1L),
+    destinationUri = destinationUri,
+    fileName = fileName,
+    mimeType = mimeType,
+    selectedTrackIds = selectedTrackIds.lineSequence().map(String::trim).filter(String::isNotBlank).toSet(),
+    state = safeEnum(state, MediaOutputState.RecoveryRequired),
+    completedArtifactUri = completedArtifactUri,
+    completedArtifactGeneration = completedArtifactGeneration,
+    createdAtEpochMs = createdAtEpochMs,
+    updatedAtEpochMs = updatedAtEpochMs,
+)
+
+private fun MediaOutputRecord.toEntity() = MediaOutputEntity(
+    id = id,
+    captureId = captureId,
+    ownerKind = ownerKind.name,
+    ownerId = ownerId,
+    downloadId = downloadId,
+    attemptGeneration = attemptGeneration.coerceAtLeast(1L),
+    destinationUri = destinationUri,
+    fileName = fileName,
+    mimeType = mimeType,
+    selectedTrackIds = selectedTrackIds.sorted().joinToString("\n"),
+    state = state.name,
+    completedArtifactUri = completedArtifactUri,
+    completedArtifactGeneration = completedArtifactGeneration,
+    createdAtEpochMs = createdAtEpochMs,
+    updatedAtEpochMs = updatedAtEpochMs,
+)
+
+private fun mediaOutputId(ownerKind: MediaOutputOwnerKind, ownerId: String, attemptGeneration: Long): String =
+    "media-output:${ownerKind.name.lowercase()}:$ownerId:${attemptGeneration.coerceAtLeast(1L)}"
+
+private fun DownloadState.toMediaOutputState(): MediaOutputState = when (this) {
+    DownloadState.Created, DownloadState.Queued, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower, DownloadState.Paused -> MediaOutputState.Queued
+    DownloadState.Connecting, DownloadState.Downloading, DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing -> MediaOutputState.Active
+    DownloadState.Completed -> MediaOutputState.Completed
+    DownloadState.Cancelled -> MediaOutputState.Cancelled
+    DownloadState.RecoveryRequired -> MediaOutputState.RecoveryRequired
+    DownloadState.Failed -> MediaOutputState.Failed
+}
 
 private inline fun <reified T : Enum<T>> safeEnum(raw: String?, fallback: T): T = raw
     ?.trim()

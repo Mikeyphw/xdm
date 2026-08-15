@@ -162,6 +162,38 @@ data class MediaCaptureEntity(
     @ColumnInfo(defaultValue = "'Unresolved'") val resolutionStatus: String,
 )
 
+@Entity(
+    tableName = "media_outputs",
+    foreignKeys = [
+        ForeignKey(entity = MediaCaptureEntity::class, parentColumns = ["id"], childColumns = ["captureId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.SET_NULL),
+    ],
+    indices = [
+        Index("captureId"),
+        Index("downloadId"),
+        Index(value = ["ownerKind", "ownerId", "attemptGeneration"], unique = true),
+        Index("state"),
+        Index("updatedAtEpochMs"),
+    ],
+)
+data class MediaOutputEntity(
+    @PrimaryKey val id: String,
+    val captureId: String,
+    val ownerKind: String,
+    val ownerId: String,
+    val downloadId: String?,
+    val attemptGeneration: Long,
+    val destinationUri: String,
+    val fileName: String,
+    val mimeType: String?,
+    @ColumnInfo(defaultValue = "''") val selectedTrackIds: String,
+    val state: String,
+    val completedArtifactUri: String?,
+    val completedArtifactGeneration: Long?,
+    val createdAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+)
+
 @Entity(tableName = "media_variants", foreignKeys = [ForeignKey(entity = MediaCaptureEntity::class, parentColumns = ["id"], childColumns = ["captureId"], onDelete = ForeignKey.CASCADE)], indices = [Index("captureId"), Index("kind"), Index("position")])
 data class MediaVariantEntity(
     @PrimaryKey val id: String,

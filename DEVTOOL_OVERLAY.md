@@ -1,11 +1,8 @@
-# XDM Android master remediation Overlay 08+09 v3: browser secure runtime + media capture import
+# XDM Android master remediation Overlay 10: media resolver/execution
 
 Target: `xdm_android`.
 
-This intermediate schema-v2 artifact is based on applied commit `ecbdda2c` and combines the next two dependency-ordered remediation phases:
-
-1. browser extension secure runtime
-2. Android media capture identity / durable encrypted import
+This intermediate schema-v2 artifact is based on the successfully applied Phase 08+09 v3 tree at commit `79df336c` and implements the next dependency-ordered remediation phase: media resolver/execution.
 
 ## Manifest-controlled defaults
 
@@ -17,47 +14,38 @@ This intermediate schema-v2 artifact is based on applied commit `ecbdda2c` and c
 - `validation.allow_deferred`: `true`
 - `apply.commit.enabled`: `true`
 - `apply.commit.strategy`: `single`
-- `apply.commit.message`: `Apply XDM Android secure browser runtime and media capture import`
+- `apply.commit.message`: `Apply XDM Android media resolver execution remediation`
 
 Campaign validation is intentionally deferred. Apply this intermediate overlay with `--no-validate`; the declared tasks remain the final-campaign validation contract.
 
-### v3 promise-audit corrections
+## Overlay 10 promises
 
-- removes the remaining production Debug Workbench plaintext `capture?v=1` URI generator while retaining the separate non-sensitive `add?v=1` compatibility probe;
-- requires capture key/SPKI/OAEP inputs for **every** release package target (`xdm`, `ask`, or `1dm`), with keyless rendering restricted to debug;
-- scans interrupted `.bak`, `.new`, `.tmp`, and `.tmp-*` app-private persistence artifacts in the bounded privacy audit;
-- updates the repo-owned Phase 38 validator and browser documentation so they enforce encrypted-v2 outer fields instead of the superseded plaintext URL parameter.
+- M-031: restores exact selected-variant request headers, uses the configured destination instead of forcing Public Downloads, and enforces dispatch readiness before any queue/external-job mutation;
+- app/media side of M-032: app-owned media creates an app `Download`, while yt-dlp/Termux media creates only its real durable external job plus an external media-output record; no synthetic queued `Download` is created for Termux ownership;
+- M-047: Room schema 20 adds a one-capture-to-many `media_outputs` relation keyed by owner and attempt generation, with a 19→20 migration that backfills existing capture/download links; Library rows and removals are output/generation keyed rather than capture keyed, and production disables legacy-link resurrection after deletion;
+- media side of M-055: media execution failure classification uses structured resolver strategy, capture refresh state, transfer state, and backend identity instead of parsing failure-message substrings.
 
-## Phase 08 — browser extension secure runtime
+## Execution ownership details
 
-- correlates untrusted page-world media hints to privileged extension-owned `webRequest` evidence instead of accepting page `postMessage` data as request authority;
-- ignores page-supplied credential headers and derives page/frame provenance from extension/browser context;
-- preserves exact signed-query request identity and adds a per-request fingerprint so distinct authenticated requests cannot merge candidate/header state;
-- disables plaintext XDM capture-v1 generation and all XDM plaintext fallback paths;
-- requires encrypted-v2 handoff before the launcher can offer XDM;
-- carries request fingerprint inside encrypted capture sessions;
-- updates Firefox release metadata to Android app `0.21.0`;
-- makes every release packaging entry point key-bound: Gradle release XPI tasks, the Kotlin CLI/shared build config, direct Python release packaging for every default target, and release artifact verification require Android capture key ID/public key plus an explicit OAEP hash; each path verifies the key ID is `SHA-256(SPKI DER).take(24)`, and the encrypted runtime never guesses a missing OAEP hash;
-- exposes an explicit `browserExtensionReleaseGate` while keeping ordinary unpacked development checks keyless/debug.
+- app-owned enqueue commits the new `Download`, capture compatibility link, and `media_outputs` child in one Room transaction;
+- Termux-owned enqueue commits the durable post-processing job and corresponding output-generation row in one Room transaction before execution launches;
+- Termux retry creates a new durable external job attempt and a new output-generation row atomically, preserving prior generations and selected-track history;
+- app-owned transfer state is authoritative for the matching Download attempt generation; each ownership-generation change synchronizes a distinct `media_outputs` row and fresh-redownload/restart-from-zero preserves media lineage; Termux-owned state is synchronized from the durable external job;
+- captures remain reviewable for repeat output selections; encrypted capture/variant handoffs are retained until explicit capture removal/expiry so later generations keep the exact request context;
+- verified completed-artifact identity is persisted by the Download CAS/upsert path and current app Library playback still goes through the validated Download artifact grant;
+- completed external artifact URIs/generations are synchronized into output history before durable external job cleanup can make runtime state unavailable;
+- removing an app Library row tombstones only the selected output generation so later Download synchronization cannot resurrect it; terminal/recovery Termux owner metadata and its output are removed transactionally, and synchronization revalidates the durable job in-transaction to prevent stale observer resurrection.
 
-## Phase 09 — media capture identity / durable encrypted import
+## Security boundary retained for Overlay 11
 
-- keeps encrypted capture-v2 intact through the exported review boundary and refuses to flatten it into a legacy automation draft;
-- writes a ciphertext-only app-private import journal through Android `AtomicFile` before decrypt/import work, persists no observed caller/package label, and rejects conflicting reuse of a capture session ID;
-- forwards only an internal session ID to MainActivity and consumes it once;
-- binds Android capture identity to exact request URL + browser session + request fingerprint; browser-declared stable IDs are not authoritative;
-- commits sanitized Room capture/variant state before exact secure handoff sidecars, then records the non-secret browser-session index last; recovery is serialized, stale revisions cannot replace newer durable sessions, and interrupted imports remain journaled until missing sidecars/index entries are repaired; durable automation captures use their encrypted command envelope as retry authority and are also Room-first;
-- preserves already-linked captures/variant identity, fills only missing sidecars during partial-import recovery, and explicitly replaces empty variant sets for non-linked imports; browser session/index file replacement is non-destructive and atomic where supported; the legacy direct capture API fails closed for sensitive headers/signed-query context because it lacks a durable encrypted outer journal;
-- adds real bounded filesystem privacy scanning over app-private media/browser persistence surfaces, including interrupted `.bak`, `.new`, and `.tmp-*` replacement artifacts, without decrypting secure envelopes;
-- makes Media3 diagnostics classify from structured `PlaybackException` error codes/cause class rather than message substring heuristics;
-- treats observed Android caller package as diagnostic metadata only and does not claim that Firefox/browser identity was cryptographically authenticated by the envelope.
+Overlay 10 does not put Cookie, Authorization, Proxy-Authorization, credential-bearing URLs, or other transient secrets on a Termux command line. Authenticated yt-dlp media is held at readiness with an explicit message until Overlay 11 supplies the planned secure transient-secret bridge. Non-sensitive typed yt-dlp arguments remain supported.
 
 ## Apply
 
 ```bash
 devtool -r "$HOME/Code/xdm" --yes apply-overlay \
-  "/sdcard/Download/xdm_android_browser_secure_runtime_media_capture_import_overlay_v3.zip" \
+  "/sdcard/Download/xdm_android_media_resolver_execution_overlay_v2.zip" \
   --no-validate
 ```
 
-Do not start the next remediation phase until this artifact applies cleanly. Campaign validation remains deferred until the final overlay.
+Do not start Overlay 11 until this artifact applies cleanly. Campaign Gradle/unit/lint validation remains deferred until Overlay 13.

@@ -1283,19 +1283,28 @@ internal fun MediaDeveloperToolsSection(
                 captureId = job.captureId,
                 kindLabel = job.kind.label,
                 statusLabel = job.status.label,
-                running = job.status == TermuxMediaJobStatus.Queued || job.status == TermuxMediaJobStatus.Running,
+                running = job.status in setOf(TermuxMediaJobStatus.Preparing, TermuxMediaJobStatus.Running, TermuxMediaJobStatus.Publishing),
                 completed = job.status == TermuxMediaJobStatus.Completed,
-                failed = job.status == TermuxMediaJobStatus.Failed,
+                failed = job.status in setOf(TermuxMediaJobStatus.Failed, TermuxMediaJobStatus.Cancelled, TermuxMediaJobStatus.TimedOut, TermuxMediaJobStatus.RecoveryRequired),
+                metadataOnly = job.kind in setOf(com.mikeyphw.xdm.android.termux.TermuxMediaJobKind.YtDlpMetadata, com.mikeyphw.xdm.android.termux.TermuxMediaJobKind.FfprobeInspect),
+                attemptGeneration = job.attemptGeneration.toLong(),
                 output = job.output,
                 message = job.message,
             )
         }
     }
-    val libraryItems = remember(state.mediaCaptures, state.downloads, state.mediaVariants) {
-        executionPlanner.offlineLibraryItems(state.mediaCaptures, state.downloads, state.mediaVariants)
+    val libraryItems = remember(state.mediaCaptures, state.downloads, state.mediaVariants, state.mediaOutputs, externalJobs) {
+        executionPlanner.offlineLibraryItems(
+            captures = state.mediaCaptures,
+            downloads = state.downloads,
+            variants = state.mediaVariants,
+            outputs = state.mediaOutputs,
+            externalJobs = externalJobs,
+            allowLegacyFallback = false,
+        )
     }
-    val executionJobs = remember(state.mediaCaptures, state.downloads, state.mediaVariants, externalJobs) {
-        executionPlanner.executionJobs(state.mediaCaptures, state.downloads, state.mediaVariants, externalJobs)
+    val executionJobs = remember(state.mediaCaptures, state.downloads, state.mediaVariants, externalJobs, state.mediaOutputs) {
+        executionPlanner.executionJobs(state.mediaCaptures, state.downloads, state.mediaVariants, externalJobs, state.mediaOutputs)
     }
     val dispatchPlans = remember(state.mediaCaptures, state.mediaVariants, state.termuxMediaPipeline.enabled) {
         state.mediaCaptures.map { capture ->
