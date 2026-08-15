@@ -30,6 +30,7 @@ import com.mikeyphw.xdm.android.model.OperationalActivityEvent
 import com.mikeyphw.xdm.android.media.MediaExternalJobSnapshot
 import com.mikeyphw.xdm.android.termux.TermuxMediaJobKind
 import com.mikeyphw.xdm.android.termux.TermuxMediaJobStatus
+import com.mikeyphw.xdm.android.ui.downloads.DownloadsScreen as TruthfulDownloadsScreen
 import com.mikeyphw.xdm.android.ui.library.MediaLibraryScreen as OutputMediaLibraryScreen
 
 private val routeTopology = AppRoute.entries
@@ -48,6 +49,7 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
     val visibleRoute = if (state.route == AppRoute.Add) previousPrimaryRoute else state.route
 
     BackHandler(enabled = state.route == AppRoute.Add) {
+        viewModel.dismissExternalAddDraft()
         viewModel.navigate(previousPrimaryRoute)
     }
     BackHandler(enabled = state.route != AppRoute.Downloads && state.route != AppRoute.Add) {
@@ -56,7 +58,7 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
-        val foldPosture = rememberXdmFoldPosture()
+        val foldLayoutInfo = rememberXdmFoldLayoutInfo()
         val focusRestorationController = rememberXdmFocusRestorationController()
         val windowClass = XdmWindowClass.fromWidth(maxWidth)
         val windowProfile = XdmWindowProfile(
@@ -64,7 +66,15 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
             height = maxHeight,
             windowClass = windowClass,
             fontScale = density.fontScale,
-            foldPosture = foldPosture,
+            foldPosture = foldLayoutInfo.posture,
+            foldIsSeparating = foldLayoutInfo.isSeparating,
+            foldIsVertical = foldLayoutInfo.isVertical,
+            foldHingeWidth = foldLayoutInfo.hingeWidth,
+            foldHingeHeight = foldLayoutInfo.hingeHeight,
+            foldHingeLeft = foldLayoutInfo.hingeLeft,
+            foldHingeTop = foldLayoutInfo.hingeTop,
+            foldHingeRight = foldLayoutInfo.hingeRight,
+            foldHingeBottom = foldLayoutInfo.hingeBottom,
         )
         CompositionLocalProvider(
             LocalXdmWindowClass provides windowClass,
@@ -160,7 +170,7 @@ private fun XdmRouteContent(
 ) {
     Box(Modifier.fillMaxSize()) {
         when (route) {
-            AppRoute.Downloads -> DownloadsScreen(
+            AppRoute.Downloads -> TruthfulDownloadsScreen(
                 downloads = state.downloads,
                 requestedDetailDownloadId = state.selectedDownloadDetailId,
                 compact = state.compactDensity,
@@ -206,6 +216,7 @@ private fun XdmRouteContent(
                 onDeleteSavedFile = viewModel::deleteSavedFile,
                 onRestartFromZero = viewModel::restartFromZero,
                 onOpenRecovery = viewModel::openRecoveryFor,
+                onDetailSelectionChanged = viewModel::selectDownloadDetail,
                 onOpenActivityAttention = { viewModel.navigateActivity(ActivityPanel.Attention) },
                 onOpenActivityDecisions = { viewModel.navigateActivity(ActivityPanel.Decisions) },
             )

@@ -20,6 +20,7 @@ enum class AppRoute(val label: String, val icon: ImageVector) {
 
     companion object {
         fun restore(storedName: String?): AppRoute = when (storedName) {
+            "Add" -> Downloads // Add is an in-memory review surface, never a restorable destination.
             "Queues", "Scheduler", "Recovery", "Diagnostics" -> Activity
             else -> entries.firstOrNull { it.name == storedName } ?: Downloads
         }

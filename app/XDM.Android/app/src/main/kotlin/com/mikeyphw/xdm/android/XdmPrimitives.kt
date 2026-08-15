@@ -418,34 +418,55 @@ fun XdmAdaptiveSheet(
     LaunchedEffect(title, visible) {
         runCatching { sheetFocusRequester.requestFocus() }
     }
-    if (windowClass == XdmWindowClass.Expanded) {
+    val windowProfile = LocalXdmWindowProfile.current
+    val foldSafePane = windowProfile.preferredFoldSafePane()
+    val useDialog = if (windowProfile.hasSeparatingFold) {
+        foldSafePane != null
+    } else {
+        windowClass == XdmWindowClass.Expanded && windowProfile.allowsExpandedShell
+    }
+    if (useDialog) {
         Dialog(
             onDismissRequest = { dismissAndRestoreFocus() },
             properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = true, dismissOnClickOutside = true),
         ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth(0.76f)
-                    .sizeIn(maxWidth = 760.dp, maxHeight = 820.dp)
-                    .testTag(XdmTestTags.AdaptiveSheet)
-                    .focusRequester(sheetFocusRequester)
-                    .focusable()
-                    .xdmPane("$title dialog", traversal = XdmTraversalOrder.Dialog).semantics {
-                        stateDescription = "Open"
-                    },
-                color = MaterialTheme.colorScheme.surface,
-                shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-            ) {
-                Column {
-                    XdmPageHeader(title = title)
-                    val bodyModifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = LocalXdmWindowProfile.current.sheetMaxHeight)
-                        .padding(bottom = 8.dp)
-                        .let { if (scrollContent) it.verticalScroll(rememberScrollState()) else it }
-                    Column(bodyModifier, content = content)
+            val foldAlignment = when (foldSafePane?.edge) {
+                XdmFoldSafePaneEdge.Start -> Alignment.CenterStart
+                XdmFoldSafePaneEdge.End -> Alignment.CenterEnd
+                XdmFoldSafePaneEdge.Top -> Alignment.TopCenter
+                XdmFoldSafePaneEdge.Bottom -> Alignment.BottomCenter
+                null -> Alignment.Center
+            }
+            Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = foldAlignment) {
+                val surfaceModifier = if (foldSafePane != null) {
+                    Modifier
+                        .width(foldSafePane.maxWidth.coerceAtMost(760.dp).coerceAtLeast(1.dp))
+                        .heightIn(max = foldSafePane.maxHeight.coerceAtMost(windowProfile.sheetMaxHeight).coerceAtLeast(1.dp))
+                } else {
+                    Modifier.fillMaxWidth(0.76f).sizeIn(maxWidth = 760.dp, maxHeight = 820.dp)
+                }
+                Surface(
+                    modifier = surfaceModifier
+                        .testTag(XdmTestTags.AdaptiveSheet)
+                        .focusRequester(sheetFocusRequester)
+                        .focusable()
+                        .xdmPane("$title dialog", traversal = XdmTraversalOrder.Dialog).semantics {
+                            stateDescription = "Open"
+                        },
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = MaterialTheme.shapes.extraLarge,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
+                ) {
+                    Column {
+                        XdmPageHeader(title = title)
+                        val bodyModifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = minOf(windowProfile.sheetMaxHeight, foldSafePane?.maxHeight ?: windowProfile.sheetMaxHeight))
+                            .padding(bottom = 8.dp)
+                            .let { if (scrollContent) it.verticalScroll(rememberScrollState()) else it }
+                        Column(bodyModifier, content = content)
+                    }
                 }
             }
         }
@@ -470,7 +491,7 @@ fun XdmAdaptiveSheet(
                 XdmPageHeader(title = title)
                 val bodyModifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = LocalXdmWindowProfile.current.sheetMaxHeight)
+                    .heightIn(max = windowProfile.sheetMaxHeight)
                     .padding(bottom = 8.dp)
                     .let { if (scrollContent) it.verticalScroll(rememberScrollState()) else it }
                 Column(bodyModifier, content = content)

@@ -39,6 +39,7 @@ internal fun AdvancedDownloadSettingsScreen(state: MainUiState, viewModel: MainV
     var importText by remember { mutableStateOf("") }
     var destinationRuleName by remember { mutableStateOf("") }
     var destinationRulePattern by remember { mutableStateOf("") }
+    var destinationRuleDestination by remember(state.destinationUri) { mutableStateOf(state.destinationUri) }
     var destinationRuleMatch by remember { mutableStateOf(DestinationRuleMatch.Host) }
     var duplicateHost by remember { mutableStateOf("") }
     var duplicateAction by remember { mutableStateOf(DuplicateUrlAction.OpenExisting) }
@@ -86,14 +87,26 @@ internal fun AdvancedDownloadSettingsScreen(state: MainUiState, viewModel: MainV
                     }
                 }
                 OutlinedTextField(destinationRuleName, { destinationRuleName = it }, label = { Text("Rule name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                OutlinedTextField(destinationRulePattern, { destinationRulePattern = it }, label = { Text("Pattern") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                if (destinationRuleMatch != DestinationRuleMatch.Fallback) {
+                    OutlinedTextField(destinationRulePattern, { destinationRulePattern = it }, label = { Text("Pattern") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                } else {
+                    XdmMetadataText("Fallback applies only when no host, extension, or MIME rule matches.")
+                }
+                OutlinedTextField(
+                    value = destinationRuleDestination,
+                    onValueChange = { destinationRuleDestination = it },
+                    label = { Text("Rule destination URI") },
+                    supportingText = { Text("This destination is stored with this rule; it is not taken invisibly from the global default.") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
                 Button(
                     onClick = {
-                        viewModel.saveDestinationRule(destinationRuleName, destinationRuleMatch, destinationRulePattern, state.destinationUri)
+                        viewModel.saveDestinationRule(destinationRuleName, destinationRuleMatch, destinationRulePattern, destinationRuleDestination)
                         destinationRuleName = ""
                         destinationRulePattern = ""
                     },
-                    enabled = destinationRuleName.isNotBlank() && destinationRulePattern.isNotBlank(),
+                    enabled = destinationRuleName.isNotBlank() && destinationRuleDestination.isNotBlank() && (destinationRuleMatch == DestinationRuleMatch.Fallback || destinationRulePattern.isNotBlank()),
                 ) { Text("Save destination rule") }
                 state.destinationRules.take(4).forEach { rule ->
                     XdmMetadataText("${rule.name}: ${humanizeAdvancedName(rule.match.name)} ${rule.pattern}", maxLines = 2)
@@ -174,6 +187,7 @@ internal fun AdvancedDownloadSettingsScreen(state: MainUiState, viewModel: MainV
             TermuxBridgeSettingsCard(
                 termux = state.termuxBridge,
                 onRunProbe = viewModel::runTermuxToolProbe,
+                onRunPrivacyAudit = viewModel::runTermuxPrivacyAudit,
                 onOpenTermux = viewModel::openTermux,
                 onRootModeChanged = viewModel::setTermuxRootMode,
                 onRunRootProbe = viewModel::runTermuxRootProbe,

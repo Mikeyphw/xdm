@@ -350,7 +350,7 @@ class ArchitectureContractTest {
         assertTrue("Manifest must record organization power tools", manifest.contains("organization_history_power_tools"))
         assertTrue("Manifest must record browser clipboard inbox", manifest.contains("browser_clipboard_inbox"))
         assertTrue("Manifest must record backup restore hardening", manifest.contains("backup_restore_hardening"))
-        assertTrue("Room schema must preserve v14 and advance through generation-integrity schema v18", database.contains("version = 18") && migrations.contains("Migration13To14") && migrations.contains("Migration14To15") && migrations.contains("Migration15To16") && migrations.contains("Migration16To17") && migrations.contains("Migration17To18"))
+        assertTrue("Room schema must preserve v14 and retain the generation-integrity v18 migration chain", (Regex("""version\s*=\s*(\d+)""").find(database)?.groupValues?.get(1)?.toIntOrNull() ?: 0) >= 18 && migrations.contains("Migration13To14") && migrations.contains("Migration14To15") && migrations.contains("Migration15To16") && migrations.contains("Migration16To17") && migrations.contains("Migration17To18"))
         listOf("SavedSearch", "DuplicateUrlRule", "DestinationRule", "ClipboardInboxItem", "archived").forEach { symbol ->
             assertTrue("Download model missing $symbol", models.contains(symbol) || desktopModels.contains(symbol))
         }

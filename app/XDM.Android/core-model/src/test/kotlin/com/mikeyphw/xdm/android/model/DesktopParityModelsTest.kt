@@ -34,6 +34,19 @@ class DesktopParityModelsTest {
         val rules = listOf(DestinationRule("r1", "Videos", DestinationRuleMatch.Extension, "mp4", "content://movies", true, 10))
         assertEquals("content://movies", OrganizationPowerTools.destinationFor("https://cdn.test/video.mp4", "video.mp4", "video/mp4", rules, "xdm://downloads"))
     }
+    @Test fun destinationHostRulesRespectDomainBoundaries() {
+        val rule = DestinationRule("host", "Example", DestinationRuleMatch.Host, "example.com", "content://example", true, 10)
+        assertEquals("content://example", OrganizationPowerTools.destinationFor("https://sub.example.com/file.bin", "file.bin", null, listOf(rule), "xdm://downloads"))
+        assertEquals("xdm://downloads", OrganizationPowerTools.destinationFor("https://badexample.com/file.bin", "file.bin", null, listOf(rule), "xdm://downloads"))
+    }
+    @Test fun destinationFallbackNeverShadowsSpecificRule() {
+        val rules = listOf(
+            DestinationRule("fallback", "Fallback", DestinationRuleMatch.Fallback, "", "content://fallback", true, 1000),
+            DestinationRule("host", "Specific", DestinationRuleMatch.Host, "example.com", "content://specific", true, 1),
+        )
+        assertEquals("content://specific", OrganizationPowerTools.destinationFor("https://example.com/file.bin", "file.bin", null, rules, "xdm://downloads"))
+        assertEquals("content://fallback", OrganizationPowerTools.destinationFor("https://other.test/file.bin", "file.bin", null, rules, "xdm://downloads"))
+    }
     @Test fun clipboardInboxExtractsNewSafeUrlsOnly() {
         val existing = listOf(ClipboardInboxItem("one", "https://example.test/a", null, "h", "New", 1, 1))
         val items = ClipboardInboxPolicy.itemsFromText("ftp://ignored https://example.test/a https://example.test/b.", existing, 2)

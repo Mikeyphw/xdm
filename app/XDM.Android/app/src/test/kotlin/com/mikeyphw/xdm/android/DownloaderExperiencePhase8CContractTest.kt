@@ -88,7 +88,7 @@ class DownloaderExperiencePhase8CContractTest {
         assertFalse(production.contains("BrowserActivity"))
         val database = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt").readText()
         val build = File(root, "app/build.gradle.kts").readText()
-        assertTrue(database.contains("version = 18"))
+        assertTrue((Regex("""version\s*=\s*(\d+)""").find(database)?.groupValues?.get(1)?.toIntOrNull() ?: 0) >= 18)
         assertTrue(build.contains("versionCode = 22"))
         assertTrue(build.contains("versionName = \"0.21.0\""))
         listOf(

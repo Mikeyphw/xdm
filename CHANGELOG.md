@@ -1,3 +1,13 @@
+## 2026-08-15 — Android master remediation combined Overlays 11–12
+
+- Hardened Termux/post-processing ownership: strict result tokens, durable control-before-signal, attach-CAS orphan cancellation, canonical root path authorization, terminal bridge cleanup, and real Termux-private filesystem privacy auditing.
+- Added a fail-closed transient yt-dlp session bridge using private config/URL-list files and FIFO payload transport; capture-backed yt-dlp durable specs no longer persist exact signed URLs/headers or own normal Download rows.
+- Made Add ephemeral while persisting real nested navigation targets, including ordinary Downloads detail selection and Recovery targets/actions.
+- Fixed measured-pane/fold-aware Downloads behavior, stale destructive confirmation, completed artifact truth, planner-backed bulk controls, destination-rule boundaries/fallbacks, actionable saved searches, and Add IME handling.
+- Updated active Phase-7 and Phase-9 validators and added a combined Phase-11/12 contract; full Gradle/final-gate validation remains deferred to Overlay 13.
+- Second promise audit closes off-center-hinge layout safety, stale FIFO/run-directory detection, shared `.xdm-*` bridge scanning, restricted yt-dlp metadata projection, and terminal-safe delayed Termux callbacks.
+- Split Browser Session Health and Engine Escalation onto unique accessibility tags, replaced raw destination-type enum rendering with user labels, and made historical schema-18 contracts retain a migration floor instead of blocking the current schema 20.
+
 ## Runtime Foundation Phases 59-61 r2 - Promise closure
 
 - Keeps exact encrypted Firefox candidate and variant URLs in the secure request handoff store instead of persisting them in ordinary MediaCaptureRecord/MediaVariant rows.

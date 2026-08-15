@@ -3895,5 +3895,45 @@
       "completed_artifact_generation_persisted_on_state_upsert": true,
       "completed_artifact_bytes_persisted_on_state_upsert": true
     }
+  },
+  "bug_hunt_master_remediation_overlay_11_12_termux_security_ui_truth": {
+    "base_commit": "81a429ed",
+    "combined_overlays": [
+      11,
+      12
+    ],
+    "master_items": [
+      "M-012",
+      "M-020-post-processing",
+      "M-032-termux",
+      "M-046-termux-filesystem",
+      "M-037",
+      "M-038",
+      "M-039",
+      "M-040",
+      "M-041",
+      "M-052"
+    ],
+    "termux_ownership": "strict durable process token; durable control CAS before signals; attach-CAS loss force-cancels exact owner",
+    "termux_transient_media_session": "opaque durable capture identity; exact URL/headers recovered only from encrypted handoff into private 0600 config/url-list files; fail-closed on expiry",
+    "termux_filesystem_audit": "real Termux-private xdm-post files/FIFOs/nonregular nodes/run dirs plus shared .xdm-* staging scan with redacted bounded status/counts",
+    "post_processing_graph_deletion": "non-terminal ownership blocks deletion; terminal bridge artifacts including payload bridge are cleaned before detachment",
+    "navigation": "Add non-restorable; activity/settings panels and download/recovery nested targets persist",
+    "adaptive_layout": "measured content pane plus exact folding-feature rectangle/orientation/separation; off-center hinges define physical safe panes",
+    "action_truth": "fresh completed-artifact rows, structured completed health, fresh destructive re-plan, planner-backed bulk controls",
+    "organization": "domain-boundary destination matching; fallback-after-specific; explicit rule destination; saved-search apply",
+    "accessibility_validation": "active phase-9/UIX-R6 validators include IME, exact hinge/measured-pane behavior, click semantics, unique review-surface tags, and no raw destination enum labels",
+    "room_schema_changed": false,
+    "room_schema_current": 20,
+    "declared_final_validation_tasks": [
+      ":app:compileDebugKotlin",
+      ":app:testDebugUnitTest",
+      ":app:lintDebug"
+    ],
+    "apply_with": "--no-validate",
+    "revision": "v2_second_promise_audit",
+    "yt_dlp_shared_metadata": "restricted --print projection only; raw -J metadata cannot enter shared staging",
+    "termux_terminal_reconciliation": "delayed control/result callbacks cannot transition Completed/Failed/Cancelled/TimedOut jobs back to active/recovery states",
+    "historical_schema_contracts": "schema-18 tests retain the generation-integrity migration floor while accepting current schema 20"
   }
 }

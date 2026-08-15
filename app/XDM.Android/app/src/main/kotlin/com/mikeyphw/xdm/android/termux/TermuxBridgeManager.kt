@@ -1,10 +1,13 @@
 package com.mikeyphw.xdm.android.termux
 
 import android.content.Context
+import android.os.Environment
+import java.io.File
 import kotlinx.coroutines.flow.StateFlow
 
 class TermuxBridgeManager(context: Context) {
     @Volatile private var toolProbeRequestedAtEpochMs: Long = 0L
+    @Volatile private var privacyAuditRequestedAtEpochMs: Long = 0L
     private val appContext = context.applicationContext
     private val runner = TermuxCommandRunner(appContext)
     val status: StateFlow<TermuxBridgeStatus> = TermuxRunStore.status
@@ -15,6 +18,10 @@ class TermuxBridgeManager(context: Context) {
         val now = System.currentTimeMillis()
         if (current.hasFreshSuccessfulToolProbe(now)) {
             toolProbeRequestedAtEpochMs = 0L
+            if (now - privacyAuditRequestedAtEpochMs >= PRIVACY_AUDIT_RETRY_GUARD_MS) {
+                privacyAuditRequestedAtEpochMs = now
+                runPrivacyAudit()
+            }
         } else if (
             current.termuxInstalled &&
             current.runCommandPermissionGranted &&
@@ -42,6 +49,20 @@ class TermuxBridgeManager(context: Context) {
         return result
     }
 
+    @Suppress("DEPRECATION")
+    fun runPrivacyAudit() {
+        privacyAuditRequestedAtEpochMs = System.currentTimeMillis()
+        val sharedStagingPath = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "XDM/PostProcessing/Staging",
+        ).canonicalPath
+        val command = XdmTermuxCommand.PrivacyAudit(sharedStagingPath)
+        val result = runner.run(command)
+        if (!result.started) {
+            TermuxRunStore.recordLaunchFailure(appContext, command.operation, result.error)
+        }
+    }
+
     fun runRootProbe() {
         val result = runner.run(XdmTermuxCommand.RootProbe)
         TermuxRunStore.recordRootProbeLaunch(
@@ -61,6 +82,10 @@ class TermuxBridgeManager(context: Context) {
     fun fixTermuxDownloadPermissions(path: String) = runRootAction(XdmRootAction.FixFilePermissions(path))
 
     private fun runRootAction(action: XdmRootAction) {
+        val authorized = TermuxRootActionAuthorizer.authorize(appContext, action).getOrElse { error ->
+            TermuxRunStore.recordRootActionLaunch("", action, started = false, message = "Denied before root launch: ${error.message}")
+            return
+        }
         val current = TermuxRunStore.status.value
         if (current.rootMode == TermuxRootMode.Off) {
             TermuxRunStore.recordRootActionLaunch("", action, started = false, message = "Root mode is off.")
@@ -70,11 +95,11 @@ class TermuxBridgeManager(context: Context) {
             TermuxRunStore.recordRootActionLaunch("", action, started = false, message = "Run the root probe before medium-risk root actions.")
             return
         }
-        val command = XdmTermuxCommand.RootAction(action)
+        val command = XdmTermuxCommand.RootAction(authorized)
         val result = runner.run(command)
         TermuxRunStore.recordRootActionLaunch(
             runId = result.runId,
-            action = action,
+            action = authorized,
             started = result.started,
             message = if (result.started) "Typed root action launched." else result.error,
         )
@@ -91,5 +116,6 @@ class TermuxBridgeManager(context: Context) {
 
     private companion object {
         const val TOOL_PROBE_RETRY_GUARD_MS = 60_000L
+        const val PRIVACY_AUDIT_RETRY_GUARD_MS = 15 * 60_000L
     }
 }

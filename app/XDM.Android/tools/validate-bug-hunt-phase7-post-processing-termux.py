@@ -55,6 +55,7 @@ def validate(root: Path) -> list[str]:
     result_service = text(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxResultService.kt", errors)
     shell = text(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt", errors)
     run_store = text(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxRunStore.kt", errors)
+    root_authorizer = text(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxRootActionAuthorizer.kt", errors)
     app = text(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt", errors)
     vm = text(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt", errors)
     ui = text(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsScreen.kt", errors)
@@ -68,11 +69,11 @@ def validate(root: Path) -> list[str]:
         "android.permission.WRITE_EXTERNAL_STORAGE", "com.termux.permission.RUN_COMMAND",
         '.termux.TermuxResultService', 'android:exported="false"',
     ), "manifest", errors)
-    contains_all(app_db, ("PostProcessingJobEntity::class", "PostProcessingClaimEntity::class", "version = 18", "postProcessingDao"), "database", errors)
+    contains_all(app_db, ("PostProcessingJobEntity::class", "PostProcessingClaimEntity::class", "version = 20", "postProcessingDao"), "database", errors)
     contains_all(migrations, ("Migration14To15", "Migration15To16", "Migration16To17", "post_processing_jobs", "post_processing_claims", "ON DELETE CASCADE", "publicationState", "committedOutputUri"), "migrations", errors)
     contains_all(entities, ("attemptGeneration", "immutableSpecJson", "processToken", "controlGeneration", "progressBridgeUri", "timeoutAtEpochMs", "claimKey"), "entities", errors)
     contains_all(dao, ("claimAndInsert", "insertJob(job)", "insertClaimIgnore(claim)", "controlGeneration = controlGeneration + 1", "findJobByRunId", "maxAttemptGeneration", "claimKey IS NULL"), "DAO", errors)
-    contains_all(graph, ("post_processing_jobs", "deletePostProcessingForDownload"), "delete graph", errors)
+    contains_all(graph, ("post_processing_jobs", "countActivePostProcessingForDownload", "detachPostProcessingForDownload"), "delete graph", errors)
 
     contains_all(models, (
         "subjectGeneration", "inputMimeType", "inputContainer", "inputCodecs", "fun toJson()", "fun fromJson",
@@ -90,7 +91,8 @@ def validate(root: Path) -> list[str]:
         "preflightIssue", "runAndroidChecksum", "requestControlNow", "ForceCancel", "TimedOut",
         "findJobByRunId", "processToken", "PrivacyDiagnosticsRedactor.redactText",
         "reconcileCommittedPublication", "PostProcessingResultMode.SideEffectOnly", "ownerSnapshot?.finished", "updateFromFfprobe", "updateFromYtDlp", "replaceMediaVariants",
-        "clearManualTerminalJobs", "mediaSubjectGeneration",
+        "clearManualTerminalJobs", "mediaSubjectGeneration", "prepareDownloadGraphDeletion", "clearTerminalBridgeUris",
+        "expectedProcessToken == null", "durableControl == 0", "dao.attachRun",
     ), "pipeline manager", errors)
 
     require(bridge.find("bridgePeak") != -1 and bridge.find("bridgePeak") < bridge.find("createInputBridge"), "capacity preflight must precede input staging", errors)
@@ -104,11 +106,14 @@ def validate(root: Path) -> list[str]:
     contains_all(result_service, ("ExtraRunId", "ExtraJobId", "ExtraProcessToken", "TermuxResultRouterProvider"), "result routing", errors)
     contains_all(shell, (
         "setsid", "processGroup", "owner_mismatch", "force_required", "kill -TERM", "TermuxProcessControlAction.ForceCancel -> \"KILL\"",
-        "XDM_TOOL_VERSION", "phase=preflight", "ffprobe -v error", "yt-dlp --simulate",
-        "--force-overwrites", " -y -i ", "-progress", "XDM_YTDLP",
+        "XDM_TOOL_VERSION", "phase=preflight", "ffprobe -v error", "--simulate",
+        "--force-overwrites", " -y -i ", "-progress", "XDM_YTDLP_CONFIG", "XDM_YTDLP_URLS",
+        "--config-locations", "--batch-file", "XDM_PAYLOAD_FIFO", "managed transient session required",
     ), "managed shell", errors)
     require(" -n -i " not in shell, "managed output must not reject its own newly allocated staging file", errors)
     contains_all(run_store, ("PrivacyDiagnosticsRedactor.redactText", "parseProbe", "toolRows"), "Termux diagnostics", errors)
+    contains_all(root_authorizer, ("canonicalFile", "allowedRoots", "target == root", "target.startsWith(root + File.separator)"), "root filesystem authorization", errors)
+    require('contains("/Android/data/")' not in root_authorizer, "root filesystem authorization must not use substring path approval", errors)
 
     contains_all(app, ("recoverInterruptedJobs", "startAutomaticProcessing", "terminalEvents.collect"), "application wiring", errors)
     contains_all(auto, ("reconcileMissedTerminalEvents", "findDownloadsByStates", "attemptGenerationForDownload", "AutomaticCaptureStates"), "durable startup reconciliation", errors)
@@ -120,18 +125,21 @@ def validate(root: Path) -> list[str]:
     contains_all(migration_test, ("MigrationTestHelper", "Migration16To17", "Migration15To16", "Migration14To15", "runMigrationsAndValidate", "post_processing_jobs", "post_processing_claims"), "migration test", errors)
     contains_all(documentation, ("Durable execution model", "Artifact and secret boundary", "Process ownership and controls", "Environment limitation"), "documentation", errors)
 
-    schema_path = root / "persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/17.json"
-    if not schema_path.is_file():
-        errors.append("missing Room schema export 17.json")
-    else:
+    for version in (17, 20):
+        schema_path = root / f"persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/{version}.json"
+        if not schema_path.is_file():
+            errors.append(f"missing Room schema export {version}.json")
+            continue
         try:
             schema = json.loads(schema_path.read_text(encoding="utf-8"))
-            require(schema.get("database", {}).get("version") == 17, "schema export version is not 17", errors)
+            require(schema.get("database", {}).get("version") == version, f"schema export version is not {version}", errors)
             names = {entity.get("tableName") for entity in schema.get("database", {}).get("entities", [])}
-            require({"post_processing_jobs", "post_processing_claims"}.issubset(names), "schema 17 is missing post-processing tables", errors)
-            require(bool(schema.get("database", {}).get("identityHash")), "schema 17 identity hash is missing", errors)
+            require({"post_processing_jobs", "post_processing_claims"}.issubset(names), f"schema {version} is missing post-processing tables", errors)
+            require(bool(schema.get("database", {}).get("identityHash")), f"schema {version} identity hash is missing", errors)
+            if version == 20:
+                require("media_outputs" in names, "current schema 20 is missing media_outputs", errors)
         except (OSError, ValueError) as exc:
-            errors.append(f"invalid schema 17 JSON: {exc}")
+            errors.append(f"invalid schema {version} JSON: {exc}")
 
     for source in root.rglob("*"):
         if source.is_file() and source.suffix in {".kt", ".kts", ".xml", ".json", ".py", ".md", ".sh"}:
@@ -153,7 +161,7 @@ def main() -> int:
         return 1
     print("Phase 7 validation PASSED")
     print(f"Android root: {root}")
-    print("Durable automation, retained Room schema 17 plus current schema 18, exact process ownership, provider bridging, transactional publication, preflight, retry, recovery, UI, and regression contracts are present.")
+    print("Durable automation, retained Room schema 17 plus current schema 20, exact process ownership, transient-session bridging, canonical root authorization, transactional publication, preflight, retry, recovery, UI, and regression contracts are present.")
     return 0
 
 

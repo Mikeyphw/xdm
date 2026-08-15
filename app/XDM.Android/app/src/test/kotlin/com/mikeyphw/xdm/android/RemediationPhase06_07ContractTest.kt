@@ -208,7 +208,7 @@ class RemediationPhase06_07ContractTest {
         assertTrue(viewModel.contains("destinationWriter.canWrite(uri)"))
         assertTrue(viewModel.contains("Direct filesystem engine probes are not applicable to this destination type"))
         assertTrue(add.contains("it.persistedWrite && it.status == com.mikeyphw.xdm.android.model.DestinationHealthStatus.Healthy"))
-        assertTrue(add.contains("\${destination.displayName} · \${destination.type.name}"))
+        assertTrue(add.contains("\${destination.displayName} · \${destination.type.uiLabel()}"))
         assertTrue(recovery.contains("activeScannerIds"))
         assertTrue(recovery.contains("recoveryStore.deleteRecovery(it.id)"))
         assertTrue(recoveryUi.contains("Forget unresolved recovery record?"))

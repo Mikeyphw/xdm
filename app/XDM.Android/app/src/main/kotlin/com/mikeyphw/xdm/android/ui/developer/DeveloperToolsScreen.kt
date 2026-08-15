@@ -1008,6 +1008,7 @@ internal fun TermuxBridgeDiagnosticsCard(
 internal fun TermuxBridgeSettingsCard(
     termux: TermuxBridgeStatus,
     onRunProbe: () -> Unit,
+    onRunPrivacyAudit: () -> Unit,
     onOpenTermux: () -> Unit,
     onRootModeChanged: (TermuxRootMode) -> Unit,
     onRunRootProbe: () -> Unit,
@@ -1027,6 +1028,7 @@ internal fun TermuxBridgeSettingsCard(
             XdmMetadataText(termux.summary)
             XdmActionFlowRow {
                 Button(onClick = onRunProbe, enabled = termux.canRunProbe) { Text("Probe tools") }
+                TextButton(onClick = onRunPrivacyAudit, enabled = termux.canRunProbe) { Text("Audit transient files") }
                 TextButton(onClick = onOpenTermux, enabled = termux.termuxInstalled) { Text("Open Termux") }
             }
             XdmSectionHeader("Optional root mode")

@@ -96,6 +96,12 @@ fun AddDownloadScreen(
         if (externalDraftId != null) {
             url = initialUrl.orEmpty()
             name = initialFileName.orEmpty()
+            backend = BackendType.Automatic
+            allowFallback = true
+            expectedChecksum = ""
+            checksumAlgorithm = ChecksumAlgorithm.Sha256
+            advancedExpanded = false
+            clipboardMessage = null
             reviewConfirmed = false
         }
     }
@@ -262,7 +268,7 @@ fun AddDownloadScreen(
                                             reviewConfirmed = false
                                             onDestinationChanged(destination.uri)
                                         },
-                                        label = { Text("${destination.displayName} · ${destination.type.name}") },
+                                        label = { Text("${destination.displayName} · ${destination.type.uiLabel()}") },
                                     )
                                 }
                         }
@@ -442,7 +448,7 @@ fun AddDownloadScreen(
 @Composable
 private fun BrowserSessionHealthCard(health: BrowserSessionHealthReport) {
     XdmGroupedList(
-        modifier = Modifier.xdmScreen(XdmScreenTags.AddReview, "Browser session health"),
+        modifier = Modifier.xdmScreen(XdmScreenTags.BrowserSessionHealth, "Browser session health"),
     ) {
         XdmListRow(
             headline = "Browser session health",
@@ -472,7 +478,7 @@ private fun BrowserSessionHealthCard(health: BrowserSessionHealthReport) {
 @Composable
 private fun EngineEscalationCard(plan: EngineEscalationPlan) {
     XdmGroupedList(
-        modifier = Modifier.xdmScreen(XdmScreenTags.AddReview, "Engine escalation planner"),
+        modifier = Modifier.xdmScreen(XdmScreenTags.EngineEscalation, "Engine escalation planner"),
     ) {
         XdmListRow(
             headline = plan.title,

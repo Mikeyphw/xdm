@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadDashboardOrdering
+import com.mikeyphw.xdm.android.model.DownloadActionKind
+import com.mikeyphw.xdm.android.model.DownloadActionPlanner
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.DownloadTag
 import com.mikeyphw.xdm.android.model.DownloadTagAssignment
@@ -55,6 +57,7 @@ internal fun OrganizeDownloadsContent(
     onCreateTag: (String) -> Unit,
     onAssignTag: (DownloadTag) -> Unit,
     onSaveSearch: (String, String, DownloadState?, Boolean) -> Unit,
+    onApplySavedSearch: (SavedSearch) -> Unit,
     onDeleteSavedSearch: (SavedSearch) -> Unit,
     onCopyHistory: () -> Unit,
     onClearFinishedHistory: () -> Unit,
@@ -63,6 +66,9 @@ internal fun OrganizeDownloadsContent(
 ) {
     var tagName by remember { mutableStateOf("") }
     var searchName by remember { mutableStateOf("") }
+    val batchActions = DownloadActionPlanner.batchActionsFor(selectedDownloads)
+    val canBulkPause = batchActions.any { it.kind == DownloadActionKind.Pause && it.enabled }
+    val canBulkResume = batchActions.any { it.kind == DownloadActionKind.Resume && it.enabled }
 
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
@@ -108,8 +114,8 @@ internal fun OrganizeDownloadsContent(
                     TextButton(onClick = onClearSelection, enabled = selectedDownloads.isNotEmpty()) { Text("Clear") }
                 }
                 XdmActionFlowRow {
-                    TextButton(onClick = onBulkPause, enabled = selectedDownloads.isNotEmpty()) { Text("Pause") }
-                    TextButton(onClick = onBulkResume, enabled = selectedDownloads.isNotEmpty()) { Text("Resume") }
+                    TextButton(onClick = onBulkPause, enabled = canBulkPause) { Text("Pause") }
+                    TextButton(onClick = onBulkResume, enabled = canBulkResume) { Text("Resume") }
                     TextButton(onClick = { onArchiveSelected(true) }, enabled = selectedDownloads.isNotEmpty()) { Text("Archive") }
                     TextButton(onClick = { onArchiveSelected(false) }, enabled = selectedDownloads.isNotEmpty()) { Text("Unarchive") }
                 }
@@ -179,7 +185,10 @@ internal fun OrganizeDownloadsContent(
                             Text(search.name, style = MaterialTheme.typography.bodyMedium)
                             XdmMetadataText(search.query.ifBlank { "All downloads" })
                         }
-                        TextButton(onClick = { onDeleteSavedSearch(search) }) { Text("Delete") }
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            TextButton(onClick = { onApplySavedSearch(search) }) { Text("Apply") }
+                            TextButton(onClick = { onDeleteSavedSearch(search) }) { Text("Delete") }
+                        }
                     }
                 }
             }

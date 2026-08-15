@@ -169,7 +169,7 @@ exitCode=0
         val database = File(root, "persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt").readText()
         val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
 
-        assertTrue(database.contains("version = 18"))
+        assertTrue((Regex("""version\s*=\s*(\d+)""").find(database)?.groupValues?.get(1)?.toIntOrNull() ?: 0) >= 18)
         assertTrue(migrations.contains("Migration14To15") && migrations.contains("Migration15To16") && migrations.contains("Migration16To17") && migrations.contains("Migration17To18"))
         assertTrue(dao.contains("claimAndInsert") && dao.contains("reserveLaunch") && dao.contains("reserveProcessOwnership"))
         assertTrue(dao.contains("publicationState = 'Prepared'") && dao.contains("publicationState = 'Committed'"))

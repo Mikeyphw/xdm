@@ -46,6 +46,7 @@ data class RootActionAuditRecord(
 sealed class XdmTermuxCommand(val operation: String) {
     data class ProbeTool(val tool: ExternalTool) : XdmTermuxCommand("probe_${tool.binaryName}")
     data object ProbeAllTools : XdmTermuxCommand("probe_all_tools")
+    data class PrivacyAudit(val sharedStagingPath: String) : XdmTermuxCommand("privacy_audit")
     data class Aria2Download(val url: String, val destination: String, val fileName: String?) : XdmTermuxCommand("aria2_download")
     data class YtDlpMetadata(val url: String, val extraArguments: List<String> = emptyList()) : XdmTermuxCommand("ytdlp_metadata")
     data class YtDlpDownload(val url: String, val destination: String, val outputTemplate: String, val format: String?, val extraArguments: List<String> = emptyList()) : XdmTermuxCommand("ytdlp_download")

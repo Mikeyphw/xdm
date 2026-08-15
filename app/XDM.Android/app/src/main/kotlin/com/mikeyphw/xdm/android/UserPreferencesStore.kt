@@ -26,6 +26,11 @@ private val Context.dataStore by preferencesDataStore("xdm_preferences")
 
 data class UserPreferences(
     val lastRoute: AppRoute = AppRoute.Downloads,
+    val lastActivityPanel: ActivityPanel = ActivityPanel.Attention,
+    val lastSettingsPanel: SettingsPanel = SettingsPanel.Overview,
+    val selectedDownloadDetailId: String? = null,
+    val selectedRecoveryDownloadId: String? = null,
+    val selectedRecoveryAction: String? = null,
     val compactDensity: Boolean = false,
     val themeMode: XdmThemeMode = XdmThemeMode.Dark,
     val developerOptionsEnabled: Boolean = false,
@@ -40,6 +45,11 @@ data class UserPreferences(
 class UserPreferencesStore(private val context: Context) {
     private object Keys {
         val LastRoute = stringPreferencesKey("last_route")
+        val LastActivityPanel = stringPreferencesKey("last_activity_panel")
+        val LastSettingsPanel = stringPreferencesKey("last_settings_panel")
+        val SelectedDownloadDetailId = stringPreferencesKey("selected_download_detail_id")
+        val SelectedRecoveryDownloadId = stringPreferencesKey("selected_recovery_download_id")
+        val SelectedRecoveryAction = stringPreferencesKey("selected_recovery_action")
         val CompactDensity = booleanPreferencesKey("compact_density")
         val ThemeMode = stringPreferencesKey("theme_mode")
         val DeveloperOptionsEnabled = booleanPreferencesKey("developer_options_enabled")
@@ -81,6 +91,15 @@ class UserPreferencesStore(private val context: Context) {
     val values: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
         UserPreferences(
             lastRoute = AppRoute.restore(preferences[Keys.LastRoute]),
+            lastActivityPanel = preferences[Keys.LastActivityPanel]
+                ?.let { runCatching { ActivityPanel.valueOf(it) }.getOrNull() }
+                ?: ActivityPanel.Attention,
+            lastSettingsPanel = preferences[Keys.LastSettingsPanel]
+                ?.let { runCatching { SettingsPanel.valueOf(it) }.getOrNull() }
+                ?: SettingsPanel.Overview,
+            selectedDownloadDetailId = preferences[Keys.SelectedDownloadDetailId]?.takeIf(String::isNotBlank),
+            selectedRecoveryDownloadId = preferences[Keys.SelectedRecoveryDownloadId]?.takeIf(String::isNotBlank),
+            selectedRecoveryAction = preferences[Keys.SelectedRecoveryAction]?.takeIf(String::isNotBlank),
             compactDensity = preferences[Keys.CompactDensity] ?: false,
             themeMode = preferences[Keys.ThemeMode]
                 ?.let { runCatching { XdmThemeMode.valueOf(it) }.getOrNull() }
@@ -139,7 +158,59 @@ class UserPreferencesStore(private val context: Context) {
     private fun defaultDestinationUri(): String = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) DestinationUris.PUBLIC_DOWNLOADS else DestinationUris.APP_PRIVATE_DOWNLOADS
 
     suspend fun setRoute(route: AppRoute) {
-        context.dataStore.edit { it[Keys.LastRoute] = route.name }
+        if (route == AppRoute.Add) return
+        context.dataStore.edit { prefs ->
+            prefs[Keys.LastRoute] = route.name
+            when (route) {
+                AppRoute.Downloads -> {
+                    prefs.remove(Keys.SelectedRecoveryDownloadId)
+                    prefs.remove(Keys.SelectedRecoveryAction)
+                }
+                AppRoute.Activity -> prefs.remove(Keys.SelectedDownloadDetailId)
+                else -> {
+                    prefs.remove(Keys.SelectedDownloadDetailId)
+                    prefs.remove(Keys.SelectedRecoveryDownloadId)
+                    prefs.remove(Keys.SelectedRecoveryAction)
+                }
+            }
+        }
+    }
+
+    suspend fun setDownloadsNavigation(downloadId: String?) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.LastRoute] = AppRoute.Downloads.name
+            prefs.remove(Keys.SelectedRecoveryDownloadId)
+            prefs.remove(Keys.SelectedRecoveryAction)
+            downloadId?.trim()?.takeIf(String::isNotBlank)?.let { prefs[Keys.SelectedDownloadDetailId] = it }
+                ?: prefs.remove(Keys.SelectedDownloadDetailId)
+        }
+    }
+
+    suspend fun setActivityNavigation(panel: ActivityPanel, downloadId: String? = null, action: String? = null) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.LastRoute] = AppRoute.Activity.name
+            prefs[Keys.LastActivityPanel] = panel.name
+            prefs.remove(Keys.SelectedDownloadDetailId)
+            if (panel == ActivityPanel.Recovery) {
+                downloadId?.trim()?.takeIf(String::isNotBlank)?.let { prefs[Keys.SelectedRecoveryDownloadId] = it }
+                    ?: prefs.remove(Keys.SelectedRecoveryDownloadId)
+                action?.trim()?.takeIf(String::isNotBlank)?.let { prefs[Keys.SelectedRecoveryAction] = it }
+                    ?: prefs.remove(Keys.SelectedRecoveryAction)
+            } else {
+                prefs.remove(Keys.SelectedRecoveryDownloadId)
+                prefs.remove(Keys.SelectedRecoveryAction)
+            }
+        }
+    }
+
+    suspend fun setSettingsNavigation(panel: SettingsPanel) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.LastRoute] = AppRoute.Settings.name
+            prefs[Keys.LastSettingsPanel] = panel.name
+            prefs.remove(Keys.SelectedDownloadDetailId)
+            prefs.remove(Keys.SelectedRecoveryDownloadId)
+            prefs.remove(Keys.SelectedRecoveryAction)
+        }
     }
 
     suspend fun setCompactDensity(compact: Boolean) {

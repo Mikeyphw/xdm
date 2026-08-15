@@ -62,9 +62,13 @@ data class PostProcessingJobSpec(
     val metadataOnly: Boolean = resultMode == PostProcessingResultMode.MetadataOnly,
     val formatSelector: String? = null,
     val extraArguments: List<String> = emptyList(),
+    /** Non-secret identifiers used to recover the encrypted request/session envelope at execution time. */
+    val sessionPrimaryVariantId: String? = null,
+    val sessionVariantIds: List<String> = emptyList(),
 ) {
     init {
         require(subjectId.isNotBlank()) { "Post-processing subject ID must not be blank" }
+        require(subjectGeneration > 0L) { "Post-processing subject generation must be positive" }
         require(actionId.isNotBlank()) { "Post-processing action ID must not be blank" }
         require(title.isNotBlank()) { "Post-processing title must not be blank" }
         require(inputUri.isNotBlank()) { "Post-processing input must not be blank" }
@@ -110,6 +114,8 @@ data class PostProcessingJobSpec(
         .put("metadataOnly", metadataOnly)
         .putNullable("formatSelector", formatSelector)
         .put("extraArguments", JSONArray(extraArguments))
+        .putNullable("sessionPrimaryVariantId", sessionPrimaryVariantId)
+        .put("sessionVariantIds", JSONArray(sessionVariantIds.distinct()))
         .toString()
 
     companion object {
@@ -118,41 +124,41 @@ data class PostProcessingJobSpec(
             val output = json.getJSONObject("output")
             val tools = json.optJSONArray("requiredTools") ?: JSONArray()
             val arguments = json.optJSONArray("extraArguments") ?: JSONArray()
+            val sessionVariantIds = json.optJSONArray("sessionVariantIds") ?: JSONArray()
             return PostProcessingJobSpec(
                 subjectId = json.getString("subjectId"),
-                subjectType = enumValueOrDefault(json.optString("subjectType"), PostProcessingSubjectType.Manual),
-                subjectGeneration = json.optLong("subjectGeneration", 0L),
+                subjectType = enumValueOrThrow(json.getString("subjectType"), "subjectType"),
+                subjectGeneration = json.getLong("subjectGeneration").also { require(it > 0L) { "subjectGeneration must be positive" } },
                 downloadId = json.optNullableString("downloadId"),
                 captureId = json.optNullableString("captureId"),
                 ruleId = json.optNullableString("ruleId"),
                 actionId = json.getString("actionId"),
-                trigger = enumValueOrDefault(json.optString("trigger"), PostProcessingAutomationTrigger.MediaCaptured),
-                kind = enumValueOrDefault(json.optString("kind"), PostProcessingActionKind.FfprobeInspect),
+                trigger = enumValueOrThrow(json.getString("trigger"), "trigger"),
+                kind = enumValueOrThrow(json.getString("kind"), "kind"),
                 title = json.getString("title"),
                 inputUri = json.getString("inputUri"),
                 inputMimeType = json.optNullableString("inputMimeType"),
                 inputContainer = json.optNullableString("inputContainer"),
                 inputCodecs = json.optNullableString("inputCodecs"),
                 output = PostProcessingOutputSpec(
-                    displayName = output.optString("displayName", "xdm-output.bin"),
-                    mimeType = output.optString("mimeType", "application/octet-stream"),
+                    displayName = output.getString("displayName"),
+                    mimeType = output.getString("mimeType"),
                     destinationUri = output.optNullableString("destinationUri"),
-                    conflictPolicy = enumValueOrDefault(output.optString("conflictPolicy"), PostProcessingConflictPolicy.Rename),
-                    deleteOriginalAfterPublish = output.optBoolean("deleteOriginalAfterPublish", false),
+                    conflictPolicy = enumValueOrThrow(output.getString("conflictPolicy"), "output.conflictPolicy"),
+                    deleteOriginalAfterPublish = output.getBoolean("deleteOriginalAfterPublish"),
                 ),
                 expectedSha256 = json.optNullableString("expectedSha256"),
                 requiredTools = buildSet {
-                    repeat(tools.length()) { index -> enumValueOrNull<ExternalTool>(tools.optString(index))?.let(::add) }
+                    repeat(tools.length()) { index -> add(enumValueOrThrow(tools.getString(index), "requiredTools[$index]")) }
                 },
-                timeoutSeconds = json.optLong("timeoutSeconds", 30 * 60L),
+                timeoutSeconds = json.getLong("timeoutSeconds"),
                 estimatedOutputBytes = json.optNullableLong("estimatedOutputBytes"),
-                resultMode = enumValueOrDefault(
-                    json.optString("resultMode"),
-                    if (json.optBoolean("metadataOnly", false)) PostProcessingResultMode.MetadataOnly else PostProcessingResultMode.OutputArtifact,
-                ),
-                metadataOnly = json.optBoolean("metadataOnly", false),
+                resultMode = enumValueOrThrow(json.getString("resultMode"), "resultMode"),
+                metadataOnly = json.getBoolean("metadataOnly"),
                 formatSelector = json.optNullableString("formatSelector"),
-                extraArguments = buildList { repeat(arguments.length()) { add(arguments.optString(it)) } },
+                extraArguments = buildList { repeat(arguments.length()) { add(arguments.getString(it)) } },
+                sessionPrimaryVariantId = json.optNullableString("sessionPrimaryVariantId"),
+                sessionVariantIds = buildList { repeat(sessionVariantIds.length()) { sessionVariantIds.getString(it).takeIf(String::isNotBlank)?.let(::add) } }.distinct(),
             )
         }
     }
@@ -402,7 +408,23 @@ object PostProcessingExecutionPolicy {
     fun sanitizeDurableMetadata(raw: String): String = sanitizeMetadataJson(raw)
 
     fun claimKey(spec: PostProcessingJobSpec): String = sha256(
-        listOf(spec.subjectId, spec.subjectGeneration, spec.trigger.name, spec.ruleId.orEmpty(), spec.actionId).joinToString("\u0000"),
+        listOf(
+            spec.subjectId,
+            spec.subjectGeneration,
+            spec.trigger.name,
+            spec.ruleId.orEmpty(),
+            spec.actionId,
+            // Hash the immutable execution identity too. A resolver refresh or a different selected
+            // variant/format is a different post-processing attempt even if the rule/action tuple is
+            // unchanged. Only the digest is persisted in the claim key, never secret session data.
+            spec.inputUri,
+            spec.formatSelector.orEmpty(),
+            spec.output.displayName,
+            spec.output.destinationUri.orEmpty(),
+            spec.sessionPrimaryVariantId.orEmpty(),
+            spec.sessionVariantIds.sorted().joinToString(","),
+            sha256(spec.extraArguments.joinToString("\u0000")),
+        ).joinToString("\u0000"),
     )
 
     fun processToken(jobId: String, generation: Int, entropy: String): String = sha256("$jobId\u0000$generation\u0000$entropy").take(32)
@@ -456,4 +478,5 @@ private fun JSONObject.putNullable(name: String, value: Any?): JSONObject = put(
 private fun JSONObject.optNullableString(name: String): String? = if (!has(name) || isNull(name)) null else optString(name).takeIf(String::isNotBlank)
 private fun JSONObject.optNullableLong(name: String): Long? = if (!has(name) || isNull(name)) null else optLong(name)
 private inline fun <reified T : Enum<T>> enumValueOrNull(value: String): T? = enumValues<T>().firstOrNull { it.name == value }
-private inline fun <reified T : Enum<T>> enumValueOrDefault(value: String, default: T): T = enumValueOrNull<T>(value) ?: default
+private inline fun <reified T : Enum<T>> enumValueOrThrow(value: String, field: String): T =
+    enumValueOrNull<T>(value) ?: throw IllegalArgumentException("Unknown $field value: $value")

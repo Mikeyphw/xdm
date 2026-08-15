@@ -17,10 +17,36 @@ class Phase9AccessibilityGapClosurePolicyTest {
     }
 
     @Test
-    fun separatingHingeDisablesTwoPaneDownloadsEvenOnWideWindows() {
+    fun verticalSeparatingHingeUsesRealGapAndCanKeepTwoPaneDownloads() {
         val profile = XdmAdaptiveTestMatrix.separatingHinge.profile
         assertTrue(profile.hasSeparatingFold)
+        assertTrue(profile.hasVerticalSeparatingFold)
+        assertEquals(64f, profile.minimumPaneGap.value, 0.01f)
+        assertTrue(profile.allowsTwoPaneDownloadsFor(profile.width))
+        val split = profile.verticalHingeSplitFor(containerLeftInWindow = 0f.dp, containerWidth = profile.width)
+        assertTrue(split != null)
+        assertEquals(512f, split!!.leftPaneWidth.value, 0.01f)
+        assertEquals(64f, split.hingeGap.value, 0.01f)
+        assertEquals(744f, split.rightPaneWidth.value, 0.01f)
+        assertEquals(XdmFoldSafePaneEdge.End, profile.preferredFoldSafePane()?.edge)
+    }
+
+    @Test
+    fun tabletopPostureAvoidsSideBySideDownloadPanes() {
+        val profile = XdmAdaptiveLayoutPolicy.profileFor(
+            widthDp = 1320f,
+            heightDp = 900f,
+            foldPosture = XdmFoldPosture.Tabletop,
+            foldIsSeparating = true,
+            foldIsVertical = false,
+            foldHingeHeightDp = 42f,
+            foldHingeTopDp = 420f,
+            foldHingeBottomDp = 462f,
+            foldHingeRightDp = 1320f,
+        )
+        assertTrue(profile.hasHorizontalSeparatingFold)
         assertFalse(profile.allowsTwoPaneDownloadsFor(profile.width))
+        assertEquals(XdmFoldSafePaneEdge.Bottom, profile.preferredFoldSafePane()?.edge)
     }
 
     @Test

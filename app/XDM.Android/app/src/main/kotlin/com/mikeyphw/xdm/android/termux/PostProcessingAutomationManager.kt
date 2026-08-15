@@ -57,7 +57,7 @@ class PostProcessingAutomationManager(
                     statusFlow.value = PostProcessingAutomationStatus(
                         enabled = settings.enabled,
                         rules = rules,
-                        events = (previewEvents.toList() + durableEvents)
+                        events = (previewSnapshot() + durableEvents)
                             .distinctBy(PostProcessingAutomationEvent::id)
                             .sortedByDescending(PostProcessingAutomationEvent::updatedAtEpochMs)
                             .take(MaxEvents),
@@ -165,7 +165,7 @@ class PostProcessingAutomationManager(
     }
 
     fun clearEvents() {
-        previewEvents.clear()
+        synchronized(previewEvents) { previewEvents.clear() }
         mediaPipeline.clearCompleted()
         statusFlow.update {
             it.copy(
@@ -290,7 +290,12 @@ class PostProcessingAutomationManager(
         destinationUri: String,
         conflictPolicy: FilenameConflictPolicy,
     ): PostProcessingJobSpec {
-        val input = capture.selectedVariantUrl ?: capture.sourceUrl
+        val isYtDlp = action.kind in setOf(PostProcessingActionKind.YtDlpMetadata, PostProcessingActionKind.YtDlpDownload)
+        val input = if (isYtDlp) {
+            "https://xdm.invalid/media-session/${PostProcessingExecutionPolicy.sha256(capture.id).take(24)}"
+        } else {
+            capture.selectedVariantUrl ?: capture.sourceUrl
+        }
         val base = sanitizeFileName(capture.title.ifBlank { capture.fileName }, "xdm-media", 96)
         return PostProcessingJobSpec(
             subjectId = capture.id,
@@ -301,7 +306,7 @@ class PostProcessingAutomationManager(
                 resolvedAtEpochMs = capture.lastResolvedAtEpochMs,
                 createdAtEpochMs = capture.createdAtEpochMs,
             ),
-            downloadId = capture.downloadId,
+            downloadId = capture.downloadId.takeUnless { isYtDlp },
             captureId = capture.id,
             ruleId = rule.id,
             actionId = "${rule.id}:$actionIndex:${action.kind.name}",
@@ -323,6 +328,9 @@ class PostProcessingAutomationManager(
             timeoutSeconds = timeoutFor(action.kind),
             resultMode = resultModeFor(action.kind),
             metadataOnly = resultModeFor(action.kind) == PostProcessingResultMode.MetadataOnly,
+            formatSelector = if (action.kind == PostProcessingActionKind.YtDlpDownload) "bestvideo+bestaudio/best" else null,
+            sessionPrimaryVariantId = capture.selectedVariantId.takeIf { isYtDlp },
+            sessionVariantIds = listOfNotNull(capture.selectedVariantId.takeIf { isYtDlp }),
         )
     }
 
@@ -432,8 +440,7 @@ class PostProcessingAutomationManager(
 
     private fun addPreview(subjectId: String, subjectLabel: String, trigger: PostProcessingAutomationTrigger, message: String) {
         val now = System.currentTimeMillis()
-        previewEvents.addFirst(
-            PostProcessingAutomationEvent(
+        val preview = PostProcessingAutomationEvent(
                 id = "preview-${UUID.randomUUID()}",
                 ruleId = "preview",
                 ruleName = "Preview",
@@ -443,10 +450,9 @@ class PostProcessingAutomationManager(
                 subjectLabel = subjectLabel,
                 message = message,
                 createdAtEpochMs = now,
-            ),
-        )
-        while (previewEvents.size > 6) previewEvents.removeLast()
-        statusFlow.update { it.copy(events = (previewEvents.toList() + it.events).distinctBy(PostProcessingAutomationEvent::id).take(MaxEvents), lastMessage = message, updatedAtEpochMs = now) }
+            )
+        pushPreview(preview)
+        statusFlow.update { it.copy(events = (previewSnapshot() + it.events).distinctBy(PostProcessingAutomationEvent::id).take(MaxEvents), lastMessage = message, updatedAtEpochMs = now) }
     }
 
     private fun recordSkipped(subjectId: String, subjectLabel: String, message: String, trigger: PostProcessingAutomationTrigger) =
@@ -476,9 +482,18 @@ class PostProcessingAutomationManager(
             message = message,
             createdAtEpochMs = now,
         )
-        previewEvents.addFirst(event)
-        while (previewEvents.size > 6) previewEvents.removeLast()
+        pushPreview(event)
         statusFlow.update { it.copy(events = (listOf(event) + it.events).distinctBy(PostProcessingAutomationEvent::id).take(MaxEvents), lastMessage = message, updatedAtEpochMs = now) }
+    }
+
+    private fun previewSnapshot(): List<PostProcessingAutomationEvent> =
+        synchronized(previewEvents) { previewEvents.toList() }
+
+    private fun pushPreview(event: PostProcessingAutomationEvent) {
+        synchronized(previewEvents) {
+            previewEvents.addFirst(event)
+            while (previewEvents.size > 6) previewEvents.removeLast()
+        }
     }
 
     private fun TermuxMediaPipelineJob.toAutomationEvent(rules: List<PostProcessingAutomationRule>): PostProcessingAutomationEvent {

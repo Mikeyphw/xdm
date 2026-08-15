@@ -82,6 +82,9 @@ data class TermuxPostProcessingPlan(
     val expectedSha256: String = "",
     val formatSelector: String = "",
     val extraArguments: List<String> = emptyList(),
+    /** Transient-only yt-dlp session material. Never serialized into PostProcessingJobSpec. */
+    val ytDlpConfigLines: List<String> = emptyList(),
+    val ytDlpUrl: String? = null,
 ) {
     val summary: String get() = listOf(kind.label, inputPath, outputPath.ifBlank { null }).filterNotNull().joinToString(" • ")
 }

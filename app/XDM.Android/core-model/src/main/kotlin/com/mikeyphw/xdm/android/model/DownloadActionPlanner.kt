@@ -99,7 +99,7 @@ object DownloadActionPlanner {
             resume(primary = true, validated = context.validatedPartialAvailable),
             details(),
             refreshLink(download),
-            redownload(download),
+            redownload(download, context),
             copyLink(context),
             deleteHistory(download),
         )
@@ -109,20 +109,25 @@ object DownloadActionPlanner {
             details(),
             refreshLink(download),
             copyLink(context),
-            redownload(download),
+            redownload(download, context),
             deleteHistory(download),
         )
 
         DownloadState.Completed -> buildList {
-            add(openFile(context, primary = true))
+            if (context.artifact.readable) {
+                add(openFile(context, primary = true))
+            } else {
+                add(details(label = "Open details", primary = true))
+                add(openFile(context))
+            }
             add(shareFile(context))
             if (context.artifact.locationBrowsable) add(openLocation(context))
-            add(details(label = "Open details"))
+            if (context.artifact.readable) add(details(label = "Open details"))
             add(copyFileName(download))
             add(copyFriendlyLocation(context))
             add(copyDestination(context))
             add(rename(context))
-            add(redownload(download))
+            add(redownload(download, context))
             add(deleteFile(context))
             add(deleteHistory(download))
             add(deleteFileAndHistory(context))
@@ -149,13 +154,15 @@ object DownloadActionPlanner {
             details(primary = true),
             refreshLink(download),
             copyLink(context),
-            redownload(download),
+            redownload(download, context),
             deleteHistory(download),
         )
     }
 
     fun primaryActionFor(download: Download, context: DownloadActionContext = DownloadActionContext()): DownloadAction =
-        actionsFor(download, context).firstOrNull { it.primary } ?: details(primary = true)
+        actionsFor(download, context).firstOrNull { it.primary && it.enabled }
+            ?: actionsFor(download, context).firstOrNull { it.enabled && !it.destructive }
+            ?: details(primary = true)
 
     fun batchActionsFor(downloads: List<Download>): List<DownloadAction> {
         if (downloads.isEmpty()) return emptyList()
@@ -326,13 +333,17 @@ object DownloadActionPlanner {
         supportingText = "Enter a fresh URL while retaining destination, queue, checksum, backend preference, and post-processing links.",
     )
 
-    private fun redownload(download: Download, label: String = "Redownload") = DownloadAction(
+    private fun redownload(download: Download, context: DownloadActionContext, label: String = "Redownload") = DownloadAction(
         DownloadActionKind.Redownload,
         label,
         DownloadActionIcon.Refresh,
         enabled = download.sourceUrl.isNotBlank(),
         requiresConfirmation = true,
-        supportingText = "Create a fresh entry preserving the original destination, queue, conflict policy, backend preference, checksum, request session, and post-processing rules where still valid.",
+        supportingText = if (context.exactRequestReplayAvailable) {
+            "Create a fresh entry using the preserved exact request session, destination, queue, backend preference, checksum, and post-processing rules where still valid."
+        } else {
+            "Create a fresh entry from the persistence-safe saved URL. Session headers or expiring signatures may need to be captured again."
+        },
     )
 
     private fun rename(context: DownloadActionContext) = DownloadAction(

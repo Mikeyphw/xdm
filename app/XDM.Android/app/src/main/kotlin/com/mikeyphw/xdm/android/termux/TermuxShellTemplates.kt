@@ -9,14 +9,19 @@ object TermuxShellTemplates {
 
     private fun rawScriptFor(command: XdmTermuxCommand): String = when (command) {
         XdmTermuxCommand.ProbeAllTools -> probeAllToolsScript()
+        is XdmTermuxCommand.PrivacyAudit -> privacyAuditScript(command.sharedStagingPath)
         is XdmTermuxCommand.ProbeTool -> probeToolScript(command.tool)
         is XdmTermuxCommand.Aria2Download -> aria2DownloadScript(command)
-        is XdmTermuxCommand.YtDlpMetadata -> ytdlpMetadataScript(command)
-        is XdmTermuxCommand.YtDlpDownload -> ytdlpDownloadScript(command)
+        is XdmTermuxCommand.YtDlpMetadata -> managedYtDlpRequiredScript("metadata")
+        is XdmTermuxCommand.YtDlpDownload -> managedYtDlpRequiredScript("download")
         is XdmTermuxCommand.FfprobeInspect -> ffprobeInspectScript(command.path)
         is XdmTermuxCommand.FfmpegConvert -> ffmpegConvertScript(command)
         is XdmTermuxCommand.StoragePathProbe -> storagePathProbeScript(command.path)
-        is XdmTermuxCommand.PostProcess -> postProcessScript(command.plan)
+        is XdmTermuxCommand.PostProcess -> if (command.plan.kind in setOf(PostProcessingActionKind.YtDlpMetadata, PostProcessingActionKind.YtDlpDownload)) {
+            managedYtDlpRequiredScript(if (command.plan.kind == PostProcessingActionKind.YtDlpMetadata) "metadata" else "download")
+        } else {
+            postProcessScript(command.plan)
+        }
         is XdmTermuxCommand.OwnedProcessControl -> controlOwnedProcessScript(command)
         is XdmTermuxCommand.Aria2StartDaemon -> aria2StartDaemonScript(command.config)
         is XdmTermuxCommand.Aria2StopDaemon -> aria2RpcScript(command.config, "aria2.shutdown", "XDM_ARIA2_DAEMON\tstopping")
@@ -29,6 +34,32 @@ object TermuxShellTemplates {
         is XdmTermuxCommand.RootAction -> rootActionScript(command.action)
     }
 
+    private fun privacyAuditScript(sharedStagingPath: String): String = buildString {
+        appendLine("set -eu")
+        appendLine("ROOT=\"${'$'}{TMPDIR:-${'$'}PREFIX/tmp}/xdm-post\"")
+        appendLine("SHARED=${shellQuote(sharedStagingPath)}")
+        appendLine("PATTERN='(^|[[:space:]])(Cookie|Authorization|Proxy-Authorization|X-Api-Key):|([?&](token|access_token|signature|sig|auth|api_key|x-amz-signature)=)'")
+        appendLine("FILES=0; FINDINGS=0; STALE=0; NODES=0; SHARED_FILES=0; SHARED_FINDINGS=0; SHARED_STALE=0; INACCESSIBLE=0")
+        appendLine("if [ -d \"${'$'}ROOT\" ]; then")
+        appendLine("  FILES=${'$'}(find \"${'$'}ROOT\" -type f 2>/dev/null | wc -l | tr -d ' ')")
+        appendLine("  FINDINGS=${'$'}(find \"${'$'}ROOT\" -type f -exec grep -IliE \"${'$'}PATTERN\" {} + 2>/dev/null | wc -l | tr -d ' ')")
+        appendLine("  STALE_FILES=${'$'}(find \"${'$'}ROOT\" -type f \\( -name 'yt-dlp-session.conf' -o -name 'yt-dlp-urls.txt' -o -name 'payload.sh' \\) -mmin +120 2>/dev/null | wc -l | tr -d ' ')")
+        appendLine("  STALE_NODES=${'$'}(find \"${'$'}ROOT\" -mindepth 1 \\( -type p -o -type l -o -type s \\) -mmin +120 2>/dev/null | wc -l | tr -d ' ')")
+        appendLine("  STALE_DIRS=${'$'}(find \"${'$'}ROOT\" -mindepth 1 -maxdepth 1 -type d -mmin +120 2>/dev/null | wc -l | tr -d ' ')")
+        appendLine("  NODES=${'$'}(find \"${'$'}ROOT\" -mindepth 1 \\( -type p -o -type l -o -type s \\) 2>/dev/null | wc -l | tr -d ' ')")
+        appendLine("  STALE=${'$'}((STALE_FILES + STALE_NODES + STALE_DIRS))")
+        appendLine("fi")
+        appendLine("if [ -e \"${'$'}SHARED\" ] && [ ! -r \"${'$'}SHARED\" ]; then INACCESSIBLE=1; fi")
+        appendLine("if [ -d \"${'$'}SHARED\" ] && [ -r \"${'$'}SHARED\" ]; then")
+        appendLine("  SHARED_FILES=${'$'}(find \"${'$'}SHARED\" -maxdepth 1 -type f -name '.xdm-*' 2>/dev/null | wc -l | tr -d ' ')")
+        appendLine("  SHARED_FINDINGS=${'$'}(find \"${'$'}SHARED\" -maxdepth 1 -type f -name '.xdm-*' -exec grep -IliE \"${'$'}PATTERN\" {} + 2>/dev/null | wc -l | tr -d ' ')")
+        appendLine("  SHARED_STALE=${'$'}(find \"${'$'}SHARED\" -maxdepth 1 -type f -name '.xdm-*' -mmin +120 2>/dev/null | wc -l | tr -d ' ')")
+        appendLine("fi")
+        appendLine("TOTAL_FINDINGS=${'$'}((FINDINGS + SHARED_FINDINGS + INACCESSIBLE))")
+        appendLine("TOTAL_STALE=${'$'}((STALE + SHARED_STALE))")
+        appendLine("TOTAL_FILES=${'$'}((FILES + SHARED_FILES))")
+        appendLine("if [ \"${'$'}TOTAL_FINDINGS\" -eq 0 ] && [ \"${'$'}TOTAL_STALE\" -eq 0 ]; then printf 'XDM_PRIVACY_AUDIT\\tpass\\tfiles=%s\\tfindings=0\\tstale=0\\tnodes=%s\\n' \"${'$'}TOTAL_FILES\" \"${'$'}NODES\"; else printf 'XDM_PRIVACY_AUDIT\\tfail\\tfiles=%s\\tfindings=%s\\tstale=%s\\tnodes=%s\\n' \"${'$'}TOTAL_FILES\" \"${'$'}TOTAL_FINDINGS\" \"${'$'}TOTAL_STALE\" \"${'$'}NODES\"; exit 23; fi")
+    }
     private fun storagePathProbeScript(path: String): String = buildString {
         appendLine("set -eu")
         appendLine("TARGET=${shellQuote(path)}")
@@ -49,18 +80,8 @@ object TermuxShellTemplates {
 
     private fun managedPayload(command: XdmTermuxCommand, runtime: TermuxRuntimeArtifacts): String = when (command) {
         is XdmTermuxCommand.PostProcess -> managedPostProcessScript(command.plan, runtime)
-        is XdmTermuxCommand.YtDlpMetadata -> managedPostProcessScript(
-            TermuxPostProcessingPlan(PostProcessingActionKind.YtDlpMetadata, command.url, extraArguments = command.extraArguments), runtime,
-        )
-        is XdmTermuxCommand.YtDlpDownload -> managedPostProcessScript(
-            TermuxPostProcessingPlan(
-                kind = PostProcessingActionKind.YtDlpDownload,
-                inputPath = command.url,
-                outputPath = command.destination.trimEnd('/') + "/" + command.outputTemplate,
-                formatSelector = command.format.orEmpty(),
-                extraArguments = command.extraArguments,
-            ), runtime,
-        )
+        is XdmTermuxCommand.YtDlpMetadata -> managedYtDlpRequiredScript("metadata")
+        is XdmTermuxCommand.YtDlpDownload -> managedYtDlpRequiredScript("download")
         is XdmTermuxCommand.FfprobeInspect -> managedPostProcessScript(
             TermuxPostProcessingPlan(PostProcessingActionKind.FfprobeInspect, command.path), runtime,
         )
@@ -90,30 +111,33 @@ object TermuxShellTemplates {
             appendLine("XDM_PROGRESS_FILE=$progressPath")
             appendLine("XDM_METADATA_FILE=$metadataPath")
             appendLine("XDM_PRIVATE_ROOT=\"${'$'}{TMPDIR:-${'$'}PREFIX/tmp}/xdm-post/${'$'}XDM_JOB_ID-${'$'}XDM_PROCESS_TOKEN\"")
-            appendLine("XDM_PAYLOAD_FILE=\"${'$'}XDM_PRIVATE_ROOT/payload.sh\"")
-            appendLine("export XDM_JOB_ID XDM_PROCESS_TOKEN XDM_OWNER_FILE XDM_PROGRESS_FILE XDM_METADATA_FILE XDM_PAYLOAD_FILE")
+            appendLine("XDM_PAYLOAD_FIFO=\"${'$'}XDM_PRIVATE_ROOT/payload.pipe\"")
+            appendLine("export XDM_JOB_ID XDM_PROCESS_TOKEN XDM_OWNER_FILE XDM_PROGRESS_FILE XDM_METADATA_FILE XDM_PRIVATE_ROOT")
             appendLine("umask 077")
             appendLine("mkdir -p \"${'$'}XDM_PRIVATE_ROOT\"")
             appendLine("chmod 700 \"${'$'}XDM_PRIVATE_ROOT\"")
-            appendLine("cat > \"${'$'}XDM_PAYLOAD_FILE\" <<'$delimiter")
-            append(payload.trimEnd()).appendLine()
-            appendLine(delimiter)
-            appendLine("chmod 700 \"${'$'}XDM_PAYLOAD_FILE\"")
-            appendLine("printf 'state=preparing\\njobId=%s\\ntoken=%s\\nwrapperPid=%s\\npayload=%s\\nsetsid=0\\n' \"${'$'}XDM_JOB_ID\" \"${'$'}XDM_PROCESS_TOKEN\" \"${'$'}${'$'}\" \"${'$'}XDM_PAYLOAD_FILE\" > \"${'$'}XDM_OWNER_FILE\"")
+            appendLine("rm -f -- \"${'$'}XDM_PAYLOAD_FIFO\"")
+            appendLine("mkfifo \"${'$'}XDM_PAYLOAD_FIFO\"")
+            appendLine("chmod 600 \"${'$'}XDM_PAYLOAD_FIFO\"")
+            appendLine("printf 'state=preparing\\njobId=%s\\ntoken=%s\\nwrapperPid=%s\\npayload=stdin-fifo\\nsetsid=0\\n' \"${'$'}XDM_JOB_ID\" \"${'$'}XDM_PROCESS_TOKEN\" \"${'$'}${'$'}\" > \"${'$'}XDM_OWNER_FILE\"")
             appendLine("printf 'phase=preparing\\npercent=0\\nbytes=0\\nmessage=Preparing managed Termux job\\n' > \"${'$'}XDM_PROGRESS_FILE\"")
             appendLine("XDM_SETSID=0")
-            appendLine("if command -v setsid >/dev/null 2>&1; then XDM_SETSID=1; setsid sh \"${'$'}XDM_PAYLOAD_FILE\" & else sh \"${'$'}XDM_PAYLOAD_FILE\" & fi")
+            appendLine("if command -v setsid >/dev/null 2>&1; then XDM_SETSID=1; setsid sh -s < \"${'$'}XDM_PAYLOAD_FIFO\" & else sh -s < \"${'$'}XDM_PAYLOAD_FIFO\" & fi")
             appendLine("XDM_CHILD_PID=${'$'}!")
+            appendLine("cat > \"${'$'}XDM_PAYLOAD_FIFO\" <<'$delimiter")
+            append(payload.trimEnd()).appendLine()
+            appendLine(delimiter)
+            appendLine("rm -f -- \"${'$'}XDM_PAYLOAD_FIFO\"")
             appendLine("XDM_START_TICKS=${'$'}(awk '{print ${'$'}22}' /proc/\"${'$'}XDM_CHILD_PID\"/stat 2>/dev/null || true)")
             appendLine("XDM_GROUP=; if [ \"${'$'}XDM_SETSID\" = 1 ]; then XDM_GROUP=${'$'}XDM_CHILD_PID; fi")
-            appendLine("printf 'state=running\\njobId=%s\\ntoken=%s\\nwrapperPid=%s\\npid=%s\\nprocessGroup=%s\\nprocessStartTicks=%s\\nsetsid=%s\\npayload=%s\\n' \"${'$'}XDM_JOB_ID\" \"${'$'}XDM_PROCESS_TOKEN\" \"${'$'}${'$'}\" \"${'$'}XDM_CHILD_PID\" \"${'$'}XDM_GROUP\" \"${'$'}XDM_START_TICKS\" \"${'$'}XDM_SETSID\" \"${'$'}XDM_PAYLOAD_FILE\" > \"${'$'}XDM_OWNER_FILE\"")
-            appendLine("trap 'if [ \"${'$'}XDM_SETSID\" = 1 ]; then kill -TERM -- -\"${'$'}XDM_CHILD_PID\" 2>/dev/null || true; else kill -TERM \"${'$'}XDM_CHILD_PID\" 2>/dev/null || true; fi' TERM INT HUP")
+            appendLine("printf 'state=running\\njobId=%s\\ntoken=%s\\nwrapperPid=%s\\npid=%s\\nprocessGroup=%s\\nprocessStartTicks=%s\\nsetsid=%s\\npayload=stdin-fifo\\n' \"${'$'}XDM_JOB_ID\" \"${'$'}XDM_PROCESS_TOKEN\" \"${'$'}${'$'}\" \"${'$'}XDM_CHILD_PID\" \"${'$'}XDM_GROUP\" \"${'$'}XDM_START_TICKS\" \"${'$'}XDM_SETSID\" > \"${'$'}XDM_OWNER_FILE\"")
+            appendLine("trap 'if [ \"${'$'}XDM_SETSID\" = 1 ]; then kill -TERM -- -\"${'$'}XDM_CHILD_PID\" 2>/dev/null || true; else kill -TERM \"${'$'}XDM_CHILD_PID\" 2>/dev/null || true; fi; rm -f -- \"${'$'}XDM_PAYLOAD_FIFO\"' TERM INT HUP")
             appendLine("set +e")
             appendLine("wait \"${'$'}XDM_CHILD_PID\"")
             appendLine("XDM_EXIT=${'$'}?")
             appendLine("set -e")
-            appendLine("printf 'state=finished\\njobId=%s\\ntoken=%s\\nwrapperPid=%s\\npid=%s\\nprocessGroup=%s\\nprocessStartTicks=%s\\nsetsid=%s\\nexitCode=%s\\npayload=%s\\n' \"${'$'}XDM_JOB_ID\" \"${'$'}XDM_PROCESS_TOKEN\" \"${'$'}${'$'}\" \"${'$'}XDM_CHILD_PID\" \"${'$'}XDM_GROUP\" \"${'$'}XDM_START_TICKS\" \"${'$'}XDM_SETSID\" \"${'$'}XDM_EXIT\" \"${'$'}XDM_PAYLOAD_FILE\" > \"${'$'}XDM_OWNER_FILE\"")
-            appendLine("rm -f -- \"${'$'}XDM_PAYLOAD_FILE\"")
+            appendLine("printf 'state=finished\\njobId=%s\\ntoken=%s\\nwrapperPid=%s\\npid=%s\\nprocessGroup=%s\\nprocessStartTicks=%s\\nsetsid=%s\\nexitCode=%s\\npayload=stdin-fifo\\n' \"${'$'}XDM_JOB_ID\" \"${'$'}XDM_PROCESS_TOKEN\" \"${'$'}${'$'}\" \"${'$'}XDM_CHILD_PID\" \"${'$'}XDM_GROUP\" \"${'$'}XDM_START_TICKS\" \"${'$'}XDM_SETSID\" \"${'$'}XDM_EXIT\" > \"${'$'}XDM_OWNER_FILE\"")
+            appendLine("rm -f -- \"${'$'}XDM_PAYLOAD_FIFO\"")
             appendLine("rmdir \"${'$'}XDM_PRIVATE_ROOT\" 2>/dev/null || true")
             appendLine("exit \"${'$'}XDM_EXIT\"")
         }
@@ -124,6 +148,17 @@ object TermuxShellTemplates {
         appendLine("XDM_PROGRESS=${shellQuote(runtime.progressShellPath)}")
         appendLine("XDM_METADATA=${shellQuote(runtime.metadataShellPath)}")
         appendLine("printf 'phase=running\\npercent=0\\nbytes=0\\nmessage=${shellMarker(plan.kind.label)} started\\n' > \"${'$'}XDM_PROGRESS\"")
+        val transientYtDlp = plan.kind in setOf(PostProcessingActionKind.YtDlpMetadata, PostProcessingActionKind.YtDlpDownload) && !plan.ytDlpUrl.isNullOrBlank()
+        if (transientYtDlp) {
+            appendLine("XDM_YTDLP_CONFIG=\"${'$'}XDM_PRIVATE_ROOT/yt-dlp-session.conf\"")
+            appendLine("XDM_YTDLP_URLS=\"${'$'}XDM_PRIVATE_ROOT/yt-dlp-urls.txt\"")
+            appendLine("umask 077")
+            appendLine("printf '%s\\n' --ignore-config > \"${'$'}XDM_YTDLP_CONFIG\"")
+            plan.ytDlpConfigLines.forEach { line -> appendLine("printf '%s\\n' ${shellQuote(line)} >> \"${'$'}XDM_YTDLP_CONFIG\"") }
+            appendLine("printf '%s\\n' ${shellQuote(plan.ytDlpUrl.orEmpty())} > \"${'$'}XDM_YTDLP_URLS\"")
+            appendLine("chmod 600 \"${'$'}XDM_YTDLP_CONFIG\" \"${'$'}XDM_YTDLP_URLS\"")
+            appendLine("trap 'rm -f -- \"${'$'}XDM_YTDLP_CONFIG\" \"${'$'}XDM_YTDLP_URLS\"' EXIT HUP INT TERM")
+        }
         val requiredTools = when (plan.kind) {
             PostProcessingActionKind.FfprobeInspect -> listOf(ExternalTool.Ffprobe)
             PostProcessingActionKind.RemuxFastStart, PostProcessingActionKind.ExtractAudio, PostProcessingActionKind.FfmpegRemux -> listOf(ExternalTool.Ffmpeg, ExternalTool.Ffprobe)
@@ -150,51 +185,47 @@ object TermuxShellTemplates {
             }
             PostProcessingActionKind.FfprobeInspect -> {
                 appendLine("command -v ffprobe >/dev/null 2>&1 || { printf 'missing ffprobe\\n' >&2; exit 127; }")
-                appendLine("ffprobe -v error -show_format -show_streams -print_format json ${shellQuote(plan.inputPath)} > \"${'$'}XDM_METADATA\"")
+                appendLine("ffprobe -v error -show_entries format=format_name,duration:stream=codec_name -print_format json ${shellQuote(plan.inputPath)} > \"${'$'}XDM_METADATA\"")
             }
             PostProcessingActionKind.RemuxFastStart -> {
                 appendLine("command -v ffmpeg >/dev/null 2>&1 || { printf 'missing ffmpeg\\n' >&2; exit 127; }")
                 appendLine("printf 'phase=preflight\\npercent=0\\nmessage=Validating media streams and MP4 compatibility\\n' > \"${'$'}XDM_PROGRESS\"")
                 appendLine("ffprobe -v error -show_entries stream=codec_type -of csv=p=0 ${shellQuote(plan.inputPath)} | grep -Eq '^(video|audio)$' || { printf 'input has no remuxable media stream\\n' >&2; exit 65; }")
                 appendLine("ffmpeg -hide_banner -nostdin -nostats -loglevel warning -progress \"${'$'}XDM_PROGRESS\" -y -i ${shellQuote(plan.inputPath)} -map 0 -c copy -movflags +faststart ${shellQuote(plan.outputPath)}")
-                appendLine("ffprobe -v error -show_format -show_streams -print_format json ${shellQuote(plan.outputPath)} > \"${'$'}XDM_METADATA\" 2>/dev/null || true")
+                appendLine("ffprobe -v error -show_entries format=format_name,duration:stream=codec_name -print_format json ${shellQuote(plan.outputPath)} > \"${'$'}XDM_METADATA\" 2>/dev/null || true")
             }
             PostProcessingActionKind.ExtractAudio -> {
                 appendLine("command -v ffmpeg >/dev/null 2>&1 || { printf 'missing ffmpeg\\n' >&2; exit 127; }")
                 appendLine("printf 'phase=preflight\\npercent=0\\nmessage=Validating the source audio stream\\n' > \"${'$'}XDM_PROGRESS\"")
                 appendLine("ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 ${shellQuote(plan.inputPath)} | grep -q . || { printf 'input has no audio stream\\n' >&2; exit 65; }")
                 appendLine("ffmpeg -hide_banner -nostdin -nostats -loglevel warning -progress \"${'$'}XDM_PROGRESS\" -y -i ${shellQuote(plan.inputPath)} -vn -c:a copy ${shellQuote(plan.outputPath)}")
-                appendLine("ffprobe -v error -show_format -show_streams -print_format json ${shellQuote(plan.outputPath)} > \"${'$'}XDM_METADATA\" 2>/dev/null || true")
+                appendLine("ffprobe -v error -show_entries format=format_name,duration:stream=codec_name -print_format json ${shellQuote(plan.outputPath)} > \"${'$'}XDM_METADATA\" 2>/dev/null || true")
             }
             PostProcessingActionKind.FfmpegRemux -> {
                 appendLine("command -v ffmpeg >/dev/null 2>&1 || { printf 'missing ffmpeg\\n' >&2; exit 127; }")
                 appendLine("printf 'phase=preflight\\npercent=0\\nmessage=Validating media streams and output container\\n' > \"${'$'}XDM_PROGRESS\"")
                 appendLine("ffprobe -v error -show_entries stream=codec_type -of csv=p=0 ${shellQuote(plan.inputPath)} | grep -Eq '^(video|audio)$' || { printf 'input has no remuxable media stream\\n' >&2; exit 65; }")
                 appendLine("ffmpeg -hide_banner -nostdin -nostats -loglevel warning -progress \"${'$'}XDM_PROGRESS\" -y -i ${shellQuote(plan.inputPath)} -map 0 -c copy ${shellQuote(plan.outputPath)}")
-                appendLine("ffprobe -v error -show_format -show_streams -print_format json ${shellQuote(plan.outputPath)} > \"${'$'}XDM_METADATA\" 2>/dev/null || true")
+                appendLine("ffprobe -v error -show_entries format=format_name,duration:stream=codec_name -print_format json ${shellQuote(plan.outputPath)} > \"${'$'}XDM_METADATA\" 2>/dev/null || true")
             }
             PostProcessingActionKind.YtDlpMetadata -> {
                 appendLine("command -v yt-dlp >/dev/null 2>&1 || { printf 'missing yt-dlp\\n' >&2; exit 127; }")
-                append("yt-dlp -J --no-warnings ")
-                appendYtDlpExtraArguments(plan.extraArguments)
-                appendLine("${shellQuote(plan.inputPath)} > \"${'$'}XDM_METADATA\"")
+                check(transientYtDlp) { "Managed yt-dlp metadata requires a transient encrypted session" }
+                appendLine("yt-dlp --config-locations \"${'$'}XDM_YTDLP_CONFIG\" --batch-file \"${'$'}XDM_YTDLP_URLS\" --no-warnings --print \"%(.{title,ext,duration,is_live,vcodec,acodec,formats.:.{format_id,format_note,vcodec,acodec,mime_type,width,height,tbr,language}})#j\" > \"${'$'}XDM_METADATA\"")
             }
             PostProcessingActionKind.YtDlpDownload -> {
                 appendLine("command -v yt-dlp >/dev/null 2>&1 || { printf 'missing yt-dlp\\n' >&2; exit 127; }")
+                check(transientYtDlp) { "Managed yt-dlp download requires a transient encrypted session" }
                 appendLine("printf 'phase=preflight\\npercent=0\\nmessage=Resolving requested yt-dlp format\\n' > \"${'$'}XDM_PROGRESS\"")
-                append("yt-dlp --simulate --no-warnings --no-playlist ")
+                append("yt-dlp --config-locations \"${'$'}XDM_YTDLP_CONFIG\" --batch-file \"${'$'}XDM_YTDLP_URLS\" --simulate --no-warnings --no-playlist ")
                 plan.formatSelector.takeIf(String::isNotBlank)?.let { append("-f ${shellQuote(it)} ") }
-                appendYtDlpExtraArguments(plan.extraArguments)
-                appendLine("${shellQuote(plan.inputPath)} >/dev/null")
-                append("yt-dlp --force-overwrites --no-part --newline --progress-template ")
-                append(shellQuote("download:XDM_YTDLP\t%(progress._percent_str)s\t%(progress.downloaded_bytes)s\t%(progress.total_bytes_estimate)s"))
+                appendLine(">/dev/null")
+                append("yt-dlp --config-locations \"${'$'}XDM_YTDLP_CONFIG\" --batch-file \"${'$'}XDM_YTDLP_URLS\" --force-overwrites --no-part --newline --progress-template ")
+                append(shellQuote("download:XDM_YTDLP\\t%(progress._percent_str)s\\t%(progress.downloaded_bytes)s\\t%(progress.total_bytes_estimate)s"))
                 append(" -o ${shellQuote(plan.outputPath)} ")
                 plan.formatSelector.takeIf(String::isNotBlank)?.let { append("-f ${shellQuote(it)} ") }
-                appendYtDlpExtraArguments(plan.extraArguments)
-                appendLine("${shellQuote(plan.inputPath)} > \"${'$'}XDM_PROGRESS\"")
-                append("yt-dlp -J --no-warnings ")
-                appendYtDlpExtraArguments(plan.extraArguments)
-                appendLine("${shellQuote(plan.inputPath)} > \"${'$'}XDM_METADATA\" || true")
+                appendLine("> \"${'$'}XDM_PROGRESS\"")
+                appendLine("yt-dlp --config-locations \"${'$'}XDM_YTDLP_CONFIG\" --batch-file \"${'$'}XDM_YTDLP_URLS\" --no-warnings --print \"%(.{title,ext,duration,is_live,vcodec,acodec,formats.:.{format_id,format_note,vcodec,acodec,mime_type,width,height,tbr,language}})#j\" > \"${'$'}XDM_METADATA\" || true")
             }
             PostProcessingActionKind.CleanupPartials -> {
                 appendLine("TARGET=${shellQuote(plan.inputPath)}")
@@ -290,32 +321,11 @@ object TermuxShellTemplates {
         appendLine("--dir ${shellQuote(command.destination)} ${shellQuote(command.url)}")
     }
 
-    private fun ytdlpMetadataScript(command: XdmTermuxCommand.YtDlpMetadata): String = buildString {
-        appendLine("set -e")
-        appendLine("if command -v yt-dlp >/dev/null 2>&1; then :; else printf 'XDM_MEDIA\tytdlp_metadata\tmissing\tyt-dlp not found\n'; exit 127; fi")
-        appendLine("printf 'XDM_MEDIA\tytdlp_metadata\tstarted\n'")
-        append("yt-dlp --dump-single-json --no-warnings ")
-        appendYtDlpExtraArguments(command.extraArguments)
-        appendLine(shellQuote(command.url))
-    }
-
-    private fun ytdlpDownloadScript(command: XdmTermuxCommand.YtDlpDownload): String = buildString {
-        appendLine("set -e")
-        appendLine("if command -v yt-dlp >/dev/null 2>&1; then :; else printf 'XDM_MEDIA\tytdlp_download\tmissing\tyt-dlp not found\n'; exit 127; fi")
-        appendLine("mkdir -p ${shellQuote(command.destination)}")
-        append("yt-dlp --no-part --newline --paths ${shellQuote(command.destination)} --output ${shellQuote(command.outputTemplate)} ")
-        command.format?.trim()?.takeIf { it.isNotBlank() }?.let { append("--format ${shellQuote(it)} ") }
-        appendYtDlpExtraArguments(command.extraArguments)
-        appendLine(shellQuote(command.url))
-    }
-
-    private fun StringBuilder.appendYtDlpExtraArguments(arguments: List<String>) {
-        arguments.chunked(2).forEach { chunk ->
-            val flag = chunk.getOrNull(0)?.takeIf { it.startsWith("--") } ?: return@forEach
-            val value = chunk.getOrNull(1)
-            append(shellQuote(flag)).append(' ')
-            if (value != null && !value.startsWith("--")) append(shellQuote(value)).append(' ')
-        }
+    private fun managedYtDlpRequiredScript(kind: String): String = buildString {
+        require(kind in setOf("metadata", "download")) { "Unsupported raw yt-dlp command kind" }
+        appendLine("set -eu")
+        appendLine("printf 'XDM_MEDIA\tytdlp_${kind}\tdenied\tmanaged transient session required\n' >&2")
+        appendLine("exit 3")
     }
 
     private fun ffprobeInspectScript(path: String): String = buildString {
@@ -375,14 +385,20 @@ object TermuxShellTemplates {
                 appendLine("ffmpeg -hide_banner -y -i ${shellQuote(plan.inputPath)} -vn -c:a copy ${shellQuote(plan.outputPath)}")
             }
             PostProcessingActionKind.CleanupPartials -> {
-                appendLine("TARGET=${shellQuote(plan.inputPath)}")
-                appendLine("case \"${'$'}TARGET\" in *XDM*|*Download*|*download*) rm -f \"${'$'}TARGET.aria2\" \"${'$'}TARGET.part\" \"${'$'}TARGET.tmp\"; printf 'XDM_POST_PROCESS\tcleanup\t%s\n' \"${'$'}TARGET\" ;; *) printf 'XDM_POST_PROCESS\tdenied\tpath outside XDM/download areas\n'; exit 3 ;; esac")
+                appendLine("printf 'XDM_POST_PROCESS\tdenied\tmanaged Android cleanup required\n' >&2")
+                appendLine("exit 3")
             }
             PostProcessingActionKind.FixPermissionsWithRoot -> {
                 appendLine("printf 'XDM_POST_PROCESS\troot_required\tuse typed root action\n'")
             }
-            PostProcessingActionKind.YtDlpMetadata -> appendLine("yt-dlp -J --no-warnings ${shellQuote(plan.inputPath)}")
-            PostProcessingActionKind.YtDlpDownload -> appendLine("yt-dlp --no-part -o ${shellQuote(plan.outputPath)} ${shellQuote(plan.inputPath)}")
+            PostProcessingActionKind.YtDlpMetadata -> {
+                appendLine("printf 'managed transient yt-dlp session required\n' >&2")
+                appendLine("exit 3")
+            }
+            PostProcessingActionKind.YtDlpDownload -> {
+                appendLine("printf 'managed transient yt-dlp session required\n' >&2")
+                appendLine("exit 3")
+            }
             PostProcessingActionKind.FfmpegRemux -> appendLine("ffmpeg -hide_banner -y -i ${shellQuote(plan.inputPath)} -map 0 -c copy ${shellQuote(plan.outputPath)}")
         }
         appendLine("printf 'XDM_POST_PROCESS\tfinished\t${shellMarker(plan.kind.label)}\n'")
@@ -428,21 +444,23 @@ object TermuxShellTemplates {
         appendLine("for pid in ${'$'}MATCHES; do kill -TERM \"${'$'}pid\"; printf 'XDM_ROOT_ACTION\\tkilled\\taria2c pid=%s\\n' \"${'$'}pid\"; done")
     }
 
-    private fun rootKillOwnedProcessScript(pid: Int): String = buildString {
-        appendLine("TARGET_PID=${pid.coerceAtLeast(1)}")
-        appendLine("CMDLINE=${'$'}(tr '\\0' ' ' < /proc/${'$'}TARGET_PID/cmdline 2>/dev/null || true)")
-        appendLine("case \"${'$'}CMDLINE\" in *aria2c*16800*|*ffmpeg*XDM*|*yt-dlp*XDM*) kill -TERM \"${'$'}TARGET_PID\"; printf 'XDM_ROOT_ACTION\\tkilled\\tpid=%s\\n' \"${'$'}TARGET_PID\" ;; *) printf 'XDM_ROOT_ACTION\\tdenied\\tprocess is not XDM-owned\\n'; exit 3 ;; esac")
+    private fun rootKillOwnedProcessScript(@Suppress("UNUSED_PARAMETER") pid: Int): String = buildString {
+        appendLine("printf 'XDM_ROOT_ACTION\\tdenied\\tPID-only ownership is not accepted; use the token-bound managed process controller\\n'")
+        appendLine("exit 3")
     }
 
     private fun rootFixPermissionsScript(path: String): String = buildString {
         appendLine("TARGET=${shellQuote(path)}")
-        appendLine("case \"${'$'}TARGET\" in *XDM*|*Download*|*download*) chmod -R u+rwX,g+rwX \"${'$'}TARGET\"; printf 'XDM_ROOT_ACTION\\tpermissions_fixed\\t%s\\n' \"${'$'}TARGET\" ;; *) printf 'XDM_ROOT_ACTION\\tdenied\\tpath is outside XDM/download areas\\n'; exit 3 ;; esac")
+        appendLine("chmod -R u+rwX,g+rwX \"${'$'}TARGET\"")
+        appendLine("printf 'XDM_ROOT_ACTION\\tpermissions_fixed\\t%s\\n' \"${'$'}TARGET\"")
     }
 
     private fun rootMoveCompletedFileScript(from: String, to: String): String = buildString {
         appendLine("FROM=${shellQuote(from)}")
         appendLine("TO=${shellQuote(to)}")
-        appendLine("case \"${'$'}FROM:${'$'}TO\" in *XDM*|*Download*|*download*) mkdir -p \"${'$'}(dirname \"${'$'}TO\")\"; mv -n \"${'$'}FROM\" \"${'$'}TO\"; printf 'XDM_ROOT_ACTION\\tmoved\\t%s\\t%s\\n' \"${'$'}FROM\" \"${'$'}TO\" ;; *) printf 'XDM_ROOT_ACTION\\tdenied\\tpaths are outside XDM/download areas\\n'; exit 3 ;; esac")
+        appendLine("mkdir -p \"${'$'}(dirname \"${'$'}TO\")\"")
+        appendLine("mv -n \"${'$'}FROM\" \"${'$'}TO\"")
+        appendLine("printf 'XDM_ROOT_ACTION\\tmoved\\t%s\\t%s\\n' \"${'$'}FROM\" \"${'$'}TO\"")
     }
 
     private fun aria2StartDaemonScript(config: TermuxAria2RpcConfig): String = buildString {

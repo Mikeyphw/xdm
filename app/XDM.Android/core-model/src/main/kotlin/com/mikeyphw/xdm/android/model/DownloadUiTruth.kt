@@ -35,11 +35,14 @@ data class DownloadActionContext(
     val backendMigrationAvailable: Boolean = false,
     val postProcessingInputAvailable: Boolean = false,
     val publicSourceUrl: String? = null,
+    val exactRequestReplayAvailable: Boolean = false,
 ) {
     fun canMoveUp(): Boolean = queuePosition != null && queuePosition > 1
     fun canMoveDown(): Boolean = queuePosition != null && queuePosition < queueSize
-    fun verificationPassed(): Boolean = latestVerification?.status == VerificationStatus.Passed || latestChecksum?.matchesExpectation == true
     fun verificationFailed(): Boolean = latestVerification?.status == VerificationStatus.Failed || latestChecksum?.matchesExpectation == false
+    fun verificationPassed(): Boolean = !verificationFailed() && (
+        latestVerification?.status == VerificationStatus.Passed || latestChecksum?.matchesExpectation == true
+    )
 }
 
 data class DownloadUiTruth(
@@ -64,6 +67,7 @@ object DownloadUiTruthPlanner {
         backendMigrationAvailable: Boolean = false,
         postProcessingInputAvailable: Boolean = false,
         validatedPartialAvailable: Boolean = false,
+        exactRequestReplayAvailable: Boolean = false,
     ): DownloadActionContext {
         val queue = downloads
             .filter { (it.queueId ?: "default") == (download.queueId ?: "default") && it.state in queueStates }
@@ -79,6 +83,7 @@ object DownloadUiTruthPlanner {
             backendMigrationAvailable = backendMigrationAvailable,
             postProcessingInputAvailable = postProcessingInputAvailable,
             publicSourceUrl = ExternalUrlPolicy.persistableUrl(download.sourceUrl),
+            exactRequestReplayAvailable = exactRequestReplayAvailable,
         )
     }
 
@@ -100,11 +105,7 @@ object DownloadUiTruthPlanner {
             DownloadState.Verifying -> "Verifying file integrity"
             DownloadState.Repairing -> "Repairing verified damaged ranges"
             DownloadState.Finalizing -> "Committing the completed file"
-            DownloadState.Completed -> when {
-                context.verificationPassed() -> "Verified and ready"
-                context.verificationFailed() -> "Completed file failed verification"
-                else -> "Download complete; verification not confirmed"
-            }
+            DownloadState.Completed -> completedStatus(context)
             DownloadState.Failed -> "Transfer failed"
             DownloadState.Cancelled -> "Cancelled"
             DownloadState.RecoveryRequired -> "Recovery review required"
@@ -120,15 +121,15 @@ object DownloadUiTruthPlanner {
             DownloadState.Verifying -> "Verifying"
             DownloadState.Repairing -> "Repairing"
             DownloadState.Finalizing -> "Finalizing"
-            DownloadState.Completed -> if (context.verificationPassed()) "Verified" else "Complete"
+            DownloadState.Completed -> completedBadge(context)
             DownloadState.Failed -> "Failed"
             DownloadState.Cancelled -> "Cancelled"
             DownloadState.RecoveryRequired -> "Recovery"
         }
         val byteProgress = when {
             download.totalBytes != null && download.totalBytes > 0L ->
-                "${download.bytesReceived.coerceAtMost(download.totalBytes)} of ${download.totalBytes} bytes"
-            download.bytesReceived > 0L -> "${download.bytesReceived} bytes received"
+                "${download.bytesReceived.coerceAtLeast(0L).coerceAtMost(download.totalBytes)} of ${download.totalBytes} bytes"
+            download.bytesReceived > 0L -> "${download.bytesReceived.coerceAtLeast(0L)} bytes received"
             else -> "No payload bytes recorded"
         }
         val overall = when (download.state) {
@@ -139,6 +140,7 @@ object DownloadUiTruthPlanner {
             else -> status
         }
         val supporting = when {
+            download.state == DownloadState.Completed -> completedStatus(context)
             policyReason != null -> policyReason
             download.state == DownloadState.Queued -> queueText ?: status
             download.state == DownloadState.Failed && !download.errorMessage.isNullOrBlank() -> download.errorMessage.orEmpty()
@@ -164,6 +166,32 @@ object DownloadUiTruthPlanner {
             "Resume availability will be decided from durable validators and the current partial artifact."
         }
         return DownloadUiTruth(badge, status, supporting, byteProgress, overall, trailing, verification, storage, resume)
+    }
+
+    private fun completedStatus(context: DownloadActionContext): String = when (context.artifact.health) {
+        CompletedArtifactHealth.Missing -> "Completed record; saved file is missing"
+        CompletedArtifactHealth.PermissionLost -> "Completed record; storage permission was lost"
+        CompletedArtifactHealth.ProviderChanged -> "Completed record; storage provider changed"
+        CompletedArtifactHealth.SizeMismatch -> "Completed file size no longer matches the committed artifact"
+        CompletedArtifactHealth.Unknown -> "Download complete; saved file health is not confirmed"
+        CompletedArtifactHealth.Present -> when {
+            context.verificationFailed() -> "Completed file failed verification"
+            context.verificationPassed() -> "Verified and ready"
+            else -> "Download complete; verification not confirmed"
+        }
+    }
+
+    private fun completedBadge(context: DownloadActionContext): String = when (context.artifact.health) {
+        CompletedArtifactHealth.Missing -> "File missing"
+        CompletedArtifactHealth.PermissionLost -> "Access lost"
+        CompletedArtifactHealth.ProviderChanged -> "Storage changed"
+        CompletedArtifactHealth.SizeMismatch -> "Size mismatch"
+        CompletedArtifactHealth.Unknown -> "Needs check"
+        CompletedArtifactHealth.Present -> when {
+            context.verificationFailed() -> "Verification failed"
+            context.verificationPassed() -> "Verified"
+            else -> "Complete"
+        }
     }
 
     private val queueStates = setOf(

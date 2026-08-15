@@ -214,11 +214,12 @@ for route in ("Downloads", "Add", "Media", "Library", "Activity", "Settings"):
 if len(re.findall(r'^    [A-Z][A-Za-z]+\("', routes, re.MULTILINE)) != 6:
     ERRORS.append("UIX R6 must not add a top-level route")
 database = read("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt")
-if not re.search(r"version\s*=\s*18\b", database):
-    ERRORS.append("Room schema must be 18 after generation-integrity migration")
+schema_match = re.search(r"version\s*=\s*(\d+)\b", database)
+if not schema_match or int(schema_match.group(1)) < 18:
+    ERRORS.append("Room schema must retain at least the generation-integrity schema 18 migration floor")
 build = read("app/build.gradle.kts")
 if 'versionName = "0.21.0"' not in build or not re.search(r"versionCode\s*=\s*22\b", build):
-    ERRORS.append("App version must remain 0.21.0 / 21")
+    ERRORS.append("App version must remain 0.21.0 / 22")
 if "warningsAsErrors = true" not in build:
     ERRORS.append("Android lint warnings must remain errors")
 

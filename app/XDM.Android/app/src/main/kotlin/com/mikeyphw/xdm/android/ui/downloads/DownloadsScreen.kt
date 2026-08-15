@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -40,11 +42,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.ChecksumResult
@@ -122,6 +128,7 @@ fun DownloadsScreen(
     onDeleteSavedFile: (Download, Boolean, (String) -> Unit) -> Unit,
     onRestartFromZero: (Download, (String) -> Unit) -> Unit,
     onOpenRecovery: (Download, DownloadActionKind) -> Unit,
+    onDetailSelectionChanged: (String?) -> Unit,
     onOpenActivityAttention: () -> Unit,
     onOpenActivityDecisions: () -> Unit,
 ) {
@@ -134,7 +141,7 @@ fun DownloadsScreen(
     var ordering by rememberSaveable { mutableStateOf(DownloadDashboardOrdering.Smart) }
     var includeArchived by rememberSaveable { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(setOf<String>()) }
-    var detailDownloadId by rememberSaveable { mutableStateOf<String?>(null) }
+    var detailDownloadId by rememberSaveable { mutableStateOf<String?>(requestedDetailDownloadId) }
     var organizeVisible by rememberSaveable { mutableStateOf(false) }
     var actionDownloadId by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmationDownloadId by remember { mutableStateOf<String?>(null) }
@@ -144,6 +151,7 @@ fun DownloadsScreen(
     var textActionValue by remember { mutableStateOf("") }
     var artifactCapabilities by remember { mutableStateOf<Map<String, CompletedArtifactCapabilities>>(emptyMap()) }
     var durableResumeCapabilities by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
+    var twoPaneLayoutActive by remember { mutableStateOf(false) }
 
     val metrics = DownloadsWorkspacePlanner.metrics(downloads.filterNot { it.archived })
     val visibleDownloads = DownloadsWorkspacePlanner.visibleDownloads(
@@ -160,7 +168,6 @@ fun DownloadsScreen(
     val heldDownload = DownloadsWorkspacePlanner.firstPolicyHeldDownload(downloads)
     val copy = DownloadsWorkspacePlanner.copyFor(filter)
     val selectionMode = selectedIds.isNotEmpty()
-    val profileTwoPaneDefault = windowProfile.allowsTwoPaneDownloads
     fun actionContext(download: Download): DownloadActionContext = DownloadUiTruthPlanner.contextFor(
         download = download,
         downloads = downloads,
@@ -172,6 +179,7 @@ fun DownloadsScreen(
         backendMigrationAvailable = backendMigrationAvailable(download, capabilities),
         postProcessingInputAvailable = artifactCapabilities[download.id]?.readable == true,
         validatedPartialAvailable = durableResumeCapabilities[download.id] == true,
+        exactRequestReplayAvailable = MediaRequestHandoffStore.forDownload(download.id)?.exactUrl != null,
     )
     val executeDownloadAction: (Download, DownloadAction) -> Unit = { download, action ->
         performDownloadAction(
@@ -220,6 +228,10 @@ fun DownloadsScreen(
             ?.let { detailDownloadId = it }
     }
 
+    LaunchedEffect(detailDownloadId) {
+        onDetailSelectionChanged(detailDownloadId)
+    }
+
     LaunchedEffect(downloads) {
         val completed = downloads.filter { it.state == DownloadState.Completed }
         artifactCapabilities = completed.associate { it.id to onInspectArtifact(it) }
@@ -233,12 +245,12 @@ fun DownloadsScreen(
         durableResumeCapabilities = resumable.associate { it.id to onInspectResumeCapability(it) }
     }
 
-    LaunchedEffect(downloads, visibleDownloads, detailDownloadId, windowProfile) {
+    LaunchedEffect(downloads, visibleDownloads, detailDownloadId, twoPaneLayoutActive) {
         val visibleIds = visibleDownloads.mapTo(mutableSetOf()) { it.id }
         selectedIds = selectedIds.intersect(visibleIds)
         if (detailDownloadId != null && detailDownloadId !in visibleIds) {
-            detailDownloadId = if (profileTwoPaneDefault) visibleDownloads.firstOrNull()?.id else null
-        } else if (profileTwoPaneDefault && detailDownloadId == null) {
+            detailDownloadId = if (twoPaneLayoutActive) visibleDownloads.firstOrNull()?.id else null
+        } else if (twoPaneLayoutActive && detailDownloadId == null) {
             detailDownloadId = visibleDownloads.firstOrNull()?.id
         }
     }
@@ -297,7 +309,7 @@ fun DownloadsScreen(
             label = DownloadWorkspaceFilter::label,
             onSelected = {
                 filter = it
-                if (windowProfile.allowsTwoPaneDownloads) detailDownloadId = null
+                if (twoPaneLayoutActive) detailDownloadId = null
             },
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
         )
@@ -315,13 +327,31 @@ fun DownloadsScreen(
             onOpenOrganize = { organizeVisible = true },
         )
 
-        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+        var downloadsPaneLeftInWindow by remember { mutableStateOf<Dp?>(null) }
+        val paneDensity = LocalDensity.current
+        BoxWithConstraints(
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .onGloballyPositioned { coordinates ->
+                    downloadsPaneLeftInWindow = with(paneDensity) { coordinates.positionInWindow().x.toDp() }
+                },
+        ) {
             val measuredWindowProfile = windowProfile.withAvailablePaneWidth(maxWidth)
-            val measuredTwoPaneDownloads = measuredWindowProfile.allowsTwoPaneDownloadsFor(maxWidth)
+            val contentLeftInWindow = downloadsPaneLeftInWindow?.plus(20.dp)
+            val contentWidth = (maxWidth - 40.dp).coerceAtLeast(0.dp)
+            val hingeSplit = contentLeftInWindow?.let { measuredWindowProfile.verticalHingeSplitFor(it, contentWidth) }
+            val measuredTwoPaneDownloads = when {
+                measuredWindowProfile.hasVerticalSeparatingFold -> hingeSplit != null
+                else -> measuredWindowProfile.allowsTwoPaneDownloadsFor(maxWidth)
+            }
+            LaunchedEffect(measuredTwoPaneDownloads) {
+                twoPaneLayoutActive = measuredTwoPaneDownloads
+            }
             if (measuredTwoPaneDownloads) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = if (hingeSplit == null) Arrangement.spacedBy(measuredWindowProfile.minimumPaneGap) else Arrangement.Start,
                 ) {
                     DownloadWorkspaceList(
                         downloads = visibleDownloads,
@@ -345,14 +375,21 @@ fun DownloadsScreen(
                         },
                         onMoreActions = { download -> actionDownloadId = download.id },
                         modifier = Modifier
-                            .weight(0.58f)
+                            .then(
+                                if (hingeSplit != null) Modifier.width(hingeSplit.leftPaneWidth)
+                                else Modifier.weight(0.58f),
+                            )
                             .fillMaxHeight()
                             .widthIn(min = measuredWindowProfile.downloadsListMinWidth)
                             .xdmTraversalOrder(XdmTraversalOrder.List),
                     )
+                    if (hingeSplit != null) Spacer(Modifier.width(hingeSplit.hingeGap))
                     Box(
                         Modifier
-                            .weight(0.42f)
+                            .then(
+                                if (hingeSplit != null) Modifier.width(hingeSplit.rightPaneWidth)
+                                else Modifier.weight(0.42f),
+                            )
                             .fillMaxHeight()
                             .widthIn(min = measuredWindowProfile.downloadsDetailMinWidth)
                             .xdmPane("Download details pane", traversal = XdmTraversalOrder.Detail),
@@ -466,10 +503,18 @@ fun DownloadsScreen(
                     }) { Text("Cancel") }
                     Button(onClick = {
                         val confirmedDownload = confirmationSheetDownload
-                        val confirmedAction = confirmationSheetAction
+                        val requestedKind = confirmationSheetAction.kind
                         confirmationDownloadId = null
                         confirmationAction = null
-                        executeDownloadAction(confirmedDownload, confirmedAction)
+                        val freshAction = DownloadActionPlanner.actionsFor(
+                            confirmedDownload,
+                            actionContext(confirmedDownload),
+                        ).firstOrNull { it.kind == requestedKind && it.enabled && it.requiresConfirmation }
+                        if (freshAction == null) {
+                            showActionToast(context, "That action is no longer available because the download changed.")
+                        } else {
+                            executeDownloadAction(confirmedDownload, freshAction)
+                        }
                     }) { Text("Confirm") }
                 }
             }
@@ -551,6 +596,15 @@ fun DownloadsScreen(
                 onCreateTag = onCreateTag,
                 onAssignTag = { tag -> selectedDownloads.forEach { onAssignTag(it, tag) } },
                 onSaveSearch = onSaveSearch,
+                onApplySavedSearch = { search ->
+                    query = search.query
+                    filter = search.state.toWorkspaceFilter()
+                    includeArchived = search.includeArchived
+                    searchVisible = search.query.isNotBlank()
+                    selectedIds = emptySet()
+                    detailDownloadId = null
+                    organizeVisible = false
+                },
                 onDeleteSavedSearch = onDeleteSavedSearch,
                 onCopyHistory = { copyTextToClipboard(context, "XDM history index", HistoryManagementPolicy.exportIndex(downloads)) },
                 onClearFinishedHistory = onClearFinishedHistory,
@@ -561,7 +615,7 @@ fun DownloadsScreen(
     }
 
     XdmAdaptiveSheet(
-        visible = !windowProfile.allowsTwoPaneDownloads && detailDownload != null,
+        visible = !twoPaneLayoutActive && detailDownload != null,
         windowClass = windowClass,
         onDismissRequest = { detailDownloadId = null },
         title = "Download details",
@@ -896,4 +950,12 @@ private fun backendMigrationAvailable(download: Download, capabilities: List<Bac
     val scheme = runCatching { Uri.parse(download.sourceUrl).scheme.orEmpty().lowercase() }.getOrDefault("")
     val destinationScheme = runCatching { Uri.parse(download.destinationUri).scheme.orEmpty().lowercase() }.getOrDefault("")
     return capability.available && scheme in capability.protocols && (destinationScheme != "content" || capability.saf)
+}
+
+private fun DownloadState?.toWorkspaceFilter(): DownloadWorkspaceFilter = when (this) {
+    DownloadState.Connecting, DownloadState.Downloading, DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing -> DownloadWorkspaceFilter.Active
+    DownloadState.Created, DownloadState.Queued, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower -> DownloadWorkspaceFilter.Queued
+    DownloadState.Paused -> DownloadWorkspaceFilter.Paused
+    DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired -> DownloadWorkspaceFilter.Finished
+    null -> DownloadWorkspaceFilter.All
 }

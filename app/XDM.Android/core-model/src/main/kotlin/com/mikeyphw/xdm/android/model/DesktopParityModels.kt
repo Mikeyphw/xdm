@@ -173,17 +173,29 @@ object OrganizationPowerTools {
     }
 
     fun destinationFor(url: String, fileName: String, mimeType: String?, rules: List<DestinationRule>, fallback: String): String {
-        val host = ExternalUrlPolicy.originHost(url).orEmpty()
+        val host = ExternalUrlPolicy.originHost(url).orEmpty().lowercase(Locale.US).trimEnd('.')
         val extension = fileName.substringAfterLast('.', "").lowercase(Locale.US)
-        return rules.filter { it.enabled }.sortedByDescending { it.priority }.firstOrNull { rule ->
-            val pattern = rule.pattern.lowercase(Locale.US)
+        val normalizedMime = mimeType?.substringBefore(';')?.trim()?.lowercase(Locale.US)
+        val enabled = rules.filter { it.enabled }.sortedByDescending { it.priority }
+        val specific = enabled.firstOrNull { rule ->
+            val pattern = rule.pattern.trim().lowercase(Locale.US)
             when (rule.match) {
-                DestinationRuleMatch.Host -> host.endsWith(pattern.removePrefix("*."))
-                DestinationRuleMatch.Extension -> extension == pattern.removePrefix(".")
-                DestinationRuleMatch.MimeType -> mimeType?.lowercase(Locale.US)?.startsWith(pattern.removeSuffix("*")) == true
-                DestinationRuleMatch.Fallback -> true
+                DestinationRuleMatch.Host -> {
+                    val domain = pattern.removePrefix("*.").trimEnd('.')
+                    domain.isNotBlank() && (host == domain || host.endsWith(".$domain"))
+                }
+                DestinationRuleMatch.Extension -> extension.isNotBlank() && extension == pattern.removePrefix(".")
+                DestinationRuleMatch.MimeType -> when {
+                    normalizedMime == null -> false
+                    pattern.endsWith("/*") -> normalizedMime.startsWith(pattern.removeSuffix("*"))
+                    else -> normalizedMime == pattern
+                }
+                DestinationRuleMatch.Fallback -> false
             }
-        }?.destinationUri ?: fallback
+        }
+        return specific?.destinationUri
+            ?: enabled.firstOrNull { it.match == DestinationRuleMatch.Fallback }?.destinationUri
+            ?: fallback
     }
 }
 

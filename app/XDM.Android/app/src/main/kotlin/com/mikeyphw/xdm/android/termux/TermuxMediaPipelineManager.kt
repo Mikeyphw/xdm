@@ -23,6 +23,7 @@ import com.mikeyphw.xdm.android.persistence.AppDatabase
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.persistence.PostProcessingClaimEntity
 import com.mikeyphw.xdm.android.persistence.PostProcessingJobEntity
+import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
 import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
 import com.mikeyphw.xdm.android.util.sanitizeFileName
 import java.net.URI
@@ -113,9 +114,10 @@ class TermuxMediaPipelineManager(
         inputUrl: String? = null,
         nowEpochMs: Long = System.currentTimeMillis(),
     ): String? {
-        if (requestHeaders.keys.any(::isSensitiveExternalHeader) || inputUrl?.let(PostProcessingExecutionPolicy::inputContainsBearerSecret) == true) {
-            return "Authenticated media needs the secure transient Termux session bridge before external execution."
-        }
+        // Sensitive request material is carried through the encrypted MediaRequestHandoffStore and
+        // reconstructed only for the managed Termux child. It never enters the durable job spec.
+        @Suppress("UNUSED_VARIABLE") val secureSessionRequested =
+            requestHeaders.isNotEmpty() || inputUrl?.let(PostProcessingExecutionPolicy::inputContainsBearerSecret) == true
         val bridge = TermuxRunStore.status.value
         if (!bridge.termuxInstalled) return "Termux is not installed."
         if (!bridge.runCommandPermissionGranted) return "Termux RUN_COMMAND permission is not granted."
@@ -137,16 +139,17 @@ class TermuxMediaPipelineManager(
         selection: MediaTrackSelection = MediaTrackSelection(),
     ): TermuxMediaPipelineJob {
         val plan = planner.plan(record, variants, selection = selection, sessionHeaders = MediaDownloadPlanner.defaultSessionHeaders(record))
-        val probeUrl = plan.metadataProbeUrl.takeIf(String::isNotBlank) ?: metadataProbeUrl(record)
         val spec = manualSpec(
             record = record,
             kind = PostProcessingActionKind.YtDlpMetadata,
-            input = probeUrl,
+            input = durableYtDlpInput(record),
             outputName = "${safeBase(record)}.metadata.json",
             mimeType = "application/json",
             requiredTools = setOf(ExternalTool.YtDlp),
             metadataOnly = true,
-            extraArguments = plan.sessionHandoff.ytdlpArguments(),
+            extraArguments = emptyList(),
+            sessionPrimaryVariantId = plan.selectedVariantId,
+            sessionVariantIds = plan.trackSelection.selectedIds().toList(),
         )
         return enqueueAsync(spec)
     }
@@ -168,7 +171,6 @@ class TermuxMediaPipelineManager(
         variants: List<MediaVariant> = emptyList(),
         selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = record.selectedVariantId),
         destination: String = "",
-        downloadId: String? = record.downloadId,
         sessionHeaders: List<MediaSessionHeader> = MediaDownloadPlanner.defaultSessionHeaders(record) + sessionHintHeaders(record),
         variantSessionHeaders: Map<String, List<MediaSessionHeader>> = emptyMap(),
     ): TermuxMediaPipelineJob {
@@ -180,7 +182,7 @@ class TermuxMediaPipelineManager(
             variantSessionHeaders = variantSessionHeaders,
         )
         val outputName = "${safeBase(record)}.mp4"
-        val spec = ytDlpDownloadSpec(record, plan, outputName, destination, downloadId)
+        val spec = ytDlpDownloadSpec(record, plan, outputName, destination)
         return enqueueAsync(
             spec,
             MediaOutputSeed(record.id, destination.ifBlank { "xdm://post-processing" }, outputName, "video/mp4", plan.trackSelection.selectedIds()),
@@ -203,7 +205,7 @@ class TermuxMediaPipelineManager(
             variantSessionHeaders = variantSessionHeaders,
         )
         val outputName = "${safeBase(record)}.mp4"
-        val spec = ytDlpDownloadSpec(record, plan, outputName, destination, downloadId = null)
+        val spec = ytDlpDownloadSpec(record, plan, outputName, destination)
         val seed = MediaOutputSeed(
             captureId = record.id,
             destinationUri = destination.ifBlank { "xdm://post-processing" },
@@ -219,20 +221,23 @@ class TermuxMediaPipelineManager(
         plan: com.mikeyphw.xdm.android.media.MediaDownloadPlan,
         outputName: String,
         destination: String,
-        downloadId: String?,
     ): PostProcessingJobSpec = manualSpec(
         record = record,
         kind = PostProcessingActionKind.YtDlpDownload,
-        input = plan.metadataProbeUrl,
+        input = durableYtDlpInput(record),
         outputName = outputName,
         mimeType = "video/mp4",
         requiredTools = setOf(ExternalTool.YtDlp, ExternalTool.Ffmpeg, ExternalTool.Ffprobe),
         formatSelector = plan.ytDlpFormatSelector ?: "bestvideo+bestaudio/best",
-        // Sensitive Cookie/Authorization material is intentionally not placed on a Termux command
-        // surface. Overlay 11 owns the transient secret bridge; readiness blocks that case here.
-        extraArguments = plan.sessionHandoff.ytdlpArguments().filterSafeExternalSessionArguments(),
+        // Session URL/headers are recovered from the encrypted handoff at launch. Do not persist
+        // referers, cookies, Authorization headers, signed URLs, or other request credentials here.
+        extraArguments = emptyList(),
         destinationUri = destination.takeIf { it.startsWith("content://") || it.startsWith("xdm://") },
-        downloadId = downloadId,
+        // Capture-backed yt-dlp is externally owned. Never attach it as transfer ownership of a
+        // normal Download row; media_outputs carries the durable capture/output relationship.
+        downloadId = null,
+        sessionPrimaryVariantId = plan.selectedVariantId,
+        sessionVariantIds = plan.trackSelection.selectedIds().toList(),
     )
 
     fun convert(record: MediaCaptureRecord, preset: ConversionPreset, destination: String = ""): TermuxMediaPipelineJob {
@@ -560,23 +565,6 @@ class TermuxMediaPipelineManager(
         name.equals("Authorization", ignoreCase = true) ||
         name.equals("Proxy-Authorization", ignoreCase = true)
 
-    private fun List<String>.filterSafeExternalSessionArguments(): List<String> {
-        val result = mutableListOf<String>()
-        var index = 0
-        while (index < size) {
-            val token = this[index]
-            if (token == "--add-header" && index + 1 < size) {
-                val headerLine = this[index + 1]
-                val name = headerLine.substringBefore(':').trim()
-                if (!isSensitiveExternalHeader(name)) result += listOf(token, headerLine)
-                index += 2
-            } else {
-                result += token
-                index += 1
-            }
-        }
-        return result
-    }
 
     private suspend fun launchJob(jobId: String) {
         val job = dao.findJob(jobId) ?: return
@@ -650,7 +638,7 @@ class TermuxMediaPipelineManager(
                 updatedAtEpochMs = preparedAt,
             ) == 0
         ) {
-            artifactBridge.cleanupUris(listOf(prepared.inputBridgeUri, prepared.outputBridgeUri, prepared.runtime.ownerBridgeUri, prepared.runtime.progressBridgeUri, prepared.runtime.metadataBridgeUri))
+            artifactBridge.cleanupUris(listOf(prepared.inputBridgeUri, prepared.outputBridgeUri, prepared.runtime.ownerBridgeUri, prepared.runtime.progressBridgeUri, prepared.runtime.metadataBridgeUri, dao.findJob(reservedJob.id)?.payloadBridgeUri))
             dao.findJob(reservedJob.id)?.takeIf { it.status == PostProcessingJobStatus.Cancelling.name }?.let { finishLocalCancellation(it, spec.kind.label) }
             return
         }
@@ -670,11 +658,17 @@ class TermuxMediaPipelineManager(
                 updatedAtEpochMs = System.currentTimeMillis(),
             ) == 0
         ) {
-            artifactBridge.cleanupUris(listOf(prepared.inputBridgeUri, prepared.outputBridgeUri, prepared.runtime.ownerBridgeUri, prepared.runtime.progressBridgeUri, prepared.runtime.metadataBridgeUri))
+            artifactBridge.cleanupUris(listOf(prepared.inputBridgeUri, prepared.outputBridgeUri, prepared.runtime.ownerBridgeUri, prepared.runtime.progressBridgeUri, prepared.runtime.metadataBridgeUri, dao.findJob(reservedJob.id)?.payloadBridgeUri))
             return
         }
         val owner = TermuxRunOwner(reservedJob.id, token, timeoutAt, prepared.runtime)
-        val command = commandFor(spec, prepared)
+        val transientSession = transientYtDlpSession(spec)
+        if (spec.kind in setOf(PostProcessingActionKind.YtDlpMetadata, PostProcessingActionKind.YtDlpDownload) && transientSession == null) {
+            cleanupJobBridges(dao.findJob(reservedJob.id))
+            finishFailure(reservedJob, "The encrypted media session expired before Termux launch. Refresh the media capture before retrying.")
+            return
+        }
+        val command = commandFor(spec, prepared, transientSession)
         val immediatelyBeforeLaunch = dao.findJob(reservedJob.id) ?: return
         if (immediatelyBeforeLaunch.requestedControl in setOf("Timeout", TermuxProcessControlAction.Cancel.name, TermuxProcessControlAction.ForceCancel.name)) {
             finishLocalCancellation(immediatelyBeforeLaunch, spec.kind.label)
@@ -700,7 +694,18 @@ class TermuxMediaPipelineManager(
             updatedAtEpochMs = System.currentTimeMillis(),
         )
         if (attached == 0) {
-            dao.acknowledgeControl(reservedJob.id, PostProcessingJobStatus.RecoveryRequired.name, "Termux started, but durable run ownership could not be attached; recovery must validate the owner file.", System.currentTimeMillis())
+            // RUN_COMMAND accepted the launch but the durable CAS lost. Never leave that child
+            // unmanaged: signal the exact token-bound owner immediately, then require recovery.
+            runner.run(
+                XdmTermuxCommand.OwnedProcessControl(owner.runtime.ownerShellPath, owner.jobId, owner.processToken, TermuxProcessControlAction.ForceCancel),
+                owner = owner,
+            )
+            dao.acknowledgeControl(
+                reservedJob.id,
+                PostProcessingJobStatus.RecoveryRequired.name,
+                "Termux launch ownership CAS failed; exact token-bound child cancellation was issued before entering recovery.",
+                System.currentTimeMillis(),
+            )
             return
         }
         val attachedJob = dao.findJob(reservedJob.id) ?: reservedJob
@@ -826,7 +831,7 @@ class TermuxMediaPipelineManager(
                 updatedAtEpochMs = now,
             ) == 0
         ) {
-            artifactBridge.cleanupUris(listOf(prepared.inputBridgeUri, prepared.outputBridgeUri, prepared.runtime.ownerBridgeUri, prepared.runtime.progressBridgeUri, prepared.runtime.metadataBridgeUri))
+            artifactBridge.cleanupUris(listOf(prepared.inputBridgeUri, prepared.outputBridgeUri, prepared.runtime.ownerBridgeUri, prepared.runtime.progressBridgeUri, prepared.runtime.metadataBridgeUri, dao.findJob(job.id)?.payloadBridgeUri))
             dao.findJob(job.id)?.takeIf { it.status == PostProcessingJobStatus.Cancelling.name }?.let { finishLocalCancellation(it, spec.kind.label) }
             return
         }
@@ -1041,7 +1046,18 @@ class TermuxMediaPipelineManager(
             TermuxProcessControlAction.Resume, TermuxProcessControlAction.Probe -> PostProcessingJobStatus.Running
             TermuxProcessControlAction.Cancel, TermuxProcessControlAction.ForceCancel -> PostProcessingJobStatus.Cancelling
         }
-        dao.requestControl(job.id, requestedStatus.name, if (timedOut) "Timeout" else action.name, "${action.name} requested durably before signalling the owned process group.", System.currentTimeMillis())
+        val durableControl = dao.requestControl(
+            job.id,
+            requestedStatus.name,
+            if (timedOut) "Timeout" else action.name,
+            "${action.name} requested durably before signalling the owned process group.",
+            System.currentTimeMillis(),
+        )
+        if (durableControl == 0) {
+            // A stale control view must not mutate a job when its durable CAS no longer matches.
+            // In particular, terminal/publishing jobs are left untouched and no process signal is sent.
+            return
+        }
         val launch = runner.run(
             XdmTermuxCommand.OwnedProcessControl(owner.runtime.ownerShellPath, owner.jobId, owner.processToken, action),
             owner = owner,
@@ -1053,8 +1069,19 @@ class TermuxMediaPipelineManager(
 
     private suspend fun handleResult(result: TermuxResultPayload) {
         val job = result.jobId?.let { dao.findJob(it) } ?: dao.findJobByRunId(result.runId) ?: return
-        if (result.processToken != null && job.processToken != null && result.processToken != job.processToken) {
-            dao.acknowledgeControl(job.id, PostProcessingJobStatus.RecoveryRequired.name, "Rejected a Termux result with the wrong owner token.", System.currentTimeMillis())
+        if (PostProcessingJobStatus.entries.firstOrNull { it.name == job.status }?.terminal == true) return
+        val expectedProcessToken = job.processToken
+        if (expectedProcessToken == null || result.processToken != expectedProcessToken) {
+            dao.acknowledgeControl(
+                job.id,
+                PostProcessingJobStatus.RecoveryRequired.name,
+                when {
+                    expectedProcessToken == null -> "Rejected a Termux result before a durable process owner token existed."
+                    result.processToken == null -> "Rejected a Termux result missing the required owner token."
+                    else -> "Rejected a Termux result with the wrong owner token."
+                },
+                System.currentTimeMillis(),
+            )
             return
         }
         if (result.operation.startsWith("post_process_control_")) {
@@ -1100,12 +1127,14 @@ class TermuxMediaPipelineManager(
     }
 
     private suspend fun handleControlResult(job: PostProcessingJobEntity, result: TermuxResultPayload) {
+        val current = dao.findJob(job.id) ?: return
+        if (PostProcessingJobStatus.entries.firstOrNull { it.name == current.status }?.terminal == true) return
         val action = result.operation.substringAfterLast('_').uppercase(Locale.US)
         val now = System.currentTimeMillis()
-        val ownerSnapshot = TermuxOwnerSnapshot.parse(artifactBridge.readText(job.ownerBridgeUri))
+        val ownerSnapshot = TermuxOwnerSnapshot.parse(artifactBridge.readText(current.ownerBridgeUri))
         if (result.stdout.contains("\tprobe\tfinished\t")) {
             if (ownerSnapshot?.finished == true) {
-                reconcileOwnerCompletion(job, ownerSnapshot)
+                reconcileOwnerCompletion(current, ownerSnapshot)
             } else {
                 dao.acknowledgeControl(job.id, PostProcessingJobStatus.RecoveryRequired.name, "Probe reported finished but the durable owner record was incomplete.", now)
             }
@@ -1129,7 +1158,7 @@ class TermuxMediaPipelineManager(
                 cleanupJobBridges(dao.findJob(job.id))
             }
             action.contains("CANCEL") -> dao.acknowledgeControl(job.id, PostProcessingJobStatus.Cancelling.name, "Graceful cancellation accepted; awaiting the durable owner completion record.", now)
-            action.contains("PROBE") && result.stdout.contains("\tprobe\talive\t") -> dao.acknowledgeControl(job.id, if (job.status == PostProcessingJobStatus.Paused.name) PostProcessingJobStatus.Paused.name else PostProcessingJobStatus.Running.name, "Recovered the exact owner token, PID, process start time, and command identity.", now)
+            action.contains("PROBE") && result.stdout.contains("\tprobe\talive\t") -> dao.acknowledgeControl(job.id, if (current.status == PostProcessingJobStatus.Paused.name) PostProcessingJobStatus.Paused.name else PostProcessingJobStatus.Running.name, "Recovered the exact owner token, PID, process start time, and command identity.", now)
             action.contains("PROBE") -> dao.acknowledgeControl(job.id, PostProcessingJobStatus.RecoveryRequired.name, "Probe returned no typed alive or finished outcome.", now)
         }
     }
@@ -1273,7 +1302,7 @@ class TermuxMediaPipelineManager(
                 "Execution succeeded, but durable Android reconciliation requires recovery: ${error.message}",
                 System.currentTimeMillis(),
             )
-            artifactBridge.cleanupUris(listOf(job.ownerBridgeUri, job.progressBridgeUri))
+            artifactBridge.cleanupUris(listOf(job.ownerBridgeUri, job.progressBridgeUri, job.payloadBridgeUri))
         }
     }
 
@@ -1308,6 +1337,7 @@ class TermuxMediaPipelineManager(
     }
 
     private suspend fun reconcilePublishedOutput(spec: PostProcessingJobSpec, imported: AndroidPostProcessingArtifactBridge.ImportedOutput) {
+        if (spec.kind == PostProcessingActionKind.YtDlpDownload && !spec.captureId.isNullOrBlank()) return
         spec.downloadId?.let { downloadId ->
             if (spec.output.deleteOriginalAfterPublish || spec.kind == PostProcessingActionKind.YtDlpDownload) {
                 repository.findDownload(downloadId)?.let { download ->
@@ -1586,23 +1616,77 @@ class TermuxMediaPipelineManager(
         }
     }
 
-    private fun commandFor(spec: PostProcessingJobSpec, prepared: AndroidPostProcessingArtifactBridge.PreparedExecution): XdmTermuxCommand {
+    private data class TermuxYtDlpSession(val exactUrl: String, val configLines: List<String>)
+
+    private fun transientYtDlpSession(spec: PostProcessingJobSpec): TermuxYtDlpSession? {
+        if (spec.kind !in setOf(PostProcessingActionKind.YtDlpMetadata, PostProcessingActionKind.YtDlpDownload)) return null
+        val captureId = spec.captureId
+        val capture = captureId?.let(MediaRequestHandoffStore::forCapture)
+        val variantIds = (listOfNotNull(spec.sessionPrimaryVariantId) + spec.sessionVariantIds).distinct()
+        val variants = variantIds.mapNotNull(MediaRequestHandoffStore::forVariant)
+        val primary = spec.sessionPrimaryVariantId?.let(MediaRequestHandoffStore::forVariant)
+        val sessionBound = !spec.captureId.isNullOrBlank() || !spec.sessionPrimaryVariantId.isNullOrBlank() || spec.sessionVariantIds.isNotEmpty()
+        val exactUrl = primary?.exactUrl ?: capture?.exactUrl ?: if (sessionBound) {
+            // A capture/variant-backed attempt must never downgrade to a durable sanitized URL after
+            // its encrypted handoff expires: doing so would silently drop Cookie/Authorization and
+            // other request context. The caller will fail closed and ask for a fresh capture.
+            return null
+        } else {
+            PostProcessingExecutionPolicy.sanitizeDurableRemoteUrl(spec.inputUri)
+                ?.takeIf { it.startsWith("http://") || it.startsWith("https://") || it.startsWith("ftp://") }
+                ?: return null
+        }
+        val merged = linkedMapOf<String, String>()
+        capture?.headers.orEmpty().forEach { (name, value) -> merged[name.lowercase(Locale.US)] = "$name: $value" }
+        variants.forEach { handoff ->
+            handoff.headers.forEach { (name, value) -> merged[name.lowercase(Locale.US)] = "$name: $value" }
+        }
+        val config = buildList {
+            (capture?.pageUrl ?: capture?.exactUrl)?.takeIf(String::isNotBlank)?.let { add("--referer ${ytDlpConfigQuote(it)}") }
+            merged.values.forEach { add("--add-header ${ytDlpConfigQuote(it)}") }
+        }
+        return TermuxYtDlpSession(exactUrl = exactUrl, configLines = config)
+    }
+
+    private fun ytDlpConfigQuote(value: String): String {
+        require(value.none { it == '\r' || it == '\n' || it.isISOControl() }) { "Unsafe yt-dlp session value" }
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+    }
+
+    private fun commandFor(
+        spec: PostProcessingJobSpec,
+        prepared: AndroidPostProcessingArtifactBridge.PreparedExecution,
+        transientSession: TermuxYtDlpSession? = null,
+    ): XdmTermuxCommand {
         if (spec.kind == PostProcessingActionKind.CleanupPartials && Uri.parse(spec.inputUri).scheme == ContentResolver.SCHEME_CONTENT) {
             error("Cleanup partials requires the exact local partial artifact path; a destination content URI is not sufficient.")
         }
         val plan = TermuxPostProcessingPlan(
             kind = spec.kind,
-            inputPath = prepared.inputPath,
+            inputPath = transientSession?.exactUrl ?: prepared.inputPath,
             outputPath = prepared.outputPath.orEmpty(),
             expectedSha256 = spec.expectedSha256.orEmpty(),
             formatSelector = spec.formatSelector.orEmpty(),
             extraArguments = spec.extraArguments,
+            ytDlpConfigLines = transientSession?.configLines.orEmpty(),
+            ytDlpUrl = transientSession?.exactUrl,
         )
         return when (spec.kind) {
-            PostProcessingActionKind.FixPermissionsWithRoot -> XdmTermuxCommand.RootAction(XdmRootAction.FixFilePermissions(artifactBridge.verifiedOriginalPath(spec.inputUri)))
+            PostProcessingActionKind.FixPermissionsWithRoot -> {
+                val verified = artifactBridge.verifiedOriginalPath(spec.inputUri)
+                val authorized = TermuxRootActionAuthorizer.authorize(
+                    appContext,
+                    XdmRootAction.FixFilePermissions(verified),
+                    verifiedOwnedPaths = setOf(verified),
+                ).getOrElse { error("Root path authorization failed: ${it.message}") }
+                XdmTermuxCommand.RootAction(authorized)
+            }
             else -> XdmTermuxCommand.PostProcess(plan)
         }
     }
+
+    private fun durableYtDlpInput(record: MediaCaptureRecord): String =
+        "https://xdm.invalid/media-session/${PostProcessingExecutionPolicy.sha256(record.id).take(24)}"
 
     private fun manualSpec(
         record: MediaCaptureRecord,
@@ -1616,6 +1700,8 @@ class TermuxMediaPipelineManager(
         extraArguments: List<String> = emptyList(),
         destinationUri: String? = null,
         downloadId: String? = record.downloadId,
+        sessionPrimaryVariantId: String? = null,
+        sessionVariantIds: List<String> = emptyList(),
     ) = PostProcessingJobSpec(
         subjectId = record.id,
         subjectType = PostProcessingSubjectType.MediaCapture,
@@ -1640,6 +1726,8 @@ class TermuxMediaPipelineManager(
         metadataOnly = metadataOnly,
         formatSelector = formatSelector,
         extraArguments = extraArguments,
+        sessionPrimaryVariantId = sessionPrimaryVariantId,
+        sessionVariantIds = sessionVariantIds,
     )
 
     private fun newJobEntity(
@@ -1745,6 +1833,9 @@ class TermuxMediaPipelineManager(
     }
 
     private suspend fun syncLinkedDownloadState(job: PostProcessingJobEntity, state: DownloadState, message: String?) {
+        // Capture-backed yt-dlp jobs are externally owned outputs. They must never control a normal
+        // XDM Download row, including legacy rows that may still carry a historical downloadId.
+        if (job.kind == PostProcessingActionKind.YtDlpDownload.name && !job.captureId.isNullOrBlank()) return
         val downloadId = job.downloadId ?: return
         val download = repository.findDownload(downloadId) ?: return
         repository.save(
@@ -1756,14 +1847,27 @@ class TermuxMediaPipelineManager(
         )
     }
 
+    suspend fun prepareDownloadGraphDeletion(downloadId: String): Boolean {
+        val jobs = dao.jobsForDownloadGraph(downloadId)
+        if (jobs.any { job ->
+                val status = PostProcessingJobStatus.entries.firstOrNull { it.name == job.status }
+                status?.terminal != true
+            }
+        ) return false
+
+        jobs.forEach { job ->
+            cleanupJobBridges(job)
+            dao.clearTerminalBridgeUris(job.id, System.currentTimeMillis())
+        }
+        return true
+    }
+
     private fun cleanupJobBridges(job: PostProcessingJobEntity?) {
         if (job == null) return
         artifactBridge.cleanupUris(
-            listOf(job.inputBridgeUri, job.outputBridgeUri, job.ownerBridgeUri, job.progressBridgeUri, job.metadataBridgeUri),
+            listOf(job.inputBridgeUri, job.outputBridgeUri, job.ownerBridgeUri, job.progressBridgeUri, job.metadataBridgeUri, job.payloadBridgeUri),
         )
     }
-
-    private fun metadataProbeUrl(record: MediaCaptureRecord): String = planner.plan(record, emptyList()).metadataProbeUrl
 
     private fun sessionHintHeaders(record: MediaCaptureRecord): List<MediaSessionHeader> = buildList {
         record.pageUrl?.takeIf(String::isNotBlank)?.let { page ->

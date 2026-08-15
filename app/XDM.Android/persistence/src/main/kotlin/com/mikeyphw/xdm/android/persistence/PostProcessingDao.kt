@@ -35,6 +35,23 @@ interface PostProcessingDao {
     @Query("SELECT * FROM post_processing_jobs WHERE downloadId = :downloadId ORDER BY createdAtEpochMs")
     suspend fun jobsForDownload(downloadId: String): List<PostProcessingJobEntity>
 
+    @Query("""SELECT * FROM post_processing_jobs
+        WHERE downloadId = :downloadId
+           OR captureId IN (SELECT id FROM media_captures WHERE downloadId = :downloadId)
+        ORDER BY createdAtEpochMs""")
+    suspend fun jobsForDownloadGraph(downloadId: String): List<PostProcessingJobEntity>
+
+    @Query("""UPDATE post_processing_jobs
+        SET inputBridgeUri = NULL,
+            outputBridgeUri = NULL,
+            ownerBridgeUri = NULL,
+            progressBridgeUri = NULL,
+            metadataBridgeUri = NULL,
+            payloadBridgeUri = NULL,
+            updatedAtEpochMs = :updatedAtEpochMs
+        WHERE id = :jobId AND status IN ('Completed', 'Failed', 'Cancelled', 'TimedOut')""")
+    suspend fun clearTerminalBridgeUris(jobId: String, updatedAtEpochMs: Long): Int
+
 
     @Query("""UPDATE post_processing_jobs
         SET status = 'Preparing',
@@ -196,7 +213,8 @@ interface PostProcessingDao {
             requestedControl = NULL,
             message = :message,
             updatedAtEpochMs = :updatedAtEpochMs
-        WHERE id = :jobId""")
+        WHERE id = :jobId
+          AND status NOT IN ('Completed', 'Failed', 'Cancelled', 'TimedOut')""")
     suspend fun acknowledgeControl(jobId: String, status: String, message: String, updatedAtEpochMs: Long): Int
 
     @Query("""UPDATE post_processing_jobs
@@ -262,7 +280,8 @@ interface PostProcessingDao {
             message = :message,
             finishedAtEpochMs = :finishedAtEpochMs,
             updatedAtEpochMs = :finishedAtEpochMs
-        WHERE id = :jobId""")
+        WHERE id = :jobId
+          AND status NOT IN ('Completed', 'Failed', 'Cancelled', 'TimedOut')""")
     suspend fun finishJob(
         jobId: String,
         status: String,

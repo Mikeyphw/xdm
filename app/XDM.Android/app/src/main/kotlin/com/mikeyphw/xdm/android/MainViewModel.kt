@@ -330,8 +330,8 @@ class MainViewModel(
 ) : ViewModel() {
     private data class NavigationOverride(
         val route: AppRoute? = null,
-        val activityPanel: ActivityPanel = ActivityPanel.Attention,
-        val settingsPanel: SettingsPanel = SettingsPanel.Overview,
+        val activityPanel: ActivityPanel? = null,
+        val settingsPanel: SettingsPanel? = null,
         val selectedDownloadDetailId: String? = null,
         val selectedRecoveryDownloadId: String? = null,
         val selectedRecoveryAction: String? = null,
@@ -756,11 +756,11 @@ class MainViewModel(
             recovery = snapshot.recovery,
             activeTransfers = runtime.activeTransfers,
             queueIntelligence = runtime.queueIntelligence,
-            activityPanel = navigation.activityPanel.normalized(prefs.developerOptionsEnabled),
-            selectedDownloadDetailId = navigation.selectedDownloadDetailId,
-            selectedRecoveryDownloadId = navigation.selectedRecoveryDownloadId,
-            selectedRecoveryAction = navigation.selectedRecoveryAction,
-            settingsPanel = navigation.settingsPanel,
+            activityPanel = (navigation.activityPanel ?: prefs.lastActivityPanel).normalized(prefs.developerOptionsEnabled),
+            selectedDownloadDetailId = navigation.selectedDownloadDetailId ?: prefs.selectedDownloadDetailId,
+            selectedRecoveryDownloadId = navigation.selectedRecoveryDownloadId ?: prefs.selectedRecoveryDownloadId,
+            selectedRecoveryAction = navigation.selectedRecoveryAction ?: prefs.selectedRecoveryAction,
+            settingsPanel = navigation.settingsPanel ?: prefs.lastSettingsPanel,
             activityEvents = activityEvents,
             activitySummary = activitySummary,
             activityDiagnosticsExport = activityDiagnosticsExport,
@@ -876,23 +876,67 @@ class MainViewModel(
     }
 
     fun navigate(route: AppRoute) {
-        navigationOverride.value = navigationOverride.value.copy(route = route)
-        viewModelScope.launch { preferences.setRoute(route) }
+        val current = navigationOverride.value
+        navigationOverride.value = when (route) {
+            AppRoute.Add -> current.copy(route = AppRoute.Add)
+            AppRoute.Downloads -> NavigationOverride(route = route, selectedDownloadDetailId = current.selectedDownloadDetailId)
+            AppRoute.Activity -> NavigationOverride(
+                route = route,
+                activityPanel = current.activityPanel,
+                selectedRecoveryDownloadId = current.selectedRecoveryDownloadId,
+                selectedRecoveryAction = current.selectedRecoveryAction,
+            )
+            AppRoute.Settings -> NavigationOverride(route = route, settingsPanel = current.settingsPanel)
+            else -> NavigationOverride(route = route)
+        }
+        if (route != AppRoute.Add) viewModelScope.launch { preferences.setRoute(route) }
     }
 
     fun navigateActivity(panel: ActivityPanel) {
-        navigationOverride.value = NavigationOverride(route = AppRoute.Activity, activityPanel = panel.normalized(uiState.value.developerOptionsEnabled))
-        viewModelScope.launch { preferences.setRoute(AppRoute.Activity) }
+        val normalized = panel.normalized(uiState.value.developerOptionsEnabled)
+        val current = navigationOverride.value
+        navigationOverride.value = NavigationOverride(
+            route = AppRoute.Activity,
+            activityPanel = normalized,
+            selectedRecoveryDownloadId = current.selectedRecoveryDownloadId.takeIf { normalized == ActivityPanel.Recovery },
+            selectedRecoveryAction = current.selectedRecoveryAction.takeIf { normalized == ActivityPanel.Recovery },
+        )
+        viewModelScope.launch {
+            preferences.setActivityNavigation(
+                normalized,
+                navigationOverride.value.selectedRecoveryDownloadId,
+                navigationOverride.value.selectedRecoveryAction,
+            )
+        }
     }
 
     fun selectActivityPanel(panel: ActivityPanel) {
-        navigationOverride.value = navigationOverride.value.copy(activityPanel = panel.normalized(uiState.value.developerOptionsEnabled))
+        val normalized = panel.normalized(uiState.value.developerOptionsEnabled)
+        val current = navigationOverride.value
+        navigationOverride.value = current.copy(
+            activityPanel = normalized,
+            selectedRecoveryDownloadId = current.selectedRecoveryDownloadId.takeIf { normalized == ActivityPanel.Recovery },
+            selectedRecoveryAction = current.selectedRecoveryAction.takeIf { normalized == ActivityPanel.Recovery },
+        )
+        viewModelScope.launch {
+            preferences.setActivityNavigation(
+                normalized,
+                navigationOverride.value.selectedRecoveryDownloadId,
+                navigationOverride.value.selectedRecoveryAction,
+            )
+        }
+    }
+
+    fun selectDownloadDetail(downloadId: String?) {
+        val normalized = downloadId?.trim()?.takeIf(String::isNotBlank)
+        navigationOverride.value = navigationOverride.value.copy(selectedDownloadDetailId = normalized)
+        viewModelScope.launch { preferences.setDownloadsNavigation(normalized) }
     }
 
     fun openDownloadFromNotification(downloadId: String) {
         val normalized = downloadId.trim().takeIf(String::isNotBlank) ?: return
         navigationOverride.value = NavigationOverride(route = AppRoute.Downloads, selectedDownloadDetailId = normalized)
-        viewModelScope.launch { preferences.setRoute(AppRoute.Downloads) }
+        viewModelScope.launch { preferences.setDownloadsNavigation(normalized) }
     }
 
     fun openRecoveryFromNotification(downloadId: String) {
@@ -903,7 +947,7 @@ class MainViewModel(
             selectedRecoveryDownloadId = normalized,
             selectedRecoveryAction = DownloadActionKind.ReviewRecovery.name,
         )
-        viewModelScope.launch { preferences.setRoute(AppRoute.Activity) }
+        viewModelScope.launch { preferences.setActivityNavigation(ActivityPanel.Recovery, normalized, DownloadActionKind.ReviewRecovery.name) }
     }
 
     fun openRecoveryFor(download: Download, action: DownloadActionKind = DownloadActionKind.ReviewRecovery) {
@@ -913,13 +957,13 @@ class MainViewModel(
             selectedRecoveryDownloadId = download.id,
             selectedRecoveryAction = action.name,
         )
-        viewModelScope.launch { preferences.setRoute(AppRoute.Activity) }
+        viewModelScope.launch { preferences.setActivityNavigation(ActivityPanel.Recovery, download.id, action.name) }
     }
 
     fun selectSettingsPanel(panel: SettingsPanel) {
         navigationOverride.value = navigationOverride.value.copy(route = AppRoute.Settings, settingsPanel = panel)
         viewModelScope.launch {
-            preferences.setRoute(AppRoute.Settings)
+            preferences.setSettingsNavigation(panel)
             if (panel == SettingsPanel.BrowserExtension) refreshBrowserBridgeStatusFromCurrent()
         }
     }
@@ -930,7 +974,7 @@ class MainViewModel(
             activityPanel = ActivityPanel.Attention,
             settingsPanel = SettingsPanel.DeveloperTools,
         )
-        viewModelScope.launch { preferences.setRoute(AppRoute.Settings) }
+        viewModelScope.launch { preferences.setSettingsNavigation(SettingsPanel.DeveloperTools) }
     }
 
     fun dismissActivityEvent(eventId: String) {
@@ -1150,6 +1194,10 @@ class MainViewModel(
 
     fun setTermuxRootMode(mode: TermuxRootMode) {
         termuxBridgeManager.setRootMode(mode)
+    }
+
+    fun runTermuxPrivacyAudit() {
+        termuxBridgeManager.runPrivacyAudit()
     }
 
     fun runTermuxRootProbe() {
@@ -1506,6 +1554,7 @@ class MainViewModel(
     fun setDeveloperOptionsEnabled(enabled: Boolean) {
         if (!enabled && navigationOverride.value.settingsPanel == SettingsPanel.DeveloperTools) {
             navigationOverride.value = navigationOverride.value.copy(settingsPanel = SettingsPanel.Overview)
+            viewModelScope.launch { preferences.setSettingsNavigation(SettingsPanel.Overview) }
         }
         viewModelScope.launch { preferences.setDeveloperOptionsEnabled(enabled) }
     }
@@ -1580,11 +1629,22 @@ class MainViewModel(
 
     fun saveDestinationRule(name: String, match: DestinationRuleMatch, pattern: String, destinationUri: String) {
         val trimmed = name.trim().take(48)
-        val matchText = pattern.trim().take(96)
-        if (trimmed.isBlank() || matchText.isBlank() || destinationUri.isBlank()) return
+        val matchText = when (match) {
+            DestinationRuleMatch.Host -> pattern.trim().lowercase().removePrefix("https://").removePrefix("http://").substringBefore('/').trimEnd('.').take(96)
+            DestinationRuleMatch.Extension -> pattern.trim().lowercase().removePrefix(".").take(24)
+            DestinationRuleMatch.MimeType -> pattern.trim().lowercase().substringBefore(';').take(96)
+            DestinationRuleMatch.Fallback -> "*"
+        }
+        val validPattern = when (match) {
+            DestinationRuleMatch.Host -> matchText.removePrefix("*.").contains('.') && ' ' !in matchText
+            DestinationRuleMatch.Extension -> matchText.isNotBlank() && matchText.all { it.isLetterOrDigit() || it in setOf('-', '_') }
+            DestinationRuleMatch.MimeType -> matchText.count { it == '/' } == 1 && !matchText.startsWith('/') && !matchText.endsWith('/')
+            DestinationRuleMatch.Fallback -> true
+        }
+        if (trimmed.isBlank() || !validPattern || destinationUri.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
             val priority = (repository.currentDestinationRules().maxOfOrNull(DestinationRule::priority) ?: 0) + 1
-            repository.saveDestinationRule(DestinationRule("dest-${UUID.randomUUID()}", trimmed, match, matchText, destinationUri, true, priority))
+            repository.saveDestinationRule(DestinationRule("dest-${UUID.randomUUID()}", trimmed, match, matchText, destinationUri.trim(), true, priority))
         }
     }
 
@@ -1628,13 +1688,17 @@ class MainViewModel(
         val finished = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)
         viewModelScope.launch(Dispatchers.IO) {
             repository.findDownloadsByStates(finished).forEach { candidate ->
-                repository.deleteDownloadEntryIfTerminal(candidate, finished)
+                if (termuxMediaPipelineManager.prepareDownloadGraphDeletion(candidate.id)) {
+                    repository.deleteDownloadEntryIfTerminal(candidate, finished)
+                }
             }
         }
     }
 
-    suspend fun inspectCompletedArtifact(download: Download): CompletedArtifactCapabilities =
-        downloadArtifactActionManager.inspect(download)
+    suspend fun inspectCompletedArtifact(download: Download): CompletedArtifactCapabilities {
+        val current = kotlinx.coroutines.withContext(Dispatchers.IO) { repository.findDownload(download.id) } ?: download
+        return downloadArtifactActionManager.inspect(current)
+    }
 
     suspend fun inspectResumeCapability(download: Download): Boolean =
         repository.hasDurableResumeEvidence(download.id)
@@ -1669,6 +1733,9 @@ class MainViewModel(
                 }
                 val terminalStates = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired)
                 val terminalCurrent = repository.findDownload(current.id) ?: return@withContext "This download entry was already removed."
+                if (!termuxMediaPipelineManager.prepareDownloadGraphDeletion(terminalCurrent.id)) {
+                    return@withContext "Post-processing still owns this download. Finish or cancel that work before deleting the entry."
+                }
                 val deleted = repository.deleteDownloadEntryIfTerminal(terminalCurrent, terminalStates)
                 if (!deleted) return@withContext "The transfer changed while deletion was being committed. Its entry was not removed."
                 MediaRequestHandoffStore.forget(current.id)
@@ -1681,16 +1748,24 @@ class MainViewModel(
 
     fun deleteSavedFile(download: Download, removeEntry: Boolean, onResult: (String) -> Unit) {
         viewModelScope.launch {
-            val outcome = downloadArtifactActionManager.delete(download)
+            val currentForAction = kotlinx.coroutines.withContext(Dispatchers.IO) { repository.findDownload(download.id) }
+            if (currentForAction == null) {
+                onResult("This download entry no longer exists.")
+                return@launch
+            }
+            val outcome = downloadArtifactActionManager.delete(currentForAction)
             if (!outcome.success) {
                 onResult(outcome.message)
                 return@launch
             }
             val message = kotlinx.coroutines.withContext(Dispatchers.IO) {
-                val current = repository.findDownload(download.id) ?: download
+                val current = repository.findDownload(download.id) ?: currentForAction
                 if (removeEntry) {
                     val terminalStates = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired)
                     val terminalCurrent = repository.findDownload(current.id) ?: current
+                    if (!termuxMediaPipelineManager.prepareDownloadGraphDeletion(terminalCurrent.id)) {
+                        return@withContext "The saved file was deleted, but post-processing still owns the download entry. The entry was retained for recovery."
+                    }
                     val deleted = repository.deleteDownloadEntryIfTerminal(terminalCurrent, terminalStates)
                     if (!deleted) return@withContext "The saved file was deleted, but the entry changed before atomic graph deletion and was retained for review."
                     MediaRequestHandoffStore.forget(current.id)
@@ -1717,10 +1792,15 @@ class MainViewModel(
 
     fun renameCompletedFile(download: Download, requestedName: String, onResult: (String) -> Unit) {
         viewModelScope.launch {
-            val outcome = downloadArtifactActionManager.rename(download, requestedName)
+            val currentForAction = kotlinx.coroutines.withContext(Dispatchers.IO) { repository.findDownload(download.id) }
+            if (currentForAction == null) {
+                onResult("This download entry no longer exists.")
+                return@launch
+            }
+            val outcome = downloadArtifactActionManager.rename(currentForAction, requestedName)
             if (outcome.success) {
                 kotlinx.coroutines.withContext(Dispatchers.IO) {
-                    val current = repository.findDownload(download.id) ?: download
+                    val current = repository.findDownload(download.id) ?: currentForAction
                     repository.save(
                         current.copy(
                             fileName = outcome.displayName ?: current.fileName,

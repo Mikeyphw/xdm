@@ -6,6 +6,7 @@ import com.mikeyphw.xdm.android.model.BackendMigrationStage
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.DestinationType
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
@@ -66,6 +67,18 @@ fun VerificationStatus.uiLabel(): String = when (this) {
     VerificationStatus.Failed -> "Verification failed"
     VerificationStatus.NoExpectation -> "No checksum set"
     VerificationStatus.MissingFile -> "File missing"
+}
+
+fun DestinationType.uiLabel(): String = when (this) {
+    DestinationType.AppPrivate -> "App storage"
+    DestinationType.PublicDownloads -> "Downloads"
+    DestinationType.MediaStoreMovies -> "Movies"
+    DestinationType.MediaStoreMusic -> "Music"
+    DestinationType.MediaStorePictures -> "Pictures"
+    DestinationType.MediaStoreDocuments -> "Documents"
+    DestinationType.SafTree -> "Selected folder"
+    DestinationType.DirectDocument -> "Selected document"
+    DestinationType.FileSystem -> "Filesystem folder"
 }
 
 fun FilenameConflictPolicy.uiLabel(): String = when (this) {

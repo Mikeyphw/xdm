@@ -44,7 +44,7 @@ def require_regex(path: str, pattern: str, label: str) -> None:
 require_compact('app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt', 'title = "New download", scrollContent = false,', 'Add Download sheet owns its own scroll')
 require_compact('app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt', 'title = "Manage activity", scrollContent = false,', 'Manage Activity sheet owns its own scroll')
 forbid('app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAdaptiveShell.kt', 'Box(Modifier.fillMaxSize().padding(padding).imePadding())', 'Shell must not double-apply IME padding')
-forbid('app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt', 'Column(Modifier.fillMaxSize().imePadding()', 'Add Download must not double-apply IME padding')
+require('app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt', 'Column(Modifier.fillMaxSize().imePadding()', 'Add Download must own keyboard-safe IME padding inside the sheet')
 require_compact('app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt', 'LazyColumn( modifier = Modifier.weight(1f),', 'Add Download fields remain in a bounded LazyColumn')
 require_compact('app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt', 'title = "Actions for ${download.fileName}", scrollContent = false,', 'Three-dot action sheet avoids parent scroll constraint crash')
 require_compact('app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt', 'title = "Organize downloads", scrollContent = false,', 'Organize sheet avoids nested scroll crash')

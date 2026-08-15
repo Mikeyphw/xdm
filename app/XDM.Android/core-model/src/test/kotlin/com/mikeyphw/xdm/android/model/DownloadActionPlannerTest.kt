@@ -60,6 +60,69 @@ class DownloadActionPlannerTest {
     }
 
 
+
+    @Test
+    fun completedUnreadableArtifactFallsBackToEnabledDetailsPrimary() {
+        val context = DownloadActionContext(
+            artifact = CompletedArtifactCapabilities(
+                health = CompletedArtifactHealth.Missing,
+                readable = false,
+                detail = "Saved file is missing.",
+            ),
+        )
+        val primary = DownloadActionPlanner.primaryActionFor(download(DownloadState.Completed), context)
+        assertEquals(DownloadActionKind.OpenDetails, primary.kind)
+        assertTrue(primary.enabled)
+    }
+
+    @Test
+    fun redownloadExplainsWhenExactRequestReplayIsUnavailable() {
+        val safeOnly = DownloadActionPlanner.actionsFor(
+            download(DownloadState.Completed),
+            DownloadActionContext(artifact = CompletedArtifactCapabilities(health = CompletedArtifactHealth.Present, readable = true)),
+        ).first { it.kind == DownloadActionKind.Redownload }
+        assertTrue(safeOnly.supportingText.contains("Session headers or expiring signatures may need to be captured again"))
+
+        val exact = DownloadActionPlanner.actionsFor(
+            download(DownloadState.Completed),
+            DownloadActionContext(
+                artifact = CompletedArtifactCapabilities(health = CompletedArtifactHealth.Present, readable = true),
+                exactRequestReplayAvailable = true,
+            ),
+        ).first { it.kind == DownloadActionKind.Redownload }
+        assertTrue(exact.supportingText.contains("preserved exact request session"))
+    }
+
+    @Test
+    fun verificationFailureWinsOverAnOlderPassSignal() {
+        val context = DownloadActionContext(
+            latestVerification = VerificationRecord(
+                id = "verification",
+                downloadId = "download-id",
+                status = VerificationStatus.Passed,
+                algorithm = ChecksumAlgorithm.Sha256,
+                bytesVerified = 1024,
+                totalBytes = 1024,
+                message = "passed",
+                createdAtEpochMs = 1,
+                updatedAtEpochMs = 2,
+            ),
+            latestChecksum = ChecksumResult(
+                id = "checksum",
+                downloadId = "download-id",
+                algorithm = ChecksumAlgorithm.Sha256,
+                calculatedHex = "bad",
+                matchesExpectation = false,
+                verifiedAtEpochMs = 3,
+                bytesVerified = 1024,
+            ),
+            artifact = CompletedArtifactCapabilities(health = CompletedArtifactHealth.Present, readable = true),
+        )
+        assertTrue(context.verificationFailed())
+        assertFalse(context.verificationPassed())
+        assertEquals("Completed file failed verification", DownloadUiTruthPlanner.truth(download(DownloadState.Completed), context).status)
+    }
+
     @Test
     fun finalSaveRecoveryOffersRetrySaveBeforeGenericRecovery() {
         val actions = DownloadActionPlanner.actionsFor(
