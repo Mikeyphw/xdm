@@ -76,10 +76,10 @@ class BrowserExtensionSourceContractTest {
         val store = extensionRoot.resolve("candidate-store.js").readText()
 
         assertTrue(handoff.contains("function buildXdmCapture"))
-        assertTrue(handoff.contains("return "";"))
+        assertTrue(handoff.contains("return \"\";"))
         assertTrue(handoff.contains("requestFingerprint"))
         assertTrue(observer.contains("findPrivilegedEvidence"))
-        assertTrue(observer.contains("candidate.source !== "webRequest""))
+        assertTrue(observer.contains("candidate.source !== \"webRequest\""))
         assertTrue(observer.contains("requestHeaders: {}") || bridge.contains("requestHeaders: {}"))
         assertTrue(observer.contains("plaintext fallback is disabled") || bridge.contains("plaintext fallback is disabled"))
         assertTrue(detector.contains("requestFingerprint"))

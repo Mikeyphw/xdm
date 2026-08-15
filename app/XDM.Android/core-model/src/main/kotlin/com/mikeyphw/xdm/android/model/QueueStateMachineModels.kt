@@ -237,12 +237,12 @@ object QueueStateMachinePlanner {
     }
 
     fun validateScheduleWindow(window: QueueScheduleWindow): ScheduleWindowValidation {
-        val hasStart = window.start != null
-        val hasEnd = window.end != null
-        if (hasStart != hasEnd) {
+        val start = window.start
+        val end = window.end
+        if ((start == null) != (end == null)) {
             return ScheduleWindowValidation(valid = false, error = "Schedule windows must include both start and end times; incomplete windows fail closed.")
         }
-        val precise = hasStart && hasEnd && minutesBetween(window.start!!, window.end!!) < 15
+        val precise = start != null && end != null && minutesBetween(start, end) < 15
         return ScheduleWindowValidation(valid = true, normalizedWindow = window, preciseShortWindowRequired = precise)
     }
 

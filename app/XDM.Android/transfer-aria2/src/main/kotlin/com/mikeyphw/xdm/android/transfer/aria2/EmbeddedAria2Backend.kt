@@ -239,7 +239,7 @@ class EmbeddedAria2Backend(
             (status?.toSnapshot(DownloadState.Paused)
                 ?: snapshots[taskId]?.copy(state = DownloadState.Paused, speedBytesPerSecond = 0)
                 ?: BackendSnapshot(taskId, DownloadState.Paused, 0, null, 0)).let { snapshot ->
-                mapping?.let(snapshot::withProof) ?: snapshot
+                mapping?.let { snapshot.withProof(it) } ?: snapshot
             }
         }
         check(rpc.saveSession()) { "aria2 session could not be durably saved while pausing" }
@@ -272,7 +272,7 @@ class EmbeddedAria2Backend(
         check(rpc.saveSession()) { "aria2 session could not be durably saved while cancelling" }
         mapping?.let { updateMapping(it, MAPPING_REMOVED) }
         snapshots[taskId] = BackendSnapshot(taskId, DownloadState.Cancelled, status?.completedLength ?: 0, status?.totalLength, 0).let { snapshot ->
-            mapping?.let(snapshot::withProof) ?: snapshot
+            mapping?.let { snapshot.withProof(it) } ?: snapshot
         }
     }
 

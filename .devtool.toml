@@ -51,6 +51,7 @@ args = [
   "-Pkotlin.incremental=false",
   "-Pkotlin.compiler.execution.strategy=in-process",
   "-Pxdm.cleanKotlinValidation=true",
+  "-Pandroid.suppressUnsupportedOptionWarnings=android.aapt2FromMavenOverride,android.suppressUnsupportedOptionWarnings",
 ]
 
 [targets.xdm_android.tasks]
