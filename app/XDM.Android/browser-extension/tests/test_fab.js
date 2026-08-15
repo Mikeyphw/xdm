@@ -90,7 +90,7 @@ assert.strictEqual(api.hostId, "__xdm_media_fab_host");
 
 assert(api.show({
   target: "xdm",
-  links: { xdm: "xdmdownload://capture?v=1&url=https%3A%2F%2Fcdn.example%2Fmaster.m3u8", oneDm: "idmdownload:https://cdn.example/master.m3u8" },
+  links: { xdm: "xdmdownload://capture?v=2&sid=session-12345678&kid=capture-key-1234&ek=wrapped&iv=nonce&ct=ciphertext", oneDm: "idmdownload:https://cdn.example/master.m3u8" },
   candidateCount: 4,
   streamKind: "hls"
 }));
@@ -111,7 +111,7 @@ assert(String(direct.href).startsWith("xdmdownload://capture"));
 
 assert(api.show({
   target: "ask",
-  links: { xdm: "xdmdownload://capture?v=1", oneDm: "idmdownload:https://cdn.example/video.mp4" },
+  links: { xdm: "xdmdownload://capture?v=2&sid=session-abcdefgh&kid=capture-key-1234&ek=wrapped&iv=nonce&ct=ciphertext", oneDm: "idmdownload:https://cdn.example/video.mp4" },
   candidateCount: 1,
   streamKind: "video"
 }));

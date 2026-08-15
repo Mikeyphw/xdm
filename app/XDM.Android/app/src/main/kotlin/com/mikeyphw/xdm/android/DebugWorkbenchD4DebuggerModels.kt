@@ -55,8 +55,8 @@ object BrowserBridgeDebugReporter {
             appendLine("Last accepted: ${BrowserBridgeDiagnosticsRedactor.sanitize(diagnostics.lastAcceptedSummary.ifBlank { "None recorded" })}")
             appendLine("Last rejected: ${BrowserBridgeDiagnosticsRedactor.sanitize(diagnostics.lastRejectedSummary.ifBlank { "None recorded" })}")
             appendLine("Last generation: ${BrowserBridgeDiagnosticsRedactor.sanitize(diagnostics.lastGenerationMessage.ifBlank { diagnostics.lastGenerationPhase })}")
-            appendLine("Capture test URI: ${testUri(scheme, "capture")}")
-            appendLine("Add Download test URI: ${testUri(scheme, "add")}")
+            appendLine("Capture test: secure v2 handoff only; use the current generated Firefox extension to exercise encrypted capture.")
+            appendLine("Add Download test URI: ${addDownloadTestUri(scheme)}")
             appendLine("Boundary: copy-only diagnostics; no custom scheme is opened from this debugger.")
         }.trimEnd()
         return BrowserBridgeDebugReport(
@@ -73,9 +73,9 @@ object BrowserBridgeDebugReporter {
         )
     }
 
-    private fun testUri(scheme: String, host: String): String {
+    private fun addDownloadTestUri(scheme: String): String {
         val encoded = URLEncoder.encode("https://example.test/media/master.m3u8", Charsets.UTF_8.name())
-        return "$scheme://$host?v=1&url=$encoded&pageUrl=https%3A%2F%2Fexample.test%2Fwatch&pageTitle=Debug%20Probe"
+        return "$scheme://add?v=1&url=$encoded&pageUrl=https%3A%2F%2Fexample.test%2Fwatch&pageTitle=Debug%20Probe"
     }
 }
 

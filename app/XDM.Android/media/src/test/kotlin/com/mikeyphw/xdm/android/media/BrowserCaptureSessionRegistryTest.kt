@@ -72,4 +72,33 @@ class BrowserCaptureSessionRegistryTest {
             root.deleteRecursively()
         }
     }
+    @Test
+    fun staleRevisionCannotReplaceNewerDurableSession() {
+        val root = Files.createTempDirectory("browser-capture-session-stale").toFile()
+        try {
+            val registry = BrowserCaptureSessionRegistry(root)
+            val newer = BrowserCaptureSessionSummary(
+                sessionId = "browser-session",
+                revision = 9,
+                pageTitle = "Newer",
+                pageHost = "example.test",
+                createdAtEpochMs = 1,
+                updatedAtEpochMs = 9,
+                totalCandidateCount = 1,
+                importedCandidateCount = 1,
+                truncated = false,
+                candidates = listOf(BrowserCaptureCandidateSummary("capture-new", "media-new", "strong", "video", "video")),
+            )
+            registry.record(newer)
+            registry.record(newer.copy(revision = 8, pageTitle = "Stale", updatedAtEpochMs = 10))
+
+            val restored = BrowserCaptureSessionRegistry(root).snapshot().single()
+            assertEquals(9L, restored.revision)
+            assertEquals("Newer", restored.pageTitle)
+            assertEquals("capture-new", restored.candidates.single().captureId)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
 }

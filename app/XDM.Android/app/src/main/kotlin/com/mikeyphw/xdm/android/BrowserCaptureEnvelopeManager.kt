@@ -33,6 +33,7 @@ class BrowserCaptureEnvelopeManager {
         val mimeType: String?,
         val contentLength: Long?,
         val stableMediaId: String?,
+        val requestFingerprint: String,
         val sessionRevision: Long,
         val quality: String,
         val reason: String,
@@ -85,14 +86,14 @@ class BrowserCaptureEnvelopeManager {
 
     fun decrypt(payload: XdmBrowserDeepLinkPayload, nowEpochMs: Long = System.currentTimeMillis()): Result<DecodedSession> = runCatching {
         require(payload.hasEncryptedCaptureEnvelope) { "Encrypted capture envelope is incomplete" }
-        require(payload.captureKeyId == keyId) { "Firefox capture key is stale; regenerate the XPI" }
+        require(payload.captureKeyId == keyId) { "Browser capture key is stale; regenerate the XPI" }
         val wrappedKey = decodeBase64Url(requireNotNull(payload.wrappedKey))
         val iv = decodeBase64Url(requireNotNull(payload.envelopeIv))
         val ciphertext = decodeBase64Url(requireNotNull(payload.envelopeCiphertext))
         require(iv.size == 12) { "Encrypted capture IV has an invalid size" }
         val expectedWrappedBytes = expectedWrappedKeyBytes
         require(wrappedKey.size == expectedWrappedBytes) {
-            "Firefox secure handoff has an invalid encrypted-key size; expected $expectedWrappedBytes bytes but received ${wrappedKey.size}. Regenerate the XPI and capture the page again."
+            "Browser secure handoff has an invalid encrypted-key size; expected $expectedWrappedBytes bytes but received ${wrappedKey.size}. Regenerate the XPI and capture the page again."
         }
         require(ciphertext.size in 17..MAX_CIPHERTEXT_BYTES) { "Encrypted capture payload is outside the accepted size" }
 
@@ -108,7 +109,7 @@ class BrowserCaptureEnvelopeManager {
             rsa.doFinal(wrappedKey)
         } catch (error: GeneralSecurityException) {
             throw IllegalArgumentException(
-                "Firefox secure handoff could not decrypt the session key. Regenerate the XPI in XDM and capture the page again.",
+                "Browser secure handoff could not decrypt the session key. Regenerate the XPI in XDM and capture the page again.",
                 error,
             )
         }
@@ -122,7 +123,7 @@ class BrowserCaptureEnvelopeManager {
             aes.doFinal(ciphertext)
         } catch (error: GeneralSecurityException) {
             throw IllegalArgumentException(
-                "Firefox secure handoff payload authentication failed. Capture the page again with the current XPI.",
+                "Browser secure handoff payload authentication failed. Capture the page again with the current XPI.",
                 error,
             )
         }
@@ -139,10 +140,10 @@ class BrowserCaptureEnvelopeManager {
         val createdAt = json.optLong("createdAt", -1L).takeIf { it > 0L } ?: error("Encrypted capture timestamp is missing")
         val expiresAt = json.optLong("expiresAt", -1L).takeIf { it > createdAt } ?: error("Encrypted capture expiry is missing")
         require(expiresAt - createdAt <= MAX_ENVELOPE_LIFETIME_MS) { "Encrypted capture lifetime is too long" }
-        require(nowEpochMs >= createdAt - CLOCK_SKEW_MS && nowEpochMs <= expiresAt) { "Firefox capture session expired; capture the page again" }
+        require(nowEpochMs >= createdAt - CLOCK_SKEW_MS && nowEpochMs <= expiresAt) { "Browser capture session expired; capture the page again" }
 
         val pageUrl = ExternalUrlPolicy.normalizedUrl(json.optString("pageUrl").takeIf(String::isNotBlank))
-        val title = json.optString("title").sanitizeText(240).ifBlank { "Firefox capture" }
+        val title = json.optString("title").sanitizeText(240).ifBlank { "Browser capture" }
         val totalCandidateCount = json.optInt("totalCandidateCount", 0).coerceAtLeast(0)
         val truncated = json.optBoolean("truncated", false)
         val array = json.optJSONArray("candidates") ?: JSONArray()
@@ -155,6 +156,9 @@ class BrowserCaptureEnvelopeManager {
                 val candidatePage = ExternalUrlPolicy.normalizedUrl(item.optString("pageUrl").takeIf(String::isNotBlank)) ?: pageUrl
                 val stableId = item.optString("stableMediaId").safeToken(160)
                 val candidateRevision = item.optLong("sessionRevision", revision).takeIf { it > 0L } ?: revision
+                val requestFingerprint = item.optString("requestFingerprint").safeToken(96)
+                    ?: "legacy-" + "$sessionId|$candidateRevision|$index|$url"
+                        .toByteArray(StandardCharsets.UTF_8).sha256Hex().take(32)
                 add(
                     Candidate(
                         url = url,
@@ -164,6 +168,7 @@ class BrowserCaptureEnvelopeManager {
                         mimeType = item.optString("contentType").sanitizeMime(),
                         contentLength = item.optLong("contentLength", 0L).takeIf { it > 0L },
                         stableMediaId = stableId,
+                        requestFingerprint = requestFingerprint,
                         sessionRevision = candidateRevision,
                         quality = item.optString("quality", "strong").sanitizeToken(24, "strong"),
                         reason = item.optString("reason", "browser-media").sanitizeText(96).ifBlank { "browser-media" },
@@ -176,7 +181,7 @@ class BrowserCaptureEnvelopeManager {
                     ),
                 )
             }
-        }.distinctBy { it.stableMediaId ?: it.url }
+        }.distinctBy(Candidate::requestFingerprint)
         require(candidates.isNotEmpty()) { "Encrypted capture did not contain a usable media candidate" }
         return DecodedSession(
             sessionId = sessionId,

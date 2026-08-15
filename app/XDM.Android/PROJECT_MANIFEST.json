@@ -1454,7 +1454,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_foundation_gate_repair_overlay.zip",
+  "current_overlay": "xdm_android_browser_secure_runtime_media_capture_import_overlay_v3.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -1591,7 +1591,7 @@
     "automatic_upload": false,
     "baseline": "debug_workbench_phase_d2_shell_r4",
     "compile_hygiene": "MediaSniffingLabCard candidate row uses escaped newline; D3 app contract uses safe substring assertions that compile.",
-    "description": "Adds a Media Sniffing Lab inside Settings \u2192 Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
+    "description": "Adds a Media Sniffing Lab inside Settings → Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
     "drm_bypass": false,
     "network_page_probe": false,
     "next_phase": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
@@ -1599,7 +1599,7 @@
     "phase": "D3",
     "revision": "r4",
     "room_schema_unchanged": 14,
-    "settings_location": "Settings \u2192 Debug Workbench \u2192 Media Sniffing Lab",
+    "settings_location": "Settings → Debug Workbench → Media Sniffing Lab",
     "starts_downloads": false,
     "static_sniff_only": true,
     "status": "implemented",
@@ -3740,5 +3740,90 @@
     "native_selective_repair_planner": true,
     "repeat_verification_without_network": true,
     "trusted_block_manifest": true
+  },
+  "bug_hunt_master_remediation_overlay_08_09_browser_secure_runtime_media_capture_import": {
+    "apply_with": "apply-overlay --no-validate",
+    "artifact_revision": 3,
+    "base_commit": "ecbdda2c",
+    "combined_phases": [
+      "browser_extension_secure_runtime",
+      "media_capture_identity_import"
+    ],
+    "declared_final_validation_tasks": [
+      ":app:compileDebugKotlin",
+      ":app:testDebugUnitTest",
+      ":app:lintDebug"
+    ],
+    "master_items": {
+      "phase_08": [
+        "M-003",
+        "M-011 browser-side",
+        "M-033",
+        "M-034",
+        "M-051 browser-side"
+      ],
+      "phase_09": [
+        "M-011 app-side",
+        "M-030",
+        "M-046 partial",
+        "M-055 partial"
+      ]
+    },
+    "browser_runtime": {
+      "page_world_observations_are_untrusted_hints": true,
+      "page_headers_never_become_privileged_evidence": true,
+      "privileged_webrequest_correlation_required": true,
+      "exact_request_query_preserved_in_identity": true,
+      "request_fingerprint_separates_authenticated_requests": true,
+      "plaintext_xdm_capture_disabled": true,
+      "launcher_refuses_xdm_without_encrypted_v2": true,
+      "release_xpi_requires_android_capture_public_key": true,
+      "direct_python_release_packaging_requires_key": true,
+      "explicit_release_gate": "browserExtensionReleaseGate",
+      "android_app_version_bound": "0.21.0",
+      "release_xpi_requires_explicit_oaep_hash": true,
+      "kotlin_cli_release_packaging_requires_oaep_hash": true,
+      "direct_python_release_packaging_requires_oaep_hash": true,
+      "release_never_guesses_oaep_hash": true,
+      "release_capture_key_binding": "capture key ID is SHA-256(SPKI DER).take(24), verified in Gradle, shared Kotlin config/CLI, direct Python packaging, and release artifact verification",
+      "oaep_configuration": "every release package, regardless of default target, requires explicit Android capture key material and an explicit OAEP digest; only keyless debug rendering may use the development default",
+      "plaintext_capture_probe": "production extension/export, Debug Workbench, and repo-owned device acceptance never manufacture capture-v1 URLs; encrypted capture acceptance uses v2 only"
+    },
+    "media_capture_import": {
+      "exported_review_preserves_encrypted_envelope": true,
+      "main_activity_receives_internal_session_id_only": true,
+      "encrypted_import_journal_precedes_decryption_and_import": true,
+      "journal_contains_ciphertext_only": true,
+      "conflicting_session_id_cannot_overwrite_journal": true,
+      "room_commits_before_auxiliary_secure_handoffs": true,
+      "nonsecret_session_registry_commits_last": true,
+      "failed_auxiliary_commit_leaves_journal_for_retry": true,
+      "linked_capture_identity_and_variants_preserved": true,
+      "empty_variant_replacement_is_explicit": true,
+      "browser_declared_stable_id_not_authority": true,
+      "request_fingerprint_bound_android_identity": true,
+      "automation_capture_room_first_with_durable_command_retry": true,
+      "legacy_sensitive_direct_capture_fails_closed": true,
+      "legacy_nonsensitive_capture_room_first": true,
+      "encrypted_review_does_not_claim_browser_caller_provenance": true,
+      "observed_package_is_diagnostic_only": true,
+      "journal_atomicity": "Android AtomicFile startWrite/finishWrite/failWrite protects ciphertext journal publication and recovery",
+      "journal_metadata": "durable import journal contains only encrypted envelope fields and receipt time; observed caller/package labels are not persisted",
+      "recovery_serialization": "pending encrypted imports are serialized with a Mutex so concurrent lifecycle/retry triggers cannot race the same session",
+      "stale_revision_policy": "a lower session revision cannot overwrite or re-import over a newer durable browser-session index",
+      "partial_sidecar_recovery": "after Room commit, retries fill only missing exact capture/variant/session sidecars for linked captures and preserve sidecars already bound to a download",
+      "auxiliary_atomicity": "browser media-session sidecars and non-secret browser-session index use replace-existing atomic move where supported, with non-destructive fallback"
+    },
+    "privacy_and_diagnostics_partial": {
+      "real_app_private_filesystem_scan": true,
+      "bounded_filesystem_scan": true,
+      "durable_secret_patterns_redacted": true,
+      "media3_playback_bucket_uses_structured_error_codes": true,
+      "error_message_not_classification_authority": true,
+      "interrupted_replacement_artifacts_scanned": true
+    },
+    "room_schema_changed": false,
+    "room_schema_current": 19,
+    "validation_deferred": true
   }
 }

@@ -58,4 +58,15 @@ const snapshot = store.snapshot(7, 3);
 assert.strictEqual(snapshot.length, 3);
 assert.strictEqual(snapshot[0].url, "https://cdn.example/master.m3u8");
 assert(snapshot.some(item => item.url === "https://cdn.example/video"));
+
+const signedOne = "https://cdn.example/master.m3u8?sig=one";
+const signedTwo = "https://cdn.example/master.m3u8?sig=two";
+const requestOne = core.requestFingerprint({ url: signedOne, requestId: "a", tabId: 7, frameId: 0, requestGeneration: 1 });
+const requestTwo = core.requestFingerprint({ url: signedTwo, requestId: "b", tabId: 7, frameId: 0, requestGeneration: 1 });
+assert.notStrictEqual(requestOne, requestTwo);
+assert.notStrictEqual(core.stableMediaIdentity(signedOne, requestOne), core.stableMediaIdentity(signedTwo, requestTwo));
+const identityStore = new Store({ maxPerTab: 8, ttlMs: 100000 });
+assert(identityStore.merge(7, { url: signedOne, requestId: "a", requestFingerprint: requestOne, confidence: 900, quality: "strong", headers: { authorization: "Bearer one" } }));
+assert(identityStore.merge(7, { url: signedOne, requestId: "b", requestFingerprint: requestTwo, confidence: 910, quality: "strong", headers: { authorization: "Bearer two" } }));
+assert.strictEqual(identityStore.size(7), 2, "same URL from distinct privileged requests must not merge header context");
 console.log("detector and candidate-store tests passed");

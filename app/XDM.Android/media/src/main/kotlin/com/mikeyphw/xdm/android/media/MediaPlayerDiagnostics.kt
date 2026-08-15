@@ -38,6 +38,8 @@ data class MediaPlayerTrackRow(
 
 data class MediaPlayerErrorSnapshot(
     val errorCodeName: String?,
+    val errorCode: Int? = null,
+    val causeClassName: String? = null,
     val message: String?,
     val playbackStateLabel: String,
     val playWhenReady: Boolean,
@@ -108,17 +110,16 @@ class MediaPlayerDiagnosticsPlanner {
 
     private fun bucketFor(candidate: MediaPlaybackCandidate, error: MediaPlayerErrorSnapshot?): MediaPlayerDiagnosticBucket {
         if (candidate.needsExternalResolver) return MediaPlayerDiagnosticBucket.ProtectedMedia
-        val code = error?.errorCodeName.orEmpty()
-        val message = error?.message.orEmpty()
-        val merged = "$code $message"
+        if (error == null) return MediaPlayerDiagnosticBucket.Ready
+        val code = error.errorCodeName?.trim()?.uppercase().orEmpty()
+        val cause = error.causeClassName.orEmpty()
         return when {
-            error == null -> MediaPlayerDiagnosticBucket.Ready
-            merged.contains("DRM", ignoreCase = true) || merged.contains("CONTENT_PROTECTION", ignoreCase = true) -> MediaPlayerDiagnosticBucket.ProtectedMedia
-            merged.contains("SOURCE", ignoreCase = true) || merged.contains("IO", ignoreCase = true) || merged.contains("FILE", ignoreCase = true) -> MediaPlayerDiagnosticBucket.Source
-            merged.contains("HTTP", ignoreCase = true) || merged.contains("NETWORK", ignoreCase = true) || merged.contains("TIMEOUT", ignoreCase = true) -> MediaPlayerDiagnosticBucket.Network
-            merged.contains("DECODER", ignoreCase = true) -> MediaPlayerDiagnosticBucket.Decoder
-            merged.contains("UNSUPPORTED", ignoreCase = true) || merged.contains("CODEC", ignoreCase = true) -> MediaPlayerDiagnosticBucket.UnsupportedCodec
-            merged.contains("SUBTITLE", ignoreCase = true) || merged.contains("TEXT", ignoreCase = true) -> MediaPlayerDiagnosticBucket.Subtitle
+            code in DRM_ERROR_CODES -> MediaPlayerDiagnosticBucket.ProtectedMedia
+            code in NETWORK_ERROR_CODES -> MediaPlayerDiagnosticBucket.Network
+            code in UNSUPPORTED_FORMAT_ERROR_CODES -> MediaPlayerDiagnosticBucket.UnsupportedCodec
+            code in DECODER_ERROR_CODES -> MediaPlayerDiagnosticBucket.Decoder
+            cause.endsWith(".SubtitleDecoderException") || cause == "SubtitleDecoderException" -> MediaPlayerDiagnosticBucket.Subtitle
+            code in SOURCE_ERROR_CODES -> MediaPlayerDiagnosticBucket.Source
             else -> MediaPlayerDiagnosticBucket.Unknown
         }
     }
@@ -169,6 +170,42 @@ class MediaPlayerDiagnosticsPlanner {
     }
 
     private companion object {
+        val NETWORK_ERROR_CODES = setOf(
+            "ERROR_CODE_IO_NETWORK_CONNECTION_FAILED",
+            "ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT",
+            "ERROR_CODE_IO_BAD_HTTP_STATUS",
+            "ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE",
+            "ERROR_CODE_IO_CLEARTEXT_NOT_PERMITTED",
+        )
+        val SOURCE_ERROR_CODES = setOf(
+            "ERROR_CODE_IO_UNSPECIFIED",
+            "ERROR_CODE_IO_FILE_NOT_FOUND",
+            "ERROR_CODE_IO_NO_PERMISSION",
+            "ERROR_CODE_PARSING_CONTAINER_MALFORMED",
+            "ERROR_CODE_PARSING_MANIFEST_MALFORMED",
+        )
+        val DECODER_ERROR_CODES = setOf(
+            "ERROR_CODE_DECODER_INIT_FAILED",
+            "ERROR_CODE_DECODER_QUERY_FAILED",
+            "ERROR_CODE_DECODING_FAILED",
+        )
+        val UNSUPPORTED_FORMAT_ERROR_CODES = setOf(
+            "ERROR_CODE_DECODING_FORMAT_UNSUPPORTED",
+            "ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES",
+            "ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED",
+            "ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED",
+        )
+        val DRM_ERROR_CODES = setOf(
+            "ERROR_CODE_DRM_UNSPECIFIED",
+            "ERROR_CODE_DRM_SCHEME_UNSUPPORTED",
+            "ERROR_CODE_DRM_PROVISIONING_FAILED",
+            "ERROR_CODE_DRM_CONTENT_ERROR",
+            "ERROR_CODE_DRM_LICENSE_ACQUISITION_FAILED",
+            "ERROR_CODE_DRM_DISALLOWED_OPERATION",
+            "ERROR_CODE_DRM_SYSTEM_ERROR",
+            "ERROR_CODE_DRM_DEVICE_REVOKED",
+            "ERROR_CODE_DRM_LICENSE_EXPIRED",
+        )
         val secretPatterns = listOf(
             Regex("""Bearer\s+(?!<redacted(?:-[A-Za-z]+)?>)(?:secret-[A-Za-z0-9._-]+|[A-Za-z0-9._~+/=-]{16,})""", RegexOption.IGNORE_CASE),
             Regex("""Cookie\s*[:=](?!\s*<redacted(?:-[A-Za-z]+)?>)\s*[^\n;]+""", RegexOption.IGNORE_CASE),

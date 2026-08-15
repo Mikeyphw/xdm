@@ -263,11 +263,15 @@ ${location.href}`;
       };
       const builtLinks = globalThis.XdmHandoffV1.buildTargets(handoffInput);
       const links = Object.freeze({
-        xdm: input.prebuiltXdmLink || builtLinks.xdm,
+        // XDM is encrypted-v2 only. buildTargets intentionally cannot manufacture a plaintext fallback.
+        xdm: input.prebuiltXdmLink || "",
         oneDm: builtLinks.oneDm,
         filename: builtLinks.filename,
       });
       if (!links || (!links.xdm && !links.oneDm)) throw new Error("Launcher URL generation failed.");
+      if (target === "xdm" && !links.xdm) {
+        throw new Error("Secure XDM capture handoff is unavailable; plaintext fallback is disabled.");
+      }
       const launcherInput = {
         url,
         target,
@@ -305,18 +309,11 @@ ${location.href}`;
         reason: candidate.manifest ? "frame-manifest-playback" : "frame-video-playback"
       }
     });
-    // Background owns the Phase 59-61 session aggregation and encrypted handoff.
-    // Only fall back to the legacy top-frame launcher when runtime messaging itself fails.
-    if (handedToBackground || window.top !== window) return true;
-    return showLauncher({
-      url: candidate.url,
-      title: document.title,
-      label: label || (candidate.manifest ? "Playing stream detected" : "Playing video detected"),
-      headers: candidate.headers || {},
-      contentType: candidate.contentType || "",
-      candidateCount: Math.max(1, candidates.size),
-      streamKind: candidate.manifest ? (/\.mpd(?:$|[?#])/i.test(candidate.url) ? "dash" : "hls") : ""
-    });
+    // Background owns aggregation plus encrypted handoff. A runtime-message failure must
+    // never downgrade to a plaintext custom-scheme capture containing the media URL.
+    if (handedToBackground) return true;
+    diagnostics.lastError = "Secure XDM handoff unavailable because extension runtime messaging failed.";
+    return false;
   }
 
   function evaluate(video) {
@@ -419,18 +416,10 @@ ${location.href}`;
     if (event.data[PAGE_MARKER] !== true) return;
     diagnostics.pageObservationsSeen += 1;
     const observation = event.data.observation && typeof event.data.observation === "object" ? event.data.observation : {};
-    const responseUrl = observation.responseUrl || observation.requestUrl || "";
-    const contentType = String(observation.contentType || "");
-    const trusted = MEDIA_MIME_RE.test(contentType) || MANIFEST_MIME_RE.test(contentType) || MEDIA_RE.test(responseUrl);
-    if (trusted) {
-      recordCandidate(responseUrl, observation.source || "page-response", 720, {
-        trusted: true,
-        contentType,
-        headers: observation.requestHeaders || {},
-        manifest: MANIFEST_MIME_RE.test(contentType) || MANIFEST_RE.test(responseUrl)
-      });
-    }
-    sendBackground({ type: MESSAGE_TYPE, observation });
+    // Main-world page scripts can forge window.postMessage payloads. Treat this only as
+    // an untrusted hint; privileged correlation and request headers live in the background
+    // webRequest observer. Never add a trusted candidate or accept page-supplied headers here.
+    sendBackground({ type: MESSAGE_TYPE, observation: Object.assign({}, observation, { requestHeaders: {} }) });
     evaluateAllVideos();
   });
 

@@ -54,9 +54,10 @@ class BrowserExtensionExportManager(
         applicationId: String,
         scheme: String,
     ): BrowserBridgeIntegrationStatus {
+        // Resolver-only probe: never manufacture a plaintext media capture URI.
         val schemeProbe = Intent(
             Intent.ACTION_VIEW,
-            Uri.parse("$scheme://capture?v=1&url=${Uri.encode("https://example.com/video.mp4")}"),
+            Uri.Builder().scheme(scheme).authority("capture").build(),
         ).addCategory(Intent.CATEGORY_BROWSABLE)
         val resolved = appContext.packageManager.resolveActivity(schemeProbe, PackageManager.MATCH_DEFAULT_ONLY)
         val resolvedPackage = resolved?.activityInfo?.packageName.orEmpty()

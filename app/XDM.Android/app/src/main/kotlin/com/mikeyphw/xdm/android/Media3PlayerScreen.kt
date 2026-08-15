@@ -68,6 +68,8 @@ fun Media3DirectPlayerCard(candidate: MediaPlaybackCandidate, modifier: Modifier
                     override fun onPlayerError(error: PlaybackException) {
                         playerError = MediaPlayerErrorSnapshot(
                             errorCodeName = error.errorCodeName,
+                            errorCode = error.errorCode,
+                            causeClassName = error.cause?.javaClass?.name,
                             message = error.message,
                             playbackStateLabel = "state=${player.playbackState}",
                             playWhenReady = player.playWhenReady,

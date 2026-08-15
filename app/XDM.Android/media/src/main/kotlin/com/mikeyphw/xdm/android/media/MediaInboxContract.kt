@@ -37,6 +37,7 @@ data class MediaRequestFacts(
     val headers: Map<String, String> = emptyMap(),
     val frameUrl: String? = null,
     val stableMediaId: String? = null,
+    val requestFingerprint: String? = null,
     val sessionRevision: Long? = null,
     val proposedHeaders: Map<String, String> = emptyMap(),
     val finalHeaders: Map<String, String> = emptyMap(),
@@ -428,6 +429,15 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             .digest(url.trim().lowercase(Locale.ROOT).toByteArray())
             .joinToString("") { "%02x".format(it) }
             .take(24)
+
+        fun browserCaptureIdFor(url: String, sessionId: String, requestFingerprint: String): String {
+            val exact = url.substringBefore('#').trim()
+            val key = listOf("browser-v2", sessionId.trim(), requestFingerprint.trim(), exact).joinToString("|")
+            return "media-browser-" + MessageDigest.getInstance("SHA-256")
+                .digest(key.toByteArray())
+                .joinToString("") { "%02x".format(it) }
+                .take(28)
+        }
     }
 
     private data class DashAdaptation(val attrs: String, val body: String)

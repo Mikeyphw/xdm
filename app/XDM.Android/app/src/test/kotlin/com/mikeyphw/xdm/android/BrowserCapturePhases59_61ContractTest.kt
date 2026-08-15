@@ -56,6 +56,8 @@ class BrowserCapturePhases59_61ContractTest {
         assertFalse("No raw Cookie query parameter", handoff.contains("params.set(\"cookie\""))
         assertFalse("No raw Authorization query parameter", handoff.contains("params.set(\"authorization\""))
         assertTrue(network.contains("prebuiltXdmLink"))
+        assertTrue(handoff.contains("requestFingerprint"))
+        assertTrue(network.contains("findPrivilegedEvidence"))
         val frameBridge = source("browser-extension/src/main/extension/xdm-firefox/frame-bridge.js")
         assertTrue(frameBridge.contains("prebuiltXdmLink: input.prebuiltXdmLink"))
     }
@@ -77,7 +79,7 @@ class BrowserCapturePhases59_61ContractTest {
         assertTrue(viewModel.contains("summaries.distinctBy"))
         assertTrue("encrypted capture variants must preserve exact URLs only in the secure handoff store", viewModel.contains("MediaRequestHandoffStore.rememberVariant"))
         assertTrue("encrypted capture rows must persist redacted URLs", viewModel.contains("persistableBrowserCaptureUrl(rawRecord.sourceUrl)"))
-        assertTrue("encrypted capture variant rows must persist redacted URLs", viewModel.contains("variant.copy(url = persistedVariantUrl)"))
+        assertTrue("encrypted capture variant rows must persist redacted URLs", viewModel.contains("rekeyed.copy(url = persistableBrowserCaptureUrl(source.url))"))
         assertTrue(screen.contains("reviewable candidate(s) from"))
         assertTrue(screen.contains("bounded encrypted Android handoff"))
     }

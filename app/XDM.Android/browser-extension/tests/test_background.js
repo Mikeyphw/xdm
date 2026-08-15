@@ -21,6 +21,12 @@ const events = {
   message: event()
 };
 
+globalThis.XdmHandoffV1 = {
+  async buildEncryptedCaptureSession(input) {
+    return `xdmdownload://capture?v=2&sid=${encodeURIComponent(input.sessionId)}&kid=test-key&ek=wrapped&iv=iv&ct=ciphertext`;
+  }
+};
+
 globalThis.browser = {
   storage: {
     local: {
@@ -110,30 +116,48 @@ assert.strictEqual(events.message.listeners.length, 1, "page observation receive
   );
 
   const messageListener = events.message.listeners[0];
+  const beforeForged = executeCalls.length;
   messageListener({
     type: "xdmPageObservationV1",
     observation: {
       source: "fetch-response",
-      requestType: "fetch",
+      responseUrl: "https://forged.example/master.m3u8",
+      contentType: "application/vnd.apple.mpegurl",
+      requestHeaders: { authorization: "Bearer forged-page-secret" },
+      bodyExcerpt: "https://forged.example/master.m3u8"
+    }
+  }, { tab: { id: 10 }, frameId: 0, url: "https://page.example/watch/10" });
+  await new Promise(resolve => setTimeout(resolve, 650));
+  assert.strictEqual(executeCalls.length, beforeForged, "page-world observation without privileged webRequest evidence must not dispatch");
+
+  events.before.listeners[0]({
+    tabId: 8, requestId: "r8-media", requestHeaders: [
+      { name: "Authorization", value: "Bearer privileged-header" },
+      { name: "Referer", value: "https://embed.example/player" }
+    ]
+  });
+  events.headers.listeners[0]({
+    tabId: 8, frameId: 9, requestId: "r8-media",
+    url: "https://media.example/master.m3u8?token=abc", type: "xmlhttprequest",
+    responseHeaders: [{ name: "Content-Type", value: "application/vnd.apple.mpegurl" }]
+  });
+  messageListener({
+    type: "xdmPageObservationV1",
+    observation: {
+      source: "fetch-response", requestType: "fetch",
       requestUrl: "https://api.example/player/config",
-      responseUrl: "https://api.example/player/config",
-      contentType: "application/json",
-      requestHeaders: { referer: "https://page.example/watch/8" },
+      responseUrl: "https://media.example/master.m3u8?token=abc",
+      contentType: "application/vnd.apple.mpegurl",
+      requestHeaders: { authorization: "Bearer forged-page-secret" },
       bodyExcerpt: JSON.stringify({ source: "https://media.example/master.m3u8?token=abc" })
     }
-  }, {
-    tab: { id: 8 },
-    frameId: 9,
-    url: "https://embed.example/player"
-  });
+  }, { tab: { id: 8 }, frameId: 9, url: "https://embed.example/player" });
 
-  await new Promise(resolve => setTimeout(resolve, 650));
-  assert.ok(executeCalls.some(call => call.tabId === 8 && String(call.options.code || "").includes("master.m3u8")), "iframe body candidate dispatched to top frame");
+  await new Promise(resolve => setTimeout(resolve, 700));
+  assert.ok(executeCalls.some(call => call.tabId === 8 && String(call.options.code || "").includes("master.m3u8")), "privileged request evidence can be enriched by page hint and dispatched");
   diagnostics = storageState.xdmNetworkDiagnosticsV1;
   assert.ok(diagnostics && diagnostics["8"]);
-  assert.ok(diagnostics["8"].bodyCandidates >= 1);
-  assert.strictEqual(diagnostics["8"].frameId, 9);
-  assert.ok(diagnostics["8"].url.includes("%3Credacted%3E") || diagnostics["8"].url.includes("<redacted>"), "diagnostics redact signed query values");
+  assert.ok(!JSON.stringify(diagnostics["8"]).includes("forged-page-secret"), "page-supplied headers never become privileged diagnostics/handoff evidence");
   assert.ok(!diagnostics["8"].url.includes("token=abc"));
 
   const beforeSegments = executeCalls.length;

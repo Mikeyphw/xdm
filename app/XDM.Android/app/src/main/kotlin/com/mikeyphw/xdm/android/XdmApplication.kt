@@ -165,6 +165,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val browserHandoffMediaCoordinator = BrowserHandoffMediaCoordinator()
         val browserCaptureEnvelopeManager = BrowserCaptureEnvelopeManager()
         val browserCaptureSessionRegistry = BrowserCaptureSessionRegistry(File(filesDir, "browser-capture-session-index"))
+        val browserCaptureImportJournal = BrowserCaptureImportJournal(File(filesDir, "browser-capture-import-journal"))
         TransferExecutionStopReasonRecorder.installPersistentRoot(File(filesDir, "queue-scheduling-recovery"))
         TransferNotifications(this).ensureChannels()
         val executionStarter = TransferExecutionStarter(this)
@@ -198,6 +199,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             browserHandoffMediaCoordinator = browserHandoffMediaCoordinator,
             browserCaptureEnvelopeManager = browserCaptureEnvelopeManager,
             browserCaptureSessionRegistry = browserCaptureSessionRegistry,
+            browserCaptureImportJournal = browserCaptureImportJournal,
             debugEventRecorder = debugEventRecorder,
         )
         termuxMediaPipelineManager.recoverInterruptedJobs()
@@ -249,5 +251,6 @@ data class AppContainer(
     val browserHandoffMediaCoordinator: BrowserHandoffMediaCoordinator,
     val browserCaptureEnvelopeManager: BrowserCaptureEnvelopeManager,
     val browserCaptureSessionRegistry: BrowserCaptureSessionRegistry,
+    val browserCaptureImportJournal: BrowserCaptureImportJournal,
     val debugEventRecorder: DebugEventRecorder,
 )

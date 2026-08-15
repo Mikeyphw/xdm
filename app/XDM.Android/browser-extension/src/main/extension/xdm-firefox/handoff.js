@@ -47,42 +47,10 @@
     return "media";
   }
 
-  function buildXdmCapture(input = {}) {
-    const url = safeHttpUrl(input.url);
-    if (!url) return "";
-    const scheme = String(input.scheme || CONFIG.xdmScheme || "xdmdownload").toLowerCase();
-    if (!/^[a-z][a-z0-9+.-]{1,40}$/.test(scheme)) return "";
-    const params = new URLSearchParams();
-    params.set("v", "1");
-    params.set("url", url);
-    const page = safeHttpUrl(input.pageUrl || (globalThis.location && location.href ? location.href : ""));
-    if (page) params.set("page", page);
-    const title = String(input.title || (globalThis.document && document.title ? document.title : "")).replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 240);
-    if (title) params.set("title", title);
-    const filename = cleanFilename(title, url, input.mimeType);
-    if (filename) params.set("filename", filename);
-    const mime = String(input.mimeType || "").split(";", 1)[0].trim().toLowerCase();
-    if (/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(mime)) params.set("mime", mime.slice(0, 120));
-    params.set("kind", mediaKind(url, mime));
-    if (input.stableMediaId) params.set("stableMediaId", String(input.stableMediaId).slice(0, 160));
-    const length = Number(input.contentLength || 0);
-    if (Number.isFinite(length) && length > 0) params.set("length", String(Math.floor(length)));
-    const durationMs = Number(input.durationMs || 0);
-    if (Number.isFinite(durationMs) && durationMs > 0) params.set("durationMs", String(Math.floor(durationMs)));
-    const thumbnail = safeHttpUrl(input.thumbnailUrl || input.poster || "");
-    if (thumbnail) params.set("thumbnail", thumbnail);
-    if (input.sessionRevision) params.set("sessionRevision", String(input.sessionRevision).slice(0, 40));
-    if (input.frameUrl) {
-      const frame = safeHttpUrl(input.frameUrl);
-      if (frame && frame !== page) params.set("frame", frame);
-    }
-    // Keep custom-scheme URLs credential-thin: raw Cookie/Authorization/header bags never go into the URL.
-    return `${scheme}://capture?${params.toString()}`;
-  }
-
-  function encodeSchemeData(value) {
-    try { return encodeURI(String(value || "")).replace(/#/g, "%23"); }
-    catch (_) { return String(value || "").replace(/#/g, "%23"); }
+  function buildXdmCapture(_input = {}) {
+    // Encrypted v2 capture is the only supported XDM media handoff. Never place the
+    // media URL, page URL, signed query, headers, or credentials in a custom-scheme URI.
+    return "";
   }
 
   function buildOneDm(input = {}) {
@@ -92,7 +60,7 @@
 
   function buildTargets(input = {}) {
     return Object.freeze({
-      xdm: buildXdmCapture(input),
+      xdm: "",
       oneDm: buildOneDm(input),
       filename: cleanFilename(input.title, input.url, input.mimeType)
     });
@@ -158,6 +126,7 @@
       contentType,
       contentLength: Math.max(0, Number(candidate.contentLength || 0)),
       stableMediaId: String(candidate.stableMediaId || "").slice(0, 160),
+      requestFingerprint: String(candidate.requestFingerprint || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 96),
       sessionRevision: Math.max(1, Number(candidate.sessionRevision || fallback.revision || Date.now())),
       quality: candidate.quality === "possible" ? "possible" : "strong",
       reason: String(candidate.reason || "browser-media").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 96),
@@ -175,7 +144,7 @@
     const scheme = String(input.scheme || config.xdmScheme || "xdmdownload").toLowerCase();
     const keyId = String(config.captureKeyId || "").trim();
     const publicKeySpki = String(config.capturePublicKeySpki || "").trim();
-    const oaepHash = String(config.captureOaepHash || "SHA-256").trim().toUpperCase();
+    const oaepHash = String(config.captureOaepHash || "").trim().toUpperCase();
     if (!keyId || !publicKeySpki || !globalThis.crypto || !crypto.subtle) return "";
     if (oaepHash !== "SHA-1" && oaepHash !== "SHA-256") return "";
     if (!/^[a-z][a-z0-9+.-]{1,40}$/.test(scheme)) return "";

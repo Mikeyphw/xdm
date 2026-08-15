@@ -2,6 +2,7 @@ package com.mikeyphw.xdm.android.media
 
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaVariant
+import java.io.File
 import java.util.Locale
 
 /**
@@ -20,6 +21,8 @@ enum class MediaPrivacySurface(val label: String) {
     Logs("logs"),
     Notification("notification"),
     TempFiles("temp files"),
+    SecureEnvelopeFile("secure request envelope files"),
+    BrowserImportJournal("browser capture import journal"),
     TermuxCommandPreview("Termux command preview"),
 }
 
@@ -78,6 +81,7 @@ class MediaSessionPrivacyAuditPlanner {
         executionJobs: List<MediaExecutionJob>,
         diagnostics: List<String> = emptyList(),
         cleanupLedger: Map<String, Boolean> = emptyMap(),
+        filesystemRoots: List<File> = emptyList(),
     ): MediaSessionPrivacyAuditDashboard {
         val findings = mutableListOf<MediaPrivacyAuditFinding>()
         captures.forEach { capture ->
@@ -95,6 +99,9 @@ class MediaSessionPrivacyAuditPlanner {
         diagnostics.forEachIndexed { index, value ->
             findings += inspectDiagnostic(index, value)
         }
+        filesystemRoots.distinctBy { runCatching { it.canonicalPath }.getOrDefault(it.absolutePath) }.forEach { root ->
+            findings += inspectFilesystemRoot(root)
+        }
         cleanupLedger.forEach { entry ->
             val captureId = entry.key
             val verified = entry.value
@@ -107,7 +114,7 @@ class MediaSessionPrivacyAuditPlanner {
                 remediation = if (verified) "cleanup ledger verified" else "delete temp cookie/input/session files after terminal state",
             )
         }
-        val durableFindings = findings.filter { it.surface == MediaPrivacySurface.QueueSpec || it.surface == MediaPrivacySurface.RoomMetadata || it.surface == MediaPrivacySurface.Sidecar || it.surface == MediaPrivacySurface.Logs || it.surface == MediaPrivacySurface.Notification }
+        val durableFindings = findings.filter { isDurableSurface(it.surface) }
         return MediaSessionPrivacyAuditDashboard(
             findings = findings.sortedWith(compareByDescending<MediaPrivacyAuditFinding> { severityRank(it.severity) }.thenBy { it.surface.label }.thenBy { it.captureId.orEmpty() }),
             blockerCount = findings.count { it.severity == MediaPrivacySeverity.Blocker },
@@ -157,6 +164,88 @@ class MediaSessionPrivacyAuditPlanner {
         findingForText(MediaPrivacySurface.TermuxCommandPreview, "diagnostic-$index", value, "typed Termux previews must not expose raw cookies or bearer tokens"),
     )
 
+    /** Bounded inspection of real app-private media/browser persistence surfaces. */
+    private fun inspectFilesystemRoot(root: File): List<MediaPrivacyAuditFinding> {
+        val surface = when (root.name) {
+            "secure-request-envelopes-v1" -> MediaPrivacySurface.SecureEnvelopeFile
+            "browser-capture-import-journal" -> MediaPrivacySurface.BrowserImportJournal
+            else -> MediaPrivacySurface.Sidecar
+        }
+        if (!root.exists()) return listOf(
+            MediaPrivacyAuditFinding(
+                surface = surface,
+                severity = MediaPrivacySeverity.Pass,
+                cleanupState = MediaCleanupState.NotRequired,
+                captureId = null,
+                redactedPreview = "${root.name}: surface absent",
+                remediation = "filesystem surface absent; nothing persisted to inspect",
+            ),
+        )
+        val rootCanonical = runCatching { root.canonicalFile }.getOrNull() ?: return emptyList()
+        val findings = mutableListOf<MediaPrivacyAuditFinding>()
+        var scanned = 0
+        fun walk(dir: File, depth: Int) {
+            if (depth > MAX_FILESYSTEM_DEPTH || scanned >= MAX_FILESYSTEM_FILES) return
+            val children = runCatching { dir.listFiles()?.sortedBy { it.name }.orEmpty() }.getOrDefault(emptyList())
+            children.forEach { child ->
+                if (scanned >= MAX_FILESYSTEM_FILES) return
+                val canonical = runCatching { child.canonicalFile }.getOrNull() ?: return@forEach
+                if (!canonical.path.startsWith(rootCanonical.path + File.separator)) return@forEach
+                if (canonical.isDirectory) {
+                    walk(canonical, depth + 1)
+                } else if (canonical.isFile && shouldInspectFile(canonical)) {
+                    scanned += 1
+                    val text = runCatching { readBoundedText(canonical) }.getOrElse { "<unreadable>" }
+                    val relative = runCatching { canonical.relativeTo(rootCanonical).path }.getOrDefault(canonical.name)
+                    findings += findingForText(
+                        surface,
+                        "fs-${root.name}-$scanned",
+                        "file=${redactKnownSecrets(relative)}\n$text",
+                        "remove raw credentials or signed-request material from durable app-private media/browser files",
+                    )
+                }
+            }
+        }
+        if (rootCanonical.isFile && shouldInspectFile(rootCanonical)) {
+            val text = runCatching { readBoundedText(rootCanonical) }.getOrElse { "<unreadable>" }
+            findings += findingForText(surface, "fs-${root.name}", text, "remove raw credentials from durable app-private media/browser files")
+        } else if (rootCanonical.isDirectory) {
+            walk(rootCanonical, 0)
+        }
+        if (findings.isEmpty()) findings += MediaPrivacyAuditFinding(
+            surface, MediaPrivacySeverity.Pass, MediaCleanupState.NotRequired, null,
+            "${root.name}: no inspectable durable files", "filesystem surface scanned",
+        )
+        return findings
+    }
+
+    private fun readBoundedText(file: File): String = file.inputStream().buffered().use { input ->
+        val buffer = ByteArray(8 * 1024)
+        val output = StringBuilder()
+        var remaining = MAX_FILESYSTEM_BYTES
+        while (remaining > 0) {
+            val read = input.read(buffer, 0, minOf(buffer.size, remaining))
+            if (read <= 0) break
+            output.append(String(buffer, 0, read, Charsets.UTF_8))
+            remaining -= read
+        }
+        output.toString()
+    }
+
+    private fun shouldInspectFile(file: File): Boolean {
+        if (file.length() > MAX_FILESYSTEM_FILE_SIZE) return false
+        val name = file.name.lowercase(Locale.ROOT)
+        val durableName = when {
+            name.endsWith(".bak") -> name.removeSuffix(".bak")
+            name.endsWith(".new") -> name.removeSuffix(".new")
+            name.endsWith(".tmp") -> name.removeSuffix(".tmp")
+            ".tmp-" in name -> name.substringBeforeLast(".tmp-")
+            else -> name
+        }
+        return durableName.endsWith(".json") || durableName.endsWith(".properties") || durableName.endsWith(".xdm-secure") ||
+            durableName.endsWith(".txt") || durableName.endsWith(".log") || durableName.endsWith(".sidecar") || durableName.endsWith(".journal")
+    }
+
     private fun findingForText(
         surface: MediaPrivacySurface,
         captureId: String?,
@@ -182,7 +271,9 @@ class MediaSessionPrivacyAuditPlanner {
         MediaPrivacySurface.RoomMetadata,
         MediaPrivacySurface.Sidecar,
         MediaPrivacySurface.Logs,
-        MediaPrivacySurface.Notification -> true
+        MediaPrivacySurface.Notification,
+        MediaPrivacySurface.SecureEnvelopeFile,
+        MediaPrivacySurface.BrowserImportJournal -> true
         MediaPrivacySurface.ExternalPageContext,
         MediaPrivacySurface.ResolverSessionHandoff,
         MediaPrivacySurface.TempFiles,
@@ -204,10 +295,17 @@ class MediaSessionPrivacyAuditPlanner {
     }
 
     private companion object {
+        const val MAX_FILESYSTEM_FILES = 256
+        const val MAX_FILESYSTEM_DEPTH = 5
+        const val MAX_FILESYSTEM_BYTES = 128 * 1024
+        const val MAX_FILESYSTEM_FILE_SIZE = 256L * 1024L
         val secretPatterns = listOf(
+            Regex("""(?:Authorization|Proxy-Authorization)\s*[:=]\s*(?:Bearer|Basic)\s+(?!<redacted>)[A-Za-z0-9._~+/=-]{8,}""", RegexOption.IGNORE_CASE),
             Regex("""Bearer\s+(?!<redacted(?:-[A-Za-z]+)?>)(?:secret-[A-Za-z0-9._-]+|[A-Za-z0-9._~+/=-]{16,})""", RegexOption.IGNORE_CASE),
             Regex("""Cookie\s*[:=](?!\s*<redacted(?:-[A-Za-z]+)?>)\s*[^\n;]+""", RegexOption.IGNORE_CASE),
-            Regex("""(?i)(?<![-A-Za-z])(token|session|sid|sig|signature|auth|key)=((?!<redacted>|referer=|none\b|available\b|redacted\b)[^\s&#;]+)"""),
+            Regex("""(?i)(?<![-A-Za-z])(token|access_token|refresh_token|session|sid|sig|signature|x-amz-signature|x-goog-signature|auth|api_key|apikey|key|password|passwd)=((?!<redacted>|referer=|none\b|available\b|redacted\b)[^\s&#;]+)"""),
+            Regex("""https?://[^/@\s:]+:[^/@\s]+@""", RegexOption.IGNORE_CASE),
+            Regex("""\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b"""),
             Regex("\\b(?:super-)?secret-(?!(?:safe|bearing|free)\\b)[A-Za-z0-9._-]+", RegexOption.IGNORE_CASE),
         )
     }

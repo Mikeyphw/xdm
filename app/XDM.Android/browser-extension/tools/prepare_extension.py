@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 import json
 import re
 import shutil
@@ -93,6 +95,28 @@ def render_theme(text: str, replacements: dict[str, str]) -> str:
     return text
 
 
+
+def capture_key_id_for_spki(spki_base64url: str) -> str:
+    encoded = spki_base64url.strip()
+    if not re.fullmatch(r"[A-Za-z0-9_-]{128,2048}", encoded):
+        raise SystemExit("capture public key must be unpadded base64url SPKI data")
+    try:
+        der = base64.urlsafe_b64decode(encoded + "=" * ((4 - len(encoded) % 4) % 4))
+    except Exception as exc:
+        raise SystemExit("capture public key is not valid base64url SPKI data") from exc
+    if not der:
+        raise SystemExit("capture public key is empty")
+    return hashlib.sha256(der).hexdigest()[:24]
+
+
+def require_capture_key_binding(key_id: str, spki_base64url: str) -> None:
+    if bool(key_id.strip()) != bool(spki_base64url.strip()):
+        raise SystemExit("capture key id and public key must be supplied together")
+    if spki_base64url.strip():
+        derived = capture_key_id_for_spki(spki_base64url)
+        if key_id.strip() != derived:
+            raise SystemExit(f"capture key id does not match SHA-256(SPKI DER).take(24); expected {derived}")
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, required=True)
@@ -100,16 +124,26 @@ def main() -> int:
     parser.add_argument("--theme-contract", type=Path)
     parser.add_argument("--contract-version", default="2")
     parser.add_argument("--extension-version", default="1.2.0")
-    parser.add_argument("--app-version", default="0.20.0-rc08")
+    parser.add_argument("--app-version", default="0.21.0")
     parser.add_argument("--application-id", default="com.mikeyphw.xdm.android")
     parser.add_argument("--channel", choices=("release", "debug"), default="release")
     parser.add_argument("--xdm-scheme", default="xdmdownload")
     parser.add_argument("--default-target", choices=("xdm", "1dm", "ask"), default="xdm")
     parser.add_argument("--capture-key-id", default="")
     parser.add_argument("--capture-public-key-spki", default="")
-    parser.add_argument("--capture-oaep-hash", choices=("SHA-1", "SHA-256"), default="SHA-256")
+    parser.add_argument("--capture-oaep-hash", choices=("SHA-1", "SHA-256"), default=None)
     parser.add_argument("--theme", choices=("dark", "amoled"), default="dark")
     args = parser.parse_args()
+
+    if args.channel == "release":
+        if not args.capture_key_id or not args.capture_public_key_spki or not args.capture_oaep_hash:
+            raise SystemExit("release packaging requires --capture-key-id, --capture-public-key-spki, and --capture-oaep-hash for every default target")
+    require_capture_key_binding(args.capture_key_id, args.capture_public_key_spki)
+    if not args.capture_oaep_hash:
+        if args.channel == "debug" and not args.capture_key_id and not args.capture_public_key_spki:
+            args.capture_oaep_hash = "SHA-256"
+        else:
+            raise SystemExit("--capture-oaep-hash is required outside keyless debug rendering")
 
     source = args.source.resolve()
     output = args.output.resolve()

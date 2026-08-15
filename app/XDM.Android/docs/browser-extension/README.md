@@ -27,8 +27,8 @@ browser-extension/build/outputs/xpi/
 ## Architecture boundary
 
 - The extension detects media; it does not embed an Android browser runtime.
-- A physical tap on the in-page Shadow DOM FAB opens `xdmdownload://capture` or the optional `idmdownload:` target.
-- The XDM custom URI remains credential-thin and carries URL and display metadata only. It does not carry standalone cookies, authorization headers, proxy credentials, POST bodies, or raw header blocks.
+- A physical tap on the in-page Shadow DOM FAB opens an encrypted-v2 `xdmdownload://capture` handoff or the optional `idmdownload:` target.
+- The XDM capture URI outer layer carries only bounded envelope fields (`v`, `sid`, `kid`, `ek`, `iv`, `ct`). Exact request URLs, page metadata, request fingerprints, and eligible request headers remain inside authenticated ciphertext rather than appearing in the routable URI.
 - The Android receiver remains `ExternalAddDownloadActivity` and routes all accepted work through review-first intake.
 
 ## Phase 43A launcher parity

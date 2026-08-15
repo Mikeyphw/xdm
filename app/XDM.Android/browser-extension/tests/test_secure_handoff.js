@@ -54,6 +54,7 @@ async function runSecureHandoff(oaepHash) {
         manifest: true,
         playbackObserved: true,
         stableMediaId: "media-1",
+        requestFingerprint: "req-aaaaaaaaaaaaaaaa",
         reason: "webRequest-manifest",
         browserHandoff: {
           proposedHeaders: { headers: { Cookie: "session=secret-cookie", Referer: "https://page.example/watch" } },
@@ -64,6 +65,7 @@ async function runSecureHandoff(oaepHash) {
         url: "https://cdn.example/video.mp4",
         contentType: "video/mp4",
         stableMediaId: "media-2",
+        requestFingerprint: "req-bbbbbbbbbbbbbbbb",
         reason: "playback",
       },
     ],
@@ -100,6 +102,8 @@ async function runSecureHandoff(oaepHash) {
   assert.strictEqual(payload.candidates[0].url, mediaUrl);
   assert.strictEqual(payload.candidates[0].proposedHeaders.cookie, "session=secret-cookie");
   assert.strictEqual(payload.candidates[0].finalHeaders.authorization, "Bearer top-secret");
+  assert.strictEqual(payload.candidates[0].requestFingerprint, "req-aaaaaaaaaaaaaaaa");
+  assert.strictEqual(payload.candidates[1].requestFingerprint, "req-bbbbbbbbbbbbbbbb");
   assert.strictEqual(payload.totalCandidateCount, 2);
   assert.strictEqual(payload.truncated, false);
 }

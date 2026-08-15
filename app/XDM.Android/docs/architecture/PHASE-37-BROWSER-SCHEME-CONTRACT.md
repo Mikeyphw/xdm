@@ -4,12 +4,14 @@
 
 Phase 37 gives external browser integrations a uniquely addressable, review-first Android entry point without restoring an embedded browser or claiming ordinary web navigation.
 
-The supported version-1 links are:
+Phase 37 originally introduced these version-1 links:
 
 ```text
 xdmdownload://capture?v=1&url=<encoded-media-url>&page=<encoded-page-url>&title=<encoded-title>&filename=<encoded-name>&mime=<encoded-mime>&kind=hls
 xdmdownload://add?v=1&url=<encoded-download-url>&page=<encoded-page-url>&title=<encoded-title>&filename=<encoded-name>&mime=<encoded-mime>
 ```
+
+**Current compatibility note:** browser-extension media capture no longer emits the plaintext `capture?v=1` form. It is retained only as a legacy parser boundary. Current browser capture uses encrypted v2 (`sid`, `kid`, `ek`, `iv`, `ct`) and the production extension/acceptance tooling never manufactures a v1 capture URL. The non-sensitive `add?v=1` route remains supported.
 
 Build variants use distinct schemes:
 
@@ -96,7 +98,7 @@ Device resolution can be checked with the installed build's scheme:
 adb shell am start -W \
   -a android.intent.action.VIEW \
   -c android.intent.category.BROWSABLE \
-  -d 'xdmdownload://capture?v=1&url=https%3A%2F%2Fexample.com%2Fmaster.m3u8'
+  -d 'xdmdownload://add?v=1&url=https%3A%2F%2Fexample.com%2Ffile.zip'
 ```
 
 Use `xdmdownload` for release builds and `xdmdownload-debug` for debug builds.

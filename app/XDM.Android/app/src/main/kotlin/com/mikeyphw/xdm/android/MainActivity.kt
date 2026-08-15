@@ -48,7 +48,16 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun consumeLaunchIntent(incoming: Intent?): Boolean =
-        consumeInternalAutomation(incoming) || consumeNotificationNavigation(incoming)
+        consumeInternalBrowserCapture(incoming) || consumeInternalAutomation(incoming) || consumeNotificationNavigation(incoming)
+
+    private fun consumeInternalBrowserCapture(incoming: Intent?): Boolean {
+        if (incoming?.action != ACTION_INTERNAL_BROWSER_CAPTURE_IMPORT) return false
+        val sessionId = incoming.getStringExtra(EXTRA_INTERNAL_BROWSER_CAPTURE_SESSION_ID)?.trim()?.takeIf(String::isNotBlank)
+        incoming.removeExtra(EXTRA_INTERNAL_BROWSER_CAPTURE_SESSION_ID)
+        setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+        viewModel.recoverPendingBrowserCaptureImports(sessionId)
+        return true
+    }
 
     private fun consumeNotificationNavigation(incoming: Intent?): Boolean {
         val downloadId = incoming?.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.trim()?.takeIf(String::isNotBlank)
@@ -99,5 +108,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         internal const val ACTION_INTERNAL_AUTOMATION_DISPATCH = "com.mikeyphw.xdm.android.INTERNAL_AUTOMATION_DISPATCH"
         internal const val EXTRA_INTERNAL_COMMAND_ID = "com.mikeyphw.xdm.android.extra.INTERNAL_COMMAND_ID"
+        internal const val ACTION_INTERNAL_BROWSER_CAPTURE_IMPORT = "com.mikeyphw.xdm.android.INTERNAL_BROWSER_CAPTURE_IMPORT"
+        internal const val EXTRA_INTERNAL_BROWSER_CAPTURE_SESSION_ID = "com.mikeyphw.xdm.android.extra.INTERNAL_BROWSER_CAPTURE_SESSION_ID"
     }
 }

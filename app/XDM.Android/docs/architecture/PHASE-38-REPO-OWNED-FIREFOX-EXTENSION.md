@@ -14,13 +14,13 @@ Response inspection is capped at 768 KiB. Binary media bodies are never buffered
 
 ## Handoff targets
 
-- **XDM** is the default and uses `xdmdownload://capture?v=1&url=...`.
+- **XDM** is the default. The original Phase 38 plaintext `capture?v=1&url=...` transport has been superseded; current browser media capture requires an encrypted v2 handoff.
 - **1DM+** remains an optional in-page `idmdownload:` fallback.
 - **Ask every time** exposes both choices in the injected page launcher.
 
 The extension popup never contains custom-protocol anchors and never launches an app through background tab navigation. It only asks the content script to place a genuine anchor inside a normal webpage.
 
-The XDM custom URI includes the media URL and bounded display metadata only. Cookies, Authorization, proxy credentials, request bodies, and raw header blocks are excluded.
+The current XDM capture URI carries only encrypted-envelope fields (`sid`, `kid`, `ek`, `iv`, `ct`). Exact media/page URLs and bounded request context live inside authenticated ciphertext; production browser runtime has no plaintext capture fallback.
 
 ## Development
 

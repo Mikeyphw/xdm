@@ -1272,6 +1272,7 @@ internal fun MediaDeveloperToolsSection(
     state: MainUiState,
     section: DeveloperToolSection = DeveloperToolSection.MediaPipeline,
 ) {
+    val context = LocalContext.current
     val mediaPlanner = remember { MediaDownloadPlanner() }
     val executionPlanner = remember { MediaExecutionLibraryPlanner(mediaPlanner) }
     val dispatchPlanner = remember { MediaExecutionDispatcher() }
@@ -1364,6 +1365,12 @@ internal fun MediaDeveloperToolsSection(
             cleanupLedger = executionJobs.associate { job ->
                 job.captureId to (job.stage == MediaExecutionStage.Completed || job.stage == MediaExecutionStage.Failed || job.stage == MediaExecutionStage.Blocked)
             },
+            filesystemRoots = listOf(
+                java.io.File(context.noBackupFilesDir, "secure-request-envelopes-v1"),
+                java.io.File(context.filesDir, "browser-capture-import-journal"),
+                java.io.File(context.filesDir, "browser-capture-session-index"),
+                java.io.File(context.filesDir, "queue-scheduling-recovery"),
+            ),
         )
     }
     val mobilePolish = remember(state.mediaCaptures, queueTelemetry, queueActions, libraryV2, playerDiagnostics, captureQuality, privacyAudit) {

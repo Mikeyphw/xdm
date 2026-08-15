@@ -1,3 +1,7 @@
+import org.gradle.api.provider.Provider
+import java.security.MessageDigest
+import java.util.Base64
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
 }
@@ -19,6 +23,30 @@ dependencies {
 val extensionSource = layout.projectDirectory.dir("src/main/extension/xdm-firefox")
 val unpackedOutput = layout.buildDirectory.dir("firefox/unpacked")
 val xpiOutput = layout.buildDirectory.dir("outputs/xpi")
+val extensionVersion = "1.2.0"
+val androidAppVersion = "0.21.0"
+val releaseCaptureKeyId = providers.gradleProperty("xdmCaptureKeyId").orElse(providers.environmentVariable("XDM_CAPTURE_KEY_ID"))
+val releaseCapturePublicKeySpki = providers.gradleProperty("xdmCapturePublicKeySpki").orElse(providers.environmentVariable("XDM_CAPTURE_PUBLIC_KEY_SPKI"))
+val releaseCaptureOaepHash = providers.gradleProperty("xdmCaptureOaepHash").orElse(providers.environmentVariable("XDM_CAPTURE_OAEP_HASH"))
+
+fun requiredReleaseCaptureValue(provider: Provider<String>, label: String): String =
+    provider.orNull?.trim()?.takeIf(String::isNotBlank)
+        ?: throw GradleException("Missing $label. Release XDM XPIs must be bound to an Android capture public key.")
+
+fun requireReleaseCaptureKeyBinding(keyId: String, publicKeySpki: String) {
+    val der = try {
+        Base64.getUrlDecoder().decode(publicKeySpki.trim())
+    } catch (error: IllegalArgumentException) {
+        throw GradleException("xdmCapturePublicKeySpki / XDM_CAPTURE_PUBLIC_KEY_SPKI is not valid base64url SPKI data.", error)
+    }
+    val derived = MessageDigest.getInstance("SHA-256")
+        .digest(der)
+        .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+        .take(24)
+    if (keyId != derived) {
+        throw GradleException("xdmCaptureKeyId / XDM_CAPTURE_KEY_ID must equal SHA-256(SPKI DER).take(24); expected $derived.")
+    }
+}
 
 val prepareFirefoxExtension by tasks.registering(Exec::class) {
     group = "browser extension"
@@ -30,12 +58,12 @@ val prepareFirefoxExtension by tasks.registering(Exec::class) {
         layout.projectDirectory.file("tools/prepare_extension.py").asFile.absolutePath,
         "--source", extensionSource.asFile.absolutePath,
         "--output", unpackedOutput.get().asFile.absolutePath,
-        "--extension-version", "1.2.0",
-        "--app-version", "0.20.0-rc08",
+        "--extension-version", extensionVersion,
+        "--app-version", androidAppVersion,
         "--application-id", "com.mikeyphw.xdm.android",
-        "--channel", "release",
+        "--channel", "debug",
         "--xdm-scheme", "xdmdownload",
-        "--default-target", "xdm",
+        "--default-target", "ask",
         "--theme", "dark",
     )
 }
@@ -70,18 +98,27 @@ fun registerXpiTask(
     dependsOn(tasks.named("classes"), validateFirefoxExtension)
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("com.mikeyphw.xdm.android.browserextension.BrowserExtensionPackageCli")
-    val outputFile = xpiOutput.map { it.file("XDM-Android-Firefox-1.2.0-release-$theme.xpi") }
+    val outputFile = xpiOutput.map { it.file("XDM-Android-Firefox-$extensionVersion-release-$theme.xpi") }
     outputs.file(outputFile)
-    args(
-        "--output", outputFile.get().asFile.absolutePath,
-        "--extension-version", "1.2.0",
-        "--app-version", "0.20.0-rc08",
-        "--application-id", "com.mikeyphw.xdm.android",
-        "--channel", "release",
-        "--xdm-scheme", "xdmdownload",
-        "--default-target", "xdm",
-        "--theme", theme,
-    )
+    doFirst {
+        val keyId = requiredReleaseCaptureValue(releaseCaptureKeyId, "xdmCaptureKeyId / XDM_CAPTURE_KEY_ID")
+        val publicKey = requiredReleaseCaptureValue(releaseCapturePublicKeySpki, "xdmCapturePublicKeySpki / XDM_CAPTURE_PUBLIC_KEY_SPKI")
+        val oaepHash = requiredReleaseCaptureValue(releaseCaptureOaepHash, "xdmCaptureOaepHash / XDM_CAPTURE_OAEP_HASH")
+        requireReleaseCaptureKeyBinding(keyId, publicKey)
+        setArgs(listOf(
+            "--output", outputFile.get().asFile.absolutePath,
+            "--extension-version", extensionVersion,
+            "--app-version", androidAppVersion,
+            "--application-id", "com.mikeyphw.xdm.android",
+            "--channel", "release",
+            "--xdm-scheme", "xdmdownload",
+            "--default-target", "xdm",
+            "--capture-key-id", keyId,
+            "--capture-public-key-spki", publicKey,
+            "--capture-oaep-hash", oaepHash,
+            "--theme", theme,
+        ))
+    }
 }
 
 val packageFirefoxExtensionDark = registerXpiTask("packageFirefoxExtensionDark", "dark")
@@ -99,18 +136,37 @@ val verifyFirefoxExtensionReleaseArtifacts by tasks.registering(Exec::class) {
     dependsOn(packageFirefoxExtensionDark, packageFirefoxExtensionAmoled)
     val metadataFile = xpiOutput.map { it.file("release-artifacts.json") }
     inputs.files(
-        xpiOutput.map { it.file("XDM-Android-Firefox-1.2.0-release-dark.xpi") },
-        xpiOutput.map { it.file("XDM-Android-Firefox-1.2.0-release-amoled.xpi") },
+        xpiOutput.map { it.file("XDM-Android-Firefox-$extensionVersion-release-dark.xpi") },
+        xpiOutput.map { it.file("XDM-Android-Firefox-$extensionVersion-release-amoled.xpi") },
     )
     outputs.file(metadataFile)
-    commandLine(
-        "python3",
-        layout.projectDirectory.file("tools/verify_release_artifacts.py").asFile.absolutePath,
-        "--output-dir", xpiOutput.get().asFile.absolutePath,
-        "--metadata", metadataFile.get().asFile.absolutePath,
-    )
+    doFirst {
+        val keyId = requiredReleaseCaptureValue(releaseCaptureKeyId, "xdmCaptureKeyId / XDM_CAPTURE_KEY_ID")
+        val publicKey = requiredReleaseCaptureValue(releaseCapturePublicKeySpki, "xdmCapturePublicKeySpki / XDM_CAPTURE_PUBLIC_KEY_SPKI")
+        val oaepHash = requiredReleaseCaptureValue(releaseCaptureOaepHash, "xdmCaptureOaepHash / XDM_CAPTURE_OAEP_HASH")
+        requireReleaseCaptureKeyBinding(keyId, publicKey)
+        commandLine(
+            "python3",
+            layout.projectDirectory.file("tools/verify_release_artifacts.py").asFile.absolutePath,
+            "--output-dir", xpiOutput.get().asFile.absolutePath,
+            "--metadata", metadataFile.get().asFile.absolutePath,
+            "--extension-version", extensionVersion,
+            "--app-version", androidAppVersion,
+            "--capture-key-id", keyId,
+            "--capture-public-key-spki", publicKey,
+            "--capture-oaep-hash", oaepHash,
+        )
+    }
+}
+
+val browserExtensionReleaseGate by tasks.registering {
+    group = "verification"
+    description = "Build and verify key-bound Firefox release XPIs. Requires the Android capture public key inputs."
+    dependsOn(verifyFirefoxExtensionReleaseArtifacts)
 }
 
 tasks.named("check") {
-    dependsOn(validateFirefoxExtension, verifyFirefoxExtensionReleaseArtifacts)
+    // Ordinary source/development checks remain keyless. Release packaging is an explicit
+    // key-bound gate so a missing device/app public key cannot silently produce an XDM XPI.
+    dependsOn(validateFirefoxExtension)
 }

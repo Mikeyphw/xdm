@@ -68,6 +68,25 @@ class BrowserExtensionSourceContractTest {
         assertFalse(handoff.contains("extra_headers"))
     }
     @Test
+    fun `page hints require privileged request evidence and xdm plaintext fallback is disabled`() {
+        val handoff = extensionRoot.resolve("handoff.js").readText()
+        val observer = extensionRoot.resolve("network-observer.js").readText()
+        val bridge = extensionRoot.resolve("frame-bridge.js").readText()
+        val detector = extensionRoot.resolve("detector-core.js").readText()
+        val store = extensionRoot.resolve("candidate-store.js").readText()
+
+        assertTrue(handoff.contains("function buildXdmCapture"))
+        assertTrue(handoff.contains("return "";"))
+        assertTrue(handoff.contains("requestFingerprint"))
+        assertTrue(observer.contains("findPrivilegedEvidence"))
+        assertTrue(observer.contains("candidate.source !== "webRequest""))
+        assertTrue(observer.contains("requestHeaders: {}") || bridge.contains("requestHeaders: {}"))
+        assertTrue(observer.contains("plaintext fallback is disabled") || bridge.contains("plaintext fallback is disabled"))
+        assertTrue(detector.contains("requestFingerprint"))
+        assertTrue(store.contains("requestFingerprint"))
+    }
+
+    @Test
     fun `background loads encrypted handoff before network observer`() {
         val manifest = extensionRoot.resolve("manifest.template.json").readText()
         val handoffIndex = manifest.indexOf("handoff.js")

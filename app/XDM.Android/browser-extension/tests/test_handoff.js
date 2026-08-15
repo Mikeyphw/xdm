@@ -11,15 +11,15 @@ const context = vm.createContext({
   globalThis: null
 });
 context.globalThis = context;
-context.XdmExtensionConfig = { contractVersion: 1, xdmScheme: "xdmdownload", defaultTarget: "xdm" };
+context.XdmExtensionConfig = { contractVersion: 2, xdmScheme: "xdmdownload", defaultTarget: "xdm" };
 vm.runInContext(fs.readFileSync(path.join(source, "handoff.js"), "utf8"), context, { filename: "handoff.js" });
 const handoff = context.XdmHandoffV1;
-const xdm = handoff.buildXdmCapture({ url: "https://cdn.example/master.m3u8?token=abc", pageUrl: "https://page.example/watch", title: "Episode 4", mimeType: "application/vnd.apple.mpegurl" });
-assert(xdm.startsWith("xdmdownload://capture?"));
-const parsed = new URL(xdm);
-assert.strictEqual(parsed.searchParams.get("v"), "1");
-assert.strictEqual(parsed.searchParams.get("url"), "https://cdn.example/master.m3u8?token=abc");
-assert.strictEqual(parsed.searchParams.get("kind"), "hls");
-assert(!/cookie|authorization|extra_headers/i.test(xdm));
+assert.strictEqual(
+  handoff.buildXdmCapture({ url: "https://cdn.example/master.m3u8?token=abc" }),
+  "",
+  "plaintext v1 XDM capture must stay disabled",
+);
+const targets = handoff.buildTargets({ url: "https://cdn.example/master.m3u8?token=abc" });
+assert.strictEqual(targets.xdm, "", "generic target builder cannot manufacture plaintext XDM handoff");
 assert.strictEqual(handoff.buildOneDm({ url: "https://cdn.example/video.mp4" }), "idmdownload:https://cdn.example/video.mp4");
 console.log("handoff tests passed");

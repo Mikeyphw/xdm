@@ -49,8 +49,10 @@ if manifest.get("content_scripts", [{}])[0].get("all_frames") is not True:
     ERRORS.append("extension must collect from all frames")
 
 handoff = require(Path("browser-extension/src/main/extension/xdm-firefox/handoff.js"))
-for token in ('`${scheme}://capture?${params.toString()}`', 'params.set("v"', 'params.set("url"', 'idmdownload:'):
+for token in ('`${scheme}://capture?${params.toString()}`', 'params.set("v"', 'params.set("sid"', 'params.set("kid"', 'params.set("ek"', 'params.set("iv"', 'params.set("ct"', 'idmdownload:'):
     if token not in handoff: ERRORS.append(f"handoff contract missing {token}")
+if 'params.set("url"' in handoff:
+    ERRORS.append("encrypted v2 outer capture URI must not expose the media URL")
 for token in ("extra_cookies", "extra_authorization", "extra_headers", "proxy-authorization"):
     if token in handoff: ERRORS.append(f"XDM custom URI must not carry {token}")
 

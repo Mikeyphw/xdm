@@ -22,7 +22,7 @@ browser-extension/build/firefox/unpacked/
 
 Phase 38 does not create or commit an XPI. Phase 39 will reuse the source templates and validation contract to produce deterministic XPIs from Gradle and the Android app.
 
-The extension defaults to XDM through the Phase 37 `xdmdownload://capture?v=1&url=...` contract, retains an optional 1DM+ in-page fallback, and never launches a custom protocol from the popup or background context.
+XDM media capture now uses the encrypted `xdmdownload://capture?v=2&sid=...&kid=...&ek=...&iv=...&ct=...` envelope. The plaintext v1 media URL contract is disabled. Release XPIs must be generated with the Android app capture public key and its advertised OAEP hash; ordinary unpacked development rendering stays keyless in Debug/Ask mode. The optional 1DM+ page launcher remains independent of XDM's encrypted handoff. For command-line/release automation, supply `--capture-key-id`, `--capture-public-key-spki`, and `--capture-oaep-hash` (or the Gradle properties/environment variables `xdmCaptureKeyId`/`XDM_CAPTURE_KEY_ID`, `xdmCapturePublicKeySpki`/`XDM_CAPTURE_PUBLIC_KEY_SPKI`, and `xdmCaptureOaepHash`/`XDM_CAPTURE_OAEP_HASH`). Release packaging intentionally has no OAEP-hash default.
 
 
 ## Phase 39 packages

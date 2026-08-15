@@ -15,6 +15,9 @@ import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
 import com.mikeyphw.xdm.android.model.BackendCapabilities
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -31,6 +34,7 @@ interface BrowserHandoffMediaSessionStore {
 class InMemoryBrowserHandoffMediaSessionStore : BrowserHandoffMediaSessionStore {
     private val sessions = ConcurrentHashMap<String, BrowserMediaSessionRevision>()
     override fun load(stableMediaId: String): BrowserMediaSessionRevision? = sessions[stableMediaId]
+    @Synchronized
     override fun put(session: BrowserMediaSessionRevision) { sessions[session.stableMediaId] = session }
     override fun remove(stableMediaId: String) { sessions.remove(stableMediaId) }
     override fun ids(): Set<String> = sessions.keys.toSet()
@@ -39,6 +43,7 @@ class InMemoryBrowserHandoffMediaSessionStore : BrowserHandoffMediaSessionStore 
 class FileBackedBrowserHandoffMediaSessionStore(private val root: File) : BrowserHandoffMediaSessionStore {
     init { root.mkdirs() }
 
+    @Synchronized
     override fun load(stableMediaId: String): BrowserMediaSessionRevision? {
         val file = fileFor(stableMediaId)
         if (!file.isFile) return null
@@ -51,6 +56,7 @@ class FileBackedBrowserHandoffMediaSessionStore(private val root: File) : Browse
             exactRequestUrl = props.getProperty("exactRequestUrl") ?: return null,
             pageUrl = props.getProperty("pageUrl")?.takeIf(String::isNotBlank),
             frameUrl = props.getProperty("frameUrl")?.takeIf(String::isNotBlank),
+            requestFingerprint = props.getProperty("requestFingerprint")?.takeIf(String::isNotBlank) ?: stableMediaId,
             proposedHeaders = BrowserHeaderObservation(BrowserHeaderObservationKind.ProposedBeforeSend, proposed),
             finalHeaders = if (props.getProperty("finalAvailable") == "true") {
                 BrowserHeaderObservation(BrowserHeaderObservationKind.FinalSent, final)
@@ -63,6 +69,7 @@ class FileBackedBrowserHandoffMediaSessionStore(private val root: File) : Browse
         )
     }
 
+    @Synchronized
     override fun put(session: BrowserMediaSessionRevision) {
         root.mkdirs()
         val target = fileFor(session.stableMediaId)
@@ -72,6 +79,7 @@ class FileBackedBrowserHandoffMediaSessionStore(private val root: File) : Browse
         props["exactRequestUrl"] = session.exactRequestUrl
         props["pageUrl"] = session.pageUrl.orEmpty()
         props["frameUrl"] = session.frameUrl.orEmpty()
+        props["requestFingerprint"] = session.requestFingerprint
         props["revision"] = session.revision.toString()
         props["expiresAtEpochMs"] = session.expiresAtEpochMs.toString()
         props["acknowledgedByAndroid"] = session.acknowledgedByAndroid.toString()
@@ -87,14 +95,19 @@ class FileBackedBrowserHandoffMediaSessionStore(private val root: File) : Browse
             props.store(out, "XDM browser handoff media session")
             out.fd.sync()
         }
-        if (!temp.renameTo(target)) {
-            target.delete()
-            check(temp.renameTo(target)) { "Could not publish browser handoff session ${session.stableMediaId}" }
+        try {
+            Files.move(temp.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        } catch (_: AtomicMoveNotSupportedException) {
+            Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            temp.delete()
         }
     }
 
+    @Synchronized
     override fun remove(stableMediaId: String) { fileFor(stableMediaId).delete() }
 
+    @Synchronized
     override fun ids(): Set<String> = root.listFiles()
         ?.filter { it.isFile && it.name.endsWith(".properties") }
         ?.map { it.name.removeSuffix(".properties") }
@@ -127,6 +140,56 @@ class BrowserHandoffMediaCoordinator(
     private val sessions = ConcurrentHashMap<String, BrowserMediaSessionRevision>()
     private val evictions = mutableListOf<BrowserMediaSessionEviction>()
 
+    fun prepareBrowserRevision(
+        requestUrl: String,
+        topPageUrl: String?,
+        frameUrl: String?,
+        kind: MediaSourceKind,
+        mimeType: String?,
+        proposedHeaders: Map<String, String>,
+        finalHeaders: Map<String, String>?,
+        revision: Long,
+        expiresAtEpochMs: Long,
+        live: Boolean = false,
+        protectedEvidence: Boolean = false,
+        requestFingerprint: String? = null,
+        pageObservationProof: PageObservationProof? = null,
+        requirePageObservationProof: Boolean = false,
+    ): BrowserMediaSessionRevision {
+        if (requirePageObservationProof && !authenticatePageObservation(pageObservationProof)) {
+            throw IllegalArgumentException("page observation proof required")
+        }
+        val fingerprint = requestFingerprint?.trim()?.takeIf { it.matches(Regex("[A-Za-z0-9._:-]{8,96}")) }
+            ?: "app-request-" + java.security.MessageDigest.getInstance("SHA-256")
+                .digest(listOf(requestUrl.substringBefore('#'), revision.toString(), frameUrl.orEmpty()).joinToString("|").toByteArray())
+                .joinToString("") { "%02x".format(it) }.take(24)
+        val shape = BrowserHandoffMediaPolicy.classifyShape(kind, topPageUrl, mimeType, live, protectedEvidence)
+        val stableId = BrowserHandoffMediaPolicy.stableMediaId(topPageUrl, frameUrl, requestUrl, shape, fingerprint)
+        return BrowserMediaSessionRevision(
+            stableMediaId = stableId,
+            exactRequestUrl = requestUrl,
+            pageUrl = topPageUrl,
+            frameUrl = frameUrl,
+            requestFingerprint = fingerprint,
+            proposedHeaders = BrowserHeaderObservation(BrowserHeaderObservationKind.ProposedBeforeSend, proposedHeaders.sanitizeHeaders()),
+            finalHeaders = finalHeaders?.let { BrowserHeaderObservation(BrowserHeaderObservationKind.FinalSent, it.sanitizeHeaders()) }
+                ?: BrowserHeaderObservation(BrowserHeaderObservationKind.Unavailable, emptyMap(), "browser did not provide onSendHeaders data"),
+            revision = revision,
+            expiresAtEpochMs = expiresAtEpochMs,
+            acknowledgedByAndroid = true,
+        )
+    }
+
+    fun rememberPreparedRevision(prepared: BrowserMediaSessionRevision): BrowserMediaSessionRevision {
+        val existing = sessions[prepared.stableMediaId] ?: store.load(prepared.stableMediaId)
+        if (!BrowserHandoffMediaPolicy.shouldReplaceSession(existing?.revision, prepared.revision)) return existing!!
+        evictExpired(clock())
+        evictForCapacity()
+        sessions[prepared.stableMediaId] = prepared
+        store.put(prepared)
+        return prepared
+    }
+
     fun rememberBrowserRevision(
         requestUrl: String,
         topPageUrl: String?,
@@ -140,34 +203,31 @@ class BrowserHandoffMediaCoordinator(
         live: Boolean = false,
         protectedEvidence: Boolean = false,
         declaredStableMediaId: String? = null,
+        requestFingerprint: String? = null,
         pageObservationProof: PageObservationProof? = null,
         requirePageObservationProof: Boolean = false,
     ): BrowserMediaSessionRevision {
-        if (requirePageObservationProof && !authenticatePageObservation(pageObservationProof)) {
-            throw IllegalArgumentException("page observation proof required")
-        }
-        val shape = BrowserHandoffMediaPolicy.classifyShape(kind, topPageUrl, mimeType, live, protectedEvidence)
-        val stableId = declaredStableMediaId.sanitizedStableMediaId()
-            ?: BrowserHandoffMediaPolicy.stableMediaId(topPageUrl, frameUrl, requestUrl, shape)
-        val existing = sessions[stableId] ?: store.load(stableId)
-        if (!BrowserHandoffMediaPolicy.shouldReplaceSession(existing?.revision, revision)) return existing!!
-        evictExpired(clock())
-        evictForCapacity()
-        val stored = BrowserMediaSessionRevision(
-            stableMediaId = stableId,
-            exactRequestUrl = requestUrl,
-            pageUrl = topPageUrl,
-            frameUrl = frameUrl,
-            proposedHeaders = BrowserHeaderObservation(BrowserHeaderObservationKind.ProposedBeforeSend, proposedHeaders.sanitizeHeaders()),
-            finalHeaders = finalHeaders?.let { BrowserHeaderObservation(BrowserHeaderObservationKind.FinalSent, it.sanitizeHeaders()) }
-                ?: BrowserHeaderObservation(BrowserHeaderObservationKind.Unavailable, emptyMap(), "browser did not provide onSendHeaders data"),
-            revision = revision,
-            expiresAtEpochMs = expiresAtEpochMs,
-            acknowledgedByAndroid = true,
+        // Browser-declared stable IDs are diagnostic compatibility data only; Android computes
+        // authoritative identity from exact request context plus requestFingerprint.
+        @Suppress("UNUSED_VARIABLE") val ignoredDeclaredStableMediaId = declaredStableMediaId
+        return rememberPreparedRevision(
+            prepareBrowserRevision(
+                requestUrl = requestUrl,
+                topPageUrl = topPageUrl,
+                frameUrl = frameUrl,
+                kind = kind,
+                mimeType = mimeType,
+                proposedHeaders = proposedHeaders,
+                finalHeaders = finalHeaders,
+                revision = revision,
+                expiresAtEpochMs = expiresAtEpochMs,
+                live = live,
+                protectedEvidence = protectedEvidence,
+                requestFingerprint = requestFingerprint,
+                pageObservationProof = pageObservationProof,
+                requirePageObservationProof = requirePageObservationProof,
+            ),
         )
-        sessions[stableId] = stored
-        store.put(stored)
-        return stored
     }
 
     fun sessionFor(stableMediaId: String): BrowserMediaSessionRevision? {

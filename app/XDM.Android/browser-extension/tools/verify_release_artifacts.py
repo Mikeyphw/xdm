@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import tempfile
@@ -28,7 +29,6 @@ REQUIRED_FILES = {
 }
 FIXED_ZIP_DATE = (1980, 1, 1, 0, 0, 0)
 EXPECTED_ID = "xdm-android-media-bridge@mikeyphw"
-EXPECTED_VERSION = "1.2.0"
 EXPECTED_SCHEME = "xdmdownload"
 
 
@@ -40,7 +40,34 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def inspect_xpi(path: Path, expected_theme: str) -> dict[str, object]:
+
+def capture_spki_der(value: str) -> bytes:
+    encoded = value.strip()
+    try:
+        der = base64.urlsafe_b64decode(encoded + "=" * ((4 - len(encoded) % 4) % 4))
+    except Exception as exc:
+        raise SystemExit("release verification capture public key is not valid base64url SPKI data") from exc
+    if not der:
+        raise SystemExit("release verification capture public key is empty")
+    return der
+
+
+def require_capture_key_binding(key_id: str, spki_base64url: str) -> bytes:
+    der = capture_spki_der(spki_base64url)
+    derived = hashlib.sha256(der).hexdigest()[:24]
+    if key_id.strip() != derived:
+        raise SystemExit(f"release verification capture key id does not match SHA-256(SPKI DER).take(24); expected {derived}")
+    return der
+
+def inspect_xpi(
+    path: Path,
+    expected_theme: str,
+    expected_version: str,
+    expected_app_version: str,
+    capture_key_id: str,
+    capture_public_key_spki: str,
+    capture_oaep_hash: str,
+) -> dict[str, object]:
     if not path.is_file() or path.stat().st_size <= 0:
         raise SystemExit(f"Missing release XPI: {path}")
     with zipfile.ZipFile(path) as archive:
@@ -60,7 +87,7 @@ def inspect_xpi(path: Path, expected_theme: str) -> dict[str, object]:
         gecko = manifest.get("browser_specific_settings", {}).get("gecko", {})
         if gecko.get("id") != EXPECTED_ID:
             raise SystemExit(f"Unexpected extension id in {path.name}")
-        if manifest.get("version") != EXPECTED_VERSION:
+        if manifest.get("version") != expected_version:
             raise SystemExit(f"Unexpected extension version in {path.name}")
         permissions = set(manifest.get("permissions", []))
         expected_permissions = {"storage", "tabs", "activeTab", "webRequest", "<all_urls>"}
@@ -69,10 +96,14 @@ def inspect_xpi(path: Path, expected_theme: str) -> dict[str, object]:
         config = archive.read("generated-config.js").decode("utf-8")
         theme = archive.read("generated-theme.css").decode("utf-8")
         required_config = (
-            f'extensionVersion: "{EXPECTED_VERSION}"',
+            f'extensionVersion: "{expected_version}"',
+            f'appVersion: "{expected_app_version}"',
             'applicationId: "com.mikeyphw.xdm.android"',
             f'xdmScheme: "{EXPECTED_SCHEME}"',
             f'themeMode: "{expected_theme}"',
+            f'captureKeyId: "{capture_key_id}"',
+            f'capturePublicKeySpki: "{capture_public_key_spki}"',
+            f'captureOaepHash: "{capture_oaep_hash}"',
         )
         for needle in required_config:
             if needle not in config:
@@ -95,20 +126,32 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Verify deterministic XDM Firefox release XPIs.")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--metadata", type=Path, required=True)
+    parser.add_argument("--extension-version", required=True)
+    parser.add_argument("--app-version", required=True)
+    parser.add_argument("--capture-key-id", required=True)
+    parser.add_argument("--capture-public-key-spki", required=True)
+    parser.add_argument("--capture-oaep-hash", choices=("SHA-1", "SHA-256"), required=True)
     args = parser.parse_args()
+    if not args.capture_key_id.strip() or not args.capture_public_key_spki.strip():
+        raise SystemExit("release verification requires non-empty capture public-key configuration")
+    capture_spki_der_bytes = require_capture_key_binding(args.capture_key_id, args.capture_public_key_spki)
 
     output_dir = args.output_dir.resolve()
-    dark = output_dir / "XDM-Android-Firefox-1.2.0-release-dark.xpi"
-    amoled = output_dir / "XDM-Android-Firefox-1.2.0-release-amoled.xpi"
-    artifacts = [inspect_xpi(dark, "dark"), inspect_xpi(amoled, "amoled")]
+    dark = output_dir / f"XDM-Android-Firefox-{args.extension_version}-release-dark.xpi"
+    amoled = output_dir / f"XDM-Android-Firefox-{args.extension_version}-release-amoled.xpi"
+    inspect_args = (args.extension_version, args.app_version, args.capture_key_id, args.capture_public_key_spki, args.capture_oaep_hash)
+    artifacts = [inspect_xpi(dark, "dark", *inspect_args), inspect_xpi(amoled, "amoled", *inspect_args)]
     if artifacts[0]["sha256"] == artifacts[1]["sha256"]:
         raise SystemExit("Dark and AMOLED release XPIs must not be byte-identical.")
 
     metadata = {
         "schemaVersion": 1,
         "extensionId": EXPECTED_ID,
-        "extensionVersion": EXPECTED_VERSION,
-        "appVersion": "0.20.0-rc08",
+        "extensionVersion": args.extension_version,
+        "appVersion": args.app_version,
+        "captureKeyId": args.capture_key_id,
+        "captureOaepHash": args.capture_oaep_hash,
+        "capturePublicKeySha256": hashlib.sha256(capture_spki_der_bytes).hexdigest(),
         "applicationId": "com.mikeyphw.xdm.android",
         "scheme": EXPECTED_SCHEME,
         "fixedZipTimestamp": "1980-01-01T00:00:00Z",

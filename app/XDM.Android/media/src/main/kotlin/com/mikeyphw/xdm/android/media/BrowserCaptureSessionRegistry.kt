@@ -3,7 +3,11 @@ package com.mikeyphw.xdm.android.media
 import com.mikeyphw.xdm.android.model.BrowserCaptureCandidateSummary
 import com.mikeyphw.xdm.android.model.BrowserCaptureSessionSummary
 import java.io.File
+import java.io.ByteArrayOutputStream
 import java.io.FileOutputStream
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -22,35 +26,12 @@ class BrowserCaptureSessionRegistry(private val root: File) {
     fun record(summary: BrowserCaptureSessionSummary) {
         root.mkdirs()
         val target = fileFor(summary.sessionId)
-        val temp = File(root, target.name + ".tmp")
-        val props = Properties().apply {
-            setProperty("sessionId", summary.sessionId)
-            setProperty("revision", summary.revision.toString())
-            setProperty("pageTitle", summary.pageTitle)
-            setProperty("pageHost", summary.pageHost)
-            setProperty("createdAt", summary.createdAtEpochMs.toString())
-            setProperty("updatedAt", summary.updatedAtEpochMs.toString())
-            setProperty("totalCandidateCount", summary.totalCandidateCount.toString())
-            setProperty("importedCandidateCount", summary.importedCandidateCount.toString())
-            setProperty("truncated", summary.truncated.toString())
-            summary.candidates.take(MAX_CANDIDATES).forEachIndexed { index, candidate ->
-                setProperty("candidate.$index.captureId", candidate.captureId)
-                setProperty("candidate.$index.stableMediaId", candidate.stableMediaId)
-                setProperty("candidate.$index.quality", candidate.quality)
-                setProperty("candidate.$index.reason", candidate.reason)
-                setProperty("candidate.$index.mediaKind", candidate.mediaKind)
-                setProperty("candidate.$index.evidence", candidate.evidence.joinToString("|") { encode(it) })
-            }
-            setProperty("candidate.count", summary.candidates.take(MAX_CANDIDATES).size.toString())
+        val existing = load(target)
+        if (existing != null && existing.revision > summary.revision) {
+            refresh()
+            return
         }
-        FileOutputStream(temp).use { output ->
-            props.store(output, "XDM browser capture session index; no URLs or request headers")
-            output.fd.sync()
-        }
-        if (!temp.renameTo(target)) {
-            target.delete()
-            check(temp.renameTo(target)) { "Could not publish browser capture session ${summary.sessionId}" }
-        }
+        atomicWrite(target, propertiesFor(summary))
         refresh()
     }
 
@@ -78,27 +59,52 @@ class BrowserCaptureSessionRegistry(private val root: File) {
 
     private fun recordWithoutRefresh(summary: BrowserCaptureSessionSummary) {
         val target = fileFor(summary.sessionId)
-        val props = Properties().apply {
-            setProperty("sessionId", summary.sessionId)
-            setProperty("revision", summary.revision.toString())
-            setProperty("pageTitle", summary.pageTitle)
-            setProperty("pageHost", summary.pageHost)
-            setProperty("createdAt", summary.createdAtEpochMs.toString())
-            setProperty("updatedAt", summary.updatedAtEpochMs.toString())
-            setProperty("totalCandidateCount", summary.totalCandidateCount.toString())
-            setProperty("importedCandidateCount", summary.importedCandidateCount.toString())
-            setProperty("truncated", summary.truncated.toString())
-            summary.candidates.take(MAX_CANDIDATES).forEachIndexed { index, candidate ->
-                setProperty("candidate.$index.captureId", candidate.captureId)
-                setProperty("candidate.$index.stableMediaId", candidate.stableMediaId)
-                setProperty("candidate.$index.quality", candidate.quality)
-                setProperty("candidate.$index.reason", candidate.reason)
-                setProperty("candidate.$index.mediaKind", candidate.mediaKind)
-                setProperty("candidate.$index.evidence", candidate.evidence.joinToString("|") { encode(it) })
-            }
-            setProperty("candidate.count", summary.candidates.take(MAX_CANDIDATES).size.toString())
+        val existing = load(target)
+        if (existing != null && existing.revision > summary.revision) return
+        atomicWrite(target, propertiesFor(summary))
+    }
+
+    private fun propertiesFor(summary: BrowserCaptureSessionSummary): Properties = Properties().apply {
+        setProperty("sessionId", summary.sessionId)
+        setProperty("revision", summary.revision.toString())
+        setProperty("pageTitle", summary.pageTitle)
+        setProperty("pageHost", summary.pageHost)
+        setProperty("createdAt", summary.createdAtEpochMs.toString())
+        setProperty("updatedAt", summary.updatedAtEpochMs.toString())
+        setProperty("totalCandidateCount", summary.totalCandidateCount.toString())
+        setProperty("importedCandidateCount", summary.importedCandidateCount.toString())
+        setProperty("truncated", summary.truncated.toString())
+        summary.candidates.take(MAX_CANDIDATES).forEachIndexed { index, candidate ->
+            setProperty("candidate.$index.captureId", candidate.captureId)
+            setProperty("candidate.$index.stableMediaId", candidate.stableMediaId)
+            setProperty("candidate.$index.quality", candidate.quality)
+            setProperty("candidate.$index.reason", candidate.reason)
+            setProperty("candidate.$index.mediaKind", candidate.mediaKind)
+            setProperty("candidate.$index.evidence", candidate.evidence.joinToString("|") { encode(it) })
         }
-        target.outputStream().use { props.store(it, "XDM browser capture session index; no URLs or request headers") }
+        setProperty("candidate.count", summary.candidates.take(MAX_CANDIDATES).size.toString())
+    }
+
+    private fun atomicWrite(target: File, props: Properties) {
+        root.mkdirs()
+        val bytes = ByteArrayOutputStream().use { output ->
+            props.store(output, "XDM browser capture session index; no URLs or request headers")
+            output.toByteArray()
+        }
+        val temp = File(root, target.name + ".new")
+        try {
+            FileOutputStream(temp).use { output ->
+                output.write(bytes)
+                output.fd.sync()
+            }
+            try {
+                Files.move(temp.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            }
+        } finally {
+            temp.delete()
+        }
     }
 
     private fun refresh() {

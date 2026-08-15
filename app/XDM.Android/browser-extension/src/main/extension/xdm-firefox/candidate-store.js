@@ -15,8 +15,16 @@
       const url = CORE.resolveUrl(candidate.url, candidate.baseUrl);
       if (!url || CORE.isLikelyAd(url) || CORE.isLikelySegment(url)) return false;
 
+      const requestFingerprint = String(candidate.requestFingerprint || CORE.requestFingerprint({
+        url,
+        requestId: candidate.requestId,
+        tabId: numericTabId,
+        frameId: candidate.frameId,
+        requestGeneration: candidate.requestGeneration,
+      }) || "").trim();
+      if (!requestFingerprint) return false;
       const bucket = this.buckets.get(numericTabId) || new Map();
-      const previous = bucket.get(url) || {};
+      const previous = bucket.get(requestFingerprint) || {};
       const nextConfidence = Number(candidate.confidence || 0);
       const previousConfidence = Number(previous.confidence || 0);
       const merged = {
@@ -27,9 +35,13 @@
         frameId: Number.isFinite(Number(candidate.frameId)) ? Number(candidate.frameId) : Number(previous.frameId || 0),
         frameUrl: candidate.frameUrl || previous.frameUrl || "",
         source: candidate.source || previous.source || "network",
+        requestId: candidate.requestId || previous.requestId || "",
+        requestFingerprint,
+        requestGeneration: Number(candidate.requestGeneration || previous.requestGeneration || 0),
+        // Request headers may only be merged within the same extension-owned request fingerprint.
         headers: Object.assign({}, previous.headers || {}, candidate.headers || {}),
         browserHandoff: Object.assign({}, previous.browserHandoff || {}, candidate.browserHandoff || {}),
-        stableMediaId: candidate.stableMediaId || previous.stableMediaId || CORE.stableMediaIdentity(url),
+        stableMediaId: candidate.stableMediaId || previous.stableMediaId || CORE.stableMediaIdentity(url, requestFingerprint),
         sessionRevision: Math.max(Number(candidate.sessionRevision || 0), Number(previous.sessionRevision || 0), Date.now()),
         quality: candidate.quality || previous.quality || "strong",
         confidence: Math.max(nextConfidence, previousConfidence),
@@ -42,7 +54,7 @@
         autoOffer: Boolean(candidate.autoOffer || previous.autoOffer),
         at: Date.now()
       };
-      bucket.set(url, merged);
+      bucket.set(requestFingerprint, merged);
       this.buckets.set(numericTabId, bucket);
       this.trim(numericTabId);
       return true;
@@ -53,13 +65,13 @@
       const bucket = this.buckets.get(numericTabId);
       if (!bucket) return;
       const now = Date.now();
-      for (const [url, candidate] of bucket) {
-        if (now - Number(candidate.at || 0) > this.ttlMs) bucket.delete(url);
+      for (const [identity, candidate] of bucket) {
+        if (now - Number(candidate.at || 0) > this.ttlMs) bucket.delete(identity);
       }
       if (bucket.size > this.maxPerTab) {
         const sorted = [...bucket.values()].sort((a, b) => CORE.rankCandidate(b) - CORE.rankCandidate(a));
         bucket.clear();
-        for (const item of sorted.slice(0, this.maxPerTab)) bucket.set(item.url, item);
+        for (const item of sorted.slice(0, this.maxPerTab)) bucket.set(item.requestFingerprint, item);
       }
       if (!bucket.size) this.buckets.delete(numericTabId);
     }

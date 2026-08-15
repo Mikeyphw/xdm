@@ -131,6 +131,9 @@ internal object ExternalIntentDraftFactory {
         )
         if (deepLink is com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkParseResult.Accepted) {
             val payload = deepLink.payload
+            // Encrypted capture sessions are handled by the dedicated review/journal path.
+            // Never flatten ciphertext-bearing v2 capture data into a legacy URL automation draft.
+            if (payload.hasEncryptedCaptureEnvelope) return null
             return payload.toAutomationCommandDraft(originPackage = identity.observedPackage).copy(
                 claimedOriginPackage = identity.claimedPackage,
             )

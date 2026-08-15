@@ -41,6 +41,7 @@ data class BrowserMediaSessionRevision(
     val exactRequestUrl: String,
     val pageUrl: String?,
     val frameUrl: String?,
+    val requestFingerprint: String,
     val proposedHeaders: BrowserHeaderObservation,
     val finalHeaders: BrowserHeaderObservation,
     val revision: Long,
@@ -56,6 +57,7 @@ data class BrowserMediaSessionRevision(
         "url=${PrivacyDiagnosticsRedactor.redactUrl(exactRequestUrl)}",
         "page=${PrivacyDiagnosticsRedactor.redactUrl(pageUrl)}",
         "frame=${PrivacyDiagnosticsRedactor.redactUrl(frameUrl)}",
+        "request=${requestFingerprint.take(32)}",
         proposedHeaders.honestSummary,
         finalHeaders.honestSummary,
         if (acknowledgedByAndroid) "ack=android" else "ack=pending",
@@ -164,12 +166,26 @@ data class BackendFallbackProvenance(
 }
 
 object BrowserHandoffMediaPolicy {
-    fun stableMediaId(pageUrl: String?, frameUrl: String?, requestUrl: String, shape: MediaTransferShape): String {
-        val host = runCatching { URI(requestUrl).host?.lowercase(Locale.US) }.getOrNull().orEmpty()
-        val path = runCatching { URI(requestUrl).path?.lowercase(Locale.US) }.getOrNull().orEmpty()
-        val frameHost = runCatching { URI(frameUrl ?: pageUrl ?: requestUrl).host?.lowercase(Locale.US) }.getOrNull().orEmpty()
-        val key = listOf(shape.name, host, path, frameHost).joinToString("|")
-        return "media-session-" + MessageDigest.getInstance("SHA-256").digest(key.toByteArray()).joinToString("") { "%02x".format(it) }.take(24)
+    fun stableMediaId(
+        pageUrl: String?,
+        frameUrl: String?,
+        requestUrl: String,
+        shape: MediaTransferShape,
+        requestFingerprint: String? = null,
+    ): String {
+        fun withoutFragment(value: String?): String = value.orEmpty().substringBefore('#').trim()
+        val key = listOf(
+            "browser-media-v2",
+            shape.name,
+            withoutFragment(requestUrl),
+            withoutFragment(frameUrl),
+            withoutFragment(pageUrl),
+            requestFingerprint.orEmpty().trim(),
+        ).joinToString("|")
+        return "media-session-" + MessageDigest.getInstance("SHA-256")
+            .digest(key.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+            .take(32)
     }
 
     fun classifyShape(kind: MediaSourceKind, pageUrl: String?, mimeType: String?, live: Boolean, protected: Boolean): MediaTransferShape = when {

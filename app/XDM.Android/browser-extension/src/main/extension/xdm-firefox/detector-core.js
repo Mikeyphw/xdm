@@ -14,15 +14,43 @@
   const QUALITY_POSSIBLE = "possible";
   const QUALITY_REJECTED = "rejected";
 
-  function stableMediaIdentity(value) {
+  function hashToken(value) {
+    const text = String(value || "");
+    let first = 0x811c9dc5;
+    let second = 0x9e3779b1;
+    for (let index = 0; index < text.length; index += 1) {
+      const code = text.charCodeAt(index);
+      first ^= code;
+      first = Math.imul(first, 0x01000193) >>> 0;
+      second ^= (code + index) & 0xffff;
+      second = Math.imul(second, 0x85ebca6b) >>> 0;
+    }
+    return first.toString(16).padStart(8, "0") + second.toString(16).padStart(8, "0");
+  }
+
+  function exactRequestUrl(value) {
     try {
       const url = new URL(String(value || ""));
       url.hash = "";
-      url.search = "";
-      return `${url.origin}${url.pathname}`.toLowerCase();
+      return url.href;
     } catch (_) {
-      return String(value || "").split(/[?#]/, 1)[0].toLowerCase();
+      return String(value || "").split("#", 1)[0];
     }
+  }
+
+  function requestFingerprint(input = {}) {
+    const url = exactRequestUrl(input.url);
+    if (!url) return "";
+    const requestId = String(input.requestId || "").slice(0, 160);
+    const frameId = Number.isFinite(Number(input.frameId)) ? Number(input.frameId) : 0;
+    const tabId = Number.isFinite(Number(input.tabId)) ? Number(input.tabId) : -1;
+    const generation = Number(input.requestGeneration || 0);
+    return `req-${hashToken([url, requestId, tabId, frameId, generation].join("|"))}`;
+  }
+
+  function stableMediaIdentity(value, fingerprint = "") {
+    const exact = exactRequestUrl(value);
+    return exact ? `browser-media-${hashToken(`${exact}|${String(fingerprint || "")}`)}` : "";
   }
 
   function normalizeMime(value) {
@@ -257,6 +285,8 @@
 
   globalThis.XdmDetectorCoreV1 = Object.freeze({
     stableMediaIdentity,
+    requestFingerprint,
+    exactRequestUrl,
     normalizeMime,
     isManifest,
     isLikelyAd,

@@ -13,12 +13,15 @@ import org.junit.Test
 class BrowserExtensionPackageGeneratorTest {
     private val config = BrowserExtensionBuildConfig(
         extensionVersion = "1.0.0",
-        appVersion = "0.20.0-rc08",
+        appVersion = "0.21.0",
         applicationId = "com.mikeyphw.xdm.android",
         channel = BrowserExtensionSourceContract.Channel.Release,
         xdmScheme = "xdmdownload",
         defaultTarget = BrowserExtensionSourceContract.Target.Xdm,
         themeMode = BrowserExtensionSourceContract.ThemeMode.Dark,
+        captureKeyId = captureKeyIdForSpki("A".repeat(256)),
+        capturePublicKeySpki = "A".repeat(256),
+        captureOaepHash = "SHA-256",
     )
 
     @Test
@@ -63,7 +66,7 @@ class BrowserExtensionPackageGeneratorTest {
     @Test
     fun `generated package embeds only configured public capture identity`() {
         val secure = config.copy(
-            captureKeyId = "0123456789abcdef01234567",
+            captureKeyId = captureKeyIdForSpki("A".repeat(256)),
             capturePublicKeySpki = "A".repeat(256),
         )
         val result = BrowserExtensionPackageGenerator(::sourceEntry).generate(secure)
@@ -75,6 +78,40 @@ class BrowserExtensionPackageGeneratorTest {
     fun `build configuration rejects script-breaking app versions`() {
         assertTrue(runCatching { config.copy(appVersion = "bad\nversion") }.isFailure)
         assertTrue(runCatching { config.copy(appVersion = "bad\"version") }.isFailure)
+    }
+
+    @Test
+    fun `release configuration fails closed without capture key material for every target`() {
+        BrowserExtensionSourceContract.Target.entries.forEach { target ->
+            assertTrue("release target ${target.wireValue} must remain key-bound", runCatching {
+                config.copy(
+                    defaultTarget = target,
+                    captureKeyId = "",
+                    capturePublicKeySpki = "",
+                )
+            }.isFailure)
+        }
+    }
+
+    @Test
+    fun `capture key id must be derived from supplied spki bytes`() {
+        assertTrue(runCatching { config.copy(captureKeyId = "0123456789abcdef01234567") }.isFailure)
+        assertEquals(captureKeyIdForSpki(config.capturePublicKeySpki), config.captureKeyId)
+    }
+
+    @Test
+    fun `debug ask configuration remains keyless for local development`() {
+        val debug = BrowserExtensionBuildConfig(
+            extensionVersion = "1.0.0",
+            appVersion = "0.21.0",
+            applicationId = "com.mikeyphw.xdm.android",
+            channel = BrowserExtensionSourceContract.Channel.Debug,
+            xdmScheme = "xdmdownload",
+            defaultTarget = BrowserExtensionSourceContract.Target.Ask,
+            captureOaepHash = "SHA-256",
+        )
+        assertTrue(debug.captureKeyId.isBlank())
+        assertTrue(debug.capturePublicKeySpki.isBlank())
     }
 
     @Test

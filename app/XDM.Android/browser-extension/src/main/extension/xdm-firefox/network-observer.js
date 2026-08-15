@@ -229,8 +229,21 @@
     const safe = Object.assign({}, candidate, {
       headers: sanitizeHeaderObject(candidate && candidate.headers || {}),
       browserHandoff: candidate && candidate.browserHandoff ? capturedHeaderPayload(candidate.browserHandoff) : undefined,
-      stableMediaId: candidate && candidate.stableMediaId || CORE.stableMediaIdentity(candidate && candidate.url),
-      sessionRevision: Date.now(),
+      requestFingerprint: candidate && candidate.requestFingerprint || CORE.requestFingerprint({
+        url: candidate && candidate.url,
+        requestId: candidate && candidate.requestId,
+        tabId,
+        frameId: candidate && candidate.frameId,
+        requestGeneration: candidate && candidate.requestGeneration,
+      }),
+      stableMediaId: candidate && candidate.stableMediaId || CORE.stableMediaIdentity(
+        candidate && candidate.url,
+        candidate && candidate.requestFingerprint || CORE.requestFingerprint({
+          url: candidate && candidate.url, requestId: candidate && candidate.requestId, tabId,
+          frameId: candidate && candidate.frameId, requestGeneration: candidate && candidate.requestGeneration,
+        })
+      ),
+      sessionRevision: Math.max(Number(candidate && candidate.sessionRevision || 0), Date.now()),
     });
     return candidateStore.merge(tabId, safe);
   }
@@ -256,6 +269,19 @@
     const created = { id: `browser-${numericTabId}-${randomPart}`.slice(0, 92), revision: Date.now() };
     tabDispatchSessions.set(numericTabId, created);
     return created;
+  }
+
+  function findPrivilegedEvidence(tabId, rawUrl, frameId = null, maxAgeMs = 45 * 1000) {
+    const url = CORE.resolveUrl(rawUrl, "");
+    if (!url) return null;
+    const now = Date.now();
+    const wantedFrame = frameId == null ? null : Number(frameId);
+    return candidateStore.snapshot(tabId, MAX_CANDIDATES_PER_TAB).find(candidate => {
+      if (!candidate || candidate.source !== "webRequest" || candidate.url !== url) return false;
+      if (now - Number(candidate.at || 0) > maxAgeMs) return false;
+      if (wantedFrame != null && Number.isFinite(wantedFrame) && Number(candidate.frameId || 0) !== wantedFrame) return false;
+      return Boolean(candidate.requestFingerprint);
+    }) || null;
   }
 
   function candidateStreamKind(candidate) {
@@ -286,9 +312,9 @@
     const candidateCount = candidateStore.size(tabId);
     const candidateRevision = Number(candidate.sessionRevision || 0);
     const previous = lastDispatchedByTab.get(tabId);
-    if (previous && previous.url === candidate.url && previous.candidateCount === candidateCount &&
+    if (previous && previous.requestFingerprint === candidate.requestFingerprint && previous.candidateCount === candidateCount &&
         previous.revision === candidateRevision && Date.now() - previous.at < SAME_URL_SUPPRESS_MS) return;
-    lastDispatchedByTab.set(tabId, { url: candidate.url, candidateCount, revision: candidateRevision, at: Date.now() });
+    lastDispatchedByTab.set(tabId, { requestFingerprint: candidate.requestFingerprint, candidateCount, revision: candidateRevision, at: Date.now() });
 
     const session = captureSessionFor(tabId);
     session.revision = Math.max(Number(session.revision || 0), candidateRevision, Date.now());
@@ -314,6 +340,14 @@
       }
     }
 
+    if (!prebuiltXdmLink && settings.defaultTarget === "xdm") {
+      publishStatus({
+        lastError: "Secure XDM capture handoff is unavailable; plaintext fallback is disabled.",
+        lastErrorAt: Date.now(),
+      });
+      return;
+    }
+
     const payload = Object.assign({}, candidate, {
       tabUrl: tab.url,
       title: tab.title || "Detected video",
@@ -324,7 +358,8 @@
       candidateCount,
       streamKind: candidateStreamKind(candidate),
       rank,
-      stableMediaId: candidate.stableMediaId || CORE.stableMediaIdentity(candidate.url),
+      stableMediaId: candidate.stableMediaId || CORE.stableMediaIdentity(candidate.url, candidate.requestFingerprint),
+      requestFingerprint: candidate.requestFingerprint || "",
       sessionRevision: candidate.sessionRevision || session.revision,
       browserHandoff: candidate.browserHandoff || null,
       captureSessionId: session.id,
@@ -362,7 +397,19 @@
       source,
       headers,
       browserHandoff: handoffContext,
-      stableMediaId: CORE.stableMediaIdentity(details.url),
+      requestId: details.requestId || "",
+      requestGeneration: Number(details.requestGeneration || (handoffContext && handoffContext.requestGeneration) || Date.now()),
+      requestFingerprint: CORE.requestFingerprint({
+        url: details.url,
+        requestId: details.requestId,
+        tabId,
+        frameId: details.frameId,
+        requestGeneration: details.requestGeneration || (handoffContext && handoffContext.requestGeneration),
+      }),
+      stableMediaId: CORE.stableMediaIdentity(details.url, CORE.requestFingerprint({
+        url: details.url, requestId: details.requestId, tabId, frameId: details.frameId,
+        requestGeneration: details.requestGeneration || (handoffContext && handoffContext.requestGeneration),
+      })),
       confidence: classification.confidence,
       reason: classification.reason,
       manifest: classification.manifest,
@@ -378,77 +425,57 @@
     const tabId = sender && sender.tab ? sender.tab.id : -1;
     if (tabId === -1 || !message || typeof message !== "object") return false;
     const observation = message.observation && typeof message.observation === "object" ? message.observation : {};
-    const frameId = Number.isFinite(Number(sender.frameId)) ? Number(sender.frameId) : Number(observation.frameId || 0);
-    const frameUrl = sender.url || observation.pageUrl || "";
+    const frameId = Number.isFinite(Number(sender.frameId)) ? Number(sender.frameId) : 0;
+    // sender.url is extension-owned frame provenance. Never trust a page-provided pageUrl/referrer.
+    const frameUrl = sender && sender.url || "";
     const counter = counterFor(tabId);
     counter.pageResponses += 1;
     counter.frames.add(frameId);
-    counter.lastSource = observation.source || "page";
+    counter.lastSource = "page-hint";
 
-    const headers = sanitizeHeaderObject(observation.requestHeaders || {});
     const responseUrl = CORE.resolveUrl(observation.responseUrl || observation.url || observation.requestUrl, frameUrl);
+    const evidence = responseUrl ? findPrivilegedEvidence(tabId, responseUrl, frameId) : null;
     let added = false;
 
-    if (responseUrl) {
-      added = addClassifiedResponse(tabId, {
-        url: responseUrl,
-        contentType: observation.contentType || "",
-        contentLength: Number(observation.contentLength || 0),
-        requestType: observation.requestType || observation.source || "xmlhttprequest",
-        contentDisposition: observation.contentDisposition || "",
-        contentRange: observation.contentRange || "",
-        frameId,
-        frameUrl
-      }, headers, `page:${observation.source || "response"}`) || added;
+    // A main-world observation can only enrich an already-observed privileged request.
+    if (responseUrl && evidence) {
+      added = mergeCandidate(tabId, Object.assign({}, evidence, {
+        source: "webRequest",
+        contentType: evidence.contentType || observation.contentType || "",
+        bodyDerived: Boolean(observation.bodyExcerpt),
+        // Headers, exact page/frame attribution and request fingerprint are preserved solely from webRequest evidence.
+        headers: evidence.headers || {},
+        browserHandoff: evidence.browserHandoff || null,
+        requestFingerprint: evidence.requestFingerprint,
+        stableMediaId: evidence.stableMediaId,
+        at: Date.now(),
+      })) || added;
     }
 
     const bodyExcerpt = typeof observation.bodyExcerpt === "string" ? observation.bodyExcerpt : "";
-    if (bodyExcerpt) {
+    if (bodyExcerpt && responseUrl && evidence) {
       const analysis = CORE.analyzeBody({
         text: bodyExcerpt,
-        contentType: observation.contentType || "",
-        responseUrl: responseUrl || frameUrl
+        contentType: observation.contentType || evidence.contentType || "",
+        responseUrl
       });
-
-      if (analysis.manifestBody && responseUrl) {
-        const manifestReason = analysis.hlsBody ? "hls-response-body" : "dash-response-body";
-        added = mergeCandidate(tabId, {
-          url: responseUrl,
-          contentType: observation.contentType || (analysis.hlsBody ? "application/vnd.apple.mpegurl" : "application/dash+xml"),
-          requestType: observation.requestType || observation.source || "xmlhttprequest",
-          frameId,
-          frameUrl,
-          source: `page:${observation.source || "body"}`,
-          headers,
-          confidence: 1180,
-          reason: manifestReason,
-          manifest: true,
-          quality: "strong",
-          bodyDerived: true,
-          autoOffer: true,
-          at: Date.now()
-        }) || added;
-      }
-
       for (const extracted of analysis.candidates) {
         if (!allowsQuality(extracted.quality)) continue;
+        const correlated = findPrivilegedEvidence(tabId, extracted.url, frameId);
+        if (!correlated) continue;
         counter.bodyCandidates += 1;
-        added = mergeCandidate(tabId, {
-          url: extracted.url,
-          contentType: "",
-          requestType: observation.requestType || observation.source || "body",
-          frameId,
-          frameUrl,
-          source: `body:${observation.source || "response"}`,
-          headers,
-          confidence: extracted.confidence,
-          reason: extracted.reason,
-          manifest: CORE.isManifest(extracted.url, ""),
-          quality: extracted.quality || (extracted.confidence >= 850 ? "strong" : "possible"),
+        added = mergeCandidate(tabId, Object.assign({}, correlated, {
+          source: "webRequest",
           bodyDerived: true,
-          autoOffer: extracted.quality !== "possible" && extracted.confidence >= 850,
-          at: Date.now()
-        }) || added;
+          reason: correlated.reason || extracted.reason,
+          confidence: Math.max(Number(correlated.confidence || 0), Math.min(Number(extracted.confidence || 0), 820)),
+          // Page-derived text never raises a request to auto-offer authority by itself.
+          autoOffer: Boolean(correlated.autoOffer),
+          headers: correlated.headers || {},
+          requestFingerprint: correlated.requestFingerprint,
+          stableMediaId: correlated.stableMediaId,
+          at: Date.now(),
+        })) || added;
       }
     }
 
@@ -463,23 +490,23 @@
     const frameId = Number.isFinite(Number(sender.frameId)) ? Number(sender.frameId) : 0;
     const counter = counterFor(tabId);
     counter.frames.add(frameId);
-    counter.lastSource = "frame-playback";
-    const added = mergeCandidate(tabId, {
-      url: value.url,
-      contentType: value.contentType || "",
-      requestType: "media",
-      frameId,
-      frameUrl: sender.url || "",
-      source: value.source || "frame-playback",
-      headers: value.headers || {},
-      confidence: Math.max(930, Number(value.confidence || value.bonus || 0)),
-      reason: value.reason || "frame-playback",
-      manifest: Boolean(value.manifest || CORE.isManifest(value.url, value.contentType)),
-      quality: "strong",
+    counter.lastSource = "frame-playback-hint";
+    const evidence = findPrivilegedEvidence(tabId, value.url, frameId);
+    if (!evidence) return false;
+    const added = mergeCandidate(tabId, Object.assign({}, evidence, {
+      source: "webRequest",
       playbackObserved: true,
+      confidence: Math.max(Number(evidence.confidence || 0), 930),
+      reason: value.reason || evidence.reason || "frame-playback",
+      manifest: Boolean(evidence.manifest || CORE.isManifest(evidence.url, evidence.contentType)),
+      quality: "strong",
       autoOffer: true,
-      at: Date.now()
-    });
+      // Content scripts can report playback state, but request authority stays with webRequest.
+      headers: evidence.headers || {},
+      requestFingerprint: evidence.requestFingerprint,
+      stableMediaId: evidence.stableMediaId,
+      at: Date.now(),
+    }));
     if (added) scheduleDispatch(tabId, 120);
     return added;
   }
@@ -501,6 +528,7 @@
         if (details.tabId === -1) return;
         capturedHeaders.set(details.requestId, {
           at: Date.now(),
+          requestId: String(details.requestId || ""),
           requestGeneration: Date.now(),
           proposedHeaders: captureUsefulHeaders(details.requestHeaders),
           finalHeaders: {},
@@ -543,7 +571,9 @@
           contentRange: headerValue(details.responseHeaders, "content-range"),
           requestType: details.type || "",
           frameId: details.frameId,
-          frameUrl: details.originUrl || details.documentUrl || ""
+          frameUrl: details.originUrl || details.documentUrl || "",
+          requestId: details.requestId,
+          requestGeneration: captured && captured.requestGeneration || Date.now()
         }, captured ? (captured.finalHeadersAvailable ? captured.finalHeaders : captured.proposedHeaders) : {}, "webRequest", captured);
       },
       { urls: ["<all_urls>"] },

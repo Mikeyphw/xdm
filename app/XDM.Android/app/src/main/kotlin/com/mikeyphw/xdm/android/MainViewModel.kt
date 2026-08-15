@@ -35,6 +35,7 @@ import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.BrowserCaptureCandidateSummary
 import com.mikeyphw.xdm.android.model.BrowserCaptureSessionSummary
+import com.mikeyphw.xdm.android.model.BrowserMediaSessionRevision
 import com.mikeyphw.xdm.android.model.BackendCapabilities
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.BackendMigrationRecord
@@ -148,6 +149,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 
 private val SessionHeaderAllowList = setOf("authorization", "cookie", "referer", "user-agent", "origin", "accept", "accept-language")
@@ -316,6 +319,7 @@ class MainViewModel(
     private val browserHandoffMediaCoordinator: BrowserHandoffMediaCoordinator,
     private val browserCaptureEnvelopeManager: BrowserCaptureEnvelopeManager,
     private val browserCaptureSessionRegistry: BrowserCaptureSessionRegistry,
+    private val browserCaptureImportJournal: BrowserCaptureImportJournal,
     private val debugEventRecorder: DebugEventRecorder,
 ) : ViewModel() {
     private data class NavigationOverride(
@@ -325,6 +329,21 @@ class MainViewModel(
         val selectedDownloadDetailId: String? = null,
         val selectedRecoveryDownloadId: String? = null,
         val selectedRecoveryAction: String? = null,
+    )
+
+    private data class BrowserVariantImportHandoff(
+        val variantId: String,
+        val exactUrl: String,
+        val headers: Map<String, String>,
+        val redactedSummary: String,
+        val expiresAtEpochMs: Long,
+    )
+
+    private data class BrowserCaptureImportHandoff(
+        val captureId: String,
+        val session: BrowserMediaSessionRevision,
+        val variants: List<BrowserVariantImportHandoff>,
+        val preserveExistingLinkedCapture: Boolean,
     )
 
     private val navigationOverride = MutableStateFlow(NavigationOverride())
@@ -806,6 +825,7 @@ class MainViewModel(
         termuxMediaPipelineManager.refreshStatus()
         postProcessingAutomationManager.refreshStatus()
         viewModelScope.launch(Dispatchers.IO) { refreshSavedDestinations() }
+        recoverPendingBrowserCaptureImports()
         viewModelScope.launch(Dispatchers.IO) {
             preferences.values.collectLatest(::refreshBrowserBridgeStatus)
         }
@@ -2296,10 +2316,13 @@ class MainViewModel(
             openExternalAddDraft(command, draft, "No media stream was detected; opened Add Download instead")
             return
         }
+
+        val linkedCaptureIds = linkedSetOf<String>()
         val resolvedCaptures = sniffingPlan.records.map { record ->
             val existing = repository.findMediaCapture(record.id)
             val merged = if (existing?.downloadId != null) {
-                record.copy(status = existing.status, downloadId = existing.downloadId, createdAtEpochMs = existing.createdAtEpochMs, updatedAtEpochMs = now)
+                linkedCaptureIds += record.id
+                requireNotNull(existing)
             } else {
                 record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs, updatedAtEpochMs = now)
             }
@@ -2312,8 +2335,11 @@ class MainViewModel(
         val merged = resolvedCaptures.map { it.first }
         val resolvedVariants = resolvedCaptures.flatMap { it.second }
         val allVariants = (sniffingPlan.variants + resolvedVariants).distinctBy(MediaVariant::id)
-        merged.forEach { record ->
-            val session = browserHandoffMediaCoordinator.rememberBrowserRevision(
+
+        // Prepare exact browser sessions without mutating any auxiliary store. The durable automation
+        // command/envelope remains the retry authority until Room and every exact handoff are committed.
+        val handoffPlans = merged.filterNot { it.id in linkedCaptureIds }.map { record ->
+            val session = browserHandoffMediaCoordinator.prepareBrowserRevision(
                 requestUrl = record.sourceUrl,
                 topPageUrl = draft.pageUrl,
                 frameUrl = draft.frameUrl,
@@ -2323,40 +2349,82 @@ class MainViewModel(
                 finalHeaders = finalHeaders,
                 revision = draft.sessionRevision ?: now,
                 expiresAtEpochMs = now + 24L * 60L * 60L * 1000L,
-                declaredStableMediaId = draft.stableMediaId,
                 pageObservationProof = pageObservationProof,
                 requirePageObservationProof = draft.pageObservationNonce != null,
             )
-            MediaRequestHandoffStore.rememberCapture(
+            BrowserCaptureImportHandoff(
                 captureId = record.id,
-                headers = session.usableHeaders,
-                redactedSummary = session.redactedSummary,
-                isExpiringUrl = session.usableHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(session.exactRequestUrl),
-                exactUrl = session.exactRequestUrl,
-                pageUrl = session.frameUrl ?: session.pageUrl ?: record.pageUrl,
-                privateNetworkApproved = draft.privateNetworkApproved,
-                cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
+                session = session,
+                variants = allVariants.filter { it.captureId == record.id }.map { variant ->
+                    BrowserVariantImportHandoff(
+                        variantId = variant.id,
+                        exactUrl = variant.url,
+                        headers = requestHeaders,
+                        redactedSummary = session.redactedSummary,
+                        expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
+                    )
+                },
+                preserveExistingLinkedCapture = false,
             )
         }
-        allVariants.forEach { variant ->
-            MediaRequestHandoffStore.rememberVariant(
-                variantId = variant.id,
-                exactUrl = variant.url,
-                headers = requestHeaders,
-                redactedSummary = redactedSessionSummary(draft.rawHeaders, draft.pageUrl),
-                expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
+        val recordsToPersist = merged.filterNot { it.id in linkedCaptureIds }.map { record ->
+            record.copy(
+                sourceUrl = persistableBrowserCaptureUrl(record.sourceUrl),
+                pageUrl = persistableBrowserCaptureUrlOrNull(record.pageUrl),
+                selectedVariantUrl = record.selectedVariantUrl?.let(::persistableBrowserCaptureUrl),
             )
         }
-        repository.saveMediaCapturesWithVariants(merged, allVariants, now)
-        repository.saveAutomationCommand(
-            command.copy(
-                status = AutomationCommandStatus.Applied,
-                resultMessage = "Captured ${merged.size} media item(s); resolved ${resolvedVariants.size} manifest variant(s)",
-                mediaCaptureId = merged.firstOrNull()?.id,
-                updatedAtEpochMs = System.currentTimeMillis(),
-            ),
-        )
-        navigate(AppRoute.Media)
+        val variantsToPersist = allVariants.filterNot { it.captureId in linkedCaptureIds }.map { variant ->
+            variant.copy(url = persistableBrowserCaptureUrl(variant.url))
+        }
+
+        try {
+            // Room first: no exact URL/header/session sidecar may become authoritative before the
+            // sanitized capture graph exists durably. If a later auxiliary write fails, this command
+            // is returned to Received and its encrypted command envelope drives an idempotent retry.
+            if (recordsToPersist.isNotEmpty()) {
+                repository.saveMediaCapturesWithVariants(recordsToPersist, variantsToPersist, now)
+            }
+            handoffPlans.forEach { handoff ->
+                val session = browserHandoffMediaCoordinator.rememberPreparedRevision(handoff.session)
+                MediaRequestHandoffStore.rememberCapture(
+                    captureId = handoff.captureId,
+                    headers = session.usableHeaders,
+                    redactedSummary = session.redactedSummary,
+                    isExpiringUrl = session.usableHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(session.exactRequestUrl),
+                    exactUrl = session.exactRequestUrl,
+                    pageUrl = session.frameUrl ?: session.pageUrl,
+                    privateNetworkApproved = draft.privateNetworkApproved,
+                    cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
+                )
+                handoff.variants.forEach { variant ->
+                    MediaRequestHandoffStore.rememberVariant(
+                        variantId = variant.variantId,
+                        exactUrl = variant.exactUrl,
+                        headers = variant.headers,
+                        redactedSummary = variant.redactedSummary,
+                        expiresAtEpochMs = variant.expiresAtEpochMs,
+                    )
+                }
+            }
+            repository.saveAutomationCommand(
+                command.copy(
+                    status = AutomationCommandStatus.Applied,
+                    resultMessage = "Captured ${merged.size} media item(s); resolved ${resolvedVariants.size} manifest variant(s)",
+                    mediaCaptureId = merged.firstOrNull()?.id,
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                ),
+            )
+            navigate(AppRoute.Media)
+        } catch (error: Throwable) {
+            repository.transitionAutomationCommand(
+                command.id,
+                listOf(AutomationCommandStatus.Claimed, AutomationCommandStatus.Executing),
+                AutomationCommandStatus.Received,
+                "Media capture import interrupted after durable claim; retry from the encrypted command envelope.",
+            )
+            throw error
+        }
     }
 
     private suspend fun openExternalAddDraft(command: AutomationCommandRecord, draft: AutomationCommandDraft, message: String) {
@@ -2747,51 +2815,113 @@ class MainViewModel(
         }
     }
 
-    fun ingestEncryptedBrowserCapture(payload: XdmBrowserDeepLinkPayload, originPackage: String? = null) {
-        publishMediaIntakeFeedback(
-            MediaIntakeFeedbackUi(
-                MediaIntakeFeedbackKind.Working,
-                "Receiving Firefox capture session",
-                "Decrypting the browser capture and importing its reviewable media candidates.",
-            ),
-        )
+    private val browserCaptureImportMutex = Mutex()
+
+    fun ingestEncryptedBrowserCapture(payload: XdmBrowserDeepLinkPayload) {
+        val receivedAt = System.currentTimeMillis()
+        val journaled = runCatching {
+            browserCaptureImportJournal.begin(payload, receivedAt)
+        }
+        if (journaled.isFailure) {
+            publishMediaIntakeFeedback(
+                MediaIntakeFeedbackUi(
+                    MediaIntakeFeedbackKind.Failed,
+                    "Browser capture session rejected",
+                    mediaIntakeFailureDetail(requireNotNull(journaled.exceptionOrNull())),
+                ),
+            )
+            return
+        }
+        recoverPendingBrowserCaptureImports(payload.captureSessionId)
+    }
+
+    fun recoverPendingBrowserCaptureImports(sessionId: String? = null) {
         viewModelScope.launch(Dispatchers.IO) {
-            browserCaptureEnvelopeManager.decrypt(payload)
-                .onSuccess { decoded -> importBrowserCaptureSession(decoded, originPackage) }
-                .onFailure { error ->
-                    publishMediaIntakeFeedback(
-                        MediaIntakeFeedbackUi(
-                            MediaIntakeFeedbackKind.Failed,
-                            "Firefox capture session rejected",
-                            mediaIntakeFailureDetail(error),
-                        ),
-                    )
-                }
+            browserCaptureImportMutex.withLock {
+                val entries = browserCaptureImportJournal.pending(sessionId)
+                if (entries.isEmpty()) return@withLock
+                publishMediaIntakeFeedback(
+                MediaIntakeFeedbackUi(
+                    MediaIntakeFeedbackKind.Working,
+                    "Receiving browser capture session",
+                    "Recovering the encrypted browser capture and importing its reviewable media candidates.",
+                ),
+            )
+            entries.forEach { entry ->
+                val captureSessionId = entry.payload.captureSessionId.orEmpty()
+                browserCaptureEnvelopeManager.decrypt(entry.payload, nowEpochMs = entry.receivedAtEpochMs)
+                    .onSuccess { decoded ->
+                        runCatching { importBrowserCaptureSession(decoded) }
+                            .onSuccess { browserCaptureImportJournal.complete(decoded.sessionId) }
+                            .onFailure { error ->
+                                // Keep authenticated ciphertext journaled so a process/repository failure is recoverable.
+                                publishMediaIntakeFeedback(
+                                    MediaIntakeFeedbackUi(
+                                        MediaIntakeFeedbackKind.Failed,
+                                        "Browser capture import interrupted",
+                                        mediaIntakeFailureDetail(error),
+                                    ),
+                                )
+                            }
+                    }
+                    .onFailure { error ->
+                        // Authentication/decryption failures are not retryable by replaying the same envelope.
+                        if (captureSessionId.isNotBlank()) browserCaptureImportJournal.complete(captureSessionId)
+                        publishMediaIntakeFeedback(
+                            MediaIntakeFeedbackUi(
+                                MediaIntakeFeedbackKind.Failed,
+                                "Browser capture session rejected",
+                                mediaIntakeFailureDetail(error),
+                            ),
+                        )
+                    }
+            }
+            }
         }
     }
 
     private suspend fun importBrowserCaptureSession(
         decoded: BrowserCaptureEnvelopeManager.DecodedSession,
-        originPackage: String?,
     ) {
-        val alreadyImported = browserCaptureSessionRegistry.snapshot().any { session ->
-            session.sessionId == decoded.sessionId && session.revision >= decoded.revision
+        val existingSummary = browserCaptureSessionRegistry.snapshot().firstOrNull { session ->
+            session.sessionId == decoded.sessionId
         }
-        if (alreadyImported) {
+        if (existingSummary != null && existingSummary.revision > decoded.revision) {
             publishMediaIntakeFeedback(
                 MediaIntakeFeedbackUi(
                     MediaIntakeFeedbackKind.Found,
-                    "Firefox capture already imported",
-                    "This capture-session revision is already present in the Media inbox. Replay was ignored.",
+                    "Newer browser capture already imported",
+                    "A newer durable revision of this encrypted capture session already exists. The stale replay was ignored.",
                 ),
             )
             navigate(AppRoute.Media)
             return
         }
+        if (existingSummary != null && existingSummary.revision == decoded.revision) {
+            val complete = existingSummary.candidates.isNotEmpty() && existingSummary.candidates.all { candidate ->
+                val record = repository.findMediaCapture(candidate.captureId) ?: return@all false
+                val captureHandoff = MediaRequestHandoffStore.forCapture(record.id) ?: return@all false
+                val variants = repository.variantsForMediaCapture(record.id)
+                captureHandoff.exactUrl != null && variants.all { MediaRequestHandoffStore.forVariant(it.id) != null }
+            }
+            if (complete) {
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(
+                        MediaIntakeFeedbackKind.Found,
+                        "Browser capture already imported",
+                        "This encrypted capture-session revision and its durable request handoffs are already present. Replay was ignored.",
+                    ),
+                )
+                navigate(AppRoute.Media)
+                return
+            }
+        }
+
         val now = System.currentTimeMillis()
         val importedRecords = mutableListOf<MediaCaptureRecord>()
         val importedVariants = mutableListOf<MediaVariant>()
         val summaries = mutableListOf<BrowserCaptureCandidateSummary>()
+        val handoffPlans = mutableListOf<BrowserCaptureImportHandoff>()
 
         decoded.candidates.forEach { candidate ->
             val facts = MediaRequestFacts(
@@ -2803,6 +2933,7 @@ class MainViewModel(
                 headers = candidate.finalHeaders.ifEmpty { candidate.proposedHeaders },
                 frameUrl = candidate.frameUrl,
                 stableMediaId = candidate.stableMediaId,
+                requestFingerprint = candidate.requestFingerprint,
                 sessionRevision = candidate.sessionRevision,
                 proposedHeaders = candidate.proposedHeaders,
                 finalHeaders = candidate.finalHeaders,
@@ -2819,8 +2950,29 @@ class MainViewModel(
                 ),
             )
             plan.records.forEach { rawRecord ->
-                val existing = repository.findMediaCapture(rawRecord.id)
-                val browserSession = browserHandoffMediaCoordinator.rememberBrowserRevision(
+                val captureId = MediaCaptureService.browserCaptureIdFor(
+                    rawRecord.sourceUrl,
+                    decoded.sessionId,
+                    candidate.requestFingerprint,
+                )
+                val sourceVariants = plan.variants.filter { it.captureId == rawRecord.id }
+                val rekeyedVariants = sourceVariants.map { it.rekeyForCapture(captureId) }
+                val selectedVariantId = rawRecord.selectedVariantId?.let { selected ->
+                    sourceVariants.zip(rekeyedVariants).firstOrNull { (old, _) -> old.id == selected }?.second?.id
+                }
+                val exactVariantPlans = sourceVariants.zip(rekeyedVariants).map { (source, rekeyed) ->
+                    BrowserVariantImportHandoff(
+                        variantId = rekeyed.id,
+                        exactUrl = source.url,
+                        headers = facts.finalHeaders.ifEmpty { facts.proposedHeaders },
+                        redactedSummary = "browser session ${decoded.sessionId.take(24)} request ${candidate.requestFingerprint.take(24)}",
+                        expiresAtEpochMs = source.expiresAtEpochMs ?: decoded.expiresAtEpochMs,
+                    )
+                }
+                val sanitizedVariants = sourceVariants.zip(rekeyedVariants).map { (source, rekeyed) ->
+                    rekeyed.copy(url = persistableBrowserCaptureUrl(source.url))
+                }
+                val browserSession = browserHandoffMediaCoordinator.prepareBrowserRevision(
                     requestUrl = candidate.url,
                     topPageUrl = candidate.pageUrl ?: decoded.pageUrl,
                     frameUrl = candidate.frameUrl,
@@ -2830,32 +2982,21 @@ class MainViewModel(
                     finalHeaders = candidate.finalHeaders.takeIf { it.isNotEmpty() },
                     revision = candidate.sessionRevision,
                     expiresAtEpochMs = decoded.expiresAtEpochMs,
-                    declaredStableMediaId = candidate.stableMediaId,
+                    requestFingerprint = candidate.requestFingerprint,
                 )
-                val candidateVariants = plan.variants.filter { it.captureId == rawRecord.id }
-                val sanitizedVariants = candidateVariants.map { variant ->
-                    val persistedVariantUrl = persistableBrowserCaptureUrl(variant.url)
-                    MediaRequestHandoffStore.rememberVariant(
-                        variantId = variant.id,
-                        exactUrl = variant.url,
-                        headers = browserSession.usableHeaders,
-                        redactedSummary = browserSession.redactedSummary,
-                        expiresAtEpochMs = variant.expiresAtEpochMs ?: decoded.expiresAtEpochMs,
-                    )
-                    variant.copy(url = persistedVariantUrl)
-                }
+                val existing = repository.findMediaCapture(captureId)
                 val sanitizedRawRecord = rawRecord.copy(
+                    id = captureId,
                     sourceUrl = persistableBrowserCaptureUrl(rawRecord.sourceUrl),
                     pageUrl = persistableBrowserCaptureUrlOrNull(rawRecord.pageUrl),
+                    selectedVariantId = selectedVariantId,
                     selectedVariantUrl = rawRecord.selectedVariantUrl?.let(::persistableBrowserCaptureUrl),
                 )
-                val record = if (existing?.downloadId != null) {
-                    sanitizedRawRecord.copy(
-                        status = existing.status,
-                        downloadId = existing.downloadId,
-                        createdAtEpochMs = existing.createdAtEpochMs,
-                        updatedAtEpochMs = now,
-                    )
+                val preserveLinked = existing?.downloadId != null
+                val record = if (preserveLinked) {
+                    // Never let a later browser observation rewrite identity/handoff state of a capture
+                    // that is already linked to a download attempt.
+                    requireNotNull(existing)
                 } else {
                     sanitizedRawRecord.copy(
                         createdAtEpochMs = existing?.createdAtEpochMs ?: rawRecord.createdAtEpochMs,
@@ -2863,24 +3004,20 @@ class MainViewModel(
                     )
                 }
                 importedRecords += record
-                importedVariants += sanitizedVariants
-                MediaRequestHandoffStore.rememberCapture(
-                    captureId = record.id,
-                    headers = browserSession.usableHeaders,
-                    redactedSummary = browserSession.redactedSummary,
-                    isExpiringUrl = browserSession.usableHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(browserSession.exactRequestUrl),
-                    exactUrl = browserSession.exactRequestUrl,
-                    pageUrl = browserSession.frameUrl ?: browserSession.pageUrl ?: record.pageUrl,
-                    privateNetworkApproved = false,
-                    cleartextCredentialsApproved = false,
+                if (!preserveLinked) importedVariants += sanitizedVariants
+                handoffPlans += BrowserCaptureImportHandoff(
+                    captureId = captureId,
+                    session = browserSession,
+                    variants = exactVariantPlans,
+                    preserveExistingLinkedCapture = preserveLinked,
                 )
                 summaries += BrowserCaptureCandidateSummary(
-                    captureId = record.id,
+                    captureId = captureId,
                     stableMediaId = browserSession.stableMediaId,
                     quality = candidate.quality,
                     reason = candidate.reason,
                     mediaKind = candidate.mediaKind,
-                    evidence = candidate.evidence,
+                    evidence = (candidate.evidence + "request=${candidate.requestFingerprint.take(32)}").distinct(),
                 )
             }
         }
@@ -2890,14 +3027,64 @@ class MainViewModel(
             publishMediaIntakeFeedback(
                 MediaIntakeFeedbackUi(
                     MediaIntakeFeedbackKind.NoMediaFound,
-                    "Firefox capture had no reviewable media",
+                    "Browser capture had no reviewable media",
                     "The encrypted session reached XDM, but none of its ${decoded.candidates.size} browser candidates matched a downloadable media shape.",
                 ),
             )
             return
         }
         val distinctVariants = importedVariants.distinctBy(MediaVariant::id)
-        repository.saveMediaCapturesWithVariants(distinctRecords, distinctVariants, now)
+        val handoffByCapture = handoffPlans.distinctBy(BrowserCaptureImportHandoff::captureId)
+        val preservedLinkedIds = handoffByCapture.filter(BrowserCaptureImportHandoff::preserveExistingLinkedCapture)
+            .map(BrowserCaptureImportHandoff::captureId)
+            .toSet()
+        val recordsToPersist = distinctRecords.filterNot { it.id in preservedLinkedIds }
+        val variantsToPersist = distinctVariants.filterNot { it.captureId in preservedLinkedIds }
+
+        // Room is committed first. The encrypted import journal remains authoritative until every
+        // auxiliary secure request handoff and the non-secret session index is committed too. A
+        // capture already linked to a download is intentionally excluded from replacement so a later
+        // browser observation cannot clear/rewrite its exact variant set.
+        if (recordsToPersist.isNotEmpty()) {
+            repository.saveMediaCapturesWithVariants(recordsToPersist, variantsToPersist, now)
+        }
+
+        handoffByCapture.forEach { handoff ->
+            // A retry after Room commit may encounter a capture that became linked before exact
+            // sidecars were durable. Preserve any linked sidecar already present, but fill missing
+            // sidecars so the journal cannot be cleared with a partial auxiliary commit.
+            val storedSession = if (handoff.preserveExistingLinkedCapture) {
+                browserHandoffMediaCoordinator.sessionFor(handoff.session.stableMediaId)
+                    ?: browserHandoffMediaCoordinator.rememberPreparedRevision(handoff.session)
+            } else {
+                browserHandoffMediaCoordinator.rememberPreparedRevision(handoff.session)
+            }
+            if (!handoff.preserveExistingLinkedCapture || MediaRequestHandoffStore.forCapture(handoff.captureId) == null) {
+                MediaRequestHandoffStore.rememberCapture(
+                    captureId = handoff.captureId,
+                    headers = storedSession.usableHeaders,
+                    redactedSummary = storedSession.redactedSummary,
+                    isExpiringUrl = storedSession.usableHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(storedSession.exactRequestUrl),
+                    exactUrl = storedSession.exactRequestUrl,
+                    pageUrl = storedSession.frameUrl ?: storedSession.pageUrl,
+                    expiresAtEpochMs = decoded.expiresAtEpochMs,
+                    privateNetworkApproved = false,
+                    cleartextCredentialsApproved = false,
+                )
+            }
+            handoff.variants.forEach { variant ->
+                if (!handoff.preserveExistingLinkedCapture || MediaRequestHandoffStore.forVariant(variant.variantId) == null) {
+                    MediaRequestHandoffStore.rememberVariant(
+                        variantId = variant.variantId,
+                        exactUrl = variant.exactUrl,
+                        headers = variant.headers,
+                        redactedSummary = variant.redactedSummary,
+                        expiresAtEpochMs = variant.expiresAtEpochMs,
+                    )
+                }
+            }
+        }
+
         val pageHost = runCatching { URI(decoded.pageUrl.orEmpty()).host.orEmpty() }.getOrDefault("")
         browserCaptureSessionRegistry.record(
             BrowserCaptureSessionSummary(
@@ -2913,12 +3100,11 @@ class MainViewModel(
                 candidates = summaries.distinctBy(BrowserCaptureCandidateSummary::captureId),
             ),
         )
-        val source = originPackage?.takeIf(String::isNotBlank)?.let { " from $it" }.orEmpty()
         publishMediaIntakeFeedback(
             MediaIntakeFeedbackUi(
                 MediaIntakeFeedbackKind.Found,
-                "Firefox capture session imported",
-                "${distinctRecords.size} reviewable item(s)$source are grouped in the Media inbox${if (decoded.truncated) "; the browser had more candidates than the bounded secure handoff could carry" else ""}.",
+                "Browser capture session imported",
+                "${distinctRecords.size} reviewable item(s) are grouped in the Media inbox${if (decoded.truncated) "; the browser had more candidates than the bounded secure handoff could carry" else ""}.",
                 diagnostics = listOf(
                     "session=${decoded.sessionId.take(48)}",
                     "browserCandidates=${decoded.totalCandidateCount}",
@@ -2933,63 +3119,92 @@ class MainViewModel(
         val authenticated = runCatching {
             !facts.requiresPageObservationProof || browserHandoffMediaCoordinator.authenticatePageObservation(facts.pageObservationProof)
         }.getOrElse { error ->
-            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Firefox capture authentication failed", mediaIntakeFailureDetail(error)))
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Browser capture authentication failed", mediaIntakeFailureDetail(error)))
             return
         }
         if (!authenticated) {
-            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Firefox capture rejected", "The browser observation proof could not be authenticated. Refresh the extension capture and try again."))
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Browser capture rejected", "The browser observation proof could not be authenticated. Refresh the extension capture and try again."))
+            return
+        }
+        val proposedHeaders = facts.proposedHeaders.ifEmpty { facts.headers }
+        val finalHeaders = facts.finalHeaders.takeIf { it.isNotEmpty() }
+        val exactHeaders = finalHeaders ?: proposedHeaders
+        val sensitiveDirectHandoff = exactHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(facts.url)
+        if (sensitiveDirectHandoff) {
+            // This compatibility API has no durable encrypted outer journal. Never let credentials or
+            // signed URLs escape into auxiliary stores through a non-recoverable import. Secure browser
+            // runtime traffic must use the encrypted v2 deep-link + BrowserCaptureImportJournal path.
+            publishMediaIntakeFeedback(
+                MediaIntakeFeedbackUi(
+                    MediaIntakeFeedbackKind.Failed,
+                    "Encrypted browser capture required",
+                    "This browser request contains sensitive or expiring request context. Capture it with the current encrypted browser extension handoff.",
+                ),
+            )
             return
         }
         val intake = runCatching { mediaCaptureIntakePlanner.plan(facts) }.getOrElse { error ->
-            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Firefox capture inspection failed", mediaIntakeFailureDetail(error)))
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Browser capture inspection failed", mediaIntakeFailureDetail(error)))
             return
         }
         if (intake == null) {
-            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.NoMediaFound, "Firefox capture had no reviewable media", "The handoff reached XDM, but it did not contain a media request XDM can review."))
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.NoMediaFound, "Browser capture had no reviewable media", "The handoff reached XDM, but it did not contain a media request XDM can review."))
             return
         }
-        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Receiving Firefox capture", "Importing the browser-observed media request."))
-        val proposedHeaders = facts.proposedHeaders.ifEmpty { facts.headers }
-        val finalHeaders = facts.finalHeaders.takeIf { it.isNotEmpty() }
+        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Receiving browser capture", "Importing the browser-observed media request."))
         val now = System.currentTimeMillis()
-        val session = browserHandoffMediaCoordinator.rememberBrowserRevision(
-            requestUrl = facts.url,
-            topPageUrl = facts.pageUrl,
-            frameUrl = facts.frameUrl ?: facts.headers["X-XDM-Frame-Url"],
-            kind = intake.record.kind,
-            mimeType = facts.mimeType,
-            proposedHeaders = proposedHeaders,
-            finalHeaders = finalHeaders,
-            revision = facts.sessionRevision ?: now,
-            expiresAtEpochMs = now + 24L * 60L * 60L * 1000L,
-            declaredStableMediaId = facts.stableMediaId,
-            pageObservationProof = facts.pageObservationProof,
-            requirePageObservationProof = facts.requiresPageObservationProof,
-        )
+        val preparedSession = runCatching {
+            browserHandoffMediaCoordinator.prepareBrowserRevision(
+                requestUrl = facts.url,
+                topPageUrl = facts.pageUrl,
+                frameUrl = facts.frameUrl ?: facts.headers["X-XDM-Frame-Url"],
+                kind = intake.record.kind,
+                mimeType = facts.mimeType,
+                proposedHeaders = proposedHeaders,
+                finalHeaders = finalHeaders,
+                revision = facts.sessionRevision ?: now,
+                expiresAtEpochMs = now + 24L * 60L * 60L * 1000L,
+                requestFingerprint = facts.requestFingerprint,
+                pageObservationProof = facts.pageObservationProof,
+                requirePageObservationProof = facts.requiresPageObservationProof,
+            )
+        }.getOrElse { error ->
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Browser capture rejected", mediaIntakeFailureDetail(error)))
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val existing = repository.findMediaCapture(intake.record.id)
-                val merged = if (existing?.downloadId != null) {
-                    intake.record.copy(
-                        status = existing.status,
-                        downloadId = existing.downloadId,
-                        createdAtEpochMs = existing.createdAtEpochMs,
-                        updatedAtEpochMs = System.currentTimeMillis(),
-                    )
-                } else {
-                    intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
+                if (existing?.downloadId != null) {
+                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Browser capture already linked", "The existing capture is already bound to a download and was left unchanged."))
+                    return@launch
                 }
-                val (resolved, resolvedVariants) = resolveCapturedPlaylistIfPossible(merged, session.exactRequestUrl, session.usableHeaders, now)
+                val merged = intake.record.copy(
+                    createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs,
+                    updatedAtEpochMs = now,
+                )
+                val (resolvedRaw, resolvedVariantsRaw) = resolveCapturedPlaylistIfPossible(merged, preparedSession.exactRequestUrl, preparedSession.usableHeaders, now)
+                val capturedVariantsRaw = (intake.candidate.variants + resolvedVariantsRaw).distinctBy(MediaVariant::id)
+                val resolved = resolvedRaw.copy(
+                    sourceUrl = persistableBrowserCaptureUrl(resolvedRaw.sourceUrl),
+                    pageUrl = persistableBrowserCaptureUrlOrNull(resolvedRaw.pageUrl),
+                    selectedVariantUrl = resolvedRaw.selectedVariantUrl?.let(::persistableBrowserCaptureUrl),
+                )
+                val capturedVariants = capturedVariantsRaw.map { it.copy(url = persistableBrowserCaptureUrl(it.url)) }
+
+                // Even the legacy non-sensitive compatibility path commits Room first. Only then may
+                // its exact (non-sensitive) session/variant sidecars become visible.
+                repository.saveMediaCaptureWithVariants(resolved, capturedVariants, now)
+                val session = browserHandoffMediaCoordinator.rememberPreparedRevision(preparedSession)
                 MediaRequestHandoffStore.rememberCapture(
                     captureId = resolved.id,
                     headers = session.usableHeaders,
                     redactedSummary = session.redactedSummary,
-                    isExpiringUrl = true,
+                    isExpiringUrl = false,
                     exactUrl = session.exactRequestUrl,
                     pageUrl = session.frameUrl ?: session.pageUrl,
                 )
-                val capturedVariants = (intake.candidate.variants + resolvedVariants).distinctBy(MediaVariant::id)
-                capturedVariants.forEach { variant ->
+                capturedVariantsRaw.forEach { variant ->
                     MediaRequestHandoffStore.rememberVariant(
                         variantId = variant.id,
                         exactUrl = variant.url,
@@ -2998,10 +3213,9 @@ class MainViewModel(
                         expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
                     )
                 }
-                repository.saveMediaCaptureWithVariants(resolved, capturedVariants, now)
-                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Firefox media captured", "The browser-observed media request is ready for review."))
+                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Browser media captured", "The browser-observed media request is ready for review."))
             } catch (error: Throwable) {
-                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not import Firefox capture", mediaIntakeFailureDetail(error)))
+                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not import browser capture", mediaIntakeFailureDetail(error)))
             }
         }
     }
@@ -3563,6 +3777,7 @@ class MainViewModel(
             container.browserHandoffMediaCoordinator,
             container.browserCaptureEnvelopeManager,
             container.browserCaptureSessionRegistry,
+            container.browserCaptureImportJournal,
             container.debugEventRecorder,
         ) as T
     }
