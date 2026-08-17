@@ -2,14 +2,15 @@ package com.mikeyphw.xdm.android.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BrowserHandoffMediaModelsTest {
-    @Test fun stableMediaIdSeparatesExactSignedUrlFromSessionIdentity() {
+    @Test fun stableMediaIdSeparatesExactSignedRequestsUnderSecureRuntimeIdentity() {
         val a = BrowserHandoffMediaPolicy.stableMediaId("https://site/watch", "https://embed.example/frame", "https://cdn.example/video.mp4?token=one", MediaTransferShape.DirectMedia)
         val b = BrowserHandoffMediaPolicy.stableMediaId("https://site/watch", "https://embed.example/frame", "https://cdn.example/video.mp4?token=two", MediaTransferShape.DirectMedia)
-        assertEquals(a, b)
+        assertNotEquals(a, b)
     }
 
     @Test fun iframeRefererIsPreservedOverTopPage() {

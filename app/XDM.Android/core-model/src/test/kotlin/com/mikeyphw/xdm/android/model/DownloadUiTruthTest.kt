@@ -9,10 +9,30 @@ class DownloadUiTruthTest {
     @Test
     fun completedIsVerifiedOnlyWithEvidence() {
         val item = download(DownloadState.Completed)
-        assertEquals("Complete", DownloadUiTruthPlanner.truth(item, DownloadActionContext()).badge)
-        assertTrue(DownloadUiTruthPlanner.truth(item, DownloadActionContext()).status.contains("not confirmed"))
-        val verified = DownloadActionContext(latestChecksum = checksum(matches = true))
-        assertEquals("Verified", DownloadUiTruthPlanner.truth(item, verified).badge)
+
+        val unknown = DownloadUiTruthPlanner.truth(item, DownloadActionContext())
+        assertEquals("Needs check", unknown.badge)
+        assertTrue(unknown.status.contains("health is not confirmed"))
+
+        val present = DownloadActionContext(
+            artifact = CompletedArtifactCapabilities(
+                health = CompletedArtifactHealth.Present,
+            ),
+        )
+        assertEquals("Complete", DownloadUiTruthPlanner.truth(item, present).badge)
+        assertTrue(
+            DownloadUiTruthPlanner.truth(item, present)
+                .status
+                .contains("verification not confirmed"),
+        )
+
+        val verified = present.copy(
+            latestChecksum = checksum(matches = true),
+        )
+        assertEquals(
+            "Verified",
+            DownloadUiTruthPlanner.truth(item, verified).badge,
+        )
     }
 
     @Test

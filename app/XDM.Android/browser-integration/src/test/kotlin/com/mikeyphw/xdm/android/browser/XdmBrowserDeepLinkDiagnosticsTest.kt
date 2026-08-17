@@ -52,7 +52,7 @@ class XdmBrowserDeepLinkDiagnosticsTest {
     }
 
     private fun deepLink(scheme: String, url: String): String =
-        "$scheme://capture?v=1&url=${encode(url)}&kind=hls"
+        "$scheme://add?v=1&url=${encode(url)}&kind=hls"
 
     private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8.name())
 }

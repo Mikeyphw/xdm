@@ -1,18 +1,18 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "session_id": "20260817T020540Z-2e8702306e",
   "repo_root": "/data/data/com.termux/files/home/Code/xdm",
   "project_root": "/data/data/com.termux/files/home/Code/xdm/app/XDM.Android",
   "project_type": "android",
   "target": "xdm_android",
   "variant": "",
-  "status": "running",
+  "status": "paused",
   "validation_mode": "standalone",
   "artifact": "",
   "resource_profile": "automatic",
   "transaction_path": "",
   "recovery_available": false,
-  "revision": 54,
+  "revision": 104,
   "failure_action": "pause",
   "required_checkpoint_name": "finalize",
   "required_checkpoint_keys": [
@@ -26,7 +26,7 @@
       "key": "android-resumable:preflight:1",
       "name": "preflight",
       "label": "android-resumable: preflight",
-      "status": "running",
+      "status": "passed",
       "depends_on": [],
       "input_domains": [
         "config"
@@ -38,7 +38,7 @@
       "key": "android-resumable:dependencies:1",
       "name": "dependencies",
       "label": "android-resumable: dependencies",
-      "status": "pending",
+      "status": "passed",
       "depends_on": [
         "android-resumable:preflight:1"
       ],
@@ -52,7 +52,7 @@
       "key": "android-resumable:compile:1",
       "name": "compile",
       "label": "android-resumable: compile",
-      "status": "pending",
+      "status": "passed",
       "depends_on": [
         "android-resumable:dependencies:1"
       ],
@@ -68,7 +68,7 @@
       "key": "android-resumable:resources:1",
       "name": "resources",
       "label": "android-resumable: resources",
-      "status": "pending",
+      "status": "passed",
       "depends_on": [
         "android-resumable:compile:1"
       ],
@@ -83,7 +83,7 @@
       "key": "android-resumable:unit-test:1",
       "name": "unit-test",
       "label": "android-resumable: unit-test",
-      "status": "pending",
+      "status": "interrupted",
       "depends_on": [
         "android-resumable:compile:1"
       ],
@@ -153,5 +153,5 @@
       "scope": "android-resumable"
     }
   ],
-  "updated_at": "2026-08-17T04:01:46.870792Z"
+  "updated_at": "2026-08-17T15:45:53.363449Z"
 }

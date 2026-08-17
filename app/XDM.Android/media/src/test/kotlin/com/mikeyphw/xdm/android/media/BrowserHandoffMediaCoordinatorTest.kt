@@ -7,12 +7,13 @@ import com.mikeyphw.xdm.android.model.PageObservationProof
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.io.path.createTempDirectory
 
 class BrowserHandoffMediaCoordinatorTest {
-    @Test fun rotatingSignedUrlRefreshesSameStableSession() {
+    @Test fun rotatingSignedUrlCreatesDistinctSecureRequestIdentity() {
         val coordinator = BrowserHandoffMediaCoordinator(clock = { 1_000 })
         val first = coordinator.rememberBrowserRevision(
             requestUrl = "https://cdn.example/video.mp4?token=one",
@@ -36,7 +37,7 @@ class BrowserHandoffMediaCoordinatorTest {
             revision = 2,
             expiresAtEpochMs = 20_000,
         )
-        assertEquals(first.stableMediaId, second.stableMediaId)
+        assertNotEquals(first.stableMediaId, second.stableMediaId)
         assertEquals(BrowserHeaderObservationKind.FinalSent, second.finalHeaders.kind)
         assertEquals("sid=2", second.usableHeaders["Cookie"])
     }
@@ -48,7 +49,7 @@ class BrowserHandoffMediaCoordinatorTest {
         assertTrue(coordinator.authenticatePageObservation(PageObservationProof("0123456789abcdef", "pkg", 1, 10_000)))
     }
 
-    @Test fun fileBackedStorePersistsFinalHeadersAndDeclaredStableId() {
+    @Test fun fileBackedStorePersistsFinalHeadersUnderAndroidComputedStableId() {
         val root = createTempDirectory(prefix = "xdm-browser-handoff").toFile()
         try {
             val coordinator = BrowserHandoffMediaCoordinator(store = FileBackedBrowserHandoffMediaSessionStore(root), clock = { 1_000 })
@@ -64,9 +65,9 @@ class BrowserHandoffMediaCoordinatorTest {
                 expiresAtEpochMs = 10_000,
                 declaredStableMediaId = "media-session-declared77",
             )
-            assertEquals("media-session-declared77", session.stableMediaId)
+            assertNotEquals("media-session-declared77", session.stableMediaId)
             val restored = BrowserHandoffMediaCoordinator(store = FileBackedBrowserHandoffMediaSessionStore(root), clock = { 2_000 })
-                .sessionFor("media-session-declared77")
+                .sessionFor(session.stableMediaId)
             assertEquals("sid=final", restored?.usableHeaders?.get("Cookie"))
         } finally {
             root.deleteRecursively()

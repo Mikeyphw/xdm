@@ -12,33 +12,24 @@ import org.junit.Test
 
 class XdmBrowserDeepLinkParserTest {
     @Test
-    fun captureLinkProducesBrowserExtensionMediaDraft() {
-        val link = deepLink(
-            scheme = XdmBrowserDeepLinkContract.ReleaseScheme,
-            host = XdmBrowserDeepLinkContract.CaptureHost,
-            url = "https://cdn.example.test/master.m3u8?token=signed-value",
-            page = "https://example.test/watch/42",
-            title = "Example stream",
-            fileName = "episode-42.m3u8",
-            mime = "application/vnd.apple.mpegurl; charset=utf-8",
-            kind = "hls",
-        )
+    fun encryptedCaptureLinkProducesBrowserExtensionMediaDraftWithoutPlaintextMedia() {
+        val link = encryptedCaptureLink(XdmBrowserDeepLinkContract.ReleaseScheme)
 
         val payload = XdmBrowserDeepLinkParser.parse(link, XdmBrowserDeepLinkContract.ReleaseScheme)
         assertNotNull(payload)
         payload!!
         assertEquals(AutomationCommandAction.CaptureMedia, payload.action)
-        assertEquals("https://cdn.example.test/master.m3u8?token=signed-value", payload.url)
-        assertEquals("https://example.test/watch/42", payload.pageUrl)
-        assertEquals("Example stream", payload.pageTitle)
-        assertEquals("episode-42.m3u8", payload.fileName)
-        assertEquals("application/vnd.apple.mpegurl", payload.mimeType)
-        assertEquals("hls", payload.mediaKind)
+        assertTrue(payload.hasEncryptedCaptureEnvelope)
+        assertNull(payload.url)
+        assertNull(payload.pageUrl)
+        assertNull(payload.fileName)
+        assertNull(payload.mimeType)
 
         val draft = payload.toAutomationCommandDraft(originPackage = "org.ironfoxoss.ironfox")
         assertEquals(AutomationCommandSource.BrowserExtension, draft.source)
         assertEquals(AutomationCommandAction.CaptureMedia, draft.action)
         assertEquals("org.ironfoxoss.ironfox", draft.originPackage)
+        assertNull(draft.url)
         assertNull(draft.rawHeaders)
     }
 
@@ -58,7 +49,7 @@ class XdmBrowserDeepLinkParserTest {
     @Test
     fun everyBuildVariantUsesOnlyItsOwnScheme() {
         XdmBrowserDeepLinkContract.BuildVariantSchemes.forEach { scheme ->
-            val link = deepLink(scheme = scheme, host = "capture", url = "https://example.test/video.mp4")
+            val link = encryptedCaptureLink(scheme)
             assertNotNull("Expected $scheme to parse", XdmBrowserDeepLinkParser.parse(link, scheme))
             val other = XdmBrowserDeepLinkContract.BuildVariantSchemes.first { it != scheme }
             assertNull("$scheme must not parse as $other", XdmBrowserDeepLinkParser.parse(link, other))
@@ -77,23 +68,23 @@ class XdmBrowserDeepLinkParserTest {
             "xdmdownload://capture?v=1&url=https%3A%2F%2Fexample.test%2Fvideo.mp4",
             "https://user:password@example.test/private.mp4",
         ).forEach { unsafe ->
-            val link = deepLink(scheme = "xdmdownload", host = "capture", url = unsafe)
+            val link = deepLink(scheme = "xdmdownload", host = "add", url = unsafe)
             assertNull("Unsafe URL accepted: $unsafe", XdmBrowserDeepLinkParser.parse(link, "xdmdownload"))
         }
     }
 
     @Test
     fun rejectsMalformedVersionHostDuplicatesAndOversizedUrls() {
-        val base = "xdmdownload://capture?v=1&url=${encode("https://example.test/video.mp4")}"
-        assertNull(XdmBrowserDeepLinkParser.parse(base.replace("v=1", "v=2"), "xdmdownload"))
-        assertNull(XdmBrowserDeepLinkParser.parse(base.replace("capture", "unknown"), "xdmdownload"))
+        val base = "xdmdownload://add?v=1&url=${encode("https://example.test/video.mp4")}"
+        assertNull(XdmBrowserDeepLinkParser.parse(base.replace("v=1", "v=99"), "xdmdownload"))
+        assertNull(XdmBrowserDeepLinkParser.parse(base.replace("add", "unknown"), "xdmdownload"))
         assertNull(XdmBrowserDeepLinkParser.parse("$base&url=${encode("https://example.test/other.mp4")}", "xdmdownload"))
-        assertNull(XdmBrowserDeepLinkParser.parse("xdmdownload://capture?v=1", "xdmdownload"))
-        assertNull(XdmBrowserDeepLinkParser.parse("xdmdownload://capture/path?v=1&url=${encode("https://example.test/v.mp4")}", "xdmdownload"))
+        assertNull(XdmBrowserDeepLinkParser.parse("xdmdownload://add?v=1", "xdmdownload"))
+        assertNull(XdmBrowserDeepLinkParser.parse("xdmdownload://add/path?v=1&url=${encode("https://example.test/v.mp4")}", "xdmdownload"))
 
         val oversizedUrl = "https://example.test/" + "x".repeat(XdmBrowserDeepLinkContract.MaxMediaUrlBytes)
-        assertNull(XdmBrowserDeepLinkParser.parse(deepLink("xdmdownload", "capture", oversizedUrl), "xdmdownload"))
-        val oversizedEnvelope = "xdmdownload://capture?v=1&url=" + "x".repeat(XdmBrowserDeepLinkContract.MaxDeepLinkBytes)
+        assertNull(XdmBrowserDeepLinkParser.parse(deepLink("xdmdownload", "add", oversizedUrl), "xdmdownload"))
+        val oversizedEnvelope = "xdmdownload://add?v=1&url=" + "x".repeat(XdmBrowserDeepLinkContract.MaxDeepLinkBytes)
         assertNull(XdmBrowserDeepLinkParser.parse(oversizedEnvelope, "xdmdownload"))
     }
 
@@ -123,7 +114,7 @@ class XdmBrowserDeepLinkParserTest {
     fun rejectsUnsafePageMetadataInsteadOfSmugglingIt() {
         val link = deepLink(
             scheme = "xdmdownload",
-            host = "capture",
+            host = "add",
             url = "https://example.test/video.mp4",
             page = "javascript:alert(1)",
         )
@@ -136,7 +127,7 @@ class XdmBrowserDeepLinkParserTest {
         val fileName = "folder\\nested/" + "v".repeat(200) + ".mp4"
         val link = deepLink(
             scheme = "xdmdownload",
-            host = "capture",
+            host = "add",
             url = "https://example.test/video.mp4",
             title = title,
             fileName = fileName,
@@ -153,10 +144,10 @@ class XdmBrowserDeepLinkParserTest {
     }
 
     @Test
-    fun repeatedDeliveryUsesExistingStableIdempotencyContract() {
+    fun repeatedAddDeliveryUsesExistingStableIdempotencyContract() {
         val link = deepLink(
             scheme = "xdmdownload",
-            host = "capture",
+            host = "add",
             url = "https://example.test/video.mp4?signature=abc",
             page = "https://example.test/watch",
             fileName = "video.mp4",
@@ -185,19 +176,23 @@ class XdmBrowserDeepLinkParserTest {
         return "$scheme://$host?" + params.entries.joinToString("&") { (name, value) -> "$name=${encode(value)}" }
     }
 
+    private fun encryptedCaptureLink(scheme: String): String =
+        "$scheme://capture?v=2&sid=browser-test-session&kid=browser-test-key&ek=QUJDREVGR0g&iv=QUJDREVGR0hJSktM&ct=QUJDREVGR0hJSktMTU5PUA"
+
     private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8.name())
     @Test
-    fun phaseFiveParsesStableSessionAndFrameMetadata() {
+    fun legacyPlaintextCaptureMetadataIsRejectedBySecureV2Contract() {
         val raw = "xdmdownload://capture?v=1&url=https%3A%2F%2Fcdn.example%2Fvideo.mp4&stableMediaId=media-session-abcdef123456&sessionRevision=12345&frame=https%3A%2F%2Fplayer.example%2Fembed"
-        val result = XdmBrowserDeepLinkParser.parseDetailed(raw, "xdmdownload") as XdmBrowserDeepLinkParseResult.Accepted
-        assertEquals("media-session-abcdef123456", result.payload.stableMediaId)
-        assertEquals(12345L, result.payload.sessionRevision)
-        assertEquals("https://player.example/embed", result.payload.frameUrl)
+        val result = XdmBrowserDeepLinkParser.parseDetailed(raw, "xdmdownload")
+        assertEquals(
+            XdmBrowserDeepLinkRejection.UnsafeEnvelope,
+            (result as XdmBrowserDeepLinkParseResult.Rejected).reason,
+        )
     }
 
     @Test
-    fun extensionCaptureParsesOptionalSizeDurationAndThumbnailMetadata() {
-        val raw = "xdmdownload://capture?v=1&url=https%3A%2F%2Fcdn.example%2Fmaster.m3u8&kind=hls&length=734003200&durationMs=630000&thumbnail=https%3A%2F%2Fcdn.example%2Fposter.jpg"
+    fun addLinkParsesOptionalSizeDurationAndThumbnailMetadata() {
+        val raw = "xdmdownload://add?v=1&url=https%3A%2F%2Fcdn.example%2Fmaster.m3u8&kind=hls&length=734003200&durationMs=630000&thumbnail=https%3A%2F%2Fcdn.example%2Fposter.jpg"
         val payload = XdmBrowserDeepLinkParser.parse(raw, "xdmdownload")!!
 
         assertEquals(734003200L, payload.contentLength)
