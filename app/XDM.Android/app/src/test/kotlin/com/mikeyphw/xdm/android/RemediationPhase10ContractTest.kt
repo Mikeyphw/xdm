@@ -85,7 +85,7 @@ class RemediationPhase10ContractTest {
         assertTrue(manager.contains("database.mediaCaptureDao().deleteOutput(outputId)"))
         assertTrue(manager.contains("val durableJob = dao.findJob(job.id) ?: return@withTransaction"))
         assertTrue(viewModel.contains("fun removeMediaLibraryRecord(item: OfflineMediaLibraryItem)"))
-        assertTrue(app.contains("MediaLibraryScreen as OutputMediaLibraryScreen"))
+        assertTrue(app.contains("AppRoute.Library -> MediaLibraryScreen("))
         assertTrue(app.contains("onRemoveRecord = viewModel::removeMediaLibraryRecord"))
         assertTrue(screen.contains("key = OfflineMediaLibraryItem::outputId"))
         assertTrue(screen.contains("allowLegacyFallback = false"))

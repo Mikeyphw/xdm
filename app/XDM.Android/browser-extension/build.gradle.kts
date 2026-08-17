@@ -73,7 +73,34 @@ val jsTest by tasks.registering(Exec::class) {
     description = "Run the repository-owned detector, candidate-store, and handoff JavaScript tests."
     commandLine(
         "bash", "-lc",
-        "node tests/test_detector.js && node tests/test_handoff.js && node tests/test_secure_handoff.js && node tests/test_fab.js && node tests/test_phase43a_bridge.js && node tests/test_background.js && node tests/test_release_gate.js",
+        """
+        set -euo pipefail
+
+        if [[ -n "${'$'}{XDM_NODE:-}" && -x "${'$'}XDM_NODE" ]]; then
+            NODE_RUNTIME="${'$'}XDM_NODE"
+        elif command -v node >/dev/null 2>&1; then
+            NODE_RUNTIME="$(command -v node)"
+        elif command -v nodejs >/dev/null 2>&1; then
+            NODE_RUNTIME="$(command -v nodejs)"
+        elif [[ -x /home/linuxbrew/.linuxbrew/opt/node@22/bin/node ]]; then
+            NODE_RUNTIME=/home/linuxbrew/.linuxbrew/opt/node@22/bin/node
+        else
+            echo "ERROR: Node.js is required for :browser-extension:jsTest." >&2
+            echo "Tried XDM_NODE, node, nodejs, and Linuxbrew node@22." >&2
+            exit 127
+        fi
+
+        echo "Using Node.js runtime: ${'$'}NODE_RUNTIME"
+        "${'$'}NODE_RUNTIME" --version
+
+        "${'$'}NODE_RUNTIME" tests/test_detector.js
+        "${'$'}NODE_RUNTIME" tests/test_handoff.js
+        "${'$'}NODE_RUNTIME" tests/test_secure_handoff.js
+        "${'$'}NODE_RUNTIME" tests/test_fab.js
+        "${'$'}NODE_RUNTIME" tests/test_phase43a_bridge.js
+        "${'$'}NODE_RUNTIME" tests/test_background.js
+        "${'$'}NODE_RUNTIME" tests/test_release_gate.js
+        """.trimIndent(),
     )
 }
 

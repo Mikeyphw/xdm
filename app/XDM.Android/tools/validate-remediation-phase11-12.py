@@ -112,7 +112,7 @@ def validate(root: Path) -> list[str]:
     require_all(app, (
         "BackHandler(enabled = state.route == AppRoute.Add)", "viewModel.dismissExternalAddDraft()",
         "visible = state.route == AppRoute.Add", "onDetailSelectionChanged = viewModel::selectDownloadDetail",
-        "ui.downloads.DownloadsScreen as TruthfulDownloadsScreen", "AppRoute.Downloads -> TruthfulDownloadsScreen(",
+        "AppRoute.Downloads -> DownloadsScreen(", "requestedDetailDownloadId = state.selectedDownloadDetailId",
     ), "Add dismissal/navigation wiring", errors)
     dismiss = view_model.split("fun dismissExternalAddDraft()", 1)[-1].split("\n    fun ", 1)[0]
     require_all(dismiss, ("externalAddDraft.value = null", "AutomationCommandStatus.Rejected", "User dismissed Add Download review", "UserDeclined"), "external Add dismissal state", errors)

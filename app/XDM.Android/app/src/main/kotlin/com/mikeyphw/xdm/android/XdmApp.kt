@@ -30,8 +30,6 @@ import com.mikeyphw.xdm.android.model.OperationalActivityEvent
 import com.mikeyphw.xdm.android.media.MediaExternalJobSnapshot
 import com.mikeyphw.xdm.android.termux.TermuxMediaJobKind
 import com.mikeyphw.xdm.android.termux.TermuxMediaJobStatus
-import com.mikeyphw.xdm.android.ui.downloads.DownloadsScreen as TruthfulDownloadsScreen
-import com.mikeyphw.xdm.android.ui.library.MediaLibraryScreen as OutputMediaLibraryScreen
 
 private val routeTopology = AppRoute.entries
 private val primaryRoutes = routeTopology.filterNot { it == AppRoute.Add }
@@ -170,7 +168,7 @@ private fun XdmRouteContent(
 ) {
     Box(Modifier.fillMaxSize()) {
         when (route) {
-            AppRoute.Downloads -> TruthfulDownloadsScreen(
+            AppRoute.Downloads -> DownloadsScreen(
                 downloads = state.downloads,
                 requestedDetailDownloadId = state.selectedDownloadDetailId,
                 compact = state.compactDensity,
@@ -237,7 +235,7 @@ private fun XdmRouteContent(
                 onTrackSelectionChanged = viewModel::updateMediaTrackSelection,
                 onRemove = viewModel::removeMediaCapture,
             )
-            AppRoute.Library -> OutputMediaLibraryScreen(
+            AppRoute.Library -> MediaLibraryScreen(
                 captures = state.mediaCaptures,
                 variants = state.mediaVariants,
                 downloads = state.downloads,

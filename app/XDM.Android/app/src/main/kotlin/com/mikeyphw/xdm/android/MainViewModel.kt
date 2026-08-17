@@ -1670,7 +1670,8 @@ class MainViewModel(
     fun acceptClipboardItem(item: ClipboardInboxItem) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.saveClipboardItem(item.copy(status = "Accepted", updatedAtEpochMs = System.currentTimeMillis()))
-            processAutomationCommand(
+            val commandId = ExternalAutomationDispatch.persist(
+                repository,
                 AutomationCommandDraft(
                     source = AutomationCommandSource.DeepLink,
                     action = AutomationCommandAction.CaptureMedia,
@@ -1680,7 +1681,8 @@ class MainViewModel(
                     authorization = ExternalCommandAuthorization.UserConfirmed,
                     privateNetworkApproved = false,
                 ),
-            )
+            ) ?: return@launch
+            processPersistedAutomationCommand(commandId)
         }
     }
 

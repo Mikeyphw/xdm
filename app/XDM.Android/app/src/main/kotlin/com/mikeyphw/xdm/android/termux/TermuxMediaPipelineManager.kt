@@ -516,7 +516,7 @@ class TermuxMediaPipelineManager(
             val existing = outputs.firstOrNull {
                 it.ownerKind == MediaOutputOwnerKind.TermuxJob && it.ownerId == durableJob.id && it.attemptGeneration == durableJob.attemptGeneration.toLong()
             }
-            val predecessor = durableJob.retryOfJobId?.let { retryOf ->
+            val predecessor = durableJob.parentJobId?.let { retryOf ->
                 outputs.firstOrNull { it.ownerKind == MediaOutputOwnerKind.TermuxJob && it.ownerId == retryOf }
             }
             val seed = MediaOutputSeed(

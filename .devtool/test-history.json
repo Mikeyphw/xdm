@@ -1,6 +1,3 @@
 {
-  "failed": [
-    "com.mikeyphw.xdm.android.model.BrowserHandoffMediaModelsTest.stableMediaIdSeparatesExactSignedUrlFromSessionIdentity",
-    "com.mikeyphw.xdm.android.model.DownloadUiTruthTest.completedIsVerifiedOnlyWithEvidence"
-  ]
+  "failed": []
 }

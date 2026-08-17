@@ -96,4 +96,6 @@ private fun MediaSniffingSource.labDisplayLabel(): String = when (this) {
     MediaSniffingSource.BatchInput -> "Batch input"
     MediaSniffingSource.SharedText -> "Shared text"
     MediaSniffingSource.BrowserExtension -> "Browser extension"
+    MediaSniffingSource.NetworkObservation -> "Network observation"
+    MediaSniffingSource.AppPageProbe -> "App page probe"
 }

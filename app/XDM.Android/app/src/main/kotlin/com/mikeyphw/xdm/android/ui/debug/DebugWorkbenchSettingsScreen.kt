@@ -43,7 +43,7 @@ fun DebugWorkbenchSettingsScreen(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { SettingsPageHeader("Debug Workbench") { viewModel.selectSettingsPanel(SettingsPanel.Overview) } }
+        item { SettingsPageHeader("Debug Workbench", onBack = { viewModel.selectSettingsPanel(SettingsPanel.Overview) }) }
         item {
             XdmListCard {
                 XdmCardTitle("Debug Workbench")
@@ -52,7 +52,7 @@ fun DebugWorkbenchSettingsScreen(
                     listOf(
                         XdmMetric("Status", report.overallLabel),
                         XdmMetric("Checks", "${report.passingChecks} pass • ${report.warningChecks} notes • ${report.failingChecks} attention"),
-                        XdmMetric("First check", report.checks.firstOrNull()?.state.displayLabel() ?: "No checks"),
+                        XdmMetric("First check", report.checks.firstOrNull()?.state?.displayLabel() ?: "No checks"),
                     ),
                 )
                 XdmMetadataText("Areas: ${report.debugAreas.joinToString { it.supportLabel() }}", maxLines = 4)
