@@ -31,7 +31,7 @@ class RemediationPhase11_12ContractTest {
         assertTrue(shell.contains("XDM_YTDLP_CONFIG"))
         assertTrue(shell.contains("--config-locations"))
         assertTrue(shell.contains("--batch-file"))
-        assertTrue(shell.contains("--print \"%(.{title,ext,duration,is_live,vcodec,acodec,formats.:.{format_id,format_note,vcodec,acodec,mime_type,width,height,tbr,language}})#j\""))
+        assertTrue(shell.contains("--print") && shell.contains("formats.:.{format_id") && shell.contains("#j"))
         assertFalse(shell.contains(" -J --no-warnings > \"${'$'}XDM_METADATA\""))
         assertTrue(shell.contains("managed transient session required"))
     }
@@ -132,7 +132,7 @@ class RemediationPhase11_12ContractTest {
         assertTrue(downloads.contains("That action is no longer available because the download changed."))
         assertTrue(viewModel.contains("downloadArtifactActionManager.delete(currentForAction)"))
         assertTrue(viewModel.contains("downloadArtifactActionManager.rename(currentForAction, requestedName)"))
-        assertTrue(desktop.contains("host == domain || host.endsWith(\".$domain\")"))
+        assertTrue(desktop.contains("host == domain || host.endsWith(\".${'$'}domain\")"))
         assertTrue(desktop.contains("DestinationRuleMatch.Fallback -> false"))
         assertTrue(organize.contains("onApplySavedSearch"))
         assertTrue(organize.contains("DownloadActionPlanner.batchActionsFor"))

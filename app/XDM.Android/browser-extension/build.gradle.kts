@@ -48,7 +48,7 @@ fun requireReleaseCaptureKeyBinding(keyId: String, publicKeySpki: String) {
     }
 }
 
-val prepareFirefoxExtension by tasks.registering(Exec::class) {
+val prepareFirefoxExtension = tasks.register<Exec>("prepareFirefoxExtension") {
     group = "browser extension"
     description = "Render the development Firefox extension into build/firefox/unpacked."
     inputs.dir(extensionSource)
@@ -68,7 +68,7 @@ val prepareFirefoxExtension by tasks.registering(Exec::class) {
     )
 }
 
-val jsTest by tasks.registering(Exec::class) {
+val jsTest = tasks.register<Exec>("jsTest") {
     group = "verification"
     description = "Run the repository-owned detector, candidate-store, and handoff JavaScript tests."
     commandLine(
@@ -104,7 +104,7 @@ val jsTest by tasks.registering(Exec::class) {
     )
 }
 
-val validateFirefoxExtension by tasks.registering(Exec::class) {
+val validateFirefoxExtension = tasks.register<Exec>("validateFirefoxExtension") {
     group = "verification"
     description = "Validate the rendered unpacked Firefox extension and source contracts."
     dependsOn(prepareFirefoxExtension, jsTest, tasks.named("test"))
@@ -151,13 +151,13 @@ fun registerXpiTask(
 val packageFirefoxExtensionDark = registerXpiTask("packageFirefoxExtensionDark", "dark")
 val packageFirefoxExtensionAmoled = registerXpiTask("packageFirefoxExtensionAmoled", "amoled")
 
-val packageFirefoxExtension by tasks.registering {
+val packageFirefoxExtension = tasks.register("packageFirefoxExtension") {
     group = "browser extension"
     description = "Build the default deterministic dark Firefox XPI."
     dependsOn(packageFirefoxExtensionDark)
 }
 
-val verifyFirefoxExtensionReleaseArtifacts by tasks.registering(Exec::class) {
+val verifyFirefoxExtensionReleaseArtifacts = tasks.register<Exec>("verifyFirefoxExtensionReleaseArtifacts") {
     group = "verification"
     description = "Verify deterministic Dark and AMOLED release XPIs and write release-artifacts.json."
     dependsOn(packageFirefoxExtensionDark, packageFirefoxExtensionAmoled)
@@ -186,7 +186,7 @@ val verifyFirefoxExtensionReleaseArtifacts by tasks.registering(Exec::class) {
     }
 }
 
-val browserExtensionReleaseGate by tasks.registering {
+val browserExtensionReleaseGate = tasks.register("browserExtensionReleaseGate") {
     group = "verification"
     description = "Build and verify key-bound Firefox release XPIs. Requires the Android capture public key inputs."
     dependsOn(verifyFirefoxExtensionReleaseArtifacts)

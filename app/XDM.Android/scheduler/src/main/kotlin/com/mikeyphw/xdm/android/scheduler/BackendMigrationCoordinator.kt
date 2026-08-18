@@ -207,6 +207,11 @@ class BackendMigrationCoordinator(
             )
             migrationStore.save(record)
             if (started.requiresActivation) target.activate(started.taskId)
+
+            // backend_tasks is keyed by ownership generation but queried by download.
+            // Retire the previous generation's persisted task before storing the
+            // newly attached target generation.
+            store.deleteBackendTask(downloadId)
             store.saveBackendTask(downloadId, targetBackend, started.taskId, active)
             persistOrThrow(
                 download.copy(

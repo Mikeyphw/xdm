@@ -29,6 +29,7 @@ object CompletedFileGrantPolicy {
 
     private fun fileUri(context: Context, download: Download, candidate: File): Uri? {
         val file = runCatching { candidate.canonicalFile }.getOrNull()?.takeIf(File::isFile) ?: return null
+        if (file.name != download.fileName) return null
         download.completedArtifactBytes?.let { expected -> if (file.length() != expected) return null }
         val roots = buildList {
             add(File(context.filesDir, "downloads"))

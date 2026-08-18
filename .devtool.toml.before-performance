@@ -1,0 +1,140 @@
+[project]
+# This is a mixed desktop/.NET and Android repository. Android is the root
+# project kind; desktop commands select the xdm_modern named target explicitly.
+kind = "android" # auto | dotnet | android | gradle | python | command | unknown
+
+[execution]
+environment = "auto" # auto | native-termux | chroot | desktop-linux | android-device | external-device
+chroot_name = "androidos"
+device_serial = ""
+
+[targets.xdm_modern]
+type = "dotnet"
+solution = "app/XDM/XDM.Modern.sln"
+run_project = "app/XDM/src/XDM.App/XDM.App.csproj"
+
+python = ""
+run_module = ""
+restore_command = "dotnet restore app/XDM/XDM.Modern.sln"
+build_command = "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore"
+test_command = "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build"
+run_command = "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj"
+package_command = "bash app/XDM/eng/qualify-prerelease.sh"
+
+[targets.xdm_android]
+type = "android"
+root = "app/XDM.Android"
+execution_environment = "auto"
+chroot_name = "androidos"
+
+[targets.xdm_android.android]
+variant = "debug"
+aapt2_provider = "auto"
+instrumentation = "never"
+prefer_native_termux = false
+
+[targets.xdm_android.gradle]
+version = "9.7.0"
+max_workers = 2
+structured_events = false
+no_daemon = true
+parallel = false
+build_cache = false
+fail_fast = true
+offline = false
+args = [
+  "--no-build-cache",
+  "--no-configuration-cache",
+  "-Dorg.gradle.parallel=false",
+  "-Dorg.gradle.vfs.watch=false",
+  "-Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8",
+  "-Pkotlin.incremental=false",
+  "-Pkotlin.compiler.execution.strategy=in-process",
+  "-Pxdm.cleanKotlinValidation=true",
+  "-Pandroid.suppressUnsupportedOptionWarnings=android.aapt2FromMavenOverride,android.suppressUnsupportedOptionWarnings",
+]
+
+[targets.xdm_android.tasks]
+restore = ["help"]
+build = [
+  ":transfer-aria2:installOfficialAria2Runtime",
+  "assembleDebug",
+  ":app:assembleDebugAndroidTest",
+]
+test = [
+  ":app:finalRemediationStaticGate",
+  ":browser-extension:test",
+  ":browser-extension:jsTest",
+  ":browser-extension:validateFirefoxExtension",
+  ":app:checkBrowserIntegration",
+  ":core-model:test",
+  ":core-utils:test",
+  ":transfer-api:test",
+  ":browser-integration:testDebugUnitTest",
+  ":storage:testDebugUnitTest",
+  ":transfer-native:testDebugUnitTest",
+  ":transfer-aria2:test",
+  ":scheduler:testDebugUnitTest",
+  ":media:test",
+  ":persistence:testDebugUnitTest",
+  ":app:testDebugUnitTest",
+]
+lint = ["lintDebug"]
+clean = ["clean"]
+
+[targets.xdm_android.artifacts]
+required = true
+
+[validation.phases]
+preflight = ["help"]
+dependencies = ["dependencies"]
+compile = [":app:resetKotlinValidationState", ":app:compileDebugSources"]
+resources = [":app:processDebugResources"]
+unit-test = [
+  ":app:finalRemediationStaticGate",
+  ":browser-extension:test",
+  ":browser-extension:jsTest",
+  ":browser-extension:validateFirefoxExtension",
+  ":app:checkBrowserIntegration",
+  ":core-model:test",
+  ":core-utils:test",
+  ":transfer-api:test",
+  ":browser-integration:testDebugUnitTest",
+  ":storage:testDebugUnitTest",
+  ":transfer-native:testDebugUnitTest",
+  ":transfer-aria2:test",
+  ":scheduler:testDebugUnitTest",
+  ":media:test",
+  ":persistence:testDebugUnitTest",
+  ":app:testDebugUnitTest",
+]
+package = [
+  "assembleDebug",
+  ":app:assembleDebugAndroidTest",
+]
+lint = ["lintDebug"]
+
+[env]
+DOTNET_CLI_TELEMETRY_OPTOUT = "1"
+DOTNET_NOLOGO = "1"
+TZ = ""
+
+[validation]
+android_safe = false
+max_workers = 2
+cpu_limit = 2
+split_gradle = true
+no_daemon = true
+low_priority = false
+parallel = true
+gradle_heap_mb = 1536
+gradle_metaspace_mb = 768
+memory_guard_mb = 256
+
+[validation.phase_profiles.compile]
+max_workers = 2
+cpu_limit = 2
+gradle_heap_mb = 1536
+memory_guard_mb = 256
+no_daemon = true
+low_priority = false

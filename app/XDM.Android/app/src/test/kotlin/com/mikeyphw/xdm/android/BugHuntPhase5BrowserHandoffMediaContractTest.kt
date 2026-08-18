@@ -29,15 +29,19 @@ class BugHuntPhase5BrowserHandoffMediaContractTest {
 
     @Test fun androidIntakeConsumesStableSessionFinalHeadersAndProof() {
         val vm = source("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
-        val activity = source("app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt")
+        val activity = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationSecurity.kt")
         assertTrue(vm.contains("private val browserHandoffMediaCoordinator: BrowserHandoffMediaCoordinator"))
-        assertTrue(vm.contains("declaredStableMediaId = facts.stableMediaId"))
+        // Browser-provided stable IDs are diagnostic compatibility data only.
+        // Android computes the authoritative identity from authenticated request context.
+        assertFalse(vm.contains("declaredStableMediaId = facts.stableMediaId"))
+        assertTrue(vm.contains("requestFingerprint = facts.requestFingerprint"))
+        assertTrue(vm.contains("revision = facts.sessionRevision ?: now"))
         assertTrue(vm.contains("finalHeaders = finalHeaders"))
         assertTrue(vm.contains("facts.requiresPageObservationProof"))
         assertFalse(vm.contains("facts.headers.takeIf { it.containsKey(\"X-XDM-Final-Headers\") }"))
-        assertTrue(activity.contains("handoffStableMediaId(incoming)"))
-        assertTrue(activity.contains("handoffSessionRevision(incoming)"))
-        assertTrue(activity.contains("browserFinalHeaders(incoming)"))
+        assertTrue(activity.contains("handoffStableMediaId(intent)"))
+        assertTrue(activity.contains("handoffSessionRevision(intent)"))
+        assertTrue(activity.contains("browserFinalHeaders(intent)"))
     }
 
     @Test fun browserSessionsUseAppPrivateFileBackedStore() {

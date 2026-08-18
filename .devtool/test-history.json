@@ -1,11 +1,3 @@
 {
-  "failed": [
-    "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.finalSaveRecoveryRetriesPublicationWithoutNetworkRedownload",
-    "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.segmentedDownloadProducesTheOriginalFile",
-    "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.changedEtagMovesTheTaskToRecoveryRequired",
-    "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.reconciliationAcceptsMatchingPhysicalPartialAndCheckpoint",
-    "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.validCheckpointResumesFromPersistedOffset",
-    "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.malformedContentRangeFailsWithoutFinalizing",
-    "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.retryableServerFailureUsesBackoffAndCompletes"
-  ]
+  "failed": []
 }

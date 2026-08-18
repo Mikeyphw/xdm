@@ -41,14 +41,14 @@ class BrowserRemovalPreservationContractTest {
 
     @Test
     fun sharesheetIntakeInspectsTextSubjectAndClipData() {
-        val activity = File(androidRoot(), "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
+        val activity = File(androidRoot(), "app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationSecurity.kt").readText()
 
         listOf(
             "Intent.EXTRA_TEXT",
             "Intent.EXTRA_SUBJECT",
             "intent.clipData",
             "item.uri?.toString()",
-            "item.coerceToText(this@MainActivity)?.toString()",
+            "item.coerceToText(activity)?.toString()",
             "BrowserHandoffContract.ExtraDownloadUrl",
             "TaskerContract.ExtraUrl",
             "com.android.browser.extra.URL",

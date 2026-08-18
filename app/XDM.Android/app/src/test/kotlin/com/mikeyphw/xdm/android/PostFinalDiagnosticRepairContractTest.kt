@@ -7,7 +7,7 @@ import org.junit.Test
 
 class PostFinalDiagnosticRepairContractTest {
     private val androidRoot = locateAndroidRoot()
-    private val repositoryRoot = androidRoot.parentFile.parentFile
+    private val repositoryRoot = requireNotNull(androidRoot.parentFile?.parentFile)
 
     @Test
     fun `reported Kotlin compilation and warning regressions stay fixed`() {
@@ -40,13 +40,16 @@ class PostFinalDiagnosticRepairContractTest {
     }
 
     @Test
-    fun `devtool aapt2 override suppresses its own experimental warning`() {
+    fun `devtool owns native termux aapt2 selection without project override`() {
         val devtool = File(repositoryRoot, ".devtool.toml").readText()
-        assertTrue(
-            devtool.contains(
-                "-Pandroid.suppressUnsupportedOptionWarnings=android.aapt2FromMavenOverride,android.suppressUnsupportedOptionWarnings",
-            ),
-        )
+
+        assertTrue(devtool.contains("aapt2_provider = \"termux\""))
+        assertTrue(devtool.contains("version = \"9.7.0\""))
+        assertTrue(devtool.contains("provider = \"auto\""))
+
+        // The patched Devtool injects the effective Gradle property.
+        // XDM must not independently inject another copy.
+        assertFalse(devtool.contains("-Pandroid.aapt2FromMavenOverride="))
     }
 
     private fun source(relative: String): String = File(androidRoot, relative).readText()

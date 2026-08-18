@@ -193,6 +193,7 @@ internal fun MediaFinalValidationGateCard(dashboard: MediaFinalValidationDashboa
     Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media final validation gate ${dashboard.summary}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Media final validation gate")
+        XdmMetadataText("Phase 33 re-enables validation; the current release gate retains and extends that evidence.", maxLines = 2)
             XdmSupportingText(
                 "Overlay 13 is the final remediation gate: static validators, Gradle build/test/lint, warning-zero policy, route contracts, Termux/chroot safety, and real-filesystem privacy scans must all provide evidence before release readiness.",
                 maxLines = 4,

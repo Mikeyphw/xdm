@@ -1,8 +1,8 @@
 package com.mikeyphw.xdm.android.scheduler
 
+import androidx.core.net.toUri
 import android.content.ContentResolver
 import android.content.Context
-import android.net.Uri
 import android.provider.OpenableColumns
 import java.io.File
 import java.io.FileInputStream
@@ -29,7 +29,7 @@ class AndroidCompletedArtifactReader(context: Context) : CompletedArtifactReader
 
     override suspend fun size(uri: String): Long? {
         files.size(uri)?.let { return it }
-        val parsed = runCatching { Uri.parse(uri) }.getOrNull() ?: return null
+        val parsed = runCatching { uri.toUri() }.getOrNull() ?: return null
         if (parsed.scheme != ContentResolver.SCHEME_CONTENT) return null
         val queried = resolver.query(parsed, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
             if (!cursor.moveToFirst()) null
@@ -41,7 +41,7 @@ class AndroidCompletedArtifactReader(context: Context) : CompletedArtifactReader
 
     override suspend fun open(uri: String): InputStream? {
         files.open(uri)?.let { return it }
-        val parsed = runCatching { Uri.parse(uri) }.getOrNull() ?: return null
+        val parsed = runCatching { uri.toUri() }.getOrNull() ?: return null
         return if (parsed.scheme == ContentResolver.SCHEME_CONTENT) resolver.openInputStream(parsed) else null
     }
 

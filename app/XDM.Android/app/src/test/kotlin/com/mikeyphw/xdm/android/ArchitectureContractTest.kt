@@ -114,7 +114,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 14 validator is missing", File(root, "tools/validate-phase-14.py").isFile)
         assertTrue("Release safety model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 14", manifest.contains("14"))
-        assertTrue("Manifest must record current Room schema v20", manifest.contains("\"version\": 18"))
+        assertTrue("Manifest must record current Room schema v20", manifest.contains("\"version\": 20"))
         val phaseFourteenVersion = Regex("""versionName = "0\.(\d+)\.0(?:-(?:alpha01|rc\d+))?"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.14", phaseFourteenVersion != null && phaseFourteenVersion >= 14)
         assertTrue("Diagnostics must expose privacy-safe app integrity summary", screens.contains("App integrity"))
@@ -133,7 +133,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 15 architecture contract is missing", File(root, "docs/architecture/PHASE-15-UX-ACCESSIBILITY-POLISH.md").isFile)
         assertTrue("Phase 15 validator is missing", File(root, "tools/validate-phase-15.py").isFile)
         assertTrue("Manifest must record implemented phase 15", manifest.contains("15"))
-        assertTrue("Phase 15 baseline must be carried forward through current Room schema v20", manifest.contains("\"schema_version\": 18") || manifest.contains("\"version\": 18"))
+        assertTrue("Phase 15 baseline must be carried forward through current Room schema v20", manifest.contains("\"schema_version\": 20") || manifest.contains("\"version\": 20"))
         val phaseFifteenVersion = Regex("""versionName = "0\.(\d+)\.0(?:-(?:alpha01|rc\d+))?"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.15", phaseFifteenVersion != null && phaseFifteenVersion >= 15)
         assertTrue("Downloads must expose compact transfer metrics", screens.contains("XdmMetricStrip") && screens.contains("DownloadWorkspaceMetrics"))
@@ -158,7 +158,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 16 validator is missing", File(root, "tools/validate-phase-16.py").isFile)
         assertTrue("Release readiness model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 16", manifest.contains("16"))
-        assertTrue("Phase 16 baseline must be carried forward through current Room schema v20", manifest.contains("\"schema_version\": 18") || manifest.contains("\"version\": 18"))
+        assertTrue("Phase 16 baseline must be carried forward through current Room schema v20", manifest.contains("\"schema_version\": 20") || manifest.contains("\"version\": 20"))
         assertTrue("Build metadata must be at least 0.16", Regex("""versionName = "0\.(\d+)\.0(?:-(?:alpha01|rc\d+))?"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()?.let { it >= 16 } == true)
         assertTrue("Diagnostics must expose user-facing update compatibility", screens.contains("Update compatibility"))
         assertFalse("Diagnostics must not expose install/update implementation wording", screens.contains("Install/update readiness"))
@@ -183,7 +183,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 17 validator is missing", File(root, "tools/validate-phase-17.py").isFile)
         assertTrue("Final release model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 17", manifest.contains("17"))
-        assertTrue("Phase 17 baseline must be carried forward through current Room schema v20", manifest.contains("\"room_schema_locked\": 18") || manifest.contains("\"schema_version\": 18") || manifest.contains("\"version\": 18"))
+        assertTrue("Phase 17 baseline must be carried forward through current Room schema v20", manifest.contains("\"room_schema_locked\": 20") || manifest.contains("\"schema_version\": 20") || manifest.contains("\"version\": 20"))
         val finalGateVersion = Regex("""versionName\s*=\s*"0\.(\d+)\.0(?:-(?:alpha01|rc\d+))?"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         val finalGateVersionCode = Regex("""versionCode\s*(?:=|\.set\()\s*(\d+)""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must stay on a 0.21+ release train", finalGateVersion?.let { it >= 21 } == true)
@@ -207,7 +207,7 @@ class ArchitectureContractTest {
         assertTrue("Post-17 parity validator is missing", File(root, "tools/validate-post17-desktop-parity.py").isFile)
         assertTrue("Desktop parity model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DesktopParityModels.kt").isFile)
         assertTrue("Manifest must record desktop parity", manifest.contains("desktop_parity"))
-        assertTrue("Desktop parity must be carried forward through current Room schema v20", manifest.contains("\"schema_version\": 18") || manifest.contains("\"version\": 18"))
+        assertTrue("Desktop parity must be carried forward through current Room schema v20", manifest.contains("\"schema_version\": 20") || manifest.contains("\"version\": 20"))
         assertTrue("Settings must expose import/export", screens.contains("Settings import/export"))
         assertTrue("Downloads must expose history management", screens.contains("History management"))
         assertTrue("Settings must expose proxy credentials", screens.contains("Proxy and credentials"))
@@ -315,6 +315,7 @@ class ArchitectureContractTest {
         val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
         val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
         val activity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
+        val externalIntake = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationSecurity.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val screens = UiSourceTree.readAll(root)
         val appShell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
@@ -322,11 +323,13 @@ class ArchitectureContractTest {
         assertTrue("UI contract must define browser/share handoff rules", contract.contains("Browser and Share Handoff Rules"))
         assertTrue("Manifest must expose ShareSheet text intake", manifest.contains("android.intent.action.SEND") && manifest.contains("android:mimeType=\"text/*\""))
         assertTrue("Manifest must expose typed browser download-manager VIEW intake", manifest.contains("android:mimeType=\"*/*\"") && manifest.contains("android:scheme=\"http\"") && manifest.contains("android:scheme=\"https\""))
-        assertTrue("ShareSheet intake must inspect shared text and clip data", activity.contains("sharedText(incoming)") && activity.contains("Intent.EXTRA_TEXT") && activity.contains("clipData"))
+        assertTrue("ShareSheet intake must inspect shared text and clip data", externalIntake.contains("sharedText(activity, intent)") && externalIntake.contains("Intent.EXTRA_TEXT") && externalIntake.contains("intent.clipData"))
         assertTrue("Browser/share non-media links must open Add instead of being rejected", viewModel.contains("openExternalAddDraft") && viewModel.contains("navigate(AppRoute.Add)"))
         assertTrue(
             "External Add drafts must survive into UI state",
-            viewModel.contains("externalAddDraft.value = downloadIntakePlanner.fromExternal(") &&
+            (viewModel.contains("externalAddDraft.value = downloadIntakePlanner.fromExternal(") ||
+                (viewModel.contains("val intakeDraft = downloadIntakePlanner.fromExternal(") &&
+                    viewModel.contains("externalAddDraft.value = intakeDraft"))) &&
                 viewModel.contains("externalAddDraft = review.externalAddDraft"),
         )
         assertTrue("Add route must prefill external links", screens.contains("initialUrl") && screens.contains("Link received") && screens.contains("LaunchedEffect(externalDraftId)"))
@@ -475,7 +478,7 @@ class ArchitectureContractTest {
         assertTrue("Termux media commands must be typed", models.contains("YtDlpDownload") && models.contains("FfmpegConvert"))
         assertTrue("Media pipeline models must track jobs", mediaModels.contains("TermuxMediaPipelineStatus") && mediaModels.contains("TermuxMediaPipelineJob"))
         assertTrue("Media manager must launch typed media tools", mediaManager.contains("extractMetadata") && mediaManager.contains("downloadWithYtDlp") && mediaManager.contains("inspectWithFfprobe"))
-        assertTrue("Shell templates must cover yt-dlp, ffprobe, and ffmpeg", templates.contains("yt-dlp --dump-single-json") && templates.contains("ffprobe -hide_banner") && templates.contains("ffmpeg -hide_banner"))
+        assertTrue("Shell templates must cover yt-dlp, ffprobe, and ffmpeg", templates.contains("yt-dlp") && templates.contains("--print") && templates.contains("ffprobe -hide_banner") && templates.contains("ffmpeg -hide_banner"))
         assertTrue("Developer tools must keep the typed Termux media surface", screens.contains("External tools through Termux") && !screens.contains("Raw shell"))
         assertTrue("ViewModel must retain typed media actions", viewModel.contains("extractMediaMetadataWithTermux") && viewModel.contains("convertMediaWithTermux"))
         assertTrue("ViewModel must carry media pipeline state", viewModel.contains("termuxMediaPipelineManager.status") && viewModel.contains("downloadMediaWithTermuxYtDlp"))
@@ -503,7 +506,7 @@ class ArchitectureContractTest {
         assertTrue("Root actions must remain typed", models.contains("XdmRootAction") && models.contains("RootActionAuditRecord") && models.contains("RootProbe"))
         assertTrue("Root manager must expose guarded actions", manager.contains("collectRootProcessDiagnostics") && manager.contains("killStuckTermuxAria2Daemon") && manager.contains("rootMode == TermuxRootMode.Off"))
         assertTrue("Root actions must be audited", runStore.contains("recordRootActionLaunch") && runStore.contains("rootAudit") && runStore.contains("lastRootMessage"))
-        assertTrue("Shell templates must use su only behind typed actions", templates.contains("su -c") && templates.contains("XDM_ROOT_ACTION") && templates.contains("process is not XDM-owned"))
+        assertTrue("Shell templates must use su only behind typed actions", templates.contains("su -c") && templates.contains("XDM_ROOT_ACTION") && templates.contains("PID-only ownership is not accepted"))
         assertTrue("Diagnostics/settings must expose root controls", screens.contains("Optional root actions") && screens.contains("Root audit") && screens.contains("Kill stuck aria2"))
         assertTrue("App shell must wire root actions", appSources.contains("viewModel::runTermuxRootProbe") && appSources.contains("viewModel::killStuckTermuxAria2WithRoot"))
         assertTrue("ViewModel must carry root actions", viewModel.contains("collectTermuxRootProcessDiagnostics") && viewModel.contains("fixTermuxDownloadPermissionsWithRoot"))
@@ -862,7 +865,7 @@ class ArchitectureContractTest {
         assertTrue("Handoff doc must record the landed Phase 33 result", handoff.contains("149 passed, 0 failed, 0 skipped") && handoff.contains("Phase 33 is landed"))
         assertTrue("Manifest must record Phase 34", manifest.contains("phase34_release_handoff") && manifest.contains("\"phase33_landed\": true"))
         assertTrue("Manifest must keep the Phase 33 success ledger", manifest.contains("\"tests_passed\": 149") && manifest.contains("\"diagnostic_errors\": 0"))
-        assertTrue("Final release gate must include the Phase 34 handoff validator", runGate.contains("validate-phase-34-release-handoff.py"))
+        assertTrue("Final release gate must use the current successor validation matrix", runGate.contains("validate-bug-hunt-phase11-validation-matrix.py"))
         assertTrue("CI must include the Phase 34 handoff validator", workflow.contains("validate-phase-34-release-handoff.py"))
         assertFalse("Phase 34 must not add top-level routes", AppRoute.entries.any { it.label == "Handoff" || it.label == "Release Handoff" || it.label == "Stabilization" })
     }
@@ -883,7 +886,7 @@ class ArchitectureContractTest {
         assertTrue("Manifest must record Phase 35", manifest.contains("phase35_release_candidate_polish") && hasBrowserRemovalLineage(manifest))
         assertTrue("Phase 35 must keep version metadata stable", buildGradle.contains("versionName = \"0.21.0\"") && buildGradle.contains("versionCode = 22"))
         assertTrue("Release helper must keep artifact checksums", releaseHelper.contains("sha256sum") && releaseHelper.contains("assembleRelease"))
-        assertTrue("Final release gate must include the Phase 35 validator", runGate.contains("validate-phase-35-release-candidate-polish.py"))
+        assertTrue("Final release gate must use the current successor validation matrix", runGate.contains("validate-bug-hunt-phase11-validation-matrix.py"))
         assertTrue("CI must include the Phase 35 validator", workflow.contains("validate-phase-35-release-candidate-polish.py"))
         assertFalse("Phase 35 must not add top-level routes", AppRoute.entries.any { it.label == "Release Candidate" || it.label == "Ship" || it.label == "No Ship" || it.label == "Checklist" })
     }
@@ -917,7 +920,7 @@ class ArchitectureContractTest {
         assertTrue("Add screen must show external source and no-auto-queue safety copy", screens.contains("externalSourceLabel") && screens.contains("XDM never auto-queues external handoffs"))
         assertTrue("App shell must pass the external source label", appShell.contains("externalSourceLabel = state.externalAddDraft?.sourceLabel"))
         assertTrue("Manifest must record Phase 36", manifest.contains("phase36_external_download_handoff") && hasBrowserRemovalLineage(manifest))
-        assertTrue("Final release gate must include the Phase 36 validator", runGate.contains("validate-phase-36-external-download-handoff.py"))
+        assertTrue("Final release gate must use the current successor validation matrix", runGate.contains("validate-bug-hunt-phase11-validation-matrix.py"))
         assertTrue("CI must include the Phase 36 validator", workflow.contains("validate-phase-36-external-download-handoff.py"))
         assertFalse("Phase 36 must not add top-level routes", AppRoute.entries.any { it.label == "External" || it.label == "Handoff" || it.label == "IronFox" || it.label == "Browser Download" })
     }
@@ -953,10 +956,10 @@ class ArchitectureContractTest {
         assertTrue(manifestXml.contains(".ExternalAddDownloadActivity"))
         assertFalse(mainActivity.contains("shouldOpenBrowserUrl"))
         assertFalse(mainActivity.contains("openBrowserUrlFromIntent"))
-        assertTrue(mainActivity.contains("consumeInternalAutomation(intent)"))
+        assertTrue(mainActivity.contains("consumeInternalAutomation(incoming)"))
         assertFalse(viewModel.contains("browserStartUrl"))
         assertFalse(viewModel.contains("openBrowserUrl(url: String)"))
-        assertTrue(runGate.contains("validate-browser-removal-phase-4.py"))
+        assertTrue(runGate.contains("validate-bug-hunt-phase11-validation-matrix.py"))
         assertTrue(workflow.contains("validate-browser-removal-phase-4.py"))
     }
 

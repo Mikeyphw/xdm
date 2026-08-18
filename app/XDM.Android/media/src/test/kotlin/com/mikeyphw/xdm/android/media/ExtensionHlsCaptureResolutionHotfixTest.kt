@@ -64,6 +64,9 @@ class ExtensionHlsCaptureResolutionHotfixTest {
             priority = 0,
             createdAtEpochMs = 1L,
             updatedAtEpochMs = 2L,
+            completedArtifactUri = "content://downloads/public_downloads/complete.mp4",
+            completedArtifactGeneration = 1L,
+            completedArtifactBytes = 1L,
         )
 
         val planner = MediaExecutionLibraryPlanner()

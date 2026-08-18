@@ -41,7 +41,7 @@ class RuntimeFoundationPhase55_56PromiseClosureContractTest {
         listOf("mkdir", "create", "write+fsync", "rename", "read", "delete").forEach {
             assertTrue("Storage doctor missing $it", doctor.contains("\"$it\""))
         }
-        assertTrue(viewModel.contains("selectedDestination = uiState.value.destinationUri"))
+        assertTrue(viewModel.contains("selectedDestination = preferences.values.first().destinationUri"))
         assertTrue(viewModel.contains("nativeStoragePathProbe.run(directDestination)"))
         assertTrue(viewModel.contains("aria2ProcessManager.storageProbe"))
         assertTrue(viewModel.contains("runStoragePathProbe"))

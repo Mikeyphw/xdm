@@ -1,0 +1,138 @@
+[project]
+# This is a mixed desktop/.NET and Android repository. Android is the root
+# project kind; desktop commands select the xdm_modern named target explicitly.
+kind = "android" # auto | dotnet | android | gradle | python | command | unknown
+
+[execution]
+environment = "auto" # auto | native-termux | chroot | desktop-linux | android-device | external-device
+chroot_name = "androidos"
+device_serial = ""
+
+[targets.xdm_modern]
+type = "dotnet"
+solution = "app/XDM/XDM.Modern.sln"
+run_project = "app/XDM/src/XDM.App/XDM.App.csproj"
+
+python = ""
+run_module = ""
+restore_command = "dotnet restore app/XDM/XDM.Modern.sln"
+build_command = "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore"
+test_command = "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build"
+run_command = "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj"
+package_command = "bash app/XDM/eng/qualify-prerelease.sh"
+
+[targets.xdm_android]
+type = "android"
+root = "app/XDM.Android"
+execution_environment = "native-termux"
+chroot_name = "androidos"
+
+[targets.xdm_android.android]
+variant = "debug"
+aapt2_provider = "termux"
+instrumentation = "never"
+prefer_native_termux = true
+
+[targets.xdm_android.gradle]
+provider = "auto"
+version = "9.7.0"
+max_workers = 2
+structured_events = false
+no_daemon = false
+parallel = true
+build_cache = true
+fail_fast = true
+offline = false
+args = [
+  "-Dorg.gradle.parallel=true",
+  "-Dorg.gradle.vfs.watch=false",
+  "-Dorg.gradle.jvmargs=-Xmx1280m -XX:MaxMetaspaceSize=640m -Dfile.encoding=UTF-8",
+  "-Pkotlin.incremental=true",
+  "-Pkotlin.compiler.execution.strategy=in-process",
+
+]
+
+[targets.xdm_android.tasks]
+restore = ["help"]
+build = [
+  ":transfer-aria2:installOfficialAria2Runtime",
+  "assembleDebug",
+  ":app:assembleDebugAndroidTest",
+]
+test = [
+  ":app:finalRemediationStaticGate",
+  ":browser-extension:test",
+  ":browser-extension:jsTest",
+  ":browser-extension:validateFirefoxExtension",
+  ":app:checkBrowserIntegration",
+  ":core-model:test",
+  ":core-utils:test",
+  ":transfer-api:test",
+  ":browser-integration:testDebugUnitTest",
+  ":storage:testDebugUnitTest",
+  ":transfer-native:testDebugUnitTest",
+  ":transfer-aria2:test",
+  ":scheduler:testDebugUnitTest",
+  ":media:test",
+  ":persistence:testDebugUnitTest",
+  ":app:testDebugUnitTest",
+]
+lint = ["lintDebug"]
+clean = ["clean"]
+
+[targets.xdm_android.artifacts]
+required = true
+
+[validation.phases]
+preflight = ["help"]
+dependencies = ["dependencies"]
+compile = [":app:compileDebugSources"]
+resources = [":app:processDebugResources"]
+unit-test = [
+  ":app:finalRemediationStaticGate",
+  ":browser-extension:test",
+  ":browser-extension:jsTest",
+  ":browser-extension:validateFirefoxExtension",
+  ":app:checkBrowserIntegration",
+  ":core-model:test",
+  ":core-utils:test",
+  ":transfer-api:test",
+  ":browser-integration:testDebugUnitTest",
+  ":storage:testDebugUnitTest",
+  ":transfer-native:testDebugUnitTest",
+  ":transfer-aria2:test",
+  ":scheduler:testDebugUnitTest",
+  ":media:test",
+  ":persistence:testDebugUnitTest",
+  ":app:testDebugUnitTest",
+]
+package = [
+  "assembleDebug",
+  ":app:assembleDebugAndroidTest",
+]
+lint = ["lintDebug"]
+
+[env]
+DOTNET_CLI_TELEMETRY_OPTOUT = "1"
+DOTNET_NOLOGO = "1"
+TZ = ""
+
+[validation]
+android_safe = false
+max_workers = 2
+cpu_limit = 2
+split_gradle = true
+no_daemon = false
+low_priority = false
+parallel = false
+gradle_heap_mb = 1280
+gradle_metaspace_mb = 640
+memory_guard_mb = 512
+
+[validation.phase_profiles.compile]
+max_workers = 2
+cpu_limit = 2
+gradle_heap_mb = 1280
+memory_guard_mb = 512
+no_daemon = false
+low_priority = false

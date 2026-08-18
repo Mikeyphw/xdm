@@ -1,11 +1,11 @@
 package com.mikeyphw.xdm.android.scheduler
 
+import androidx.core.net.toUri
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.net.Uri
 import android.os.BatteryManager
 import android.os.Environment
 import android.os.StatFs
@@ -42,7 +42,7 @@ class AndroidQueueConditionsReader(private val context: Context) {
             raw.isBlank() -> return null
             raw.startsWith("public-downloads://", ignoreCase = true) -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             raw.startsWith("app-private://", ignoreCase = true) -> context.filesDir
-            raw.startsWith("file://", ignoreCase = true) -> runCatching { File(requireNotNull(Uri.parse(raw).path)) }.getOrNull()
+            raw.startsWith("file://", ignoreCase = true) -> runCatching { File(requireNotNull(raw.toUri().path)) }.getOrNull()
             raw.startsWith('/') -> File(raw)
             // A generic content:// provider does not expose reliable filesystem free-space through
             // the URI contract. Returning unknown makes storage-pressure policy fail closed.

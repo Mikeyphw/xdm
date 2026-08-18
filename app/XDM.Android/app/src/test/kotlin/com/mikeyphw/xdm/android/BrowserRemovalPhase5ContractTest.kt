@@ -33,7 +33,7 @@ class BrowserRemovalPhase5ContractTest {
         assertFalse(manifest.contains(".BrowserActivity"))
         assertTrue(projectManifest.contains("browser_removal_phase5"))
         assertFalse(projectManifest.contains("phase50_browser_downloader_ux_polish_seal"))
-        assertTrue(finalGate.contains("validate-browser-removal-phase-5.py"))
+        assertTrue(finalGate.contains("validate-bug-hunt-phase11-validation-matrix.py"))
     }
 
     private fun androidRoot(): File {

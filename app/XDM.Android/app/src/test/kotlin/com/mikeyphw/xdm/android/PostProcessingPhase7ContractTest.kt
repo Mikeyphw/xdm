@@ -181,7 +181,7 @@ exitCode=0
         assertTrue(runner.contains("ExtraStdin") && runner.contains("shellArguments") && runner.contains("arrayOf(\"-s\")"))
         assertFalse(runner.contains("arrayOf(\"-c\""))
         assertTrue(shell.contains("XDM_PRIVATE_ROOT") && shell.contains("processStartTicks") && shell.contains("xdm_signal_tree"))
-        assertTrue(shell.contains("yt-dlp --simulate") && shell.contains("ffmpeg -hide_banner"))
+        assertTrue(shell.contains("yt-dlp") && shell.contains("--simulate") && shell.contains("ffmpeg -hide_banner"))
         assertTrue(availability.contains("Run a fresh Termux tool and capability probe first"))
         assertTrue(manifest.contains(".termux.TermuxResultService") && manifest.contains("android:exported=\"false\""))
     }

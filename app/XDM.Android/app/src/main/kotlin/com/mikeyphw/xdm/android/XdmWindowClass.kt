@@ -105,6 +105,7 @@ data class XdmWindowProfile(
     fun allowsTwoPaneDownloadsFor(availablePaneWidth: Dp): Boolean {
         if (!allowsExpandedShell || isShort || isVeryLargeFont) return false
         if (foldPosture == XdmFoldPosture.Tabletop || hasHorizontalSeparatingFold) return false
+        if (hasVerticalSeparatingFold && (foldHingeRight <= foldHingeLeft || foldHingeWidth <= 0.dp)) return false
         return availablePaneWidth >= requiredDownloadsPaneWidth && availablePaneWidth >= 900.dp
     }
 

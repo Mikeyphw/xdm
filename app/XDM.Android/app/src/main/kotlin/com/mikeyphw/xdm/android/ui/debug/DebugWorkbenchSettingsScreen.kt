@@ -44,6 +44,7 @@ fun DebugWorkbenchSettingsScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item { SettingsPageHeader("Debug Workbench", onBack = { viewModel.selectSettingsPanel(SettingsPanel.Overview) }) }
+        item { XdmSectionHeader("Live status") }
         item {
             XdmListCard {
                 XdmCardTitle("Debug Workbench")
@@ -66,6 +67,9 @@ fun DebugWorkbenchSettingsScreen(
                 }
             }
         }
+        item { XdmSectionHeader("Session controls") }
+        item { DebugCenterScreen() }
+        item { XdmSectionHeader("Support bundle") }
         item { XdmSectionHeader("Health checks") }
         item {
             XdmFlatCard(Modifier.fillMaxWidth()) {
@@ -82,6 +86,7 @@ fun DebugWorkbenchSettingsScreen(
         item { BrowserBridgeDebuggerCard(state) }
         item { AddDownloadDebuggerCard(state) }
         item { TransferNotificationDebuggerCard(state) }
+        item { XdmSectionHeader("Runtime self-checks") }
         item { RuntimeSelfTestSuiteCard(state) }
     }
 }

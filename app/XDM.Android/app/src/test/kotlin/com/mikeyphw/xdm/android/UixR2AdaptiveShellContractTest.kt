@@ -26,7 +26,7 @@ class UixR2AdaptiveShellContractTest {
         assertTrue(app.contains("XdmAdaptiveSheet("))
         assertTrue(app.contains("visible = state.route == AppRoute.Add"))
         assertTrue(app.contains("rememberSaveable"))
-        assertTrue(app.contains("onDismissRequest = { viewModel.navigate(previousPrimaryRoute) }"))
+        assertTrue(app.contains("onDismissRequest = {") && app.contains("viewModel.navigate(previousPrimaryRoute)"))
         assertFalse(shell.contains("AppRoute.Add"))
         assertFalse(app.contains("FloatingActionButton"))
         assertFalse(app.contains("CenterAlignedTopAppBar"))

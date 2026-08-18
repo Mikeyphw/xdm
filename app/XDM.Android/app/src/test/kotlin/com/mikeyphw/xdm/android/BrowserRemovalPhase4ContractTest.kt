@@ -43,7 +43,7 @@ class BrowserRemovalPhase4ContractTest {
 
         listOf("shouldOpenBrowserUrl", "openBrowserUrlFromIntent", "browserStartUrl", "consumeBrowserStartUrl", "openBrowserUrl(url: String)")
             .forEach { marker -> assertFalse("Browser startup marker remains: $marker", mainActivity.contains(marker) || viewModel.contains(marker)) }
-        assertTrue(mainActivity.contains("consumeInternalAutomation(intent)"))
+        assertTrue(mainActivity.contains("consumeInternalAutomation(incoming)"))
         assertTrue(preferences.contains("lastRoute = AppRoute.restore(preferences[Keys.LastRoute])"))
         assertTrue(routes.contains("fun restore(storedName: String?): AppRoute"))
         assertTrue(routes.contains("?: Downloads"))

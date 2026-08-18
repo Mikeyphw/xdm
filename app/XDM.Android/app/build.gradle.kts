@@ -142,7 +142,7 @@ android {
     }
 }
 
-val xdmAssertReleaseSigningInputs by tasks.registering {
+val xdmAssertReleaseSigningInputs = tasks.register("xdmAssertReleaseSigningInputs") {
     group = "verification"
     description = "Fails publishable release builds unless release keystore inputs and signer pin metadata are present."
     doLast {
@@ -224,7 +224,7 @@ val cleanKotlinValidationState = providers.gradleProperty("xdm.cleanKotlinValida
     .map(String::toBoolean)
     .orElse(false)
 
-val resetKotlinValidationState by tasks.registering(Delete::class) {
+val resetKotlinValidationState = tasks.register<Delete>("resetKotlinValidationState") {
     group = "verification"
     description = "Remove app Kotlin compiler outputs and incremental state before constrained validation."
     delete(

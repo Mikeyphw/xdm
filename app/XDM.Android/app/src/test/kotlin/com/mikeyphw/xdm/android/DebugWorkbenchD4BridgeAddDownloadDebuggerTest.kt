@@ -26,7 +26,7 @@ class DebugWorkbenchD4BridgeAddDownloadDebuggerTest {
 
         assertTrue(report.readinessLabel.contains("Ready"))
         assertTrue(report.boundaryLabel.contains("does not open browser schemes"))
-        assertTrue(report.copyText.contains("Capture test URI"))
+        assertTrue(report.copyText.contains("Capture test: secure v2 handoff only"))
         assertTrue(report.copyText.contains("Add Download test URI"))
         assertFalse(report.copyText.contains("abcdefghijklmnopqrstuvwxyz"))
         assertFalse(report.copyText.contains("token=secret"))

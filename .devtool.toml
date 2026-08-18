@@ -24,49 +24,45 @@ package_command = "bash app/XDM/eng/qualify-prerelease.sh"
 [targets.xdm_android]
 type = "android"
 root = "app/XDM.Android"
-execution_environment = "auto"
+execution_environment = "native-termux"
 chroot_name = "androidos"
 
 [targets.xdm_android.android]
 variant = "debug"
-aapt2_provider = "auto"
+aapt2_provider = "termux"
 instrumentation = "never"
-prefer_native_termux = false
+prefer_native_termux = true
 
 [targets.xdm_android.gradle]
 version = "9.7.0"
+provider = "auto"
 max_workers = 2
 structured_events = false
-no_daemon = true
-parallel = false
-build_cache = false
+no_daemon = false
+daemon_idle_timeout_ms = 900000
+parallel = true
+build_cache = true
 fail_fast = true
 offline = false
 args = [
-  "--no-build-cache",
-  "--no-configuration-cache",
-  "-Dorg.gradle.parallel=false",
+  "-Dorg.gradle.parallel=true",
   "-Dorg.gradle.vfs.watch=false",
-  "-Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8",
-  "-Pkotlin.incremental=false",
+  "-Pkotlin.incremental=true",
   "-Pkotlin.compiler.execution.strategy=in-process",
-  "-Pxdm.cleanKotlinValidation=true",
-  "-Pandroid.suppressUnsupportedOptionWarnings=android.aapt2FromMavenOverride,android.suppressUnsupportedOptionWarnings",
 ]
 
 [targets.xdm_android.tasks]
 restore = ["help"]
+
 build = [
   ":transfer-aria2:installOfficialAria2Runtime",
   "assembleDebug",
   ":app:assembleDebugAndroidTest",
 ]
+
 test = [
-  ":app:finalRemediationStaticGate",
   ":browser-extension:test",
   ":browser-extension:jsTest",
-  ":browser-extension:validateFirefoxExtension",
-  ":app:checkBrowserIntegration",
   ":core-model:test",
   ":core-utils:test",
   ":transfer-api:test",
@@ -79,6 +75,7 @@ test = [
   ":persistence:testDebugUnitTest",
   ":app:testDebugUnitTest",
 ]
+
 lint = ["lintDebug"]
 clean = ["clean"]
 
@@ -86,16 +83,27 @@ clean = ["clean"]
 required = true
 
 [validation.phases]
-preflight = ["help"]
-dependencies = ["dependencies"]
-compile = [":app:resetKotlinValidationState", ":app:compileDebugSources"]
-resources = [":app:processDebugResources"]
-unit-test = [
+preflight = [
   ":app:finalRemediationStaticGate",
-  ":browser-extension:test",
-  ":browser-extension:jsTest",
   ":browser-extension:validateFirefoxExtension",
   ":app:checkBrowserIntegration",
+]
+
+dependencies = [
+  "dependencies",
+]
+
+compile = [
+  ":app:compileDebugSources",
+]
+
+resources = [
+  ":app:processDebugResources",
+]
+
+unit-test = [
+  ":browser-extension:test",
+  ":browser-extension:jsTest",
   ":core-model:test",
   ":core-utils:test",
   ":transfer-api:test",
@@ -108,11 +116,16 @@ unit-test = [
   ":persistence:testDebugUnitTest",
   ":app:testDebugUnitTest",
 ]
+
 package = [
+  ":transfer-aria2:installOfficialAria2Runtime",
   "assembleDebug",
   ":app:assembleDebugAndroidTest",
 ]
-lint = ["lintDebug"]
+
+lint = [
+  "lintDebug",
+]
 
 [env]
 DOTNET_CLI_TELEMETRY_OPTOUT = "1"
@@ -121,20 +134,79 @@ TZ = ""
 
 [validation]
 android_safe = false
+
 max_workers = 2
 cpu_limit = 2
+
 split_gradle = true
-no_daemon = true
-low_priority = false
 parallel = true
-gradle_heap_mb = 1536
-gradle_metaspace_mb = 768
-memory_guard_mb = 256
+
+no_daemon = false
+stop_daemon_after_phase = false
+low_priority = false
+
+gradle_heap_mb = 1280
+gradle_metaspace_mb = 640
+memory_guard_mb = 512
 
 [validation.phase_profiles.compile]
 max_workers = 2
 cpu_limit = 2
-gradle_heap_mb = 1536
-memory_guard_mb = 256
-no_daemon = true
+gradle_heap_mb = 1280
+memory_guard_mb = 512
+no_daemon = false
 low_priority = false
+
+[validation.phase_profiles.preflight]
+max_workers = 1
+cpu_limit = 1
+gradle_heap_mb = 768
+memory_guard_mb = 384
+no_daemon = false
+low_priority = false
+
+
+[validation.phase_profiles.dependencies]
+max_workers = 1
+cpu_limit = 1
+gradle_heap_mb = 768
+memory_guard_mb = 384
+no_daemon = false
+low_priority = false
+
+
+[validation.phase_profiles.resources]
+max_workers = 2
+cpu_limit = 2
+gradle_heap_mb = 1280
+memory_guard_mb = 512
+no_daemon = false
+low_priority = false
+
+
+[validation.phase_profiles.unit-test]
+max_workers = 2
+cpu_limit = 2
+gradle_heap_mb = 1280
+memory_guard_mb = 512
+no_daemon = false
+low_priority = false
+
+
+[validation.phase_profiles.package]
+max_workers = 2
+cpu_limit = 2
+gradle_heap_mb = 1280
+memory_guard_mb = 640
+no_daemon = false
+low_priority = false
+
+
+[validation.phase_profiles.lint]
+max_workers = 1
+cpu_limit = 2
+gradle_heap_mb = 1280
+memory_guard_mb = 640
+no_daemon = false
+low_priority = false
+

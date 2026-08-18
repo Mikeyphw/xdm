@@ -51,10 +51,10 @@ class BrowserExtensionPhase41ContractTest {
 
     @Test
     fun customSchemeRejectionsDoNotFallThroughToGenericViewIntake() {
-        val activity = repo.resolve("app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
+        val activity = repo.resolve("app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationSecurity.kt").readText()
         assertTrue(activity.contains("parseDetailed"))
-        assertTrue(activity.contains("is XdmBrowserDeepLinkParseResult.Rejected -> return"))
-        assertTrue(activity.indexOf("parseDetailed") < activity.indexOf("sharedText(incoming)"))
+        assertTrue(activity.contains("XdmBrowserDeepLinkParseResult.Rejected) return null"))
+        assertTrue(activity.indexOf("parseDetailed") < activity.indexOf("sharedText(activity, intent)"))
     }
 
     @Test

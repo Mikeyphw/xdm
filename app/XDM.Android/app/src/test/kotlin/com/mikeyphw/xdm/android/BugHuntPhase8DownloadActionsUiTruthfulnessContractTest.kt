@@ -21,7 +21,7 @@ class BugHuntPhase8DownloadActionsUiTruthfulnessContractTest {
         assertTrue(manager.contains("safeOwnedFile"))
         assertTrue(viewModel.contains("queueIntelligenceCoordinator.requestStart"))
         assertTrue(viewModel.contains("repository.deleteDownloadEntryIfTerminal"))
-        assertTrue(viewModel.contains("Never seed a new attempt from a prior finalization journal"))
+        assertTrue(viewModel.contains("Never seed a new attempt from") && viewModel.contains("a prior finalization journal"))
         assertTrue(viewModel.contains("val originalDestination = current.destinationUri"))
         assertTrue(viewModel.contains("downloadArtifactActionManager.delete(currentForAction)"))
         assertTrue(viewModel.contains("downloadArtifactActionManager.rename(currentForAction, requestedName)"))

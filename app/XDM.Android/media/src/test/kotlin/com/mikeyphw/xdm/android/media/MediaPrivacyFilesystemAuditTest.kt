@@ -98,7 +98,10 @@ class MediaPrivacyFilesystemAuditTest {
     @Test
     fun ciphertextOnlyJournalAndAbsentSurfaceAreSafe() {
         val root = Files.createTempDirectory("secure-request-envelopes-v1").toFile()
-        val absent = root.parentFile.resolve("browser-capture-import-journal-absent-${System.nanoTime()}")
+        val parent = requireNotNull(root.parentFile) {
+            "Temporary privacy-audit directory must have a parent"
+        }
+        val absent = parent.resolve("browser-capture-import-journal-absent-${System.nanoTime()}")
         try {
             root.resolve("capture.xdm-secure").writeText("ciphertext=A1B2C3D4\niv=0123456789")
             val audit = MediaSessionPrivacyAuditPlanner().audit(

@@ -665,7 +665,7 @@ class TermuxMediaPipelineManager(
         val transientSession = transientYtDlpSession(spec)
         if (spec.kind in setOf(PostProcessingActionKind.YtDlpMetadata, PostProcessingActionKind.YtDlpDownload) && transientSession == null) {
             cleanupJobBridges(dao.findJob(reservedJob.id))
-            finishFailure(reservedJob, "The encrypted media session expired before Termux launch. Refresh the media capture before retrying.")
+            finishFailure(reservedJob, "Authenticated media needs the secure transient Termux session bridge. The encrypted media session expired before Termux launch; refresh the media capture before retrying.")
             return
         }
         val command = commandFor(spec, prepared, transientSession)

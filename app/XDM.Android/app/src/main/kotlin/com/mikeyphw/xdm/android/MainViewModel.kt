@@ -2039,16 +2039,16 @@ class MainViewModel(
             backendSelectionExplanation = recommendation.explanation,
             allowBackendFallback = allowFallback,
         )
-            MediaRequestHandoffStore.remember(
-                downloadId = download.id,
-                headers = externalSessionHeaders,
-                redactedSummary = consumedExternalDraft?.redactedHeaderSummary.orEmpty(),
-                isExpiringUrl = externalSessionHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(url),
-                exactUrl = url.trim(),
-                pageUrl = consumedExternalDraft?.pageUrl,
-                privateNetworkApproved = externalCommand?.privateNetworkApproved == true,
-                cleartextCredentialsApproved = externalCommand?.cleartextCredentialsApproved == true,
-            )
+        MediaRequestHandoffStore.remember(
+            downloadId = download.id,
+            headers = externalSessionHeaders,
+            redactedSummary = consumedExternalDraft?.redactedHeaderSummary.orEmpty(),
+            isExpiringUrl = externalSessionHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(url),
+            exactUrl = url.trim(),
+            pageUrl = consumedExternalDraft?.pageUrl,
+            privateNetworkApproved = externalCommand?.privateNetworkApproved == true,
+            cleartextCredentialsApproved = externalCommand?.cleartextCredentialsApproved == true,
+        )
             if (!repository.save(download)) {
                 MediaRequestHandoffStore.forget(download.id)
                 consumedExternalDraft?.let { draft ->

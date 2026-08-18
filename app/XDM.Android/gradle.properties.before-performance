@@ -1,0 +1,16 @@
+org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
+org.gradle.parallel=false
+org.gradle.caching=true
+org.gradle.configuration-cache=false
+android.useAndroidX=true
+android.nonTransitiveRClass=true
+android.defaults.buildfeatures.resvalues=false
+android.defaults.buildfeatures.shaders=false
+kotlin.code.style=official
+
+# Termux Android build stability
+org.gradle.daemon=false
+org.gradle.workers.max=2
+org.gradle.vfs.watch=false
+android.builder.sdkDownload=false
+kotlin.incremental=false

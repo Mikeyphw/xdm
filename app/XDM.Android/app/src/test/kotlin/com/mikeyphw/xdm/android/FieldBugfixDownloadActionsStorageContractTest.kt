@@ -47,7 +47,7 @@ class FieldBugfixDownloadActionsStorageContractTest {
         val runtime = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt")
         val native = source("transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt")
         assertTrue(intake.contains("val requestHeaders: Map<String, String> = emptyMap()"))
-        assertTrue(viewModel.contains("transientSessionHeaders(") && viewModel.contains("rawHeaders = draft.rawHeaders"))
+        assertTrue(viewModel.contains("transientSessionHeaders(") && viewModel.contains("transientSessionHeaders(draft.rawHeaders"))
         assertTrue(viewModel.contains("MediaRequestHandoffStore.rememberCapture"))
         assertTrue(viewModel.contains("MediaRequestHandoffStore.forgetCapture(record.id)"))
         assertTrue(viewModel.contains("headers = externalSessionHeaders"))

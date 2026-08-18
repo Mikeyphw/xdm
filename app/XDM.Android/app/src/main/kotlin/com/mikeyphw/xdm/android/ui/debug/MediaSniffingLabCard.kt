@@ -33,8 +33,8 @@ fun MediaSniffingLabCard() {
     val context = LocalContext.current
     var rawInput by rememberSaveable { mutableStateOf("") }
     var baseUrl by rememberSaveable { mutableStateOf("") }
-    var sourceKey by rememberSaveable { mutableStateOf(MediaSniffingSource.ManualPage.name) }
-    val source = MediaSniffingSource.entries.firstOrNull { it.name == sourceKey } ?: MediaSniffingSource.ManualPage
+    var sourceKey by rememberSaveable { mutableStateOf(MediaSniffingSource.ManualPage.labStateKey()) }
+    val source = MediaSniffingSource.entries.firstOrNull { it.labStateKey() == sourceKey } ?: MediaSniffingSource.ManualPage
     var report by remember { mutableStateOf(MediaSniffingLab.inspect(MediaSniffingLabRequest(rawInput = ""))) }
     val labStateKey = "media-sniffing-lab-${source.labDisplayLabel()}"
 
@@ -45,7 +45,7 @@ fun MediaSniffingLabCard() {
             MediaSniffingLab.allowedSources.forEach { option ->
                 FilterChip(
                     selected = source == option,
-                    onClick = { sourceKey = option.name },
+                    onClick = { sourceKey = option.labStateKey() },
                     label = { Text(option.labDisplayLabel()) },
                 )
             }
@@ -98,4 +98,13 @@ private fun MediaSniffingSource.labDisplayLabel(): String = when (this) {
     MediaSniffingSource.BrowserExtension -> "Browser extension"
     MediaSniffingSource.NetworkObservation -> "Network observation"
     MediaSniffingSource.AppPageProbe -> "App page probe"
+}
+
+private fun MediaSniffingSource.labStateKey(): String = when (this) {
+    MediaSniffingSource.ManualPage -> "manual-page"
+    MediaSniffingSource.BatchInput -> "batch-input"
+    MediaSniffingSource.SharedText -> "shared-text"
+    MediaSniffingSource.BrowserExtension -> "browser-extension"
+    MediaSniffingSource.NetworkObservation -> "network-observation"
+    MediaSniffingSource.AppPageProbe -> "app-page-probe"
 }

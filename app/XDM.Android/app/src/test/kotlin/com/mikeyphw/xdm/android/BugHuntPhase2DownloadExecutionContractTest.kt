@@ -17,7 +17,7 @@ class BugHuntPhase2DownloadExecutionContractTest {
         assertTrue(runtime.contains("AtomicLong"))
         assertTrue(runtime.contains("DesiredTransferState.PauseRequested"))
         assertTrue(runtime.contains("DesiredTransferState.CancelRequested"))
-        assertTrue(runtime.contains("ensureExecutionJob(downloadId)"))
+        assertTrue(runtime.contains("ensureExecutionJob(downloadId,"))
         assertTrue(runtime.contains("current.state in TERMINAL_STATES"))
         assertTrue(runtime.contains("current?.state == DownloadState.Failed"))
         assertTrue(runtime.contains("backend.remove(mapping.second)"))

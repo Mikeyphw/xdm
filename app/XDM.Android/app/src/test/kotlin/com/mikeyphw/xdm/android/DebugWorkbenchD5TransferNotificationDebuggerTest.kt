@@ -102,5 +102,7 @@ class DebugWorkbenchD5TransferNotificationDebuggerTest {
         mimeType = mimeType,
         requestedBackend = BackendType.Automatic,
         backendSelectionReason = BackendSelectionReason.DefaultNative,
+        completedArtifactUri = destinationUri.takeIf { state == DownloadState.Completed },
+        completedArtifactGeneration = 1L.takeIf { state == DownloadState.Completed },
     )
 }

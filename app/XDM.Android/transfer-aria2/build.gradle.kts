@@ -6,7 +6,7 @@ val requireAlignedAria2Runtime = providers.gradleProperty("xdm.requireAria2Runti
     .map(String::toBoolean)
     .orElse(false)
 
-val installOfficialAria2Runtime by tasks.registering(Exec::class) {
+val installOfficialAria2Runtime = tasks.register<Exec>("installOfficialAria2Runtime") {
     group = "build setup"
     description = "Downloads and installs the official ARM64 aria2 runtime payload."
     workingDir(rootProject.projectDir)
@@ -62,7 +62,7 @@ dependencies {
 }
 
 
-val verifyAria2Runtime by tasks.registering(Exec::class) {
+val verifyAria2Runtime = tasks.register<Exec>("verifyAria2Runtime") {
     group = "verification"
     description = "Verifies the attested ARM64 aria2 runtime when present or required."
     workingDir(rootProject.projectDir)

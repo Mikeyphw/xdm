@@ -143,6 +143,13 @@ object TermuxShellTemplates {
         }
     }
 
+    private fun StringBuilder.appendYtDlpExtraArguments(arguments: List<String>) {
+        arguments.forEach { argument ->
+            append(shellQuote(argument))
+            append(' ')
+        }
+    }
+
     private fun managedPostProcessScript(plan: TermuxPostProcessingPlan, runtime: TermuxRuntimeArtifacts): String = buildString {
         appendLine("set -eu")
         appendLine("XDM_PROGRESS=${shellQuote(runtime.progressShellPath)}")
@@ -211,7 +218,9 @@ object TermuxShellTemplates {
             PostProcessingActionKind.YtDlpMetadata -> {
                 appendLine("command -v yt-dlp >/dev/null 2>&1 || { printf 'missing yt-dlp\\n' >&2; exit 127; }")
                 check(transientYtDlp) { "Managed yt-dlp metadata requires a transient encrypted session" }
-                appendLine("yt-dlp --config-locations \"${'$'}XDM_YTDLP_CONFIG\" --batch-file \"${'$'}XDM_YTDLP_URLS\" --no-warnings --print \"%(.{title,ext,duration,is_live,vcodec,acodec,formats.:.{format_id,format_note,vcodec,acodec,mime_type,width,height,tbr,language}})#j\" > \"${'$'}XDM_METADATA\"")
+                append("yt-dlp --config-locations \"${'$'}XDM_YTDLP_CONFIG\" --batch-file \"${'$'}XDM_YTDLP_URLS\" --no-warnings ")
+                appendYtDlpExtraArguments(plan.extraArguments)
+                appendLine("--print \"%(.{title,ext,duration,is_live,vcodec,acodec,formats.:.{format_id,format_note,vcodec,acodec,mime_type,width,height,tbr,language}})#j\" > \"${'$'}XDM_METADATA\"")
             }
             PostProcessingActionKind.YtDlpDownload -> {
                 appendLine("command -v yt-dlp >/dev/null 2>&1 || { printf 'missing yt-dlp\\n' >&2; exit 127; }")
@@ -219,13 +228,17 @@ object TermuxShellTemplates {
                 appendLine("printf 'phase=preflight\\npercent=0\\nmessage=Resolving requested yt-dlp format\\n' > \"${'$'}XDM_PROGRESS\"")
                 append("yt-dlp --config-locations \"${'$'}XDM_YTDLP_CONFIG\" --batch-file \"${'$'}XDM_YTDLP_URLS\" --simulate --no-warnings --no-playlist ")
                 plan.formatSelector.takeIf(String::isNotBlank)?.let { append("-f ${shellQuote(it)} ") }
+                appendYtDlpExtraArguments(plan.extraArguments)
                 appendLine(">/dev/null")
                 append("yt-dlp --config-locations \"${'$'}XDM_YTDLP_CONFIG\" --batch-file \"${'$'}XDM_YTDLP_URLS\" --force-overwrites --no-part --newline --progress-template ")
                 append(shellQuote("download:XDM_YTDLP\\t%(progress._percent_str)s\\t%(progress.downloaded_bytes)s\\t%(progress.total_bytes_estimate)s"))
                 append(" -o ${shellQuote(plan.outputPath)} ")
                 plan.formatSelector.takeIf(String::isNotBlank)?.let { append("-f ${shellQuote(it)} ") }
+                appendYtDlpExtraArguments(plan.extraArguments)
                 appendLine("> \"${'$'}XDM_PROGRESS\"")
-                appendLine("yt-dlp --config-locations \"${'$'}XDM_YTDLP_CONFIG\" --batch-file \"${'$'}XDM_YTDLP_URLS\" --no-warnings --print \"%(.{title,ext,duration,is_live,vcodec,acodec,formats.:.{format_id,format_note,vcodec,acodec,mime_type,width,height,tbr,language}})#j\" > \"${'$'}XDM_METADATA\" || true")
+                append("yt-dlp --config-locations \"${'$'}XDM_YTDLP_CONFIG\" --batch-file \"${'$'}XDM_YTDLP_URLS\" --no-warnings ")
+                appendYtDlpExtraArguments(plan.extraArguments)
+                appendLine("--print \"%(.{title,ext,duration,is_live,vcodec,acodec,formats.:.{format_id,format_note,vcodec,acodec,mime_type,width,height,tbr,language}})#j\" > \"${'$'}XDM_METADATA\" || true")
             }
             PostProcessingActionKind.CleanupPartials -> {
                 appendLine("TARGET=${shellQuote(plan.inputPath)}")

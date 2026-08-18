@@ -336,6 +336,9 @@ class MediaCaptureServiceTest {
             priority = 0,
             createdAtEpochMs = 1L,
             updatedAtEpochMs = 2L,
+            completedArtifactUri = "file:///storage/emulated/0/Download/XDM/movie.mp4",
+            completedArtifactGeneration = 1L,
+            completedArtifactBytes = 42L,
         )
         val items = MediaExecutionLibraryPlanner().offlineLibraryItems(listOf(record), listOf(download), emptyList())
         val jobs = MediaExecutionLibraryPlanner().executionJobs(listOf(record), listOf(download), emptyList())
@@ -882,6 +885,9 @@ class MediaCaptureServiceTest {
             createdAtEpochMs = 19_000L,
             updatedAtEpochMs = 19_100L,
             mimeType = "audio/mpeg",
+            completedArtifactUri = "content://downloads/song.mp3",
+            completedArtifactGeneration = 1L,
+            completedArtifactBytes = 1024L,
         )
         val captured = audio.copy(downloadId = download.id)
         val item = planner.offlineLibraryItems(listOf(captured), listOf(download), emptyList()).single()

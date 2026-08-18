@@ -9,12 +9,12 @@ class BrowserRemovalPhase3ContractTest {
     @Test
     fun externalHandoffCarriesClassificationMetadataIntoReview() {
         val root = androidRoot()
-        val activity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
+        val activity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationSecurity.kt").readText()
         val intake = File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadIntake.kt").readText()
         val shell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val screens = UiSourceTree.readAll(root)
 
-        listOf("handoffMimeType", "handoffContentLength", "handoffPageUrl", "mimeType = mimeType", "contentLength = contentLength")
+        listOf("handoffMimeType", "handoffContentLength", "handoffPageUrl", "mimeType = handoffMimeType(intent)", "contentLength = handoffContentLength(intent)")
             .forEach { marker -> assertTrue("External handoff lost $marker", activity.contains(marker)) }
         listOf("enum class DownloadIntakeKind", "object DownloadIntakeClassifier", "canInspectAsMedia")
             .forEach { marker -> assertTrue("Neutral intake lost $marker", intake.contains(marker)) }
