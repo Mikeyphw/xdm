@@ -1,6 +1,6 @@
 {
   "schema_version": 6,
-  "session_id": "20260817T020540Z-2e8702306e",
+  "session_id": "20260817T231410Z-b5826059e4",
   "repo_root": "/data/data/com.termux/files/home/Code/xdm",
   "project_root": "/data/data/com.termux/files/home/Code/xdm/app/XDM.Android",
   "project_type": "android",
@@ -12,14 +12,14 @@
   "resource_profile": "automatic",
   "transaction_path": "",
   "recovery_available": false,
-  "revision": 104,
+  "revision": 22,
   "failure_action": "pause",
   "required_checkpoint_name": "finalize",
   "required_checkpoint_keys": [
     "android-resumable:finalize:1"
   ],
   "required_checkpoint_satisfied": false,
-  "plan_fingerprint": "91ef4a1630da41ec8be96793814fdb63e492b2ac4689b16c51f45cead3298012",
+  "plan_fingerprint": "ceee7144771dbed4e04b2cf5f0e6152e7a0065b13b7807675435a3b14e692ad7",
   "plan_drift_status": "",
   "phases": [
     {
@@ -52,7 +52,7 @@
       "key": "android-resumable:compile:1",
       "name": "compile",
       "label": "android-resumable: compile",
-      "status": "passed",
+      "status": "interrupted",
       "depends_on": [
         "android-resumable:dependencies:1"
       ],
@@ -68,7 +68,7 @@
       "key": "android-resumable:resources:1",
       "name": "resources",
       "label": "android-resumable: resources",
-      "status": "passed",
+      "status": "pending",
       "depends_on": [
         "android-resumable:compile:1"
       ],
@@ -83,7 +83,7 @@
       "key": "android-resumable:unit-test:1",
       "name": "unit-test",
       "label": "android-resumable: unit-test",
-      "status": "interrupted",
+      "status": "pending",
       "depends_on": [
         "android-resumable:compile:1"
       ],
@@ -153,5 +153,5 @@
       "scope": "android-resumable"
     }
   ],
-  "updated_at": "2026-08-17T15:45:53.363449Z"
+  "updated_at": "2026-08-18T00:45:05.140879Z"
 }

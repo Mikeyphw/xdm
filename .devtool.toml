@@ -34,7 +34,7 @@ instrumentation = "never"
 prefer_native_termux = false
 
 [targets.xdm_android.gradle]
-version = "9.4.1"
+version = "9.7.0"
 max_workers = 2
 structured_events = false
 no_daemon = true

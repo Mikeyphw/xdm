@@ -7,6 +7,7 @@ import com.mikeyphw.xdm.android.model.BackendRuntimeIdentity
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
+import com.mikeyphw.xdm.android.transfer.DownloadRequestApprovalScope
 import com.mikeyphw.xdm.android.storage.DestinationConflict
 import com.mikeyphw.xdm.android.storage.DestinationHealth
 import com.mikeyphw.xdm.android.storage.DestinationPromotionResult
@@ -20,6 +21,7 @@ import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.security.MessageDigest
 import java.util.Collections
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -68,6 +70,27 @@ class NativeHttpDownloadBackendTest {
         executor.shutdownNow()
     }
 
+
+    @Test
+    fun privateNetworkApprovalWithoutExactTargetScopeFailsClosed() = runBlocking {
+        val directory = Files.createTempDirectory("xdm-native-unscoped-private")
+        val destination = directory.resolve("payload.bin")
+        val backend = NativeHttpDownloadBackend(
+            OkHttpClient(), scope,
+            NativeTransferConfig(defaultConnections = 1, segmentThresholdBytes = Long.MAX_VALUE, maximumRetries = 0),
+        )
+        val approved = request("unscoped-private", "/file", destination, maxConnections = 1)
+        val task = startOwned(
+            backend,
+            approved.copy(privateNetworkApprovalScopes = emptySet()),
+        )
+        val terminal = withTimeout(15_000) { backend.observe(task.taskId).first { it.state in terminalStates } }
+
+        assertEquals(DownloadState.Failed, terminal.state)
+        assertTrue(terminal.errorMessage.orEmpty().contains("private", ignoreCase = true))
+        assertTrue(!Files.exists(destination))
+    }
+
     @Test
     fun segmentedDownloadProducesTheOriginalFile() = runBlocking {
         val directory = Files.createTempDirectory("xdm-native")
@@ -102,10 +125,19 @@ class NativeHttpDownloadBackendTest {
                 etag = "\"stable\"",
                 lastModified = null,
                 rangeSupported = true,
-                segments = listOf(NativeSegmentCheckpoint(0, 0, payload.size.toLong() - 1, prefix.toLong(), false)),
+                segments = listOf(
+                    NativeSegmentCheckpoint(
+                        0, 0, payload.size.toLong() - 1, prefix.toLong(), false,
+                        completedSha256 = sha256(payload.copyOfRange(0, prefix)),
+                    ),
+                ),
                 persistedAtEpochMs = 1,
                 attemptGeneration = 7L,
                 backendInstanceId = "native-default",
+                sourceIdentitySha256 = sha256(url("/file")),
+                effectiveIdentitySha256 = sha256(url("/file")),
+                resumeValidatorKind = ResumeValidatorKind.StrongEtag.name,
+                resumeValidatorValue = "\"stable\"",
             ),
         )
         val backend = NativeHttpDownloadBackend(OkHttpClient(), scope, NativeTransferConfig(defaultConnections = 1, segmentThresholdBytes = Long.MAX_VALUE, maximumRetries = 1, baseRetryDelayMillis = 1))
@@ -134,17 +166,26 @@ class NativeHttpDownloadBackendTest {
                 etag = "\"old\"",
                 lastModified = null,
                 rangeSupported = true,
-                segments = listOf(NativeSegmentCheckpoint(0, 0, payload.size.toLong() - 1, 32, false)),
+                segments = listOf(
+                    NativeSegmentCheckpoint(
+                        0, 0, payload.size.toLong() - 1, 32, false,
+                        completedSha256 = sha256(payload.copyOfRange(0, 32)),
+                    ),
+                ),
                 persistedAtEpochMs = 1,
                 attemptGeneration = 7L,
                 backendInstanceId = "native-default",
+                sourceIdentitySha256 = sha256(url("/changed")),
+                effectiveIdentitySha256 = sha256(url("/changed")),
+                resumeValidatorKind = ResumeValidatorKind.StrongEtag.name,
+                resumeValidatorValue = "\"old\"",
             ),
         )
         val backend = NativeHttpDownloadBackend(OkHttpClient(), scope, NativeTransferConfig(maximumRetries = 0))
         val task = startOwned(backend, request("changed", "/changed", destination, maxConnections = 1))
         val terminal = withTimeout(15_000) { backend.observe(task.taskId).first { it.state in terminalStates } }
         assertEquals(DownloadState.RecoveryRequired, terminal.state)
-        assertTrue(terminal.errorMessage.orEmpty().contains("ETag"))
+        assertTrue(terminal.errorMessage.orEmpty().contains("validator", ignoreCase = true))
     }
 
 
@@ -226,7 +267,12 @@ class NativeHttpDownloadBackendTest {
                 etag = "\"stable\"",
                 lastModified = null,
                 rangeSupported = true,
-                segments = listOf(NativeSegmentCheckpoint(0, 0, payload.size.toLong() - 1, 64, false)),
+                segments = listOf(
+                    NativeSegmentCheckpoint(
+                        0, 0, payload.size.toLong() - 1, 64, false,
+                        completedSha256 = sha256(payload.copyOfRange(0, 64)),
+                    ),
+                ),
                 persistedAtEpochMs = 1,
                 attemptGeneration = 7L,
                 backendInstanceId = "native-install",
@@ -348,15 +394,26 @@ class NativeHttpDownloadBackendTest {
         return task
     }
 
-    private fun request(id: String, path: String, destination: java.nio.file.Path, maxConnections: Int) = DownloadRequest(
-        id = id,
-        sourceUrl = url(path),
-        destinationUri = destination.toUri().toString(),
-        fileName = destination.fileName.toString(),
-        preferredBackend = BackendType.Native,
-        maxConnections = maxConnections,
-        privateNetworkApproved = true,
-    )
+    private fun request(id: String, path: String, destination: java.nio.file.Path, maxConnections: Int): DownloadRequest {
+        val sourceUrl = url(path)
+        val approvalScope = requireNotNull(DownloadRequestApprovalScope.forUrl(sourceUrl))
+        return DownloadRequest(
+            id = id,
+            sourceUrl = sourceUrl,
+            destinationUri = destination.toUri().toString(),
+            fileName = destination.fileName.toString(),
+            preferredBackend = BackendType.Native,
+            maxConnections = maxConnections,
+            privateNetworkApproved = true,
+            privateNetworkApprovalScopes = setOf(approvalScope),
+        )
+    }
+
+    private fun sha256(value: String): String = sha256(value.toByteArray(Charsets.UTF_8))
+
+    private fun sha256(value: ByteArray): String = MessageDigest.getInstance("SHA-256")
+        .digest(value)
+        .joinToString("") { "%02x".format(it) }
 
     private fun url(path: String) = "http://127.0.0.1:${server.address.port}$path"
 

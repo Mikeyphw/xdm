@@ -9,4 +9,4 @@ if [[ -z "$BUILDER" || ! -x "$BUILDER" ]]; then
   echo "build-apk was not found. Install it at ~/.local/bin/build-apk or set XDM_ANDROID_BUILD_APK." >&2
   exit 127
 fi
-exec "$BUILDER" "$ROOT" --gradle-version 9.4.1 --task wrapper --no-daemon --fail-fast --no-artifact-scan
+exec "$BUILDER" "$ROOT" --gradle-version 9.7.0 --task wrapper --no-daemon --fail-fast --no-artifact-scan

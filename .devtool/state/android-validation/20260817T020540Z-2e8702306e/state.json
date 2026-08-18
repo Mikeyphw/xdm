@@ -5,9 +5,9 @@
   "project_type": "android",
   "target": "xdm_android",
   "variant": "",
-  "status": "paused",
+  "status": "running",
   "created_at": "2026-08-17T02:05:40.510510Z",
-  "updated_at": "2026-08-17T15:45:53.363449Z",
+  "updated_at": "2026-08-17T21:38:11.632633Z",
   "phases": [
     {
       "key": "android-resumable:preflight:1",
@@ -1072,8 +1072,8 @@
       "spec_name": "android-validation-unit-test",
       "index": 5,
       "total": 8,
-      "status": "interrupted",
-      "attempts": 7,
+      "status": "running",
+      "attempts": 10,
       "attempt_history": [
         {
           "attempt_id": "86418d1333a841358fa071c49c0ee084",
@@ -1657,84 +1657,150 @@
           "resource_profile": "android-unit-test",
           "automatic_retry": false,
           "session_revision": 101
+        },
+        {
+          "attempt_id": "a29e84c73d8d40deae3ae9bd357da714",
+          "started_at": "2026-08-17T16:41:30.878856Z",
+          "finished_at": "2026-08-17T21:15:05.994861Z",
+          "verdict": "interrupted",
+          "returncode": null,
+          "signal": null,
+          "duration_seconds": 0.0,
+          "output_tail": "",
+          "issues": [],
+          "log_path": "",
+          "input_snapshot_before": {
+            "config": "5d6891c69a71a4925c1301daa2e4c78e67311c14d9ce307eef0facdd31649a10",
+            "source": "c25b0316ea716dd1a5e121dec8d6274cade1eb4b69a032c04c04a8510d37c34c",
+            "resources": "96272468b15405156e0fb0fe4a273e153ba21a890d76e60d0d8e88cf4dc5bcfb",
+            "tests": "ceebb2db73745fbec2e280fb5de131a5f5de16d5a31e033bd6012d94ce7d1a10"
+          },
+          "input_snapshot_after": {},
+          "owner_pid": 12885,
+          "owner_process_start": "7141767",
+          "owner_run_id": "1255d676b565441699c0e3646d2c502c",
+          "heartbeat_at": "2026-08-17T21:15:05.994861Z",
+          "failure_kind": "",
+          "interruption_reason": "previous validation process ended before recording a phase result",
+          "classification_evidence": [],
+          "category": "",
+          "retryable": false,
+          "recommended_profile": "",
+          "input_domains": [
+            "config",
+            "source",
+            "resources",
+            "tests"
+          ],
+          "inputs_changed": false,
+          "supervisor_events": [],
+          "argv": [],
+          "resource_profile": "",
+          "automatic_retry": false,
+          "session_revision": 105
+        },
+        {
+          "attempt_id": "574d7b029aa742398a696f42b6e952c4",
+          "started_at": "2026-08-17T21:15:07.331465Z",
+          "finished_at": "2026-08-17T21:35:07.250439Z",
+          "verdict": "interrupted",
+          "returncode": null,
+          "signal": null,
+          "duration_seconds": 0.0,
+          "output_tail": "",
+          "issues": [],
+          "log_path": "",
+          "input_snapshot_before": {
+            "config": "41e795f94af3e9106739b2a4019368f38e98fb152786eaa349b31518408d9fb2",
+            "source": "c25b0316ea716dd1a5e121dec8d6274cade1eb4b69a032c04c04a8510d37c34c",
+            "resources": "96272468b15405156e0fb0fe4a273e153ba21a890d76e60d0d8e88cf4dc5bcfb",
+            "tests": "ceebb2db73745fbec2e280fb5de131a5f5de16d5a31e033bd6012d94ce7d1a10"
+          },
+          "input_snapshot_after": {},
+          "owner_pid": 26949,
+          "owner_process_start": "8783396",
+          "owner_run_id": "131e480b6db5450793068bf777938513",
+          "heartbeat_at": "2026-08-17T21:35:07.250439Z",
+          "failure_kind": "",
+          "interruption_reason": "previous validation process ended before recording a phase result",
+          "classification_evidence": [],
+          "category": "",
+          "retryable": false,
+          "recommended_profile": "",
+          "input_domains": [
+            "config",
+            "source",
+            "resources",
+            "tests"
+          ],
+          "inputs_changed": false,
+          "supervisor_events": [],
+          "argv": [],
+          "resource_profile": "",
+          "automatic_retry": false,
+          "session_revision": 108
+        },
+        {
+          "attempt_id": "ac731aa098a44bec8dc82051faeb23b5",
+          "started_at": "2026-08-17T21:35:08.766521Z",
+          "finished_at": "",
+          "verdict": "running",
+          "returncode": null,
+          "signal": null,
+          "duration_seconds": 0.0,
+          "output_tail": "",
+          "issues": [],
+          "log_path": "",
+          "input_snapshot_before": {
+            "config": "41e795f94af3e9106739b2a4019368f38e98fb152786eaa349b31518408d9fb2",
+            "source": "c25b0316ea716dd1a5e121dec8d6274cade1eb4b69a032c04c04a8510d37c34c",
+            "resources": "96272468b15405156e0fb0fe4a273e153ba21a890d76e60d0d8e88cf4dc5bcfb",
+            "tests": "ceebb2db73745fbec2e280fb5de131a5f5de16d5a31e033bd6012d94ce7d1a10"
+          },
+          "input_snapshot_after": {},
+          "owner_pid": 9592,
+          "owner_process_start": "8903853",
+          "owner_run_id": "99cbd0673a794aed8d3faf67f87d2147",
+          "heartbeat_at": "2026-08-17T21:38:11.594672Z",
+          "failure_kind": "",
+          "interruption_reason": "",
+          "classification_evidence": [],
+          "category": "",
+          "retryable": false,
+          "recommended_profile": "",
+          "input_domains": [
+            "config",
+            "source",
+            "resources",
+            "tests"
+          ],
+          "inputs_changed": false,
+          "supervisor_events": [],
+          "argv": [],
+          "resource_profile": "",
+          "automatic_retry": false,
+          "session_revision": 111
         }
       ],
-      "current_attempt_id": "",
-      "owner_pid": 0,
-      "owner_process_start": "",
-      "owner_run_id": "",
-      "heartbeat_at": "",
-      "last_verdict": "timed-out",
-      "started_at": "2026-08-17T15:37:19.328766Z",
-      "finished_at": "2026-08-17T15:45:03.017518Z",
-      "duration_seconds": 456.7314812580007,
+      "current_attempt_id": "ac731aa098a44bec8dc82051faeb23b5",
+      "owner_pid": 9592,
+      "owner_process_start": "8903853",
+      "owner_run_id": "99cbd0673a794aed8d3faf67f87d2147",
+      "heartbeat_at": "2026-08-17T21:38:11.594672Z",
+      "last_verdict": "interrupted",
+      "started_at": "2026-08-17T21:35:08.766521Z",
+      "finished_at": "",
+      "duration_seconds": 0.0,
       "returncode": null,
-      "output_tail": "tion.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:53)\n\tat org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:35)\n\tat org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:37)\n\tat org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:27)\n\tat org.gradle.internal.execution.steps.ResolveMutableCachingStateStep.executeDelegate(ResolveMutableCachingStateStep.java:70)\n\tat org.gradle.internal.execution.steps.ResolveMutableCachingStateStep.executeDelegate(ResolveMutableCachingStateStep.java:32)\n\tat org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:69)\n\tat org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:37)\n\tat org.gradle.internal.execution.steps.ResolveChangesStep.executeMutable(ResolveChangesStep.java:63)\n\tat org.gradle.internal.execution.steps.ResolveChangesStep.executeMutable(ResolveChangesStep.java:34)\n\tat org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)\n\tat org.gradle.internal.execution.steps.ValidateStep$Mutable.executeDelegate(ValidateStep.java:79)\n\tat org.gradle.internal.execution.steps.ValidateStep$Mutable.executeDelegate(ValidateStep.java:65)\n\tat org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:99)\n\tat org.gradle.internal.execution.steps.ValidateStep$Mutable.execute(ValidateStep.java:65)\n\tat org.gradle.internal.execution.steps.CaptureMutableStateBeforeExecutionStep.executeMutable(CaptureMutableStateBeforeExecutionStep.java:86)\n\tat org.gradle.internal.execution.steps.CaptureMutableStateBeforeExecutionStep.execute(CaptureMutableStateBeforeExecutionStep.java:65)\n\tat org.gradle.internal.execution.steps.CaptureMutableStateBeforeExecutionStep.execute(CaptureMutableStateBeforeExecutionStep.java:45)\n\tat org.gradle.internal.execution.steps.SkipEmptyMutableWorkStep.executeWithNonEmptySources(SkipEmptyMutableWorkStep.java:210)\n\tat org.gradle.internal.execution.steps.SkipEmptyMutableWorkStep.executeMutable(SkipEmptyMutableWorkStep.java:90)\n\tat org.gradle.internal.execution.steps.SkipEmptyMutableWorkStep.executeMutable(SkipEmptyMutableWorkStep.java:53)\n\tat org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)\n\tat org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsStartedStep.execute(MarkSnapshottingInputsStartedStep.java:38)\n\tat org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.executeMutable(LoadPreviousExecutionStateStep.java:36)\n\tat org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.executeMutable(LoadPreviousExecutionStateStep.java:23)\n\tat org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)\n\tat org.gradle.internal.execution.steps.HandleStaleOutputsStep.executeMutable(HandleStaleOutputsStep.java:77)\n\tat org.gradle.internal.execution.steps.HandleStaleOutputsStep.executeMutable(HandleStaleOutputsStep.java:43)\n\tat org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)\n\tat org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.lambda$executeMutable$0(AssignMutableWorkspaceStep.java:34)\n\tat org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:305)\n\tat org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.executeMutable(AssignMutableWorkspaceStep.java:30)\n\tat org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.executeMutable(AssignMutableWorkspaceStep.java:21)\n\tat org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)\n\tat org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:40)\n\tat org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:23)\n\tat org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.lambda$execute$2(ExecuteWorkBuildOperationFiringStep.java:67)\n\tat org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:67)\n\tat org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:39)\n\tat org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:46)\n\tat org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:34)\n\tat org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:56)\n\tat org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:38)\n\tat org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:68)\n\tat org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:132)\n\t... 61 more\n\n\nBUILD FAILED in 7m 27s\n198 actionable tasks: 18 executed, 180 up-to-date\n\nerror: Command failed (1): /home/termux/Code/xdm/app/XDM.Android/gradlew :app:finalRemediationStaticGate :browser-extension:test :browser-extension:jsTest :browser-extension:validateFirefoxExtension :app:checkBrowserIntegration :core-model:test :core-utils:test :transfer-api:test :browser-integration:testDebugUnitTest :storage:testDebugUnitTest :transfer-native:testDebugUnitTest :transfer-aria2:test :scheduler:testDebugUnitTest :media:test :persistence:testDebugUnitTest :app:testDebugUnitTest --max-workers=2 -Dorg.gradle.java.installations.paths=/usr/lib/jvm/java-17-openjdk-arm64 -Dorg.gradle.java.installations.auto-detect=false -Dorg.gradle.cache.internal.lockTimeout=600000 --stacktrace --no-daemon -Pandroid.aapt2FromMavenOverride=/home/mike/.cache/devtool/gradle-build/aapt2/revanced/v1.1.0/aapt2 -Pandroid.suppressUnsupportedOptionWarnings=android.aapt2FromMavenOverride,android.suppressUnsupportedOptionWarnings --no-build-cache --no-configuration-cache -Dorg.gradle.parallel=false -Dorg.gradle.vfs.watch=false '-Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8' -Pkotlin.incremental=false -Pkotlin.compiler.execution.strategy=in-process -Pxdm.cleanKotlinValidation=true --console=plain\nDevtool Gradle tests: 35 passed, 7 failed, 0 skipped, 42 total.\nDevtool Gradle test failures:\n- com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.finalSaveRecoveryRetriesPublicationWithoutNetworkRedownload: kotlinx.coroutines.TimeoutCancellationException: Timed out waiting for 15000 ms\n- com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.segmentedDownloadProducesTheOriginalFile: java.lang.AssertionError: Redirect to a private network route blocked without exact-target approval expected:<Completed> but was:<Failed>\n- com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.changedEtagMovesTheTaskToRecoveryRequired: java.lang.AssertionError: expected:<RecoveryRequired> but was:<Failed>\n- com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.reconciliationAcceptsMatchingPhysicalPartialAndCheckpoint: java.lang.AssertionError: expected:<ResumableArtifact> but was:<ConflictingArtifact>\n- com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.validCheckpointResumesFromPersistedOffset: java.lang.AssertionError: Redirect to a private network route blocked without exact-target approval expected:<Completed> but was:<Failed>\n- com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.malformedContentRangeFailsWithoutFinalizing: java.lang.AssertionError\n- com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.retryableServerFailureUsesBackoffAndCompletes: java.lang.AssertionError: Redirect to a private network route blocked without exact-target approval expected:<Completed> but was:<Failed>\nDevtool runtime diagnostic (network-timeout): Network access timed out; this may be transient, unlike a confirmed HTTP 404.\n",
-      "issues": [
-        {
-          "severity": "error",
-          "command": "android-validation-unit-test",
-          "file": "-",
-          "code": "GRADLE_TASK",
-          "message": "Gradle task failed: :transfer-native:testDebugUnitTest"
-        },
-        {
-          "severity": "error",
-          "command": "android-validation-unit-test[transfer-native]",
-          "file": "-",
-          "code": "GRADLE_TEST",
-          "message": "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.finalSaveRecoveryRetriesPublicationWithoutNetworkRedownload: kotlinx.coroutines.TimeoutCancellationException: Timed out waiting for 15000 ms"
-        },
-        {
-          "severity": "error",
-          "command": "android-validation-unit-test[transfer-native]",
-          "file": "-",
-          "code": "GRADLE_TEST",
-          "message": "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.segmentedDownloadProducesTheOriginalFile: java.lang.AssertionError: Redirect to a private network route blocked without exact-target approval expected:<Completed> but was:<Failed>"
-        },
-        {
-          "severity": "error",
-          "command": "android-validation-unit-test[transfer-native]",
-          "file": "-",
-          "code": "GRADLE_TEST",
-          "message": "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.changedEtagMovesTheTaskToRecoveryRequired: java.lang.AssertionError: expected:<RecoveryRequired> but was:<Failed>"
-        },
-        {
-          "severity": "error",
-          "command": "android-validation-unit-test[transfer-native]",
-          "file": "-",
-          "code": "GRADLE_TEST",
-          "message": "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.reconciliationAcceptsMatchingPhysicalPartialAndCheckpoint: java.lang.AssertionError: expected:<ResumableArtifact> but was:<ConflictingArtifact>"
-        },
-        {
-          "severity": "error",
-          "command": "android-validation-unit-test[transfer-native]",
-          "file": "-",
-          "code": "GRADLE_TEST",
-          "message": "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.validCheckpointResumesFromPersistedOffset: java.lang.AssertionError: Redirect to a private network route blocked without exact-target approval expected:<Completed> but was:<Failed>"
-        },
-        {
-          "severity": "error",
-          "command": "android-validation-unit-test[transfer-native]",
-          "file": "-",
-          "code": "GRADLE_TEST",
-          "message": "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.malformedContentRangeFailsWithoutFinalizing: java.lang.AssertionError"
-        },
-        {
-          "severity": "error",
-          "command": "android-validation-unit-test[transfer-native]",
-          "file": "-",
-          "code": "GRADLE_TEST",
-          "message": "com.mikeyphw.xdm.android.transfer.nativeengine.NativeHttpDownloadBackendTest.retryableServerFailureUsesBackoffAndCompletes: java.lang.AssertionError: Redirect to a private network route blocked without exact-target approval expected:<Completed> but was:<Failed>"
-        }
-      ],
-      "log_path": "/data/data/com.termux/files/home/.local/state/devtool/logs/20260817-123717-137146.log",
-      "invalidated_reason": "timed out",
+      "output_tail": "",
+      "issues": [],
+      "log_path": "",
+      "invalidated_reason": "previous validation process ended before recording a phase result",
       "spec_fingerprint": "fd229757fc35524b08a598db8a991d5ca8be3ad776879a0877b53ef9d2c1942c",
-      "interruption_count": 1,
-      "last_interrupted_at": "2026-08-17T15:45:03.017518Z",
-      "last_interrupted_reason": "timed out",
-      "last_interrupted_returncode": 2,
+      "interruption_count": 3,
+      "last_interrupted_at": "2026-08-17T21:35:07.250439Z",
+      "last_interrupted_reason": "previous validation process ended before recording a phase result",
+      "last_interrupted_returncode": null,
       "depends_on": [
         "android-resumable:compile:1"
       ],
@@ -1747,12 +1813,12 @@
       "required": true,
       "scope": "android-resumable",
       "supports_progress": true,
-      "progress_percent": 100,
-      "progress_detail": "Gradle failed at :transfer-native:testDebugUnitTest rc=2",
-      "progress_completed": 198,
-      "progress_total": 198,
+      "progress_percent": 0,
+      "progress_detail": "Starting Gradle process",
+      "progress_completed": 0,
+      "progress_total": null,
       "progress_unit": "tasks",
-      "progress_updated_at": "2026-08-17T15:45:03.017518Z",
+      "progress_updated_at": "2026-08-17T21:36:06.548763Z",
       "plan_change": ""
     },
     {
@@ -1909,10 +1975,10 @@
     }
   ],
   "fingerprints": {
-    "config": "5d6891c69a71a4925c1301daa2e4c78e67311c14d9ce307eef0facdd31649a10",
+    "config": "41e795f94af3e9106739b2a4019368f38e98fb152786eaa349b31518408d9fb2",
     "source": "c25b0316ea716dd1a5e121dec8d6274cade1eb4b69a032c04c04a8510d37c34c",
     "resources": "96272468b15405156e0fb0fe4a273e153ba21a890d76e60d0d8e88cf4dc5bcfb",
-    "tests": "142c15c3be9582e89b082e30770a988f2c149dfdc18d95f84af58391a4880cc4"
+    "tests": "ceebb2db73745fbec2e280fb5de131a5f5de16d5a31e033bd6012d94ce7d1a10"
   },
   "plan_specs": [
     {
@@ -2935,7 +3001,7 @@
       }
     }
   ],
-  "git_head": "5d39b8b378908eee3435736ac9458d375c95b915",
+  "git_head": "60806fcdf3e61c38ebbc93cb6c125e0b0f2b21e0",
   "transaction_path": "",
   "apply_context": {},
   "options": {
@@ -2970,10 +3036,10 @@
     "linux_user": ""
   },
   "last_error": "",
-  "paused_reason": "android-resumable: unit-test was interrupted and remains retryable",
+  "paused_reason": "",
   "invalidated_from": "unit-test",
   "finalized_at": "",
-  "revision": 104,
+  "revision": 112,
   "failure_action": "pause",
   "validated_at": "",
   "required_checkpoint_key": "android-resumable:finalize:1",
@@ -2991,7 +3057,7 @@
   "commit_hash": "",
   "schema_version": 6,
   "complete": false,
-  "next_phase": "unit-test",
+  "next_phase": "package",
   "completed_phases": 4,
   "phase_total": 8
 }
