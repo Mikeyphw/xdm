@@ -17,6 +17,7 @@ val installOfficialAria2Runtime = tasks.register<Exec>("installOfficialAria2Runt
 android {
     namespace = "com.mikeyphw.xdm.android.transfer.aria2"
     compileSdk = 36
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         minSdk = 26
@@ -27,8 +28,8 @@ android {
         buildConfig = true
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     packaging {
         jniLibs.useLegacyPackaging = true

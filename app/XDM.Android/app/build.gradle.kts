@@ -47,6 +47,7 @@ val aria2PayloadVerified = validationEvidence("xdm.validation.aria2PayloadVerifi
 android {
     namespace = "com.mikeyphw.xdm.android"
     compileSdk = 36
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         applicationId = "com.mikeyphw.xdm.android"
@@ -110,7 +111,7 @@ android {
         }
     }
     buildFeatures { compose = true; buildConfig = true }
-    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+    compileOptions { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21 }
     packaging {
         jniLibs.useLegacyPackaging = true
         // Keep only the attested aria2 runtime symbols; release inventory rejects broad debug-symbol retention.

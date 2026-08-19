@@ -34,7 +34,7 @@ instrumentation = "never"
 prefer_native_termux = true
 
 [targets.xdm_android.gradle]
-version = "9.7.0"
+version = "9.7.1"
 provider = "auto"
 max_workers = 2
 structured_events = false
@@ -61,19 +61,19 @@ build = [
 ]
 
 test = [
-  ":browser-extension:test",
-  ":browser-extension:jsTest",
-  ":core-model:test",
-  ":core-utils:test",
-  ":transfer-api:test",
-  ":browser-integration:testDebugUnitTest",
-  ":storage:testDebugUnitTest",
-  ":transfer-native:testDebugUnitTest",
-  ":transfer-aria2:test",
-  ":scheduler:testDebugUnitTest",
-  ":media:test",
-  ":persistence:testDebugUnitTest",
-  ":app:testDebugUnitTest",
+    ":core-model:test",
+    ":core-utils:test",
+    ":browser-extension:jsTest",
+    ":browser-extension:test",
+    ":browser-integration:testDebugUnitTest",
+    ":media:test",
+    ":persistence:testDebugUnitTest",
+    ":scheduler:testDebugUnitTest",
+    ":storage:testDebugUnitTest",
+    ":transfer-api:test",
+    ":transfer-aria2:test",
+    ":transfer-native:testDebugUnitTest",
+    ":app:testDebugUnitTest",
 ]
 
 lint = ["lintDebug"]
@@ -84,6 +84,7 @@ required = true
 
 [validation.phases]
 preflight = [
+  "verifyStableToolchainBaseline",
   ":app:finalRemediationStaticGate",
   ":browser-extension:validateFirefoxExtension",
   ":app:checkBrowserIntegration",
@@ -102,19 +103,19 @@ resources = [
 ]
 
 unit-test = [
-  ":browser-extension:test",
-  ":browser-extension:jsTest",
-  ":core-model:test",
-  ":core-utils:test",
-  ":transfer-api:test",
-  ":browser-integration:testDebugUnitTest",
-  ":storage:testDebugUnitTest",
-  ":transfer-native:testDebugUnitTest",
-  ":transfer-aria2:test",
-  ":scheduler:testDebugUnitTest",
-  ":media:test",
-  ":persistence:testDebugUnitTest",
-  ":app:testDebugUnitTest",
+    ":core-model:test",
+    ":core-utils:test",
+    ":browser-extension:jsTest",
+    ":browser-extension:test",
+    ":browser-integration:testDebugUnitTest",
+    ":media:test",
+    ":persistence:testDebugUnitTest",
+    ":scheduler:testDebugUnitTest",
+    ":storage:testDebugUnitTest",
+    ":transfer-api:test",
+    ":transfer-aria2:test",
+    ":transfer-native:testDebugUnitTest",
+    ":app:testDebugUnitTest",
 ]
 
 package = [

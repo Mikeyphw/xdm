@@ -40,11 +40,37 @@ class PostFinalDiagnosticRepairContractTest {
     }
 
     @Test
+    fun `stable Android toolchain remains normalized`() {
+        val rootBuild = source("build.gradle.kts")
+        val catalog = source("gradle/libs.versions.toml")
+        val wrapper = source("gradle/wrapper/gradle-wrapper.properties")
+        val appBuild = source("app/build.gradle.kts")
+        val coreModelBuild = source("core-model/build.gradle.kts")
+        val ciWorkflow = source(".github/workflows/android.yml")
+
+        assertTrue(rootBuild.contains("verifyStableToolchainBaseline"))
+        assertTrue(catalog.contains("agp = \"9.3.1\""))
+        assertTrue(catalog.contains("kotlin = \"2.4.10\""))
+        assertTrue(catalog.contains("ksp = \"2.3.11\""))
+        assertTrue(catalog.contains("composeBom = \"2026.06.01\""))
+        assertTrue(wrapper.contains("gradle-9.7.1-bin.zip"))
+        assertTrue(wrapper.contains("acd53f1edaf02f1a8ff99879f8a34b302661a057d9b063ae9e35b552f804d20a"))
+        assertTrue(appBuild.contains("buildToolsVersion = \"36.0.0\""))
+        assertTrue(appBuild.contains("targetSdk = 36"))
+        assertTrue(appBuild.contains("JavaVersion.VERSION_21"))
+        assertFalse(appBuild.contains("JavaVersion.VERSION_17"))
+        assertTrue(coreModelBuild.contains("jvmToolchain(21)"))
+        assertTrue(ciWorkflow.contains("java-version: '21'"))
+        assertTrue(ciWorkflow.contains("gradle-version: '9.7.1'"))
+        assertTrue(ciWorkflow.contains("gradle wrapper --gradle-version 9.7.1"))
+    }
+
+    @Test
     fun `devtool owns native termux aapt2 selection without project override`() {
         val devtool = File(repositoryRoot, ".devtool.toml").readText()
 
         assertTrue(devtool.contains("aapt2_provider = \"termux\""))
-        assertTrue(devtool.contains("version = \"9.7.0\""))
+        assertTrue(devtool.contains("version = \"9.7.1\""))
         assertTrue(devtool.contains("provider = \"auto\""))
 
         // The patched Devtool injects the effective Gradle property.

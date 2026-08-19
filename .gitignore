@@ -404,3 +404,42 @@ app/XDM/firefox-amo/xdm-v8-browser-helper.zip
 .devtool/reports/
 .devtool/test-history.json
 .devtool/tmp/
+
+# BEGIN repo-cleanup managed ignores
+# Gradle / Kotlin generated state
+**/.gradle/
+**/.kotlin/
+**/build/
+**/.cxx/
+**/.externalNativeBuild/
+local.properties
+
+# Python generated state
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.tox/
+**/.nox/
+**/.venv/
+**/venv/
+*.py[cod]
+*.egg-info/
+.coverage
+coverage.xml
+htmlcov/
+
+# Node generated state
+**/node_modules/
+
+# Devtool runtime state.
+# Intentionally DO NOT ignore .devtool/artifacts.d.
+**/.devtool/state/
+**/.devtool/reports/
+**/.devtool/tmp/
+**/.devtool/build-artifacts/
+
+# OS noise
+.DS_Store
+Thumbs.db
+# END repo-cleanup managed ignores

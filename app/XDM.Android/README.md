@@ -51,13 +51,13 @@ Phase 16 prepares the Android app for installable release packaging without chan
 
 ## Build
 
-The project targets JDK 17, Android SDK 36, target SDK 36, Gradle 9.7.0, and the pinned version catalog.
+The project targets JDK/Java 21, Android SDK 36, target SDK 36, Build Tools 36.0.0, Gradle 9.7.1, AGP 9.3.1, Kotlin 2.4.10, KSP 2.3.11, and the pinned stable version catalog. Compose stays on BOM 2026.06.01 while compileSdk remains 36; the August 2026 Compose BOM moves core Compose to an API-37 compile lane and is intentionally deferred until the SDK lane is migrated.
 
 ```bash
 tools/devtool-gradle.sh lintDebug :transfer-api:test :storage:test :transfer-native:test :transfer-aria2:test :scheduler:test :media:test testDebugUnitTest assembleDebug
 ```
 
-`tools/devtool-gradle.sh` delegates to `~/.local/bin/build-apk`, which selects or installs the pinned Gradle 9.7.0 distribution and handles Termux/chroot execution. The repository intentionally does not ship a partial wrapper. Run `tools/bootstrap-gradle-wrapper.sh` only when you want to generate and commit a complete standard wrapper, including `gradle-wrapper.jar`.
+`tools/devtool-gradle.sh` delegates to `~/.local/bin/build-apk`, which selects or installs the pinned Gradle 9.7.1 distribution and handles Termux/chroot execution. The repository intentionally does not ship a partial wrapper. Run `tools/bootstrap-gradle-wrapper.sh` only when you want to generate and commit a complete standard wrapper, including `gradle-wrapper.jar`.
 
 To build debug and official signed release APKs from the repository root, provide release signing inputs and run:
 

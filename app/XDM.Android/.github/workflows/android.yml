@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: android-actions/setup-android@v3
       - uses: actions/setup-node@v4
         with:
@@ -22,9 +22,9 @@ jobs:
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.7.0'
+          gradle-version: '9.7.1'
       - name: Bootstrap wrapper when source archive omits the binary jar
-        run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.7.0
+        run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.7.1
       - name: Static phase contracts
         run: |
           python3 tools/validate-foundation.py

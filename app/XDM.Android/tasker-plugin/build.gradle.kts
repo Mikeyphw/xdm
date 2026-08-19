@@ -2,8 +2,9 @@ plugins { alias(libs.plugins.android.library) }
 android {
     namespace = "com.mikeyphw.xdm.android.tasker"
     compileSdk = 36
+    buildToolsVersion = "36.0.0"
     defaultConfig { minSdk = 26 }
-    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+    compileOptions { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21 }
     lint { abortOnError = true; warningsAsErrors = true; disable += "GradleDependency" }
 }
 
