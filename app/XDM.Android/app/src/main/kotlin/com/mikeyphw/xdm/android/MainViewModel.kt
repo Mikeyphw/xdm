@@ -395,6 +395,9 @@ class MainViewModel(
     private val mediaExecutionPlanner = MediaExecutionLibraryPlanner()
     private val mediaExecutionDispatcher = MediaExecutionDispatcher()
     private val nativeStoragePathProbe = NativeStoragePathProbe(destinationWriter)
+    // This lock must be initialized before the init block can launch startup recovery.
+    // Kotlin/JVM initializes properties and init blocks in source order.
+    private val browserCaptureImportMutex = Mutex()
 
     private data class RepositorySnapshot(
         val downloads: List<Download>,
@@ -2925,8 +2928,6 @@ class MainViewModel(
             }
         }
     }
-
-    private val browserCaptureImportMutex = Mutex()
 
     fun ingestEncryptedBrowserCapture(payload: XdmBrowserDeepLinkPayload) {
         val receivedAt = System.currentTimeMillis()
