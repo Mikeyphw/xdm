@@ -1,0 +1,34 @@
+{
+  "schema_version": 3,
+  "applied_at": "2026-08-20T18:42:16.830186Z",
+  "artifact": "/storage/emulated/0/Download/xdm_android_browser_capture_startup_mutex_crash_fix_v1.zip",
+  "artifact_name": "xdm_android_browser_capture_startup_mutex_crash_fix_v1.zip",
+  "type": "overlay",
+  "sha256": "",
+  "content_identity": {
+    "sha256": "",
+    "size": null
+  },
+  "status": "failed",
+  "validation_status": "not-run",
+  "commit_message": "",
+  "commit_hash": "",
+  "file_count": 0,
+  "change_counts": {},
+  "manifest": {},
+  "operation_id": "0ca24679e3784fea8f2353207ac4579e",
+  "history_id": "9d6b6ab686f522317ef8dfd89af5acd7",
+  "rollback_status": "not-needed",
+  "child_outcomes": [
+    {
+      "name": "artifact-check",
+      "returncode": 1,
+      "skipped": false,
+      "failure_kind": "artifact_failure",
+      "overlay_id": "",
+      "overlay_index": 1,
+      "target": ""
+    }
+  ],
+  "validation_plan": {}
+}
