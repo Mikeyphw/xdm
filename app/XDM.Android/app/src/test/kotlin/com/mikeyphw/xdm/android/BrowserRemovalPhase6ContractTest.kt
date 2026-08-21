@@ -54,14 +54,26 @@ class BrowserRemovalPhase6ContractTest {
     fun downloaderAndExternalHandoffRemainPresent() {
         val root = androidRoot()
         val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
-        val appSources = File(root, "app/src/main/kotlin").walkTopDown()
-            .filter { it.isFile && it.extension == "kt" }
-            .joinToString("\n") { it.readText() }
+        val locatorFile =
+            File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MediaLocatorActivity.kt")
+
+        val appSources =
+            File(root, "app/src/main/kotlin").walkTopDown()
+                .filter {
+                    it.isFile &&
+                        it.extension == "kt" &&
+                        it.canonicalFile != locatorFile.canonicalFile
+                }
+                .joinToString("\n") { it.readText() }
         assertTrue(manifest.contains(".ExternalAddDownloadActivity"))
         assertTrue(manifest.contains("android.intent.action.SEND"))
         assertTrue(manifest.contains("com.android.browser.action.DOWNLOAD"))
         assertFalse(appSources.contains("android.webkit"))
         assertFalse(appSources.contains("WebView("))
+
+        val locator = locatorFile.readText()
+        assertTrue(locator.contains("WebView(this)"))
+        assertTrue(locator.contains("MediaSniffingEngine()"))
         listOf(
             "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt",
             "transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt",

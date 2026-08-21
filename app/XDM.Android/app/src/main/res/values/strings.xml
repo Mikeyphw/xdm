@@ -3,4 +3,19 @@
     <string name="downloader_activity_label">XDM Downloader</string>
     <string name="external_add_download_label">Add to XDM</string>
     <string name="external_automation_label">External automation review</string>
+
+    <!-- Dedicated live media locator. -->
+    <string name="media_locator_url_hint" translatable="false">https://site.example/watch/episode</string>
+    <string name="media_locator_locate">Locate media</string>
+    <string name="media_locator_rescan">Rescan page</string>
+    <string name="media_locator_initial_status">Load a page. XDM will list only evidence-backed media candidates.</string>
+    <string name="media_locator_waiting_for_evidence">Page loaded. Waiting for playback/network evidence; start the video if the site requires it.</string>
+    <string name="media_locator_rescanning">Rescanning DOM and recent media resources…</string>
+    <string name="media_locator_invalid_url">Enter an HTTP(S) page URL.</string>
+    <string name="media_locator_loading">Loading page and watching for media…</string>
+    <plurals name="media_locator_candidates_found">
+        <item quantity="one">%1$d media candidate found. Tap it to review it in XDM.</item>
+        <item quantity="other">%1$d media candidates found. Tap one to review it in XDM.</item>
+    </plurals>
+
 </resources>

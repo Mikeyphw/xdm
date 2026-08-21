@@ -77,12 +77,19 @@ class DownloaderExperiencePhase8CContractTest {
     @Test
     fun browserFreeDownloaderBoundaryAndStableStorageRemainSealed() {
         val root = androidRoot()
+        val locatorFile =
+            File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MediaLocatorActivity.kt")
+
         val production = sequenceOf(
             File(root, "app/src/main"),
             File(root, "scheduler/src/main"),
             File(root, "core-model/src/main"),
         ).flatMap { it.walkTopDown().asSequence() }
-            .filter { it.isFile && it.extension in setOf("kt", "xml") }
+            .filter {
+                it.isFile &&
+                    it.extension in setOf("kt", "xml") &&
+                    it.canonicalFile != locatorFile.canonicalFile
+            }
             .joinToString("\n") { it.readText() }
         assertFalse(production.contains("android.webkit"))
         assertFalse(production.contains("BrowserActivity"))

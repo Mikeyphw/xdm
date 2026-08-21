@@ -47,6 +47,6 @@ class BrowserExtensionPhase40ContractTest {
         assertFalse(fab.contains("max-width:390px"))
         assertFalse(fab.contains("setInterval"))
         assertTrue(frame.contains("XdmLauncherUiV1.update"))
-        assertTrue(background.contains("candidateCount: candidateStore.size(tabId)"))
+        assertTrue(background.contains("candidateCount: visibleCandidateSnapshot(tabId, MAX_CANDIDATES_PER_TAB).length"))
     }
 }

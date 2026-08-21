@@ -65,14 +65,14 @@ class MediaLocatorActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         address = EditText(this).apply {
-            hint = "https://site.example/watch/episode"
+            hint = getString(R.string.media_locator_url_hint)
             setSingleLine(true)
             setText(intent.getStringExtra(EXTRA_URL).orEmpty())
         }
-        val go = Button(this).apply { text = "Locate media" }
-        val rescan = Button(this).apply { text = "Rescan page" }
+        val go = Button(this).apply { text = getString(R.string.media_locator_locate) }
+        val rescan = Button(this).apply { text = getString(R.string.media_locator_rescan) }
         status = TextView(this).apply {
-            text = "Load a page. XDM will list only evidence-backed media candidates."
+            text = getString(R.string.media_locator_initial_status)
             setPadding(dp(12), dp(8), dp(12), dp(8))
         }
         webView = WebView(this)
@@ -96,11 +96,24 @@ class MediaLocatorActivity : ComponentActivity() {
         }
         setContentView(root)
 
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
-        webView.settings.mediaPlaybackRequiresUserGesture = false
-        webView.settings.allowFileAccess = false
-        webView.settings.allowContentAccess = false
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            mediaPlaybackRequiresUserGesture = false
+
+            // The WebView exists only as an isolated media-observation runtime.
+            // Do not allow it to become a local-file/content browser.
+            allowFileAccess = false
+            allowContentAccess = false
+
+            // No popup/general-browser window surface.
+            javaScriptCanOpenWindowsAutomatically = false
+            setSupportMultipleWindows(false)
+
+            // Do not permit HTTPS pages to downgrade media/resource requests to
+            // cleartext HTTP inside the locator.
+            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        }
         webView.addJavascriptInterface(MediaObservationBridge(), JS_BRIDGE)
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -117,9 +130,13 @@ class MediaLocatorActivity : ComponentActivity() {
                 address.setText(url)
                 injectLocatorRuntime()
                 status.text = if (located.isEmpty()) {
-                    "Page loaded. Waiting for playback/network evidence; start the video if the site requires it."
+                    getString(R.string.media_locator_waiting_for_evidence)
                 } else {
-                    "${located.size} media candidate(s) found. Tap one to review it in XDM."
+                    resources.getQuantityString(
+                        R.plurals.media_locator_candidates_found,
+                        located.size,
+                        located.size,
+                    )
                 }
             }
         }
@@ -127,7 +144,7 @@ class MediaLocatorActivity : ComponentActivity() {
         go.setOnClickListener { loadAddress() }
         rescan.setOnClickListener {
             injectLocatorRuntime(forceScan = true)
-            status.text = "Rescanning DOM and recent media resources…"
+            status.text = getString(R.string.media_locator_rescanning)
         }
         list.setOnItemClickListener { _, _, position, _ ->
             located.values.sortedWith(compareByDescending<LocatedMedia> { it.rank }.thenBy { it.url })
@@ -148,12 +165,12 @@ class MediaLocatorActivity : ComponentActivity() {
     private fun loadAddress() {
         val normalized = normalizePageUrl(address.text.toString())
         if (normalized == null) {
-            status.text = "Enter an HTTP(S) page URL."
+            status.text = getString(R.string.media_locator_invalid_url)
             return
         }
         located.clear()
         refreshList()
-        status.text = "Loading page and watching for media…"
+        status.text = getString(R.string.media_locator_loading)
         webView.loadUrl(normalized)
     }
 
@@ -211,7 +228,11 @@ class MediaLocatorActivity : ComponentActivity() {
                     if (previous == null || candidate.rank >= previous.rank) located[candidate.url] = candidate
                 }
                 refreshList()
-                status.text = "${located.size} media candidate(s) found. Tap one to review it in XDM."
+                status.text = resources.getQuantityString(
+                    R.plurals.media_locator_candidates_found,
+                    located.size,
+                    located.size,
+                )
             }
         }
     }
@@ -336,7 +357,7 @@ class MediaLocatorActivity : ComponentActivity() {
                   performance.getEntriesByType('resource').forEach((entry) => {
                     const initiator = String(entry.initiatorType || '').toLowerCase();
                     if (initiator !== 'video' && initiator !== 'audio') return;
-                    emit({ url: entry.name, mime: `${initiator}/unknown`, source: 'performance-media' });
+                    emit({ url: entry.name, mime: initiator + '/unknown', source: 'performance-media' });
                   });
                 } catch (_) {}
               };

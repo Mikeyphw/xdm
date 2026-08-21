@@ -293,7 +293,6 @@ class MediaSniffingEngine(
 
     fun sniff(input: MediaSniffingInput): MediaSniffingPlan {
         val rawCandidates = gatherRawCandidates(input)
-        val seen = linkedSetOf<String>()
         val diagnostics = mutableListOf<String>()
         val candidates = mutableListOf<MediaSniffingCandidate>()
 
@@ -307,10 +306,6 @@ class MediaSniffingEngine(
                 diagnostics += "filtered fragment/noise ${PrivacyDiagnosticsRedactor.redactUrl(normalized)}"
                 return@forEach
             }
-            if (!seen.add(normalized)) {
-                diagnostics += "deduped ${PrivacyDiagnosticsRedactor.redactUrl(normalized)}"
-                return@forEach
-            }
             val responseBound = raw.reason == "direct-url" || raw.reason == "body-signature"
             val effectiveMime = raw.mimeType ?: input.mimeType.takeIf { responseBound }
             val effectiveLength = raw.contentLength ?: input.contentLength.takeIf { responseBound }
@@ -322,8 +317,11 @@ class MediaSniffingEngine(
                 pageTitle = input.pageTitle,
                 headers = input.requestHeaders,
             )
-            val kind = if (raw.reason == "body-signature") bodySignatureKind(normalized, input.bodyPrefix) else null
-                ?: classifier.classify(facts)
+            val kind = (if (raw.reason == "body-signature") {
+                bodySignatureKind(normalized, input.bodyPrefix)
+            } else {
+                null
+            }) ?: classifier.classify(facts)
             if (kind == MediaSourceKind.Unknown) {
                 diagnostics += "page-inspection-needed ${PrivacyDiagnosticsRedactor.redactUrl(normalized)}"
                 return@forEach

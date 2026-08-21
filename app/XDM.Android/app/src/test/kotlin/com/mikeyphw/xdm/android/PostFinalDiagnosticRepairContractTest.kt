@@ -19,7 +19,7 @@ class PostFinalDiagnosticRepairContractTest {
         assertTrue(aria2.contains("mapping?.let { snapshot.withProof(it) } ?: snapshot"))
         assertFalse(queue.contains("window.start!!"))
         assertFalse(queue.contains("window.end!!"))
-        assertTrue(browserTest.contains("return \\\"\\\";"))
+        assertTrue(browserTest.contains("HARD_NON_MEDIA_MIME_RE"))
         assertTrue(browserTest.contains("candidate.source !== \\\"webRequest\\\""))
     }
 

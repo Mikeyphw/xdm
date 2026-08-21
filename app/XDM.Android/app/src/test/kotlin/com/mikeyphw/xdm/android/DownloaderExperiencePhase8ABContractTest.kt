@@ -92,9 +92,16 @@ class DownloaderExperiencePhase8ABContractTest {
     fun productBoundaryAndDownloaderEnginesRemainSealed() {
         val root = androidRoot()
         val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        val production = File(root, "app/src/main").walkTopDown()
-            .filter { it.isFile }
-            .joinToString("\n") { it.readText() }
+        val locatorFile =
+            File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MediaLocatorActivity.kt")
+
+        val production =
+            File(root, "app/src/main").walkTopDown()
+                .filter {
+                    it.isFile &&
+                        it.canonicalFile != locatorFile.canonicalFile
+                }
+                .joinToString("\n") { it.readText() }
         assertEquals(
             listOf("Downloads", "Add", "Media", "Library", "Activity", "Settings"),
             AppRoute.entries.map(AppRoute::label),

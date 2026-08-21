@@ -210,15 +210,15 @@ fun DownloadsScreen(
         )
     }
     val runDownloadAction: (Download, DownloadAction) -> Unit = { download, action ->
-        if (!action.enabled) {
-            Unit
-        } else if (action.kind in setOf(DownloadActionKind.Rename, DownloadActionKind.RefreshLink)) {
-            executeDownloadAction(download, action)
-        } else if (action.requiresConfirmation) {
-            confirmationDownloadId = download.id
-            confirmationAction = action
-        } else {
-            executeDownloadAction(download, action)
+        if (action.enabled) {
+            if (action.kind in setOf(DownloadActionKind.Rename, DownloadActionKind.RefreshLink)) {
+                executeDownloadAction(download, action)
+            } else if (action.requiresConfirmation) {
+                confirmationDownloadId = download.id
+                confirmationAction = action
+            } else {
+                executeDownloadAction(download, action)
+            }
         }
     }
 

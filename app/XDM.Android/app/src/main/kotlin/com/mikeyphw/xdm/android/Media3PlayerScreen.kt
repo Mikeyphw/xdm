@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -50,7 +51,7 @@ fun Media3DirectPlayerCard(candidate: MediaPlaybackCandidate, modifier: Modifier
 
             val context = LocalContext.current
             var playerError by remember(candidate.playbackUrl) { mutableStateOf<MediaPlayerErrorSnapshot?>(null) }
-            var playbackPositionMs by remember(candidate.playbackUrl) { mutableStateOf(0L) }
+            var playbackPositionMs by remember(candidate.playbackUrl) { mutableLongStateOf(0L) }
             val player = remember(candidate.playbackUrl) {
                 ExoPlayer.Builder(context).build().apply {
                     setMediaItem(MediaItem.fromUri(Uri.parse(candidate.playbackUrl)))

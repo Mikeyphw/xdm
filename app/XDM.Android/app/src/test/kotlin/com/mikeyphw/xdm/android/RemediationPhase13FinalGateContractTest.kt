@@ -7,7 +7,7 @@ import org.junit.Test
 
 class RemediationPhase13FinalGateContractTest {
     private val root = androidRoot()
-    private val repositoryRoot = root.parentFile.parentFile
+    private val repositoryRoot = requireNotNull(root.parentFile?.parentFile)
 
     @Test
     fun releaseReadinessConsumesExplicitFailClosedValidationEvidence() {

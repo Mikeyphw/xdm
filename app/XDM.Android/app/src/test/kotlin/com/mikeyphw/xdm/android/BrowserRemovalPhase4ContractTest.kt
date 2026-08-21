@@ -23,14 +23,39 @@ class BrowserRemovalPhase4ContractTest {
         assertFalse(manifest.contains(".BrowserActivity"))
         assertFalse(strings.contains("browser_activity_label"))
 
-        val appSource = File(root, "app/src/main/kotlin").walkTopDown()
-            .filter(File::isFile)
-            .filter { it.extension == "kt" }
-            .joinToString("\n") { it.readText() }
-        assertFalse(appSource.contains("android.webkit"))
-        assertFalse(appSource.contains("WebView("))
-        assertFalse(appSource.contains("WebViewClient"))
-        assertFalse(appSource.contains("WebChromeClient"))
+        val locatorFile =
+            File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MediaLocatorActivity.kt")
+        val locator = locatorFile.readText()
+
+        val appSourceWithoutLocator =
+            File(root, "app/src/main/kotlin").walkTopDown()
+                .filter(File::isFile)
+                .filter {
+                    it.extension == "kt" &&
+                        it.canonicalFile != locatorFile.canonicalFile
+                }
+                .joinToString("\n") { it.readText() }
+
+        // A general embedded browser must still never return.
+        assertFalse(appSourceWithoutLocator.contains("android.webkit"))
+        assertFalse(appSourceWithoutLocator.contains("WebView("))
+        assertFalse(appSourceWithoutLocator.contains("WebViewClient"))
+        assertFalse(appSourceWithoutLocator.contains("WebChromeClient"))
+
+        // WebKit is deliberately isolated to the media locator.
+        assertTrue(locator.contains("class MediaLocatorActivity : ComponentActivity()"))
+        assertTrue(locator.contains("WebView(this)"))
+        assertTrue(locator.contains("MediaSniffingEngine()"))
+
+        // The locator discovers/reviews media. It is not a downloader.
+        assertFalse(locator.contains("viewModel.addDownload("))
+        assertFalse(locator.contains("executionStarter.start"))
+
+        // It must never be externally launchable.
+        val locatorManifest =
+            manifest.substringAfter("android:name=\".MediaLocatorActivity\"")
+                .substringBefore("/>")
+        assertTrue(locatorManifest.contains("android:exported=\"false\""))
     }
 
     @Test

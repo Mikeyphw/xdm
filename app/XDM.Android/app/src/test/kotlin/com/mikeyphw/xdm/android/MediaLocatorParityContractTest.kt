@@ -21,6 +21,24 @@ class MediaLocatorParityContractTest {
         assertTrue(locator.contains("initiator !== 'video' && initiator !== 'audio'"))
         assertFalse(locator.contains("MEDIA_EXT.test(entry.name)"))
         assertTrue(locator.contains("MediaSniffingEngine()"))
+
+        // WebView is an intentional, tightly bounded exception.
+        assertTrue(locator.contains("allowFileAccess = false"))
+        assertTrue(locator.contains("allowContentAccess = false"))
+        assertTrue(locator.contains("javaScriptCanOpenWindowsAutomatically = false"))
+        assertTrue(locator.contains("setSupportMultipleWindows(false)"))
+        assertTrue(locator.contains("MIXED_CONTENT_NEVER_ALLOW"))
+
+        // Top-level navigation is HTTP(S)-only.
+        assertTrue(
+            locator.contains(
+                "uri.scheme.equals(\"http\", true) || uri.scheme.equals(\"https\", true)"
+            )
+        )
+
+        // Media locator may discover/review candidates, never start downloads.
+        assertFalse(locator.contains("viewModel.addDownload("))
+        assertFalse(locator.contains("executionStarter.start"))
         assertTrue(locator.contains("MediaSniffingSource.NetworkObservation"))
         assertTrue(locator.contains("CookieManager.getInstance().getCookie"))
         assertTrue(locator.contains("XdmBrowserDeepLinkContract.CurrentVersion.toString()"))
