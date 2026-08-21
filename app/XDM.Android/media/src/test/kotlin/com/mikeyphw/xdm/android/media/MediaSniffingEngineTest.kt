@@ -8,7 +8,7 @@ import org.junit.Test
 
 class MediaSniffingEngineTest {
     @Test
-    fun snifferExtractsJsonHtmlEscapedCssAndRelativeMediaUrls() {
+    fun snifferExtractsExplicitMediaEvidenceButIgnoresCssAndGenericLinks() {
         val engine = MediaSniffingEngine(MediaCaptureService(clock = { 47L }))
         val plan = engine.sniff(
             MediaSniffingInput(
@@ -26,16 +26,16 @@ class MediaSniffingEngineTest {
             ),
         )
 
-        assertEquals(4, plan.candidates.size)
+        assertEquals(3, plan.candidates.size)
         assertTrue(plan.candidates.first().kind == MediaSourceKind.HlsPlaylist || plan.candidates.first().kind == MediaSourceKind.DashManifest)
         assertTrue(plan.candidates.filter { it.kind == MediaSourceKind.HlsPlaylist || it.kind == MediaSourceKind.DashManifest }.all { it.rank > plan.candidates.last().rank })
         assertTrue(plan.candidates.any { it.url == "https://watch.example.test/assets/preview.mp4" })
-        assertTrue(plan.candidates.any { it.url == "https://watch.example.test/trailers/feature.webm" })
+        assertFalse(plan.candidates.any { it.url == "https://watch.example.test/trailers/feature.webm" })
         assertTrue(plan.candidates.any { it.url.contains("token=abc&sig=keep") })
         assertTrue(plan.candidates.any { it.kind == MediaSourceKind.DashManifest })
         assertFalse(plan.candidates.any { it.url.endsWith("segment-1.ts") })
-        assertEquals(4, plan.records.size)
-        assertTrue(plan.summary.contains("4 candidates"))
+        assertEquals(3, plan.records.size)
+        assertTrue(plan.summary.contains("3 candidates"))
     }
 
     @Test
@@ -80,4 +80,54 @@ class MediaSniffingEngineTest {
         assertFalse(diagnostics.contains("Bearer"))
         assertFalse(diagnostics.contains("Cookie"))
     }
+    @Test
+    fun jsonHtmlImagesAndScriptsDoNotBecomeMediaBecauseTheirUrlsLookLikeMedia() {
+        val engine = MediaSniffingEngine(MediaCaptureService(clock = { 48L }))
+        val plan = engine.sniff(
+            MediaSniffingInput(
+                url = "https://api.example.test/fake.mp4",
+                mimeType = "application/json",
+                bodyPrefix = """
+                    {
+                      "url": "https://cdn.example.test/not-media.mp4",
+                      "poster": "https://cdn.example.test/poster.mp4",
+                      "analytics": "https://cdn.example.test/event.m3u8"
+                    }
+                """.trimIndent(),
+                source = MediaSniffingSource.NetworkObservation,
+            ),
+        )
+
+        assertTrue(plan.candidates.isEmpty())
+        assertTrue(plan.records.isEmpty())
+    }
+
+    @Test
+    fun structuredMediaKeysAndActualMediaDomSourcesRemainDiscoverable() {
+        val engine = MediaSniffingEngine(MediaCaptureService(clock = { 49L }))
+        val plan = engine.sniff(
+            MediaSniffingInput(
+                url = "https://watch.example.test/api/player",
+                mimeType = "application/json",
+                pageUrl = "https://watch.example.test/episode/49",
+                bodyPrefix = """
+                    {
+                      "videoUrl": "https://cdn.example.test/movie.mp4?sig=keep",
+                      "manifestUrl": "https://cdn.example.test/master.m3u8?token=keep",
+                      "poster": "https://cdn.example.test/fake-poster.mp4"
+                    }
+                    <video poster="https://cdn.example.test/not-a-video.mp4"><source src="/media/actual.webm" type="video/webm"></video>
+                    <img src="https://cdn.example.test/image-that-ends-mp4.mp4">
+                """.trimIndent(),
+                source = MediaSniffingSource.AppPageProbe,
+            ),
+        )
+
+        assertTrue(plan.candidates.any { it.url.contains("movie.mp4?sig=keep") })
+        assertTrue(plan.candidates.any { it.url.contains("master.m3u8?token=keep") })
+        assertTrue(plan.candidates.any { it.url == "https://watch.example.test/media/actual.webm" })
+        assertFalse(plan.candidates.any { it.url.contains("fake-poster.mp4") })
+        assertFalse(plan.candidates.any { it.url.contains("image-that-ends-mp4.mp4") })
+    }
+
 }

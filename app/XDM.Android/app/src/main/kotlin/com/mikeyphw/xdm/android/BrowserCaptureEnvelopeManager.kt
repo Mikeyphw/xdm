@@ -86,7 +86,7 @@ class BrowserCaptureEnvelopeManager {
 
     fun decrypt(payload: XdmBrowserDeepLinkPayload, nowEpochMs: Long = System.currentTimeMillis()): Result<DecodedSession> = runCatching {
         require(payload.hasEncryptedCaptureEnvelope) { "Encrypted capture envelope is incomplete" }
-        require(payload.captureKeyId == keyId) { "Browser capture key is stale; regenerate the XPI" }
+        require(payload.captureKeyId == keyId) { "Legacy v2 browser capture key no longer matches this app install. Replace the old extension with the v3 XPI once; v3 is not tied to app keys." }
         val wrappedKey = decodeBase64Url(requireNotNull(payload.wrappedKey))
         val iv = decodeBase64Url(requireNotNull(payload.envelopeIv))
         val ciphertext = decodeBase64Url(requireNotNull(payload.envelopeCiphertext))

@@ -9,21 +9,6 @@ object BrowserExtensionPackageCli {
         val output = File(required(options, "output"))
         val channel = enumValue(options["channel"] ?: "release", BrowserExtensionSourceContract.Channel.entries) { it.wireValue }
         val defaultTarget = enumValue(options["default-target"] ?: "xdm", BrowserExtensionSourceContract.Target.entries) { it.wireValue }
-        val captureKeyId = options["capture-key-id"].orEmpty()
-        val capturePublicKeySpki = options["capture-public-key-spki"].orEmpty()
-        val captureOaepHash = options["capture-oaep-hash"] ?: if (
-            channel == BrowserExtensionSourceContract.Channel.Debug &&
-            captureKeyId.isBlank() && capturePublicKeySpki.isBlank()
-        ) {
-            "SHA-256"
-        } else {
-            required(options, "capture-oaep-hash")
-        }
-        if (capturePublicKeySpki.isNotBlank()) {
-            require(captureKeyId == captureKeyIdForSpki(capturePublicKeySpki)) {
-                "Capture key id must equal SHA-256(SPKI DER).take(24)"
-            }
-        }
         val config = BrowserExtensionBuildConfig(
             extensionVersion = options["extension-version"] ?: BrowserExtensionSourceContract.DevelopmentVersion,
             appVersion = required(options, "app-version"),
@@ -32,9 +17,6 @@ object BrowserExtensionPackageCli {
             xdmScheme = required(options, "xdm-scheme"),
             defaultTarget = defaultTarget,
             themeMode = enumValue(options["theme"] ?: "dark", BrowserExtensionSourceContract.ThemeMode.entries) { it.wireValue },
-            captureKeyId = captureKeyId,
-            capturePublicKeySpki = capturePublicKeySpki,
-            captureOaepHash = captureOaepHash,
         )
         val result = BrowserExtensionPackageGenerator().generateToFile(config, output)
         println("${result.fileName}\t${result.byteCount}\t${result.sha256}\t${output.absolutePath}")

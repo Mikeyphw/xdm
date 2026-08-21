@@ -5,6 +5,7 @@
   const SEGMENT_PATH_RE = /(?:^|[\/_-])(?:seg(?:ment)?|frag(?:ment)?|chunk|part|init)(?:[\/_-]?\d+)?(?:[\/_-]|\.|$)/i;
   const AD_RE = /doubleclick|googlesyndication|googleadservices|adservice|adserver|\/ads?(?:\/|\?|$)|vast|vmap|preroll|midroll|postroll|ima3/i;
   const STREAM_HINT_RE = /(?:videoplayback|video[_-]?stream|media[_-]?stream|master(?:\.|\/|\?|$)|playlist|manifest|\/stream(?:\/|\?|$)|\/playback(?:\/|\?|$)|hls|dash)/i;
+  const HARD_NON_MEDIA_MIME_RE = /^(?:application\/(?:json|ld\+json|javascript|x-javascript)|text\/(?:html|css|javascript)|image\/|font\/)/i;
   const TEXT_MIME_RE = /^(?:text\/|application\/(?:json|ld\+json|javascript|x-javascript|xml|xhtml\+xml|rss\+xml|atom\+xml|vnd\.apple\.mpegurl|x-mpegurl|dash\+xml))/i;
   const MANIFEST_KEY_RE = /(?:^|["'\s{,])(?:manifest|playlist|hls|dash|m3u8|mpd)(?:url|src)?["'\s]*[:=]/i;
   const STRONG_MEDIA_KEY_RE = /(?:^|["'\s{,])(?:file|video|audio|media|stream|mp4)(?:url|src)?["'\s]*[:=]/i;
@@ -119,7 +120,11 @@
     if (isLikelyAd(url)) return makeRejected("ad");
     if (isLikelySegment(url)) return makeRejected("segment");
 
-    const manifest = isManifest(url, mime);
+    if (mime && HARD_NON_MEDIA_MIME_RE.test(mime)) return makeRejected("non-media-mime");
+
+    const manifestByMime = isManifest("", mime);
+    const manifestByExtension = MANIFEST_EXT_RE.test(url);
+    const manifest = manifestByMime || manifestByExtension;
     const mediaMime = mime.startsWith("video/") || mime.startsWith("audio/");
     const extension = MEDIA_EXT_RE.test(url);
     const streamHint = STREAM_HINT_RE.test(url);
@@ -131,14 +136,25 @@
 
     let result = null;
 
-    if (manifest) {
-      result = makeAccepted("manifest", 1100, QUALITY_STRONG, { manifest: true, mediaMime: false });
+    if (manifestByMime) {
+      result = makeAccepted("manifest-mime", 1100, QUALITY_STRONG, { manifest: true, mediaMime: false });
+    } else if (manifestByExtension) {
+      // A manifest-looking suffix is only a locator hint for generic fetch/XHR traffic.
+      // It becomes strong only with manifest MIME/body evidence or real media playback.
+      result = mediaRequest
+        ? makeAccepted("manifest-media-request", 930, QUALITY_STRONG, { manifest: true, mediaMime: false })
+        : makeAccepted("possible-manifest-extension", rangeContext ? 790 : 730, QUALITY_POSSIBLE, { manifest: true, mediaMime: false });
     } else if (mediaMime) {
       // MIME remains authoritative, but the quality bucket makes later UI and
       // dispatch decisions explicit instead of trusting every stream-shaped URL.
       result = makeAccepted(mediaRequest ? "media-mime" : "xhr-media-mime", mediaRequest ? 980 : 930, QUALITY_STRONG, { manifest: false, mediaMime: true });
     } else if (extension) {
-      result = makeAccepted("media-extension", mediaRequest ? 900 : (xhrLike ? 860 : 830), QUALITY_STRONG, { manifest: false, mediaMime: false });
+      // A filename suffix is useful evidence, but is not enough to auto-offer a random
+      // fetch/XHR/resource. Actual media requests stay strong; everything else needs
+      // playback/body/header corroboration before it can be promoted.
+      result = mediaRequest
+        ? makeAccepted("media-extension", 900, QUALITY_STRONG, { manifest: false, mediaMime: false })
+        : makeAccepted("possible-media-extension", rangeContext ? 790 : 730, QUALITY_POSSIBLE, { manifest: false, mediaMime: false });
     } else if (dispositionMedia) {
       result = makeAccepted("media-disposition", rangeContext ? 880 : 840, QUALITY_STRONG, { manifest: false, mediaMime: false });
     } else if (octet && mediaRequest && rangeContext) {
@@ -182,10 +198,14 @@
 
   function candidateSignal(url, context) {
     const sample = String(context || "");
-    if (isManifest(url, "")) return { confidence: 1050, quality: QUALITY_STRONG, reason: "body-manifest-url" };
-    if (MANIFEST_KEY_RE.test(sample) && STREAM_HINT_RE.test(url)) return { confidence: 980, quality: QUALITY_STRONG, reason: "body-manifest-url" };
-    if (MEDIA_EXT_RE.test(url)) return { confidence: 880, quality: QUALITY_STRONG, reason: "body-media-url" };
-    if (STRONG_MEDIA_KEY_RE.test(sample) && STREAM_HINT_RE.test(url)) return { confidence: 720, quality: QUALITY_POSSIBLE, reason: "body-possible-media-url" };
+    if (MANIFEST_KEY_RE.test(sample) && (isManifest(url, "") || STREAM_HINT_RE.test(url))) {
+      return { confidence: 980, quality: QUALITY_STRONG, reason: "body-manifest-url" };
+    }
+    if (STRONG_MEDIA_KEY_RE.test(sample) && MEDIA_EXT_RE.test(url)) {
+      return { confidence: 860, quality: QUALITY_STRONG, reason: "body-media-url" };
+    }
+    // Do not promote extensionless URLs merely because JSON calls them "stream" or "media".
+    // Runtime response MIME, playback observation, or manifest evidence must corroborate them.
     return null;
   }
 

@@ -49,12 +49,12 @@ if manifest.get("content_scripts", [{}])[0].get("all_frames") is not True:
     ERRORS.append("extension must collect from all frames")
 
 handoff = require(Path("browser-extension/src/main/extension/xdm-firefox/handoff.js"))
-for token in ('`${scheme}://capture?${params.toString()}`', 'params.set("v"', 'params.set("sid"', 'params.set("kid"', 'params.set("ek"', 'params.set("iv"', 'params.set("ct"', 'idmdownload:'):
-    if token not in handoff: ERRORS.append(f"handoff contract missing {token}")
-if 'params.set("url"' in handoff:
-    ERRORS.append("encrypted v2 outer capture URI must not expose the media URL")
+for token in ('`${scheme}://capture?${params.toString()}`', 'params.set("v"', 'params.set("url"', 'buildCaptureSession', 'sanitizeHeaderBag', 'idmdownload:'):
+    if token not in handoff: ERRORS.append(f"direct-v3 handoff contract missing {token}")
+for token in ('params.set("kid"', 'params.set("ek"', 'params.set("iv"', 'params.set("ct"', "crypto.subtle"):
+    if token in handoff: ERRORS.append(f"new keyless v3 handoff must not contain legacy crypto token {token}")
 for token in ("extra_cookies", "extra_authorization", "extra_headers", "proxy-authorization"):
-    if token in handoff: ERRORS.append(f"XDM custom URI must not carry {token}")
+    if token in handoff: ERRORS.append(f"XDM custom URI must not carry legacy unrestricted field {token}")
 
 popup = require(Path("browser-extension/src/main/extension/xdm-firefox/popup.html"))
 if re.search(r"(?:xdmdownload|idmdownload|1dmdownload|intent):", popup, re.I):

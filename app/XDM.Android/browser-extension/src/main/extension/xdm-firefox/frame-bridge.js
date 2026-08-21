@@ -264,15 +264,15 @@ ${location.href}`;
       const builtLinks = globalThis.XdmHandoffV1.buildTargets(handoffInput);
       const allowDirectAdd = Boolean(input.manualAdd || isProbe);
       const links = Object.freeze({
-        // Detected media is encrypted-v2 only. Manual/page/probe actions may use the
-        // separate non-sensitive add?v=1 contract; never use it as a capture fallback.
+        // Detected media uses the direct v3 locator contract. Manual/page/probe actions may
+        // still use the separate add?v=1 contract.
         xdm: input.prebuiltXdmLink || (allowDirectAdd ? builtLinks.xdm : ""),
         oneDm: builtLinks.oneDm,
         filename: builtLinks.filename,
       });
       if (!links || (!links.xdm && !links.oneDm)) throw new Error("Launcher URL generation failed.");
       if (target === "xdm" && !links.xdm) {
-        throw new Error("Secure XDM capture handoff is unavailable; plaintext fallback is disabled.");
+        throw new Error("XDM capture handoff is unavailable for this candidate.");
       }
       const launcherInput = {
         url,
@@ -583,7 +583,7 @@ ${location.href}`;
       const playback = evaluateAllVideos();
       return Object.freeze({ ok: true, playback, health: dependencyHealth() });
     },
-    version: "1.2.0"
+    version: "1.3.0"
   });
 
   if (document.documentElement) start();

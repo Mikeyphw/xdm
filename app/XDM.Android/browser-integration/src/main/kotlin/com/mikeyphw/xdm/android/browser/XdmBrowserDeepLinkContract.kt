@@ -1,10 +1,11 @@
 package com.mikeyphw.xdm.android.browser
 
-/** Versioned, browser-safe handoff contract shared by XDM Android and its Firefox extension. */
+/** Versioned browser handoff contract shared by XDM Android and its Firefox extension. */
 object XdmBrowserDeepLinkContract {
     const val LegacyVersion = 1
-    const val CurrentVersion = 2
-    val SupportedVersions: Set<Int> = setOf(LegacyVersion, CurrentVersion)
+    const val EncryptedCaptureVersion = 2
+    const val CurrentVersion = 3
+    val SupportedVersions: Set<Int> = setOf(LegacyVersion, EncryptedCaptureVersion, CurrentVersion)
 
     const val ReleaseScheme = "xdmdownload"
     const val DebugScheme = "xdmdownload-debug"
@@ -25,6 +26,12 @@ object XdmBrowserDeepLinkContract {
     const val DurationMsParameter = "durationMs"
     const val ThumbnailUrlParameter = "thumbnail"
     const val FrameUrlParameter = "frame"
+    const val RawHeadersParameter = "headers"
+    const val ProposedHeadersParameter = "proposedHeaders"
+    const val FinalHeadersParameter = "finalHeaders"
+
+    // Legacy encrypted-v2 fields. Reader support remains so an already-installed old XPI
+    // can still hand off while it is being replaced; newly generated XPIs never emit them.
     const val CaptureSessionIdParameter = "sid"
     const val CaptureKeyIdParameter = "kid"
     const val WrappedKeyParameter = "ek"
@@ -45,6 +52,9 @@ object XdmBrowserDeepLinkContract {
     const val MaxMediaKindCharacters = 32
     const val MaxStableMediaIdCharacters = 160
     const val MaxThumbnailUrlBytes = 8 * 1024
+    const val MaxHeaderBlockCharacters = 12 * 1024
+    const val MaxHeaderValueCharacters = 8 * 1024
+    const val MaxHeaderLines = 24
 
     val BuildVariantSchemes: Set<String> = setOf(ReleaseScheme, DebugScheme)
 }

@@ -2,9 +2,9 @@ package com.mikeyphw.xdm.android.browserextension
 
 /** Stable source and packaging contract shared by Gradle and the Android runtime. */
 object BrowserExtensionSourceContract {
-    const val ContractVersion = 2
+    const val ContractVersion = 3
     const val ExtensionId = "xdm-android-media-bridge@mikeyphw"
-    const val DevelopmentVersion = "1.2.0"
+    const val DevelopmentVersion = "1.3.0"
     const val DefaultApplicationId = "com.mikeyphw.xdm.android"
     const val DefaultScheme = "xdmdownload"
     const val BodyInspectionLimitBytes = 786_432

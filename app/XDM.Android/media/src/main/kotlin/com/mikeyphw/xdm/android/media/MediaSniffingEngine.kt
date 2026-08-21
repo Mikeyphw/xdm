@@ -281,11 +281,14 @@ class MediaSniffingEngine(
     )
 
     private val urlPattern = Regex("""https?://[^\s<>\"'`]+""", RegexOption.IGNORE_CASE)
-    private val htmlAttributePattern = Regex(
-        """(?:src|href|poster|data-src|data-href|data-url)\s*=\s*['\"]([^'\"]+)['\"]""",
+    private val structuredMediaValuePattern = Regex(
+        """["'](?:manifest|playlist|hls|dash|m3u8|mpd|file|video|audio|media|stream|mp4)(?:Url|URL|_url|_src|url|src)?["']\s*[:=]\s*["']([^"'\r\n]{1,2200})["']""",
         RegexOption.IGNORE_CASE,
     )
-    private val cssUrlPattern = Regex("""url\((?:['\"]?)([^)'\"]+)(?:['\"]?)\)""", RegexOption.IGNORE_CASE)
+    private val mediaTagPattern = Regex(
+        """<(?:video|audio|source)\b[^>]*?\bsrc\s*=\s*['"]([^'"]+)['"]""",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
     private val unicodeEscapePattern = Regex("""\\u([0-9a-fA-F]{4})""")
 
     fun sniff(input: MediaSniffingInput): MediaSniffingPlan {
@@ -308,26 +311,30 @@ class MediaSniffingEngine(
                 diagnostics += "deduped ${PrivacyDiagnosticsRedactor.redactUrl(normalized)}"
                 return@forEach
             }
+            val responseBound = raw.reason == "direct-url" || raw.reason == "body-signature"
+            val effectiveMime = raw.mimeType ?: input.mimeType.takeIf { responseBound }
+            val effectiveLength = raw.contentLength ?: input.contentLength.takeIf { responseBound }
             val facts = MediaRequestFacts(
                 url = normalized,
-                mimeType = raw.mimeType ?: input.mimeType,
-                contentLength = raw.contentLength ?: input.contentLength,
+                mimeType = effectiveMime,
+                contentLength = effectiveLength,
                 pageUrl = input.pageUrl ?: input.finalUrl,
                 pageTitle = input.pageTitle,
                 headers = input.requestHeaders,
             )
-            val kind = bodySignatureKind(normalized, input.bodyPrefix) ?: classifier.classify(facts)
+            val kind = if (raw.reason == "body-signature") bodySignatureKind(normalized, input.bodyPrefix) else null
+                ?: classifier.classify(facts)
             if (kind == MediaSourceKind.Unknown) {
                 diagnostics += "page-inspection-needed ${PrivacyDiagnosticsRedactor.redactUrl(normalized)}"
                 return@forEach
             }
-            val rank = rankFor(kind, normalized, raw.reason, raw.contentLength ?: input.contentLength)
+            val rank = rankFor(kind, normalized, raw.reason, effectiveLength)
             candidates += MediaSniffingCandidate(
                 url = normalized,
                 kind = kind,
                 rank = rank,
-                reason = reasonFor(kind, raw.reason, input.mimeType, input.bodyPrefix),
-                mimeType = raw.mimeType ?: input.mimeType ?: mimeFor(kind),
+                reason = reasonFor(kind, raw.reason, effectiveMime, input.bodyPrefix),
+                mimeType = effectiveMime ?: mimeFor(kind),
                 pageUrl = input.pageUrl ?: input.finalUrl,
                 title = input.pageTitle,
             )
@@ -423,9 +430,15 @@ class MediaSniffingEngine(
             if (bodySignatureKind(input.finalUrl ?: input.url.orEmpty(), decoded) != null) {
                 listOfNotNull(input.finalUrl, input.url).firstOrNull()?.let { raw += RawCandidate(it, "body-signature", input.mimeType, input.contentLength) }
             }
-            urlPattern.findAll(decoded).forEach { match -> raw += RawCandidate(match.value.cleanExtractedUrl(), "json-or-script-url") }
-            htmlAttributePattern.findAll(decoded).forEach { match -> raw += RawCandidate(match.groupValues[1].cleanExtractedUrl(), "html-attribute") }
-            cssUrlPattern.findAll(decoded).forEach { match -> raw += RawCandidate(match.groupValues[1].cleanExtractedUrl(), "css-url") }
+            structuredMediaValuePattern.findAll(decoded).forEach { match ->
+                raw += RawCandidate(match.groupValues[1].cleanExtractedUrl(), "structured-media-key")
+            }
+            mediaTagPattern.findAll(decoded).forEach { match ->
+                raw += RawCandidate(match.groupValues[1].cleanExtractedUrl(), "media-dom-source")
+            }
+            if (input.source in setOf(MediaSniffingSource.BatchInput, MediaSniffingSource.SharedText, MediaSniffingSource.ManualPage)) {
+                urlPattern.findAll(decoded).forEach { match -> raw += RawCandidate(match.value.cleanExtractedUrl(), "user-supplied-url") }
+            }
         }
         return raw
     }
@@ -487,7 +500,8 @@ class MediaSniffingEngine(
             MediaSourceKind.Unknown -> 0
         }
         if (reason == "body-signature") rank += 12
-        if (reason == "html-attribute") rank += 4
+        if (reason == "media-dom-source") rank += 12
+        if (reason == "structured-media-key") rank += 8
         if (url.contains("preview", ignoreCase = true) || url.contains("thumbnail", ignoreCase = true)) rank -= 25
         if ((contentLength ?: Long.MAX_VALUE) in 1L..262_143L) rank -= 20
         return rank.coerceIn(0, 150)

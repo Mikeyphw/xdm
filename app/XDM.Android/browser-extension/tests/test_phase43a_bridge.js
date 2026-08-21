@@ -185,7 +185,7 @@ assert.strictEqual(manual.health.hasHandoff, true);
 assert.strictEqual(manual.health.hasFab, true);
 assert(host(plain) && host(plain).shadowRoot, "manual probe must leave the real FAB mounted");
 
-const secureCaptureLink = "xdmdownload://capture?v=2&sid=session-12345678&kid=capture-key-1234&ek=wrapped&iv=nonce&ct=ciphertext";
+const secureCaptureLink = "xdmdownload://capture?v=3&url=https%3A%2F%2Fcdn.example%2Fvideo.mp4&kind=video";
 const noEncryptedFallback = createContext();
 assert.strictEqual(noEncryptedFallback.__xdmInPageBridgeV1.offerNetwork({
   url: "https://cdn.example/master.m3u8",
@@ -195,7 +195,7 @@ assert.strictEqual(noEncryptedFallback.__xdmInPageBridgeV1.offerNetwork({
   autoOffer: true,
   candidateCount: 1,
   streamKind: "hls"
-}), false, "automatic media offer without encrypted XDM handoff must fail closed");
+}), false, "automatic media offer without a prebuilt direct XDM handoff must fail closed");
 const networkOnly = createContext();
 assert.strictEqual(networkOnly.__xdmInPageBridgeV1.offerNetwork({
   url: "https://cdn.example/master.m3u8",
@@ -206,7 +206,7 @@ assert.strictEqual(networkOnly.__xdmInPageBridgeV1.offerNetwork({
   candidateCount: 1,
   streamKind: "hls",
   prebuiltXdmLink: secureCaptureLink
-}), true, "high-confidence HLS network candidate must show with an encrypted-v2 XDM handoff");
+}), true, "high-confidence HLS network candidate must show with a direct-v3 XDM handoff");
 assert.strictEqual(host(networkOnly).dataset.streamKind, "hls");
 
 const encryptedBlobVideo = new FakeVideoElement();

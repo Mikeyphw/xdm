@@ -32,7 +32,7 @@ class DebugWorkbenchD4BridgeAddDownloadDebuggerContractTest {
         assertTrue(card.contains("Copy Add debugger"))
         assertTrue(models.contains("copy-only diagnostics"))
         assertTrue(models.contains("review-only; no transfer starts"))
-        assertTrue(models.contains("secure v2 handoff only"))
+        assertTrue(models.contains("direct v3 media-locator handoff"))
         assertFalse(models.contains("testUri(scheme, \"capture\")"))
         assertFalse(models.contains("\$scheme://capture?v=1"))
         assertFalse(card.contains("onClick = {}"))

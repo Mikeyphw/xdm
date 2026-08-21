@@ -7,7 +7,7 @@
   const DIAGNOSTICS_KEY = "xdmNetworkDiagnosticsV1";
   const MESSAGE_TYPE = "xdmPageObservationV1";
   const PLAYBACK_TYPE = "xdmFramePlaybackV1";
-  const HEADER_ALLOWLIST = new Set(["authorization", "cookie", "referer", "user-agent", "origin", "accept", "range"]);
+  const HEADER_ALLOWLIST = new Set(["authorization", "cookie", "referer", "user-agent", "origin", "accept", "accept-language", "range"]);
   const MAX_DIAGNOSTIC_TABS = 40;
   const MAX_CANDIDATES_PER_TAB = 160;
   const CANDIDATE_TTL_MS = 5 * 60 * 1000;
@@ -42,7 +42,7 @@
       await browser.storage.local.set({
         [STATUS_KEY]: Object.assign({
           active: true,
-          version: "1.2.0",
+          version: "1.3.0",
           startedAt: Date.now(),
           lastError: ""
         }, previous[STATUS_KEY] || {}, extra)
@@ -186,7 +186,7 @@
         pageResponses: counter.pageResponses,
         bodyCandidates: counter.bodyCandidates,
         frameCount: counter.frames.size,
-        candidateCount: candidateStore.size(tabId)
+        candidateCount: visibleCandidateSnapshot(tabId, MAX_CANDIDATES_PER_TAB).length
       };
       const entries = Object.entries(all).sort((a, b) => Number(b[1].at || 0) - Number(a[1].at || 0));
       await browser.storage.local.set({ [DIAGNOSTICS_KEY]: Object.fromEntries(entries.slice(0, MAX_DIAGNOSTIC_TABS)) });
@@ -225,7 +225,6 @@
   }
 
   function mergeCandidate(tabId, candidate) {
-    if (!allowsQuality(candidate && candidate.quality)) return false;
     const safe = Object.assign({}, candidate, {
       headers: sanitizeHeaderObject(candidate && candidate.headers || {}),
       browserHandoff: candidate && candidate.browserHandoff ? capturedHeaderPayload(candidate.browserHandoff) : undefined,
@@ -246,6 +245,12 @@
       sessionRevision: Math.max(Number(candidate && candidate.sessionRevision || 0), Date.now()),
     });
     return candidateStore.merge(tabId, safe);
+  }
+
+  function visibleCandidateSnapshot(tabId, limit = MAX_CANDIDATES_PER_TAB) {
+    return candidateStore.snapshot(tabId, MAX_CANDIDATES_PER_TAB)
+      .filter(candidate => allowsQuality(candidate && candidate.quality))
+      .slice(0, Math.max(1, Number(limit || MAX_CANDIDATES_PER_TAB)));
   }
 
   function scheduleDispatch(tabId, delay = 500) {
@@ -287,17 +292,20 @@
   function candidateStreamKind(candidate) {
     const url = String(candidate && candidate.url || "");
     const mime = CORE.normalizeMime(candidate && candidate.contentType || "");
-    if (/\.mpd(?:$|[?#])/i.test(url) || mime === "application/dash+xml") return "dash";
-    if (/\.m3u8(?:$|[?#])/i.test(url) || /mpegurl/i.test(mime)) return "hls";
-    if (mime.startsWith("audio/")) return "audio";
-    if (mime.startsWith("video/")) return "video";
+    const disposition = String(candidate && candidate.contentDisposition || "");
+    if (/\.mpd(?:$|[?#])/i.test(url) || mime === "application/dash+xml" || /filename\*?=.*\.mpd(?:["'\s;]|$)/i.test(disposition)) return "dash";
+    if (/\.m3u8(?:$|[?#])/i.test(url) || /mpegurl/i.test(mime) || /filename\*?=.*\.m3u8(?:["'\s;]|$)/i.test(disposition)) return "hls";
+    if (mime.startsWith("audio/") || /filename\*?=.*\.(?:mp3|m4a|aac|flac|wav|ogg|opus)(?:["'\s;]|$)/i.test(disposition)) return "audio";
+    if (mime.startsWith("video/") || /filename\*?=.*\.(?:mp4|m4v|webm|mkv|mov|avi|flv|mpeg|mpg|ogv)(?:["'\s;]|$)/i.test(disposition)) return "video";
+    if (candidate && (candidate.requestType === "media" || candidate.playbackObserved)) return "video";
     return candidate && candidate.manifest ? "hls" : "media";
   }
 
   async function dispatchTab(tabId) {
     dispatchTimers.delete(tabId);
     trimTabCandidates(tabId);
-    const candidate = candidateStore.best(tabId);
+    const visibleCandidates = visibleCandidateSnapshot(tabId, MAX_CANDIDATES_PER_TAB);
+    const candidate = visibleCandidates[0] || null;
     if (!candidate) return;
 
     let tab;
@@ -309,7 +317,7 @@
     if (candidate.quality === "possible" && !candidate.playbackObserved && rank < POSSIBLE_OFFER_THRESHOLD) return;
     if (candidate.quality !== "possible" && !candidate.playbackObserved && !candidate.autoOffer && rank < AUTO_OFFER_THRESHOLD) return;
 
-    const candidateCount = candidateStore.size(tabId);
+    const candidateCount = visibleCandidates.length;
     const candidateRevision = Number(candidate.sessionRevision || 0);
     const previous = lastDispatchedByTab.get(tabId);
     if (previous && previous.requestFingerprint === candidate.requestFingerprint && previous.candidateCount === candidateCount &&
@@ -318,14 +326,14 @@
 
     const session = captureSessionFor(tabId);
     session.revision = Math.max(Number(session.revision || 0), candidateRevision, Date.now());
-    const sessionCandidates = candidateStore.snapshot(tabId, MAX_HANDOFF_CANDIDATES).map(item => Object.assign({}, item, {
+    const sessionCandidates = visibleCandidates.slice(0, MAX_HANDOFF_CANDIDATES).map(item => Object.assign({}, item, {
       streamKind: candidateStreamKind(item),
     }));
     let prebuiltXdmLink = "";
     const handoff = globalThis.XdmHandoffV1;
-    if (handoff && typeof handoff.buildEncryptedCaptureSession === "function") {
+    if (handoff && typeof handoff.buildCaptureSession === "function") {
       try {
-        prebuiltXdmLink = await handoff.buildEncryptedCaptureSession({
+        prebuiltXdmLink = await handoff.buildCaptureSession({
           sessionId: session.id,
           revision: session.revision,
           pageUrl: tab.url,
@@ -336,13 +344,13 @@
           scheme: globalThis.XdmExtensionConfig && globalThis.XdmExtensionConfig.xdmScheme,
         });
       } catch (error) {
-        publishStatus({ lastError: `Encrypted capture handoff failed: ${error && error.message ? error.message : String(error)}`, lastErrorAt: Date.now() });
+        publishStatus({ lastError: `XDM capture handoff failed: ${error && error.message ? error.message : String(error)}`, lastErrorAt: Date.now() });
       }
     }
 
     if (!prebuiltXdmLink && settings.defaultTarget === "xdm") {
       publishStatus({
-        lastError: "Secure XDM capture handoff is unavailable; plaintext fallback is disabled.",
+        lastError: "XDM capture handoff could not be built from the selected media candidate.",
         lastErrorAt: Date.now(),
       });
       return;
@@ -364,7 +372,7 @@
       browserHandoff: candidate.browserHandoff || null,
       captureSessionId: session.id,
       prebuiltXdmLink,
-      encryptedCandidateCount: sessionCandidates.length,
+      capturedCandidateCount: Math.min(1, sessionCandidates.length),
     });
     await updateDiagnostics(tabId, payload);
     await offerInTopFrame(tabId, payload);
@@ -380,7 +388,7 @@
       contentDisposition: details.contentDisposition || "",
       contentRange: details.contentRange || ""
     });
-    if (!classification.accept || !allowsQuality(classification.quality)) return false;
+    if (!classification.accept) return false;
 
     const counter = counterFor(tabId);
     counter.lastSource = source;
@@ -459,8 +467,24 @@
         contentType: observation.contentType || evidence.contentType || "",
         responseUrl
       });
+      if (analysis.manifestBody) {
+        counter.bodyCandidates += 1;
+        added = mergeCandidate(tabId, Object.assign({}, evidence, {
+          source: "webRequest",
+          bodyDerived: true,
+          manifest: true,
+          reason: analysis.hlsBody ? "hls-body" : "dash-body",
+          confidence: Math.max(Number(evidence.confidence || 0), 1040),
+          quality: "strong",
+          autoOffer: true,
+          headers: evidence.headers || {},
+          browserHandoff: evidence.browserHandoff || null,
+          requestFingerprint: evidence.requestFingerprint,
+          stableMediaId: evidence.stableMediaId,
+          at: Date.now(),
+        })) || added;
+      }
       for (const extracted of analysis.candidates) {
-        if (!allowsQuality(extracted.quality)) continue;
         const correlated = findPrivilegedEvidence(tabId, extracted.url, frameId);
         if (!correlated) continue;
         counter.bodyCandidates += 1;

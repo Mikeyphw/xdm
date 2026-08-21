@@ -36,6 +36,7 @@ validators=(
   tools/validate-phase57-runtime-failure-recovery-ux.py
   tools/validate-phase56-stale-copy-architecture-noise-sweep.py
   tools/validate-phase55-final-release-warning-explainer.py
+  tools/validate-1dm-media-locator-xpi-v3.py
   tools/validate-media-capture-quality.py
   tools/validate-media-session-privacy-audit.py
   tools/validate-media-mobile-polish.py

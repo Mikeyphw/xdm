@@ -107,14 +107,14 @@ require("download?.state == DownloadState.Failed && download.backend == BackendT
 require("plan.strategy == MediaDownloadStrategy.YtDlp" in execution, "execution failure classification is not strategy based")
 require("errorMessage?.contains(" not in execution, "execution classification still parses error-message substrings")
 
-# Final browser-handoff harmony: direct Add compatibility is distinct from encrypted media capture.
+# Final browser-handoff harmony: manual Add stays separate from evidence-gated direct-v3 media capture.
 require("function buildXdmAdd" in handoff and '`${scheme}://add?${params.toString()}`' in handoff, "browser direct-add compatibility route is missing")
-require("function buildXdmCapture(_input = {})" in handoff, "plaintext capture compatibility stub is missing")
+require("function buildXdmCapture" in handoff and 'params.set("v", String(CONFIG.contractVersion || 3))' in handoff, "direct-v3 media capture builder is missing")
+require('params.set("url", url)' in handoff, "direct-v3 media capture does not carry the selected exact media URL")
+require("sanitizeHeaderBag" in handoff and 'params.set("headers", blocks.rawHeaders)' in handoff, "direct-v3 media capture does not bound/sanitize replay headers")
 require("allowDirectAdd = Boolean(input.manualAdd || isProbe)" in bridge, "manual/page/probe direct-add boundary is missing")
 require('input.prebuiltXdmLink || (allowDirectAdd ? builtLinks.xdm : "")' in bridge, "detected media is not separated from direct-add handoff")
-require("Secure XDM capture handoff is unavailable; plaintext fallback is disabled." in bridge, "detected media no longer fails closed without encrypted capture")
-require("automatic media offer without encrypted XDM handoff must fail closed" in bridge_test, "browser bridge regression test does not lock encrypted-media fail-closed behavior")
-require("prebuiltXdmLink: secureCaptureLink" in bridge_test, "browser bridge regression test does not exercise encrypted-v2 media rendering")
+require("direct-v3 XDM handoff" in bridge_test, "browser bridge regression test does not exercise direct-v3 media rendering")
 
 # M-048/M-001: final gate is executable and part of non-deferred Devtool validation.
 require('tasks.register<Exec>("finalRemediationStaticGate")' in build, "Gradle final static-gate task missing")
@@ -152,17 +152,18 @@ require('XDM_ARIA2_ARCHIVE_SHA256: ${{ secrets.XDM_ARIA2_ARCHIVE_SHA256 }}' in w
 require('Install pinned official ARM64 aria2 runtime' in workflow and '--require-trusted-digest' in workflow, "signed CI installs aria2 before pin verification")
 require('-Pxdm.validation.aria2PayloadVerified=true' in publication_script, "signed release build does not carry earned aria2 verification evidence")
 require('verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-trusted-archive-digest' in publication_script, "signed release does not verify pinned aria2 before compile")
-require(':browser-extension:packageFirefoxExtensionDark' in publication_script and ':browser-extension:packageFirefoxExtensionAmoled' in publication_script and ':browser-extension:verifyFirefoxExtensionReleaseArtifacts' in publication_script, "signed publication does not enforce key-bound Firefox release artifacts")
-for marker in (
-    'XDM_CAPTURE_KEY_ID: ${{ secrets.XDM_CAPTURE_KEY_ID }}',
-    'XDM_CAPTURE_PUBLIC_KEY_SPKI: ${{ secrets.XDM_CAPTURE_PUBLIC_KEY_SPKI }}',
-    'XDM_CAPTURE_OAEP_HASH: ${{ secrets.XDM_CAPTURE_OAEP_HASH }}',
+require(':browser-extension:packageFirefoxExtensionDark' in publication_script and ':browser-extension:packageFirefoxExtensionAmoled' in publication_script and ':browser-extension:verifyFirefoxExtensionReleaseArtifacts' in publication_script, "signed publication does not package/verify keyless Firefox release artifacts")
+for legacy_marker in (
+    'XDM_CAPTURE_KEY_ID',
+    'XDM_CAPTURE_PUBLIC_KEY_SPKI',
+    'XDM_CAPTURE_OAEP_HASH',
+    'Require browser capture release key inputs',
 ):
-    require(marker in workflow, f"signed CI does not expose browser capture release input {marker.split(':', 1)[0]}")
-require('Require browser capture release key inputs' in workflow, "signed CI does not fail closed when browser capture release keys are absent")
+    require(legacy_marker not in workflow, f"signed CI still requires retired per-install browser capture crypto: {legacy_marker}")
+require('validate-1dm-media-locator-xpi-v3.py' in final_script, "final static gate omits the keyless-v3/media-locator promise validator")
 for forbidden in (':browser-extension:packageFirefoxExtensionDark', ':browser-extension:packageFirefoxExtensionAmoled', ':browser-extension:verifyFirefoxExtensionReleaseArtifacts'):
-    require(forbidden not in devtool, f"ordinary Devtool validation incorrectly requires key-bound browser release task {forbidden}")
-    require(forbidden not in common_validation_script, f"keyless common validation incorrectly requires key-bound browser release task {forbidden}")
+    require(forbidden not in devtool, f"ordinary Devtool validation unexpectedly requires release-package task {forbidden}")
+    require(forbidden not in common_validation_script, f"common validation unexpectedly requires release-package task {forbidden}")
 
 require(manifest.get("current_overlay") == "xdm_android_privacy_quality_final_gate_overlay_v2.zip", "PROJECT_MANIFEST current_overlay is not Overlay 13")
 database = manifest.get("database", {})

@@ -4001,6 +4001,7 @@
     "artifact": "xdm_android_privacy_quality_final_gate_overlay_v2.zip",
     "filesystem_privacy_coverage": "fail closed on traversal/file/depth/size/read/path-node truncation",
     "signed_publication_gate": "final Overlay-13 static/common validation is mandatory before release packaging",
-    "key_bound_browser_release_gate": "signed publication only; requires XDM_CAPTURE_KEY_ID/XDM_CAPTURE_PUBLIC_KEY_SPKI/XDM_CAPTURE_OAEP_HASH and is not part of ordinary Devtool validation"
+    "browser_release_gate": "signed publication packages and verifies direct-v3 keyless Firefox Dark/AMOLED XPIs; no XDM_CAPTURE_KEY_ID/XDM_CAPTURE_PUBLIC_KEY_SPKI/XDM_CAPTURE_OAEP_HASH secrets are required",
+    "browser_capture_contract": "direct-v3-keyless with encrypted-v2 reader retained for migration only"
   }
 }

@@ -11,6 +11,7 @@ function event() {
 
 const storageState = {};
 const executeCalls = [];
+const handoffInputs = [];
 const events = {
   before: event(),
   headers: event(),
@@ -22,8 +23,10 @@ const events = {
 };
 
 globalThis.XdmHandoffV1 = {
-  async buildEncryptedCaptureSession(input) {
-    return `xdmdownload://capture?v=2&sid=${encodeURIComponent(input.sessionId)}&kid=test-key&ek=wrapped&iv=iv&ct=ciphertext`;
+  async buildCaptureSession(input) {
+    handoffInputs.push(input);
+    const candidate = input.candidates[0];
+    return `xdmdownload://capture?v=3&url=${encodeURIComponent(candidate.url)}`;
   }
 };
 
@@ -74,7 +77,8 @@ assert.strictEqual(events.message.listeners.length, 1, "page observation receive
     requestHeaders: [
       { name: "User-Agent", value: "IronFox test" },
       { name: "Referer", value: "https://page.example/watch/7" },
-      { name: "Authorization", value: "Bearer <redacted>" }
+      { name: "Authorization", value: "Bearer <redacted>" },
+      { name: "Accept-Language", value: "en-GB,en;q=0.9" }
     ]
   });
 
@@ -96,6 +100,8 @@ assert.strictEqual(events.message.listeners.length, 1, "page observation receive
   assert.ok(diagnostics && diagnostics["7"]);
   assert.strictEqual(diagnostics["7"].reason, "xhr-media-mime");
   assert.strictEqual(diagnostics["7"].frameCount, 1);
+  assert.ok(handoffInputs.length > 0);
+  assert.strictEqual(handoffInputs[0].candidates[0].headers["accept-language"], "en-GB,en;q=0.9", "Accept-Language must survive privileged request capture");
 
   const firstTab7DispatchCount = executeCalls.filter(call => call.tabId === 7).length;
   events.headers.listeners[0]({
@@ -171,6 +177,33 @@ assert.strictEqual(events.message.listeners.length, 1, "page observation receive
   });
   await new Promise(resolve => setTimeout(resolve, 650));
   assert.strictEqual(executeCalls.length, beforeSegments, "segments are ignored");
+
+  const beforeWeakManifest = executeCalls.length;
+  events.before.listeners[0]({ tabId: 11, requestId: "r11-manifest", requestHeaders: [{ name: "Accept-Language", value: "pt-BR" }] });
+  events.headers.listeners[0]({
+    tabId: 11,
+    frameId: 0,
+    requestId: "r11-manifest",
+    url: "https://cdn.example/opaque/master.m3u8?token=weak",
+    type: "xmlhttprequest",
+    responseHeaders: []
+  });
+  await new Promise(resolve => setTimeout(resolve, 650));
+  assert.strictEqual(executeCalls.length, beforeWeakManifest, "suffix-only manifest evidence stays hidden by default");
+  messageListener({
+    type: "xdmPageObservationV1",
+    observation: {
+      source: "fetch-response",
+      responseUrl: "https://cdn.example/opaque/master.m3u8?token=weak",
+      contentType: "text/plain",
+      bodyExcerpt: "#EXTM3U\n#EXT-X-TARGETDURATION:6\n#EXT-X-MEDIA-SEQUENCE:1"
+    }
+  }, { tab: { id: 11 }, frameId: 0, url: "https://page.example/watch/11" });
+  await new Promise(resolve => setTimeout(resolve, 650));
+  assert.ok(executeCalls.length > beforeWeakManifest, "verified HLS body promotes retained privileged evidence to a visible strong candidate");
+  diagnostics = storageState.xdmNetworkDiagnosticsV1;
+  assert.strictEqual(diagnostics["11"].reason, "hls-body");
+  assert.strictEqual(diagnostics["11"].quality, "strong");
 
   console.log("Phase 38 background smoke tests passed");
 })().catch(error => {

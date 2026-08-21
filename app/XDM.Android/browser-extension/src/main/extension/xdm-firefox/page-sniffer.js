@@ -11,10 +11,11 @@
   let lastError = "";
   const MAX_BODY_BYTES = 786_432;
   const TEXT_MIME_RE = /^(?:text\/|application\/(?:json|ld\+json|javascript|x-javascript|xml|xhtml\+xml|rss\+xml|atom\+xml|vnd\.apple\.mpegurl|x-mpegurl|dash\+xml))/i;
-  const RESOURCE_HINT_RE = /(?:\.(?:m3u8|mpd|mp4|m4v|webm|mkv|mov|mp3|m4a|aac|ogg)(?:$|[?#])|videoplayback|playlist|manifest|\/stream(?:\/|\?|$)|\/playback(?:\/|\?|$)|hls|dash)/i;
+  const RESOURCE_HINT_RE = /\.(?:m3u8|mpd|mp4|m4v|webm|mkv|mov|avi|flv|mpeg|mpg|ogv|mp3|m4a|aac|flac|wav|ogg|opus)(?:$|[?#])/i;
+  const HARD_NON_MEDIA_MIME_RE = /^(?:application\/(?:json|ld\+json|javascript|x-javascript)|text\/(?:html|css|javascript)|image\/|font\/)/i;
   const MEDIA_RESPONSE_MIME_RE = /^(?:video\/|audio\/|application\/(?:vnd\.apple\.mpegurl|x-mpegurl|dash\+xml)|audio\/(?:mpegurl|x-mpegurl))/i;
-  const BODY_HINT_RE = /(?:#EXTM3U|<\s*MPD(?:\s|>)|\.m3u8|\.mpd|\.mp4|videoplayback|(?:file|video|audio|media|stream|manifest|playlist|hls|dash)(?:Url|URL|_url|_src)?["'\s]*[:=])/i;
-  const REQUEST_HEADER_ALLOWLIST = new Set(["authorization", "cookie", "referer", "user-agent", "origin", "accept", "range"]);
+  const BODY_HINT_RE = /(?:#EXTM3U|<\s*MPD(?:\s|>)|(?:file|video|audio|media|stream|manifest|playlist|hls|dash|m3u8|mpd)(?:Url|URL|_url|_src|url|src)?["\'\s]*[:=])/i;
+  const REQUEST_HEADER_ALLOWLIST = new Set(["authorization", "cookie", "referer", "user-agent", "origin", "accept", "accept-language", "range"]);
 
 
   function rememberError(error) {
@@ -86,7 +87,11 @@
     if (!responseUrl && !requestUrl) return;
     const contentType = String(value.contentType || "");
     const bodyExcerpt = typeof value.bodyExcerpt === "string" ? value.bodyExcerpt.slice(0, MAX_BODY_BYTES) : "";
-    const relevant = RESOURCE_HINT_RE.test(responseUrl || requestUrl) || MEDIA_RESPONSE_MIME_RE.test(contentType) || BODY_HINT_RE.test(bodyExcerpt);
+    const normalizedType = normalizeMime(contentType);
+    const bodyEvidence = BODY_HINT_RE.test(bodyExcerpt);
+    const mediaMime = MEDIA_RESPONSE_MIME_RE.test(normalizedType);
+    const hardNonMedia = HARD_NON_MEDIA_MIME_RE.test(normalizedType);
+    const relevant = mediaMime || bodyEvidence || (!hardNonMedia && RESOURCE_HINT_RE.test(responseUrl || requestUrl));
     if (!relevant) return;
     window.postMessage({
       [MARKER]: true,

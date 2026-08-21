@@ -107,7 +107,7 @@ class XdmBrowserDeepLinkParserTest {
         val valid = "xdmdownload://capture?v=2&sid=browser-7-secure-session&kid=phase59-61-test-key&ek=QUJDREVGR0g&iv=QUJDREVGR0hJSktM&ct=QUJDREVGR0hJSktMTU5PUA"
         assertNull(XdmBrowserDeepLinkParser.parse(valid + "&ct=duplicate", "xdmdownload"))
         assertNull(XdmBrowserDeepLinkParser.parse(valid.replace("&ct=QUJDREVGR0hJSktMTU5PUA", ""), "xdmdownload"))
-        assertNull(XdmBrowserDeepLinkParser.parse(valid.replace("v=2", "v=3"), "xdmdownload"))
+        assertNull(XdmBrowserDeepLinkParser.parse(valid.replace("v=2", "v=4"), "xdmdownload"))
     }
 
     @Test
@@ -203,6 +203,54 @@ class XdmBrowserDeepLinkParserTest {
         assertEquals(734003200L, draft.contentLength)
         assertEquals(630000L, draft.durationMs)
         assertEquals("https://cdn.example/poster.jpg", draft.thumbnailUrl)
+    }
+
+    @Test
+    fun extensionCaptureParsesOptionalSizeDurationAndThumbnailMetadata() {
+        val raw = "xdmdownload://capture?v=3&url=https%3A%2F%2Fcdn.example%2Fvideo.mp4&kind=video&length=734003200&durationMs=630000&thumbnail=https%3A%2F%2Fcdn.example%2Fposter.jpg"
+        val payload = XdmBrowserDeepLinkParser.parse(raw, "xdmdownload")!!
+
+        assertEquals(3, payload.version)
+        assertEquals(734003200L, payload.contentLength)
+        assertEquals(630000L, payload.durationMs)
+        assertEquals("https://cdn.example/poster.jpg", payload.thumbnailUrl)
+        val draft = payload.toAutomationCommandDraft()
+        assertEquals(734003200L, draft.contentLength)
+        assertEquals(630000L, draft.durationMs)
+        assertEquals("https://cdn.example/poster.jpg", draft.thumbnailUrl)
+    }
+
+    @Test
+    fun directV3CaptureCarriesExactMediaAndSanitizedSessionHeadersWithoutCryptoBinding() {
+        val rawHeaders = "Referer: https://watch.example/episode\nCookie: session=abc\nX-Injected: no"
+        val proposed = "User-Agent: TestBrowser/1\nAuthorization: Bearer token"
+        val finalHeaders = "Origin: https://watch.example\nRange: bytes=0-"
+        val raw = "xdmdownload://capture?" + listOf(
+            "v=3",
+            "url=${encode("https://cdn.example/media/master.m3u8?token=signed")}",
+            "page=${encode("https://watch.example/episode")}",
+            "mime=${encode("application/vnd.apple.mpegurl")}",
+            "kind=hls",
+            "headers=${encode(rawHeaders)}",
+            "proposedHeaders=${encode(proposed)}",
+            "finalHeaders=${encode(finalHeaders)}",
+        ).joinToString("&")
+
+        val payload = XdmBrowserDeepLinkParser.parse(raw, "xdmdownload")!!
+        assertEquals(3, payload.version)
+        assertEquals(AutomationCommandAction.CaptureMedia, payload.action)
+        assertEquals("https://cdn.example/media/master.m3u8?token=signed", payload.url)
+        assertEquals("https://watch.example/episode", payload.pageUrl)
+        assertEquals("application/vnd.apple.mpegurl", payload.mimeType)
+        assertTrue(!payload.hasEncryptedCaptureEnvelope)
+        assertTrue(payload.rawHeaders.orEmpty().contains("Cookie: session=abc"))
+        assertTrue(!payload.rawHeaders.orEmpty().contains("X-Injected"))
+
+        val draft = payload.toAutomationCommandDraft(originPackage = "org.ironfoxoss.ironfox")
+        assertEquals(AutomationCommandSource.BrowserExtension, draft.source)
+        assertEquals("https://cdn.example/media/master.m3u8?token=signed", draft.url)
+        assertTrue(draft.proposedHeaders.orEmpty().contains("Authorization: Bearer token"))
+        assertTrue(draft.finalHeaders.orEmpty().contains("Range: bytes=0-"))
     }
 
 }

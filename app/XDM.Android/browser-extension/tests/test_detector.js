@@ -17,6 +17,11 @@ assert(classified.autoOffer);
 classified = core.classifyResponse({ url: "https://cdn.example/master", type: "fetch", contentType: "application/vnd.apple.mpegurl" });
 assert(classified.manifest);
 assert.strictEqual(classified.quality, "strong");
+classified = core.classifyResponse({ url: "https://cdn.example/master.m3u8?token=suffix-only", type: "fetch", contentType: "" });
+assert(classified.accept, "manifest suffix is retained as correlation evidence");
+assert.strictEqual(classified.quality, "possible", "manifest suffix alone must not auto-offer a generic fetch");
+assert.strictEqual(classified.autoOffer, false);
+assert.strictEqual(classified.reason, "possible-manifest-extension");
 assert(!core.classifyResponse({ url: "https://cdn.example/chunk-3.m4s", type: "media", contentType: "video/mp4" }).accept);
 assert(!core.classifyResponse({ url: "https://api.example/video/metadata", type: "xmlhttprequest", contentType: "application/json", contentLength: 512 }).accept);
 assert(!core.classifyResponse({ url: "https://site.example/api/stream", type: "fetch", contentType: "application/json", contentLength: 4096 }).accept);
@@ -40,13 +45,22 @@ const possibleBody = core.analyzeBody({
   contentType: "application/json",
   text: '{"streamUrl":"https://cdn.example/playback/session/123"}'
 });
-assert(possibleBody.candidates.some(item => item.url === "https://cdn.example/playback/session/123" && item.quality === "possible"));
+assert.strictEqual(possibleBody.candidates.length, 0, "extensionless streamUrl JSON needs runtime response/playback evidence");
 const noisy = core.analyzeBody({
   responseUrl: "https://site.example/api",
   contentType: "application/json",
   text: '{"posterUrl":"https://cdn.example/poster.jpg","url":"https://api.example/video/metadata","src":"https://cdn.example/thumb.webp"}'
 });
 assert.strictEqual(noisy.candidates.length, 0);
+
+classified = core.classifyResponse({ url: "https://api.example/fake.mp4", type: "fetch", contentType: "application/json", contentLength: 4096 });
+assert(!classified.accept, "JSON response must beat a misleading .mp4 suffix");
+const misleadingJson = core.analyzeBody({
+  responseUrl: "https://api.example/player",
+  contentType: "application/json",
+  text: '{"url":"https://cdn.example/not-media.mp4","poster":"https://cdn.example/poster.mp4","analytics":"https://cdn.example/event.m3u8"}'
+});
+assert.strictEqual(misleadingJson.candidates.length, 0, "generic JSON URLs must not become media by suffix alone");
 const Store = context.XdmCandidateStoreV1;
 const store = new Store({ maxPerTab: 4, ttlMs: 100000 });
 assert(store.merge(7, { url: "https://cdn.example/video", confidence: 800, quality: "strong", frameId: 4 }));
@@ -58,6 +72,13 @@ const snapshot = store.snapshot(7, 3);
 assert.strictEqual(snapshot.length, 3);
 assert.strictEqual(snapshot[0].url, "https://cdn.example/master.m3u8");
 assert(snapshot.some(item => item.url === "https://cdn.example/video"));
+const promoteFingerprint = core.requestFingerprint({ url: "https://cdn.example/promote.m3u8", requestId: "promote", tabId: 8, frameId: 0, requestGeneration: 1 });
+const promotionStore = new Store({ maxPerTab: 4, ttlMs: 100000 });
+assert(promotionStore.merge(8, { url: "https://cdn.example/promote.m3u8", requestFingerprint: promoteFingerprint, confidence: 730, quality: "possible" }));
+assert(promotionStore.merge(8, { url: "https://cdn.example/promote.m3u8", requestFingerprint: promoteFingerprint, confidence: 1040, quality: "strong", manifest: true, bodyDerived: true, autoOffer: true }));
+assert(promotionStore.merge(8, { url: "https://cdn.example/promote.m3u8", requestFingerprint: promoteFingerprint, confidence: 740, quality: "possible" }));
+assert.strictEqual(promotionStore.best(8).quality, "strong", "later weak observations must not downgrade promoted evidence");
+assert.strictEqual(promotionStore.best(8).autoOffer, true);
 
 const signedOne = "https://cdn.example/master.m3u8?sig=one";
 const signedTwo = "https://cdn.example/master.m3u8?sig=two";

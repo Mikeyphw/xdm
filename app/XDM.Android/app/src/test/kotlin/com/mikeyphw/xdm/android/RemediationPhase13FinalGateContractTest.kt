@@ -79,20 +79,19 @@ class RemediationPhase13FinalGateContractTest {
     }
 
     @Test
-    fun browserDirectAddRemainsSeparateFromEncryptedMediaCapture() {
+    fun browserDirectAddAndDirectV3MediaCaptureRemainSeparateReviewRoutes() {
         val handoff = source("browser-extension/src/main/extension/xdm-firefox/handoff.js")
         val bridge = source("browser-extension/src/main/extension/xdm-firefox/frame-bridge.js")
+        val detector = source("browser-extension/src/main/extension/xdm-firefox/detector-core.js")
         val bridgeTest = source("browser-extension/tests/test_phase43a_bridge.js")
 
         assertTrue(handoff.contains("function buildXdmAdd"))
-        assertTrue(handoff.contains("`${'$'}{scheme}://add?${'$'}{params.toString()}`"))
-        assertTrue(handoff.contains("function buildXdmCapture(_input = {})"))
-        assertTrue(handoff.contains("return \"\";"))
-        assertTrue(bridge.contains("allowDirectAdd = Boolean(input.manualAdd || isProbe)"))
+        assertTrue(handoff.contains("function buildXdmCapture"))
+        assertTrue(handoff.contains("params.set(\"v\", String(CONFIG.contractVersion || 3))"))
+        assertTrue(handoff.contains("params.set(\"url\", url)"))
         assertTrue(bridge.contains("input.prebuiltXdmLink || (allowDirectAdd ? builtLinks.xdm : \"\")"))
-        assertTrue(bridge.contains("Secure XDM capture handoff is unavailable; plaintext fallback is disabled."))
-        assertTrue(bridgeTest.contains("automatic media offer without encrypted XDM handoff must fail closed"))
-        assertTrue(bridgeTest.contains("prebuiltXdmLink: secureCaptureLink"))
+        assertTrue(detector.contains("HARD_NON_MEDIA_MIME_RE"))
+        assertTrue(bridgeTest.contains("direct-v3 XDM handoff"))
     }
 
     @Test
@@ -133,10 +132,11 @@ class RemediationPhase13FinalGateContractTest {
         assertTrue(publicationGate.contains(":browser-extension:packageFirefoxExtensionDark"))
         assertTrue(publicationGate.contains(":browser-extension:packageFirefoxExtensionAmoled"))
         assertTrue(publicationGate.contains(":browser-extension:verifyFirefoxExtensionReleaseArtifacts"))
-        assertTrue(workflow.contains("XDM_CAPTURE_KEY_ID: ${'$'}{{ secrets.XDM_CAPTURE_KEY_ID }}"))
-        assertTrue(workflow.contains("XDM_CAPTURE_PUBLIC_KEY_SPKI: ${'$'}{{ secrets.XDM_CAPTURE_PUBLIC_KEY_SPKI }}"))
-        assertTrue(workflow.contains("XDM_CAPTURE_OAEP_HASH: ${'$'}{{ secrets.XDM_CAPTURE_OAEP_HASH }}"))
-        assertTrue(workflow.contains("Require browser capture release key inputs"))
+        assertFalse(workflow.contains("XDM_CAPTURE_KEY_ID"))
+        assertFalse(workflow.contains("XDM_CAPTURE_PUBLIC_KEY_SPKI"))
+        assertFalse(workflow.contains("XDM_CAPTURE_OAEP_HASH"))
+        assertFalse(workflow.contains("Require browser capture release key inputs"))
+        assertTrue(finalGate.contains("validate-1dm-media-locator-xpi-v3.py"))
         assertFalse(devtool.contains(":browser-extension:packageFirefoxExtensionDark"))
         assertFalse(devtool.contains(":browser-extension:packageFirefoxExtensionAmoled"))
         assertFalse(devtool.contains(":browser-extension:verifyFirefoxExtensionReleaseArtifacts"))

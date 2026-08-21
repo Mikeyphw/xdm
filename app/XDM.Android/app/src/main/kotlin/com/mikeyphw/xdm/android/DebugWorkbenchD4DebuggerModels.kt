@@ -55,7 +55,7 @@ object BrowserBridgeDebugReporter {
             appendLine("Last accepted: ${BrowserBridgeDiagnosticsRedactor.sanitize(diagnostics.lastAcceptedSummary.ifBlank { "None recorded" })}")
             appendLine("Last rejected: ${BrowserBridgeDiagnosticsRedactor.sanitize(diagnostics.lastRejectedSummary.ifBlank { "None recorded" })}")
             appendLine("Last generation: ${BrowserBridgeDiagnosticsRedactor.sanitize(diagnostics.lastGenerationMessage.ifBlank { diagnostics.lastGenerationPhase })}")
-            appendLine("Capture test: secure v2 handoff only; use the current generated Firefox extension to exercise encrypted capture.")
+            appendLine("Capture test: direct v3 media-locator handoff; legacy encrypted v2 remains import-only compatibility.")
             appendLine("Add Download test URI: ${addDownloadTestUri(scheme)}")
             appendLine("Boundary: copy-only diagnostics; no custom scheme is opened from this debugger.")
         }.trimEnd()

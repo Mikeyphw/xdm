@@ -1396,9 +1396,6 @@ class MainViewModel(
                 xdmScheme = BuildConfig.XDM_BROWSER_SCHEME,
                 defaultTarget = current.defaultTarget,
                 themeMode = resolvedTheme,
-                captureKeyId = browserCaptureEnvelopeManager.keyId,
-                capturePublicKeySpki = browserCaptureEnvelopeManager.publicKeySpkiBase64Url,
-                captureOaepHash = browserCaptureEnvelopeManager.captureOaepHash,
             )
             browserExtensionRuntime.value = BrowserExtensionRuntimeStatus(
                 phase = BrowserExtensionExportPhase.Exporting,
@@ -2427,7 +2424,20 @@ class MainViewModel(
             ),
         )
         if (sniffingPlan.records.isEmpty()) {
-            openExternalAddDraft(command, draft, "No media stream was detected; opened Add Download instead")
+            repository.saveAutomationCommand(
+                command.copy(
+                    status = AutomationCommandStatus.Rejected,
+                    resultMessage = "No evidence-backed media was detected",
+                    rejectionReason = AutomationRejectionReason.NoMediaDetected,
+                    updatedAtEpochMs = now,
+                ),
+            )
+            publishMediaIntakeFeedback(
+                feedbackForEmptyMediaPlan(sniffingPlan, "Browser capture").copy(
+                    title = "Non-media capture ignored",
+                    detail = "The browser observation did not contain enough media evidence, so XDM ignored it instead of creating a generic download.",
+                ),
+            )
             return
         }
 

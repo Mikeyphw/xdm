@@ -87,7 +87,7 @@ fun MediaInboxScreen(
             title = "Media",
             subtitle = "Choose quality and tracks before anything is added to Downloads.",
             actions = {
-                Button(onClick = { if (pageUrlText.isNotBlank()) onPastePageUrl(pageUrlText) }, enabled = pageUrlText.isNotBlank()) { Text("Sniff page URL") }
+                Button(onClick = { context.startActivity(MediaLocatorActivity.intent(context, pageUrlText)) }) { Text("Live locator") }
             },
         )
         LazyColumn(
@@ -109,7 +109,8 @@ fun MediaInboxScreen(
                             singleLine = true,
                         )
                         XdmActionFlowRow {
-                            Button(onClick = { onPastePageUrl(pageUrlText) }, enabled = pageUrlText.isNotBlank()) { Text("Sniff page URL") }
+                            Button(onClick = { onPastePageUrl(pageUrlText) }, enabled = pageUrlText.isNotBlank()) { Text("Static sniff") }
+                            Button(onClick = { context.startActivity(MediaLocatorActivity.intent(context, pageUrlText)) }) { Text("Live media locator") }
                             TextButton(onClick = { pageUrlText = "" }, enabled = pageUrlText.isNotBlank()) { Text("Clear") }
                         }
                     }
@@ -284,7 +285,7 @@ private fun BrowserCaptureSessionHeader(session: BrowserCaptureSessionSummary) {
             if (evidence.isNotEmpty()) XdmMetadataText("Evidence: ${evidence.joinToString(" • ")}")
             if (session.truncated) {
                 XdmNoticeRow(
-                    text = "The page exposed more candidates than the bounded encrypted Android handoff could carry. Highest-confidence candidates are shown.",
+                    text = "The page exposed more candidates than the bounded browser handoff could carry. Highest-confidence candidates are shown.",
                     tone = XdmStatusTone.Warning,
                 )
             }
@@ -318,7 +319,7 @@ private fun MediaBatchInputPanel(
             Text(
                 "Paste URLs or page text. XDM extracts HTTP(S) media links, dedupes them, and sends reviewable media through the shared app-side media sniffing engine.",
             )
-            XdmMetadataText("Static sniffing only: no arbitrary JavaScript execution, no DRM bypass, and no raw cookie or token diagnostics.")
+            XdmMetadataText("Static sniff does not execute page JavaScript. Live media locator runs the page in XDM’s WebView and observes media DOM/network activity. Neither path bypasses DRM or displays raw cookies/tokens.")
             OutlinedTextField(
                 value = text,
                 onValueChange = onTextChanged,

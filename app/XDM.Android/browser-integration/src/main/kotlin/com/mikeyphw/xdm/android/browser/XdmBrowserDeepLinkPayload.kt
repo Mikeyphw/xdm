@@ -20,6 +20,9 @@ data class XdmBrowserDeepLinkPayload(
     val durationMs: Long? = null,
     val thumbnailUrl: String? = null,
     val frameUrl: String? = null,
+    val rawHeaders: String? = null,
+    val proposedHeaders: String? = null,
+    val finalHeaders: String? = null,
     val captureSessionId: String? = null,
     val captureKeyId: String? = null,
     val wrappedKey: String? = null,
@@ -27,7 +30,7 @@ data class XdmBrowserDeepLinkPayload(
     val envelopeCiphertext: String? = null,
 ) {
     val hasEncryptedCaptureEnvelope: Boolean
-        get() = version >= XdmBrowserDeepLinkContract.CurrentVersion &&
+        get() = version == XdmBrowserDeepLinkContract.EncryptedCaptureVersion &&
             !captureSessionId.isNullOrBlank() && !captureKeyId.isNullOrBlank() &&
             !wrappedKey.isNullOrBlank() && !envelopeIv.isNullOrBlank() && !envelopeCiphertext.isNullOrBlank()
 
@@ -47,6 +50,9 @@ data class XdmBrowserDeepLinkPayload(
         stableMediaId = stableMediaId,
         sessionRevision = sessionRevision,
         frameUrl = frameUrl,
+        rawHeaders = rawHeaders,
+        proposedHeaders = proposedHeaders,
+        finalHeaders = finalHeaders,
     )
 }
 

@@ -51,3 +51,5 @@ This missing environment capability is deliberately not converted into release e
 ## Manual/device evidence
 
 Physical-device operational smoke remains a separate explicit evidence input and defaults false. Source/Gradle success is not equivalent to completing browser-device, reboot/recovery, SAF/MediaStore, Termux, notification, provider-revocation, TalkBack, or IME smoke scenarios.
+
+> **Superseded browser-capture note (XPI v3 R2):** the signed Firefox extension path is now direct-v3/keyless. `XDM_CAPTURE_KEY_ID`, `XDM_CAPTURE_PUBLIC_KEY_SPKI`, and `XDM_CAPTURE_OAEP_HASH` are no longer release inputs. Encrypted-v2 key handling remains only for reading legacy captures.

@@ -62,7 +62,7 @@ Required artifact validation tasks:
 - Historical validators were rebaselined only where newer architecture superseded literal old tokens; their underlying ownership/security invariants remain enforced.
 - `tools/run-final-release-gate.sh --ci` is executable from Gradle as `:app:finalRemediationStaticGate` and includes UIX R6, Debug Workbench D7, bug-hunt phases, current release seals, media validators, the 80-row Phase-11 matrix, and the Overlay-13 contract.
 - `.devtool.toml` includes that static gate in the Android test/unit phase, and `tools/run-final-common-validation.sh` is the shared **keyless** non-device compile/module-test/lint/debug-package/browser-source/render matrix used by CI and signed publication.
-- The signed publication entrypoint runs the Overlay-13 static and common gates before release assembly, then separately requires the key-bound Firefox Dark/AMOLED XPI package/verification tasks with `XDM_CAPTURE_KEY_ID`, `XDM_CAPTURE_PUBLIC_KEY_SPKI`, and `XDM_CAPTURE_OAEP_HASH`. Ordinary Devtool validation intentionally remains keyless.
+- The signed publication entrypoint runs the Overlay-13 static and common gates before release assembly, then packages/verifies the direct-v3 keyless Firefox Dark/AMOLED XPIs. Browser XPI publication no longer requires `XDM_CAPTURE_KEY_ID`, `XDM_CAPTURE_PUBLIC_KEY_SPKI`, or `XDM_CAPTURE_OAEP_HASH`; encrypted-v2 support is migration-reader-only.
 - Signed CI explicitly wires the pinned aria2 archive SHA-256, verifies the trusted payload before release compilation, and retains post-build APK payload verification.
 - `PROJECT_MANIFEST.json` current-state metadata is harmonized to Room schema 20, version `0.21.0`, versionCode 22, and fail-closed readiness evidence.
 

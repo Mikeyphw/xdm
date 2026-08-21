@@ -1362,4 +1362,23 @@ class MediaCaptureServiceTest {
         )
     }
 
+    @Test
+    fun explicitNonMediaMimeWinsOverMisleadingMediaSuffix() {
+        val classifier = MediaCandidateClassifier()
+        listOf(
+            "application/json",
+            "text/html",
+            "application/javascript",
+            "text/css",
+            "image/jpeg",
+            "font/woff2",
+        ).forEach { mime ->
+            assertEquals(
+                "$mime must not be promoted by a .mp4 suffix",
+                MediaSourceKind.Unknown,
+                classifier.classify(MediaRequestFacts("https://api.example.test/resource.mp4", mimeType = mime)),
+            )
+        }
+    }
+
 }

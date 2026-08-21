@@ -73,7 +73,9 @@ class MediaCandidateClassifier {
         val lowerPath = runCatching { URI(normalized).path.orEmpty().lowercase(Locale.ROOT) }.getOrDefault(normalized.lowercase(Locale.ROOT))
         val lowerUrl = normalized.lowercase(Locale.ROOT)
         val mime = facts.mimeType?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT)
+        val hardNonMediaMime = mime?.let(::isHardNonMediaMime) == true
         return when {
+            hardNonMediaMime -> MediaSourceKind.Unknown
             mime in HlsMimeTypes || lowerPath.endsWith(".m3u8") || lowerUrl.contains(".m3u8?") -> MediaSourceKind.HlsPlaylist
             mime in DashMimeTypes || lowerPath.endsWith(".mpd") || lowerUrl.contains(".mpd?") -> MediaSourceKind.DashManifest
             mime?.startsWith("video/") == true -> MediaSourceKind.ProgressiveMedia
@@ -96,6 +98,9 @@ class MediaCandidateClassifier {
             "audio/x-mpegurl",
         )
         val DashMimeTypes = setOf("application/dash+xml", "video/vnd.mpeg.dash.mpd", "application/mpd")
+        fun isHardNonMediaMime(mime: String): Boolean =
+            mime in setOf("application/json", "application/ld+json", "application/javascript", "application/x-javascript", "text/html", "text/css", "text/javascript") ||
+                mime.startsWith("image/") || mime.startsWith("font/")
     }
 }
 

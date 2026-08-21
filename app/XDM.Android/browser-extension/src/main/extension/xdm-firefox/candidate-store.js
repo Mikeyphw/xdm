@@ -27,6 +27,9 @@
       const previous = bucket.get(requestFingerprint) || {};
       const nextConfidence = Number(candidate.confidence || 0);
       const previousConfidence = Number(previous.confidence || 0);
+      const mergedQuality = candidate.quality === "strong" || previous.quality === "strong"
+        ? "strong"
+        : (candidate.quality || previous.quality || "possible");
       const merged = {
         url,
         contentType: candidate.contentType || previous.contentType || "",
@@ -43,7 +46,7 @@
         browserHandoff: Object.assign({}, previous.browserHandoff || {}, candidate.browserHandoff || {}),
         stableMediaId: candidate.stableMediaId || previous.stableMediaId || CORE.stableMediaIdentity(url, requestFingerprint),
         sessionRevision: Math.max(Number(candidate.sessionRevision || 0), Number(previous.sessionRevision || 0), Date.now()),
-        quality: candidate.quality || previous.quality || "strong",
+        quality: mergedQuality,
         confidence: Math.max(nextConfidence, previousConfidence),
         reason: nextConfidence >= previousConfidence
           ? (candidate.reason || previous.reason || "media")
