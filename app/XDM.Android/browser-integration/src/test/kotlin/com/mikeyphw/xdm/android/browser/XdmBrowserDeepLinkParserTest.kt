@@ -243,14 +243,14 @@ class XdmBrowserDeepLinkParserTest {
         assertEquals("https://watch.example/episode", payload.pageUrl)
         assertEquals("application/vnd.apple.mpegurl", payload.mimeType)
         assertTrue(!payload.hasEncryptedCaptureEnvelope)
-        assertTrue(payload.rawHeaders.orEmpty().contains("Cookie: session=abc"))
+        assertTrue(payload.rawHeaders.orEmpty().contains("cookie: session=abc"))
         assertTrue(!payload.rawHeaders.orEmpty().contains("X-Injected"))
 
         val draft = payload.toAutomationCommandDraft(originPackage = "org.ironfoxoss.ironfox")
         assertEquals(AutomationCommandSource.BrowserExtension, draft.source)
         assertEquals("https://cdn.example/media/master.m3u8?token=signed", draft.url)
-        assertTrue(draft.proposedHeaders.orEmpty().contains("Authorization: Bearer token"))
-        assertTrue(draft.finalHeaders.orEmpty().contains("Range: bytes=0-"))
+        assertTrue(draft.proposedHeaders.orEmpty().contains("authorization: Bearer token"))
+        assertTrue(draft.finalHeaders.orEmpty().contains("range: bytes=0-"))
     }
 
 }

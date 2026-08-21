@@ -40,6 +40,7 @@ release_test = read("browser-extension/tests/test_release_gate.js")
 detector_test = read("browser-extension/tests/test_detector.js")
 background_test = read("browser-extension/tests/test_background.js")
 parser_test = read("browser-integration/src/test/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkParserTest.kt")
+phase5_extension_test = read("browser-extension/src/test/kotlin/com/mikeyphw/xdm/android/browserextension/BugHuntPhase5BrowserExtensionContractTest.kt")
 parity_test = read("app/src/test/kotlin/com/mikeyphw/xdm/android/MediaLocatorParityContractTest.kt")
 workflow = (REPO / ".github/workflows/android.yml").read_text(encoding="utf-8", errors="replace")
 project_manifest = read("PROJECT_MANIFEST.json")
@@ -74,6 +75,9 @@ need(page_sniffer, '"accept-language"', "page-side visible header capture")
 need(release_test, 'missing thumbnail must not resolve to the page URL', "metadata release regression")
 need(release_test, 'thumbnailUrl:"https://cdn.example/poster.jpg"', "explicit thumbnail release regression")
 need(parser_test, 'extensionCaptureParsesOptionalSizeDurationAndThumbnailMetadata', "v3 parser metadata regression")
+need(phase5_extension_test, 'SerializesOnlySanitizedAllowlistedReplayContext', "Phase-5 v3 header contract regression")
+need(phase5_extension_test, 'assertTrue(handoff.contains("params.set(\\"headers\\""))', "Phase-5 direct-v3 replay-header contract")
+forbid(phase5_extension_test, 'assertFalse(handoff.contains("params.set(\\"headers\\""))', "obsolete encrypted-v2 header privacy assertion")
 
 # False-positive controls and evidence promotion.
 for token in ('HARD_NON_MEDIA_MIME_RE', 'possible-manifest-extension', 'manifestByMime', 'manifestByExtension'):
