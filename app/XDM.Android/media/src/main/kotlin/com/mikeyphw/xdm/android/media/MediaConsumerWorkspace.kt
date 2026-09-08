@@ -56,7 +56,11 @@ class MediaConsumerWorkspacePlanner(
             plan.protectedDiagnostic.protected -> MediaConsumerState.Protected
             capture.status == MediaCaptureStatus.Expired || capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh -> MediaConsumerState.NeedsRefresh
             capture.resolutionStatus == MediaResolutionStatus.Failed -> MediaConsumerState.Failed
-            capture.resolutionStatus == MediaResolutionStatus.Unresolved || variants.isEmpty() -> MediaConsumerState.NeedsResolution
+            capture.resolutionStatus == MediaResolutionStatus.Unresolved -> MediaConsumerState.NeedsResolution
+            variants.isEmpty() && plan.transferShape in setOf(
+                com.mikeyphw.xdm.android.model.MediaTransferShape.AdaptivePlaylist,
+                com.mikeyphw.xdm.android.model.MediaTransferShape.SiteResolver,
+            ) -> MediaConsumerState.NeedsResolution
             else -> MediaConsumerState.Ready
         }
         val notice = when (state) {
@@ -66,12 +70,12 @@ class MediaConsumerWorkspacePlanner(
             MediaConsumerState.Added -> "This media is already in Downloads."
             MediaConsumerState.Protected -> "This media is protected. XDM can inspect it, but does not bypass DRM."
             MediaConsumerState.NeedsRefresh -> "This media link expired. Refresh it before downloading."
-            MediaConsumerState.Failed -> "XDM could not read this page. Try again or share a direct media link."
-            MediaConsumerState.NeedsResolution -> "Check this page to discover available quality and track options."
+            MediaConsumerState.Failed -> "XDM could not resolve executable media details. Refresh the capture or try the direct media request."
+            MediaConsumerState.NeedsResolution -> "Check this capture to discover executable quality and track options."
         }
         return MediaConsumerCaptureSummary(
             state = state,
-            selectedQuality = selectedVideo?.qualityLabel ?: "Automatic",
+            selectedQuality = selectedVideo?.qualityLabel ?: if (plan.transferShape == com.mikeyphw.xdm.android.model.MediaTransferShape.DirectMedia) "Direct" else "Automatic",
             trackSummary = trackSummary(selectedAudio, selectedSubtitle),
             estimatedSizeBytes = estimatedSize,
             notice = notice,

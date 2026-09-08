@@ -22,9 +22,12 @@ class PostDl03ReleaseFollowupContractTest {
         assertTrue(gate.contains("tools/validate-runtime-foundation-phase59-61.py"))
         assertTrue(gate.contains("tools/validate-dl02-dl03-progress-seal.py"))
         assertTrue(gate.contains("tools/validate-post-dl03-release-followup.py"))
+        assertTrue(gate.contains("tools/validate-execution-media-semantics-repair.py"))
         assertTrue(gate.contains("matrix_owned_validators=("))
         assertTrue(gate.contains("bash tools/run-bug-hunt-phase11-validation-matrix.sh --static-only --ci"))
-        assertTrue(gate.contains("post-DL03 roadmap seal is the current final source of truth"))
+        assertTrue(gate.contains("execution/media semantics repair seal is the current final source of truth"))
+        assertTrue(gate.contains("post-DL03 roadmap seal remains its historical baseline"))
+        assertFalse(gate.contains("post-DL03 roadmap seal is the current final source of truth"))
         assertFalse(gate.contains("Overlay 13 is the current final source of truth"))
     }
 

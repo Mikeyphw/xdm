@@ -29,6 +29,7 @@ import com.mikeyphw.xdm.android.media.MediaCaptureService
 import com.mikeyphw.xdm.android.media.MediaSniffingEngine
 import com.mikeyphw.xdm.android.media.MediaSniffingInput
 import com.mikeyphw.xdm.android.media.MediaSniffingSource
+import com.mikeyphw.xdm.android.model.BrowserHandoffMediaPolicy
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaSourceKind
@@ -42,6 +43,37 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+
+private object MediaLocatorRequestContextCache {
+    private const val MaxEntries = 128
+    private const val TtlMs = 30L * 60L * 1000L
+
+    private data class Entry(val headers: Map<String, String>, val savedAtEpochMs: Long)
+    private val entries = object : LinkedHashMap<String, Entry>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Entry>?): Boolean = size > MaxEntries
+    }
+
+    @Synchronized
+    fun put(key: String, headers: Map<String, String>, now: Long = System.currentTimeMillis()) {
+        if (key.isBlank() || headers.isEmpty()) return
+        prune(now)
+        entries[key] = Entry(headers.toMap(), now)
+    }
+
+    @Synchronized
+    fun get(key: String?, now: Long = System.currentTimeMillis()): Map<String, String>? {
+        if (key.isNullOrBlank()) return null
+        prune(now)
+        return entries[key]?.headers?.toMap()
+    }
+
+    private fun prune(now: Long) {
+        val iterator = entries.entries.iterator()
+        while (iterator.hasNext()) {
+            if (now - iterator.next().value.savedAtEpochMs > TtlMs) iterator.remove()
+        }
+    }
+}
 
 /**
  * Interactive media locator for pages that need JavaScript/runtime observation.
@@ -446,9 +478,16 @@ class MediaLocatorActivity : ComponentActivity() {
                 captureId = durable.id,
                 headers = candidate.requestHeaders,
                 redactedSummary = "live locator • ${candidate.kind.name}",
-                isExpiringUrl = candidate.requestHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(candidate.url),
+                isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(candidate.url),
                 exactUrl = candidate.url,
                 pageUrl = candidate.pageUrl,
+                transferShape = BrowserHandoffMediaPolicy.classifyShape(
+                    kind = durable.kind,
+                    pageUrl = durable.pageUrl,
+                    mimeType = durable.mimeType,
+                    live = durable.manifestIsLive == true,
+                    protected = durable.manifestProtected,
+                ),
             )
             candidate.variants.forEach { variant ->
                 MediaRequestHandoffStore.rememberVariant(
@@ -477,7 +516,14 @@ class MediaLocatorActivity : ComponentActivity() {
         }
     }
 
-    private fun encodeSavedCandidate(candidate: LocatedMedia): String = JSONObject().apply {
+    private fun encodeSavedCandidate(candidate: LocatedMedia): String {
+        // Raw request headers can include Cookie/Authorization and must never be serialized into
+        // Bundle state. Keep them only in a bounded process-local cache; the Bundle carries a
+        // non-secret capture id so configuration recreation can reattach the exact request context.
+        val requestContextKey = candidate.record.id
+        MediaLocatorRequestContextCache.put(requestContextKey, candidate.requestHeaders)
+        return JSONObject().apply {
+        put("requestContextKey", requestContextKey)
         put("url", candidate.url)
         put("mime", candidate.mimeType)
         put("kind", candidate.kind.name)
@@ -515,7 +561,8 @@ class MediaLocatorActivity : ComponentActivity() {
                 })
             }
         })
-    }.toString()
+        }.toString()
+    }
 
     private fun restoreLocatorState(state: Bundle) {
         val saved = state.getStringArrayList(STATE_CANDIDATES).orEmpty()
@@ -576,7 +623,7 @@ class MediaLocatorActivity : ComponentActivity() {
                     reason = json.optString("reason").ifBlank { "restored observation" },
                     pageUrl = pageUrl,
                     pageTitle = title,
-                    requestHeaders = emptyMap(),
+                    requestHeaders = MediaLocatorRequestContextCache.get(json.optString("requestContextKey")) ?: emptyMap(),
                     rank = json.optInt("rank", 0),
                     record = record,
                     variants = restoredVariants,

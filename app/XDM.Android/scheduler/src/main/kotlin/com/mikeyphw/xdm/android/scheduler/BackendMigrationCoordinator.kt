@@ -18,6 +18,7 @@ import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
 import com.mikeyphw.xdm.android.transfer.BackendTask
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.inferDownloadRequestKind
+import com.mikeyphw.xdm.android.transfer.inferTransferShape
 import com.mikeyphw.xdm.android.transfer.OwnershipClaimResult
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -307,7 +308,7 @@ class BackendMigrationCoordinator(
             mimeType = mimeType,
             allowBackendFallback = false,
             isExpiringUrl = handoff?.isExpiringUrl == true,
-            isMediaRequest = handoff != null,
+            transferShape = handoff?.transferShape ?: inferTransferShape(exactUrl, mimeType),
             privateNetworkApproved = handoff?.privateNetworkApproved == true,
             cleartextCredentialsApproved = handoff?.cleartextCredentialsApproved == true,
             privateNetworkApprovalScopes = handoff?.privateNetworkApprovalScopes.orEmpty(),

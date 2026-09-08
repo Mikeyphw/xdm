@@ -1,9 +1,11 @@
 package com.mikeyphw.xdm.android.scheduler
 
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import com.mikeyphw.xdm.android.model.MediaTransferShape
 import com.mikeyphw.xdm.android.transfer.DownloadRequestApprovalScope
 import com.mikeyphw.xdm.android.transfer.DownloadRequestKind
 import com.mikeyphw.xdm.android.transfer.inferDownloadRequestKind
+import com.mikeyphw.xdm.android.transfer.inferTransferShape
 import java.util.concurrent.ConcurrentHashMap
 
 /** Encrypted, scoped process-local handoff for browser sessions and signed URLs.
@@ -15,6 +17,7 @@ data class MediaRequestHandoff(
     val pageUrl: String? = null,
     val headers: Map<String, String>,
     val requestKind: DownloadRequestKind = DownloadRequestKind.Direct,
+    val transferShape: MediaTransferShape = MediaTransferShape.DirectFile,
     val mirrors: List<String> = emptyList(),
     val redactedSummary: String,
     val isExpiringUrl: Boolean,
@@ -48,6 +51,7 @@ object MediaRequestHandoffStore {
         exactUrl: String? = null,
         pageUrl: String? = null,
         requestKind: DownloadRequestKind = inferDownloadRequestKind(exactUrl.orEmpty()),
+        transferShape: MediaTransferShape = inferTransferShape(exactUrl.orEmpty()),
         mirrors: List<String> = emptyList(),
         expiresAtEpochMs: Long = defaultExpiry(isExpiringUrl),
         attemptGeneration: Long = 0L,
@@ -63,6 +67,7 @@ object MediaRequestHandoffStore {
         exactUrl = exactUrl,
         pageUrl = pageUrl,
         requestKind = requestKind,
+        transferShape = transferShape,
         mirrors = mirrors,
         expiresAtEpochMs = expiresAtEpochMs,
         attemptGeneration = attemptGeneration,
@@ -79,6 +84,7 @@ object MediaRequestHandoffStore {
         isExpiringUrl: Boolean,
         exactUrl: String? = null,
         pageUrl: String? = null,
+        transferShape: MediaTransferShape = inferTransferShape(exactUrl.orEmpty()),
         expiresAtEpochMs: Long = defaultExpiry(isExpiringUrl),
         privateNetworkApproved: Boolean = false,
         cleartextCredentialsApproved: Boolean = false,
@@ -89,6 +95,7 @@ object MediaRequestHandoffStore {
         isExpiringUrl = isExpiringUrl,
         exactUrl = exactUrl,
         pageUrl = pageUrl,
+        transferShape = transferShape,
         expiresAtEpochMs = expiresAtEpochMs,
         privateNetworkApproved = privateNetworkApproved,
         cleartextCredentialsApproved = cleartextCredentialsApproved,
@@ -104,8 +111,9 @@ object MediaRequestHandoffStore {
         subjectId = subject(VARIANT_PREFIX, variantId),
         headers = headers,
         redactedSummary = redactedSummary,
-        isExpiringUrl = true,
+        isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(exactUrl),
         exactUrl = exactUrl,
+        transferShape = inferTransferShape(exactUrl),
         expiresAtEpochMs = expiresAtEpochMs,
     )
 
@@ -122,9 +130,10 @@ object MediaRequestHandoffStore {
         subjectId = subject(COMMAND_PREFIX, commandId),
         headers = headers,
         redactedSummary = redactedSummary,
-        isExpiringUrl = headers.isNotEmpty() || exactUrl != null,
+        isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(exactUrl.orEmpty()),
         exactUrl = exactUrl,
         pageUrl = pageUrl,
+        transferShape = inferTransferShape(exactUrl.orEmpty()),
         expiresAtEpochMs = expiresAtEpochMs,
         privateNetworkApproved = privateNetworkApproved,
         cleartextCredentialsApproved = cleartextCredentialsApproved,
@@ -136,10 +145,15 @@ object MediaRequestHandoffStore {
             downloadId = targetDownloadId,
             headers = source.headers,
             redactedSummary = source.redactedSummary,
-            isExpiringUrl = source.isExpiringUrl || replacementExactUrl != null,
+            isExpiringUrl = if (replacementExactUrl == null) {
+                source.isExpiringUrl
+            } else {
+                ExternalUrlPolicy.hasCredentialBearingQuery(replacementExactUrl)
+            },
             exactUrl = replacementExactUrl ?: source.exactUrl,
             pageUrl = source.pageUrl,
             requestKind = replacementExactUrl?.let(::inferDownloadRequestKind) ?: source.requestKind,
+            transferShape = replacementExactUrl?.let(::inferTransferShape) ?: source.transferShape,
             mirrors = if (replacementExactUrl == null) source.mirrors else emptyList(),
             expiresAtEpochMs = source.expiresAtEpochMs,
             attemptGeneration = 0L,
@@ -157,10 +171,11 @@ object MediaRequestHandoffStore {
             downloadId = downloadId,
             headers = source?.headers.orEmpty().takeIf { source?.boundHost == ExternalUrlPolicy.originHost(exactUrl) }.orEmpty(),
             redactedSummary = source?.redactedSummary.orEmpty(),
-            isExpiringUrl = source?.isExpiringUrl == true || ExternalUrlPolicy.hasCredentialBearingQuery(exactUrl),
+            isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(exactUrl),
             exactUrl = exactUrl,
             pageUrl = source?.pageUrl,
             requestKind = inferDownloadRequestKind(exactUrl),
+            transferShape = inferTransferShape(exactUrl),
             mirrors = emptyList(),
             expiresAtEpochMs = source?.expiresAtEpochMs ?: defaultExpiry(true),
             attemptGeneration = source?.attemptGeneration ?: 0L,
@@ -193,6 +208,7 @@ object MediaRequestHandoffStore {
         exactUrl: String? = null,
         pageUrl: String? = null,
         requestKind: DownloadRequestKind = inferDownloadRequestKind(exactUrl.orEmpty()),
+        transferShape: MediaTransferShape = inferTransferShape(exactUrl.orEmpty()),
         mirrors: List<String> = emptyList(),
         expiresAtEpochMs: Long = defaultExpiry(isExpiringUrl),
         attemptGeneration: Long = 0L,
@@ -211,6 +227,7 @@ object MediaRequestHandoffStore {
             pageUrl = pageUrl?.trim()?.takeIf(String::isNotBlank),
             headers = safeHeaders,
             requestKind = requestKind,
+            transferShape = transferShape,
             mirrors = mirrors.asSequence().map(String::trim).filter(String::isNotBlank).distinct().take(MAX_MIRRORS).toList(),
             redactedSummary = redactedSummary.take(500),
             isExpiringUrl = isExpiringUrl,
@@ -265,6 +282,7 @@ object MediaRequestHandoffStore {
         pageUrl = pageUrl,
         headers = headers,
         requestKind = requestKind,
+        transferShape = transferShape,
         mirrors = mirrors,
         redactedSummary = redactedSummary,
         isExpiringUrl = isExpiringUrl,
@@ -285,6 +303,7 @@ object MediaRequestHandoffStore {
         pageUrl = pageUrl,
         headers = headers,
         requestKind = requestKind,
+        transferShape = transferShape,
         mirrors = mirrors,
         redactedSummary = redactedSummary,
         isExpiringUrl = isExpiringUrl,

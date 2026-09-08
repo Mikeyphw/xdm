@@ -3,11 +3,13 @@ package com.mikeyphw.xdm.android.media
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
 import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.MediaSourceKind
+import com.mikeyphw.xdm.android.model.MediaTransferShape
 import com.mikeyphw.xdm.android.model.MediaVariant
 import java.net.URI
 import java.util.Locale
@@ -130,6 +132,7 @@ data class MediaQueuedDownloadSpec(
     val destinationUri: String,
     val fileName: String,
     val requestedBackend: BackendType,
+    val transferShape: MediaTransferShape,
     val userLabel: String,
     val safeExplanation: String,
     val selectedTrackIds: Set<String>,
@@ -283,6 +286,7 @@ class MediaExecutionLibraryPlanner(
             destinationUri = destinationUri,
             fileName = safeMediaFileName(capture, plan),
             requestedBackend = backend,
+            transferShape = plan.transferShape,
             userLabel = "Media: ${capture.title.ifBlank { capture.fileName }}",
             safeExplanation = listOf(
                 plan.explanation,
@@ -293,7 +297,7 @@ class MediaExecutionLibraryPlanner(
             selectedTrackIds = selectedTrackIds,
             redactedSessionSummary = plan.sessionHandoff.redactedSummary,
             requestHeaders = plan.sessionHandoff.requestHeaders(),
-            isExpiringUrl = plan.needsCookieContext || capture.needsManifestRefresh(System.currentTimeMillis()),
+            isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(plan.primaryUrl) || capture.needsManifestRefresh(System.currentTimeMillis()),
             canUseAppQueue = plan.canQueueDirectly && !needsTermux && !blocked,
             requiresTermuxYtDlp = needsTermux && !blocked,
             strategy = plan.strategy,

@@ -48,6 +48,7 @@ validators=(
   tools/validate-remediation-phase13-final-gate.py
   tools/validate-dl02-dl03-progress-seal.py
   tools/validate-post-dl03-release-followup.py
+  tools/validate-execution-media-semantics-repair.py
 )
 
 for validator in "${matrix_owned_validators[@]}" "${validators[@]}"; do
@@ -76,5 +77,5 @@ Run the full matrix in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-The post-DL03 roadmap seal is the current final source of truth. The common validation runner, current MC/DL validators, and retained Phase-11 device/release matrix provide executable evidence; documentation-only coverage is rejected.
+The execution/media semantics repair seal is the current final source of truth; the post-DL03 roadmap seal remains its historical baseline. The common validation runner, current MC/DL validators, and retained Phase-11 device/release matrix provide executable evidence; documentation-only coverage is rejected.
 EOF2

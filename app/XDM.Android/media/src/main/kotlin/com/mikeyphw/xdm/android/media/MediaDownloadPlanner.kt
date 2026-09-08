@@ -7,6 +7,7 @@ import com.mikeyphw.xdm.android.model.BrowserHandoffMediaPolicy
 import com.mikeyphw.xdm.android.model.MediaTransferShape
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
 import java.util.Locale
 
 /**
@@ -53,7 +54,9 @@ data class MediaSessionHandoff(
 ) {
     val referer: String? get() = pageUrl?.takeIf { it.isNotBlank() }
     val cookieHeaderAvailable: Boolean get() = headers.any { it.name.equals("Cookie", ignoreCase = true) }
+    /** Browser replay context may be useful without being authentication/expiry evidence. */
     val needsSession: Boolean get() = referer != null || headers.isNotEmpty()
+    val hasCredentialContext: Boolean get() = headers.any { PrivacyDiagnosticsRedactor.isSensitiveHeaderName(it.name) }
     val redactedSummary: String get() = buildString {
         append("referer=").append(referer?.let(::redactUrl) ?: "none")
         if (cookieHeaderAvailable) append("; cookies=available/redacted")
@@ -120,6 +123,7 @@ data class MediaDownloadPlan(
     val intent: MediaDownloadIntent,
     val primaryUrl: String,
     val selectedVariantId: String?,
+    val transferShape: MediaTransferShape,
     val displayName: String,
     val requiresTermux: Boolean,
     val canQueueDirectly: Boolean,
@@ -173,7 +177,7 @@ class MediaDownloadPlanner {
             intent == MediaDownloadIntent.AudioOnly && capture.kind != MediaSourceKind.AudioStream -> MediaDownloadStrategy.YtDlp
             intent == MediaDownloadIntent.Subtitles -> MediaDownloadStrategy.YtDlp
             capture.kind == MediaSourceKind.AudioStream -> MediaDownloadStrategy.Native
-            shape == MediaTransferShape.DirectMedia || shape == MediaTransferShape.DirectFile -> MediaDownloadStrategy.Aria2
+            shape == MediaTransferShape.DirectMedia || shape == MediaTransferShape.DirectFile -> MediaDownloadStrategy.Native
             else -> MediaDownloadStrategy.YtDlp
         }
         val normalizedSelection = normalizeSelection(capture, variants, selection, selected)
@@ -201,12 +205,13 @@ class MediaDownloadPlanner {
             intent = intent,
             primaryUrl = primaryUrl,
             selectedVariantId = selected?.id ?: capture.selectedVariantId,
+            transferShape = shape,
             displayName = displayNameFor(strategy, intent),
             requiresTermux = strategy == MediaDownloadStrategy.YtDlp || strategy == MediaDownloadStrategy.FfmpegLive,
             canQueueDirectly = strategy != MediaDownloadStrategy.UnsupportedProtected,
             explanation = explanationFor(strategy, capture.kind, intent, capture, variants, normalizedSelection, session),
             metadataProbeUrl = metadataProbeUrl(capture),
-            needsCookieContext = session.needsSession || ExternalUrlPolicy.hasCredentialBearingQuery(capture.sourceUrl) || variants.any { ExternalUrlPolicy.hasCredentialBearingQuery(it.url) },
+            needsCookieContext = session.hasCredentialContext || ExternalUrlPolicy.hasCredentialBearingQuery(capture.sourceUrl) || variants.any { ExternalUrlPolicy.hasCredentialBearingQuery(it.url) },
             trackSelection = normalizedSelection,
             sessionHandoff = session,
             ytDlpFormatSelector = ytdlpFormatSelector(variants, normalizedSelection, intent),

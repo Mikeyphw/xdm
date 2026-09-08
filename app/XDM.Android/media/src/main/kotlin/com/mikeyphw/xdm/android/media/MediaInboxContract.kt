@@ -393,7 +393,7 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             selectedVariantUrl = selected?.url ?: record.selectedVariantUrl ?: record.sourceUrl,
             manifestExpiresAtEpochMs = expiry,
             lastResolvedAtEpochMs = nowEpochMs,
-            resolutionStatus = if (variants.isEmpty()) MediaResolutionStatus.Failed else MediaResolutionStatus.Resolved,
+            resolutionStatus = if (record.isPlaylist && variants.isEmpty()) MediaResolutionStatus.Failed else MediaResolutionStatus.Resolved,
             updatedAtEpochMs = nowEpochMs,
         )
     }

@@ -239,6 +239,7 @@ enum class BackendSelectionReason {
     ExpiringRequestPrefersNative,
     AuthenticatedRequestPrefersNative,
     MediaWorkflowRequiresNative,
+    DirectMediaPrefersNative,
     LargeFilePrefersAria2,
     HostHistoryPrefersNative,
     HostHistoryPrefersAria2,

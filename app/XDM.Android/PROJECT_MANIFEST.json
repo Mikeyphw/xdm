@@ -4066,5 +4066,47 @@
     },
     "static_gate_duplicate_matrix_execution": false,
     "phase11_static_matrix_coverage_retained": true
+  },
+  "execution_media_semantics_repair": {
+    "base_state": "post-DL03 release-followup v2 applied",
+    "scope": [
+      "execution_semantics",
+      "media_execution_state"
+    ],
+    "room_schema_current": 21,
+    "room_schema_changed": false,
+    "browser_headers_are_media_identity": false,
+    "transfer_shapes": [
+      "DirectFile",
+      "DirectMedia",
+      "AdaptivePlaylist",
+      "SiteResolver",
+      "LiveRecording",
+      "ProtectedDiagnostic"
+    ],
+    "progressive_media_backend": "native_direct_http",
+    "transfer_shape_persisted_in_encrypted_handoff": true,
+    "scheduler_restart_preserves_transfer_shape": true,
+    "backend_migration_preserves_transfer_shape": true,
+    "url_expiry_inferred_from_ordinary_headers": false,
+    "execution_failure_mutates_resolution_state": false,
+    "direct_media_requires_playlist_variants": false,
+    "live_locator_bundle_contains_raw_headers": false,
+    "live_locator_process_local_context_restore": true,
+    "canonical_validator": "tools/validate-execution-media-semantics-repair.py",
+    "golden_journeys": [
+      "browser_direct_file",
+      "extension_progressive_mp4",
+      "live_locator_progressive_mp4",
+      "captured_context_direct_media",
+      "adaptive_playlist_capability"
+    ],
+    "validation_deferred": false,
+    "next_overlay": "add_media_ux_remodel",
+    "legacy_media_suite_reconciled": true,
+    "progressive_media_aria2_expectations_retired": true,
+    "post_dl03_contract_reconciled": true,
+    "nullable_user_dir_warning_fixed": true,
+    "overlay_revision": "v3"
   }
 }

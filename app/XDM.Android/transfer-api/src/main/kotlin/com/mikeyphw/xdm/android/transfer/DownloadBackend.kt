@@ -16,6 +16,7 @@ import com.mikeyphw.xdm.android.model.BackendSelectionReason
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
+import com.mikeyphw.xdm.android.model.MediaTransferShape
 import java.net.URI
 import java.security.MessageDigest
 import java.util.Locale
@@ -45,6 +46,22 @@ fun inferDownloadRequestKind(url: String, fileName: String? = null, mimeType: St
         else -> DownloadRequestKind.Direct
     }
 }
+
+/** Classifies only the executable resource shape. Browser headers/session presence are orthogonal. */
+fun inferTransferShape(url: String, mimeType: String? = null): MediaTransferShape {
+    val normalizedMime = mimeType?.substringBefore(';')?.trim()?.lowercase(Locale.US).orEmpty()
+    val target = url.trim().lowercase(Locale.US).substringBefore('#').substringBefore('?')
+    return when {
+        normalizedMime in setOf("application/vnd.apple.mpegurl", "application/x-mpegurl") || target.endsWith(".m3u8") -> MediaTransferShape.AdaptivePlaylist
+        normalizedMime == "application/dash+xml" || target.endsWith(".mpd") -> MediaTransferShape.AdaptivePlaylist
+        normalizedMime.startsWith("video/") || normalizedMime.startsWith("audio/") || DIRECT_MEDIA_EXTENSIONS.any(target::endsWith) -> MediaTransferShape.DirectMedia
+        else -> MediaTransferShape.DirectFile
+    }
+}
+
+private val DIRECT_MEDIA_EXTENSIONS = setOf(
+    ".mp4", ".m4v", ".webm", ".mkv", ".mov", ".avi", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".wav",
+)
 
 /** Opaque binding for an explicit network-risk approval. The digest binds approval to the exact
  * scheme/host/port/path/query target without persisting or logging the sensitive URL itself. */
@@ -92,7 +109,19 @@ data class DownloadRequest(
     val mimeType: String? = null,
     val allowBackendFallback: Boolean = true,
     val isExpiringUrl: Boolean = false,
+    /**
+     * Legacy source-compatibility bit. New callers must use [transferShape]. It is intentionally
+     * not consulted directly by backend compatibility: a progressive MP4 is media content but is
+     * still an ordinary direct HTTP transfer.
+     */
     val isMediaRequest: Boolean = false,
+    /** Exact execution semantics. Browser/session context must never promote DirectFile/DirectMedia
+     * into an adaptive playlist workflow merely because headers or an encrypted handoff exist. */
+    val transferShape: MediaTransferShape = if (isMediaRequest) {
+        MediaTransferShape.AdaptivePlaylist
+    } else {
+        inferTransferShape(sourceUrl, mimeType)
+    },
     val networkMetered: Boolean = false,
     val previousNativeThroughputBytesPerSecond: Long? = null,
     val previousAria2ThroughputBytesPerSecond: Long? = null,
@@ -515,8 +544,13 @@ class BackendSelectionPolicy {
                 factors += "Selective repair required"
                 BackendType.Native
             }
-            request.isMediaRequest || scheme in setOf("m3u8", "mpd") || request.sourceUrl.endsWith(".m3u8", true) || request.sourceUrl.endsWith(".mpd", true) -> {
-                factors += "Media playlist workflow"
+            request.transferShape == MediaTransferShape.DirectMedia -> {
+                factors += "Direct media request"
+                BackendType.Native
+            }
+            request.transferShape in setOf(MediaTransferShape.AdaptivePlaylist, MediaTransferShape.SiteResolver, MediaTransferShape.LiveRecording, MediaTransferShape.ProtectedDiagnostic) ||
+                scheme in setOf("m3u8", "mpd") || request.sourceUrl.endsWith(".m3u8", true) || request.sourceUrl.endsWith(".mpd", true) -> {
+                factors += "Specialized media workflow"
                 BackendType.Native
             }
             request.isExpiringUrl -> {
@@ -617,8 +651,15 @@ class BackendSelectionPolicy {
         val destinationScheme = runCatching { URI(request.destinationUri).scheme?.lowercase(Locale.ROOT) }.getOrNull()
         if (destinationScheme in setOf("content", "xdm") && !capability.supportsSafDestination) return "Backend cannot write Android document destinations"
         if (request.requireSelectiveRepair && !capability.supportsSelectiveRepair) return "Backend does not support selective repair"
-        if (request.isMediaRequest && !capability.supportsMediaPlaylists) return "Backend does not support this media workflow"
-        if (request.headers.isNotEmpty() && !capability.supportsAuthentication) return "Backend cannot preserve authenticated request headers"
+        when (request.transferShape) {
+            MediaTransferShape.ProtectedDiagnostic -> return "Protected media is diagnostic-only"
+            MediaTransferShape.SiteResolver -> return "Site media must be resolved to an executable resource before transfer"
+            MediaTransferShape.LiveRecording -> return "Live media must use the recording pipeline before transfer"
+            MediaTransferShape.AdaptivePlaylist -> if (!capability.supportsMediaPlaylists) return "Backend does not support adaptive playlist execution"
+            MediaTransferShape.DirectFile,
+            MediaTransferShape.DirectMedia -> Unit
+        }
+        if (request.headers.isNotEmpty() && !capability.supportsAuthentication) return "Backend cannot preserve captured request headers"
         if (request.isExpiringUrl && !capability.supportsExpiringUrls) return "Backend is unsafe for expiring URLs"
         return null
     }
@@ -658,7 +699,8 @@ class BackendSelectionPolicy {
             request.preferredBackend != BackendType.Automatic -> BackendSelectionReason.UserForced
             backend == BackendType.Native && request.destinationUri.substringBefore(':').lowercase() in setOf("content", "xdm") -> BackendSelectionReason.SafRequiresNative
             backend == BackendType.Native && request.requireSelectiveRepair -> BackendSelectionReason.SelectiveRepairRequiresNative
-            backend == BackendType.Native && request.isMediaRequest -> BackendSelectionReason.MediaWorkflowRequiresNative
+            backend == BackendType.Native && request.transferShape == MediaTransferShape.DirectMedia -> BackendSelectionReason.DirectMediaPrefersNative
+            backend == BackendType.Native && request.transferShape in setOf(MediaTransferShape.AdaptivePlaylist, MediaTransferShape.SiteResolver, MediaTransferShape.LiveRecording) -> BackendSelectionReason.MediaWorkflowRequiresNative
             backend == BackendType.Native && request.isExpiringUrl -> BackendSelectionReason.ExpiringRequestPrefersNative
             backend == BackendType.Native && request.headers.isNotEmpty() -> BackendSelectionReason.AuthenticatedRequestPrefersNative
             backend == BackendType.Aria2 && request.mirrors.size > 1 -> BackendSelectionReason.MirrorWorkloadPrefersAria2
@@ -672,7 +714,8 @@ class BackendSelectionPolicy {
             BackendSelectionReason.UserForced -> "${backend.displayName()} was selected explicitly for this download."
             BackendSelectionReason.SafRequiresNative -> "Android document destinations require XDM Native's storage bridge."
             BackendSelectionReason.SelectiveRepairRequiresNative -> "Selective range repair requires XDM Native checkpoints."
-            BackendSelectionReason.MediaWorkflowRequiresNative -> "HLS, DASH and browser media requests stay in the native diagnostic pipeline."
+            BackendSelectionReason.MediaWorkflowRequiresNative -> "Adaptive, site-resolved and live media require a specialized media execution pipeline."
+            BackendSelectionReason.DirectMediaPrefersNative -> "Progressive audio/video uses XDM Native as the Android-integrated direct HTTP path."
             BackendSelectionReason.ExpiringRequestPrefersNative -> "The native engine is preferred for expiring URLs and strict request replay."
             BackendSelectionReason.AuthenticatedRequestPrefersNative -> "The native engine preserves captured headers and authenticated request details."
             BackendSelectionReason.MirrorWorkloadPrefersAria2 -> "aria2 can schedule multiple mirrors efficiently."
@@ -722,10 +765,10 @@ class BackendSelectionPolicy {
             supportsSelectiveRepair = true,
             supportsSafDestination = true,
             supportsAuthentication = true,
-            supportsProxy = true,
-            maxConnectionsPerDownload = 8,
+            supportsProxy = false,
+            maxConnectionsPerDownload = 4,
             supportsExpiringUrls = true,
-            supportsMediaPlaylists = true,
+            supportsMediaPlaylists = false,
             supportsMigrationImport = false,
             batteryImpact = BackendBatteryImpact.Low,
             diagnosticDetail = BackendDiagnosticDetail.Forensic,
@@ -736,10 +779,10 @@ class BackendSelectionPolicy {
             supportsMirrors = true,
             supportsSelectiveRepair = false,
             supportsSafDestination = false,
-            supportsAuthentication = true,
-            supportsProxy = true,
+            supportsAuthentication = false,
+            supportsProxy = false,
             maxConnectionsPerDownload = 16,
-            supportsMetalink = true,
+            supportsMetalink = false,
             supportsExpiringUrls = false,
             supportsMediaPlaylists = false,
             supportsMigrationImport = false,
@@ -890,22 +933,9 @@ class BackendCoordinator(
     }
 
     private fun validateCapabilities(request: DownloadRequest, capabilities: BackendCapabilities) {
-        val sourceScheme = runCatching { URI(request.sourceUrl).scheme?.lowercase(Locale.ROOT) }.getOrNull()
-            ?: throw BackendCapabilityException("Source URL has no supported scheme")
-        if (sourceScheme !in capabilities.protocols.map { it.lowercase(Locale.ROOT) }) {
-            throw if (capabilities.protocols.isEmpty()) BackendUnavailableException("Selected backend is unavailable")
-            else BackendCapabilityException("Selected backend does not support $sourceScheme")
-        }
-        val destinationScheme = runCatching { URI(request.destinationUri).scheme?.lowercase(Locale.ROOT) }.getOrNull()
-        if (destinationScheme in setOf("content", "xdm") && !capabilities.supportsSafDestination) {
-            throw BackendCapabilityException("Selected backend cannot write Android document destinations")
-        }
-        if (request.requireSelectiveRepair && !capabilities.supportsSelectiveRepair) {
-            throw BackendCapabilityException("Selected backend does not support selective repair")
-        }
-        if (request.isMediaRequest && !capabilities.supportsMediaPlaylists) {
-            throw BackendCapabilityException("Selected backend does not support this media workflow")
-        }
+        val issue = selectionPolicy.compatibilityIssue(request, capabilities) ?: return
+        if (capabilities.protocols.isEmpty()) throw BackendUnavailableException(issue)
+        throw BackendCapabilityException(issue)
     }
 }
 

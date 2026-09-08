@@ -5,8 +5,10 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import com.mikeyphw.xdm.android.model.MediaTransferShape
 import com.mikeyphw.xdm.android.transfer.DownloadRequestKind
 import com.mikeyphw.xdm.android.transfer.inferDownloadRequestKind
+import com.mikeyphw.xdm.android.transfer.inferTransferShape
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
@@ -30,6 +32,7 @@ data class SecureRequestEnvelope(
     val pageUrl: String? = null,
     val headers: Map<String, String> = emptyMap(),
     val requestKind: DownloadRequestKind = DownloadRequestKind.Direct,
+    val transferShape: MediaTransferShape = MediaTransferShape.DirectFile,
     val mirrors: List<String> = emptyList(),
     val redactedSummary: String = "",
     val isExpiringUrl: Boolean = false,
@@ -225,6 +228,7 @@ private fun SecureRequestEnvelope.toJson(): JSONObject = JSONObject()
     .put("pageUrl", pageUrl)
     .put("headers", JSONObject(headers))
     .put("requestKind", requestKind.name)
+    .put("transferShape", transferShape.name)
     .put("mirrors", JSONArray(mirrors))
     .put("redactedSummary", redactedSummary)
     .put("isExpiringUrl", isExpiringUrl)
@@ -249,6 +253,9 @@ private fun secureRequestEnvelopeFromJson(json: JSONObject): SecureRequestEnvelo
     requestKind = json.optString("requestKind").takeIf(String::isNotBlank)
         ?.let { persisted -> runCatching { DownloadRequestKind.valueOf(persisted) }.getOrNull() }
         ?: inferDownloadRequestKind(json.optString("exactUrl")),
+    transferShape = json.optString("transferShape").takeIf(String::isNotBlank)
+        ?.let { persisted -> runCatching { MediaTransferShape.valueOf(persisted) }.getOrNull() }
+        ?: inferTransferShape(json.optString("exactUrl")),
     mirrors = json.optJSONArray("mirrors")?.let { array ->
         (0 until array.length()).mapNotNull { index -> array.optString(index).trim().takeIf(String::isNotBlank) }
     }.orEmpty(),

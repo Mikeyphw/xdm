@@ -29,6 +29,7 @@ import com.mikeyphw.xdm.android.transfer.FinalizationJournalStore
 import com.mikeyphw.xdm.android.transfer.DownloadBackend
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.inferDownloadRequestKind
+import com.mikeyphw.xdm.android.transfer.inferTransferShape
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -451,7 +452,7 @@ class TransferExecutionRuntime(
             mimeType = download.mimeType,
             allowBackendFallback = download.allowBackendFallback,
             isExpiringUrl = mediaHandoff?.isExpiringUrl == true,
-            isMediaRequest = mediaHandoff != null,
+            transferShape = mediaHandoff?.transferShape ?: inferTransferShape(mediaHandoff?.exactUrl ?: download.sourceUrl, download.mimeType),
             privateNetworkApproved = mediaHandoff?.privateNetworkApproved == true,
             cleartextCredentialsApproved = mediaHandoff?.cleartextCredentialsApproved == true,
             privateNetworkApprovalScopes = mediaHandoff?.privateNetworkApprovalScopes.orEmpty(),

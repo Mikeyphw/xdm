@@ -254,13 +254,13 @@ class BrowserHandoffMediaCoordinator(
         val rejected = mutableListOf<String>()
         fun available(backend: BackendType): Boolean {
             val caps = capabilities[backend]
-            val ok = caps != null
+            val ok = caps != null && caps.protocols.isNotEmpty()
             if (!ok) rejected += "${backend.name}:unavailable"
             return ok
         }
         val selected = when (shape) {
-            MediaTransferShape.DirectFile -> if (available(BackendType.Aria2)) BackendType.Aria2 else BackendType.Native
-            MediaTransferShape.DirectMedia -> if (available(BackendType.Aria2)) BackendType.Aria2 else BackendType.Native
+            MediaTransferShape.DirectFile -> if (available(BackendType.Native)) BackendType.Native else BackendType.Aria2
+            MediaTransferShape.DirectMedia -> if (available(BackendType.Native)) BackendType.Native else BackendType.Aria2
             MediaTransferShape.AdaptivePlaylist, MediaTransferShape.SiteResolver, MediaTransferShape.LiveRecording -> BackendType.Automatic
             MediaTransferShape.ProtectedDiagnostic -> BackendType.Automatic
         }

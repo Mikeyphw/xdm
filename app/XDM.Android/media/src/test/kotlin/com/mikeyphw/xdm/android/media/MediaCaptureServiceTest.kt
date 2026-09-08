@@ -117,7 +117,7 @@ class MediaCaptureServiceTest {
         val planner = MediaDownloadPlanner()
 
         assertEquals(MediaDownloadStrategy.YtDlp, planner.plan(hls, emptyList()).strategy)
-        assertEquals(MediaDownloadStrategy.Aria2, planner.plan(mp4, emptyList()).strategy)
+        assertEquals(MediaDownloadStrategy.Native, planner.plan(mp4, emptyList()).strategy)
         assertEquals(MediaDownloadStrategy.Native, planner.plan(audio, emptyList(), MediaDownloadIntent.AudioOnly).strategy)
     }
 
@@ -184,7 +184,7 @@ class MediaCaptureServiceTest {
         val library = planner.summarizeOfflineLibrary(listOf(record), candidate.variants)
 
         assertEquals("https://video.example.test/watch/episode", plan.metadataProbeUrl)
-        assertTrue(plan.needsCookieContext)
+        assertFalse("A referer/page context alone is replay context, not credential context.", plan.needsCookieContext)
         assertEquals(1, library.playableCount)
         assertTrue(library.adaptiveCount >= 1)
     }
@@ -396,7 +396,7 @@ class MediaCaptureServiceTest {
     }
 
     @Test
-    fun mediaEngineHardeningPlansAria2TransientInputAndUidtPolicy() {
+    fun mediaEngineHardeningKeepsProgressiveReplayContextOnNativeLane() {
         val service = MediaCaptureService(clock = { 4_000L })
         val record = service.detect("https://cdn.example.test/movie.mp4?token=secret-token", pageTitle = "Movie").single()
         val planner = MediaExecutionLibraryPlanner()
@@ -408,13 +408,14 @@ class MediaCaptureServiceTest {
             sessionHeaders = listOf(MediaSessionHeader("Referer", "https://watch.example.test/page?session=secret-session")),
         )
         val engine = planner.enginePlan(spec, androidSdkInt = 35)
-        val safeText = listOf(engine.safeSummary, engine.aria2Input?.redactedPreview.orEmpty(), engine.typedArguments.joinToString(" ")).joinToString("\n")
+        val safeText = listOf(engine.safeSummary, engine.typedArguments.joinToString(" ")).joinToString("\n")
 
-        assertEquals(MediaExecutionLane.Aria2Segmented, engine.lane)
+        assertEquals(MediaExecutionLane.DirectNative, engine.lane)
         assertEquals(AndroidMediaWorkKind.UserInitiatedDataTransfer, engine.backgroundPolicy.workKind)
         assertEquals("dataSync", engine.backgroundPolicy.foregroundServiceType)
-        assertTrue(engine.aria2Input?.deleteAfterTerminalState == true)
-        assertTrue(engine.cleanupActions.any { it.contains("aria2 transient") })
+        assertEquals("https://watch.example.test/page?session=secret-session", spec.requestHeaders["Referer"])
+        assertTrue(engine.aria2Input == null)
+        assertFalse(engine.cleanupActions.any { it.contains("aria2 transient") })
         assertTrue(engine.leakReport.safe)
         assertFalse(safeText.contains("secret-token"))
         assertFalse(safeText.contains("secret-session"))
@@ -784,7 +785,7 @@ class MediaCaptureServiceTest {
     }
 
     @Test
-    fun termuxRuntimeAdapterBuildsAria2TransientInputAndSessionCleanup() {
+    fun directProgressiveMediaNeverSynthesizesAria2TransientFiles() {
         val service = MediaCaptureService(clock = { 15_000L })
         val record = service.detect("https://cdn.example.test/movie.mp4?token=secret-token", pageTitle = "Runtime movie").single()
         val planner = MediaExecutionLibraryPlanner()
@@ -793,13 +794,14 @@ class MediaCaptureServiceTest {
         val dispatch = MediaExecutionDispatcher().dispatchPlan(spec, engine, record, termuxReady = true, nowEpochMs = 15_100L)
         val actions = MediaQueueActionPlanner().actionPlan(dispatch, null)
         val request = MediaWorkerBridgePlanner().request(spec, engine, dispatch, actions, nowEpochMs = 15_200L)
-        val aria2Request = request.copy(kind = MediaWorkerBridgeKind.Aria2Adapter, lane = MediaExecutionLane.Aria2Segmented)
-        val plan = MediaTermuxRuntimeAdapter().launchPlan(aria2Request, availableTools = setOf("aria2c"))
+        val nativePlan = MediaNativeDirectDownloadPlanner().plan(request, destinationUri = "content://downloads")
 
-        assertEquals(TermuxRuntimeLaunchKind.Aria2Download, plan.kind)
-        assertTrue(plan.transientFiles.any { it.kind == TermuxRuntimeTransientKind.Aria2Input || it.kind == TermuxRuntimeTransientKind.Aria2Session })
-        assertTrue(plan.cleanupSteps.any { it.verifierLabel.contains("aria2") })
-        assertFalse(plan.redactedPreview.contains("secret-token"))
+        assertEquals(MediaExecutionLane.DirectNative, engine.lane)
+        assertEquals(MediaWorkerBridgeKind.AndroidUidt, request.kind)
+        assertFalse(request.adapter.transientInputLabels.any { it.endsWith(".aria2.input") || it.endsWith(".aria2.session") })
+        assertEquals(NativeDirectRequestState.Ready, nativePlan.state)
+        assertTrue(nativePlan.launchable)
+        assertFalse(nativePlan.redactedDiagnostics.contains("secret-token"))
     }
 
     @Test

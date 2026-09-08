@@ -39,8 +39,8 @@ for validator in (
 ):
     need(validator in final_gate, f"canonical final gate missing current validator: {validator}")
 
-need("post-DL03 roadmap seal is the current final source of truth" in final_gate,
-     "final gate still advertises a historical overlay as current source of truth")
+need("post-DL03 roadmap seal remains its historical baseline" in final_gate,
+     "final gate must preserve the post-DL03 roadmap seal as the historical baseline for later repairs")
 need("matrix_owned_validators=(" in final_gate and 'bash tools/run-bug-hunt-phase11-validation-matrix.sh --static-only --ci' in final_gate,
      "final gate must delegate matrix-owned validators to the retained Phase-11 static matrix")
 need('for validator in "${validators[@]}"; do' in final_gate,

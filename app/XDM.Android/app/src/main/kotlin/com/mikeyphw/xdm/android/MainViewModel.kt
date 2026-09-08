@@ -36,6 +36,7 @@ import com.mikeyphw.xdm.android.model.VerificationStatus
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.BrowserCaptureCandidateSummary
 import com.mikeyphw.xdm.android.model.BrowserCaptureSessionSummary
+import com.mikeyphw.xdm.android.model.BrowserHandoffMediaPolicy
 import com.mikeyphw.xdm.android.model.BrowserMediaSessionRevision
 import com.mikeyphw.xdm.android.model.BackendCapabilities
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
@@ -63,6 +64,7 @@ import com.mikeyphw.xdm.android.model.MediaOutputAdmissionMode
 import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
+import com.mikeyphw.xdm.android.model.MediaTransferShape
 import com.mikeyphw.xdm.android.media.MediaCaptureService
 import com.mikeyphw.xdm.android.media.MediaCaptureIntakePlanner
 import com.mikeyphw.xdm.android.media.MediaBatchIntakePlanner
@@ -132,6 +134,7 @@ import com.mikeyphw.xdm.android.transfer.BackendSnapshot
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.DownloadRequestApprovalScope
 import com.mikeyphw.xdm.android.transfer.inferDownloadRequestKind
+import com.mikeyphw.xdm.android.transfer.inferTransferShape
 import com.mikeyphw.xdm.android.transfer.newChecksumExpectationId
 import com.mikeyphw.xdm.android.transfer.parseExpectedChecksum
 import com.mikeyphw.xdm.android.util.sanitizeFileName
@@ -186,6 +189,7 @@ private data class PendingDownloadAdmission(
     val headers: Map<String, String>,
     val redactedHeaderSummary: String,
     val pageUrl: String?,
+    val transferShape: MediaTransferShape,
     val privateNetworkApproved: Boolean,
     val cleartextCredentialsApproved: Boolean,
 )
@@ -379,6 +383,7 @@ class MainViewModel(
     private data class BrowserCaptureImportHandoff(
         val captureId: String,
         val session: BrowserMediaSessionRevision,
+        val transferShape: MediaTransferShape,
         val variants: List<BrowserVariantImportHandoff>,
         val preserveExistingLinkedCapture: Boolean,
         val privateNetworkApproved: Boolean = false,
@@ -1996,7 +2001,7 @@ class MainViewModel(
             originalDestination,
             current.conflictPolicy,
             current.allowBackendFallback,
-            isMediaRequest = current.mimeType?.startsWith("video/") == true || current.mimeType?.startsWith("audio/") == true,
+            transferShape = handoff?.transferShape ?: inferTransferShape(exactUrl, current.mimeType),
             headers = handoff?.headers.orEmpty(),
             mimeType = current.mimeType,
             isExpiringUrl = handoff?.isExpiringUrl == true,
@@ -2106,6 +2111,7 @@ class MainViewModel(
                 val externalCommand = consumedExternalDraft?.let { repository.findAutomationCommand(it.id) }
                 val externalSessionHeaders = consumedExternalDraft?.requestHeaders.orEmpty()
                 val mediaCandidate = mediaCaptureService.candidateFor(url)
+                val transferShape = mediaCandidate?.let(::transferShapeForCandidate) ?: inferTransferShape(url)
                 val resolvedDestination = OrganizationPowerTools.destinationFor(
                     url,
                     safeName,
@@ -2120,9 +2126,9 @@ class MainViewModel(
                     resolvedDestination,
                     conflictPolicy,
                     allowFallback,
-                    isMediaRequest = mediaCandidate != null || externalSessionHeaders.isNotEmpty(),
+                    transferShape = transferShape,
                     headers = externalSessionHeaders,
-                    isExpiringUrl = externalSessionHeaders.isNotEmpty(),
+                    isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(url),
                 )
                 val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
                 if (!recommendation.compatible) {
@@ -2168,6 +2174,7 @@ class MainViewModel(
                     headers = externalSessionHeaders,
                     redactedHeaderSummary = consumedExternalDraft?.redactedHeaderSummary.orEmpty(),
                     pageUrl = consumedExternalDraft?.pageUrl,
+                    transferShape = transferShape,
                     privateNetworkApproved = externalCommand?.privateNetworkApproved == true,
                     cleartextCredentialsApproved = externalCommand?.cleartextCredentialsApproved == true,
                 )
@@ -2247,9 +2254,10 @@ class MainViewModel(
                     downloadId = pending.download.id,
                     headers = pending.headers,
                     redactedSummary = pending.redactedHeaderSummary,
-                    isExpiringUrl = pending.headers.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(pending.requestedUrl),
+                    isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(pending.requestedUrl),
                     exactUrl = pending.requestedUrl,
                     pageUrl = pending.pageUrl,
+                    transferShape = pending.transferShape,
                     privateNetworkApproved = pending.privateNetworkApproved,
                     cleartextCredentialsApproved = pending.cleartextCredentialsApproved,
                 )
@@ -2307,10 +2315,25 @@ class MainViewModel(
         destination: String,
         conflictPolicy: FilenameConflictPolicy,
         allowFallback: Boolean,
-    ) = backendSelectionPolicy.recommend(
-        previewRequest(url, resolveFileName(url, fileName), backend, destination, conflictPolicy, allowFallback, isMediaRequest = mediaCaptureService.candidateFor(url) != null),
-        capabilitySnapshot.value.ifEmpty(::previewCapabilities),
-    )
+    ): com.mikeyphw.xdm.android.model.BackendRecommendation {
+        val candidate = mediaCaptureService.candidateFor(url)
+        val draftHeaders = externalAddDraft.value?.requestHeaders.orEmpty()
+        return backendSelectionPolicy.recommend(
+            previewRequest(
+                url = url,
+                fileName = resolveFileName(url, fileName),
+                backend = backend,
+                destination = destination,
+                conflictPolicy = conflictPolicy,
+                allowFallback = allowFallback,
+                transferShape = candidate?.let(::transferShapeForCandidate) ?: inferTransferShape(url),
+                headers = draftHeaders,
+                mimeType = candidate?.mimeType,
+                isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(url),
+            ),
+            capabilitySnapshot.value.ifEmpty(::previewCapabilities),
+        )
+    }
 
     fun migrateBackend(download: Download) {
         val target = if (download.backend == BackendType.Native) BackendType.Aria2 else BackendType.Native
@@ -2727,6 +2750,7 @@ class MainViewModel(
             BrowserCaptureImportHandoff(
                 captureId = record.id,
                 session = session,
+                transferShape = transferShapeForRecord(record),
                 variants = allVariants.filter { it.captureId == record.id }.map { variant ->
                     BrowserVariantImportHandoff(
                         variantId = variant.id,
@@ -2763,9 +2787,10 @@ class MainViewModel(
                     captureId = handoff.captureId,
                     headers = session.usableHeaders,
                     redactedSummary = session.redactedSummary,
-                    isExpiringUrl = session.usableHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(session.exactRequestUrl),
+                    isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(session.exactRequestUrl),
                     exactUrl = session.exactRequestUrl,
                     pageUrl = session.frameUrl ?: session.pageUrl,
+                    transferShape = handoff.transferShape,
                     privateNetworkApproved = draft.privateNetworkApproved,
                     cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
                 )
@@ -2986,6 +3011,7 @@ class MainViewModel(
         val safeName = resolveFileName(url, draft.fileName.orEmpty())
         val sessionHeaders = transientSessionHeaders(draft.rawHeaders, draft.pageUrl, url, draft.cleartextCredentialsApproved)
         val mediaCandidate = mediaCaptureService.candidateFor(url)
+        val transferShape = mediaCandidate?.let(::transferShapeForCandidate) ?: inferTransferShape(url)
         val currentPreferences = preferences.values.first()
         val destination = currentPreferences.destinationUri.ifBlank { DestinationUris.PUBLIC_DOWNLOADS }
         val conflictPolicy = currentPreferences.conflictPolicy
@@ -2996,9 +3022,9 @@ class MainViewModel(
             destination,
             conflictPolicy,
             allowFallback = true,
-            isMediaRequest = mediaCandidate != null || sessionHeaders.isNotEmpty(),
+            transferShape = transferShape,
             headers = sessionHeaders,
-            isExpiringUrl = sessionHeaders.isNotEmpty(),
+            isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(url),
         )
         val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
         if (!recommendation.compatible) {
@@ -3031,9 +3057,10 @@ class MainViewModel(
             downloadId = download.id,
             headers = sessionHeaders,
             redactedSummary = redactedSessionSummary(draft.rawHeaders, draft.pageUrl),
-            isExpiringUrl = sessionHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(url),
+            isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(url),
             exactUrl = url,
             pageUrl = draft.normalizedPageUrl,
+            transferShape = transferShape,
             privateNetworkApproved = draft.privateNetworkApproved,
             cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
         )
@@ -3444,6 +3471,7 @@ class MainViewModel(
                 handoffPlans += BrowserCaptureImportHandoff(
                     captureId = captureId,
                     session = browserSession,
+                    transferShape = transferShapeForRecord(record),
                     variants = exactVariantPlans,
                     preserveExistingLinkedCapture = preserveLinked,
                     privateNetworkApproved = candidatePrivateApproved,
@@ -3502,9 +3530,10 @@ class MainViewModel(
                     captureId = handoff.captureId,
                     headers = storedSession.usableHeaders,
                     redactedSummary = storedSession.redactedSummary,
-                    isExpiringUrl = storedSession.usableHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(storedSession.exactRequestUrl),
+                    isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(storedSession.exactRequestUrl),
                     exactUrl = storedSession.exactRequestUrl,
                     pageUrl = storedSession.frameUrl ?: storedSession.pageUrl,
+                    transferShape = handoff.transferShape,
                     expiresAtEpochMs = decoded.expiresAtEpochMs,
                     privateNetworkApproved = handoff.privateNetworkApproved,
                     cleartextCredentialsApproved = handoff.cleartextCredentialsApproved,
@@ -3641,6 +3670,7 @@ class MainViewModel(
                     isExpiringUrl = false,
                     exactUrl = session.exactRequestUrl,
                     pageUrl = session.frameUrl ?: session.pageUrl,
+                    transferShape = transferShapeForRecord(resolved),
                 )
                 capturedVariantsRaw.forEach { variant ->
                     MediaRequestHandoffStore.rememberVariant(
@@ -3768,9 +3798,10 @@ class MainViewModel(
                     captureId = resolved.id,
                     headers = draft.requestHeaders,
                     redactedSummary = draft.redactedHeaderSummary.orEmpty(),
-                    isExpiringUrl = draft.requestHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(intake.record.sourceUrl),
+                    isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(intake.record.sourceUrl),
                     exactUrl = intake.record.sourceUrl,
                     pageUrl = resolved.pageUrl,
+                    transferShape = transferShapeForRecord(resolved),
                     privateNetworkApproved = privateNetworkApproved,
                     cleartextCredentialsApproved = cleartextCredentialsApproved,
                 )
@@ -3954,14 +3985,13 @@ class MainViewModel(
                 destination = spec.destinationUri,
                 conflictPolicy = prefs.conflictPolicy,
                 allowFallback = true,
-                isMediaRequest = true,
+                transferShape = spec.transferShape,
                 headers = spec.requestHeaders,
                 mimeType = record.mimeType,
                 isExpiringUrl = spec.isExpiringUrl,
             )
             val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
             if (!recommendation.compatible) {
-                repository.saveMediaCapture(exactRecord.copy(resolutionStatus = MediaResolutionStatus.Failed, updatedAtEpochMs = now))
                 publishMediaIntakeFeedback(
                     MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Unsupported, "No compatible media backend", recommendation.explanation),
                     navigateToMedia = false,
@@ -3999,6 +4029,7 @@ class MainViewModel(
                 isExpiringUrl = spec.isExpiringUrl || captureHandoff?.isExpiringUrl == true,
                 exactUrl = spec.sourceUrl,
                 pageUrl = captureHandoff?.pageUrl,
+                transferShape = spec.transferShape,
                 privateNetworkApproved = executionScope != null && executionScope in captureHandoff?.privateNetworkApprovalScopes.orEmpty(),
                 cleartextCredentialsApproved = executionScope != null && executionScope in captureHandoff?.cleartextCredentialApprovalScopes.orEmpty(),
                 cleanupActions = enginePlan.cleanupActions,
@@ -4062,7 +4093,42 @@ class MainViewModel(
     }
 
     fun resolveMediaCapture(record: MediaCaptureRecord) {
-        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Checking media again", "Refreshing the captured manifest and its selectable variants."), navigateToMedia = false)
+        val transferShape = transferShapeForRecord(record)
+        if (transferShape == MediaTransferShape.DirectFile || transferShape == MediaTransferShape.DirectMedia) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val now = System.currentTimeMillis()
+                val ready = record.copy(
+                    resolutionStatus = MediaResolutionStatus.Resolved,
+                    selectedVariantUrl = record.selectedVariantUrl ?: record.sourceUrl,
+                    lastResolvedAtEpochMs = now,
+                    updatedAtEpochMs = now,
+                )
+                repository.saveMediaCapture(ready)
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(
+                        MediaIntakeFeedbackKind.Found,
+                        "Direct media is ready",
+                        "This captured file is already executable. No playlist refresh or quality discovery is required.",
+                    ),
+                    navigateToMedia = false,
+                )
+            }
+            return
+        }
+
+        if (transferShape == MediaTransferShape.ProtectedDiagnostic) {
+            publishMediaIntakeFeedback(
+                MediaIntakeFeedbackUi(
+                    MediaIntakeFeedbackKind.Unsupported,
+                    "Protected media",
+                    "XDM can keep diagnostic details for this capture, but it cannot turn protected media into a downloadable transfer.",
+                ),
+                navigateToMedia = false,
+            )
+            return
+        }
+
+        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Checking media again", "Refreshing the captured media details and selectable variants."), navigateToMedia = false)
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 val handoff = MediaRequestHandoffStore.forCapture(record.id)
@@ -4078,7 +4144,7 @@ class MainViewModel(
             }.onSuccess { (now, refreshed, variants) ->
                 if (variants.isEmpty()) {
                     repository.saveMediaCapture(record.copy(resolutionStatus = MediaResolutionStatus.RequiresRefresh, updatedAtEpochMs = now))
-                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.NeedsBrowserCapture, "No fresh media variants found", "Check again completed, but this manifest still needs a fresh browser-observed request or session."), navigateToMedia = false)
+                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.NeedsBrowserCapture, "No fresh media variants found", "The adaptive/site media request still needs a fresh browser-observed request or resolver result."), navigateToMedia = false)
                 } else {
                     repository.saveMediaCaptureWithVariants(refreshed.copy(sourceUrl = record.sourceUrl), variants, now)
                     publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media refreshed", "Found ${variants.size} selectable media variant(s)."), navigateToMedia = false)
@@ -4246,7 +4312,18 @@ class MainViewModel(
         url?.let(::persistableBrowserCaptureUrl)
 
     private fun previewCapabilities() = mapOf(
-        BackendType.Native to BackendCapabilities(setOf("http", "https"), true, false, true, true),
+        BackendType.Native to BackendCapabilities(
+            protocols = setOf("http", "https"),
+            supportsSegmentation = true,
+            supportsMirrors = false,
+            supportsSelectiveRepair = true,
+            supportsSafDestination = true,
+            supportsAuthentication = true,
+            supportsProxy = false,
+            maxConnectionsPerDownload = 4,
+            supportsExpiringUrls = true,
+            supportsMediaPlaylists = false,
+        ),
     )
 
     private fun previewRequest(
@@ -4259,6 +4336,7 @@ class MainViewModel(
         isMediaRequest: Boolean = false,
         headers: Map<String, String> = emptyMap(),
         mimeType: String? = null,
+        transferShape: MediaTransferShape = if (isMediaRequest) MediaTransferShape.AdaptivePlaylist else inferTransferShape(url, mimeType),
         isExpiringUrl: Boolean = false,
         privateNetworkApproved: Boolean = false,
         cleartextCredentialsApproved: Boolean = false,
@@ -4275,10 +4353,29 @@ class MainViewModel(
         allowBackendFallback = allowFallback,
         isExpiringUrl = isExpiringUrl,
         isMediaRequest = isMediaRequest,
+        transferShape = transferShape,
         privateNetworkApproved = privateNetworkApproved,
         cleartextCredentialsApproved = cleartextCredentialsApproved,
     )
 
+
+    private fun transferShapeForCandidate(candidate: com.mikeyphw.xdm.android.media.MediaCaptureCandidate): MediaTransferShape =
+        BrowserHandoffMediaPolicy.classifyShape(
+            kind = candidate.kind,
+            pageUrl = candidate.pageUrl,
+            mimeType = candidate.mimeType,
+            live = false,
+            protected = false,
+        )
+
+    private fun transferShapeForRecord(record: MediaCaptureRecord): MediaTransferShape =
+        BrowserHandoffMediaPolicy.classifyShape(
+            kind = record.kind,
+            pageUrl = record.pageUrl,
+            mimeType = record.mimeType,
+            live = record.manifestIsLive == true,
+            protected = record.manifestProtected,
+        )
 
     private fun resolveFileName(url: String, requestedName: String): String {
         if (requestedName.isNotBlank()) return sanitizeFileName(requestedName)
