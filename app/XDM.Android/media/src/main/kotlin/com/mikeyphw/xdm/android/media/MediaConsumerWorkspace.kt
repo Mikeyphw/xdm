@@ -42,6 +42,7 @@ class MediaConsumerWorkspacePlanner(
         capture: MediaCaptureRecord,
         variants: List<MediaVariant>,
         selection: MediaTrackSelection,
+        hasExistingOutput: Boolean = capture.downloadId != null || capture.status == MediaCaptureStatus.DownloadCreated,
     ): MediaConsumerCaptureSummary {
         val plan = downloadPlanner.plan(capture, variants, selection = selection)
         val selectedVideo = variants.firstOrNull { it.id == plan.trackSelection.videoVariantId }
@@ -51,6 +52,7 @@ class MediaConsumerWorkspacePlanner(
         val selectedSubtitle = variants.firstOrNull { it.id == plan.trackSelection.subtitleVariantId }
         val estimatedSize = estimateSizeBytes(capture.durationMs, selectedVideo?.bitrateBitsPerSecond)
         val state = when {
+            capture.status == MediaCaptureStatus.Archived -> MediaConsumerState.Added
             plan.protectedDiagnostic.protected -> MediaConsumerState.Protected
             capture.status == MediaCaptureStatus.Expired || capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh -> MediaConsumerState.NeedsRefresh
             capture.resolutionStatus == MediaResolutionStatus.Failed -> MediaConsumerState.Failed
@@ -58,7 +60,7 @@ class MediaConsumerWorkspacePlanner(
             else -> MediaConsumerState.Ready
         }
         val notice = when (state) {
-            MediaConsumerState.Ready -> if (capture.status == MediaCaptureStatus.DownloadCreated) {
+            MediaConsumerState.Ready -> if (hasExistingOutput) {
                 "This capture already has an output. Downloading again creates another output generation."
             } else null
             MediaConsumerState.Added -> "This media is already in Downloads."
@@ -75,7 +77,7 @@ class MediaConsumerWorkspacePlanner(
             notice = notice,
             canDownload = state == MediaConsumerState.Ready && plan.canQueueDirectly,
             primaryActionLabel = when (state) {
-                MediaConsumerState.Ready -> if (capture.status == MediaCaptureStatus.DownloadCreated) "Download again" else "Download"
+                MediaConsumerState.Ready -> if (hasExistingOutput) "Download again" else "Download"
                 MediaConsumerState.Added -> "Added"
                 MediaConsumerState.NeedsRefresh -> "Refresh"
                 MediaConsumerState.Failed, MediaConsumerState.NeedsResolution -> "Check media"

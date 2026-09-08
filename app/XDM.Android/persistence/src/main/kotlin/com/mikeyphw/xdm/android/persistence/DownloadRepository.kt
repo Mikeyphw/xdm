@@ -35,6 +35,7 @@ import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
+import com.mikeyphw.xdm.android.model.MediaOutputAdmissionMode
 import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.DestinationHealthStatus
@@ -50,6 +51,14 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.util.UUID
+
+
+sealed interface MediaDownloadAdmissionResult {
+    data class Created(val download: Download, val output: MediaOutputRecord) : MediaDownloadAdmissionResult
+    data class Existing(val output: MediaOutputRecord) : MediaDownloadAdmissionResult
+}
+
+enum class MediaCaptureRemovalResult { Deleted, Archived }
 
 sealed interface DownloadAdmissionResult {
     data class Created(val download: Download) : DownloadAdmissionResult
@@ -289,9 +298,17 @@ class DownloadRepository(private val database: AppDatabase) {
         download: Download,
         updatedAtEpochMs: Long = System.currentTimeMillis(),
         selectedTrackIds: Set<String> = emptySet(),
-    ): Result<Download> = runCatching {
+        admissionMode: MediaOutputAdmissionMode = MediaOutputAdmissionMode.Primary,
+    ): Result<MediaDownloadAdmissionResult> = runCatching {
         database.withTransaction {
-            requireNotNull(database.mediaCaptureDao().findById(captureId)) { "Media capture no longer exists" }
+            val capture = requireNotNull(database.mediaCaptureDao().findById(captureId)) { "Media capture no longer exists" }
+            check(capture.status != MediaCaptureStatus.Archived.name) { "Media capture is archived; capture it again before creating another output" }
+            val existingOutput = database.mediaCaptureDao().outputsForCapture(captureId)
+                .firstOrNull { it.state != MediaOutputState.Hidden.name }
+                ?.toModel()
+            if (admissionMode == MediaOutputAdmissionMode.Primary && existingOutput != null) {
+                return@withTransaction MediaDownloadAdmissionResult.Existing(existingOutput)
+            }
             check(database.downloadGraphTransactionDao().upsertDownloadPreservingNewerState(download.redactedForPersistence().toEntity())) {
                 "Download row could not be created"
             }
@@ -328,9 +345,22 @@ class DownloadRepository(private val database: AppDatabase) {
             check(database.mediaCaptureDao().outputsForCapture(captureId).any { it.id == output.id }) {
                 "Media output relation could not be created atomically with the download"
             }
-            download
+            MediaDownloadAdmissionResult.Created(download, output)
         }
     }
+
+    suspend fun archiveOrDeleteMediaCapture(id: String, updatedAtEpochMs: Long = System.currentTimeMillis()): MediaCaptureRemovalResult = database.withTransaction {
+        val capture = database.mediaCaptureDao().findById(id) ?: return@withTransaction MediaCaptureRemovalResult.Deleted
+        val outputs = database.mediaCaptureDao().outputsForCapture(id)
+        if (outputs.isEmpty()) {
+            database.mediaCaptureDao().delete(id)
+            MediaCaptureRemovalResult.Deleted
+        } else {
+            database.mediaCaptureDao().archive(id, MediaCaptureStatus.Archived.name, updatedAtEpochMs)
+            MediaCaptureRemovalResult.Archived
+        }
+    }
+
     suspend fun deleteMediaCapture(id: String) = database.mediaCaptureDao().delete(id)
     suspend fun findAutomationCommand(id: String): AutomationCommandRecord? = database.automationCommandDao().findById(id)?.toModel()
     suspend fun findAutomationCommandByKey(idempotencyKey: String): AutomationCommandRecord? = database.automationCommandDao().findByIdempotencyKey(idempotencyKey)?.toModel()

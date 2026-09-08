@@ -57,6 +57,7 @@ import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
+import com.mikeyphw.xdm.android.model.MediaOutputAdmissionMode
 import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
@@ -114,6 +115,8 @@ import com.mikeyphw.xdm.android.model.SettingsExchangeSnapshot
 import com.mikeyphw.xdm.android.model.SavedSearch
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.persistence.DownloadAdmissionResult
+import com.mikeyphw.xdm.android.persistence.MediaDownloadAdmissionResult
+import com.mikeyphw.xdm.android.persistence.MediaCaptureRemovalResult
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
 import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceCoordinator
@@ -145,6 +148,7 @@ import com.mikeyphw.xdm.android.termux.PostProcessingAutomationStatus
 import java.util.Locale
 import java.net.URI
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -271,6 +275,7 @@ data class MainUiState(
     val mediaIntakeFeedback: MediaIntakeFeedbackUi = MediaIntakeFeedbackUi(),
     val browserCaptureSessions: List<BrowserCaptureSessionSummary> = emptyList(),
     val mediaTrackSelections: Map<String, MediaTrackSelection> = emptyMap(),
+    val mediaOutputAdmissionsInFlight: Set<String> = emptySet(),
     val automationCommands: List<AutomationCommandRecord> = emptyList(),
     val tags: List<DownloadTag> = emptyList(),
     val tagAssignments: List<DownloadTagAssignment> = emptyList(),
@@ -406,6 +411,8 @@ class MainViewModel(
     val downloadAdmissionState: StateFlow<DownloadAdmissionUiState> = _downloadAdmissionState
     private var pendingDownloadAdmission: PendingDownloadAdmission? = null
     private val mediaIntakeFeedback = MutableStateFlow(MediaIntakeFeedbackUi())
+    private val mediaOutputAdmissionClaims = ConcurrentHashMap.newKeySet<String>()
+    private val mediaOutputAdmissionsInFlight = MutableStateFlow<Set<String>>(emptySet())
     private val mediaCaptureService = MediaCaptureService()
     private val mediaSniffingEngine = MediaSniffingEngine(mediaCaptureService, debugRecorder = debugEventRecorder)
     private val mediaPageProbe = MediaPageProbe(
@@ -632,14 +639,15 @@ class MainViewModel(
         val activity: OperationalActivityStoreSnapshot,
         val mediaIntakeFeedback: MediaIntakeFeedbackUi,
         val browserCaptureSessions: List<BrowserCaptureSessionSummary>,
+        val mediaOutputAdmissionsInFlight: Set<String>,
     )
 
     private val reviewUiBase = combine(externalAddDraft, mediaResolverSelectionStore.selections, operationalActivityStore.snapshot) { draft, selections, activity ->
         Triple(draft, selections, activity)
     }
 
-    private val reviewUi = combine(reviewUiBase, mediaIntakeFeedback, browserCaptureSessionRegistry.sessions) { base, feedback, sessions ->
-        ReviewUiSnapshot(base.first, base.second, base.third, feedback, sessions)
+    private val reviewUi = combine(reviewUiBase, mediaIntakeFeedback, browserCaptureSessionRegistry.sessions, mediaOutputAdmissionsInFlight) { base, feedback, sessions, admissions ->
+        ReviewUiSnapshot(base.first, base.second, base.third, feedback, sessions, admissions)
     }
 
     private data class TermuxUiSnapshot(
@@ -828,6 +836,7 @@ class MainViewModel(
             mediaIntakeFeedback = review.mediaIntakeFeedback,
             browserCaptureSessions = review.browserCaptureSessions,
             mediaTrackSelections = review.mediaSelections,
+            mediaOutputAdmissionsInFlight = review.mediaOutputAdmissionsInFlight,
             automationCommands = snapshot.automationCommands,
             tags = snapshot.tags,
             tagAssignments = snapshot.tagAssignments,
@@ -3643,9 +3652,21 @@ class MainViewModel(
         }
     }
 
-    fun downloadMediaCapture(record: MediaCaptureRecord, selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = record.selectedVariantId)) {
+    fun downloadMediaCapture(record: MediaCaptureRecord,
+        selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = record.selectedVariantId),
+        admissionMode: MediaOutputAdmissionMode = MediaOutputAdmissionMode.Primary,
+    ) {
+        if (!mediaOutputAdmissionClaims.add(record.id)) {
+            publishMediaIntakeFeedback(
+                MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Already adding media", "This capture already has an output admission in progress."),
+                navigateToMedia = false,
+            )
+            return
+        }
+        mediaOutputAdmissionsInFlight.value = mediaOutputAdmissionClaims.toSet()
         mediaResolverSelectionStore.save(record.id, selection)
         viewModelScope.launch(Dispatchers.IO) {
+            try {
             val now = System.currentTimeMillis()
             val prefs = preferences.values.first()
             val storedVariants = repository.variantsForMediaCapture(record.id)
@@ -3715,6 +3736,7 @@ class MainViewModel(
                         destination = spec.destinationUri,
                         sessionHeaders = captureSessionHeaders,
                         variantSessionHeaders = variantSessionHeaders,
+                        admissionMode = admissionMode,
                     )
                 }.getOrElse { error ->
                     publishMediaIntakeFeedback(
@@ -3725,8 +3747,13 @@ class MainViewModel(
                     return@launch
                 }
                 if (!outcome.accepted) {
+                    val alreadyOwned = outcome.existingOutput != null
                     publishMediaIntakeFeedback(
-                        MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not queue Termux media", outcome.message),
+                        MediaIntakeFeedbackUi(
+                            if (alreadyOwned) MediaIntakeFeedbackKind.Found else MediaIntakeFeedbackKind.Failed,
+                            if (alreadyOwned) "Media already added" else "Could not queue Termux media",
+                            outcome.message,
+                        ),
                         navigateToMedia = false,
                     )
                     navigate(AppRoute.Media)
@@ -3813,7 +3840,13 @@ class MainViewModel(
                 cleanupActions = enginePlan.cleanupActions,
                 tempCookieFileName = enginePlan.tempCookieFile?.fileName,
             )
-            val creation = repository.createDownloadFromMediaCapture(record.id, download, now, selectedTrackIds = spec.selectedTrackIds)
+            val creation = repository.createDownloadFromMediaCapture(
+                record.id,
+                download,
+                now,
+                selectedTrackIds = spec.selectedTrackIds,
+                admissionMode = admissionMode,
+            )
             if (creation.isFailure) {
                 MediaRequestHandoffStore.forget(download.id)
                 val reason = creation.exceptionOrNull()?.message ?: "Download creation failed before the media capture could be linked."
@@ -3831,6 +3864,22 @@ class MainViewModel(
                 navigate(AppRoute.Media)
                 return@launch
             }
+            when (val admitted = creation.getOrThrow()) {
+                is MediaDownloadAdmissionResult.Existing -> {
+                    MediaRequestHandoffStore.forget(download.id)
+                    publishMediaIntakeFeedback(
+                        MediaIntakeFeedbackUi(
+                            MediaIntakeFeedbackKind.Found,
+                            "Media already added",
+                            "This capture already owns a durable output. Use Download again to create another generation.",
+                        ),
+                        navigateToMedia = false,
+                    )
+                    navigate(AppRoute.Media)
+                    return@launch
+                }
+                is MediaDownloadAdmissionResult.Created -> Unit
+            }
             // Keep capture/variant handoffs for additional output generations. The per-download
             // execution handoff is still isolated under the new Download id.
             debugEventRecorder.record(
@@ -3841,6 +3890,10 @@ class MainViewModel(
             )
             queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
             navigate(AppRoute.Downloads)
+            } finally {
+                mediaOutputAdmissionClaims.remove(record.id)
+                mediaOutputAdmissionsInFlight.value = mediaOutputAdmissionClaims.toSet()
+            }
         }
     }
 
@@ -3890,9 +3943,18 @@ class MainViewModel(
         mediaResolverSelectionStore.remove(record.id)
         viewModelScope.launch(Dispatchers.IO) {
             val variantIds = repository.variantsForMediaCapture(record.id).map { it.id }
-            repository.deleteMediaCapture(record.id)
-            MediaRequestHandoffStore.forgetCapture(record.id)
-            variantIds.forEach(MediaRequestHandoffStore::forgetVariant)
+            when (repository.archiveOrDeleteMediaCapture(record.id)) {
+                MediaCaptureRemovalResult.Deleted -> {
+                    MediaRequestHandoffStore.forgetCapture(record.id)
+                    variantIds.forEach(MediaRequestHandoffStore::forgetVariant)
+                }
+                MediaCaptureRemovalResult.Archived -> {
+                    // Keep capture/variant execution handoffs while durable outputs still own this
+                    // capture. A queued/waiting Termux generation or a later retry must not lose the
+                    // authoritative master/page URL and request context merely because the inbox row
+                    // was archived. Output lifecycle cleanup can retire these handoffs later.
+                }
+            }
             browserCaptureSessionRegistry.removeCapture(record.id)
         }
     }

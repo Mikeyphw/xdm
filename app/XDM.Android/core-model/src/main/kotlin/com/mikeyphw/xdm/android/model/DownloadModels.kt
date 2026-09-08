@@ -27,12 +27,16 @@ enum class RepairBlockStatus { Trusted, Missing, Corrupt, Unknown }
 
 
 
-enum class MediaCaptureStatus { Captured, MetadataReady, MetadataMissing, DownloadCreated, Expired }
+enum class MediaCaptureStatus { Captured, MetadataReady, MetadataMissing, DownloadCreated, Expired, Archived }
 enum class MediaResolutionStatus { Unresolved, Resolved, RequiresRefresh, Failed }
 enum class MediaSourceKind { DirectFile, ProgressiveMedia, HlsPlaylist, DashManifest, AudioStream, VideoStream, Unknown }
 enum class MediaVariantKind { Primary, Video, Audio, Subtitle, Thumbnail }
 
 enum class MediaOutputOwnerKind { AppDownload, TermuxJob }
+
+/** Admission intent for one capture -> output generation. Primary is idempotent across app/Termux;
+ * AdditionalGeneration is an explicit user request for another output. */
+enum class MediaOutputAdmissionMode { Primary, AdditionalGeneration }
 enum class MediaOutputState {
     Queued,
     Active,

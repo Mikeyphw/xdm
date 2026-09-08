@@ -65,6 +65,8 @@ data class PostProcessingJobSpec(
     /** Non-secret identifiers used to recover the encrypted request/session envelope at execution time. */
     val sessionPrimaryVariantId: String? = null,
     val sessionVariantIds: List<String> = emptyList(),
+    /** Use the captured page URL, rather than the captured media URL, as yt-dlp input. */
+    val sessionUsePageUrl: Boolean = false,
 ) {
     init {
         require(subjectId.isNotBlank()) { "Post-processing subject ID must not be blank" }
@@ -116,6 +118,7 @@ data class PostProcessingJobSpec(
         .put("extraArguments", JSONArray(extraArguments))
         .putNullable("sessionPrimaryVariantId", sessionPrimaryVariantId)
         .put("sessionVariantIds", JSONArray(sessionVariantIds.distinct()))
+        .put("sessionUsePageUrl", sessionUsePageUrl)
         .toString()
 
     companion object {
@@ -159,6 +162,7 @@ data class PostProcessingJobSpec(
                 extraArguments = buildList { repeat(arguments.length()) { add(arguments.getString(it)) } },
                 sessionPrimaryVariantId = json.optNullableString("sessionPrimaryVariantId"),
                 sessionVariantIds = buildList { repeat(sessionVariantIds.length()) { sessionVariantIds.getString(it).takeIf(String::isNotBlank)?.let(::add) } }.distinct(),
+                sessionUsePageUrl = json.optBoolean("sessionUsePageUrl", false),
             )
         }
     }
@@ -423,6 +427,7 @@ object PostProcessingExecutionPolicy {
             spec.output.destinationUri.orEmpty(),
             spec.sessionPrimaryVariantId.orEmpty(),
             spec.sessionVariantIds.sorted().joinToString(","),
+            spec.sessionUsePageUrl.toString(),
             sha256(spec.extraArguments.joinToString("\u0000")),
         ).joinToString("\u0000"),
     )

@@ -95,6 +95,7 @@ fun MediaCaptureStatus.uiLabel(): String = when (this) {
     MediaCaptureStatus.MetadataMissing -> "Metadata missing"
     MediaCaptureStatus.DownloadCreated -> "Added to downloads"
     MediaCaptureStatus.Expired -> "Expired"
+    MediaCaptureStatus.Archived -> "Archived"
 }
 
 fun MediaResolutionStatus.uiLabel(): String = when (this) {

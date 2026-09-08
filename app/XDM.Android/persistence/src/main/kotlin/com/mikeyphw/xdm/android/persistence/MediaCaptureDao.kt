@@ -52,6 +52,12 @@ interface MediaCaptureDao {
     @Query("UPDATE media_captures SET status = :status, downloadId = :downloadId, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
     suspend fun markDownloadCreated(id: String, status: String, downloadId: String, updatedAtEpochMs: Long): Int
 
+    @Query("UPDATE media_captures SET status = :status, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
+    suspend fun markOutputCreated(id: String, status: String, updatedAtEpochMs: Long): Int
+
+    @Query("UPDATE media_captures SET status = :status, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
+    suspend fun archive(id: String, status: String, updatedAtEpochMs: Long): Int
+
     @Query("DELETE FROM media_captures WHERE id = :id")
     suspend fun delete(id: String)
 }

@@ -129,6 +129,8 @@ data class MediaDownloadPlan(
     val trackSelection: MediaTrackSelection = MediaTrackSelection(),
     val sessionHandoff: MediaSessionHandoff = MediaSessionHandoff(null, primaryUrl, primaryUrl),
     val ytDlpFormatSelector: String? = null,
+    val ytDlpExtraArguments: List<String> = emptyList(),
+    val ytDlpUsePageUrl: Boolean = false,
     val protectedDiagnostic: ProtectedMediaDiagnostic = ProtectedMediaDiagnostic(false, null, "No protection markers found.", "Download or play after review."),
 )
 
@@ -160,7 +162,6 @@ class MediaDownloadPlanner {
         variantSessionHeaders: Map<String, List<MediaSessionHeader>> = emptyMap(),
     ): MediaDownloadPlan {
         val selected = selectedVariant(capture, variants, intent, selection)
-        val primaryUrl = selected?.url ?: capture.selectedVariantUrl ?: capture.sourceUrl
         val live = isLive(capture)
         val protectedDiagnostic = protectedDiagnostic(capture, variants)
         val shape = BrowserHandoffMediaPolicy.classifyShape(capture.kind, capture.pageUrl, capture.mimeType, live, protectedDiagnostic.protected)
@@ -176,12 +177,23 @@ class MediaDownloadPlanner {
             else -> MediaDownloadStrategy.YtDlp
         }
         val normalizedSelection = normalizeSelection(capture, variants, selection, selected)
-        val selectedVariantHeaders = selected?.id?.let(variantSessionHeaders::get).orEmpty()
+        val ytDlpUsePageUrl = strategy == MediaDownloadStrategy.YtDlp &&
+            shape == MediaTransferShape.SiteResolver && !capture.pageUrl.isNullOrBlank()
+        // Adaptive yt-dlp execution must stay anchored to the authoritative master/MPD (or the
+        // resolver page for site extractors). A selected child rendition is a constraint, never the
+        // executable input URL. Direct app-owned transfers may still execute a selected variant.
+        val primaryUrl = when {
+            strategy == MediaDownloadStrategy.YtDlp && ytDlpUsePageUrl -> capture.pageUrl!!
+            strategy == MediaDownloadStrategy.YtDlp || strategy == MediaDownloadStrategy.FfmpegLive -> capture.sourceUrl
+            else -> selected?.url ?: capture.selectedVariantUrl ?: capture.sourceUrl
+        }
+        val selectedVariantHeaders = normalizedSelection.selectedIds()
+            .flatMap { id -> variantSessionHeaders[id].orEmpty() }
         val effectiveSessionHeaders = mergeSessionHeaders(sessionHeaders, selectedVariantHeaders)
         val session = MediaSessionHandoff(
             pageUrl = capture.pageUrl,
             sourceUrl = capture.sourceUrl,
-            selectedVariantUrl = primaryUrl,
+            selectedVariantUrl = selected?.url ?: capture.selectedVariantUrl,
             headers = effectiveSessionHeaders,
         )
         return MediaDownloadPlan(
@@ -198,6 +210,8 @@ class MediaDownloadPlanner {
             trackSelection = normalizedSelection,
             sessionHandoff = session,
             ytDlpFormatSelector = ytdlpFormatSelector(variants, normalizedSelection, intent),
+            ytDlpExtraArguments = ytdlpExtraArguments(variants, normalizedSelection),
+            ytDlpUsePageUrl = ytDlpUsePageUrl,
             protectedDiagnostic = protectedDiagnostic,
         )
     }
@@ -301,12 +315,43 @@ class MediaDownloadPlanner {
     )
 
     private fun ytdlpFormatSelector(variants: List<MediaVariant>, selection: MediaTrackSelection, intent: MediaDownloadIntent): String? {
-        if (intent == MediaDownloadIntent.AudioOnly) return "bestaudio/best"
         val video = selection.videoVariantId?.let { id -> variants.firstOrNull { it.id == id } }
         val audio = selection.audioVariantId?.let { id -> variants.firstOrNull { it.id == id } }
-        val videoSelector = video?.height?.let { "bestvideo[height<=${it}]" } ?: video?.bitrateBitsPerSecond?.let { "bestvideo[tbr<=${it / 1000}]" } ?: "bestvideo"
-        val audioSelector = audio?.language?.let { "bestaudio[language=${it}]/bestaudio" } ?: "bestaudio"
-        return if (variants.any { it.kind == MediaVariantKind.Audio }) "$videoSelector+$audioSelector/best" else "$videoSelector+bestaudio/best"
+        if (intent == MediaDownloadIntent.AudioOnly) return audioSelector(audio) + "/bestaudio/best"
+        val videoSelector = videoSelector(video)
+        val audioSelector = audioSelector(audio)
+        return when {
+            intent == MediaDownloadIntent.VideoOnly -> "$videoSelector/bestvideo/best"
+            audio != null || variants.any { it.kind == MediaVariantKind.Audio } -> "$videoSelector+$audioSelector/$videoSelector+bestaudio/best"
+            else -> "$videoSelector+bestaudio/$videoSelector/best"
+        }
+    }
+
+    private fun videoSelector(video: MediaVariant?): String {
+        if (video == null) return "bestvideo"
+        val constraints = buildList {
+            video.height?.takeIf { it > 0 }?.let { add("[height=$it]") }
+            if (video.height == null) video.bitrateBitsPerSecond?.takeIf { it > 0 }?.let { add("[tbr<=${(it / 1000).coerceAtLeast(1)}]") }
+            video.codecs?.substringBefore(',')?.trim()?.takeIf { it.matches(Regex("[A-Za-z0-9._-]{2,40}")) }?.let { codec -> add("[vcodec^=$codec]") }
+        }
+        return "bestvideo${constraints.joinToString("")}"
+    }
+
+    private fun audioSelector(audio: MediaVariant?): String {
+        if (audio == null) return "bestaudio"
+        val constraints = buildList {
+            audio.language?.trim()?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{1,24}")) }?.let { add("[language^=$it]") }
+            audio.bitrateBitsPerSecond?.takeIf { it > 0 }?.let { add("[abr<=${(it / 1000).coerceAtLeast(1)}]") }
+        }
+        return "bestaudio${constraints.joinToString("")}"
+    }
+
+    private fun ytdlpExtraArguments(variants: List<MediaVariant>, selection: MediaTrackSelection): List<String> {
+        val subtitle = selection.subtitleVariantId?.let { id -> variants.firstOrNull { it.id == id && it.kind == MediaVariantKind.Subtitle } }
+            ?: return emptyList()
+        val language = subtitle.language?.trim()?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{1,24}")) }
+            ?: return emptyList()
+        return listOf("--write-subs", "--sub-langs", language, "--embed-subs")
     }
 
     private fun metadataProbeUrl(capture: MediaCaptureRecord): String = capture.pageUrl?.takeIf { it.isNotBlank() } ?: capture.sourceUrl

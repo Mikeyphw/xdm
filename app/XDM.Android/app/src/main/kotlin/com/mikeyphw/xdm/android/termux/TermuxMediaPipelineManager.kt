@@ -13,6 +13,7 @@ import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
+import com.mikeyphw.xdm.android.model.MediaOutputAdmissionMode
 import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
@@ -47,7 +48,12 @@ class TermuxMediaPipelineManager(
     private val repository: DownloadRepository,
     destinationWriter: AndroidDestinationWriter,
 ) : TermuxResultRouter {
-    data class EnqueueOutcome(val accepted: Boolean, val job: TermuxMediaPipelineJob, val message: String)
+    data class EnqueueOutcome(
+        val accepted: Boolean,
+        val job: TermuxMediaPipelineJob,
+        val message: String,
+        val existingOutput: MediaOutputRecord? = null,
+    )
 
     private data class MediaOutputSeed(
         val captureId: String,
@@ -55,6 +61,7 @@ class TermuxMediaPipelineManager(
         val fileName: String,
         val mimeType: String?,
         val selectedTrackIds: Set<String>,
+        val admissionMode: MediaOutputAdmissionMode = MediaOutputAdmissionMode.AdditionalGeneration,
     )
 
     private val appContext = context.applicationContext
@@ -150,6 +157,7 @@ class TermuxMediaPipelineManager(
             extraArguments = emptyList(),
             sessionPrimaryVariantId = plan.selectedVariantId,
             sessionVariantIds = plan.trackSelection.selectedIds().toList(),
+            sessionUsePageUrl = plan.ytDlpUsePageUrl,
         )
         return enqueueAsync(spec)
     }
@@ -185,7 +193,14 @@ class TermuxMediaPipelineManager(
         val spec = ytDlpDownloadSpec(record, plan, outputName, destination)
         return enqueueAsync(
             spec,
-            MediaOutputSeed(record.id, destination.ifBlank { "xdm://post-processing" }, outputName, "video/mp4", plan.trackSelection.selectedIds()),
+            MediaOutputSeed(
+                record.id,
+                destination.ifBlank { "xdm://post-processing" },
+                outputName,
+                "video/mp4",
+                plan.trackSelection.selectedIds(),
+                MediaOutputAdmissionMode.AdditionalGeneration,
+            ),
         )
     }
 
@@ -196,6 +211,7 @@ class TermuxMediaPipelineManager(
         destination: String,
         sessionHeaders: List<MediaSessionHeader>,
         variantSessionHeaders: Map<String, List<MediaSessionHeader>>,
+        admissionMode: MediaOutputAdmissionMode = MediaOutputAdmissionMode.Primary,
     ): EnqueueOutcome {
         val plan = planner.plan(
             capture = record,
@@ -212,6 +228,7 @@ class TermuxMediaPipelineManager(
             fileName = outputName,
             mimeType = "video/mp4",
             selectedTrackIds = plan.trackSelection.selectedIds(),
+            admissionMode = admissionMode,
         )
         return enqueueInternal(spec, durableClaim = false, mediaOutputSeed = seed)
     }
@@ -229,15 +246,16 @@ class TermuxMediaPipelineManager(
         mimeType = "video/mp4",
         requiredTools = setOf(ExternalTool.YtDlp, ExternalTool.Ffmpeg, ExternalTool.Ffprobe),
         formatSelector = plan.ytDlpFormatSelector ?: "bestvideo+bestaudio/best",
-        // Session URL/headers are recovered from the encrypted handoff at launch. Do not persist
-        // referers, cookies, Authorization headers, signed URLs, or other request credentials here.
-        extraArguments = emptyList(),
+        // Session URL/headers are recovered from the encrypted handoff at launch. Only safe
+        // format/subtitle switches are durable; cookies, Authorization and signed URLs never are.
+        extraArguments = plan.ytDlpExtraArguments,
         destinationUri = destination.takeIf { it.startsWith("content://") || it.startsWith("xdm://") },
         // Capture-backed yt-dlp is externally owned. Never attach it as transfer ownership of a
         // normal Download row; media_outputs carries the durable capture/output relationship.
         downloadId = null,
         sessionPrimaryVariantId = plan.selectedVariantId,
         sessionVariantIds = plan.trackSelection.selectedIds().toList(),
+        sessionUsePageUrl = plan.ytDlpUsePageUrl,
     )
 
     fun convert(record: MediaCaptureRecord, preset: ConversionPreset, destination: String = ""): TermuxMediaPipelineJob {
@@ -306,9 +324,33 @@ class TermuxMediaPipelineManager(
                 entity,
             )
         } else if (mediaOutputSeed != null) {
-            database.withTransaction {
+            val existingOutput = database.withTransaction {
+                val capture = database.mediaCaptureDao().findById(mediaOutputSeed.captureId)
+                    ?: error("Media capture no longer exists")
+                check(capture.status != MediaCaptureStatus.Archived.name) {
+                    "Media capture is archived; capture it again before creating another output"
+                }
+                val existing = repository.mediaOutputsForCapture(mediaOutputSeed.captureId)
+                    .firstOrNull { it.state != MediaOutputState.Hidden }
+                if (mediaOutputSeed.admissionMode == MediaOutputAdmissionMode.Primary && existing != null) {
+                    return@withTransaction existing
+                }
                 dao.insertJob(entity)
                 repository.saveMediaOutput(mediaOutputRecord(entity, spec, mediaOutputSeed))
+                database.mediaCaptureDao().markOutputCreated(
+                    mediaOutputSeed.captureId,
+                    MediaCaptureStatus.DownloadCreated.name,
+                    now,
+                )
+                null
+            }
+            if (existingOutput != null) {
+                return EnqueueOutcome(
+                    false,
+                    entity.toPipelineJob(),
+                    "This capture already has a durable media output. Use Download again to create another generation.",
+                    existingOutput,
+                )
             }
             true
         } else {
@@ -1624,9 +1666,10 @@ class TermuxMediaPipelineManager(
         val capture = captureId?.let(MediaRequestHandoffStore::forCapture)
         val variantIds = (listOfNotNull(spec.sessionPrimaryVariantId) + spec.sessionVariantIds).distinct()
         val variants = variantIds.mapNotNull(MediaRequestHandoffStore::forVariant)
-        val primary = spec.sessionPrimaryVariantId?.let(MediaRequestHandoffStore::forVariant)
         val sessionBound = !spec.captureId.isNullOrBlank() || !spec.sessionPrimaryVariantId.isNullOrBlank() || spec.sessionVariantIds.isNotEmpty()
-        val exactUrl = primary?.exactUrl ?: capture?.exactUrl ?: if (sessionBound) {
+        val exactUrl = capture?.let { handoff ->
+            if (spec.sessionUsePageUrl) handoff.pageUrl?.takeIf(String::isNotBlank) ?: handoff.exactUrl else handoff.exactUrl
+        } ?: if (sessionBound) {
             // A capture/variant-backed attempt must never downgrade to a durable sanitized URL after
             // its encrypted handoff expires: doing so would silently drop Cookie/Authorization and
             // other request context. The caller will fail closed and ask for a fresh capture.
@@ -1702,6 +1745,7 @@ class TermuxMediaPipelineManager(
         downloadId: String? = record.downloadId,
         sessionPrimaryVariantId: String? = null,
         sessionVariantIds: List<String> = emptyList(),
+        sessionUsePageUrl: Boolean = false,
     ) = PostProcessingJobSpec(
         subjectId = record.id,
         subjectType = PostProcessingSubjectType.MediaCapture,
@@ -1728,6 +1772,7 @@ class TermuxMediaPipelineManager(
         extraArguments = extraArguments,
         sessionPrimaryVariantId = sessionPrimaryVariantId,
         sessionVariantIds = sessionVariantIds,
+        sessionUsePageUrl = sessionUsePageUrl,
     )
 
     private fun newJobEntity(

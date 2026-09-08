@@ -33,6 +33,7 @@ import com.mikeyphw.xdm.android.media.MediaConsumerState
 import com.mikeyphw.xdm.android.media.MediaConsumerWorkspacePlanner
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaOutputAdmissionMode
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.util.formatBytes
@@ -44,7 +45,9 @@ internal fun MediaCaptureCard(
     captureVariants: List<MediaVariant>,
     persistedSelection: MediaTrackSelection,
     consumerPlanner: MediaConsumerWorkspacePlanner,
-    onDownload: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
+    hasExistingOutput: Boolean,
+    downloadInFlight: Boolean,
+    onDownload: (MediaCaptureRecord, MediaTrackSelection, MediaOutputAdmissionMode) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
     onTrackSelectionChanged: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
@@ -58,8 +61,8 @@ internal fun MediaCaptureCard(
         trackSelection = persistedSelection.copy(videoVariantId = persistedSelection.videoVariantId ?: capture.selectedVariantId)
     }
 
-    val summary = remember(capture, captureVariants, trackSelection) {
-        consumerPlanner.summarizeCapture(capture, captureVariants, trackSelection)
+    val summary = remember(capture, captureVariants, trackSelection, hasExistingOutput) {
+        consumerPlanner.summarizeCapture(capture, captureVariants, trackSelection, hasExistingOutput)
     }
     val videoVariants = remember(captureVariants) {
         captureVariants.filter { it.kind == MediaVariantKind.Video || it.kind == MediaVariantKind.Primary }
@@ -150,9 +153,15 @@ internal fun MediaCaptureCard(
         XdmActionFlowRow {
             when (summary.state) {
                 MediaConsumerState.Ready -> Button(
-                    onClick = { onDownload(capture, trackSelection) },
-                    enabled = summary.canDownload,
-                ) { Text("Download") }
+                    onClick = {
+                        onDownload(
+                            capture,
+                            trackSelection,
+                            if (hasExistingOutput) MediaOutputAdmissionMode.AdditionalGeneration else MediaOutputAdmissionMode.Primary,
+                        )
+                    },
+                    enabled = summary.canDownload && !downloadInFlight,
+                ) { Text(if (downloadInFlight) "Adding…" else summary.primaryActionLabel) }
                 MediaConsumerState.NeedsRefresh,
                 MediaConsumerState.NeedsResolution,
                 MediaConsumerState.Failed -> Button(onClick = { onResolve(capture) }) {

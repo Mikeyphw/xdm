@@ -32,6 +32,10 @@ import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.BrowserCaptureSessionSummary
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaCaptureStatus
+import com.mikeyphw.xdm.android.model.MediaOutputAdmissionMode
+import com.mikeyphw.xdm.android.model.MediaOutputRecord
+import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.util.formatBytes
 import com.mikeyphw.xdm.android.util.formatSpeed
@@ -43,11 +47,13 @@ fun MediaInboxScreen(
     variants: List<MediaVariant>,
     mediaTrackSelections: Map<String, MediaTrackSelection>,
     downloads: List<Download>,
+    outputs: List<MediaOutputRecord>,
+    mediaOutputAdmissionsInFlight: Set<String>,
     intakeFeedback: MediaIntakeFeedbackUi,
     browserCaptureSessions: List<BrowserCaptureSessionSummary>,
     onPastePageUrl: (String) -> Unit,
     onBatchInput: (String) -> Unit,
-    onDownload: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
+    onDownload: (MediaCaptureRecord, MediaTrackSelection, MediaOutputAdmissionMode) -> Unit,
     onResumeOrRetryDownload: (Download) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
@@ -63,7 +69,7 @@ fun MediaInboxScreen(
     val reviewableCaptures = remember(captures) {
         // DownloadCreated records remain reviewable: one capture may intentionally produce multiple
         // output records/generations with different track selections or destinations.
-        captures.sortedByDescending(MediaCaptureRecord::updatedAtEpochMs)
+        captures.filter { it.status != MediaCaptureStatus.Archived }.sortedByDescending(MediaCaptureRecord::updatedAtEpochMs)
     }
     val capturesById = remember(reviewableCaptures) { reviewableCaptures.associateBy(MediaCaptureRecord::id) }
     val activeBrowserSessions = remember(browserCaptureSessions, capturesById) {
@@ -214,6 +220,8 @@ fun MediaInboxScreen(
                                 persistedSelection = mediaTrackSelections[capture.id]
                                     ?: MediaTrackSelection(videoVariantId = capture.selectedVariantId),
                                 consumerPlanner = consumerPlanner,
+                                hasExistingOutput = outputs.any { it.captureId == capture.id && it.state != MediaOutputState.Hidden },
+                                downloadInFlight = capture.id in mediaOutputAdmissionsInFlight,
                                 onDownload = onDownload,
                                 onResolve = onResolve,
                                 onSelectVariant = onSelectVariant,
@@ -233,6 +241,8 @@ fun MediaInboxScreen(
                             persistedSelection = mediaTrackSelections[capture.id]
                                 ?: MediaTrackSelection(videoVariantId = capture.selectedVariantId),
                             consumerPlanner = consumerPlanner,
+                            hasExistingOutput = outputs.any { it.captureId == capture.id && it.state != MediaOutputState.Hidden },
+                            downloadInFlight = capture.id in mediaOutputAdmissionsInFlight,
                             onDownload = onDownload,
                             onResolve = onResolve,
                             onSelectVariant = onSelectVariant,
