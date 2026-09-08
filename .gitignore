@@ -403,7 +403,7 @@ app/XDM/firefox-amo/xdm-v8-browser-helper.zip
 .devtool/cache/
 .devtool/reports/
 .devtool/test-history.json
-.devtool/tmp/
+.devtool/
 
 # BEGIN repo-cleanup managed ignores
 # Gradle / Kotlin generated state
