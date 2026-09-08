@@ -113,6 +113,7 @@ import com.mikeyphw.xdm.android.model.SettingsExchangeCodec
 import com.mikeyphw.xdm.android.model.SettingsExchangeSnapshot
 import com.mikeyphw.xdm.android.model.SavedSearch
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
+import com.mikeyphw.xdm.android.persistence.DownloadAdmissionResult
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
 import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceCoordinator
@@ -159,6 +160,27 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 
 private val SessionHeaderAllowList = setOf("authorization", "cookie", "referer", "user-agent", "origin", "accept", "accept-language")
+
+data class DownloadAdmissionUiState(
+    val inFlight: Boolean = false,
+    val duplicateDownloadId: String? = null,
+    val duplicateFileName: String? = null,
+    val message: String? = null,
+) {
+    val awaitingDuplicateDecision: Boolean get() = duplicateDownloadId != null
+}
+
+private data class PendingDownloadAdmission(
+    val requestedUrl: String,
+    val download: Download,
+    val checksumExpectation: ChecksumExpectation?,
+    val externalDraft: DownloadIntakeDraft?,
+    val headers: Map<String, String>,
+    val redactedHeaderSummary: String,
+    val pageUrl: String?,
+    val privateNetworkApproved: Boolean,
+    val cleartextCredentialsApproved: Boolean,
+)
 
 data class StorageDoctorUi(
     val status: String = "Not run",
@@ -380,6 +402,9 @@ class MainViewModel(
     }
     private val capabilitySnapshot = MutableStateFlow<Map<BackendType, BackendCapabilities>>(emptyMap())
     private val externalAddDraft = MutableStateFlow<DownloadIntakeDraft?>(null)
+    private val _downloadAdmissionState = MutableStateFlow(DownloadAdmissionUiState())
+    val downloadAdmissionState: StateFlow<DownloadAdmissionUiState> = _downloadAdmissionState
+    private var pendingDownloadAdmission: PendingDownloadAdmission? = null
     private val mediaIntakeFeedback = MutableStateFlow(MediaIntakeFeedbackUi())
     private val mediaCaptureService = MediaCaptureService()
     private val mediaSniffingEngine = MediaSniffingEngine(mediaCaptureService, debugRecorder = debugEventRecorder)
@@ -883,6 +908,10 @@ class MainViewModel(
     }
 
     fun navigate(route: AppRoute) {
+        if (route == AppRoute.Add) {
+            pendingDownloadAdmission = null
+            _downloadAdmissionState.value = DownloadAdmissionUiState()
+        }
         val current = navigationOverride.value
         navigationOverride.value = when (route) {
             AppRoute.Add -> current.copy(route = AppRoute.Add)
@@ -1991,97 +2020,214 @@ class MainViewModel(
         checksumAlgorithm: ChecksumAlgorithm,
     ) {
         if (url.isBlank() || destination.isBlank()) return
-        val safeName = resolveFileName(url, fileName)
-        viewModelScope.launch {
-        val duplicate = OrganizationPowerTools.duplicateFor(url, repository.findDownloadsByStates(DownloadState.entries.toSet()))
-        if (duplicate != null) {
-            navigate(AppRoute.Downloads)
-            return@launch
+        if (_downloadAdmissionState.value.inFlight || _downloadAdmissionState.value.awaitingDuplicateDecision) return
+
+        val normalizedChecksum = runCatching {
+            expectedChecksum.trim().takeIf { it.isNotBlank() }?.let { parseExpectedChecksum(it, checksumAlgorithm) }.orEmpty()
+        }.getOrElse { error ->
+            _downloadAdmissionState.value = DownloadAdmissionUiState(message = error.message ?: "Invalid checksum")
+            return
         }
-        val now = System.currentTimeMillis()
-        val consumedExternalDraft = externalAddDraft.value
-        val externalCommand = consumedExternalDraft?.let { repository.findAutomationCommand(it.id) }
-        val externalSessionHeaders = consumedExternalDraft?.requestHeaders.orEmpty()
-        val mediaCandidate = mediaCaptureService.candidateFor(url)
-        val resolvedDestination = OrganizationPowerTools.destinationFor(url, safeName, mediaCandidate?.mimeType, repository.currentDestinationRules(), destination)
-        val request = previewRequest(
-            url,
-            safeName,
-            backend,
-            resolvedDestination,
-            conflictPolicy,
-            allowFallback,
-            isMediaRequest = mediaCandidate != null || externalSessionHeaders.isNotEmpty(),
-            headers = externalSessionHeaders,
-            isExpiringUrl = externalSessionHeaders.isNotEmpty(),
+        val safeName = resolveFileName(url, fileName)
+        _downloadAdmissionState.value = DownloadAdmissionUiState(inFlight = true, message = "Adding reviewed download…")
+        viewModelScope.launch {
+            try {
+                val now = System.currentTimeMillis()
+                val consumedExternalDraft = externalAddDraft.value
+                val externalCommand = consumedExternalDraft?.let { repository.findAutomationCommand(it.id) }
+                val externalSessionHeaders = consumedExternalDraft?.requestHeaders.orEmpty()
+                val mediaCandidate = mediaCaptureService.candidateFor(url)
+                val resolvedDestination = OrganizationPowerTools.destinationFor(
+                    url,
+                    safeName,
+                    mediaCandidate?.mimeType,
+                    repository.currentDestinationRules(),
+                    destination,
+                )
+                val request = previewRequest(
+                    url,
+                    safeName,
+                    backend,
+                    resolvedDestination,
+                    conflictPolicy,
+                    allowFallback,
+                    isMediaRequest = mediaCandidate != null || externalSessionHeaders.isNotEmpty(),
+                    headers = externalSessionHeaders,
+                    isExpiringUrl = externalSessionHeaders.isNotEmpty(),
+                )
+                val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
+                if (!recommendation.compatible) {
+                    _downloadAdmissionState.value = DownloadAdmissionUiState(message = recommendation.explanation)
+                    return@launch
+                }
+                val download = Download(
+                    id = UUID.randomUUID().toString(),
+                    fileName = safeName,
+                    sourceUrl = ExternalUrlPolicy.persistableUrl(url) ?: url.trim().substringBefore('?'),
+                    destinationUri = resolvedDestination,
+                    state = DownloadState.Queued,
+                    backend = recommendation.backend,
+                    bytesReceived = 0,
+                    totalBytes = null,
+                    speedBytesPerSecond = 0,
+                    queueId = "default",
+                    priority = 0,
+                    createdAtEpochMs = now,
+                    updatedAtEpochMs = now,
+                    conflictPolicy = conflictPolicy,
+                    mimeType = mediaCandidate?.mimeType,
+                    requestedBackend = backend,
+                    backendSelectionReason = recommendation.reason,
+                    backendSelectionExplanation = recommendation.explanation,
+                    allowBackendFallback = allowFallback,
+                )
+                val checksumExpectation = normalizedChecksum.takeIf { it.isNotBlank() }?.let { digest ->
+                    ChecksumExpectation(
+                        id = newChecksumExpectationId(download.id, checksumAlgorithm),
+                        downloadId = download.id,
+                        algorithm = checksumAlgorithm,
+                        expectedHex = digest,
+                        source = ChecksumSource.UserInput,
+                        createdAtEpochMs = now,
+                    )
+                }
+                val pending = PendingDownloadAdmission(
+                    requestedUrl = url.trim(),
+                    download = download,
+                    checksumExpectation = checksumExpectation,
+                    externalDraft = consumedExternalDraft,
+                    headers = externalSessionHeaders,
+                    redactedHeaderSummary = consumedExternalDraft?.redactedHeaderSummary.orEmpty(),
+                    pageUrl = consumedExternalDraft?.pageUrl,
+                    privateNetworkApproved = externalCommand?.privateNetworkApproved == true,
+                    cleartextCredentialsApproved = externalCommand?.cleartextCredentialsApproved == true,
+                )
+                completeDownloadAdmission(pending)
+            } catch (cancelled: CancellationException) {
+                _downloadAdmissionState.value = DownloadAdmissionUiState()
+                throw cancelled
+            } catch (error: Throwable) {
+                _downloadAdmissionState.value = DownloadAdmissionUiState(message = error.message ?: "Could not add download")
+            }
+        }
+    }
+
+    fun resolveDuplicateDownload(action: DuplicateUrlAction) {
+        val pending = pendingDownloadAdmission ?: return
+        val existingId = _downloadAdmissionState.value.duplicateDownloadId
+        when (action) {
+            DuplicateUrlAction.AddAgain -> {
+                _downloadAdmissionState.value = DownloadAdmissionUiState(inFlight = true, message = "Adding another copy…")
+                viewModelScope.launch {
+                    try {
+                        completeDownloadAdmission(pending, DuplicateUrlAction.AddAgain)
+                    } catch (cancelled: CancellationException) {
+                        _downloadAdmissionState.value = DownloadAdmissionUiState()
+                        throw cancelled
+                    } catch (error: Throwable) {
+                        _downloadAdmissionState.value = DownloadAdmissionUiState(message = error.message ?: "Could not add another copy")
+                    }
+                }
+            }
+            DuplicateUrlAction.OpenExisting -> {
+                pendingDownloadAdmission = null
+                _downloadAdmissionState.value = DownloadAdmissionUiState()
+                pending.externalDraft?.let { draft ->
+                    viewModelScope.launch(Dispatchers.IO) {
+                        existingId?.let { markExternalDraftDuplicateHandled(draft, it, "Opened the existing matching download") }
+                    }
+                }
+                externalAddDraft.value = null
+                existingId?.let(::openDownloadFromNotification) ?: navigate(AppRoute.Downloads)
+            }
+            DuplicateUrlAction.Skip -> {
+                pendingDownloadAdmission = null
+                _downloadAdmissionState.value = DownloadAdmissionUiState(message = "Duplicate skipped")
+                pending.externalDraft?.let { draft ->
+                    viewModelScope.launch(Dispatchers.IO) {
+                        existingId?.let { markExternalDraftDuplicateHandled(draft, it, "Skipped duplicate download") }
+                    }
+                }
+                externalAddDraft.value = null
+                navigate(AppRoute.Downloads)
+            }
+            DuplicateUrlAction.Ask -> Unit
+        }
+    }
+
+    fun dismissDuplicateAddPrompt() {
+        if (_downloadAdmissionState.value.inFlight) return
+        pendingDownloadAdmission = null
+        _downloadAdmissionState.value = DownloadAdmissionUiState()
+    }
+
+    private suspend fun completeDownloadAdmission(
+        pending: PendingDownloadAdmission,
+        duplicateActionOverride: DuplicateUrlAction? = null,
+    ) {
+        val result = repository.admitDownload(
+            download = pending.download,
+            duplicateLookupUrl = pending.download.sourceUrl,
+            checksumExpectation = pending.checksumExpectation,
+            duplicateActionOverride = duplicateActionOverride,
         )
-        val recommendation = backendSelectionPolicy.recommend(request, capabilitySnapshot.value.ifEmpty(::previewCapabilities))
-        if (!recommendation.compatible) return@launch
-        val resolvedBackend = recommendation.backend
-        val download = Download(
-            id = UUID.randomUUID().toString(),
-            fileName = safeName,
-            sourceUrl = ExternalUrlPolicy.persistableUrl(url) ?: url.trim().substringBefore('?'),
-            destinationUri = resolvedDestination,
-            state = DownloadState.Queued,
-            backend = resolvedBackend,
-            bytesReceived = 0,
-            totalBytes = null,
-            speedBytesPerSecond = 0,
-            queueId = "default",
-            priority = 0,
-            createdAtEpochMs = now,
-            updatedAtEpochMs = now,
-            conflictPolicy = conflictPolicy,
-            mimeType = mediaCandidate?.mimeType,
-            requestedBackend = backend,
-            backendSelectionReason = recommendation.reason,
-            backendSelectionExplanation = recommendation.explanation,
-            allowBackendFallback = allowFallback,
-        )
-        MediaRequestHandoffStore.remember(
-            downloadId = download.id,
-            headers = externalSessionHeaders,
-            redactedSummary = consumedExternalDraft?.redactedHeaderSummary.orEmpty(),
-            isExpiringUrl = externalSessionHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(url),
-            exactUrl = url.trim(),
-            pageUrl = consumedExternalDraft?.pageUrl,
-            privateNetworkApproved = externalCommand?.privateNetworkApproved == true,
-            cleartextCredentialsApproved = externalCommand?.cleartextCredentialsApproved == true,
-        )
-            if (!repository.save(download)) {
-                MediaRequestHandoffStore.forget(download.id)
-                consumedExternalDraft?.let { draft ->
+        when (result) {
+            is DownloadAdmissionResult.Created -> {
+                pendingDownloadAdmission = null
+                MediaRequestHandoffStore.remember(
+                    downloadId = pending.download.id,
+                    headers = pending.headers,
+                    redactedSummary = pending.redactedHeaderSummary,
+                    isExpiringUrl = pending.headers.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(pending.requestedUrl),
+                    exactUrl = pending.requestedUrl,
+                    pageUrl = pending.pageUrl,
+                    privateNetworkApproved = pending.privateNetworkApproved,
+                    cleartextCredentialsApproved = pending.cleartextCredentialsApproved,
+                )
+                pending.externalDraft?.let { markExternalDraftDownloadCreated(it, pending.download.id) }
+                queueIntelligenceCoordinator.requestStart(pending.download.id, userVisible = true, manual = true)
+                externalAddDraft.value = null
+                _downloadAdmissionState.value = DownloadAdmissionUiState()
+                navigate(AppRoute.Downloads)
+            }
+            is DownloadAdmissionResult.NeedsConfirmation -> {
+                pendingDownloadAdmission = pending
+                _downloadAdmissionState.value = DownloadAdmissionUiState(
+                    duplicateDownloadId = result.existing.id,
+                    duplicateFileName = result.existing.fileName,
+                    message = "This URL already exists. Choose what XDM should do.",
+                )
+            }
+            is DownloadAdmissionResult.OpenExisting -> {
+                pendingDownloadAdmission = null
+                pending.externalDraft?.let { markExternalDraftDuplicateHandled(it, result.existing.id, "Opened the existing matching download") }
+                externalAddDraft.value = null
+                _downloadAdmissionState.value = DownloadAdmissionUiState()
+                openDownloadFromNotification(result.existing.id)
+            }
+            is DownloadAdmissionResult.Skipped -> {
+                pendingDownloadAdmission = null
+                pending.externalDraft?.let { markExternalDraftDuplicateHandled(it, result.existing.id, "Skipped duplicate download") }
+                externalAddDraft.value = null
+                _downloadAdmissionState.value = DownloadAdmissionUiState(message = "Duplicate skipped")
+                navigate(AppRoute.Downloads)
+            }
+            is DownloadAdmissionResult.Rejected -> {
+                pendingDownloadAdmission = null
+                _downloadAdmissionState.value = DownloadAdmissionUiState(message = result.message)
+                pending.externalDraft?.let { draft ->
                     repository.findAutomationCommand(draft.id)?.let { command ->
                         repository.saveAutomationCommand(
                             command.copy(
                                 status = AutomationCommandStatus.Failed,
-                                resultMessage = "Download persistence rejected the reviewed Add Download request",
+                                resultMessage = result.message,
                                 rejectionReason = AutomationRejectionReason.ClaimLost,
                                 updatedAtEpochMs = System.currentTimeMillis(),
                             ),
                         )
                     }
                 }
-                return@launch
             }
-            consumedExternalDraft?.let { markExternalDraftDownloadCreated(it, download.id) }
-            val normalizedChecksum = expectedChecksum.trim().takeIf { it.isNotBlank() }?.let { parseExpectedChecksum(it, checksumAlgorithm) }.orEmpty()
-            if (normalizedChecksum.isNotBlank()) {
-                repository.saveChecksumExpectation(
-                    ChecksumExpectation(
-                        id = newChecksumExpectationId(download.id, checksumAlgorithm),
-                        downloadId = download.id,
-                        algorithm = checksumAlgorithm,
-                        expectedHex = normalizedChecksum,
-                        source = ChecksumSource.UserInput,
-                        createdAtEpochMs = now,
-                    ),
-                )
-            }
-            queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
-            externalAddDraft.value = null
-            navigate(AppRoute.Downloads)
         }
     }
 
@@ -2606,7 +2752,25 @@ class MainViewModel(
         )
     }
 
+    private suspend fun markExternalDraftDuplicateHandled(
+        draft: DownloadIntakeDraft,
+        existingDownloadId: String,
+        message: String,
+    ) {
+        val command = repository.findAutomationCommand(draft.id) ?: return
+        repository.saveAutomationCommand(
+            command.copy(
+                status = AutomationCommandStatus.Duplicate,
+                resultMessage = message,
+                downloadId = existingDownloadId,
+                rejectionReason = AutomationRejectionReason.Duplicate,
+                updatedAtEpochMs = System.currentTimeMillis(),
+            ),
+        )
+    }
+
     fun dismissExternalAddDraft() {
+        dismissDuplicateAddPrompt()
         val draft = externalAddDraft.value ?: return
         externalAddDraft.value = null
         viewModelScope.launch(Dispatchers.IO) {

@@ -21,6 +21,7 @@ import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadTag
 import com.mikeyphw.xdm.android.model.DownloadTagAssignment
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.OrganizationPowerTools
 import com.mikeyphw.xdm.android.model.DestinationRule
 import com.mikeyphw.xdm.android.model.DestinationRuleMatch
 import com.mikeyphw.xdm.android.model.DuplicateUrlAction
@@ -45,10 +46,21 @@ import com.mikeyphw.xdm.android.model.ScheduleRule
 import com.mikeyphw.xdm.android.model.SavedSearch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.util.UUID
 
+sealed interface DownloadAdmissionResult {
+    data class Created(val download: Download) : DownloadAdmissionResult
+    data class NeedsConfirmation(val existing: Download) : DownloadAdmissionResult
+    data class OpenExisting(val existing: Download) : DownloadAdmissionResult
+    data class Skipped(val existing: Download) : DownloadAdmissionResult
+    data class Rejected(val message: String) : DownloadAdmissionResult
+}
+
 class DownloadRepository(private val database: AppDatabase) {
+    private val downloadAdmissionMutex = Mutex()
     val downloads: Flow<List<Download>> = database.downloadDao().observeAll().map { rows -> rows.map { it.toModel() } }
     val queues: Flow<List<QueueDefinition>> = database.queueDao().observeAll().map { rows -> rows.map { it.toModel() } }
     val schedules: Flow<List<ScheduleRule>> = database.scheduleDao().observeAll().map { rows -> rows.map { it.toModel() } }
@@ -68,6 +80,43 @@ class DownloadRepository(private val database: AppDatabase) {
     val destinationRules: Flow<List<DestinationRule>> = database.organizationDao().observeDestinationRules().map { rows -> rows.map(DestinationRuleEntity::toModel) }
     val duplicateRules: Flow<List<DuplicateUrlRule>> = database.organizationDao().observeDuplicateRules().map { rows -> rows.map(DuplicateUrlRuleEntity::toModel) }
     val clipboardInbox: Flow<List<ClipboardInboxItem>> = database.organizationDao().observeClipboardInbox().map { rows -> rows.map(ClipboardInboxEntity::toModel) }
+
+    suspend fun admitDownload(
+        download: Download,
+        duplicateLookupUrl: String,
+        checksumExpectation: ChecksumExpectation?,
+        duplicateActionOverride: DuplicateUrlAction? = null,
+    ): DownloadAdmissionResult = downloadAdmissionMutex.withLock {
+        database.withTransaction {
+            val existing = OrganizationPowerTools.duplicateFor(
+                duplicateLookupUrl,
+                database.downloadDao().listAll().map(DownloadEntity::toModel),
+            )
+            val configuredAction = duplicateActionOverride ?: OrganizationPowerTools.duplicateActionFor(
+                duplicateLookupUrl,
+                database.organizationDao().listDuplicateRules().map(DuplicateUrlRuleEntity::toModel),
+            )
+            if (existing != null) {
+                when (configuredAction) {
+                    DuplicateUrlAction.Ask -> return@withTransaction DownloadAdmissionResult.NeedsConfirmation(existing)
+                    DuplicateUrlAction.OpenExisting -> return@withTransaction DownloadAdmissionResult.OpenExisting(existing)
+                    DuplicateUrlAction.Skip -> return@withTransaction DownloadAdmissionResult.Skipped(existing)
+                    DuplicateUrlAction.AddAgain -> Unit
+                }
+            }
+
+            val accepted = database.downloadGraphTransactionDao()
+                .upsertDownloadPreservingNewerState(download.redactedForPersistence().toEntity())
+            if (!accepted) {
+                return@withTransaction DownloadAdmissionResult.Rejected(
+                    "Download persistence rejected the reviewed Add Download request",
+                )
+            }
+            checksumExpectation?.let { database.checksumDao().upsertExpectation(it.toEntity()) }
+            synchronizeAppMediaOutputLocked(download)
+            DownloadAdmissionResult.Created(download)
+        }
+    }
 
     suspend fun countDownloads(): Int = database.downloadDao().count()
     suspend fun countQueues(): Int = database.queueDao().count()

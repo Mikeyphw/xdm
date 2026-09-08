@@ -37,6 +37,7 @@ private val primaryRoutes = routeTopology.filterNot { it == AppRoute.Add }
 @Composable
 fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val downloadAdmission by viewModel.downloadAdmissionState.collectAsStateWithLifecycle()
     var lastPrimaryRouteName by rememberSaveable { mutableStateOf(AppRoute.Downloads.name) }
 
     LaunchedEffect(state.route) {
@@ -47,8 +48,10 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
     val visibleRoute = if (state.route == AppRoute.Add) previousPrimaryRoute else state.route
 
     BackHandler(enabled = state.route == AppRoute.Add) {
-        viewModel.dismissExternalAddDraft()
-        viewModel.navigate(previousPrimaryRoute)
+        if (!downloadAdmission.inFlight) {
+            viewModel.dismissExternalAddDraft()
+            viewModel.navigate(previousPrimaryRoute)
+        }
     }
     BackHandler(enabled = state.route != AppRoute.Downloads && state.route != AppRoute.Add) {
         viewModel.navigate(AppRoute.Downloads)
@@ -100,8 +103,10 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
                 visible = state.route == AppRoute.Add,
                 windowClass = windowClass,
                 onDismissRequest = {
-                    viewModel.dismissExternalAddDraft()
-                    viewModel.navigate(previousPrimaryRoute)
+                    if (!downloadAdmission.inFlight) {
+                        viewModel.dismissExternalAddDraft()
+                        viewModel.navigate(previousPrimaryRoute)
+                    }
                 },
                 title = "New download",
                 scrollContent = false,
@@ -149,6 +154,9 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
                     onDestinationChanged = viewModel::setDestination,
                     onSafDestinationSelected = viewModel::registerSafDestination,
                     onConflictPolicyChanged = viewModel::setConflictPolicy,
+                    admissionState = downloadAdmission,
+                    onDismissAdmission = viewModel::dismissDuplicateAddPrompt,
+                    onDuplicateDecision = viewModel::resolveDuplicateDownload,
                     onAdd = { url, name, backend, destination, conflictPolicy, allowFallback, expectedChecksum, checksumAlgorithm ->
                         requestNotifications()
                         viewModel.addDownload(url, name, backend, destination, conflictPolicy, allowFallback, expectedChecksum, checksumAlgorithm)

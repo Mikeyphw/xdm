@@ -48,6 +48,7 @@ import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.DownloadIntakeKind
 import com.mikeyphw.xdm.android.model.DownloadIntakeOrigin
 import com.mikeyphw.xdm.android.model.DownloadReviewPlanner
+import com.mikeyphw.xdm.android.model.DuplicateUrlAction
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
 import com.mikeyphw.xdm.android.storage.DestinationUris
@@ -78,6 +79,9 @@ fun AddDownloadScreen(
     onDestinationChanged: (String) -> Unit,
     onSafDestinationSelected: (String) -> Unit,
     onConflictPolicyChanged: (FilenameConflictPolicy) -> Unit,
+    admissionState: DownloadAdmissionUiState = DownloadAdmissionUiState(),
+    onDismissAdmission: () -> Unit = {},
+    onDuplicateDecision: (DuplicateUrlAction) -> Unit = {},
     onAdd: (String, String, BackendType, String, FilenameConflictPolicy, Boolean, String, ChecksumAlgorithm) -> Unit,
     recommend: (String, String, BackendType, String, FilenameConflictPolicy, Boolean) -> BackendRecommendation,
 ) {
@@ -104,6 +108,19 @@ fun AddDownloadScreen(
             clipboardMessage = null
             reviewConfirmed = false
         }
+    }
+
+    LaunchedEffect(
+        url,
+        name,
+        backend,
+        destinationUri,
+        conflictPolicy,
+        allowFallback,
+        expectedChecksum,
+        checksumAlgorithm,
+    ) {
+        onDismissAdmission()
     }
 
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -415,29 +432,63 @@ fun AddDownloadScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
-                    Button(
-                        onClick = {
-                            if (!reviewConfirmed) {
-                                reviewConfirmed = true
-                            } else {
-                                onAdd(
-                                    url,
-                                    name,
-                                    backend,
-                                    destinationUri,
-                                    conflictPolicy,
-                                    allowFallback,
-                                    expectedChecksum,
-                                    checksumAlgorithm,
-                                )
-                            }
-                        },
-                        enabled = canReview,
-                        modifier = Modifier.weight(1.6f),
-                    ) {
-                        Text(if (reviewConfirmed) "Add to queue" else "Review download")
+                admissionState.message?.takeIf { it.isNotBlank() }?.let { message ->
+                    Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (admissionState.awaitingDuplicateDecision) {
+                    Text(
+                        "Existing download: ${admissionState.duplicateFileName ?: "matching URL"}",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(
+                            onClick = { onDuplicateDecision(DuplicateUrlAction.OpenExisting) },
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Open existing") }
+                        TextButton(
+                            onClick = { onDuplicateDecision(DuplicateUrlAction.Skip) },
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Skip") }
+                        Button(
+                            onClick = { onDuplicateDecision(DuplicateUrlAction.AddAgain) },
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Add anyway") }
+                    }
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        TextButton(
+                            onClick = onCancel,
+                            enabled = !admissionState.inFlight,
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Cancel") }
+                        Button(
+                            onClick = {
+                                if (!reviewConfirmed) {
+                                    reviewConfirmed = true
+                                } else {
+                                    onAdd(
+                                        url,
+                                        name,
+                                        backend,
+                                        destinationUri,
+                                        conflictPolicy,
+                                        allowFallback,
+                                        expectedChecksum,
+                                        checksumAlgorithm,
+                                    )
+                                }
+                            },
+                            enabled = canReview && !admissionState.inFlight,
+                            modifier = Modifier.weight(1.6f),
+                        ) {
+                            Text(
+                                when {
+                                    admissionState.inFlight -> "Adding…"
+                                    reviewConfirmed -> "Add to queue"
+                                    else -> "Review download"
+                                },
+                            )
+                        }
                     }
                 }
             }

@@ -172,6 +172,31 @@ object OrganizationPowerTools {
         return downloads.firstOrNull { ExternalUrlPolicy.normalizedUrl(it.sourceUrl) == normalized }
     }
 
+    fun duplicateActionFor(url: String, rules: List<DuplicateUrlRule>): DuplicateUrlAction {
+        val host = ExternalUrlPolicy.originHost(url).orEmpty().lowercase(Locale.US).trimEnd('.')
+        if (host.isBlank()) return DuplicateUrlAction.Ask
+        return rules
+            .asSequence()
+            .filter { it.enabled }
+            .mapNotNull { rule ->
+                val rawPattern = rule.hostPattern.trim().lowercase(Locale.US).trimEnd('.')
+                val domain = rawPattern.removePrefix("*.")
+                if (domain.isBlank()) return@mapNotNull null
+                val matches = if (rawPattern.startsWith("*.")) {
+                    host == domain || host.endsWith(".$domain")
+                } else {
+                    host == domain
+                }
+                if (!matches) return@mapNotNull null
+                val exactBonus = if (rawPattern.startsWith("*.")) 0 else 1
+                val specificity = domain.count { it == '.' } * 1_000 + domain.length * 2 + exactBonus
+                specificity to rule.action
+            }
+            .maxByOrNull { it.first }
+            ?.second
+            ?: DuplicateUrlAction.Ask
+    }
+
     fun destinationFor(url: String, fileName: String, mimeType: String?, rules: List<DestinationRule>, fallback: String): String {
         val host = ExternalUrlPolicy.originHost(url).orEmpty().lowercase(Locale.US).trimEnd('.')
         val extension = fileName.substringAfterLast('.', "").lowercase(Locale.US)

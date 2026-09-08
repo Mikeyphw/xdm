@@ -13,6 +13,9 @@ interface DownloadDao {
     @Query("SELECT * FROM downloads WHERE id = :id")
     suspend fun findById(id: String): DownloadEntity?
 
+    @Query("SELECT * FROM downloads ORDER BY createdAtEpochMs")
+    suspend fun listAll(): List<DownloadEntity>
+
     @Query("SELECT COUNT(*) FROM downloads")
     suspend fun count(): Int
 
@@ -57,6 +60,9 @@ interface OrganizationDao {
 
     @Query("SELECT * FROM duplicate_url_rules ORDER BY hostPattern")
     fun observeDuplicateRules(): Flow<List<DuplicateUrlRuleEntity>>
+
+    @Query("SELECT * FROM duplicate_url_rules ORDER BY hostPattern")
+    suspend fun listDuplicateRules(): List<DuplicateUrlRuleEntity>
 
     @Query("SELECT * FROM clipboard_inbox ORDER BY updatedAtEpochMs DESC")
     fun observeClipboardInbox(): Flow<List<ClipboardInboxEntity>>

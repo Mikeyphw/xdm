@@ -396,7 +396,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         if (policy !in setOf(FilenameConflictPolicy.Overwrite, FilenameConflictPolicy.Resume) && size > 0L) {
             throw DestinationConflictException("The selected document already contains data", DestinationConflict(name, uri.toString(), size, name))
         }
-        return CommitTarget(uri, queryDisplayName(uri) ?: name) { _ -> Unit }
+        return CommitTarget(uri, queryDisplayName(uri) ?: name) { _ -> }
     }
 
     @SuppressLint("NewApi")
