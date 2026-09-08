@@ -356,6 +356,12 @@
       return;
     }
 
+    let capturedCandidateCount = 0;
+    if (prebuiltXdmLink) {
+      try { capturedCandidateCount = Math.max(0, Number(new URL(prebuiltXdmLink).searchParams.get("capturedCandidateCount") || 0)); } catch (_) {}
+    }
+    if (!capturedCandidateCount && prebuiltXdmLink) capturedCandidateCount = Math.min(1, sessionCandidates.length);
+
     const payload = Object.assign({}, candidate, {
       tabUrl: tab.url,
       title: tab.title || "Detected video",
@@ -372,7 +378,7 @@
       browserHandoff: candidate.browserHandoff || null,
       captureSessionId: session.id,
       prebuiltXdmLink,
-      capturedCandidateCount: Math.min(1, sessionCandidates.length),
+      capturedCandidateCount,
     });
     await updateDiagnostics(tabId, payload);
     await offerInTopFrame(tabId, payload);

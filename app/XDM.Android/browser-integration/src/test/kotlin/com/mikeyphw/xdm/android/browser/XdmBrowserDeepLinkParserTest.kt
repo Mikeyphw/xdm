@@ -221,6 +221,29 @@ class XdmBrowserDeepLinkParserTest {
     }
 
     @Test
+    fun directV3CaptureSessionRetainsBoundedCandidateBatchMetadata() {
+        val candidates = """[{"url":"https://cdn.example/master.m3u8","requestFingerprint":"req-one-12345678"},{"url":"https://cdn.example/video.mp4","requestFingerprint":"req-two-12345678"}]"""
+        val raw = "xdmdownload://capture?" + listOf(
+            "v=3",
+            "url=${encode("https://cdn.example/master.m3u8")}",
+            "page=${encode("https://watch.example/episode")}",
+            "sid=tab-7-session",
+            "sessionRevision=42",
+            "candidateCount=5",
+            "truncated=1",
+            "candidates=${encode(candidates)}",
+        ).joinToString("&")
+
+        val payload = XdmBrowserDeepLinkParser.parse(raw, "xdmdownload")!!
+        assertTrue(payload.hasDirectCaptureSession)
+        assertEquals("tab-7-session", payload.captureSessionId)
+        assertEquals(42L, payload.sessionRevision)
+        assertEquals(5, payload.totalCandidateCount)
+        assertTrue(payload.truncatedCandidates)
+        assertEquals(candidates, payload.directCandidatesJson)
+    }
+
+    @Test
     fun directV3CaptureCarriesExactMediaAndSanitizedSessionHeadersWithoutCryptoBinding() {
         val rawHeaders = "Referer: https://watch.example/episode\nCookie: session=abc\nX-Injected: no"
         val proposed = "User-Agent: TestBrowser/1\nAuthorization: Bearer token"

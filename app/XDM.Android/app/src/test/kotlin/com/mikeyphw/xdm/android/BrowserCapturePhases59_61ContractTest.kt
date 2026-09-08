@@ -50,7 +50,7 @@ class BrowserCapturePhases59_61ContractTest {
     }
 
     @Test
-    fun firefoxTransfersOneBestEvidenceBackedCandidatePerReviewHandoff() {
+    fun firefoxTransfersBoundedEvidenceBackedCandidateSetPerReviewHandoff() {
         val store = source("browser-extension/src/main/extension/xdm-firefox/candidate-store.js")
         val network = source("browser-extension/src/main/extension/xdm-firefox/network-observer.js")
         val handoff = source("browser-extension/src/main/extension/xdm-firefox/handoff.js")
@@ -62,8 +62,11 @@ class BrowserCapturePhases59_61ContractTest {
         assertTrue(network.contains("visibleCandidateSnapshot(tabId, MAX_CANDIDATES_PER_TAB)"))
         assertTrue(network.contains("visibleCandidates.slice(0, MAX_HANDOFF_CANDIDATES)"))
         assertTrue(network.contains("candidateStore.snapshot(tabId, MAX_CANDIDATES_PER_TAB)"))
-        assertTrue(network.contains("capturedCandidateCount: Math.min(1, sessionCandidates.length)"))
-        assertTrue(handoff.contains("candidates.find(item => item && item.url)"))
+        assertTrue(network.contains("capturedCandidateCount = Math.max(0"))
+        assertTrue(handoff.contains(".slice(0, 24)"))
+        assertTrue(handoff.contains("uri.searchParams.set(\"candidates\", json)"))
+        assertTrue(handoff.contains("uri.searchParams.set(\"truncated\""))
+        assertTrue(handoff.contains("for (let count = requested.length; count >= 1; count -= 1)"))
         assertTrue(detector.contains("HARD_NON_MEDIA_MIME_RE"))
         assertTrue(pageSniffer.contains("HARD_NON_MEDIA_MIME_RE"))
         assertTrue(screen.contains("bounded browser handoff"))

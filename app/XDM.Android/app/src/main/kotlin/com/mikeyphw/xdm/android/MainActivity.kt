@@ -15,6 +15,8 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkParseResult
+import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkParser
 import com.mikeyphw.xdm.android.scheduler.TransferNotifications
 
 class MainActivity : ComponentActivity() {
@@ -48,7 +50,22 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun consumeLaunchIntent(incoming: Intent?): Boolean =
-        consumeInternalMediaCapture(incoming) || consumeInternalBrowserCapture(incoming) || consumeInternalAutomation(incoming) || consumeNotificationNavigation(incoming)
+        consumeInternalMediaCapture(incoming) || consumeInternalDirectBrowserCapture(incoming) || consumeInternalBrowserCapture(incoming) || consumeInternalAutomation(incoming) || consumeNotificationNavigation(incoming)
+
+    private fun consumeInternalDirectBrowserCapture(incoming: Intent?): Boolean {
+        if (incoming?.action != ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT) return false
+        val rawDeepLink = incoming.getStringExtra(EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI)
+        val privateNetworkApproved = incoming.getBooleanExtra(EXTRA_INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED, false)
+        incoming.removeExtra(EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI)
+        incoming.removeExtra(EXTRA_INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED)
+        setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+        val parsed = XdmBrowserDeepLinkParser.parseDetailed(rawDeepLink, BuildConfig.XDM_BROWSER_SCHEME)
+        val payload = (parsed as? XdmBrowserDeepLinkParseResult.Accepted)?.payload
+        if (payload?.hasDirectCaptureSession == true) {
+            viewModel.ingestDirectBrowserCaptureSession(payload, privateNetworkApproved)
+        }
+        return true
+    }
 
     private fun consumeInternalMediaCapture(incoming: Intent?): Boolean {
         if (incoming?.action != ACTION_INTERNAL_MEDIA_CAPTURE_READY) return false
@@ -118,5 +135,8 @@ class MainActivity : ComponentActivity() {
         internal const val EXTRA_INTERNAL_COMMAND_ID = "com.mikeyphw.xdm.android.extra.INTERNAL_COMMAND_ID"
         internal const val ACTION_INTERNAL_BROWSER_CAPTURE_IMPORT = "com.mikeyphw.xdm.android.INTERNAL_BROWSER_CAPTURE_IMPORT"
         internal const val EXTRA_INTERNAL_BROWSER_CAPTURE_SESSION_ID = "com.mikeyphw.xdm.android.extra.INTERNAL_BROWSER_CAPTURE_SESSION_ID"
+        internal const val ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT = "com.mikeyphw.xdm.android.INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT"
+        internal const val EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI = "com.mikeyphw.xdm.android.extra.INTERNAL_BROWSER_DIRECT_CAPTURE_URI"
+        internal const val EXTRA_INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED = "com.mikeyphw.xdm.android.extra.INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED"
     }
 }

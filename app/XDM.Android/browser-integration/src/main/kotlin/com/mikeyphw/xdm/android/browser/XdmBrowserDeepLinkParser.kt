@@ -84,6 +84,20 @@ object XdmBrowserDeepLinkParser {
             parameters.singleValue(XdmBrowserDeepLinkContract.RawHeadersParameter).sanitizedHeaderBlock()
                 ?: final ?: proposed
         } else null
+        val directCandidatesJson = if (allowHeaders && action == AutomationCommandAction.CaptureMedia) {
+            parameters.singleValue(XdmBrowserDeepLinkContract.DirectCandidatesParameter)
+                ?.takeIf { it.isNotBlank() && it.length <= XdmBrowserDeepLinkContract.MaxDirectCandidatesJsonCharacters }
+        } else null
+        val captureSessionId = if (directCandidatesJson != null) {
+            parameters.singleValue(XdmBrowserDeepLinkContract.CaptureSessionIdParameter)
+                ?.trim()
+                ?.takeIf { it.isNotBlank() && it.length <= XdmBrowserDeepLinkContract.MaxCaptureSessionIdCharacters && it.matches(Regex("[A-Za-z0-9._:-]+")) }
+                ?: return XdmBrowserDeepLinkParseResult.Rejected(XdmBrowserDeepLinkRejection.UnsafeEnvelope)
+        } else null
+        val totalCandidateCount = parameters.singleValue(XdmBrowserDeepLinkContract.TotalCandidateCountParameter)
+            ?.toIntOrNull()?.takeIf { it in 1..160 }
+        val truncatedCandidates = parameters.singleValue(XdmBrowserDeepLinkContract.TruncatedCandidatesParameter)
+            ?.let { it == "1" || it.equals("true", ignoreCase = true) } ?: false
 
         return XdmBrowserDeepLinkParseResult.Accepted(
             XdmBrowserDeepLinkPayload(
@@ -104,6 +118,10 @@ object XdmBrowserDeepLinkParser {
                 rawHeaders = rawHeaders,
                 proposedHeaders = proposed,
                 finalHeaders = final,
+                directCandidatesJson = directCandidatesJson,
+                totalCandidateCount = totalCandidateCount,
+                truncatedCandidates = truncatedCandidates,
+                captureSessionId = captureSessionId,
             ),
         )
     }

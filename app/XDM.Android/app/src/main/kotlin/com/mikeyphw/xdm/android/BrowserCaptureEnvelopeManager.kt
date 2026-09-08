@@ -131,6 +131,64 @@ class BrowserCaptureEnvelopeManager {
         parseSession(String(clear, StandardCharsets.UTF_8), payload.captureSessionId, nowEpochMs)
     }
 
+    /** Parse the bounded direct/keyless v3 candidate batch after the exported review surface approves it. */
+    fun decodeDirect(payload: XdmBrowserDeepLinkPayload, nowEpochMs: Long = System.currentTimeMillis()): Result<DecodedSession> = runCatching {
+        require(payload.hasDirectCaptureSession) { "Direct browser capture session is incomplete" }
+        val sessionId = payload.captureSessionId.safeToken(96) ?: error("Direct browser capture session id is invalid")
+        val revision = payload.sessionRevision?.takeIf { it > 0L } ?: error("Direct browser capture revision is missing")
+        val pageUrl = ExternalUrlPolicy.normalizedUrl(payload.pageUrl)
+        val title = payload.pageTitle.orEmpty().sanitizeText(240).ifBlank { "Browser capture" }
+        val array = JSONArray(requireNotNull(payload.directCandidatesJson))
+        require(array.length() in 1..MAX_CANDIDATES) { "Direct browser capture candidate count is invalid" }
+        val candidates = buildList {
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                val url = ExternalUrlPolicy.normalizedUrl(item.optString("url")) ?: continue
+                val frameUrl = ExternalUrlPolicy.normalizedUrl(item.optString("frameUrl").takeIf(String::isNotBlank))
+                val candidatePage = ExternalUrlPolicy.normalizedUrl(item.optString("pageUrl").takeIf(String::isNotBlank)) ?: pageUrl
+                val stableId = item.optString("stableMediaId").safeToken(160)
+                val candidateRevision = item.optLong("sessionRevision", revision).takeIf { it > 0L } ?: revision
+                val requestFingerprint = item.optString("requestFingerprint").safeToken(96)
+                    ?: "direct-" + "$sessionId|$candidateRevision|$index|$url"
+                        .toByteArray(StandardCharsets.UTF_8).sha256Hex().take(32)
+                add(
+                    Candidate(
+                        url = url,
+                        pageUrl = candidatePage,
+                        frameUrl = frameUrl,
+                        title = item.optString("title").sanitizeText(240).takeIf(String::isNotBlank) ?: title,
+                        mimeType = item.optString("contentType").sanitizeMime(),
+                        contentLength = item.optLong("contentLength", 0L).takeIf { it > 0L },
+                        stableMediaId = stableId,
+                        requestFingerprint = requestFingerprint,
+                        sessionRevision = candidateRevision,
+                        quality = item.optString("quality", "strong").sanitizeToken(24, "strong"),
+                        reason = item.optString("reason", "browser-media").sanitizeText(96).ifBlank { "browser-media" },
+                        mediaKind = item.optString("streamKind", "media").sanitizeToken(24, "media"),
+                        manifest = item.optBoolean("manifest", false),
+                        playbackObserved = item.optBoolean("playbackObserved", false),
+                        evidence = item.optJSONArray("evidence").stringList(8, 48),
+                        proposedHeaders = item.optJSONObject("proposedHeaders").headerMap(),
+                        finalHeaders = item.optJSONObject("finalHeaders").headerMap(),
+                    ),
+                )
+            }
+        }.distinctBy(Candidate::requestFingerprint)
+        require(candidates.isNotEmpty()) { "Direct browser capture did not contain a usable media candidate" }
+        val totalCandidateCount = maxOf(payload.totalCandidateCount ?: 0, candidates.size)
+        DecodedSession(
+            sessionId = sessionId,
+            revision = revision,
+            pageUrl = pageUrl,
+            pageTitle = title,
+            createdAtEpochMs = nowEpochMs,
+            expiresAtEpochMs = nowEpochMs + DIRECT_CAPTURE_HANDOFF_LIFETIME_MS,
+            totalCandidateCount = totalCandidateCount,
+            truncated = payload.truncatedCandidates || totalCandidateCount > candidates.size,
+            candidates = candidates,
+        )
+    }
+
     private fun parseSession(rawJson: String, expectedSessionId: String?, nowEpochMs: Long): DecodedSession {
         val json = JSONObject(rawJson)
         require(json.optInt("v", -1) == ENVELOPE_FORMAT_VERSION) { "Unsupported encrypted capture format" }
@@ -273,7 +331,8 @@ class BrowserCaptureEnvelopeManager {
         private const val MAX_CIPHERTEXT_BYTES = 60 * 1024
         private const val MAX_CLEAR_BYTES = 56 * 1024
         private const val MAX_ENVELOPE_LIFETIME_MS = 10 * 60 * 1000L
+        private const val DIRECT_CAPTURE_HANDOFF_LIFETIME_MS = 30 * 60 * 1000L
         private const val CLOCK_SKEW_MS = 2 * 60 * 1000L
-        private val HEADER_ALLOWLIST = setOf("authorization", "cookie", "referer", "user-agent", "origin", "accept", "range")
+        private val HEADER_ALLOWLIST = setOf("authorization", "cookie", "referer", "user-agent", "origin", "accept", "accept-language", "range")
     }
 }

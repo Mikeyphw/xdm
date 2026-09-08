@@ -1401,7 +1401,7 @@ internal fun MediaDeveloperToolsSection(
     val finalValidation = remember(mobilePolish, privacyAudit, captureQuality, playerDiagnostics, libraryV2, termuxRuntime, nativeDirect) {
         MediaFinalValidationGatePlanner().dashboard(
             currentOverlay = MediaFinalValidationGatePlanner.FinalOverlayArtifact,
-            currentRoomSchemaVersion = 20,
+            currentRoomSchemaVersion = 21,
             mediaMobilePolish = mobilePolish,
             privacyAudit = privacyAudit,
             captureQuality = captureQuality,

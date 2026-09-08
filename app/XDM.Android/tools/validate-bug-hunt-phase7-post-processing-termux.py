@@ -69,7 +69,7 @@ def validate(root: Path) -> list[str]:
         "android.permission.WRITE_EXTERNAL_STORAGE", "com.termux.permission.RUN_COMMAND",
         '.termux.TermuxResultService', 'android:exported="false"',
     ), "manifest", errors)
-    contains_all(app_db, ("PostProcessingJobEntity::class", "PostProcessingClaimEntity::class", "version = 20", "postProcessingDao"), "database", errors)
+    contains_all(app_db, ("PostProcessingJobEntity::class", "PostProcessingClaimEntity::class", "version = 21", "postProcessingDao"), "database", errors)
     contains_all(migrations, ("Migration14To15", "Migration15To16", "Migration16To17", "post_processing_jobs", "post_processing_claims", "ON DELETE CASCADE", "publicationState", "committedOutputUri"), "migrations", errors)
     contains_all(entities, ("attemptGeneration", "immutableSpecJson", "processToken", "controlGeneration", "progressBridgeUri", "timeoutAtEpochMs", "claimKey"), "entities", errors)
     contains_all(dao, ("claimAndInsert", "insertJob(job)", "insertClaimIgnore(claim)", "controlGeneration = controlGeneration + 1", "findJobByRunId", "maxAttemptGeneration", "claimKey IS NULL"), "DAO", errors)
@@ -137,7 +137,7 @@ def validate(root: Path) -> list[str]:
             require({"post_processing_jobs", "post_processing_claims"}.issubset(names), f"schema {version} is missing post-processing tables", errors)
             require(bool(schema.get("database", {}).get("identityHash")), f"schema {version} identity hash is missing", errors)
             if version == 20:
-                require("media_outputs" in names, "current schema 20 is missing media_outputs", errors)
+                require("media_outputs" in names, "current schema 21 is missing media_outputs", errors)
         except (OSError, ValueError) as exc:
             errors.append(f"invalid schema {version} JSON: {exc}")
 
@@ -161,7 +161,7 @@ def main() -> int:
         return 1
     print("Phase 7 validation PASSED")
     print(f"Android root: {root}")
-    print("Durable automation, retained Room schema 17 plus current schema 20, exact process ownership, transient-session bridging, canonical root authorization, transactional publication, preflight, retry, recovery, UI, and regression contracts are present.")
+    print("Durable automation, retained Room schema 17 plus current schema 21, exact process ownership, transient-session bridging, canonical root authorization, transactional publication, preflight, retry, recovery, UI, and regression contracts are present.")
     return 0
 
 

@@ -33,7 +33,7 @@ class RemediationPhase13FinalGateContractTest {
         assertTrue(gate.contains("val releaseReady: Boolean"))
         assertTrue(gate.contains("releaseReady = ready"))
         assertTrue(gate.contains("FinalOverlayArtifact: String = \"xdm_android_privacy_quality_final_gate_overlay_v2.zip\""))
-        assertTrue(gate.contains("CurrentRoomSchema: Int = 20"))
+        assertTrue(gate.contains("CurrentRoomSchema: Int = 21"))
     }
 
     @Test
@@ -147,8 +147,8 @@ class RemediationPhase13FinalGateContractTest {
         assertTrue(projectManifest.contains("\"static_validation_evidence_required\": true"))
         assertTrue(projectManifest.contains("\"full_validation_evidence_required\": true"))
         assertTrue(projectManifest.contains("\"validation_evidence_defaults_false\": true"))
-        assertTrue(projectManifest.contains("\"version\": 20"))
-        assertTrue(projectManifest.contains("\"room_schema_locked\": 20"))
+        assertTrue(projectManifest.contains("\"version\": 21"))
+        assertTrue(projectManifest.contains("\"room_schema_locked\": 21"))
         assertTrue(projectManifest.contains("\"version_code\": 22"))
         assertTrue(projectManifest.contains("\"readiness_evidence_fail_closed\": true"))
     }

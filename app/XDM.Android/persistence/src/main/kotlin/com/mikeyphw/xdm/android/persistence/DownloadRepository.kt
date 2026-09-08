@@ -30,6 +30,7 @@ import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
+import com.mikeyphw.xdm.android.model.MediaManifestRole
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaVariant
@@ -788,6 +789,10 @@ private fun MediaCaptureEntity.toModel() = MediaCaptureRecord(
     manifestExpiresAtEpochMs = manifestExpiresAtEpochMs,
     lastResolvedAtEpochMs = lastResolvedAtEpochMs,
     resolutionStatus = safeEnum(resolutionStatus, MediaResolutionStatus.Unresolved),
+    manifestRole = safeEnum(manifestRole, MediaManifestRole.Unknown),
+    manifestIsLive = manifestIsLive,
+    manifestProtected = manifestProtected,
+    manifestProtectionScheme = manifestProtectionScheme,
 )
 
 private fun MediaCaptureRecord.toEntity() = MediaCaptureEntity(
@@ -812,6 +817,10 @@ private fun MediaCaptureRecord.toEntity() = MediaCaptureEntity(
     manifestExpiresAtEpochMs = manifestExpiresAtEpochMs,
     lastResolvedAtEpochMs = lastResolvedAtEpochMs,
     resolutionStatus = resolutionStatus.name,
+    manifestRole = manifestRole.name,
+    manifestIsLive = manifestIsLive,
+    manifestProtected = manifestProtected,
+    manifestProtectionScheme = manifestProtectionScheme,
 )
 
 private fun MediaVariantEntity.toModel() = MediaVariant(
@@ -828,6 +837,14 @@ private fun MediaVariantEntity.toModel() = MediaVariant(
     position = position,
     displayLabel = displayLabel,
     expiresAtEpochMs = expiresAtEpochMs,
+    groupId = groupId,
+    audioGroupId = audioGroupId,
+    subtitleGroupId = subtitleGroupId,
+    isDefault = isDefault,
+    isAutoselect = isAutoselect,
+    isForced = isForced,
+    channels = channels,
+    inStreamId = inStreamId,
 )
 
 private fun MediaVariant.toEntity() = MediaVariantEntity(
@@ -844,6 +861,14 @@ private fun MediaVariant.toEntity() = MediaVariantEntity(
     position = position,
     displayLabel = displayLabel,
     expiresAtEpochMs = expiresAtEpochMs,
+    groupId = groupId,
+    audioGroupId = audioGroupId,
+    subtitleGroupId = subtitleGroupId,
+    isDefault = isDefault,
+    isAutoselect = isAutoselect,
+    isForced = isForced,
+    channels = channels,
+    inStreamId = inStreamId,
 )
 
 

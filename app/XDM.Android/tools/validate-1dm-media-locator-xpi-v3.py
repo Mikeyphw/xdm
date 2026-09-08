@@ -97,7 +97,7 @@ for token in (
     'window.fetch = async function',
     'XMLHttpRequest',
     'MutationObserver',
-    "initiator !== 'video' && initiator !== 'audio'",
+    "/^(video|audio|fetch|xmlhttprequest)$/.test(initiator)",
     'MediaSniffingEngine()',
     'saveMediaCaptureWithVariants',
     'candidate.variants',

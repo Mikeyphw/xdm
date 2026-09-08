@@ -2,6 +2,7 @@
   const MEDIA_EXT_RE = /\.(?:m3u8|mpd|mp4|m4v|webm|mkv|mov|avi|flv|mpeg|mpg|ogv|mp3|m4a|aac|flac|wav|ogg|opus)(?:$|[?#])/i;
   const MANIFEST_EXT_RE = /\.(?:m3u8|mpd)(?:$|[?#])/i;
   const SEGMENT_EXT_RE = /\.(?:m4s|cmfv|cmfa|ts)(?:$|[?#])/i;
+  const ORDINARY_MEDIA_CONTAINER_RE = /\.(?:mp4|m4v|webm|mkv|mov|avi|flv|mpeg|mpg|ogv|mp3|m4a|aac|flac|wav|ogg|opus)(?:$|[?#])/i;
   const SEGMENT_PATH_RE = /(?:^|[\/_-])(?:seg(?:ment)?|frag(?:ment)?|chunk|part|init)(?:[\/_-]?\d+)?(?:[\/_-]|\.|$)/i;
   const AD_RE = /doubleclick|googlesyndication|googleadservices|adservice|adserver|\/ads?(?:\/|\?|$)|vast|vmap|preroll|midroll|postroll|ima3/i;
   const STREAM_HINT_RE = /(?:videoplayback|video[_-]?stream|media[_-]?stream|master(?:\.|\/|\?|$)|playlist|manifest|\/stream(?:\/|\?|$)|\/playback(?:\/|\?|$)|hls|dash)/i;
@@ -95,6 +96,10 @@
     if (!value || isManifest(value, "")) return false;
     let pathname = value;
     try { pathname = new URL(value).pathname; } catch (_) {}
+    // Names such as part1.mp4, init.mp4, and chunk.mp4 are valid standalone media
+    // on real sites. Do not classify an ordinary media container as a fragment solely
+    // from its basename; segment-only extensions remain filtered unconditionally.
+    if (ORDINARY_MEDIA_CONTAINER_RE.test(value)) return false;
     return SEGMENT_EXT_RE.test(value) || SEGMENT_PATH_RE.test(pathname);
   }
 

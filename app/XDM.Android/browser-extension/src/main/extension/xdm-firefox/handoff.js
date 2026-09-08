@@ -121,16 +121,83 @@
     return link.length <= 64 * 1024 ? link : "";
   }
 
+  function compactSessionCandidate(candidate = {}, fallbackPageUrl = "", fallbackTitle = "", revision = 0) {
+    const url = safeHttpUrl(candidate.url);
+    if (!url) return null;
+    const handoff = candidate.browserHandoff && typeof candidate.browserHandoff === "object" ? candidate.browserHandoff : {};
+    const proposed = handoff.proposedHeaders && typeof handoff.proposedHeaders === "object" ? handoff.proposedHeaders.headers : candidate.headers;
+    const finalSent = handoff.finalHeaders && typeof handoff.finalHeaders === "object" ? handoff.finalHeaders.headers : null;
+    const evidence = Array.isArray(candidate.evidence)
+      ? candidate.evidence.map(item => cleanText(item, 48)).filter(Boolean).slice(0, 8)
+      : [];
+    const result = {
+      url,
+      pageUrl: safeHttpUrl(candidate.pageUrl || candidate.tabUrl || fallbackPageUrl),
+      frameUrl: safeHttpUrl(candidate.frameUrl || ""),
+      title: cleanText(candidate.title || fallbackTitle, 240),
+      contentType: String(candidate.contentType || candidate.mimeType || "").split(";", 1)[0].trim().toLowerCase().slice(0, 120),
+      contentLength: Math.max(0, Math.trunc(Number(candidate.contentLength || 0))),
+      stableMediaId: String(candidate.stableMediaId || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 160),
+      requestFingerprint: String(candidate.requestFingerprint || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 96),
+      sessionRevision: Math.max(1, Math.trunc(Number(candidate.sessionRevision || revision || 1))),
+      quality: cleanText(candidate.quality || "strong", 24).toLowerCase() || "strong",
+      reason: cleanText(candidate.reason || "browser-media", 96) || "browser-media",
+      streamKind: cleanText(candidate.streamKind || mediaKind(url, candidate.contentType), 24).toLowerCase() || "media",
+      manifest: Boolean(candidate.manifest || /\.(?:m3u8|mpd)(?:$|[?#])/i.test(url)),
+      playbackObserved: Boolean(candidate.playbackObserved),
+      evidence,
+      proposedHeaders: sanitizeHeaderBag(proposed || {}),
+      finalHeaders: sanitizeHeaderBag(finalSent || {}),
+    };
+    for (const key of ["pageUrl", "frameUrl", "title", "contentType", "stableMediaId", "requestFingerprint"]) {
+      if (!result[key]) delete result[key];
+    }
+    if (!result.contentLength) delete result.contentLength;
+    if (!result.evidence.length) delete result.evidence;
+    if (!Object.keys(result.proposedHeaders).length) delete result.proposedHeaders;
+    if (!Object.keys(result.finalHeaders).length) delete result.finalHeaders;
+    return result;
+  }
+
   async function buildCaptureSession(input = {}) {
-    const candidates = Array.isArray(input.candidates) ? input.candidates : [];
-    const candidate = candidates.find(item => item && item.url) || input;
-    return buildXdmCapture(Object.assign({}, candidate, {
+    const requested = (Array.isArray(input.candidates) ? input.candidates : [])
+      .map(candidate => compactSessionCandidate(candidate, input.pageUrl, input.title, input.revision))
+      .filter(Boolean)
+      .slice(0, 24);
+    const primary = requested[0] || compactSessionCandidate(input, input.pageUrl, input.title, input.revision);
+    if (!primary) return "";
+    const primarySource = (Array.isArray(input.candidates) ? input.candidates : []).find(item => item && safeHttpUrl(item.url)) || input;
+    const base = buildXdmCapture(Object.assign({}, primarySource, {
       scheme: input.scheme,
-      pageUrl: input.pageUrl || candidate.pageUrl || candidate.tabUrl,
-      title: input.title || candidate.title,
-      sessionRevision: input.revision || candidate.sessionRevision,
-      streamKind: candidate.streamKind || mediaKind(candidate.url, candidate.contentType),
+      pageUrl: input.pageUrl || primary.pageUrl,
+      title: input.title || primary.title,
+      sessionRevision: input.revision || primary.sessionRevision,
+      streamKind: primary.streamKind || mediaKind(primary.url, primary.contentType),
     }));
+    if (!base || requested.length === 0) return base;
+
+    const sessionId = String(input.sessionId || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 96);
+    const revision = Math.max(1, Math.trunc(Number(input.revision || primary.sessionRevision || 1)));
+    if (!sessionId) return base;
+    const total = Math.max(requested.length, Math.trunc(Number(input.totalCandidateCount || requested.length)));
+
+    // URL-encoding can expand JSON substantially. Keep the strongest prefix that fits the
+    // 64 KiB Android deep-link contract, and declare truncation rather than lying about count.
+    for (let count = requested.length; count >= 1; count -= 1) {
+      const batch = requested.slice(0, count);
+      const json = JSON.stringify(batch);
+      if (json.length > 52 * 1024) continue;
+      const uri = new URL(base);
+      uri.searchParams.set("sid", sessionId);
+      uri.searchParams.set("sessionRevision", String(revision));
+      uri.searchParams.set("candidateCount", String(total));
+      uri.searchParams.set("capturedCandidateCount", String(count));
+      uri.searchParams.set("truncated", input.truncated || total > count ? "1" : "0");
+      uri.searchParams.set("candidates", json);
+      const link = uri.toString();
+      if (link.length <= 64 * 1024) return link;
+    }
+    return base;
   }
 
   // Compatibility symbol for old tests/callers in the same source tree. New XPIs do not encrypt.

@@ -92,4 +92,11 @@ assert(identityStore.merge(7, { url: signedOne, requestId: "b", requestFingerpri
 assert.strictEqual(identityStore.size(7), 1, "same logical media from retries/range requests must merge into one candidate");
 assert.strictEqual(identityStore.best(7).headers.authorization, "Bearer two", "freshest request evidence should replace execution headers");
 assert(identityStore.best(7).requestEvidenceCount >= 2);
+for (const name of ["part1.mp4", "init.mp4", "chunk.mp4"]) {
+  const result=core.classifyResponse({url:`https://cdn.example/media/${name}`,type:"media",contentType:"video/mp4",contentLength:8*1024*1024});
+  assert(result.accept,`${name} must remain a legitimate media candidate`);
+  assert.notStrictEqual(result.reason,"segment");
+}
+const realSegment=core.classifyResponse({url:"https://cdn.example/media/chunk_99.m4s",type:"media",contentType:"video/iso.segment"});
+assert.strictEqual(realSegment.accept,false); assert.strictEqual(realSegment.reason,"segment");
 console.log("detector and candidate-store tests passed");

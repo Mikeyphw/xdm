@@ -1479,10 +1479,11 @@
       "16_to_17",
       "17_to_18",
       "18_to_19",
-      "19_to_20"
+      "19_to_20",
+      "20_to_21"
     ],
     "organization_power_tools": true,
-    "version": 20
+    "version": 21
   },
   "debug_workbench_phase_d1_compile_hygiene": {
     "fixes": [
@@ -2582,7 +2583,7 @@
     "package_identity_locked": "com.mikeyphw.xdm.android",
     "release_candidate": true,
     "release_docs_complete": true,
-    "room_schema_locked": 20,
+    "room_schema_locked": 21,
     "schema_version_unchanged": 20,
     "signed_release_verification_documented": true,
     "static_validators_complete": true,
@@ -2753,7 +2754,7 @@
     "raw_shell_exposed": false,
     "room_schema_migration": false,
     "root_required": false,
-    "schema_version_current": 20,
+    "schema_version_current": 21,
     "schema_version_unchanged": 20,
     "secret_leak_surfaces": [
       "Room metadata",
@@ -3959,7 +3960,7 @@
       "M-055-final",
       "M-001-final"
     ],
-    "room_schema_current": 20,
+    "room_schema_current": 21,
     "readiness_evidence": "static/full/device/aria2 inputs default false; no runtime self-certification",
     "filesystem_privacy_roots": [
       "noBackupFilesDir/secure-request-envelopes-v1",

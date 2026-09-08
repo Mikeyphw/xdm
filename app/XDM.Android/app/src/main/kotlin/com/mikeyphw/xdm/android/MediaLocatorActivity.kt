@@ -7,9 +7,11 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.ViewGroup
-import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
+import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
+import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.ArrayAdapter
@@ -20,6 +22,9 @@ import android.widget.ListView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.webkit.WebSettingsCompat
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import com.mikeyphw.xdm.android.media.MediaCaptureService
 import com.mikeyphw.xdm.android.media.MediaSniffingEngine
 import com.mikeyphw.xdm.android.media.MediaSniffingInput
@@ -30,10 +35,12 @@ import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import java.net.URI
 import java.util.Locale
+import java.util.Collections
 import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -59,13 +66,31 @@ class MediaLocatorActivity : ComponentActivity() {
         val variants: List<MediaVariant>,
     )
 
+    private data class NativeRequestEvidence(
+        val url: String,
+        val headers: Map<String, String>,
+        val observedAtEpochMs: Long,
+    )
+
     private val engine = MediaSniffingEngine()
+    private val captureService = MediaCaptureService()
     private val located = linkedMapOf<String, LocatedMedia>()
+    private val requestLedgerLock = Any()
+    private val requestLedger = object : LinkedHashMap<String, NativeRequestEvidence>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, NativeRequestEvidence>?): Boolean = size > MAX_NATIVE_REQUESTS
+    }
+    private val pendingObservationKeys = Collections.synchronizedSet(mutableSetOf<String>())
+    private val recentlyObserved = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>?): Boolean = size > MAX_RECENT_OBSERVATIONS
+    }
+    @Volatile private var currentPageUrl: String? = null
+    private var locatorUserAgent: String? = null
     private lateinit var webView: WebView
     private lateinit var address: EditText
     private lateinit var status: TextView
     private lateinit var list: ListView
     private lateinit var adapter: ArrayAdapter<String>
+    private var webViewDisposed = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,7 +99,7 @@ class MediaLocatorActivity : ComponentActivity() {
         address = EditText(this).apply {
             hint = getString(R.string.media_locator_url_hint)
             setSingleLine(true)
-            setText(intent.getStringExtra(EXTRA_URL).orEmpty())
+            setText(savedInstanceState?.getString(STATE_URL) ?: intent.getStringExtra(EXTRA_URL).orEmpty())
         }
         val go = Button(this).apply { text = getString(R.string.media_locator_locate) }
         val rescan = Button(this).apply { text = getString(R.string.media_locator_rescan) }
@@ -121,7 +146,14 @@ class MediaLocatorActivity : ComponentActivity() {
             // cleartext HTTP inside the locator.
             mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
         }
+        locatorUserAgent = webView.settings.userAgentString
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.COOKIE_INTERCEPT)) {
+            WebSettingsCompat.setCookiesIncludedInShouldInterceptRequest(webView.settings, true)
+        }
         webView.addJavascriptInterface(MediaObservationBridge(), JS_BRIDGE)
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addDocumentStartJavaScript(webView, LOCATOR_RUNTIME, setOf("*"))
+        }
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val uri = request.url
@@ -133,9 +165,34 @@ class MediaLocatorActivity : ComponentActivity() {
                 }
             }
 
-            override fun onPageFinished(view: WebView, url: String) {
+            override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+                currentPageUrl = url
                 address.setText(url)
-                injectLocatorRuntime()
+                // Fallback for old WebView providers without document-start injection support.
+                if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) injectLocatorRuntime()
+            }
+
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                recordNativeRequest(request)
+                return null
+            }
+
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                val lastUrl = currentPageUrl ?: address.text.toString()
+                (view.parent as? ViewGroup)?.removeView(view)
+                view.stopLoading()
+                view.destroy()
+                webViewDisposed = true
+                address.setText(lastUrl)
+                status.text = getString(R.string.media_locator_renderer_stopped)
+                if (detail.didCrash()) recentlyObserved.clear()
+                return true
+            }
+
+            override fun onPageFinished(view: WebView, url: String) {
+                currentPageUrl = url
+                address.setText(url)
+                injectLocatorRuntime(forceScan = true)
                 status.text = if (located.isEmpty()) {
                     getString(R.string.media_locator_waiting_for_evidence)
                 } else {
@@ -159,13 +216,27 @@ class MediaLocatorActivity : ComponentActivity() {
                 ?.let(::reviewCandidate)
         }
 
-        if (address.text.toString().isNotBlank()) loadAddress()
+        if (savedInstanceState != null) restoreLocatorState(savedInstanceState)
+        val initial = normalizePageUrl(address.text.toString())
+        if (initial != null) {
+            status.text = getString(R.string.media_locator_loading)
+            webView.loadUrl(initial)
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(STATE_URL, currentPageUrl ?: address.text.toString())
+        outState.putStringArrayList(STATE_CANDIDATES, ArrayList(located.values.take(MAX_SAVED_CANDIDATES).map(::encodeSavedCandidate)))
     }
 
     override fun onDestroy() {
-        webView.removeJavascriptInterface(JS_BRIDGE)
-        webView.stopLoading()
-        webView.destroy()
+        if (!webViewDisposed) {
+            webView.removeJavascriptInterface(JS_BRIDGE)
+            webView.stopLoading()
+            webView.destroy()
+            webViewDisposed = true
+        }
         super.onDestroy()
     }
 
@@ -193,60 +264,138 @@ class MediaLocatorActivity : ComponentActivity() {
             val url = observation.optString("url").trim().takeIf(String::isNotBlank) ?: return
             val mime = observation.optString("mime").trim().takeIf(String::isNotBlank)
             val body = observation.optString("body").takeIf(String::isNotBlank)
-            val pageUrl = observation.optString("pageUrl").trim().takeIf(String::isNotBlank)
             val title = observation.optString("title").trim().takeIf(String::isNotBlank)
             val source = observation.optString("source").ifBlank { "runtime" }
-            val requestHeaders = jsonHeaders(observation.optJSONObject("requestHeaders"))
+            val jsHeaders = jsonHeaders(observation.optJSONObject("requestHeaders"))
             val contentDisposition = observation.optString("contentDisposition").trim().takeIf(String::isNotBlank)
             val contentLength = observation.optLong("contentLength", -1L).takeIf { it >= 0L }
+            val key = correlationKey(url) ?: return
+            val observationKey = "$key|${if (body != null) "body" else source}"
+            if (!reserveObservation(observationKey)) return
 
             lifecycleScope.launch {
-                val mergedHeaders = requestHeaders + browserSessionHeaders(url, pageUrl)
-                val plan = withContext(Dispatchers.Default) {
-                    engine.sniff(
-                        MediaSniffingInput(
-                            url = url,
-                            mimeType = mime,
-                            contentDisposition = contentDisposition,
-                            contentLength = contentLength,
-                            bodyPrefix = body,
-                            pageUrl = pageUrl,
-                            pageTitle = title,
-                            requestHeaders = mergedHeaders,
-                            source = if (source == "dom") MediaSniffingSource.AppPageProbe else MediaSniffingSource.NetworkObservation,
-                        ),
+                try {
+                    val authoritativePage = currentPageUrl
+                    val correlated = nativeEvidenceFor(url)
+                    val exactHeaders = correlated?.let { correlatedRequestHeaders(url, it) }.orEmpty()
+                    val inheritedHeaders = safeInheritedSessionHeaders(authoritativePage)
+                    // Browser/request credentials are attached only when WebView natively observed the
+                    // exact URL. JS-only candidates may still be reviewed, but cannot manufacture a
+                    // credential-enriched request by calling the bridge directly.
+                    val observedHeaders = if (correlated != null) exactHeaders + jsHeaders else emptyMap()
+                    val primaryHeaders = inheritedHeaders + observedHeaders
+                    val plan = withContext(Dispatchers.Default) {
+                        engine.sniff(
+                            MediaSniffingInput(
+                                url = url,
+                                mimeType = mime,
+                                contentDisposition = contentDisposition,
+                                contentLength = contentLength,
+                                bodyPrefix = body,
+                                pageUrl = authoritativePage,
+                                pageTitle = title,
+                                requestHeaders = primaryHeaders,
+                                source = if (source == "dom") MediaSniffingSource.AppPageProbe else MediaSniffingSource.NetworkObservation,
+                            ),
+                        )
+                    }
+                    if (plan.candidates.isEmpty()) return@launch
+                    val recordsById = plan.records.associateBy(MediaCaptureRecord::id)
+                    val found = plan.candidates.mapNotNull { candidate ->
+                        val captureId = MediaCaptureService.captureIdFor(candidate.url)
+                        val record = recordsById[captureId] ?: return@mapNotNull null
+                        val candidateCorrelated = nativeEvidenceFor(candidate.url)
+                        val sameObservedUrl = correlationKey(candidate.url) == key
+                        val candidateHeaders = if (sameObservedUrl && candidateCorrelated != null) {
+                            safeInheritedSessionHeaders(authoritativePage) + correlatedRequestHeaders(candidate.url, candidateCorrelated) + jsHeaders
+                        } else {
+                            // URLs extracted from a response body may point at a different CDN. Do not
+                            // copy the parent Authorization/Cookie set onto that child URL.
+                            safeInheritedSessionHeaders(authoritativePage)
+                        }
+                        LocatedMedia(
+                            url = candidate.url,
+                            mimeType = candidate.mimeType,
+                            kind = candidate.kind,
+                            reason = candidate.reason + if (candidateCorrelated != null) "+native-request" else "+js-evidence",
+                            pageUrl = authoritativePage,
+                            pageTitle = candidate.title,
+                            requestHeaders = candidateHeaders,
+                            rank = candidate.rank + if (candidateCorrelated != null) 8 else 0,
+                            record = record,
+                            variants = plan.variants.filter { it.captureId == captureId },
+                        )
+                    }
+                    found.forEach(::putLocatedBounded)
+                    refreshList()
+                    status.text = resources.getQuantityString(
+                        R.plurals.media_locator_candidates_found,
+                        located.size,
+                        located.size,
                     )
+                } finally {
+                    pendingObservationKeys.remove(observationKey)
                 }
-                if (plan.candidates.isEmpty()) return@launch
-                val recordsById = plan.records.associateBy(MediaCaptureRecord::id)
-                val found = plan.candidates.mapNotNull { candidate ->
-                    val captureId = MediaCaptureService.captureIdFor(candidate.url)
-                    val record = recordsById[captureId] ?: return@mapNotNull null
-                    LocatedMedia(
-                        url = candidate.url,
-                        mimeType = candidate.mimeType,
-                        kind = candidate.kind,
-                        reason = candidate.reason,
-                        pageUrl = candidate.pageUrl,
-                        pageTitle = candidate.title,
-                        requestHeaders = mergedHeaders,
-                        rank = candidate.rank,
-                        record = record,
-                        variants = plan.variants.filter { it.captureId == captureId },
-                    )
-                }
-                found.forEach { candidate ->
-                    val previous = located[candidate.url]
-                    if (previous == null || candidate.rank >= previous.rank) located[candidate.url] = candidate
-                }
-                refreshList()
-                status.text = resources.getQuantityString(
-                    R.plurals.media_locator_candidates_found,
-                    located.size,
-                    located.size,
-                )
             }
         }
+    }
+
+    private fun reserveObservation(key: String): Boolean {
+        val now = System.currentTimeMillis()
+        synchronized(recentlyObserved) {
+            val previous = recentlyObserved[key]
+            if (previous != null && now - previous < OBSERVATION_DEDUPE_MS) return false
+            if (pendingObservationKeys.size >= MAX_PENDING_OBSERVATIONS) return false
+            recentlyObserved[key] = now
+        }
+        return pendingObservationKeys.add(key)
+    }
+
+    private fun putLocatedBounded(candidate: LocatedMedia) {
+        val previous = located[candidate.url]
+        if (previous == null || candidate.rank >= previous.rank) located[candidate.url] = candidate
+        while (located.size > MAX_LOCATED_CANDIDATES) {
+            val weakest = located.values.minWithOrNull(compareBy<LocatedMedia> { it.rank }.thenBy { it.url }) ?: break
+            located.remove(weakest.url)
+        }
+    }
+
+    private fun recordNativeRequest(request: WebResourceRequest) {
+        val url = request.url.toString()
+        val key = correlationKey(url) ?: return
+        val headers = request.requestHeaders.entries.mapNotNull { (name, value) ->
+            val trimmed = value.trim()
+            if (name.isBlank() || trimmed.isBlank() || '\n' in trimmed || '\r' in trimmed) null else name to trimmed.take(8192)
+        }.toMap()
+        synchronized(requestLedgerLock) {
+            requestLedger[key] = NativeRequestEvidence(url, headers, System.currentTimeMillis())
+            pruneRequestLedgerLocked(System.currentTimeMillis())
+        }
+    }
+
+    private fun nativeEvidenceFor(url: String): NativeRequestEvidence? {
+        val key = correlationKey(url) ?: return null
+        val now = System.currentTimeMillis()
+        return synchronized(requestLedgerLock) {
+            pruneRequestLedgerLocked(now)
+            requestLedger[key]?.takeIf { now - it.observedAtEpochMs <= NATIVE_REQUEST_TTL_MS }
+        }
+    }
+
+    private fun pruneRequestLedgerLocked(now: Long) {
+        requestLedger.entries.removeAll { now - it.value.observedAtEpochMs > NATIVE_REQUEST_TTL_MS }
+    }
+
+    private fun correlationKey(raw: String): String? = runCatching {
+        val uri = URI(raw.trim())
+        val scheme = uri.scheme?.lowercase(Locale.US)?.takeIf { it == "http" || it == "https" } ?: return@runCatching null
+        val host = uri.host?.lowercase(Locale.US)?.takeIf(String::isNotBlank) ?: return@runCatching null
+        URI(scheme, null, host, uri.port, uri.rawPath?.ifBlank { "/" } ?: "/", uri.rawQuery, null).toASCIIString()
+    }.getOrNull()
+
+    private fun safeInheritedSessionHeaders(pageUrl: String?): Map<String, String> = buildMap {
+        locatorUserAgent?.takeIf(String::isNotBlank)?.let { put("User-Agent", it) }
+        pageUrl?.takeIf(String::isNotBlank)?.let { put("Referer", it) }
     }
 
     private fun refreshList() {
@@ -321,10 +470,121 @@ class MediaLocatorActivity : ComponentActivity() {
         }
     }
 
-    private fun browserSessionHeaders(mediaUrl: String, pageUrl: String?): Map<String, String> = buildMap {
-        CookieManager.getInstance().getCookie(mediaUrl)?.takeIf(String::isNotBlank)?.let { put("Cookie", it) }
-        webView.settings.userAgentString?.takeIf(String::isNotBlank)?.let { put("User-Agent", it) }
-        pageUrl?.takeIf(String::isNotBlank)?.let { put("Referer", it) }
+    private fun correlatedRequestHeaders(url: String, evidence: NativeRequestEvidence): Map<String, String> = buildMap {
+        putAll(evidence.headers)
+        if (keys.none { it.equals("Cookie", ignoreCase = true) }) {
+            CookieManager.getInstance().getCookie(url)?.takeIf(String::isNotBlank)?.let { put("Cookie", it) }
+        }
+    }
+
+    private fun encodeSavedCandidate(candidate: LocatedMedia): String = JSONObject().apply {
+        put("url", candidate.url)
+        put("mime", candidate.mimeType)
+        put("kind", candidate.kind.name)
+        put("reason", candidate.reason.take(256))
+        put("pageUrl", candidate.pageUrl)
+        put("pageTitle", candidate.pageTitle)
+        put("rank", candidate.rank)
+        put("manifestRole", candidate.record.manifestRole.name)
+        candidate.record.manifestIsLive?.let { put("manifestIsLive", it) }
+        put("manifestProtected", candidate.record.manifestProtected)
+        put("manifestProtectionScheme", candidate.record.manifestProtectionScheme)
+        put("variants", JSONArray().apply {
+            candidate.variants.take(MAX_SAVED_VARIANTS_PER_CANDIDATE).forEach { variant ->
+                put(JSONObject().apply {
+                    put("id", variant.id)
+                    put("url", variant.url)
+                    put("kind", variant.kind.name)
+                    put("mime", variant.mimeType)
+                    variant.width?.let { put("width", it) }
+                    variant.height?.let { put("height", it) }
+                    variant.bitrateBitsPerSecond?.let { put("bitrate", it) }
+                    put("codecs", variant.codecs)
+                    put("language", variant.language)
+                    put("position", variant.position)
+                    put("displayLabel", variant.displayLabel)
+                    variant.expiresAtEpochMs?.let { put("expiresAt", it) }
+                    put("groupId", variant.groupId)
+                    put("audioGroupId", variant.audioGroupId)
+                    put("subtitleGroupId", variant.subtitleGroupId)
+                    put("isDefault", variant.isDefault)
+                    put("isAutoselect", variant.isAutoselect)
+                    put("isForced", variant.isForced)
+                    put("channels", variant.channels)
+                    put("inStreamId", variant.inStreamId)
+                })
+            }
+        })
+    }.toString()
+
+    private fun restoreLocatorState(state: Bundle) {
+        val saved = state.getStringArrayList(STATE_CANDIDATES).orEmpty()
+        saved.take(MAX_SAVED_CANDIDATES).forEach { raw ->
+            val json = runCatching { JSONObject(raw) }.getOrNull() ?: return@forEach
+            val url = json.optString("url").takeIf(String::isNotBlank) ?: return@forEach
+            val mime = json.optString("mime").takeIf(String::isNotBlank)
+            val pageUrl = json.optString("pageUrl").takeIf(String::isNotBlank)
+            val title = json.optString("pageTitle").takeIf(String::isNotBlank)
+            val candidate = captureService.candidateFor(url, pageTitle = title, pageUrl = pageUrl, mimeTypeHint = mime) ?: return@forEach
+            val base = captureService.recordFor(candidate)
+            val record = base.copy(
+                manifestRole = runCatching { com.mikeyphw.xdm.android.model.MediaManifestRole.valueOf(json.optString("manifestRole")) }.getOrDefault(base.manifestRole),
+                manifestIsLive = if (json.has("manifestIsLive")) json.optBoolean("manifestIsLive") else null,
+                manifestProtected = json.optBoolean("manifestProtected", false),
+                manifestProtectionScheme = json.optString("manifestProtectionScheme").takeIf(String::isNotBlank),
+            )
+            val variantsJson = json.optJSONArray("variants")
+            val restoredVariants = buildList {
+                if (variantsJson != null) {
+                    for (index in 0 until minOf(variantsJson.length(), MAX_SAVED_VARIANTS_PER_CANDIDATE)) {
+                        val item = variantsJson.optJSONObject(index) ?: continue
+                        val variantUrl = item.optString("url").takeIf(String::isNotBlank) ?: continue
+                        val kind = runCatching { com.mikeyphw.xdm.android.model.MediaVariantKind.valueOf(item.optString("kind")) }.getOrNull() ?: continue
+                        add(
+                            MediaVariant(
+                                id = item.optString("id").takeIf(String::isNotBlank) ?: "${record.id}:restored:$index",
+                                captureId = record.id,
+                                url = variantUrl,
+                                kind = kind,
+                                mimeType = item.optString("mime").takeIf(String::isNotBlank),
+                                width = item.optInt("width").takeIf { item.has("width") },
+                                height = item.optInt("height").takeIf { item.has("height") },
+                                bitrateBitsPerSecond = item.optLong("bitrate").takeIf { item.has("bitrate") },
+                                codecs = item.optString("codecs").takeIf(String::isNotBlank),
+                                language = item.optString("language").takeIf(String::isNotBlank),
+                                position = item.optInt("position", index),
+                                displayLabel = item.optString("displayLabel"),
+                                expiresAtEpochMs = item.optLong("expiresAt").takeIf { item.has("expiresAt") },
+                                groupId = item.optString("groupId").takeIf(String::isNotBlank),
+                                audioGroupId = item.optString("audioGroupId").takeIf(String::isNotBlank),
+                                subtitleGroupId = item.optString("subtitleGroupId").takeIf(String::isNotBlank),
+                                isDefault = item.optBoolean("isDefault", false),
+                                isAutoselect = item.optBoolean("isAutoselect", false),
+                                isForced = item.optBoolean("isForced", false),
+                                channels = item.optString("channels").takeIf(String::isNotBlank),
+                                inStreamId = item.optString("inStreamId").takeIf(String::isNotBlank),
+                            ),
+                        )
+                    }
+                }
+            }
+            putLocatedBounded(
+                LocatedMedia(
+                    url = url,
+                    mimeType = mime,
+                    kind = record.kind,
+                    reason = json.optString("reason").ifBlank { "restored observation" },
+                    pageUrl = pageUrl,
+                    pageTitle = title,
+                    requestHeaders = emptyMap(),
+                    rank = json.optInt("rank", 0),
+                    record = record,
+                    variants = restoredVariants,
+                ),
+            )
+        }
+        refreshList()
+        if (located.isNotEmpty()) status.text = resources.getQuantityString(R.plurals.media_locator_candidates_found, located.size, located.size)
     }
 
     private fun jsonHeaders(json: JSONObject?): Map<String, String> {
@@ -362,6 +622,16 @@ class MediaLocatorActivity : ComponentActivity() {
     companion object {
         private const val EXTRA_URL = "xdm.media_locator.url"
         private const val JS_BRIDGE = "XdmMediaLocator"
+        private const val STATE_URL = "xdm.media_locator.state.url"
+        private const val STATE_CANDIDATES = "xdm.media_locator.state.candidates"
+        private const val MAX_NATIVE_REQUESTS = 256
+        private const val MAX_RECENT_OBSERVATIONS = 512
+        private const val MAX_PENDING_OBSERVATIONS = 48
+        private const val MAX_LOCATED_CANDIDATES = 128
+        private const val MAX_SAVED_CANDIDATES = 64
+        private const val MAX_SAVED_VARIANTS_PER_CANDIDATE = 24
+        private const val NATIVE_REQUEST_TTL_MS = 90_000L
+        private const val OBSERVATION_DEDUPE_MS = 750L
 
         fun intent(context: Context, url: String? = null): Intent = Intent(context, MediaLocatorActivity::class.java).apply {
             url?.trim()?.takeIf(String::isNotBlank)?.let { putExtra(EXTRA_URL, it) }
@@ -370,13 +640,13 @@ class MediaLocatorActivity : ComponentActivity() {
         // Kept as a literal source string so contract tests can audit exactly what is injected.
         private val LOCATOR_RUNTIME = """
             (() => {
-              if (window.__xdmLocatorInstalled) { window.__xdmLocatorScan && window.__xdmLocatorScan(); return; }
+              if (window.__xdmLocatorInstalled) { window.__xdmLocatorScheduleScan && window.__xdmLocatorScheduleScan(); return; }
               window.__xdmLocatorInstalled = true;
               const bridge = window.XdmMediaLocator;
               const MAX_BODY = 262144;
-              const MEDIA_MIME = /^(?:video|audio)\//i;
               const MANIFEST_MIME = /(?:mpegurl|dash\+xml|\bmpd\b)/i;
-              const HARD_NON_MEDIA = /^(?:application\/(?:json|ld\+json|javascript|x-javascript)|text\/(?:html|css|javascript)|image\/|font\/)/i;
+              const TEXT_DISCOVERY_MIME = /^(?:application\/(?:json|ld\+json)|text\/(?:plain|json))/i;
+              const HARD_NON_MEDIA = /^(?:text\/(?:html|css|javascript)|application\/(?:javascript|x-javascript)|image\/|font\/)/i;
               const page = () => location.href;
               const title = () => document.title || '';
               const safeHeaders = (headers) => {
@@ -397,24 +667,51 @@ class MediaLocatorActivity : ComponentActivity() {
                   bridge.observe(JSON.stringify({ ...data, url: u.href, mime, pageUrl: page(), title: title() }));
                 } catch (_) {}
               };
+              const boundedText = async (response) => {
+                try {
+                  const body = response && response.body;
+                  if (!body || typeof body.getReader !== 'function') return '';
+                  const reader = body.getReader();
+                  const decoder = new TextDecoder();
+                  let result = '';
+                  let total = 0;
+                  while (total < MAX_BODY) {
+                    const step = await reader.read();
+                    if (step.done) break;
+                    const value = step.value || new Uint8Array(0);
+                    const take = Math.min(value.byteLength, MAX_BODY - total);
+                    result += decoder.decode(value.subarray(0, take), { stream: true });
+                    total += take;
+                    if (take < value.byteLength || total >= MAX_BODY) { try { await reader.cancel(); } catch (_) {} break; }
+                  }
+                  result += decoder.decode();
+                  return result.slice(0, MAX_BODY);
+                } catch (_) { return ''; }
+              };
               const scan = () => {
-                document.querySelectorAll('video,audio,source').forEach((node) => {
-                  const url = node.currentSrc || node.src || node.getAttribute('src');
-                  if (!url) return;
-                  let mime = node.getAttribute('type') || '';
-                  if (!mime && node.tagName === 'VIDEO') mime = 'video/unknown';
-                  if (!mime && node.tagName === 'AUDIO') mime = 'audio/unknown';
-                  emit({ url, mime, source: 'dom' });
-                });
+                try {
+                  document.querySelectorAll('video,audio,source').forEach((node) => {
+                    const url = node.currentSrc || node.src || node.getAttribute('src');
+                    if (!url) return;
+                    let mime = node.getAttribute('type') || '';
+                    if (!mime && node.tagName === 'VIDEO') mime = 'video/unknown';
+                    if (!mime && node.tagName === 'AUDIO') mime = 'audio/unknown';
+                    emit({ url, mime, source: 'dom' });
+                  });
+                } catch (_) {}
                 try {
                   performance.getEntriesByType('resource').forEach((entry) => {
                     const initiator = String(entry.initiatorType || '').toLowerCase();
-                    if (initiator !== 'video' && initiator !== 'audio') return;
-                    emit({ url: entry.name, mime: initiator + '/unknown', source: 'performance-media' });
+                    if (!/^(video|audio|fetch|xmlhttprequest)$/.test(initiator)) return;
+                    emit({ url: entry.name, mime: (initiator === 'video' || initiator === 'audio') ? initiator + '/unknown' : '', source: 'performance-' + initiator });
                   });
                 } catch (_) {}
               };
+              let scanTimer = 0;
+              const scheduleScan = () => { clearTimeout(scanTimer); scanTimer = setTimeout(scan, 120); };
               window.__xdmLocatorScan = scan;
+              window.__xdmLocatorScheduleScan = scheduleScan;
+
               const originalFetch = window.fetch;
               if (typeof originalFetch === 'function') {
                 window.fetch = async function(input, init) {
@@ -423,9 +720,11 @@ class MediaLocatorActivity : ComponentActivity() {
                     const mime = response.headers.get('content-type') || '';
                     const length = Number(response.headers.get('content-length') || '-1');
                     const requestHeaders = safeHeaders((init && init.headers) || (input instanceof Request ? input.headers : undefined));
-                    emit({ url: response.url || String(input), mime, contentDisposition: response.headers.get('content-disposition') || '', contentLength: length, source: 'fetch', requestHeaders });
-                    const inspectBody = MANIFEST_MIME.test(mime) || ((/^(?:application\/json|text\/plain)/i.test(mime)) && length >= 0 && length <= MAX_BODY);
-                    if (inspectBody) response.clone().text().then((body) => emit({ url: response.url || String(input), mime, contentDisposition: response.headers.get('content-disposition') || '', contentLength: length, body: body.slice(0, MAX_BODY), source: 'fetch', requestHeaders })).catch(() => {});
+                    const responseUrl = response.url || String(input);
+                    emit({ url: responseUrl, mime, contentDisposition: response.headers.get('content-disposition') || '', contentLength: length, source: 'fetch', requestHeaders });
+                    if (MANIFEST_MIME.test(mime) || TEXT_DISCOVERY_MIME.test(mime)) {
+                      boundedText(response.clone()).then((body) => { if (body) emit({ url: responseUrl, mime, contentDisposition: response.headers.get('content-disposition') || '', contentLength: length, body, source: 'fetch-body', requestHeaders }); }).catch(() => {});
+                    }
                   } catch (_) {}
                   return response;
                 };
@@ -443,16 +742,17 @@ class MediaLocatorActivity : ComponentActivity() {
                       const mime = this.getResponseHeader('content-type') || '';
                       const length = Number(this.getResponseHeader('content-length') || '-1');
                       let body = '';
-                      if ((MANIFEST_MIME.test(mime) || (/^(?:application\/json|text\/plain)/i.test(mime) && length >= 0 && length <= MAX_BODY)) && (!this.responseType || this.responseType === 'text')) body = String(this.responseText || '').slice(0, MAX_BODY);
-                      emit({ url: this.responseURL || this.__xdmUrl, mime, contentDisposition: this.getResponseHeader('content-disposition') || '', contentLength: length, body, source: 'xhr', requestHeaders: safeHeaders(this.__xdmHeaders) });
+                      if ((MANIFEST_MIME.test(mime) || TEXT_DISCOVERY_MIME.test(mime)) && (!this.responseType || this.responseType === 'text')) body = String(this.responseText || '').slice(0, MAX_BODY);
+                      emit({ url: this.responseURL || this.__xdmUrl, mime, contentDisposition: this.getResponseHeader('content-disposition') || '', contentLength: length, body, source: body ? 'xhr-body' : 'xhr', requestHeaders: safeHeaders(this.__xdmHeaders) });
                     } catch (_) {}
                   }, { once: true });
                   return send.apply(this, arguments);
                 };
               }
-              new MutationObserver(scan).observe(document.documentElement || document, { subtree: true, childList: true, attributes: true, attributeFilter: ['src'] });
-              document.addEventListener('play', scan, true);
-              scan();
+              try { new MutationObserver(scheduleScan).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['src'] }); } catch (_) {}
+              document.addEventListener('play', scheduleScan, true);
+              if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scheduleScan, { once: true });
+              scheduleScan();
             })();
         """.trimIndent()
     }

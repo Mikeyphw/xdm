@@ -4,6 +4,8 @@
 
   const MARKER = "__xdmMediaObservationV1";
   const STATUS_MARKER = "__xdmPageSnifferStatusV1";
+  const CONTROL_MARKER = "__xdmPageSnifferControlV1";
+  let active = true;
   let fetchWrapperActive = false;
   let xhrWrapperActive = false;
   let mediaPlayWrapperActive = false;
@@ -26,7 +28,7 @@
     window.postMessage({
       [STATUS_MARKER]: true,
       status: {
-        active: true,
+        active,
         fetchWrapperActive,
         xhrWrapperActive,
         mediaPlayWrapperActive,
@@ -35,6 +37,12 @@
       }
     }, "*");
   }
+
+  window.addEventListener("message", event => {
+    if (event.source !== window || !event.data || event.data[CONTROL_MARKER] !== true) return;
+    active = event.data.active !== false;
+    publishStatus();
+  });
 
   function normalizeMime(value) {
     return String(value || "").split(";", 1)[0].trim().toLowerCase();
@@ -81,6 +89,7 @@
   }
 
   function publish(observation) {
+    if (!active) return;
     const value = observation && typeof observation === "object" ? observation : {};
     const responseUrl = absoluteUrl(value.responseUrl || value.url || value.requestUrl);
     const requestUrl = absoluteUrl(value.requestUrl || value.url || responseUrl);
@@ -113,6 +122,7 @@
   }
 
   async function readTextPrefix(response) {
+    if (!active) return "";
     if (!response || !isInspectableMime(response.headers && response.headers.get("content-type"), response.url || "")) return "";
     const declared = Number(response.headers && response.headers.get("content-length") || 0);
     if (declared > MAX_BODY_BYTES * 4) return "";
@@ -163,7 +173,9 @@
         );
         const promise = nativeFetch.apply(this, arguments);
         Promise.resolve(promise).then(response => {
+          if (!active) return;
           Promise.resolve().then(async () => {
+            if (!active) return;
             const contentType = responseHeader(response, "content-type");
             const bodyExcerpt = await readTextPrefix(response);
             publish({
@@ -221,6 +233,7 @@
         state.armed = true;
         metadata.set(xhr, state);
         xhr.addEventListener("loadend", () => {
+          if (!active) return;
           try {
             const contentType = xhr.getResponseHeader("content-type") || "";
             let bodyExcerpt = "";
@@ -260,6 +273,7 @@
       const media = this;
       const result = nativePlay.apply(media, arguments);
       Promise.resolve(result).then(() => {
+        if (!active) return;
         publish({
           source: "media-play",
           requestType: "media",
@@ -275,6 +289,7 @@
 
   try {
     const observer = new PerformanceObserver(list => {
+      if (!active) return;
       for (const entry of list.getEntries()) {
         if (!RESOURCE_HINT_RE.test(String(entry.name || ""))) continue;
         publish({

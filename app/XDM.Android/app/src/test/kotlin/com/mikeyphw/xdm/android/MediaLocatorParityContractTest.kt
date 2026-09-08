@@ -18,7 +18,7 @@ class MediaLocatorParityContractTest {
         assertTrue(locator.contains("window.fetch = async function"))
         assertTrue(locator.contains("XMLHttpRequest"))
         assertTrue(locator.contains("performance.getEntriesByType('resource')"))
-        assertTrue(locator.contains("initiator !== 'video' && initiator !== 'audio'"))
+        assertTrue(locator.contains("/^(video|audio|fetch|xmlhttprequest)$/.test(initiator)"))
         assertFalse(locator.contains("MEDIA_EXT.test(entry.name)"))
         assertTrue(locator.contains("MediaSniffingEngine()"))
 

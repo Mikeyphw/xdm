@@ -160,6 +160,10 @@ data class MediaCaptureEntity(
     @ColumnInfo(defaultValue = "NULL") val manifestExpiresAtEpochMs: Long?,
     @ColumnInfo(defaultValue = "NULL") val lastResolvedAtEpochMs: Long?,
     @ColumnInfo(defaultValue = "'Unresolved'") val resolutionStatus: String,
+    @ColumnInfo(defaultValue = "'Unknown'") val manifestRole: String,
+    @ColumnInfo(defaultValue = "NULL") val manifestIsLive: Boolean?,
+    @ColumnInfo(defaultValue = "0") val manifestProtected: Boolean,
+    @ColumnInfo(defaultValue = "NULL") val manifestProtectionScheme: String?,
 )
 
 @Entity(
@@ -209,6 +213,14 @@ data class MediaVariantEntity(
     val position: Int,
     @ColumnInfo(defaultValue = "''") val displayLabel: String,
     val expiresAtEpochMs: Long?,
+    @ColumnInfo(defaultValue = "NULL") val groupId: String?,
+    @ColumnInfo(defaultValue = "NULL") val audioGroupId: String?,
+    @ColumnInfo(defaultValue = "NULL") val subtitleGroupId: String?,
+    @ColumnInfo(defaultValue = "0") val isDefault: Boolean,
+    @ColumnInfo(defaultValue = "0") val isAutoselect: Boolean,
+    @ColumnInfo(defaultValue = "0") val isForced: Boolean,
+    @ColumnInfo(defaultValue = "NULL") val channels: String?,
+    @ColumnInfo(defaultValue = "NULL") val inStreamId: String?,
 )
 
 

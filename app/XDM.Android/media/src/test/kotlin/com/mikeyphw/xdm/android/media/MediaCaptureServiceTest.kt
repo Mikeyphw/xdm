@@ -138,7 +138,7 @@ class MediaCaptureServiceTest {
         assertEquals(3, variants.size)
         assertEquals(1, variants.count { it.kind == com.mikeyphw.xdm.android.model.MediaVariantKind.Audio })
         assertEquals(1, variants.count { it.kind == com.mikeyphw.xdm.android.model.MediaVariantKind.Subtitle })
-        assertTrue(summary.isLive)
+        assertEquals(null, summary.isLive)
         assertTrue(summary.hasDrm)
         assertEquals("com.widevine", summary.protectionScheme)
     }
@@ -165,7 +165,7 @@ class MediaCaptureServiceTest {
         assertEquals(3, variants.size)
         assertEquals(1, variants.count { it.kind == com.mikeyphw.xdm.android.model.MediaVariantKind.Audio })
         assertEquals(1, variants.count { it.kind == com.mikeyphw.xdm.android.model.MediaVariantKind.Subtitle })
-        assertTrue(summary.isLive)
+        assertEquals(true, summary.isLive)
         assertTrue(summary.hasDrm)
     }
 

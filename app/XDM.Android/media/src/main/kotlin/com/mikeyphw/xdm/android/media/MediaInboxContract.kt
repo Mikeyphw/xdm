@@ -4,6 +4,7 @@ import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
+import com.mikeyphw.xdm.android.model.MediaManifestRole
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.PageObservationProof
@@ -13,6 +14,9 @@ import com.mikeyphw.xdm.android.util.sanitizeFileName
 import java.net.URI
 import java.security.MessageDigest
 import java.util.Locale
+import javax.xml.parsers.DocumentBuilderFactory
+import org.w3c.dom.Element
+import org.w3c.dom.Node
 
 interface MediaInboxContract { suspend fun clearExpired() }
 
@@ -48,11 +52,12 @@ data class MediaRequestFacts(
 
 data class MediaManifestSummary(
     val kind: MediaSourceKind,
+    val role: MediaManifestRole = MediaManifestRole.Unknown,
     val variantCount: Int,
     val audioTrackCount: Int = 0,
     val subtitleTrackCount: Int = 0,
     val thumbnailCount: Int = 0,
-    val isLive: Boolean = false,
+    val isLive: Boolean? = null,
     val hasDrm: Boolean = false,
     val protectionScheme: String? = null,
 ) {
@@ -62,7 +67,7 @@ data class MediaManifestSummary(
             audioTrackCount.takeIf { it > 0 }?.let { "$it audio" },
             subtitleTrackCount.takeIf { it > 0 }?.let { "$it subtitles" },
             thumbnailCount.takeIf { it > 0 }?.let { "$it thumbnails" },
-            if (isLive) "live" else null,
+            if (isLive == true) "live" else null,
             if (hasDrm) "protected" else null,
         ).joinToString(" • ").ifBlank { "single stream" }
 }
@@ -186,62 +191,68 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             if (!line.startsWith("#EXT-X-MEDIA", ignoreCase = true)) continue
             val attrs = attributeList(line.substringAfter(':', ""))
             val type = attrs["TYPE"]?.uppercase(Locale.ROOT)
-            val uri = attrs["URI"]?.takeIf(String::isNotBlank) ?: continue
             val kind = when (type) {
                 "AUDIO" -> MediaVariantKind.Audio
                 "SUBTITLES", "CLOSED-CAPTIONS" -> MediaVariantKind.Subtitle
                 else -> null
-            }
-            if (kind == null) continue
-            val label = listOfNotNull(attrs["NAME"], attrs["LANGUAGE"]?.uppercase(Locale.ROOT)).joinToString(" • ").ifBlank { kind.name }
+            } ?: continue
+            val uri = attrs["URI"]?.takeIf(String::isNotBlank)
+            // CLOSED-CAPTIONS normally use INSTREAM-ID with no URI. Preserve the track relation
+            // as metadata while keeping the authoritative master as the execution URL.
+            if (uri == null && type != "CLOSED-CAPTIONS") continue
+            val label = listOfNotNull(attrs["NAME"], attrs["LANGUAGE"]?.uppercase(Locale.ROOT), attrs["CHANNELS"]).joinToString(" • ").ifBlank { kind.name }
             variants += MediaVariant(
                 id = "$captureId:hls-media:$index",
                 captureId = captureId,
-                url = resolveVariantUrl(playlistUrl, uri),
+                url = uri?.let { resolveVariantUrl(playlistUrl, it) } ?: playlistUrl,
                 kind = kind,
-                mimeType = if (kind == MediaVariantKind.Subtitle) "text/vtt" else "application/vnd.apple.mpegurl",
+                mimeType = if (type == "CLOSED-CAPTIONS") "application/cea-608" else if (kind == MediaVariantKind.Subtitle) "text/vtt" else "application/vnd.apple.mpegurl",
                 language = attrs["LANGUAGE"],
                 position = index,
                 displayLabel = label,
                 expiresAtEpochMs = expiresAtEpochMs,
+                groupId = attrs["GROUP-ID"],
+                isDefault = attrs["DEFAULT"].equals("YES", true),
+                isAutoselect = attrs["AUTOSELECT"].equals("YES", true),
+                isForced = attrs["FORCED"].equals("YES", true),
+                channels = attrs["CHANNELS"],
+                inStreamId = attrs["INSTREAM-ID"],
             )
             index++
         }
 
-        var pendingBandwidth: Long? = null
-        var pendingResolution: Pair<Int, Int>? = null
-        var pendingCodecs: String? = null
+        var pending: Map<String, String>? = null
         for (line in lines) {
             if (line.startsWith("#EXT-X-STREAM-INF", ignoreCase = true)) {
-                val attrs = attributeList(line.substringAfter(':', ""))
-                pendingBandwidth = attrs["BANDWIDTH"]?.toLongOrNull()
-                pendingCodecs = attrs["CODECS"]
-                pendingResolution = attrs["RESOLUTION"]?.let { resolution ->
+                pending = attributeList(line.substringAfter(':', ""))
+                continue
+            }
+            val attrs = pending ?: continue
+            if (!line.startsWith("#")) {
+                val bandwidth = attrs["BANDWIDTH"]?.toLongOrNull()
+                val resolution = attrs["RESOLUTION"]?.let { resolution ->
                     val width = resolution.substringBefore('x').toIntOrNull()
                     val height = resolution.substringAfter('x').toIntOrNull()
                     if (width != null && height != null) width to height else null
                 }
-                continue
-            }
-            if (!line.startsWith("#") && pendingBandwidth != null) {
                 variants += MediaVariant(
                     id = "$captureId:variant:$index",
                     captureId = captureId,
                     url = resolveVariantUrl(playlistUrl, line),
                     kind = MediaVariantKind.Video,
                     mimeType = "application/vnd.apple.mpegurl",
-                    width = pendingResolution?.first,
-                    height = pendingResolution?.second,
-                    bitrateBitsPerSecond = pendingBandwidth,
-                    codecs = pendingCodecs,
+                    width = resolution?.first,
+                    height = resolution?.second,
+                    bitrateBitsPerSecond = bandwidth,
+                    codecs = attrs["CODECS"],
                     position = index,
-                    displayLabel = labelFor(pendingResolution?.second, pendingBandwidth, pendingCodecs),
+                    displayLabel = labelFor(resolution?.second, bandwidth, attrs["CODECS"]),
                     expiresAtEpochMs = expiresAtEpochMs,
+                    audioGroupId = attrs["AUDIO"],
+                    subtitleGroupId = attrs["SUBTITLES"],
                 )
                 index++
-                pendingBandwidth = null
-                pendingResolution = null
-                pendingCodecs = null
+                pending = null
             }
         }
         return variants
@@ -249,60 +260,109 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
 
     fun inspectHlsPlaylist(playlistText: String): MediaManifestSummary {
         val lines = playlistText.lineSequence().map(String::trim).filter(String::isNotBlank).toList()
+        val isMaster = lines.any { it.startsWith("#EXT-X-STREAM-INF", true) || it.startsWith("#EXT-X-MEDIA", true) }
+        val role = if (isMaster) MediaManifestRole.HlsMaster else MediaManifestRole.HlsMedia
         val variants = lines.count { it.startsWith("#EXT-X-STREAM-INF", ignoreCase = true) }
         val mediaGroups = lines.filter { it.startsWith("#EXT-X-MEDIA", ignoreCase = true) }.map { attributeList(it.substringAfter(':', "")) }
-        val keyLines = lines.filter { it.startsWith("#EXT-X-KEY", ignoreCase = true) }
+        val keyLines = lines.filter { it.startsWith("#EXT-X-KEY", true) || it.startsWith("#EXT-X-SESSION-KEY", true) }
         val protection = keyLines.map { attributeList(it.substringAfter(':', "")) }.firstOrNull { attrs -> attrs["METHOD"]?.equals("NONE", ignoreCase = true) != true }
+        val scheme = protection?.let { it["KEYFORMAT"] ?: it["METHOD"] }
         val protectionEvidence = BrowserHandoffMediaPolicy.classifyProtection(
-            hlsKeyMetadata = protection?.let { it["KEYFORMAT"] ?: it["METHOD"] },
+            hlsKeyMetadata = scheme,
             dashContentProtection = null,
             browserEncryptionEvent = null,
             resolverReport = null,
         )
         return MediaManifestSummary(
             kind = MediaSourceKind.HlsPlaylist,
+            role = role,
             variantCount = variants.coerceAtLeast(1),
             audioTrackCount = mediaGroups.count { it["TYPE"]?.equals("AUDIO", ignoreCase = true) == true },
             subtitleTrackCount = mediaGroups.count { it["TYPE"]?.equals("SUBTITLES", ignoreCase = true) == true || it["TYPE"]?.equals("CLOSED-CAPTIONS", ignoreCase = true) == true },
-            isLive = lines.none { it.equals("#EXT-X-ENDLIST", ignoreCase = true) },
+            // A master playlist is neither live nor VOD by itself. Live/VOD belongs to media playlists.
+            isLive = if (isMaster) null else lines.none { it.equals("#EXT-X-ENDLIST", ignoreCase = true) },
             hasDrm = protectionEvidence.protected,
-            protectionScheme = protectionEvidence.evidence.firstOrNull()?.scheme,
+            protectionScheme = protectionEvidence.evidence.firstOrNull()?.scheme ?: scheme,
         )
     }
 
     fun parseDashManifest(captureId: String, manifestUrl: String, manifestText: String, expiresAtEpochMs: Long? = null): List<MediaVariant> {
-        val adaptationBlocks = Regex("""<AdaptationSet\b([^>]*)>(.*?)</AdaptationSet>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
-            .findAll(manifestText)
-            .map { DashAdaptation(it.groupValues[1], it.groupValues[2]) }
-            .toList()
-        val parsed = if (adaptationBlocks.isNotEmpty()) {
-            adaptationBlocks.flatMapIndexed { adaptationIndex, adaptation ->
-                parseDashRepresentations(captureId, manifestUrl, adaptation.attrs, adaptation.body, expiresAtEpochMs, adaptationIndex)
+        val document = parseMpd(manifestText) ?: return emptyList()
+        val mpd = document.documentElement ?: return emptyList()
+        val rootBase = directChildText(mpd, "BaseURL")?.let { resolveVariantUrl(manifestUrl, it) } ?: manifestUrl
+        val periods = directChildren(mpd, "Period").ifEmpty { listOf(mpd) }
+        val variants = mutableListOf<MediaVariant>()
+        var position = 0
+        periods.forEachIndexed { periodIndex, period ->
+            val periodBase = directChildText(period, "BaseURL")?.let { resolveVariantUrl(rootBase, it) } ?: rootBase
+            directChildren(period, "AdaptationSet").forEachIndexed { adaptationIndex, adaptation ->
+                val adaptationBase = directChildText(adaptation, "BaseURL")?.let { resolveVariantUrl(periodBase, it) } ?: periodBase
+                val adaptationMime = adaptation.attrOrNull("mimeType")
+                val adaptationContent = adaptation.attrOrNull("contentType")
+                val adaptationLang = adaptation.attrOrNull("lang")
+                val adaptationCodecs = adaptation.attrOrNull("codecs")
+                val adaptationTemplate = directChildren(adaptation, "SegmentTemplate").firstOrNull()
+                val representations = directChildren(adaptation, "Representation")
+                representations.forEachIndexed { repIndex, rep ->
+                    val repBase = directChildText(rep, "BaseURL")?.let { resolveVariantUrl(adaptationBase, it) } ?: adaptationBase
+                    val codecs = rep.attrOrNull("codecs") ?: adaptationCodecs
+                    val mime = rep.attrOrNull("mimeType") ?: adaptationMime ?: mimeFromCodecs(codecs)
+                    val content = rep.attrOrNull("contentType") ?: adaptationContent
+                    val lang = rep.attrOrNull("lang") ?: adaptationLang
+                    val kind = dashVariantKind(mime, content, codecs)
+                    val template = directChildren(rep, "SegmentTemplate").firstOrNull() ?: adaptationTemplate
+                    val repId = rep.attrOrNull("id")
+                    val label = labelFor(rep.attrOrNull("height")?.toIntOrNull(), rep.attrOrNull("bandwidth")?.toLongOrNull(), codecs, lang, kind) +
+                        template?.attrOrNull("media")?.let { " • segmented" }.orEmpty()
+                    variants += MediaVariant(
+                        id = "$captureId:dash:$periodIndex:$adaptationIndex:${repId ?: repIndex}",
+                        captureId = captureId,
+                        url = repBase,
+                        kind = kind,
+                        mimeType = mime,
+                        width = rep.attrOrNull("width")?.toIntOrNull(),
+                        height = rep.attrOrNull("height")?.toIntOrNull(),
+                        bitrateBitsPerSecond = rep.attrOrNull("bandwidth")?.toLongOrNull(),
+                        codecs = codecs,
+                        language = lang,
+                        position = position++,
+                        displayLabel = label,
+                        expiresAtEpochMs = expiresAtEpochMs,
+                        groupId = adaptation.attrOrNull("id") ?: "$periodIndex:$adaptationIndex",
+                    )
+                }
             }
-        } else {
-            parseDashRepresentations(captureId, manifestUrl, "", manifestText, expiresAtEpochMs, 0)
         }
-        return parsed.mapIndexed { index, variant -> variant.copy(position = index) }
+        return variants
     }
 
     fun inspectDashManifest(manifestText: String): MediaManifestSummary {
+        val document = parseMpd(manifestText)
+        val mpd = document?.documentElement
         val summaryVariants = parseDashManifest("inspect", "https://example.invalid/manifest.mpd", manifestText)
-        val hasDrm = manifestText.contains("<ContentProtection", ignoreCase = true)
-        val protectionScheme = Regex("""schemeIdUri=['\"]([^'\"]+)['\"]""", RegexOption.IGNORE_CASE).find(manifestText)?.groupValues?.getOrNull(1)
+        val protectionElements = document?.getElementsByTagNameNS("*", "ContentProtection")
+        val schemes = buildList {
+            if (protectionElements != null) for (i in 0 until protectionElements.length) {
+                val element = protectionElements.item(i) as? Element ?: continue
+                element.attrOrNull("schemeIdUri")?.let(::add)
+            }
+        }
+        val hasDrm = schemes.isNotEmpty()
         val protectionEvidence = BrowserHandoffMediaPolicy.classifyProtection(
             hlsKeyMetadata = null,
-            dashContentProtection = manifestText.takeIf { hasDrm },
+            dashContentProtection = schemes.joinToString(",").takeIf { hasDrm },
             browserEncryptionEvent = null,
             resolverReport = null,
         )
         return MediaManifestSummary(
             kind = MediaSourceKind.DashManifest,
+            role = MediaManifestRole.DashMpd,
             variantCount = summaryVariants.count { it.kind == MediaVariantKind.Video }.coerceAtLeast(summaryVariants.size.coerceAtLeast(1)),
             audioTrackCount = summaryVariants.count { it.kind == MediaVariantKind.Audio },
             subtitleTrackCount = summaryVariants.count { it.kind == MediaVariantKind.Subtitle },
-            isLive = Regex("""type=['\"]dynamic['\"]""", RegexOption.IGNORE_CASE).containsMatchIn(manifestText),
+            isLive = mpd?.attrOrNull("type")?.equals("dynamic", true),
             hasDrm = protectionEvidence.protected,
-            protectionScheme = protectionScheme,
+            protectionScheme = schemes.firstOrNull(),
         )
     }
 
@@ -339,68 +399,17 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
     }
 
     fun decorateRecordWithManifestSummary(record: MediaCaptureRecord, summary: MediaManifestSummary, nowEpochMs: Long = clock()): MediaCaptureRecord = record.copy(
-        container = listOfNotNull(
-            record.container ?: when (summary.kind) {
-                MediaSourceKind.HlsPlaylist -> "HLS"
-                MediaSourceKind.DashManifest -> "DASH"
-                else -> null
-            },
-            if (summary.isLive) "live" else null,
-            if (summary.hasDrm) "protected" else null,
-        ).distinct().joinToString(" • ").ifBlank { record.container },
+        container = record.container ?: when (summary.kind) {
+            MediaSourceKind.HlsPlaylist -> "HLS"
+            MediaSourceKind.DashManifest -> "DASH"
+            else -> null
+        },
+        manifestRole = summary.role,
+        manifestIsLive = summary.isLive,
+        manifestProtected = summary.hasDrm,
+        manifestProtectionScheme = summary.protectionScheme,
         updatedAtEpochMs = nowEpochMs,
     )
-
-    private fun parseDashRepresentations(
-        captureId: String,
-        manifestUrl: String,
-        adaptationAttrs: String,
-        body: String,
-        expiresAtEpochMs: Long?,
-        adaptationIndex: Int,
-    ): List<MediaVariant> {
-        val adaptationMimeType = attr(adaptationAttrs, "mimeType")
-        val adaptationContentType = attr(adaptationAttrs, "contentType")
-        val adaptationLang = attr(adaptationAttrs, "lang")
-        val adaptationBase = Regex("""<BaseURL>(.*?)</BaseURL>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
-            .find(body)?.groupValues?.getOrNull(1)?.trim()
-        val fullTags = Regex("""<Representation\b([^>]*)>(.*?)</Representation>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
-            .findAll(body)
-            .map { it.groupValues[1] to it.groupValues[2] }
-            .toList()
-        val singleTags = Regex("""<Representation\b([^>]*)/>""", RegexOption.IGNORE_CASE)
-            .findAll(body)
-            .map { it.groupValues[1] to "" }
-            .toList()
-        val reps = fullTags + singleTags
-        return reps.mapIndexed { index, (attrs, repBody) ->
-            val width = attr(attrs, "width")?.toIntOrNull()
-            val height = attr(attrs, "height")?.toIntOrNull()
-            val bandwidth = attr(attrs, "bandwidth")?.toLongOrNull()
-            val codecs = attr(attrs, "codecs")
-            val mimeType = attr(attrs, "mimeType") ?: adaptationMimeType ?: mimeFromCodecs(codecs)
-            val contentType = attr(attrs, "contentType") ?: adaptationContentType
-            val repBase = Regex("""<BaseURL>(.*?)</BaseURL>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
-                .find(repBody)?.groupValues?.getOrNull(1)?.trim()
-            val base = repBase ?: adaptationBase
-            val kind = dashVariantKind(mimeType, contentType, codecs)
-            MediaVariant(
-                id = "$captureId:dash:$adaptationIndex:$index",
-                captureId = captureId,
-                url = base?.takeIf(String::isNotBlank)?.let { resolveVariantUrl(manifestUrl, it) } ?: manifestUrl,
-                kind = kind,
-                mimeType = mimeType,
-                width = width,
-                height = height,
-                bitrateBitsPerSecond = bandwidth,
-                codecs = codecs,
-                language = attr(attrs, "lang") ?: adaptationLang,
-                position = index,
-                displayLabel = labelFor(height, bandwidth, codecs, attr(attrs, "lang") ?: adaptationLang, kind),
-                expiresAtEpochMs = expiresAtEpochMs,
-            )
-        }
-    }
 
     private fun MediaCaptureCandidate.toRecord(now: Long): MediaCaptureRecord {
         val safeTitle = title?.takeIf(String::isNotBlank) ?: inferredTitle(sourceUrl)
@@ -452,7 +461,30 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         }
     }
 
-    private data class DashAdaptation(val attrs: String, val body: String)
+    private fun parseMpd(text: String) = runCatching {
+        val factory = DocumentBuilderFactory.newInstance().apply {
+            isNamespaceAware = true
+            isExpandEntityReferences = false
+            runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
+            runCatching { setFeature("http://xml.org/sax/features/external-general-entities", false) }
+            runCatching { setFeature("http://xml.org/sax/features/external-parameter-entities", false) }
+        }
+        factory.newDocumentBuilder().parse(text.byteInputStream(Charsets.UTF_8))
+    }.getOrNull()
+
+    private fun directChildren(parent: Element, localName: String): List<Element> = buildList {
+        val nodes = parent.childNodes
+        for (i in 0 until nodes.length) {
+            val child = nodes.item(i)
+            if (child.nodeType == Node.ELEMENT_NODE) {
+                val element = child as Element
+                if ((element.localName ?: element.tagName.substringAfter(':')).equals(localName, true)) add(element)
+            }
+        }
+    }
+
+    private fun directChildText(parent: Element, localName: String): String? = directChildren(parent, localName).firstOrNull()?.textContent?.trim()?.takeIf(String::isNotBlank)
+    private fun Element.attrOrNull(name: String): String? = getAttribute(name).trim().takeIf(String::isNotBlank)
 
     private fun inferredTitle(url: String): String = runCatching {
         URI(url).path.substringAfterLast('/').substringBefore('?').substringBefore('#').takeIf(String::isNotBlank)

@@ -56,6 +56,7 @@ import com.mikeyphw.xdm.android.model.DuplicateUrlRule
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaManifestRole
 import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
 import com.mikeyphw.xdm.android.model.MediaOutputAdmissionMode
 import com.mikeyphw.xdm.android.model.MediaOutputRecord
@@ -201,7 +202,7 @@ data class Aria2DiagnosticsUi(
     val storageDoctor: StorageDoctorUi = StorageDoctorUi(),
 )
 
-private const val CurrentRoomSchemaVersion = 20
+private const val CurrentRoomSchemaVersion = 21
 private const val UnpinnedReleaseSigner = "UNPINNED"
 
 private fun releaseSigningAttestationConfigured(): Boolean =
@@ -377,6 +378,8 @@ class MainViewModel(
         val session: BrowserMediaSessionRevision,
         val variants: List<BrowserVariantImportHandoff>,
         val preserveExistingLinkedCapture: Boolean,
+        val privateNetworkApproved: Boolean = false,
+        val cleartextCredentialsApproved: Boolean = false,
     )
 
     private val navigationOverride = MutableStateFlow(NavigationOverride())
@@ -2518,33 +2521,66 @@ class MainViewModel(
         exactUrl: String,
         requestHeaders: Map<String, String>,
         now: Long = System.currentTimeMillis(),
+        privateNetworkApproved: Boolean? = null,
+        cleartextCredentialsApproved: Boolean? = null,
+        privateNetworkApprovalScopes: Set<String> = emptySet(),
+        cleartextCredentialApprovalScopes: Set<String> = emptySet(),
     ): Pair<MediaCaptureRecord, List<MediaVariant>> {
         if (record.kind != MediaSourceKind.HlsPlaylist && record.kind != MediaSourceKind.DashManifest) return record to emptyList()
-        val handoff = MediaRequestHandoffStore.forCapture(record.id)
+        val storedHandoff = MediaRequestHandoffStore.forCapture(record.id)
+        val effectivePrivateApproved = privateNetworkApproved ?: (storedHandoff?.privateNetworkApproved == true)
+        val effectiveCleartextApproved = cleartextCredentialsApproved ?: (storedHandoff?.cleartextCredentialsApproved == true)
+        val effectivePrivateScopes = privateNetworkApprovalScopes.ifEmpty { storedHandoff?.privateNetworkApprovalScopes.orEmpty() }
+        val effectiveCleartextScopes = cleartextCredentialApprovalScopes.ifEmpty { storedHandoff?.cleartextCredentialApprovalScopes.orEmpty() }
         val plan = mediaPageProbe.probePage(
             exactUrl,
             pageTitle = record.title,
             requestHeaders = requestHeaders,
-            privateNetworkApproved = handoff?.privateNetworkApproved == true,
-            cleartextCredentialsApproved = handoff?.cleartextCredentialsApproved == true,
-            privateNetworkApprovalScopes = handoff?.privateNetworkApprovalScopes.orEmpty(),
-            cleartextCredentialApprovalScopes = handoff?.cleartextCredentialApprovalScopes.orEmpty(),
+            privateNetworkApproved = effectivePrivateApproved,
+            cleartextCredentialsApproved = effectiveCleartextApproved,
+            privateNetworkApprovalScopes = effectivePrivateScopes,
+            cleartextCredentialApprovalScopes = effectiveCleartextScopes,
         )
+        val resolvedFacts = plan.records.firstOrNull { it.id == record.id } ?: plan.records.singleOrNull()
+        var factualRecord = resolvedFacts?.let { observed ->
+            record.copy(
+                manifestRole = observed.manifestRole,
+                manifestIsLive = observed.manifestIsLive,
+                manifestProtected = observed.manifestProtected,
+                manifestProtectionScheme = observed.manifestProtectionScheme,
+            )
+        } ?: record
         val sameCaptureVariants = plan.variants.filter { it.captureId == record.id }
         val acceptedVariants = sameCaptureVariants.ifEmpty {
-            if (plan.records.size == 1 && plan.variants.isNotEmpty()) {
-                plan.variants.map { it.rekeyForCapture(record.id) }
-            } else {
-                emptyList()
+            if (plan.records.size == 1 && plan.variants.isNotEmpty()) plan.variants.map { it.rekeyForCapture(record.id) } else emptyList()
+        }
+
+        // Master playlists often carry no ENDLIST or EXT-X-KEY themselves. Probe a bounded set
+        // of selected child media playlists so live/protection facts are based on media playlists
+        // while the master remains the authoritative execution URL.
+        if (factualRecord.manifestRole == MediaManifestRole.HlsMaster && acceptedVariants.isNotEmpty()) {
+            val childFacts = mutableListOf<MediaCaptureRecord>()
+            for (variant in acceptedVariants.filter { it.kind == MediaVariantKind.Video && it.url != exactUrl }.distinctBy { it.url }.take(3)) {
+                mediaPageProbe.probePage(
+                    variant.url,
+                    pageTitle = record.title,
+                    requestHeaders = requestHeaders,
+                    privateNetworkApproved = effectivePrivateApproved,
+                    cleartextCredentialsApproved = effectiveCleartextApproved,
+                    privateNetworkApprovalScopes = effectivePrivateScopes,
+                    cleartextCredentialApprovalScopes = effectiveCleartextScopes,
+                ).records.firstOrNull { it.kind == MediaSourceKind.HlsPlaylist }?.let(childFacts::add)
             }
+            factualRecord = factualRecord.copy(
+                manifestIsLive = childFacts.mapNotNull { it.manifestIsLive }.firstOrNull(),
+                manifestProtected = factualRecord.manifestProtected || childFacts.any { it.manifestProtected },
+                manifestProtectionScheme = factualRecord.manifestProtectionScheme ?: childFacts.firstNotNullOfOrNull { it.manifestProtectionScheme },
+            )
         }
         return if (acceptedVariants.isNotEmpty()) {
-            mediaCaptureService.refreshRecordAfterResolution(record, acceptedVariants, now) to acceptedVariants
+            mediaCaptureService.refreshRecordAfterResolution(factualRecord, acceptedVariants, now) to acceptedVariants
         } else {
-            record.copy(
-                resolutionStatus = MediaResolutionStatus.RequiresRefresh,
-                updatedAtEpochMs = now,
-            ) to emptyList()
+            factualRecord.copy(resolutionStatus = MediaResolutionStatus.RequiresRefresh, updatedAtEpochMs = now) to emptyList()
         }
     }
 
@@ -2608,7 +2644,7 @@ class MainViewModel(
             if (existing?.downloadId != null) {
                 merged to emptyList()
             } else {
-                resolveCapturedPlaylistIfPossible(merged, record.sourceUrl, requestHeaders, now)
+                resolveCapturedPlaylistIfPossible(merged, record.sourceUrl, requestHeaders, now, privateNetworkApproved = draft.privateNetworkApproved, cleartextCredentialsApproved = draft.cleartextCredentialsApproved)
             }
         }
         val merged = resolvedCaptures.map { it.first }
@@ -3130,6 +3166,37 @@ class MainViewModel(
         recoverPendingBrowserCaptureImports(payload.captureSessionId)
     }
 
+    fun ingestDirectBrowserCaptureSession(payload: XdmBrowserDeepLinkPayload, privateNetworkApproved: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val decoded = browserCaptureEnvelopeManager.decodeDirect(payload).getOrElse { error ->
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(
+                        MediaIntakeFeedbackKind.Failed,
+                        "Browser capture session rejected",
+                        mediaIntakeFailureDetail(error),
+                    ),
+                )
+                return@launch
+            }
+            val primaryScope = payload.url?.let(DownloadRequestApprovalScope::forUrl)
+            val privateScopes = if (privateNetworkApproved && primaryScope != null) setOf(primaryScope) else emptySet()
+            runCatching {
+                importBrowserCaptureSession(
+                    decoded = decoded,
+                    privateNetworkApprovalScopes = privateScopes,
+                )
+            }.onFailure { error ->
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(
+                        MediaIntakeFeedbackKind.Failed,
+                        "Browser capture import interrupted",
+                        mediaIntakeFailureDetail(error),
+                    ),
+                )
+            }
+        }
+    }
+
     fun recoverPendingBrowserCaptureImports(sessionId: String? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             browserCaptureImportMutex.withLock {
@@ -3177,6 +3244,8 @@ class MainViewModel(
 
     private suspend fun importBrowserCaptureSession(
         decoded: BrowserCaptureEnvelopeManager.DecodedSession,
+        privateNetworkApprovalScopes: Set<String> = emptySet(),
+        cleartextCredentialApprovalScopes: Set<String> = emptySet(),
     ) {
         val existingSummary = browserCaptureSessionRegistry.snapshot().firstOrNull { session ->
             session.sessionId == decoded.sessionId
@@ -3186,7 +3255,7 @@ class MainViewModel(
                 MediaIntakeFeedbackUi(
                     MediaIntakeFeedbackKind.Found,
                     "Newer browser capture already imported",
-                    "A newer durable revision of this encrypted capture session already exists. The stale replay was ignored.",
+                    "A newer durable revision of this browser capture session already exists. The stale replay was ignored.",
                 ),
             )
             navigate(AppRoute.Media)
@@ -3204,7 +3273,7 @@ class MainViewModel(
                     MediaIntakeFeedbackUi(
                         MediaIntakeFeedbackKind.Found,
                         "Browser capture already imported",
-                        "This encrypted capture-session revision and its durable request handoffs are already present. Replay was ignored.",
+                        "This browser capture-session revision and its durable request handoffs are already present. Replay was ignored.",
                     ),
                 )
                 navigate(AppRoute.Media)
@@ -3245,14 +3314,29 @@ class MainViewModel(
                 ),
             )
             plan.records.forEach { rawRecord ->
+                val candidateScope = DownloadRequestApprovalScope.forUrl(candidate.url)
+                val candidatePrivateApproved = candidateScope != null && candidateScope in privateNetworkApprovalScopes
+                val candidateCleartextApproved = candidateScope != null && candidateScope in cleartextCredentialApprovalScopes
+                val requestHeaders = facts.finalHeaders.ifEmpty { facts.proposedHeaders }
+                val (factualRawRecord, resolvedManifestVariants) = resolveCapturedPlaylistIfPossible(
+                    rawRecord,
+                    candidate.url,
+                    requestHeaders,
+                    now,
+                    privateNetworkApproved = candidatePrivateApproved,
+                    cleartextCredentialsApproved = candidateCleartextApproved,
+                    privateNetworkApprovalScopes = privateNetworkApprovalScopes,
+                    cleartextCredentialApprovalScopes = cleartextCredentialApprovalScopes,
+                )
                 val captureId = MediaCaptureService.browserCaptureIdFor(
-                    rawRecord.sourceUrl,
+                    factualRawRecord.sourceUrl,
                     decoded.sessionId,
                     candidate.requestFingerprint,
                 )
-                val sourceVariants = plan.variants.filter { it.captureId == rawRecord.id }
+                val sourceVariants = (plan.variants.filter { it.captureId == rawRecord.id } + resolvedManifestVariants)
+                    .distinctBy(MediaVariant::id)
                 val rekeyedVariants = sourceVariants.map { it.rekeyForCapture(captureId) }
-                val selectedVariantId = rawRecord.selectedVariantId?.let { selected ->
+                val selectedVariantId = factualRawRecord.selectedVariantId?.let { selected ->
                     sourceVariants.zip(rekeyedVariants).firstOrNull { (old, _) -> old.id == selected }?.second?.id
                 }
                 val exactVariantPlans = sourceVariants.zip(rekeyedVariants).map { (source, rekeyed) ->
@@ -3271,7 +3355,7 @@ class MainViewModel(
                     requestUrl = candidate.url,
                     topPageUrl = candidate.pageUrl ?: decoded.pageUrl,
                     frameUrl = candidate.frameUrl,
-                    kind = rawRecord.kind,
+                    kind = factualRawRecord.kind,
                     mimeType = candidate.mimeType,
                     proposedHeaders = candidate.proposedHeaders,
                     finalHeaders = candidate.finalHeaders.takeIf { it.isNotEmpty() },
@@ -3280,12 +3364,12 @@ class MainViewModel(
                     requestFingerprint = candidate.requestFingerprint,
                 )
                 val existing = repository.findMediaCapture(captureId)
-                val sanitizedRawRecord = rawRecord.copy(
+                val sanitizedRawRecord = factualRawRecord.copy(
                     id = captureId,
-                    sourceUrl = persistableBrowserCaptureUrl(rawRecord.sourceUrl),
-                    pageUrl = persistableBrowserCaptureUrlOrNull(rawRecord.pageUrl),
+                    sourceUrl = persistableBrowserCaptureUrl(factualRawRecord.sourceUrl),
+                    pageUrl = persistableBrowserCaptureUrlOrNull(factualRawRecord.pageUrl),
                     selectedVariantId = selectedVariantId,
-                    selectedVariantUrl = rawRecord.selectedVariantUrl?.let(::persistableBrowserCaptureUrl),
+                    selectedVariantUrl = factualRawRecord.selectedVariantUrl?.let(::persistableBrowserCaptureUrl),
                 )
                 val preserveLinked = existing?.downloadId != null
                 val record = if (preserveLinked) {
@@ -3294,7 +3378,7 @@ class MainViewModel(
                     requireNotNull(existing)
                 } else {
                     sanitizedRawRecord.copy(
-                        createdAtEpochMs = existing?.createdAtEpochMs ?: rawRecord.createdAtEpochMs,
+                        createdAtEpochMs = existing?.createdAtEpochMs ?: factualRawRecord.createdAtEpochMs,
                         updatedAtEpochMs = now,
                     )
                 }
@@ -3305,6 +3389,8 @@ class MainViewModel(
                     session = browserSession,
                     variants = exactVariantPlans,
                     preserveExistingLinkedCapture = preserveLinked,
+                    privateNetworkApproved = candidatePrivateApproved,
+                    cleartextCredentialsApproved = candidateCleartextApproved,
                 )
                 summaries += BrowserCaptureCandidateSummary(
                     captureId = captureId,
@@ -3323,7 +3409,7 @@ class MainViewModel(
                 MediaIntakeFeedbackUi(
                     MediaIntakeFeedbackKind.NoMediaFound,
                     "Browser capture had no reviewable media",
-                    "The encrypted session reached XDM, but none of its ${decoded.candidates.size} browser candidates matched a downloadable media shape.",
+                    "The browser session reached XDM, but none of its ${decoded.candidates.size} candidates matched a downloadable media shape.",
                 ),
             )
             return
@@ -3363,8 +3449,8 @@ class MainViewModel(
                     exactUrl = storedSession.exactRequestUrl,
                     pageUrl = storedSession.frameUrl ?: storedSession.pageUrl,
                     expiresAtEpochMs = decoded.expiresAtEpochMs,
-                    privateNetworkApproved = false,
-                    cleartextCredentialsApproved = false,
+                    privateNetworkApproved = handoff.privateNetworkApproved,
+                    cleartextCredentialsApproved = handoff.cleartextCredentialsApproved,
                 )
             }
             handoff.variants.forEach { variant ->
@@ -3600,7 +3686,27 @@ class MainViewModel(
                     intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
                 }
                 val inspectNow = System.currentTimeMillis()
-                val (resolved, resolvedVariants) = resolveCapturedPlaylistIfPossible(merged, intake.record.sourceUrl, draft.requestHeaders, inspectNow)
+                // A DownloadIntakeDraft is also used by ordinary manual/share intake and therefore
+                // intentionally does not carry network approvals. Browser/automation review stores
+                // those approvals under the command id before this generic Add-screen path runs.
+                // Recover only that reviewed, exact-target scope; manual/share drafts fall back to
+                // empty scopes and cannot acquire private-network or cleartext-credential approval.
+                val currentReviewHandoff = MediaRequestHandoffStore.forCommand(draft.id)
+                val currentReviewScope = DownloadRequestApprovalScope.forUrl(intake.record.sourceUrl)
+                val privateNetworkApproved = currentReviewScope != null &&
+                    currentReviewScope in currentReviewHandoff?.privateNetworkApprovalScopes.orEmpty()
+                val cleartextCredentialsApproved = currentReviewScope != null &&
+                    currentReviewScope in currentReviewHandoff?.cleartextCredentialApprovalScopes.orEmpty()
+                val (resolved, resolvedVariants) = resolveCapturedPlaylistIfPossible(
+                    merged,
+                    intake.record.sourceUrl,
+                    draft.requestHeaders,
+                    inspectNow,
+                    privateNetworkApproved = privateNetworkApproved,
+                    cleartextCredentialsApproved = cleartextCredentialsApproved,
+                    privateNetworkApprovalScopes = currentReviewHandoff?.privateNetworkApprovalScopes.orEmpty(),
+                    cleartextCredentialApprovalScopes = currentReviewHandoff?.cleartextCredentialApprovalScopes.orEmpty(),
+                )
                 MediaRequestHandoffStore.rememberCapture(
                     captureId = resolved.id,
                     headers = draft.requestHeaders,
@@ -3608,7 +3714,8 @@ class MainViewModel(
                     isExpiringUrl = draft.requestHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(intake.record.sourceUrl),
                     exactUrl = intake.record.sourceUrl,
                     pageUrl = resolved.pageUrl,
-                    privateNetworkApproved = false,
+                    privateNetworkApproved = privateNetworkApproved,
+                    cleartextCredentialsApproved = cleartextCredentialsApproved,
                 )
                 intake.variants.forEach { variant ->
                     MediaRequestHandoffStore.rememberVariant(

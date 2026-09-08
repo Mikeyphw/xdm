@@ -713,4 +713,21 @@ object Migrations {
         }
     }
 
+    val Migration20To21 = object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN manifestRole TEXT NOT NULL DEFAULT 'Unknown'")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN manifestIsLive INTEGER DEFAULT NULL")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN manifestProtected INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN manifestProtectionScheme TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE media_variants ADD COLUMN groupId TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE media_variants ADD COLUMN audioGroupId TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE media_variants ADD COLUMN subtitleGroupId TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE media_variants ADD COLUMN isDefault INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE media_variants ADD COLUMN isAutoselect INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE media_variants ADD COLUMN isForced INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE media_variants ADD COLUMN channels TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE media_variants ADD COLUMN inStreamId TEXT DEFAULT NULL")
+        }
+    }
+
 }

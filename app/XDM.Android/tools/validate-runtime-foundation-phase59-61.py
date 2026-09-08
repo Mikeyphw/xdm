@@ -65,7 +65,7 @@ for token in (
     "navigate(AppRoute.Media)",
 ):
     need(vm, token, "Android session import")
-need(vm, "CurrentRoomSchemaVersion = 20", "Room schema")
+need(vm, "CurrentRoomSchemaVersion = 21", "Room schema")
 
 for token in ("Firefox capture sessions", "BrowserCaptureSessionHeader", "bounded browser handoff"):
     need(screen, token, "captured media inbox")

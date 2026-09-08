@@ -194,8 +194,8 @@ class MediaPageProbe(
 
 private val SAFE_PROBE_HEADER_NAME = Regex("^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$")
 private val PROBE_HEADER_ALLOWLIST = setOf(
-    "accept", "accept-encoding", "accept-language", "authorization", "cookie", "origin", "referer", "range", "user-agent",
-    "if-range", "if-none-match", "if-modified-since", "x-api-key", "x-auth-token", "x-access-token", "x-csrf-token",
+    "accept", "accept-language", "authorization", "cookie", "origin", "referer", "user-agent",
+    "x-api-key", "x-auth-token", "x-access-token", "x-csrf-token",
 )
 private val REDIRECT_STATUS_CODES = setOf(301, 302, 303, 307, 308)
 private const val MAX_PROBE_REDIRECTS = 5
@@ -223,13 +223,16 @@ private fun resolveProbeRedirect(base: String, location: String): String? = runC
 private fun originOf(value: String): String? = runCatching { URI(value) }.getOrNull()?.let { uri -> "${uri.scheme?.lowercase(Locale.US)}://${uri.host?.lowercase(Locale.US)}:${if (uri.port >= 0) uri.port else if (uri.scheme.equals("https", true)) 443 else 80}" }
 
 private fun applyDefaultProbeHeaders(connection: HttpURLConnection, url: String, requestHeaders: Map<String, String>) {
-    fun supplied(name: String) = requestHeaders.keys.any { it.equals(name, ignoreCase = true) }
+    val sanitized = sanitizeProbeHeaders(requestHeaders)
+    fun supplied(name: String) = sanitized.keys.any { it.equals(name, ignoreCase = true) }
     if (!supplied("User-Agent")) connection.setRequestProperty("User-Agent", DEFAULT_MEDIA_PROBE_USER_AGENT)
     if (!supplied("Accept")) connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/vnd.apple.mpegurl;q=0.9,application/dash+xml;q=0.9,*/*;q=0.8")
     if (!supplied("Accept-Language")) connection.setRequestProperty("Accept-Language", "en-US,en;q=0.8")
-    if (!supplied("Accept-Encoding")) connection.setRequestProperty("Accept-Encoding", "identity")
+    // Metadata probes always request an undecoded body. Range/cache validators belong to the
+    // original transfer transaction and are intentionally stripped by sanitizeProbeHeaders().
+    connection.setRequestProperty("Accept-Encoding", "identity")
     sameOriginReferer(url)?.takeIf { !supplied("Referer") }?.let { connection.setRequestProperty("Referer", it) }
-    sanitizeProbeHeaders(requestHeaders).forEach { (name, value) -> connection.setRequestProperty(name, value) }
+    sanitized.forEach { (name, value) -> connection.setRequestProperty(name, value) }
 }
 
 private fun BufferedInputStream.readBoundedUtf8(limitBytes: Int): String {
@@ -302,7 +305,7 @@ class MediaSniffingEngine(
                 diagnostics += "ignored invalid URL from ${raw.reason}"
                 return@forEach
             }
-            if (isFragmentOrNoise(normalized)) {
+            if (isFragmentOrNoise(normalized, raw.contentLength ?: input.contentLength, raw.reason)) {
                 diagnostics += "filtered fragment/noise ${PrivacyDiagnosticsRedactor.redactUrl(normalized)}"
                 return@forEach
             }
@@ -353,14 +356,23 @@ class MediaSniffingEngine(
                 thumbnailUrl = input.thumbnailUrl,
             )
         }
-        val records = captureService.recordsFor(captureCandidates)
+        val inlineManifest = captureCandidates.associate { candidate ->
+            MediaCaptureService.captureIdFor(candidate.sourceUrl) to parseInlineManifest(candidate, input.bodyPrefix)
+        }
+        val records = captureService.recordsFor(captureCandidates).map { record ->
+            inlineManifest[record.id]?.second?.let { summary -> captureService.decorateRecordWithManifestSummary(record, summary) } ?: record
+        }
         val manifestVariants = captureCandidates.flatMap { candidate ->
-            parseInlineManifestVariants(candidate, input.bodyPrefix).ifEmpty { candidate.variants }
+            val parsed = inlineManifest[MediaCaptureService.captureIdFor(candidate.sourceUrl)]?.first.orEmpty()
+            parsed.ifEmpty { candidate.variants }
         }
         val variants = manifestVariants.distinctBy(MediaVariant::id)
         val manifestDiagnostics = captureCandidates.mapNotNull { candidate ->
-            val parsedCount = parseInlineManifestVariants(candidate, input.bodyPrefix).size
-            parsedCount.takeIf { it > candidate.variants.size }?.let { "manifest-resolved-inline ${candidate.kind.name} variants=$it" }
+            val parsed = inlineManifest[MediaCaptureService.captureIdFor(candidate.sourceUrl)]
+            val parsedCount = parsed?.first?.size ?: 0
+            parsed?.second?.let { summary ->
+                "manifest-resolved-inline ${summary.role.name} variants=$parsedCount live=${summary.isLive ?: "unknown"} protected=${summary.hasDrm}"
+            } ?: parsedCount.takeIf { it > candidate.variants.size }?.let { "manifest-resolved-inline ${candidate.kind.name} variants=$it" }
         }
         val safeDiagnostics = diagnostics + manifestDiagnostics + diagnosticSummary(input, ranked)
         recordDebugSniff(input, ranked, records, variants, safeDiagnostics)
@@ -374,23 +386,17 @@ class MediaSniffingEngine(
 
 
 
-    private fun parseInlineManifestVariants(candidate: MediaCaptureCandidate, bodyPrefix: String?): List<MediaVariant> {
-        val body = bodyPrefix?.trimStart()?.takeIf(String::isNotBlank) ?: return emptyList()
+    private fun parseInlineManifest(candidate: MediaCaptureCandidate, bodyPrefix: String?): Pair<List<MediaVariant>, MediaManifestSummary?> {
+        val body = bodyPrefix?.trimStart()?.takeIf(String::isNotBlank) ?: return emptyList<MediaVariant>() to null
         val captureId = MediaCaptureService.captureIdFor(candidate.sourceUrl)
         return when (candidate.kind) {
             MediaSourceKind.HlsPlaylist -> if (body.startsWith("#EXTM3U", ignoreCase = true)) {
-                val parsed = captureService.parseHlsPlaylist(captureId, candidate.sourceUrl, body)
-                parsed.ifEmpty { candidate.variants }
-            } else {
-                emptyList()
-            }
+                captureService.parseHlsPlaylist(captureId, candidate.sourceUrl, body).ifEmpty { candidate.variants } to captureService.inspectHlsPlaylist(body)
+            } else emptyList<MediaVariant>() to null
             MediaSourceKind.DashManifest -> if (body.contains("<MPD", ignoreCase = true)) {
-                val parsed = captureService.parseDashManifest(captureId, candidate.sourceUrl, body)
-                parsed.ifEmpty { candidate.variants }
-            } else {
-                emptyList()
-            }
-            else -> emptyList()
+                captureService.parseDashManifest(captureId, candidate.sourceUrl, body).ifEmpty { candidate.variants } to captureService.inspectDashManifest(body)
+            } else emptyList<MediaVariant>() to null
+            else -> emptyList<MediaVariant>() to null
         }
     }
 
@@ -481,11 +487,20 @@ class MediaSniffingEngine(
         }
     }
 
-    private fun isFragmentOrNoise(url: String): Boolean {
+    private fun isFragmentOrNoise(url: String, contentLength: Long?, reason: String): Boolean {
         val lower = url.lowercase(Locale.US)
         val path = runCatching { URI(url).path.orEmpty().lowercase(Locale.US) }.getOrDefault(lower)
-        if (path.endsWith(".ts") || path.endsWith(".m4s") || path.endsWith("/init.mp4")) return true
-        if (path.contains("/segment") || path.contains("/seg-") || path.contains("/chunk-")) return true
+        val numberedSegment = Regex("(?:^|/)(?:segment|seg|chunk|part)[-_]?[0-9]{1,9}(?:[._/-]|$)", RegexOption.IGNORE_CASE).containsMatchIn(path)
+        val numberedTransport = Regex("(?:^|/)[0-9]{2,9}\\.(?:ts|m4s)$", RegexOption.IGNORE_CASE).containsMatchIn(path)
+        val smallFragment = contentLength?.let { it in 1L..4L * 1024L * 1024L } == true
+        val segmentNative = path.endsWith(".m4s") || path.endsWith(".ts")
+        val explicitFragmentEvidence = reason.contains("segment", true) || reason.contains("fragment", true)
+        // Never reject ordinary MP4 merely because it is named init/chunk/part or contains a
+        // sequence number. Numbering only becomes fragment evidence for segment-native formats,
+        // or when the extractor explicitly identified a small fragment.
+        if (numberedTransport) return true
+        if (segmentNative && (numberedSegment || smallFragment || explicitFragmentEvidence)) return true
+        if (numberedSegment && smallFragment && explicitFragmentEvidence) return true
         return listOf("doubleclick", "googlesyndication", "google-analytics", "/ads/", "adserver", "tracking", "pixel").any { lower.contains(it) }
     }
 

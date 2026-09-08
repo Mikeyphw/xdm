@@ -10,6 +10,7 @@
   const MEDIA_RE = /\.(?:m3u8|mpd|mp4|m4v|webm|mkv|mov|avi|flv|mpeg|mpg|ogv|mp3|m4a|aac|flac|wav|ogg|opus)(?:$|[?#])/i;
   const MANIFEST_RE = /\.(?:m3u8|mpd)(?:$|[?#])/i;
   const SEGMENT_RE = /\.(?:m4s|cmfv|cmfa|ts)(?:$|[?#])/i;
+  const ORDINARY_MEDIA_CONTAINER_RE = /\.(?:mp4|m4v|webm|mkv|mov|avi|flv|mpeg|mpg|ogv|mp3|m4a|aac|flac|wav|ogg|opus)(?:$|[?#])/i;
   const SEGMENT_PATH_RE = /(?:^|[\/_-])(?:seg(?:ment)?|frag(?:ment)?|chunk|part|init)(?:[\/_-]?\d+)?(?:[\/_-]|\.|$)/i;
   const AD_RE = /doubleclick|googlesyndication|googleadservices|adservice|adserver|\/ads?(?:\/|\?|$)|vast|vmap|preroll|midroll|postroll|ima3/i;
   const STREAM_HINT_RE = /(?:videoplayback|video[_-]?stream|media[_-]?stream|master(?:\.|\/|\?|$)|playlist|manifest|\/stream(?:\/|\?|$)|\/playback(?:\/|\?|$)|hls|dash)/i;
@@ -18,6 +19,7 @@
   const MAX_DOM_NODES = 3000;
   const MAX_INLINE_TEXT = 786_432;
   const PAGE_SNIFFER_STATUS_MARKER = "__xdmPageSnifferStatusV1";
+  const PAGE_SNIFFER_CONTROL_MARKER = "__xdmPageSnifferControlV1";
 
   const diagnostics = {
     startedAt: Date.now(),
@@ -48,15 +50,24 @@
   const timers = new WeakMap();
   let lastOffer = { key: "", at: 0 };
   let inlineScanDone = false;
+  let instrumentationStarted = false;
+  let pageSnifferInjected = false;
+  let performanceObserver = null;
   const seenInlineSignatures = new Set();
 
   function updateSettings(next) {
     if (next && typeof next === "object") Object.assign(settings, next);
   }
 
-  browser.storage.local.get("settings").then(result => updateSettings(result.settings)).catch(() => {});
+  browser.storage.local.get("settings").then(result => {
+    updateSettings(result.settings);
+    reconcileInstrumentation();
+  }).catch(() => reconcileInstrumentation());
   browser.storage.onChanged.addListener(changes => {
-    if (changes.settings) updateSettings(changes.settings.newValue);
+    if (changes.settings) {
+      updateSettings(changes.settings.newValue);
+      reconcileInstrumentation();
+    }
   });
 
   function hostAllowed() {
@@ -84,6 +95,7 @@
     if (!url || MANIFEST_RE.test(url)) return false;
     let path = url;
     try { path = new URL(url).pathname; } catch (_) {}
+    if (ORDINARY_MEDIA_CONTAINER_RE.test(url)) return false;
     return SEGMENT_RE.test(url) || SEGMENT_PATH_RE.test(path);
   }
 
@@ -407,6 +419,7 @@ ${location.href}`;
 
   window.addEventListener("message", event => {
     if (event.source !== window || !event.data) return;
+    if (!settings.autoDetectPlayingVideos || !hostAllowed()) return;
     if (event.data[PAGE_SNIFFER_STATUS_MARKER] === true) {
       const status = event.data.status && typeof event.data.status === "object" ? event.data.status : {};
       diagnostics.pageSnifferState = status.active === false ? "failed" : "active";
@@ -425,22 +438,41 @@ ${location.href}`;
     evaluateAllVideos();
   });
 
-  try {
-    const observer = new PerformanceObserver(list => {
-      for (const entry of list.getEntries()) {
-        recordCandidate(entry.name, `resource:${entry.initiatorType || "unknown"}`, 80);
-      }
-    });
-    observer.observe({ type: "resource", buffered: true });
-  } catch (_) {}
+  function startPerformanceObserver() {
+    if (performanceObserver) return;
+    try {
+      performanceObserver = new PerformanceObserver(list => {
+        if (!settings.autoDetectPlayingVideos || !hostAllowed()) return;
+        for (const entry of list.getEntries()) {
+          recordCandidate(entry.name, `resource:${entry.initiatorType || "unknown"}`, 80);
+        }
+      });
+      performanceObserver.observe({ type: "resource", buffered: true });
+    } catch (_) { performanceObserver = null; }
+  }
+
+  function stopPerformanceObserver() {
+    if (!performanceObserver) return;
+    try { performanceObserver.disconnect(); } catch (_) {}
+    performanceObserver = null;
+  }
+
+  function setPageSnifferActive(active) {
+    try { window.postMessage({ [PAGE_SNIFFER_CONTROL_MARKER]: true, active: active !== false }, "*"); } catch (_) {}
+  }
 
   function injectPageSniffer() {
+    if (pageSnifferInjected) {
+      setPageSnifferActive(true);
+      return;
+    }
     if (document.querySelector('script[data-xdm-page-sniffer="v1"]')) return;
     const script = document.createElement("script");
     script.src = browser.runtime.getURL("page-sniffer.js");
     script.async = false;
     script.dataset.xdmPageSniffer = "v1";
     script.onload = () => {
+      pageSnifferInjected = true;
       diagnostics.pageSnifferState = diagnostics.pageSnifferState === "active" ? "active" : "loaded";
       script.remove();
     };
@@ -451,11 +483,6 @@ ${location.href}`;
     };
     (document.documentElement || document.head || document).appendChild(script);
   }
-  try { injectPageSniffer(); } catch (error) {
-    diagnostics.pageSnifferState = "failed";
-    diagnostics.pageSnifferError = error && error.message ? error.message : String(error);
-  }
-
   function scanRelevantDom(root = document) {
     const selector = [
       "video", "source[src]", "audio", "track[src]",
@@ -511,6 +538,7 @@ ${location.href}`;
   }
 
   const mutationObserver = new MutationObserver(records => {
+    if (!settings.autoDetectPlayingVideos || !hostAllowed()) return;
     for (const record of records) {
       if (record.type === "attributes" && record.target instanceof Element) {
         collectElementUrls(record.target, "mutated");
@@ -532,6 +560,19 @@ ${location.href}`;
   });
 
   function start() {
+    if (!settings.autoDetectPlayingVideos || !hostAllowed()) return;
+    const firstStart = !instrumentationStarted;
+    if (firstStart) {
+      instrumentationStarted = true;
+      try { injectPageSniffer(); } catch (error) {
+        diagnostics.pageSnifferState = "failed";
+        diagnostics.pageSnifferError = error && error.message ? error.message : String(error);
+      }
+    } else {
+      setPageSnifferActive(true);
+    }
+    startPerformanceObserver();
+    if (typeof mutationObserver.disconnect === "function") mutationObserver.disconnect();
     mutationObserver.observe(document.documentElement || document, {
       childList: true,
       subtree: true,
@@ -543,6 +584,11 @@ ${location.href}`;
       collectVideoSources(video);
       if (!video.paused) schedule(video);
     }
+    if (!firstStart) {
+      scanInlinePlayerData();
+      evaluateAllVideos();
+      return;
+    }
     const runInlineScan = () => {
       scanRelevantDom(document);
       scanInlinePlayerData();
@@ -551,6 +597,17 @@ ${location.href}`;
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", runInlineScan, { once: true });
     else setTimeout(runInlineScan, 0);
     window.addEventListener("load", () => setTimeout(runInlineScan, 350), { once: true });
+  }
+
+  function stopInstrumentation() {
+    if (typeof mutationObserver.disconnect === "function") mutationObserver.disconnect();
+    stopPerformanceObserver();
+    setPageSnifferActive(false);
+  }
+
+  function reconcileInstrumentation() {
+    if (settings.autoDetectPlayingVideos && hostAllowed()) start();
+    else stopInstrumentation();
   }
 
   function showManual(input) {
@@ -577,6 +634,7 @@ ${location.href}`;
     health: dependencyHealth,
     offerNetwork,
     rescan() {
+      if (!settings.autoDetectPlayingVideos || !hostAllowed()) return Object.freeze({ ok: false, playback: false, health: dependencyHealth() });
       inlineScanDone = false;
       scanRelevantDom(document);
       scanInlinePlayerData();
@@ -586,6 +644,6 @@ ${location.href}`;
     version: "1.3.0"
   });
 
-  if (document.documentElement) start();
-  else document.addEventListener("DOMContentLoaded", start, { once: true });
+  // Initial instrumentation is intentionally deferred until browser.storage settings have
+  // been loaded above, so disabled/blacklisted pages never receive the main-world sniffer.
 })();

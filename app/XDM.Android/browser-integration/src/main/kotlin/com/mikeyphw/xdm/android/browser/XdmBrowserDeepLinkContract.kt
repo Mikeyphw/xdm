@@ -29,6 +29,11 @@ object XdmBrowserDeepLinkContract {
     const val RawHeadersParameter = "headers"
     const val ProposedHeadersParameter = "proposedHeaders"
     const val FinalHeadersParameter = "finalHeaders"
+    // v3 direct/keyless capture-session fields. The primary candidate above remains for
+    // backwards compatibility; this bounded batch prevents first-only handoff loss.
+    const val DirectCandidatesParameter = "candidates"
+    const val TotalCandidateCountParameter = "candidateCount"
+    const val TruncatedCandidatesParameter = "truncated"
 
     // Legacy encrypted-v2 fields. Reader support remains so an already-installed old XPI
     // can still hand off while it is being replaced; newly generated XPIs never emit them.
@@ -55,6 +60,8 @@ object XdmBrowserDeepLinkContract {
     const val MaxHeaderBlockCharacters = 12 * 1024
     const val MaxHeaderValueCharacters = 8 * 1024
     const val MaxHeaderLines = 24
+    const val MaxDirectCandidatesJsonCharacters = 52 * 1024
+    const val MaxDirectCandidates = 24
 
     val BuildVariantSchemes: Set<String> = setOf(ReleaseScheme, DebugScheme)
 }

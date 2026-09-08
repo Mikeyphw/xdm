@@ -308,11 +308,22 @@ class MediaDownloadPlanner {
             ?: variants.maxWithOrNull(compareBy<MediaVariant> { variantRank(it.kind) }.thenBy { it.height ?: 0 }.thenBy { it.bitrateBitsPerSecond ?: 0L })
     }
 
-    private fun normalizeSelection(capture: MediaCaptureRecord, variants: List<MediaVariant>, selection: MediaTrackSelection, selected: MediaVariant?): MediaTrackSelection = MediaTrackSelection(
-        videoVariantId = selection.videoVariantId ?: selected?.takeIf { it.kind == MediaVariantKind.Video || it.kind == MediaVariantKind.Primary }?.id ?: capture.selectedVariantId,
-        audioVariantId = selection.audioVariantId?.takeIf { id -> variants.any { it.id == id && it.kind == MediaVariantKind.Audio } },
-        subtitleVariantId = selection.subtitleVariantId?.takeIf { id -> variants.any { it.id == id && it.kind == MediaVariantKind.Subtitle } },
-    )
+    private fun normalizeSelection(capture: MediaCaptureRecord, variants: List<MediaVariant>, selection: MediaTrackSelection, selected: MediaVariant?): MediaTrackSelection {
+        val videoId = selection.videoVariantId ?: selected?.takeIf { it.kind == MediaVariantKind.Video || it.kind == MediaVariantKind.Primary }?.id ?: capture.selectedVariantId
+        val video = videoId?.let { id -> variants.firstOrNull { it.id == id } }
+        fun compatible(kind: MediaVariantKind, id: String?, requiredGroup: String?): String? {
+            val explicit = id?.let { wanted -> variants.firstOrNull { it.id == wanted && it.kind == kind } }
+            if (explicit != null && (requiredGroup == null || explicit.groupId == requiredGroup)) return explicit.id
+            return variants.firstOrNull { variant ->
+                variant.kind == kind && (requiredGroup == null || variant.groupId == requiredGroup) && variant.isDefault
+            }?.id ?: variants.firstOrNull { variant -> variant.kind == kind && (requiredGroup == null || variant.groupId == requiredGroup) }?.id
+        }
+        return MediaTrackSelection(
+            videoVariantId = videoId,
+            audioVariantId = compatible(MediaVariantKind.Audio, selection.audioVariantId, video?.audioGroupId),
+            subtitleVariantId = compatible(MediaVariantKind.Subtitle, selection.subtitleVariantId, video?.subtitleGroupId),
+        )
+    }
 
     private fun ytdlpFormatSelector(variants: List<MediaVariant>, selection: MediaTrackSelection, intent: MediaDownloadIntent): String? {
         val video = selection.videoVariantId?.let { id -> variants.firstOrNull { it.id == id } }
@@ -356,11 +367,19 @@ class MediaDownloadPlanner {
 
     private fun metadataProbeUrl(capture: MediaCaptureRecord): String = capture.pageUrl?.takeIf { it.isNotBlank() } ?: capture.sourceUrl
 
-    private fun isLive(capture: MediaCaptureRecord): Boolean = listOfNotNull(capture.container, capture.mimeType)
+    private fun isLive(capture: MediaCaptureRecord): Boolean = capture.manifestIsLive ?: listOfNotNull(capture.container, capture.mimeType)
         .flatMap(::structuredTokens)
         .any { it == "LIVE" }
 
     private fun protectedDiagnostic(capture: MediaCaptureRecord, variants: List<MediaVariant>): ProtectedMediaDiagnostic {
+        if (capture.manifestProtected) {
+            return ProtectedMediaDiagnostic(
+                true,
+                capture.manifestProtectionScheme,
+                "Authoritative manifest protection evidence is present. XDM keeps this diagnostic-only and will not attempt DRM bypass.",
+                "View diagnostics; XDM does not bypass DRM or download protected media.",
+            )
+        }
         val hlsEvidence = (listOf(capture.container, capture.codecs, capture.mimeType) + variants.flatMap { listOf(it.codecs, it.mimeType) })
             .filterNotNull()
             .firstNotNullOfOrNull { structuredProtectionMarker(it, HLS_PROTECTION_MARKERS) }

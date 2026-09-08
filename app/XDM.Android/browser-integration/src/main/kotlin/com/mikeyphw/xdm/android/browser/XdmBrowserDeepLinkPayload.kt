@@ -23,6 +23,9 @@ data class XdmBrowserDeepLinkPayload(
     val rawHeaders: String? = null,
     val proposedHeaders: String? = null,
     val finalHeaders: String? = null,
+    val directCandidatesJson: String? = null,
+    val totalCandidateCount: Int? = null,
+    val truncatedCandidates: Boolean = false,
     val captureSessionId: String? = null,
     val captureKeyId: String? = null,
     val wrappedKey: String? = null,
@@ -33,6 +36,11 @@ data class XdmBrowserDeepLinkPayload(
         get() = version == XdmBrowserDeepLinkContract.EncryptedCaptureVersion &&
             !captureSessionId.isNullOrBlank() && !captureKeyId.isNullOrBlank() &&
             !wrappedKey.isNullOrBlank() && !envelopeIv.isNullOrBlank() && !envelopeCiphertext.isNullOrBlank()
+
+    val hasDirectCaptureSession: Boolean
+        get() = version == XdmBrowserDeepLinkContract.CurrentVersion &&
+            action == AutomationCommandAction.CaptureMedia &&
+            !captureSessionId.isNullOrBlank() && !directCandidatesJson.isNullOrBlank()
 
     fun toAutomationCommandDraft(originPackage: String? = null): AutomationCommandDraft = AutomationCommandDraft(
         source = AutomationCommandSource.BrowserExtension,

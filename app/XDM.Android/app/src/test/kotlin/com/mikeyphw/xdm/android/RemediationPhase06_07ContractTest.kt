@@ -167,15 +167,16 @@ class RemediationPhase06_07ContractTest {
         assertTrue(screens.contains("Review locate options"))
     }
 
-    @Test fun roomSchemaTwentyPreservesNineteenAndAddsMediaOutputHistory() {
+    @Test fun roomSchemaTwentyOnePreservesMediaOutputHistoryAndAddsManifestFacts() {
         val database = source("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt")
         val migrations = source("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt")
         val entities = source("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt")
         val app = source("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
         val schema = source("persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/19.json")
         val schema20 = source("persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/20.json")
+        val schema21 = source("persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/21.json")
 
-        assertTrue(database.contains("version = 20"))
+        assertTrue(database.contains("version = 21"))
         assertTrue(migrations.contains("Migration18To19 = object : Migration(18, 19)"))
         assertTrue(migrations.contains("completedArtifactUri"))
         assertTrue(migrations.contains("completedArtifactGeneration"))
@@ -184,10 +185,16 @@ class RemediationPhase06_07ContractTest {
         assertTrue(entities.contains("index_backend_migrations_downloadId_activeClaim") || schema.contains("index_backend_migrations_downloadId_activeClaim"))
         assertTrue(app.contains("Migration18To19"))
         assertTrue(app.contains("Migration19To20"))
+        assertTrue(app.contains("Migration20To21"))
         assertTrue(migrations.contains("Migration19To20"))
+        assertTrue(migrations.contains("Migration20To21"))
         assertTrue(schema.contains("\"version\": 19"))
         assertTrue(schema20.contains("\"version\": 20"))
         assertTrue(schema20.contains("media_outputs"))
+        assertTrue(schema21.contains("\"version\": 21"))
+        assertTrue(schema21.contains("manifestRole"))
+        assertTrue(schema21.contains("audioGroupId"))
+        assertTrue(schema21.contains("inStreamId"))
     }
 
 

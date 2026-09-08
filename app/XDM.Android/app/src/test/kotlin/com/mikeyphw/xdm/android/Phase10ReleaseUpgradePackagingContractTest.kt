@@ -40,7 +40,7 @@ class Phase10ReleaseUpgradePackagingContractTest {
     @Test
     fun runtimeReleaseReadinessUsesCurrentSchemaAndBuildAttestation() {
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
-        assertTrue(viewModel.contains("CurrentRoomSchemaVersion = 20"))
+        assertTrue(viewModel.contains("CurrentRoomSchemaVersion = 21"))
         assertTrue(viewModel.contains("BuildConfig.XDM_RELEASE_SIGNING_CONFIGURED"))
         assertTrue(viewModel.contains("BuildConfig.XDM_PINNED_RELEASE_SIGNER_SHA256"))
         assertFalse(viewModel.contains("releaseSigningConfigured = !BuildConfig.DEBUG"))
