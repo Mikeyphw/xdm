@@ -23,8 +23,10 @@
         requestGeneration: candidate.requestGeneration,
       }) || "").trim();
       if (!requestFingerprint) return false;
+      const stableMediaId = String(candidate.stableMediaId || CORE.stableMediaIdentity(url, requestFingerprint) || "").trim();
+      if (!stableMediaId) return false;
       const bucket = this.buckets.get(numericTabId) || new Map();
-      const previous = bucket.get(requestFingerprint) || {};
+      const previous = bucket.get(stableMediaId) || {};
       const nextConfidence = Number(candidate.confidence || 0);
       const previousConfidence = Number(previous.confidence || 0);
       const mergedQuality = candidate.quality === "strong" || previous.quality === "strong"
@@ -41,10 +43,11 @@
         requestId: candidate.requestId || previous.requestId || "",
         requestFingerprint,
         requestGeneration: Number(candidate.requestGeneration || previous.requestGeneration || 0),
-        // Request headers may only be merged within the same extension-owned request fingerprint.
+        // Logical candidates merge retries/range requests; the newest request evidence wins while its fingerprint remains explicit.
         headers: Object.assign({}, previous.headers || {}, candidate.headers || {}),
         browserHandoff: Object.assign({}, previous.browserHandoff || {}, candidate.browserHandoff || {}),
-        stableMediaId: candidate.stableMediaId || previous.stableMediaId || CORE.stableMediaIdentity(url, requestFingerprint),
+        stableMediaId,
+        requestEvidenceCount: Math.min(32, Number(previous.requestEvidenceCount || 0) + (previous.requestFingerprint === requestFingerprint ? 0 : 1)),
         sessionRevision: Math.max(Number(candidate.sessionRevision || 0), Number(previous.sessionRevision || 0), Date.now()),
         quality: mergedQuality,
         confidence: Math.max(nextConfidence, previousConfidence),
@@ -57,7 +60,7 @@
         autoOffer: Boolean(candidate.autoOffer || previous.autoOffer),
         at: Date.now()
       };
-      bucket.set(requestFingerprint, merged);
+      bucket.set(stableMediaId, merged);
       this.buckets.set(numericTabId, bucket);
       this.trim(numericTabId);
       return true;
@@ -74,7 +77,7 @@
       if (bucket.size > this.maxPerTab) {
         const sorted = [...bucket.values()].sort((a, b) => CORE.rankCandidate(b) - CORE.rankCandidate(a));
         bucket.clear();
-        for (const item of sorted.slice(0, this.maxPerTab)) bucket.set(item.requestFingerprint, item);
+        for (const item of sorted.slice(0, this.maxPerTab)) bucket.set(item.stableMediaId, item);
       }
       if (!bucket.size) this.buckets.delete(numericTabId);
     }

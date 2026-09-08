@@ -13,7 +13,7 @@ import org.junit.Test
 import kotlin.io.path.createTempDirectory
 
 class BrowserHandoffMediaCoordinatorTest {
-    @Test fun rotatingSignedUrlCreatesDistinctSecureRequestIdentity() {
+    @Test fun rotatingSignedUrlRefreshesOneLogicalSession() {
         val coordinator = BrowserHandoffMediaCoordinator(clock = { 1_000 })
         val first = coordinator.rememberBrowserRevision(
             requestUrl = "https://cdn.example/video.mp4?token=one",
@@ -37,7 +37,8 @@ class BrowserHandoffMediaCoordinatorTest {
             revision = 2,
             expiresAtEpochMs = 20_000,
         )
-        assertNotEquals(first.stableMediaId, second.stableMediaId)
+        assertEquals(first.stableMediaId, second.stableMediaId)
+        assertEquals(2L, coordinator.sessionFor(first.stableMediaId)?.revision)
         assertEquals(BrowserHeaderObservationKind.FinalSent, second.finalHeaders.kind)
         assertEquals("sid=2", second.usableHeaders["Cookie"])
     }

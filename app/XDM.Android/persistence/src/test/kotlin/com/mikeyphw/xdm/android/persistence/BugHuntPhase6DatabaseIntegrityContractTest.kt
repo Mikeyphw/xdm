@@ -43,6 +43,11 @@ class BugHuntPhase6DatabaseIntegrityContractTest {
         assertTrue("DAO replacement must delete prior variants", dao.contains("deleteMediaVariantsForCaptures(captureIds)"))
         assertTrue("DAO replacement must reconcile capture selection and counts", dao.contains("reconcileCaptureAfterVariantReplacement"))
         assertTrue("Repository batch persistence must use a Room transaction", repository.contains("saveMediaCapturesWithVariants") && repository.contains("database.withTransaction"))
+        val singleSave = repository
+            .substringAfter("suspend fun saveMediaCaptureWithVariants")
+            .substringBefore("suspend fun saveMediaCapturesWithVariants")
+        assertTrue("Single-capture persistence must always replace the variant set", singleSave.contains("replaceMediaVariantsForCapture"))
+        assertFalse("An empty refresh must clear stale variants rather than skip replacement", singleSave.contains("if (variants.isNotEmpty())"))
         assertTrue("Batch intake must persist captures and variants atomically", batchFlow.contains("repository.saveMediaCapturesWithVariants(merged, plan.variants, now)"))
         assertFalse("Batch intake must not return to a second variant replacement call", batchFlow.contains("repository.replaceMediaVariants"))
     }

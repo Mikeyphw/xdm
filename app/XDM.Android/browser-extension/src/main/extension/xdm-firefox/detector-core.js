@@ -49,9 +49,27 @@
     return `req-${hashToken([url, requestId, tabId, frameId, generation].join("|"))}`;
   }
 
+  const SENSITIVE_QUERY_NAME_RE = /(?:^|[_-])(?:access[_-]?token|auth(?:[_-]?token)?|cookie|credential|expires?|key|password|policy|session(?:[_-]?id)?|sig(?:nature)?|secret|token|x[_-]?amz[_-]?(?:credential|security[_-]?token|signature)|x[_-]?goog[_-]?(?:credential|security[_-]?token|signature))(?:$|[_-])/i;
+
+  function logicalMediaUrl(value) {
+    try {
+      const url = new URL(String(value || ""));
+      url.hash = "";
+      url.protocol = url.protocol.toLowerCase();
+      url.hostname = url.hostname.toLowerCase();
+      for (const [name] of [...url.searchParams.entries()]) {
+        if (SENSITIVE_QUERY_NAME_RE.test(name.replace(/[^A-Za-z0-9_-]+/g, "_"))) url.searchParams.set(name, "REDACTED");
+      }
+      return url.href;
+    } catch (_) {
+      return exactRequestUrl(value);
+    }
+  }
+
   function stableMediaIdentity(value, fingerprint = "") {
-    const exact = exactRequestUrl(value);
-    return exact ? `browser-media-${hashToken(`${exact}|${String(fingerprint || "")}`)}` : "";
+    const logical = logicalMediaUrl(value);
+    void fingerprint; // request provenance is tracked separately from logical candidate identity.
+    return logical ? `browser-media-${hashToken(logical)}` : "";
   }
 
   function normalizeMime(value) {
@@ -305,6 +323,7 @@
 
   globalThis.XdmDetectorCoreV1 = Object.freeze({
     stableMediaIdentity,
+    logicalMediaUrl,
     requestFingerprint,
     exactRequestUrl,
     normalizeMime,

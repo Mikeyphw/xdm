@@ -8,6 +8,7 @@ import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.PageObservationProof
 import com.mikeyphw.xdm.android.model.BrowserHandoffMediaPolicy
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.util.sanitizeFileName
 import java.net.URI
 import java.security.MessageDigest
@@ -430,16 +431,22 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
     companion object {
         const val DEFAULT_MANIFEST_MAX_AGE_MS = 15 * 60 * 1000L
 
+        /** Logical capture identity: normalize scheme/host, preserve case-sensitive path/query, and
+         * redact credential values so a refreshed signed URL updates the same capture. */
+        fun captureIdentityUrl(url: String): String = ExternalUrlPolicy.persistableUrl(url)
+            ?: url.substringBefore('#').trim()
+
         fun captureIdFor(url: String): String = "media-" + MessageDigest.getInstance("SHA-256")
-            .digest(url.trim().lowercase(Locale.ROOT).toByteArray())
+            .digest(captureIdentityUrl(url).toByteArray())
             .joinToString("") { "%02x".format(it) }
             .take(24)
 
         fun browserCaptureIdFor(url: String, sessionId: String, requestFingerprint: String): String {
-            val exact = url.substringBefore('#').trim()
-            val key = listOf("browser-v2", sessionId.trim(), requestFingerprint.trim(), exact).joinToString("|")
+            // sessionId/requestFingerprint are request-provenance only. They must not create a new
+            // logical capture for retries, range requests, or refreshed browser credentials.
+            @Suppress("UNUSED_VARIABLE") val requestEvidence = sessionId to requestFingerprint
             return "media-browser-" + MessageDigest.getInstance("SHA-256")
-                .digest(key.toByteArray())
+                .digest(captureIdentityUrl(url).toByteArray())
                 .joinToString("") { "%02x".format(it) }
                 .take(28)
         }

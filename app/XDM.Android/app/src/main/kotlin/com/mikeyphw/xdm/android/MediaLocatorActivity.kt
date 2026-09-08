@@ -1,10 +1,10 @@
 package com.mikeyphw.xdm.android
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -20,13 +20,17 @@ import android.widget.ListView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
-import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkContract
+import com.mikeyphw.xdm.android.media.MediaCaptureService
 import com.mikeyphw.xdm.android.media.MediaSniffingEngine
 import com.mikeyphw.xdm.android.media.MediaSniffingInput
 import com.mikeyphw.xdm.android.media.MediaSniffingSource
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaSourceKind
+import com.mikeyphw.xdm.android.model.MediaVariant
 import java.net.URI
 import java.util.Locale
+import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -50,6 +54,9 @@ class MediaLocatorActivity : ComponentActivity() {
         val pageTitle: String?,
         val requestHeaders: Map<String, String>,
         val rank: Int,
+        /** Already-classified durable record and inline-resolved variants from this exact observation. */
+        val record: MediaCaptureRecord,
+        val variants: List<MediaVariant>,
     )
 
     private val engine = MediaSniffingEngine()
@@ -211,7 +218,10 @@ class MediaLocatorActivity : ComponentActivity() {
                     )
                 }
                 if (plan.candidates.isEmpty()) return@launch
-                val found = plan.candidates.map { candidate ->
+                val recordsById = plan.records.associateBy(MediaCaptureRecord::id)
+                val found = plan.candidates.mapNotNull { candidate ->
+                    val captureId = MediaCaptureService.captureIdFor(candidate.url)
+                    val record = recordsById[captureId] ?: return@mapNotNull null
                     LocatedMedia(
                         url = candidate.url,
                         mimeType = candidate.mimeType,
@@ -221,6 +231,8 @@ class MediaLocatorActivity : ComponentActivity() {
                         pageTitle = candidate.title,
                         requestHeaders = mergedHeaders,
                         rank = candidate.rank,
+                        record = record,
+                        variants = plan.variants.filter { it.captureId == captureId },
                     )
                 }
                 found.forEach { candidate ->
@@ -250,22 +262,63 @@ class MediaLocatorActivity : ComponentActivity() {
     }
 
     private fun reviewCandidate(candidate: LocatedMedia) {
-        val builder = Uri.Builder()
-            .scheme(BuildConfig.XDM_BROWSER_SCHEME)
-            .authority(XdmBrowserDeepLinkContract.CaptureHost)
-            .appendQueryParameter(XdmBrowserDeepLinkContract.VersionParameter, XdmBrowserDeepLinkContract.CurrentVersion.toString())
-            .appendQueryParameter(XdmBrowserDeepLinkContract.UrlParameter, candidate.url)
-            .appendQueryParameter(XdmBrowserDeepLinkContract.MediaKindParameter, candidate.kind.name.lowercase(Locale.US))
-        candidate.mimeType?.let { builder.appendQueryParameter(XdmBrowserDeepLinkContract.MimeTypeParameter, it) }
-        candidate.pageUrl?.let { builder.appendQueryParameter(XdmBrowserDeepLinkContract.PageUrlParameter, it) }
-        candidate.pageTitle?.let { builder.appendQueryParameter(XdmBrowserDeepLinkContract.PageTitleParameter, it) }
-        encodeHeaderBlock(candidate.requestHeaders)?.let {
-            builder.appendQueryParameter(XdmBrowserDeepLinkContract.RawHeadersParameter, it)
+        val detail = buildString {
+            append(candidate.kind.name.replace('_', ' '))
+            candidate.mimeType?.let { append(" • ").append(it) }
+            if (candidate.variants.isNotEmpty()) append(" • ").append(candidate.variants.size).append(" resolved track(s)")
+            append("\n").append(candidate.reason)
         }
-        startActivity(
-            Intent(Intent.ACTION_VIEW, builder.build(), this, ExternalHandoffReviewActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP),
-        )
+        AlertDialog.Builder(this)
+            .setTitle("Add captured media to XDM")
+            .setMessage(detail)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Add to Media") { _, _ -> persistLocatedCandidate(candidate) }
+            .show()
+    }
+
+    private fun persistLocatedCandidate(candidate: LocatedMedia) {
+        status.text = "Saving captured media…"
+        lifecycleScope.launch(Dispatchers.IO) {
+            val repository = (application as XdmApplication).container.repository
+            val now = System.currentTimeMillis()
+            val existing = repository.findMediaCapture(candidate.record.id)
+            val durable = candidate.record.copy(
+                // A refreshed observation updates request/manifest evidence without severing an
+                // already-created output from its logical capture.
+                downloadId = existing?.downloadId,
+                status = if (existing?.downloadId != null) existing.status else candidate.record.status,
+                createdAtEpochMs = existing?.createdAtEpochMs ?: candidate.record.createdAtEpochMs,
+                updatedAtEpochMs = now,
+            )
+            // Persist exactly the variants parsed from the observed response. This avoids a
+            // second manifest fetch after review and replaces stale variants even when empty.
+            repository.saveMediaCaptureWithVariants(durable, candidate.variants, now)
+            MediaRequestHandoffStore.rememberCapture(
+                captureId = durable.id,
+                headers = candidate.requestHeaders,
+                redactedSummary = "live locator • ${candidate.kind.name}",
+                isExpiringUrl = candidate.requestHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(candidate.url),
+                exactUrl = candidate.url,
+                pageUrl = candidate.pageUrl,
+            )
+            candidate.variants.forEach { variant ->
+                MediaRequestHandoffStore.rememberVariant(
+                    variantId = variant.id,
+                    exactUrl = variant.url,
+                    headers = candidate.requestHeaders,
+                    redactedSummary = "live locator variant • ${variant.kind.name}",
+                    expiresAtEpochMs = variant.expiresAtEpochMs ?: now + 24L * 60L * 60L * 1000L,
+                )
+            }
+            withContext(Dispatchers.Main) {
+                startActivity(
+                    Intent(this@MediaLocatorActivity, MainActivity::class.java)
+                        .setAction(MainActivity.ACTION_INTERNAL_MEDIA_CAPTURE_READY)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                )
+                finish()
+            }
+        }
     }
 
     private fun browserSessionHeaders(mediaUrl: String, pageUrl: String?): Map<String, String> = buildMap {

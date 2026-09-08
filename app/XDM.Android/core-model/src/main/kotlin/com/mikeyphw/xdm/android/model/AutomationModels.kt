@@ -248,6 +248,21 @@ object AutomationCommandIds {
     fun stableKey(draft: AutomationCommandDraft): String {
         val explicit = draft.explicitIdempotencyKey?.trim()?.takeIf { it.isNotBlank() }
         if (explicit != null) return "external:${draft.source.name}:$explicit"
+        if (draft.action == AutomationCommandAction.CaptureMedia) {
+            val normalizedUrl = ExternalUrlPolicy.normalizedUrl(draft.url)
+            val normalizedPage = ExternalUrlPolicy.normalizedUrl(draft.pageUrl)
+            val logicalMedia = draft.stableMediaId?.trim()?.takeIf { it.isNotBlank() }
+                ?: ExternalUrlPolicy.persistableUrl(normalizedUrl).orEmpty()
+            val logicalPage = ExternalUrlPolicy.persistableUrl(normalizedPage).orEmpty()
+            val raw = listOf(
+                "external-handoff",
+                draft.action.name,
+                logicalMedia,
+                logicalPage,
+                (draft.sessionRevision ?: 0L).toString(),
+            ).joinToString("|")
+            return "auto:" + sha256(raw).take(32)
+        }
         return stableKey(
             source = draft.source,
             action = draft.action,
@@ -270,16 +285,18 @@ object AutomationCommandIds {
         val raw = listOf(
             sourcePart,
             action.name,
-            normalizedUrl.normalizedCommandPart(),
-            fileName.normalizedCommandPart(),
-            normalizedPage.normalizedCommandPart(),
+            normalizedUrl.urlIdentityCommandPart(),
+            fileName.textIdentityCommandPart(),
+            normalizedPage.urlIdentityCommandPart(),
         ).joinToString("|")
         return "auto:" + sha256(raw).take(32)
     }
 
     fun commandId(idempotencyKey: String): String = "cmd-" + sha256(idempotencyKey).take(32)
 
-    private fun String?.normalizedCommandPart(): String = this?.trim()?.lowercase(Locale.US).orEmpty()
+    private fun String?.urlIdentityCommandPart(): String = this?.trim().orEmpty()
+
+    private fun String?.textIdentityCommandPart(): String = this?.trim()?.lowercase(Locale.US).orEmpty()
 
     private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray(Charsets.UTF_8))

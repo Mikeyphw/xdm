@@ -48,7 +48,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun consumeLaunchIntent(incoming: Intent?): Boolean =
-        consumeInternalBrowserCapture(incoming) || consumeInternalAutomation(incoming) || consumeNotificationNavigation(incoming)
+        consumeInternalMediaCapture(incoming) || consumeInternalBrowserCapture(incoming) || consumeInternalAutomation(incoming) || consumeNotificationNavigation(incoming)
+
+    private fun consumeInternalMediaCapture(incoming: Intent?): Boolean {
+        if (incoming?.action != ACTION_INTERNAL_MEDIA_CAPTURE_READY) return false
+        setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+        viewModel.navigate(AppRoute.Media)
+        return true
+    }
 
     private fun consumeInternalBrowserCapture(incoming: Intent?): Boolean {
         if (incoming?.action != ACTION_INTERNAL_BROWSER_CAPTURE_IMPORT) return false
@@ -106,6 +113,7 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        internal const val ACTION_INTERNAL_MEDIA_CAPTURE_READY = "com.mikeyphw.xdm.android.INTERNAL_MEDIA_CAPTURE_READY"
         internal const val ACTION_INTERNAL_AUTOMATION_DISPATCH = "com.mikeyphw.xdm.android.INTERNAL_AUTOMATION_DISPATCH"
         internal const val EXTRA_INTERNAL_COMMAND_ID = "com.mikeyphw.xdm.android.extra.INTERNAL_COMMAND_ID"
         internal const val ACTION_INTERNAL_BROWSER_CAPTURE_IMPORT = "com.mikeyphw.xdm.android.INTERNAL_BROWSER_CAPTURE_IMPORT"

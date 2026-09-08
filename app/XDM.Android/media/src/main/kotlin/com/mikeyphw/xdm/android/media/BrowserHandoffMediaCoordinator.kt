@@ -208,7 +208,8 @@ class BrowserHandoffMediaCoordinator(
         requirePageObservationProof: Boolean = false,
     ): BrowserMediaSessionRevision {
         // Browser-declared stable IDs are diagnostic compatibility data only; Android computes
-        // authoritative identity from exact request context plus requestFingerprint.
+        // authoritative logical identity from the credential-redacted request URL and transfer shape.
+        // Request fingerprints remain revision provenance, not media identity.
         @Suppress("UNUSED_VARIABLE") val ignoredDeclaredStableMediaId = declaredStableMediaId
         return rememberPreparedRevision(
             prepareBrowserRevision(

@@ -173,14 +173,15 @@ object BrowserHandoffMediaPolicy {
         shape: MediaTransferShape,
         requestFingerprint: String? = null,
     ): String {
-        fun withoutFragment(value: String?): String = value.orEmpty().substringBefore('#').trim()
+        val logicalRequestUrl = ExternalUrlPolicy.persistableUrl(requestUrl)
+            ?: requestUrl.substringBefore('#').trim()
+        // Page/frame, request fingerprint, and current classifier shape are mutable evidence for
+        // the freshest execution revision, not logical media identity. Retrying or promoting the
+        // same resource from weak evidence to HLS/DASH must update one session.
+        @Suppress("UNUSED_VARIABLE") val requestEvidence = listOf(pageUrl, frameUrl, requestFingerprint, shape.name)
         val key = listOf(
-            "browser-media-v2",
-            shape.name,
-            withoutFragment(requestUrl),
-            withoutFragment(frameUrl),
-            withoutFragment(pageUrl),
-            requestFingerprint.orEmpty().trim(),
+            "browser-media-v3",
+            logicalRequestUrl,
         ).joinToString("|")
         return "media-session-" + MessageDigest.getInstance("SHA-256")
             .digest(key.toByteArray())

@@ -92,8 +92,20 @@ for token in ('suffix-only manifest evidence stays hidden by default', 'verified
     need(background_test, token, "background evidence regression")
 
 # App/live locator follows the same evidence boundary.
-for token in ("document.querySelectorAll('video,audio,source')", 'window.fetch = async function', 'XMLHttpRequest', 'MutationObserver', "initiator !== 'video' && initiator !== 'audio'", 'MediaSniffingEngine()', 'ExternalHandoffReviewActivity::class.java'):
+for token in (
+    "document.querySelectorAll('video,audio,source')",
+    'window.fetch = async function',
+    'XMLHttpRequest',
+    'MutationObserver',
+    "initiator !== 'video' && initiator !== 'audio'",
+    'MediaSniffingEngine()',
+    'saveMediaCaptureWithVariants',
+    'candidate.variants',
+    'MediaRequestHandoffStore.rememberCapture',
+    'ACTION_INTERNAL_MEDIA_CAPTURE_READY',
+):
     need(locator, token, "live media locator")
+forbid(locator, 'ExternalHandoffReviewActivity::class.java', "obsolete locator deep-link reparse path")
 forbid(locator, 'MEDIA_EXT.test(entry.name)', "live performance-resource false-positive path")
 for token in ('hardNonMediaMime -> MediaSourceKind.Unknown', 'application/json', 'text/html', 'image/'):
     need(media_classifier, token, "app media classifier")

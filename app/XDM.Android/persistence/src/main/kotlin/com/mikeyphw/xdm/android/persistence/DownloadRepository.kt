@@ -172,9 +172,13 @@ class DownloadRepository(private val database: AppDatabase) {
         )
     suspend fun saveMediaCaptureWithVariants(record: MediaCaptureRecord, variants: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.withTransaction {
         database.mediaCaptureDao().upsert(record.redactedForPersistence().toEntity())
-        if (variants.isNotEmpty()) {
-            database.downloadGraphTransactionDao().replaceMediaVariantsForCapture(record.id, variants.map { it.redactedForPersistence().toEntity() }, updatedAtEpochMs)
-        }
+        // Empty is a real replacement result: never leave executable stale variants attached after
+        // a failed/empty refresh or a newer capture revision.
+        database.downloadGraphTransactionDao().replaceMediaVariantsForCapture(
+            record.id,
+            variants.filter { it.captureId == record.id }.map { it.redactedForPersistence().toEntity() },
+            updatedAtEpochMs,
+        )
     }
     suspend fun saveMediaCapturesWithVariants(records: List<MediaCaptureRecord>, variants: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.withTransaction {
         if (records.isNotEmpty()) database.mediaCaptureDao().upsertAll(records.map { it.redactedForPersistence().toEntity() })
@@ -182,8 +186,7 @@ class DownloadRepository(private val database: AppDatabase) {
         // set. This prevents a retried/repaired browser import from retaining stale variants from
         // an earlier partial session revision.
         records.forEach { record ->
-            database.downloadGraphTransactionDao().replaceMediaVariantsForCapture(
-                record.id,
+            database.downloadGraphTransactionDao().replaceMediaVariantsForCapture(record.id,
                 variants.filter { it.captureId == record.id }.map { it.redactedForPersistence().toEntity() },
                 updatedAtEpochMs,
             )
