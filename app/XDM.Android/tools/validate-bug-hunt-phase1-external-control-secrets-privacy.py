@@ -81,10 +81,26 @@ forbid(
 )
 forbid(
     "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
-    "XdmBrowserDeepLinkParser",
     "TaskerContract",
     "Intent.EXTRA_TEXT",
     "clipData",
+)
+# Later browser-direct capture support is allowed only after ExternalHandoffReviewActivity
+# converts the external deep link into an explicit internal-only action/extra. MainActivity
+# must not parse arbitrary external intent data or shared text directly.
+require(
+    "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt",
+    "ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT",
+    "EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI",
+    "incoming.getStringExtra(EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI)",
+    "incoming.removeExtra(EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI)",
+    "XdmBrowserDeepLinkParser.parseDetailed(rawDeepLink",
+    "ingestDirectBrowserCaptureSession",
+)
+require(
+    "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalHandoffReviewActivity.kt",
+    "ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT",
+    "EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI",
 )
 require(
     "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationSecurity.kt",
@@ -316,7 +332,10 @@ if manifest_json:
         if external.get("exported_add_activity_review_only") is not True:
             errors.append("PROJECT_MANIFEST must record the dedicated durable external review boundary")
         if external.get("main_activity_payload") != "internal persisted command id only":
-            errors.append("PROJECT_MANIFEST must record persisted-command-id-only MainActivity dispatch")
+            errors.append("PROJECT_MANIFEST must retain the historical persisted-command-id-only automation dispatch contract")
+        current = parsed.get("bug_hunt_master_remediation_overlay_13_privacy_quality_final_gate", {})
+        if current.get("browser_direct_add_contract") != "xdmdownload://add?v=1 remains distinct from encrypted media capture":
+            errors.append("PROJECT_MANIFEST must record the later reviewed browser-direct add exception")
     except json.JSONDecodeError as exc:
         errors.append(f"PROJECT_MANIFEST.json invalid JSON: {exc}")
 

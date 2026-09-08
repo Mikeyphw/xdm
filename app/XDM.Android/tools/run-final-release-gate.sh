@@ -5,15 +5,9 @@ export PYTHONDONTWRITEBYTECODE=1
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-# Final static release gate is intentionally routed through the bug-hunt
-# validation matrix. Older UIX/field-fix validators encoded historical
-# assumptions such as Room schema 14 and pre-0.21.0 metadata; Phase 11 keeps
-# their still-relevant checks through current phase validators and executable
-# evidence rows instead of replaying stale release-candidate constants.
-validators=(
-  tools/validate-uix-r3-downloads-add-workspace.py
-  tools/validate-uix-r6-accessibility-performance-release-seal.py
-  tools/validate-debug-workbench-d7-final-debug-seal.py
+# The Phase-11 static matrix owns these validators. Keep the literals here for
+# release-contract/source-harmony checks, but do not execute them twice.
+matrix_owned_validators=(
   tools/validate-bug-hunt-phase1-external-control-secrets-privacy.py
   tools/validate-bug-hunt-phase2-download-execution.py
   tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py
@@ -26,7 +20,17 @@ validators=(
   tools/validate-bug-hunt-phase10-release-upgrade-packaging.py
   tools/verify-phase10-backup-policy.py
   tools/validate-phase58-runtime-recovery-execution-guard.py
+  tools/validate-bug-hunt-phase11-validation-matrix.py
+)
+
+# Validators outside the Phase-11 static matrix, including current roadmap
+# carry-forward seals, run exactly once here.
+validators=(
+  tools/validate-uix-r3-downloads-add-workspace.py
+  tools/validate-uix-r6-accessibility-performance-release-seal.py
+  tools/validate-debug-workbench-d7-final-debug-seal.py
   tools/validate-phase61-final-gate-validator-harmony.py
+  tools/validate-runtime-foundation-phase59-61.py
   tools/validate-phase65-diagnostic-export-download-action-fix.py
   tools/validate-phase64-final-android-downloader-rc-seal.py
   tools/validate-phase63-release-readiness-support-bundle-seal.py
@@ -42,13 +46,20 @@ validators=(
   tools/validate-media-mobile-polish.py
   tools/validate-media-final-validation-gate.py
   tools/validate-remediation-phase13-final-gate.py
-  tools/validate-bug-hunt-phase11-validation-matrix.py
+  tools/validate-dl02-dl03-progress-seal.py
+  tools/validate-post-dl03-release-followup.py
 )
+
+for validator in "${matrix_owned_validators[@]}" "${validators[@]}"; do
+  [[ -f "$validator" ]] || { echo "Missing final-gate validator: $validator" >&2; exit 1; }
+done
 
 for validator in "${validators[@]}"; do
   python3 "$validator"
 done
 
+# Executes the matrix-owned static validators once and validates the retained
+# 80-row executable-evidence matrix.
 bash tools/run-bug-hunt-phase11-validation-matrix.sh --static-only --ci
 
 FULL_GRADLE_GATE='bash tools/run-final-common-validation.sh && bash tools/run-bug-hunt-phase11-validation-matrix.sh --device-only && bash tools/run-bug-hunt-phase11-validation-matrix.sh --release-only'
@@ -65,5 +76,5 @@ Run the full matrix in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-Overlay 13 is the current final source of truth. Its common validation runner plus the retained Phase-11 80-row device/release matrix provide executable evidence; documentation-only coverage is rejected.
+The post-DL03 roadmap seal is the current final source of truth. The common validation runner, current MC/DL validators, and retained Phase-11 device/release matrix provide executable evidence; documentation-only coverage is rejected.
 EOF2

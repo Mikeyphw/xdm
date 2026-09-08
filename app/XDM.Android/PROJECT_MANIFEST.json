@@ -4034,11 +4034,37 @@
     "room_schema_changed": false,
     "room_schema_current": 21,
     "validation_deferred": false,
-    "next_overlay": "post_dl03_release_followup",
+    "next_overlay": "post_dl03_release_followup_complete",
     "live_publication_ownership": "resolve once into immutable publication fence; no ownership Room lookup in live publish path",
     "terminal_ownership_revalidation": "durable ownership revalidated before and after completion verification",
     "carry_forward_contracts": [
       "Phase 2/remediation native-resume source contracts assert rolling task speed and incremental integrity proofs instead of superseded bytesAtAttemptStart/whole-prefix digest internals."
     ]
+  },
+  "post_dl03_release_followup": {
+    "base_commit": "b6928c32",
+    "roadmap_status": "MC01-MC05 and DL01-DL03 sealed",
+    "current_app_version": "0.21.0",
+    "room_schema_current": 21,
+    "room_schema_changed": false,
+    "canonical_static_gate": "tools/run-final-release-gate.sh --ci",
+    "canonical_common_gate": "bash tools/run-final-common-validation.sh",
+    "required_current_validators": [
+      "tools/validate-runtime-foundation-phase59-61.py",
+      "tools/validate-dl02-dl03-progress-seal.py",
+      "tools/validate-post-dl03-release-followup.py"
+    ],
+    "ci_java_version": 21,
+    "ci_gradle_version": "9.7.1",
+    "signed_release_uses_canonical_gate": true,
+    "runtime_behavior_changed": false,
+    "validation_deferred": false,
+    "next_overlay": null,
+    "harmonized_historical_validators": {
+      "phase1_external_control": "reviewed internal browser-direct parser exception; arbitrary external MainActivity parsing remains forbidden",
+      "phase2_download_execution": "task-wide rolling speed + incremental persisted-segment integrity; bytesAtAttemptStart forbidden"
+    },
+    "static_gate_duplicate_matrix_execution": false,
+    "phase11_static_matrix_coverage_retained": true
   }
 }

@@ -68,11 +68,14 @@ for needle, label in [
     ("HostRetryBackoff", "host retry coordination"),
     ("Retry-After", "server backoff support"),
     ("control.activeCalls.remove(call)", "active-call cleanup"),
-    ("bytesAtAttemptStart", "resume speed correction"),
+    ("NativeRollingSpeedMeter", "task-wide rolling speed meter"),
+    ("speedMeter.record(totalReceived, clock())", "task-wide rolling speed publication"),
+    ("verifyPersistedSegment(paths.partial, segment)", "incremental persisted-segment integrity verification"),
     ("control.activeCalls.forEach(Call::cancel)", "sibling call cancellation"),
 ]:
     require(native, needle, label)
 require(native_models, "retryAfterMillis", "HTTP retry-after model")
+reject(native, "bytesAtAttemptStart", "superseded attempt-local speed baseline")
 reject(native, "request.headers.forEach { (name, value) -> builder.header(name, value) }", "unfiltered external headers")
 
 for needle, label in [

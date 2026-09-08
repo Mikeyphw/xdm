@@ -1,6 +1,6 @@
-## XDM Android 0.20.0-rc08
+## XDM Android 0.21.0
 
-Adds Phase 8 checksum verification, persisted verification results, trusted block manifests, and selective repair planning.
+Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed. Room is schema v21. The canonical release gate replays the current capture/manifest/runtime/progress contracts before the full Gradle/device/release matrix.
 
 # XDM Android
 
@@ -29,21 +29,23 @@ Phase 8E turns Activity into a unified operational flight recorder with searchab
 Standalone Android download manager implemented through Phase 7: modular Kotlin/Compose architecture, Room persistence, reconciled physical-artifact ownership, native HTTP/HTTPS transfers, Android long-running execution, public/SAF storage, and a supervised authenticated loopback aria2 process boundary.
 
 
-## Phase 17: final public release gate
+## Current final release gate
 
-Phase 17 is the final release-candidate gate. It does not add a route or database migration. It locks the package identity, keeps Room at schema v14, exposes the final release gate in Diagnostics and Settings, runs static validators through Phase 17, documents the signed release flow, and requires the full devtool validation pass before a public artifact is accepted.
+Phase 17 established the original public-release boundary at Room schema v14; that phase is now historical. The current product is Room schema v21 and the canonical gate carries the later browser-removal, remediation, MC04/MC05, and DL02/DL03 contracts forward.
 
-For the final gate from the repository root, use:
-
-```bash
-cd "$HOME/Code/xdm" && devtool   --copy   --auto-hud   --hud-mode desktop-window   --yes   -r "$HOME/Code/xdm"   apply-overlay "$HOME/Downloads/xdm_android_phase17_final_public_release_gate_overlay.zip"   --validate
-```
-
-Inside `app/XDM.Android`, the static final gate is also available as:
+From `app/XDM.Android`, run the static gate with:
 
 ```bash
-tools/run-final-release-gate.sh
+tools/run-final-release-gate.sh --ci
 ```
+
+Run the complete non-device matrix with:
+
+```bash
+bash tools/run-final-common-validation.sh
+```
+
+The signed publication path also enters through `tools/run-final-release-gate.sh`, so release packaging cannot bypass the current roadmap seals.
 
 ## Phase 16: packaging, recovery and install/update readiness
 

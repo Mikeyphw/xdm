@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-# Overlay 13 non-device final matrix. Keep this synchronized with the xdm_android
-# Devtool target and the final overlay artifact validation tasks.
+# Post-DL03 non-device final matrix. Keep this synchronized with the xdm_android
+# Devtool target and the canonical final release gate.
 ./gradlew -Pxdm.requireAria2Runtime=true \
   :app:finalRemediationStaticGate \
   :app:compileDebugKotlin \

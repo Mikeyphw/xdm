@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: android-actions/setup-android@v3
       - uses: actions/setup-node@v4
         with:
@@ -35,7 +35,7 @@ jobs:
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.7.0'
+          gradle-version: '9.7.1'
       - name: Static release contracts
         run: |
           python3 tools/validate-bug-hunt-phase10-release-upgrade-packaging.py
@@ -45,10 +45,10 @@ jobs:
           bash tools/run-bug-hunt-phase11-validation-matrix.sh --static-only --ci
           bash tools/run-final-release-gate.sh --ci
       - name: Bootstrap wrapper
-        run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.7.0
+        run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.7.1
       - name: Install official ARM64 aria2 runtime
         run: python3 tools/install-aria2-runtime.py --download-official
-      - name: Overlay 13 final common validation
+      - name: Post-DL03 final common validation
         run: bash tools/run-final-common-validation.sh
       - uses: actions/upload-artifact@v4
         with:
@@ -84,7 +84,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: android-actions/setup-android@v3
       - uses: actions/setup-node@v4
         with:
@@ -99,7 +99,7 @@ jobs:
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.7.0'
+          gradle-version: '9.7.1'
       - name: Install pinned official ARM64 aria2 runtime
         run: |
           test -n "$XDM_ARIA2_ARCHIVE_SHA256"
