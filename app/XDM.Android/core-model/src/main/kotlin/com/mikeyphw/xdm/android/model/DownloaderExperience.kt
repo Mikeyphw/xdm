@@ -328,15 +328,15 @@ object DownloadDashboardPlanner {
         bucket: DownloadDashboardBucket,
         ordering: DownloadDashboardOrdering,
     ): List<Download> = when (ordering) {
-        DownloadDashboardOrdering.Recent -> sortedByDescending { it.updatedAtEpochMs }
-        DownloadDashboardOrdering.Name -> sortedBy { it.fileName.lowercase() }
-        DownloadDashboardOrdering.Progress -> sortedByDescending { it.progressFraction }
+        DownloadDashboardOrdering.Recent -> sortedWith(compareByDescending<Download> { it.createdAtEpochMs }.thenBy { it.id })
+        DownloadDashboardOrdering.Name -> sortedWith(compareBy<Download> { it.fileName.lowercase() }.thenBy { it.id })
+        DownloadDashboardOrdering.Progress -> sortedWith(compareByDescending<Download> { it.progressFraction }.thenByDescending { it.createdAtEpochMs }.thenBy { it.id })
         DownloadDashboardOrdering.Smart -> when (bucket) {
-            DownloadDashboardBucket.NeedsAttention -> sortedWith(compareByDescending<Download> { it.state == DownloadState.RecoveryRequired }.thenByDescending { it.updatedAtEpochMs })
-            DownloadDashboardBucket.Active -> sortedWith(compareByDescending<Download> { it.priority }.thenByDescending { it.speedBytesPerSecond }.thenByDescending { it.updatedAtEpochMs })
-            DownloadDashboardBucket.Queued -> sortedWith(compareByDescending<Download> { it.priority }.thenBy { it.createdAtEpochMs })
+            DownloadDashboardBucket.NeedsAttention -> sortedWith(compareByDescending<Download> { it.state == DownloadState.RecoveryRequired }.thenByDescending { it.createdAtEpochMs }.thenBy { it.id })
+            DownloadDashboardBucket.Active -> sortedWith(compareByDescending<Download> { it.priority }.thenBy { it.createdAtEpochMs }.thenBy { it.id })
+            DownloadDashboardBucket.Queued -> sortedWith(compareByDescending<Download> { it.priority }.thenBy { it.createdAtEpochMs }.thenBy { it.id })
             DownloadDashboardBucket.Completed,
-            DownloadDashboardBucket.History -> sortedByDescending { it.updatedAtEpochMs }
+            DownloadDashboardBucket.History -> sortedWith(compareByDescending<Download> { it.createdAtEpochMs }.thenBy { it.id })
         }
     }
 

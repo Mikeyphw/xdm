@@ -16,6 +16,7 @@ import com.mikeyphw.xdm.android.transfer.BackendShutdownResult
 import com.mikeyphw.xdm.android.transfer.BackendPreparation
 import com.mikeyphw.xdm.android.transfer.BackendReconciliationResult
 import com.mikeyphw.xdm.android.transfer.BackendSnapshot
+import com.mikeyphw.xdm.android.transfer.TransferProgressStage
 import com.mikeyphw.xdm.android.transfer.BackendTask
 import com.mikeyphw.xdm.android.transfer.DownloadBackend
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
@@ -328,9 +329,7 @@ class NativeHttpDownloadBackend(
         val trustFailure = runCatching {
             validateSegmentGraph(parsed.segments, parsed.expectedLength)
             parsed.segments.filter { it.completedBytes > 0L }.forEach { segment ->
-                val expectedDigest = requireNotNull(segment.completedSha256) { "Native checkpoint range has no byte digest" }
-                val actualDigest = sha256Range(partial, segment.startByte, segment.completedBytes)
-                require(actualDigest.equals(expectedDigest, ignoreCase = true)) { "Native checkpoint range digest changed" }
+                require(verifyPersistedSegment(partial, segment)) { "Native checkpoint range integrity proof changed" }
             }
         }.exceptionOrNull()
         if (trustFailure != null) {
@@ -369,9 +368,7 @@ class NativeHttpDownloadBackend(
             validateSegmentGraph(checkpoint.segments, checkpoint.expectedLength)
             require(checkpoint.partialPath == partial.toString()) { "Native checkpoint partial identity changed" }
             checkpoint.segments.filter { it.completedBytes > 0L }.forEach { segment ->
-                val expectedDigest = requireNotNull(segment.completedSha256) { "Native checkpoint range has no byte digest" }
-                val actualDigest = sha256Range(partial, segment.startByte, segment.completedBytes)
-                require(actualDigest.equals(expectedDigest, ignoreCase = true)) { "Native checkpoint range digest changed" }
+                require(verifyPersistedSegment(partial, segment)) { "Native checkpoint range integrity proof changed" }
             }
         }.exceptionOrNull()
         if (checkpointTrustFailure != null) {
@@ -489,7 +486,11 @@ class NativeHttpDownloadBackend(
         state == DownloadState.RecoveryRequired && errorMessage.orEmpty().startsWith("Final save failed")
 
     private suspend fun runTransfer(control: TaskControl) = withContext(Dispatchers.IO) {
-        control.state.value = control.state.value.copy(state = DownloadState.Connecting, errorMessage = null)
+        control.state.value = control.state.value.copy(
+            state = DownloadState.Connecting,
+            progressStage = TransferProgressStage.Resolving,
+            errorMessage = null,
+        )
         val preparedDestination = control.preparedDestination
         val paths = NativeArtifactPaths(
             destinationIdentity = preparedDestination.destinationKey,
@@ -512,16 +513,28 @@ class NativeHttpDownloadBackend(
             throw IOException("Insufficient destination space: $requiredCapacity bytes required for transfer and publication, $availableSpace available")
         }
         validateResume(control.request, paths, previous, metadata)
+        control.state.value = control.state.value.copy(progressStage = TransferProgressStage.Preparing)
         val segments = createSegments(control.request, paths, previous, metadata)
         val mutableSegments = segments.toMutableList()
         val checkpointMutex = Mutex()
+        val checkpointSaveMutex = Mutex()
+        val checkpointIntegrity = NativeCheckpointIntegrity(
+            blockBytes = config.checkpointIntegrityBlockBytes.coerceAtLeast(64L * 1024L),
+            previous = previous?.segments.orEmpty(),
+            hashRange = ::sha256Range,
+        )
         if (trustedLength != null && metadata.rangeSupported && mutableSegments.size > 1) {
             RandomAccessFile(paths.partial.toFile(), "rw").use { file -> file.setLength(trustedLength) }
         }
-        saveCheckpoint(control.request, paths, metadata, mutableSegments, checkpointMutex)
-        val startedAt = clock()
+        saveCheckpoint(control.request, paths, metadata, mutableSegments, checkpointMutex, checkpointSaveMutex, checkpointIntegrity, includeTail = true)
+        val speedMeter = NativeRollingSpeedMeter(
+            initialBytes = mutableSegments.sumOf(NativeSegmentCheckpoint::completedBytes),
+            initialTimeMillis = clock(),
+            windowMillis = config.speedWindowMillis.coerceAtLeast(250L),
+        )
         control.state.value = control.state.value.copy(
             state = DownloadState.Downloading,
+            progressStage = TransferProgressStage.Downloading,
             totalBytes = trustedLength,
             effectiveUrl = metadata.effectiveUrl,
             etag = metadata.etag,
@@ -529,13 +542,18 @@ class NativeHttpDownloadBackend(
             rangeSupported = metadata.rangeSupported,
         )
         val semaphore = Semaphore(min(control.request.maxConnections.coerceAtLeast(1), config.defaultConnections.coerceAtLeast(1)))
-        control.checkpointFlusher = { saveCheckpoint(control.request, paths, metadata, mutableSegments, checkpointMutex) }
+        control.checkpointFlusher = {
+            saveCheckpoint(control.request, paths, metadata, mutableSegments, checkpointMutex, checkpointSaveMutex, checkpointIntegrity, includeTail = true)
+        }
         try {
             coroutineScope {
                 mutableSegments.indices.map { segmentIndex ->
                     async {
                         semaphore.withPermit {
-                            downloadSegment(control, paths, metadata, mutableSegments, segmentIndex, checkpointMutex, startedAt, trustedLength)
+                            downloadSegment(
+                                control, paths, metadata, mutableSegments, segmentIndex, checkpointMutex,
+                                checkpointSaveMutex, checkpointIntegrity, speedMeter, trustedLength,
+                            )
                         }
                     }
                 }.awaitAll()
@@ -548,11 +566,16 @@ class NativeHttpDownloadBackend(
         trustedLength?.let { expected ->
             check(Files.size(paths.partial) == expected) { "Downloaded file length does not match the trusted length" }
         }
-        control.state.value = control.state.value.copy(state = DownloadState.Finalizing, speedBytesPerSecond = 0)
+        control.state.value = control.state.value.copy(
+            state = DownloadState.Finalizing,
+            progressStage = TransferProgressStage.Finalizing,
+            speedBytesPerSecond = 0,
+        )
         val promotion = preparedDestination.promote()
         runCatching { checkpointStore.delete(paths.checkpoint) }
         control.state.value = control.state.value.copy(
             state = DownloadState.Completed,
+            progressStage = null,
             bytesReceived = promotion.bytesCommitted,
             totalBytes = trustedLength ?: promotion.bytesCommitted,
             speedBytesPerSecond = 0,
@@ -568,7 +591,9 @@ class NativeHttpDownloadBackend(
         segments: MutableList<NativeSegmentCheckpoint>,
         segmentIndex: Int,
         checkpointMutex: Mutex,
-        startedAt: Long,
+        checkpointSaveMutex: Mutex,
+        checkpointIntegrity: NativeCheckpointIntegrity,
+        speedMeter: NativeRollingSpeedMeter,
         trustedLength: Long?,
     ) {
         var segment = checkpointMutex.withLock { segments[segmentIndex] }
@@ -579,13 +604,13 @@ class NativeHttpDownloadBackend(
             val requestStart = checkpointMutex.withLock {
                 val current = segments[segmentIndex]
                 if (!metadata.rangeSupported && current.completedBytes != 0L) {
-                    segments[segmentIndex] = current.copy(completedBytes = 0, complete = false)
+                    checkpointIntegrity.reset(current.index)
+                    segments[segmentIndex] = current.copy(completedBytes = 0, complete = false, completedSha256 = null, integrityProof = null)
                     current.startByte
                 } else {
                     current.startByte + current.completedBytes
                 }
             }
-            val bytesAtAttemptStart = checkpointMutex.withLock { segments.sumOf(NativeSegmentCheckpoint::completedBytes) }
             val useRange = metadata.rangeSupported && metadata.resumeValidator != null &&
                 (requestStart > 0 || requestEnd != null || segments.size > 1)
             val builder = newTransferRequestBuilder(control.request, metadata.effectiveUrl)
@@ -617,16 +642,17 @@ class NativeHttpDownloadBackend(
                                         segment = current.copy(completedBytes = current.completedBytes + read)
                                         segments[segmentIndex] = segment
                                         val totalReceived = segments.sumOf(NativeSegmentCheckpoint::completedBytes)
-                                        val elapsedMillis = (clock() - startedAt).coerceAtLeast(1)
-                                        val currentAttemptBytes = (totalReceived - bytesAtAttemptStart).coerceAtLeast(0L)
                                         control.state.value = control.state.value.copy(
                                             bytesReceived = totalReceived,
-                                            speedBytesPerSecond = currentAttemptBytes * 1000 / elapsedMillis,
+                                            speedBytesPerSecond = speedMeter.record(totalReceived, clock()),
                                         )
                                     }
                                     if (bytesSinceCheckpoint >= config.checkpointIntervalBytes) {
                                         file.channel.force(false)
-                                        saveCheckpoint(control.request, paths, metadata, segments, checkpointMutex)
+                                        saveCheckpoint(
+                                            control.request, paths, metadata, segments, checkpointMutex,
+                                            checkpointSaveMutex, checkpointIntegrity, includeTail = false,
+                                        )
                                         bytesSinceCheckpoint = 0
                                     }
                                 }
@@ -645,7 +671,10 @@ class NativeHttpDownloadBackend(
             }
             segments[segmentIndex] = current.copy(complete = true)
         }
-        saveCheckpoint(control.request, paths, metadata, segments, checkpointMutex)
+        saveCheckpoint(
+            control.request, paths, metadata, segments, checkpointMutex, checkpointSaveMutex,
+            checkpointIntegrity, includeTail = true,
+        )
     }
 
     private suspend fun saveCheckpoint(
@@ -653,11 +682,19 @@ class NativeHttpDownloadBackend(
         paths: NativeArtifactPaths,
         metadata: RemoteMetadata,
         segments: List<NativeSegmentCheckpoint>,
-        mutex: Mutex,
-    ) = mutex.withLock {
-        val persistedSegments = segments.map { segment ->
-            if (segment.completedBytes <= 0L || !Files.exists(paths.partial)) segment.copy(completedSha256 = null)
-            else segment.copy(completedSha256 = sha256Range(paths.partial, segment.startByte, segment.completedBytes))
+        stateMutex: Mutex,
+        saveMutex: Mutex,
+        integrity: NativeCheckpointIntegrity,
+        includeTail: Boolean,
+    ) = saveMutex.withLock {
+        // Snapshot counters quickly. Hashing and fsync must never hold the hot progress mutex.
+        val liveSegments = stateMutex.withLock { segments.map { it.copy() } }
+        val persistedSegments = liveSegments.map { segment ->
+            if (segment.completedBytes <= 0L || !Files.exists(paths.partial)) {
+                segment.copy(completedBytes = 0L, complete = false, completedSha256 = null, integrityProof = null)
+            } else {
+                integrity.persistableSegment(paths.partial, segment, includeTail)
+            }
         }
         checkpointStore.save(
             paths.checkpoint,
@@ -739,11 +776,8 @@ class NativeHttpDownloadBackend(
                 throw RemoteObjectChangedException("The strong remote validator changed since the checkpoint")
             }
             checkpoint.segments.filter { it.completedBytes > 0L }.forEach { segment ->
-                val expectedDigest = segment.completedSha256
-                    ?: throw RemoteObjectChangedException("Legacy checkpoint has no cryptographic partial ownership proof")
-                val actualDigest = sha256Range(paths.partial, segment.startByte, segment.completedBytes)
-                if (!expectedDigest.equals(actualDigest, ignoreCase = true)) {
-                    throw RemoteObjectChangedException("Partial bytes no longer match checkpoint digest for segment ${segment.index}")
+                if (!verifyPersistedSegment(paths.partial, segment)) {
+                    throw RemoteObjectChangedException("Partial bytes no longer match checkpoint integrity proof for segment ${segment.index}")
                 }
             }
         }
@@ -960,6 +994,15 @@ class NativeHttpDownloadBackend(
     private fun sha256Identity(value: String): String = MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
+
+    private fun verifyPersistedSegment(path: java.nio.file.Path, segment: NativeSegmentCheckpoint): Boolean {
+        if (segment.completedBytes <= 0L) return true
+        if (segment.integrityProof != null) {
+            return NativeCheckpointIntegrity.verify(path, segment, ::sha256Range)
+        }
+        val legacy = segment.completedSha256 ?: return false
+        return legacy.equals(sha256Range(path, segment.startByte, segment.completedBytes), ignoreCase = true)
+    }
 
     private fun sha256Range(path: java.nio.file.Path, start: Long, length: Long): String {
         require(start >= 0L && length >= 0L)

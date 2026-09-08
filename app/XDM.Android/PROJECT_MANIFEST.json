@@ -4004,5 +4004,41 @@
     "signed_publication_gate": "final Overlay-13 static/common validation is mandatory before release packaging",
     "browser_release_gate": "signed publication packages and verifies direct-v3 keyless Firefox Dark/AMOLED XPIs; no XDM_CAPTURE_KEY_ID/XDM_CAPTURE_PUBLIC_KEY_SPKI/XDM_CAPTURE_OAEP_HASH secrets are required",
     "browser_capture_contract": "direct-v3-keyless with encrypted-v2 reader retained for migration only"
+  },
+  "download_progress_dl02_dl03": {
+    "base_commit": "0683d1e3",
+    "combined_overlays": [
+      "DL02",
+      "DL03"
+    ],
+    "checkpoint_integrity": "incremental fixed-block SHA-256 proofs; routine checkpoints may lag live writers by less than one block; pause/final flushes include tails",
+    "checkpoint_hashing_under_progress_mutex": false,
+    "task_wide_rolling_speed": true,
+    "durable_progress_interval_ms": 333,
+    "live_progress_in_memory": true,
+    "aria2_polling_backpressure": "conflated upstream buffer keeps nominal 750ms polling independent of downstream persistence/UI",
+    "verification_persistence": "350ms + 4MiB gate with 1s maximum interval; terminal records immediate",
+    "verification_ui_uses_verified_bytes": true,
+    "artifact_inspection_semantic_cache": true,
+    "operational_activity_bytes_only_pref_rewrite": false,
+    "broad_ui_progress_invalidation": false,
+    "active_ordering_uses_updated_at": false,
+    "progress_stages": [
+      "Resolving",
+      "Preparing",
+      "Downloading",
+      "Merging",
+      "Verifying",
+      "Finalizing"
+    ],
+    "room_schema_changed": false,
+    "room_schema_current": 21,
+    "validation_deferred": false,
+    "next_overlay": "post_dl03_release_followup",
+    "live_publication_ownership": "resolve once into immutable publication fence; no ownership Room lookup in live publish path",
+    "terminal_ownership_revalidation": "durable ownership revalidated before and after completion verification",
+    "carry_forward_contracts": [
+      "Phase 2/remediation native-resume source contracts assert rolling task speed and incremental integrity proofs instead of superseded bytesAtAttemptStart/whole-prefix digest internals."
+    ]
   }
 }

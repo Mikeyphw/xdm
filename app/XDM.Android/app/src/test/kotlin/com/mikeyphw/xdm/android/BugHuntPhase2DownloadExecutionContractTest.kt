@@ -62,9 +62,12 @@ class BugHuntPhase2DownloadExecutionContractTest {
             "HostRetryBackoff",
             "Retry-After",
             "control.activeCalls.remove(call)",
-            "bytesAtAttemptStart",
+            "NativeRollingSpeedMeter",
+            "speedMeter.record(totalReceived, clock())",
+            "verifyPersistedSegment(paths.partial, segment)",
         ).forEach { expected -> assertTrue("Missing native Phase 2 contract: $expected", native.contains(expected)) }
         assertTrue(models.contains("retryAfterMillis"))
+        assertFalse("Task speed must not reset to an attempt-local baseline.", native.contains("bytesAtAttemptStart"))
         assertFalse(native.contains("request.headers.forEach { (name, value) -> builder.header(name, value) }"))
     }
 

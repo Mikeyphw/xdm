@@ -151,6 +151,8 @@ fun DownloadsScreen(
     var textActionValue by remember { mutableStateOf("") }
     var artifactCapabilities by remember { mutableStateOf<Map<String, CompletedArtifactCapabilities>>(emptyMap()) }
     var durableResumeCapabilities by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
+    var artifactInspectionKeys by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var resumeInspectionKeys by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var twoPaneLayoutActive by remember { mutableStateOf(false) }
 
     val metrics = DownloadsWorkspacePlanner.metrics(downloads.filterNot { it.archived })
@@ -232,17 +234,50 @@ fun DownloadsScreen(
         onDetailSelectionChanged(detailDownloadId)
     }
 
-    LaunchedEffect(downloads) {
-        val completed = downloads.filter { it.state == DownloadState.Completed }
-        artifactCapabilities = completed.associate { it.id to onInspectArtifact(it) }
-        val resumable = downloads.filter { it.state in setOf(
+    val completedInspectionInputs = remember(downloads) {
+        downloads.filter { it.state == DownloadState.Completed }.associate { download ->
+            download.id to listOf(
+                download.completedArtifactUri.orEmpty(),
+                download.completedArtifactGeneration?.toString().orEmpty(),
+                download.completedArtifactBytes?.toString().orEmpty(),
+                download.destinationUri,
+            ).joinToString("|")
+        }
+    }
+    val resumeInspectionInputs = remember(downloads) {
+        downloads.filter { it.state in setOf(
             DownloadState.Paused,
             DownloadState.WaitingForNetwork,
             DownloadState.WaitingForPower,
             DownloadState.Failed,
             DownloadState.RecoveryRequired,
-        ) }
-        durableResumeCapabilities = resumable.associate { it.id to onInspectResumeCapability(it) }
+        ) }.associate { download ->
+            download.id to listOf(
+                download.state.name,
+                download.attemptGeneration.toString(),
+                download.backend.name,
+                download.destinationUri,
+            ).joinToString("|")
+        }
+    }
+
+    LaunchedEffect(completedInspectionInputs, resumeInspectionInputs) {
+        val downloadsById = downloads.associateBy(Download::id)
+        artifactCapabilities = artifactCapabilities.filterKeys(completedInspectionInputs::containsKey)
+        completedInspectionInputs.forEach { (id, key) ->
+            if (artifactInspectionKeys[id] != key) {
+                downloadsById[id]?.let { artifactCapabilities = artifactCapabilities + (id to onInspectArtifact(it)) }
+            }
+        }
+        artifactInspectionKeys = completedInspectionInputs
+
+        durableResumeCapabilities = durableResumeCapabilities.filterKeys(resumeInspectionInputs::containsKey)
+        resumeInspectionInputs.forEach { (id, key) ->
+            if (resumeInspectionKeys[id] != key) {
+                downloadsById[id]?.let { durableResumeCapabilities = durableResumeCapabilities + (id to onInspectResumeCapability(it)) }
+            }
+        }
+        resumeInspectionKeys = resumeInspectionInputs
     }
 
     LaunchedEffect(downloads, visibleDownloads, detailDownloadId, twoPaneLayoutActive) {

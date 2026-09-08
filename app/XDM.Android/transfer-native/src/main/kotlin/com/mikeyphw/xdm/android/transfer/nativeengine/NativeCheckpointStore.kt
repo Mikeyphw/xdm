@@ -64,7 +64,8 @@ internal class NativeCheckpointStore {
                 appendJsonLong("endByteInclusive", segment.endByteInclusive); append(',')
                 append("\"completedBytes\":").append(segment.completedBytes).append(',')
                 append("\"complete\":").append(segment.complete).append(',')
-                appendJsonString("completedSha256", segment.completedSha256)
+                appendJsonString("completedSha256", segment.completedSha256); append(',')
+                appendJsonString("integrityProof", segment.integrityProof)
                 append('}')
             }
             append("],\"persistedAtEpochMs\":").append(checkpoint.persistedAtEpochMs)
@@ -117,6 +118,7 @@ private fun String.requiredSegments(): List<NativeSegmentCheckpoint> {
             completedBytes = item.requiredLong("completedBytes"),
             complete = item.requiredBoolean("complete"),
             completedSha256 = item.optionalString("completedSha256"),
+            integrityProof = item.optionalString("integrityProof"),
         )
     }.toList()
 }

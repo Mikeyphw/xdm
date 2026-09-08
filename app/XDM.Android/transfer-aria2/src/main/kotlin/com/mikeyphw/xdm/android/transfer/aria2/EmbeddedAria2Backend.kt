@@ -26,6 +26,7 @@ import com.mikeyphw.xdm.android.transfer.BackendUnavailableException
 import com.mikeyphw.xdm.android.transfer.BackendReconciliationResult
 import com.mikeyphw.xdm.android.transfer.BackendShutdownResult
 import com.mikeyphw.xdm.android.transfer.BackendSnapshot
+import com.mikeyphw.xdm.android.transfer.TransferProgressStage
 import com.mikeyphw.xdm.android.transfer.BackendTask
 import com.mikeyphw.xdm.android.transfer.DownloadBackend
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
@@ -664,6 +665,15 @@ class EmbeddedAria2Backend(
         speedBytesPerSecond = downloadSpeed,
         effectiveUrl = primaryUri(),
         errorMessage = error,
+        progressStage = when {
+            state == DownloadState.Finalizing -> TransferProgressStage.Finalizing
+            state == DownloadState.Verifying -> TransferProgressStage.Verifying
+            state == DownloadState.Downloading && (following != null || belongsTo != null || followedBy.isNotEmpty()) -> TransferProgressStage.Merging
+            state == DownloadState.Downloading -> TransferProgressStage.Downloading
+            state == DownloadState.Queued -> TransferProgressStage.Preparing
+            state == DownloadState.Connecting -> TransferProgressStage.Resolving
+            else -> null
+        },
     )
 
     private fun Aria2TaskStatus.primaryUri(): String? = files.asSequence().flatMap { it.uris.asSequence() }.map(Aria2RpcUri::uri).firstOrNull(String::isNotBlank)

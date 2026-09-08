@@ -97,7 +97,7 @@ object DownloadUiTruthPlanner {
         val status = when (download.state) {
             DownloadState.Created -> "Ready to queue"
             DownloadState.Queued -> queueText ?: "Waiting in queue"
-            DownloadState.Connecting -> "Connecting"
+            DownloadState.Connecting -> "Resolving source"
             DownloadState.Downloading -> "Downloading"
             DownloadState.Paused -> "Paused by you"
             DownloadState.WaitingForNetwork -> "Waiting for an allowed network"
@@ -113,7 +113,7 @@ object DownloadUiTruthPlanner {
         val badge = when (download.state) {
             DownloadState.Created -> "Ready"
             DownloadState.Queued -> "Queued"
-            DownloadState.Connecting -> "Connecting"
+            DownloadState.Connecting -> "Resolving source"
             DownloadState.Downloading -> "Downloading"
             DownloadState.Paused -> "Paused"
             DownloadState.WaitingForNetwork -> "Network hold"
@@ -126,7 +126,13 @@ object DownloadUiTruthPlanner {
             DownloadState.Cancelled -> "Cancelled"
             DownloadState.RecoveryRequired -> "Recovery"
         }
+        val runningVerification = context.latestVerification?.takeIf { it.status == VerificationStatus.Running }
+        val verificationTotalBytes = runningVerification?.totalBytes
         val byteProgress = when {
+            download.state == DownloadState.Verifying && runningVerification != null && verificationTotalBytes != null && verificationTotalBytes > 0L ->
+                "${runningVerification.bytesVerified.coerceIn(0L, verificationTotalBytes)} of ${verificationTotalBytes} bytes verified"
+            download.state == DownloadState.Verifying && runningVerification != null ->
+                "${runningVerification.bytesVerified.coerceAtLeast(0L)} bytes verified"
             download.totalBytes != null && download.totalBytes > 0L ->
                 "${download.bytesReceived.coerceAtLeast(0L).coerceAtMost(download.totalBytes)} of ${download.totalBytes} bytes"
             download.bytesReceived > 0L -> "${download.bytesReceived.coerceAtLeast(0L)} bytes received"
@@ -166,6 +172,21 @@ object DownloadUiTruthPlanner {
             "Resume availability will be decided from durable validators and the current partial artifact."
         }
         return DownloadUiTruth(badge, status, supporting, byteProgress, overall, trailing, verification, storage, resume)
+    }
+
+    /** Stage-aware progress: verification never reuses the already-complete payload fraction. */
+    fun phaseProgress(download: Download, context: DownloadActionContext): Float? = when (download.state) {
+        DownloadState.Verifying -> context.latestVerification
+            ?.takeIf { it.status == VerificationStatus.Running }
+            ?.let { record ->
+                record.totalBytes?.takeIf { it > 0L }?.let { total ->
+                    (record.bytesVerified.toDouble() / total).coerceIn(0.0, 1.0).toFloat()
+                }
+            }
+        DownloadState.Connecting, DownloadState.Repairing, DownloadState.Finalizing -> null
+        DownloadState.Created, DownloadState.Cancelled -> null
+        DownloadState.Completed -> 1f
+        else -> download.totalBytes?.takeIf { it > 0L }?.let { download.progressFraction }
     }
 
     private fun completedStatus(context: DownloadActionContext): String = when (context.artifact.health) {

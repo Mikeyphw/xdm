@@ -29,9 +29,11 @@ class OperationalActivityStore(context: Context) {
 
     @Synchronized
     fun observeDownloads(downloads: List<Download>, observedAtEpochMs: Long = System.currentTimeMillis()) {
+        val currentFingerprints = downloads.associate { it.id to it.fingerprint() }
         val previous = readFingerprints().toMutableMap()
+        if (previous == currentFingerprints) return
         if (previous.isEmpty()) {
-            writeFingerprints(downloads.associate { it.id to it.fingerprint() })
+            writeFingerprints(currentFingerprints)
             return
         }
 

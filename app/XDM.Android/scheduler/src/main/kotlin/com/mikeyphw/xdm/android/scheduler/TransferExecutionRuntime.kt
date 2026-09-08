@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android.scheduler
 
+import com.mikeyphw.xdm.android.model.BackendOwnership
 import com.mikeyphw.xdm.android.model.BackendOwnershipStatus
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.BackendCapabilities
@@ -9,6 +10,7 @@ import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.FinalizationJournalStage
+import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.transfer.BackendCoordinator
 import com.mikeyphw.xdm.android.transfer.BackendMigrationStore
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
@@ -55,6 +57,7 @@ class TransferExecutionRuntime(
     completedArtifactReader: CompletedArtifactReader = FileCompletedArtifactReader(),
     private val requestSecurityGuard: TransferRequestSecurityGuard = TransferRequestSecurityGuard.AllowAll,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val registry = BackendRegistry(backends)
     private val selectionPolicy = BackendSelectionPolicy()
@@ -62,7 +65,19 @@ class TransferExecutionRuntime(
     private val reconciler = BackendOwnershipReconciler(registry, ownershipStore)
     private val ownershipStore = ownershipStore
     private val migrationCoordinator = BackendMigrationCoordinator(store, ownershipStore, migrationStore, registry, selectionPolicy, requestSecurityGuard)
-    private val completionVerifier = CompletionVerificationCoordinator(checksumStore, ownershipStore, completedArtifactReader)
+    private val _liveVerification = MutableStateFlow<Map<String, VerificationRecord>>(emptyMap())
+    val liveVerification: StateFlow<Map<String, VerificationRecord>> = _liveVerification
+    private val lastLiveVerificationAt = ConcurrentHashMap<String, Long>()
+    private val completionVerifier = CompletionVerificationCoordinator(
+        checksumStore, ownershipStore, completedArtifactReader,
+        onVerificationProgress = { record ->
+            val previousAt = lastLiveVerificationAt[record.downloadId]
+            if (record.bytesVerified == 0L || previousAt == null || record.updatedAtEpochMs - previousAt >= LIVE_VERIFICATION_INTERVAL_MS) {
+                _liveVerification.value = _liveVerification.value + (record.downloadId to record)
+                lastLiveVerificationAt[record.downloadId] = record.updatedAtEpochMs
+            }
+        },
+    )
     private val finalizationCoordinator = AtomicFinalizationCoordinator(finalizationStore)
     private val startupRecoveryCoordinator = StartupRecoveryCoordinator(store, ownershipStore, migrationStore, finalizationStore, recoveryStore, artifactRoots)
     private val jobs = ConcurrentHashMap<String, Job>()
@@ -70,6 +85,9 @@ class TransferExecutionRuntime(
     private val backendTaskIds = ConcurrentHashMap<String, Pair<BackendType, String>>()
     private val attemptGenerations = ConcurrentHashMap<String, Long>()
     private val snapshots = MutableStateFlow<Map<String, BackendSnapshot>>(emptyMap())
+    /** High-frequency progress for UI. Durable Room progress is intentionally coarser. */
+    val liveProgress: StateFlow<Map<String, BackendSnapshot>> = snapshots
+    private val lastDurableProgressAt = ConcurrentHashMap<String, Long>()
     private val fileNames = ConcurrentHashMap<String, String>()
     private val _summary = MutableStateFlow(ActiveTransferSummary())
     val summary: StateFlow<ActiveTransferSummary> = _summary
@@ -142,6 +160,30 @@ class TransferExecutionRuntime(
         data class Live(val mapping: Pair<BackendType, String>, val generation: Long) : BackendControlResolution
         data class InactiveSafe(val generation: Long?) : BackendControlResolution
         data class Unsafe(val message: String) : BackendControlResolution
+    }
+
+    /**
+     * Immutable authorization fence for one backend observation run. Backend snapshots are checked
+     * against this fence in memory so live progress never performs a Room ownership lookup. Durable
+     * download writes still carry the same attempt generation, and completion revalidates the
+     * ownership row before finalization metadata can commit.
+     */
+    private data class PublicationFence(
+        val downloadId: String,
+        val backend: BackendType,
+        val taskId: String,
+        val generation: Long,
+        val backendInstanceId: String,
+    ) {
+        fun mismatch(snapshot: BackendSnapshot): String? = when {
+            snapshot.taskId != taskId ->
+                "Backend snapshot task ${snapshot.taskId} does not match owned task $taskId."
+            snapshot.attemptGeneration != generation ->
+                "Backend snapshot generation ${snapshot.attemptGeneration} does not match owned generation $generation."
+            snapshot.backendInstanceId != backendInstanceId ->
+                "Backend snapshot belongs to another installation identity."
+            else -> null
+        }
     }
 
     private suspend fun resolveBackendControl(downloadId: String): BackendControlResolution {
@@ -447,7 +489,8 @@ class TransferExecutionRuntime(
                 }
                 else -> Unit
             }
-            observeTaskUntilRunEnd(selected, mapping)
+            val publicationFence = resolvePublicationFence(selected, mapping, coordinated.ownership) ?: return
+            observeTaskUntilRunEnd(selected, mapping, publicationFence)
         } catch (error: Throwable) {
             handleRuntimeFailure(download, error)
         } finally {
@@ -459,6 +502,7 @@ class TransferExecutionRuntime(
         try {
             fileNames[download.id] = download.fileName
             val backend = registry.require(mapping.first)
+            val publicationFence = resolvePublicationFence(download, mapping) ?: return
             val current = backend.query(mapping.second)
             if (current?.state == DownloadState.Failed) {
                 runCatching { backend.remove(mapping.second) }
@@ -478,7 +522,7 @@ class TransferExecutionRuntime(
             ) {
                 backend.resume(mapping.second)
             }
-            observeTaskUntilRunEnd(download, mapping)
+            observeTaskUntilRunEnd(download, mapping, publicationFence)
         } catch (error: Throwable) {
             handleRuntimeFailure(download, error)
         } finally {
@@ -541,10 +585,20 @@ class TransferExecutionRuntime(
         }
     }
 
-    private suspend fun observeTaskUntilRunEnd(download: Download, mapping: Pair<BackendType, String>) {
+    private suspend fun observeTaskUntilRunEnd(
+        download: Download,
+        mapping: Pair<BackendType, String>,
+        publicationFence: PublicationFence,
+    ) {
         val finalSnapshot = registry.require(mapping.first).observe(mapping.second).first { snapshot ->
-            publish(download, snapshot)
-            snapshot.state in RUN_END_STATES
+            val mismatch = publicationFence.mismatch(snapshot)
+            if (mismatch != null) {
+                rejectPublication(download, snapshot, publicationFence, mismatch)
+                true
+            } else {
+                publish(download, snapshot, publicationFence)
+                snapshot.state in RUN_END_STATES
+            }
         }
         val storedAfterCompletion = store.find(download.id)
         val finalState = storedAfterCompletion?.state ?: finalSnapshot.state
@@ -560,6 +614,99 @@ class TransferExecutionRuntime(
             val storedMimeType = storedAfterCompletion?.mimeType ?: download.mimeType
             _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage, storedDestination, storedMimeType, attemptGenerations[download.id] ?: requestGeneration(download.id)))
         }
+    }
+
+    private suspend fun resolvePublicationFence(
+        download: Download,
+        mapping: Pair<BackendType, String>,
+        knownOwnership: BackendOwnership? = null,
+    ): PublicationFence? {
+        val ownership = knownOwnership ?: ownershipStore.findByDownload(download.id)
+        val backend = registry.require(mapping.first)
+        val reason = when {
+            ownership == null -> "Backend observation started without durable ownership."
+            ownership.downloadId != download.id -> "Backend ownership belongs to another download."
+            ownership.backend != mapping.first ->
+                "Backend ownership ${ownership.backend} does not match observed backend ${mapping.first}."
+            ownership.backendTaskId != mapping.second ->
+                "Backend ownership task ${ownership.backendTaskId ?: "<none>"} does not match observed task ${mapping.second}."
+            ownership.runtimeIdentity.instanceId != backend.runtimeIdentity.instanceId ->
+                "Backend ownership belongs to another installation identity."
+            download.attemptGeneration != ownership.generation ->
+                "Download generation ${download.attemptGeneration} does not match owned generation ${ownership.generation}."
+            else -> null
+        }
+        if (reason != null || ownership == null) {
+            val expectedGeneration = ownership?.generation ?: download.attemptGeneration
+            rejectPublication(
+                original = download,
+                snapshot = null,
+                publicationFence = PublicationFence(
+                    downloadId = download.id,
+                    backend = mapping.first,
+                    taskId = mapping.second,
+                    generation = expectedGeneration,
+                    backendInstanceId = ownership?.runtimeIdentity?.instanceId ?: backend.runtimeIdentity.instanceId,
+                ),
+                reason = reason ?: "Backend observation started without durable ownership.",
+            )
+            return null
+        }
+        return PublicationFence(
+            downloadId = download.id,
+            backend = mapping.first,
+            taskId = mapping.second,
+            generation = ownership.generation,
+            backendInstanceId = ownership.runtimeIdentity.instanceId,
+        )
+    }
+
+    private suspend fun durableOwnershipMismatch(publicationFence: PublicationFence): String? {
+        val ownership = ownershipStore.findByDownload(publicationFence.downloadId)
+            ?: return "Backend completion arrived without durable ownership."
+        return when {
+            ownership.generation != publicationFence.generation ->
+                "Durable ownership generation ${ownership.generation} replaced observed generation ${publicationFence.generation}."
+            ownership.backend != publicationFence.backend ->
+                "Durable ownership backend ${ownership.backend} replaced observed backend ${publicationFence.backend}."
+            ownership.backendTaskId != publicationFence.taskId ->
+                "Durable ownership task ${ownership.backendTaskId ?: "<none>"} replaced observed task ${publicationFence.taskId}."
+            ownership.runtimeIdentity.instanceId != publicationFence.backendInstanceId ->
+                "Durable ownership moved to another installation identity."
+            else -> null
+        }
+    }
+
+    private suspend fun rejectPublication(
+        original: Download,
+        snapshot: BackendSnapshot?,
+        publicationFence: PublicationFence,
+        reason: String,
+        knownCurrent: Download? = null,
+    ) {
+        val rejectedSnapshot = snapshot?.copy(
+            state = DownloadState.RecoveryRequired,
+            speedBytesPerSecond = 0,
+            errorMessage = reason,
+        )
+        if (rejectedSnapshot != null) {
+            snapshots.value = snapshots.value + (original.id to rejectedSnapshot)
+            updateSummary()
+        } else {
+            snapshots.value = snapshots.value - original.id
+            updateSummary()
+        }
+        val current = knownCurrent ?: store.find(original.id) ?: original
+        // Never let a stale observer rewrite a newer generation that has already taken ownership.
+        if (current.attemptGeneration != publicationFence.generation) return
+        persistOrThrow(
+            current.copy(
+                state = DownloadState.RecoveryRequired,
+                speedBytesPerSecond = 0,
+                errorMessage = reason,
+                updatedAtEpochMs = current.nextUpdatedAt(),
+            ),
+        )
     }
 
     private suspend fun requestGeneration(downloadId: String): Long =
@@ -603,6 +750,9 @@ class TransferExecutionRuntime(
                 MediaRequestHandoffStore.forget(downloadId)
             }
             snapshots.value = snapshots.value - downloadId
+            _liveVerification.value = _liveVerification.value - downloadId
+            lastLiveVerificationAt.remove(downloadId)
+            lastDurableProgressAt.remove(downloadId)
             fileNames.remove(downloadId)
             attemptGenerations.remove(downloadId)
             updateSummary()
@@ -614,40 +764,53 @@ class TransferExecutionRuntime(
         }
     }
 
-    private suspend fun publish(original: Download, snapshot: BackendSnapshot) {
-        val ownership = ownershipStore.findByDownload(original.id)
-        if (ownership == null ||
-            snapshot.attemptGeneration != ownership.generation ||
-            snapshot.backendInstanceId != ownership.runtimeIdentity.instanceId
-        ) {
-            val reason = when {
-                ownership == null -> "Backend snapshot arrived without durable ownership."
-                snapshot.attemptGeneration != ownership.generation ->
-                    "Backend snapshot generation ${snapshot.attemptGeneration} does not match owned generation ${ownership.generation}."
-                else -> "Backend snapshot belongs to another installation identity."
-            }
-            snapshots.value = snapshots.value + (
-                original.id to snapshot.copy(
-                    state = DownloadState.RecoveryRequired,
-                    speedBytesPerSecond = 0,
-                    errorMessage = reason,
-                )
-            )
-            val current = store.find(original.id) ?: original
-            persistOrThrow(
-                current.copy(
-                    state = DownloadState.RecoveryRequired,
-                    speedBytesPerSecond = 0,
-                    errorMessage = reason,
-                    updatedAtEpochMs = current.nextUpdatedAt(),
-                ),
-            )
-            return
-        }
+    private suspend fun publish(original: Download, snapshot: BackendSnapshot, publicationFence: PublicationFence) {
         val control = commandControl(original.id)
         if (control.desired == DesiredTransferState.CancelRequested && snapshot.state != DownloadState.Completed) {
             store.find(original.id)?.let { current ->
-                persistOrThrow(current.copy(state = DownloadState.Cancelled, speedBytesPerSecond = 0, updatedAtEpochMs = current.nextUpdatedAt()))
+                if (current.attemptGeneration == publicationFence.generation) {
+                    persistOrThrow(current.copy(state = DownloadState.Cancelled, speedBytesPerSecond = 0, updatedAtEpochMs = current.nextUpdatedAt()))
+                }
+            }
+            return
+        }
+
+        // Live progress is cheap and immediate. Room is a recovery checkpoint, not a frame clock.
+        val previousSnapshot = snapshots.value[original.id]
+        snapshots.value = snapshots.value + (original.id to snapshot)
+        updateSummary()
+        if (snapshot.state != DownloadState.Completed) {
+            val semanticChange = previousSnapshot == null ||
+                previousSnapshot.state != snapshot.state ||
+                previousSnapshot.totalBytes != snapshot.totalBytes ||
+                previousSnapshot.errorMessage != snapshot.errorMessage
+            val now = clock()
+            val lastPersistedAt = lastDurableProgressAt[original.id]
+            val durableDue = lastPersistedAt == null || now - lastPersistedAt >= DURABLE_PROGRESS_INTERVAL_MS
+            if (semanticChange || durableDue) {
+                val current = store.find(original.id) ?: original
+                if (current.attemptGeneration != publicationFence.generation) {
+                    rejectPublication(
+                        original, snapshot, publicationFence,
+                        "Durable download generation ${current.attemptGeneration} replaced observed generation ${publicationFence.generation}.",
+                        current,
+                    )
+                    return
+                }
+                val backend = backendTaskIds[original.id]?.first ?: current.backend
+                val totalBytes = snapshot.totalBytes ?: current.totalBytes
+                persistOrThrow(
+                    current.copy(
+                        state = snapshot.state,
+                        backend = backend,
+                        bytesReceived = snapshot.bytesReceived,
+                        totalBytes = totalBytes,
+                        speedBytesPerSecond = snapshot.speedBytesPerSecond,
+                        errorMessage = snapshot.errorMessage,
+                        updatedAtEpochMs = current.nextUpdatedAt(now),
+                    ),
+                )
+                lastDurableProgressAt[original.id] = now
             }
             return
         }
@@ -655,6 +818,11 @@ class TransferExecutionRuntime(
         val generationBeforeVerification = control.generation.get()
         var journal: FinalizationJournal? = null
         if (snapshot.state == DownloadState.Completed) {
+            val ownershipMismatch = durableOwnershipMismatch(publicationFence)
+            if (ownershipMismatch != null) {
+                rejectPublication(original, snapshot, publicationFence, ownershipMismatch)
+                return
+            }
             val committedUri = snapshot.completedUri?.trim()?.takeIf(String::isNotBlank)
                 ?: run {
                     val reason = "Backend completed without a committed artifact identity."
@@ -664,11 +832,19 @@ class TransferExecutionRuntime(
                     return
                 }
             val current = store.find(original.id) ?: original
+            if (current.attemptGeneration != publicationFence.generation) {
+                rejectPublication(
+                    original, snapshot, publicationFence,
+                    "Durable download generation ${current.attemptGeneration} replaced observed generation ${publicationFence.generation} before verification.",
+                    current,
+                )
+                return
+            }
             journal = finalizationCoordinator.prepareCommitted(
                 download = current,
                 committedUri = committedUri,
                 bytesCommitted = snapshot.bytesReceived,
-                attemptGeneration = ownership.generation,
+                attemptGeneration = publicationFence.generation,
             )
             persistOrThrow(
                 current.copy(
@@ -687,6 +863,8 @@ class TransferExecutionRuntime(
         val verifiedSnapshot = try {
             completionVerifier.complete(original, snapshot)
         } catch (error: Throwable) {
+            _liveVerification.value = _liveVerification.value - original.id
+            lastLiveVerificationAt.remove(original.id)
             val activeJournal = journal ?: throw error
             val reason = "Committed artifact verification was interrupted: ${error.message ?: error::class.java.simpleName}"
             finalizationCoordinator.recover(activeJournal, reason)
@@ -694,6 +872,15 @@ class TransferExecutionRuntime(
             persistOrThrow(current.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = reason, updatedAtEpochMs = current.nextUpdatedAt()))
             snapshots.value = snapshots.value + (original.id to snapshot.copy(state = DownloadState.RecoveryRequired, speedBytesPerSecond = 0, errorMessage = reason))
             updateSummary()
+            return
+        }
+        _liveVerification.value = _liveVerification.value - original.id
+        lastLiveVerificationAt.remove(original.id)
+
+        val postVerificationOwnershipMismatch = durableOwnershipMismatch(publicationFence)
+        if (postVerificationOwnershipMismatch != null) {
+            journal?.let { activeJournal -> finalizationCoordinator.recover(activeJournal, postVerificationOwnershipMismatch) }
+            rejectPublication(original, verifiedSnapshot, publicationFence, postVerificationOwnershipMismatch)
             return
         }
 
@@ -715,6 +902,20 @@ class TransferExecutionRuntime(
 
         snapshots.value = snapshots.value + (original.id to verifiedSnapshot)
         val current = store.find(original.id) ?: original
+        if (current.attemptGeneration != publicationFence.generation) {
+            journal?.let { activeJournal ->
+                finalizationCoordinator.recover(
+                    activeJournal,
+                    "Durable download generation ${current.attemptGeneration} replaced observed generation ${publicationFence.generation} during verification.",
+                )
+            }
+            rejectPublication(
+                original, verifiedSnapshot, publicationFence,
+                "Durable download generation ${current.attemptGeneration} replaced observed generation ${publicationFence.generation} during verification.",
+                current,
+            )
+            return
+        }
         if (verifiedSnapshot.state == DownloadState.Completed) {
             val committedUri = verifiedSnapshot.completedUri?.trim()?.takeIf(String::isNotBlank)
                 ?: error("Verified completion is missing committed artifact identity")
@@ -731,7 +932,7 @@ class TransferExecutionRuntime(
                     speedBytesPerSecond = 0,
                     errorMessage = null,
                     completedArtifactUri = committedUri,
-                    completedArtifactGeneration = ownership.generation,
+                    completedArtifactGeneration = publicationFence.generation,
                     completedArtifactBytes = committedBytes,
                     updatedAtEpochMs = current.nextUpdatedAt(),
                 ),
@@ -750,7 +951,7 @@ class TransferExecutionRuntime(
                     verifiedSnapshot.errorMessage ?: "Committed artifact did not pass completion verification.",
                 )
             }
-            val clearStaleArtifact = current.completedArtifactGeneration != null && current.completedArtifactGeneration != ownership.generation
+            val clearStaleArtifact = current.completedArtifactGeneration != null && current.completedArtifactGeneration != publicationFence.generation
             persistOrThrow(
                 current.copy(
                     state = verifiedSnapshot.state,
@@ -829,6 +1030,8 @@ class TransferExecutionRuntime(
     private enum class DesiredTransferState { None, PauseRequested, ResumeRequested, CancelRequested }
 
     companion object {
+        internal const val DURABLE_PROGRESS_INTERVAL_MS = 333L
+        internal const val LIVE_VERIFICATION_INTERVAL_MS = 100L
         val ACTIVE_STATES = setOf(DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading, DownloadState.Finalizing, DownloadState.Verifying, DownloadState.Repairing)
         val INTERRUPTED_STATES = setOf(DownloadState.Connecting, DownloadState.Downloading, DownloadState.Finalizing, DownloadState.Repairing, DownloadState.Verifying)
         val TERMINAL_STATES = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)

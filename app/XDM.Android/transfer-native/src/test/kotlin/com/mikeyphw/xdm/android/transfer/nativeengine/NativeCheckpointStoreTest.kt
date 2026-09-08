@@ -31,7 +31,7 @@ class NativeCheckpointStoreTest {
             rangeSupported = true,
             segments = listOf(
                 NativeSegmentCheckpoint(0, 0, 2047, 2048, true, completedSha256 = "a".repeat(64)),
-                NativeSegmentCheckpoint(1, 2048, 4095, 256, false, completedSha256 = "b".repeat(64)),
+                NativeSegmentCheckpoint(1, 2048, 4095, 256, false, completedSha256 = null, integrityProof = "sha256-blocks-v1|256|${"b".repeat(64)}"),
             ),
             persistedAtEpochMs = 42,
             attemptGeneration = 9L,

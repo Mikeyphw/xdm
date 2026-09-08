@@ -131,10 +131,10 @@ internal object DownloadsWorkspacePlanner {
     }
 
     private fun comparatorFor(filter: DownloadWorkspaceFilter, ordering: DownloadDashboardOrdering): Comparator<Download> = when (ordering) {
-        DownloadDashboardOrdering.Smart -> compareByDescending<Download> { priorityFor(it, filter) }.thenByDescending { it.updatedAtEpochMs }
-        DownloadDashboardOrdering.Recent -> compareByDescending { it.updatedAtEpochMs }
-        DownloadDashboardOrdering.Name -> compareBy<Download, String>(String.CASE_INSENSITIVE_ORDER) { it.fileName }
-        DownloadDashboardOrdering.Progress -> compareByDescending<Download> { it.progressFraction }.thenByDescending { it.updatedAtEpochMs }
+        DownloadDashboardOrdering.Smart -> compareByDescending<Download> { priorityFor(it, filter) }.thenByDescending { it.createdAtEpochMs }.thenBy { it.id }
+        DownloadDashboardOrdering.Recent -> compareByDescending<Download> { it.createdAtEpochMs }.thenBy { it.id }
+        DownloadDashboardOrdering.Name -> compareBy<Download, String>(String.CASE_INSENSITIVE_ORDER) { it.fileName }.thenBy { it.id }
+        DownloadDashboardOrdering.Progress -> compareByDescending<Download> { it.progressFraction }.thenByDescending { it.createdAtEpochMs }.thenBy { it.id }
     }
 
     private fun priorityFor(download: Download, filter: DownloadWorkspaceFilter): Int = when {

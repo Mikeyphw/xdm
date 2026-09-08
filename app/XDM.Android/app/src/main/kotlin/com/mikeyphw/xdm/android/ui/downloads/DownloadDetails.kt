@@ -77,6 +77,7 @@ internal fun DownloadDetails(
 ) {
     val context = LocalContext.current
     val truth = DownloadUiTruthPlanner.truth(download, actionContext)
+    val phaseProgress = DownloadUiTruthPlanner.phaseProgress(download, actionContext)
     val primaryAction = DownloadActionPlanner.primaryActionFor(download, actionContext)
     val latestVerification = verificationRecords.filter { it.downloadId == download.id }.maxByOrNull { it.updatedAtEpochMs }
     val latestChecksum = checksumResults.filter { it.downloadId == download.id }.maxByOrNull { it.verifiedAtEpochMs }
@@ -110,7 +111,7 @@ internal fun DownloadDetails(
                 }
                 Text(download.fileName, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
                 Text(hostFromUrl(download.sourceUrl), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                download.totalBytes?.let { XdmProgressLine(progress = download.progressFraction, stateLabel = truth.overallProgressText) }
+                phaseProgress?.let { XdmProgressLine(progress = it, stateLabel = truth.overallProgressText) }
                 XdmActionFlowRow {
                     Button(
                         onClick = { onDownloadAction(primaryAction) },

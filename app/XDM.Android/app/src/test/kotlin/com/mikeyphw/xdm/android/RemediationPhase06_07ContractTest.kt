@@ -39,10 +39,11 @@ class RemediationPhase06_07ContractTest {
             .forEach { assertTrue("native checkpoint contract missing $it", models.contains(it)) }
         assertTrue(backend.contains("builder.header(\"If-Range\", metadata.resumeValidator.value)"))
         assertTrue(backend.contains("!trimmedEtag.startsWith(\"W/\", ignoreCase = true)"))
-        assertTrue(backend.contains("sha256Range(paths.partial"))
+        assertTrue(backend.contains("verifyPersistedSegment(paths.partial, segment)"))
+        assertTrue(backend.contains("NativeCheckpointIntegrity.verify(path, segment, ::sha256Range)"))
         assertTrue(backend.contains("checkpoint.sourceIdentitySha256 != sha256Identity(request.sourceUrl)"))
         assertTrue(backend.contains("checkpoint.effectiveIdentitySha256 != sha256Identity(metadata.effectiveUrl)"))
-        assertTrue(backend.contains("Native checkpoint range has no byte digest"))
+        assertTrue(backend.contains("Partial bytes no longer match checkpoint integrity proof"))
         assertTrue(repair.contains("header(\"If-Range\", validator.value)"))
         assertTrue(repair.contains("requestSecurityValidator(request)"))
         assertTrue(repair.contains("manifest: TrustedBlockManifest"))
@@ -51,6 +52,7 @@ class RemediationPhase06_07ContractTest {
         assertTrue(repair.contains("fileSha256(backup) == originalDigest"))
         assertTrue(repair.contains("verifyRepairedBlocks(target, plan, manifest)"))
         assertTrue(checkpointStore.contains("completedSha256"))
+        assertTrue(checkpointStore.contains("integrityProof"))
     }
 
     @Test fun aria2StateAndCapabilitiesAreTruthfulAndTerminalSafe() {
@@ -118,7 +120,7 @@ class RemediationPhase06_07ContractTest {
         assertTrue(runtime.contains("finalizationCoordinator.recordDestinationCommitted"))
         assertTrue(runtime.contains("finalizationCoordinator.recordMetadataCommitted"))
         assertTrue(runtime.contains("completedArtifactUri = committedUri"))
-        assertTrue(runtime.contains("completedArtifactGeneration = ownership.generation"))
+        assertTrue(runtime.contains("completedArtifactGeneration = publicationFence.generation"))
         assertTrue(runtime.contains("stored.completedArtifactGeneration == stored.attemptGeneration"))
         assertTrue(runtime.contains("stored.completedArtifactUri"))
         assertTrue(finalization.contains("prepareCommitted"))

@@ -99,6 +99,24 @@ class DownloaderExperienceTest {
     }
 
     @Test
+    fun activeSmartOrderingDoesNotMoveWhenOnlyBytesSpeedOrUpdatedAtChange() {
+        val older = download("older", DownloadState.Downloading, speed = 1_000).copy(
+            priority = 10, createdAtEpochMs = 1, updatedAtEpochMs = 10, bytesReceived = 10,
+        )
+        val newer = download("newer", DownloadState.Downloading, speed = 50_000).copy(
+            priority = 10, createdAtEpochMs = 2, updatedAtEpochMs = 20, bytesReceived = 90,
+        )
+        val before = DownloadDashboardPlanner.plan(listOf(newer, older)).sections
+            .first { it.bucket == DownloadDashboardBucket.Active }.downloads.map(Download::id)
+        val after = DownloadDashboardPlanner.plan(listOf(
+            newer.copy(speedBytesPerSecond = 1, bytesReceived = 99, updatedAtEpochMs = 999),
+            older.copy(speedBytesPerSecond = 999_999, bytesReceived = 98, updatedAtEpochMs = 1_000),
+        )).sections.first { it.bucket == DownloadDashboardBucket.Active }.downloads.map(Download::id)
+        assertEquals(before, after)
+        assertEquals(listOf("older", "newer"), after)
+    }
+
+    @Test
     fun attentionSignalsExplainLikelyRecoveryAction() {
         assertEquals(
             DownloadAttentionKind.Authentication,

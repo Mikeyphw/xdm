@@ -46,7 +46,7 @@ class CompletedNotificationOpenFileContractTest {
 
     @Test fun runtimePersistsGenerationBoundCompletedArtifactForLaterNotificationTap() {
         assertTrue(runtime.contains("completedArtifactUri = committedUri"))
-        assertTrue(runtime.contains("completedArtifactGeneration = ownership.generation"))
+        assertTrue(runtime.contains("completedArtifactGeneration = publicationFence.generation"))
         assertTrue(runtime.contains("stored.completedArtifactGeneration == stored.attemptGeneration"))
         assertTrue(runtime.contains("stored.completedArtifactUri"))
         assertTrue(runtime.contains("TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage, storedDestination, storedMimeType, attemptGenerations[download.id]"))

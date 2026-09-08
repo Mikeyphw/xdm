@@ -1,7 +1,9 @@
 package com.mikeyphw.xdm.android.transfer.aria2
 
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
 
 class Aria2EventPoller(
@@ -17,7 +19,7 @@ class Aria2EventPoller(
             if (status.status in TERMINAL) return@flow
             delay(pollIntervalMillis)
         }
-    }
+    }.buffer(Channel.CONFLATED)
 
     private companion object {
         val TERMINAL = setOf(Aria2TaskStatusValue.Complete, Aria2TaskStatusValue.Error, Aria2TaskStatusValue.Removed)

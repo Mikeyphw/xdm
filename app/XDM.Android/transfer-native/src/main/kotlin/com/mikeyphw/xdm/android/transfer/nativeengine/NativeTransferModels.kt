@@ -8,6 +8,8 @@ data class NativeTransferConfig(
     val defaultConnections: Int = 4,
     val segmentThresholdBytes: Long = 4L * 1024 * 1024,
     val checkpointIntervalBytes: Long = 1024L * 1024,
+    val checkpointIntegrityBlockBytes: Long = 1024L * 1024,
+    val speedWindowMillis: Long = 1_500L,
     val bufferBytes: Int = 64 * 1024,
     val maximumRetries: Int = 4,
     val baseRetryDelayMillis: Long = 250,
@@ -23,6 +25,8 @@ data class NativeSegmentCheckpoint(
     val complete: Boolean,
     /** Digest of exactly [completedBytes] bytes beginning at [startByte]. */
     val completedSha256: String? = null,
+    /** Incremental fixed-block ownership proof used by scalable checkpoints. */
+    val integrityProof: String? = null,
 )
 
 data class NativeCheckpoint(

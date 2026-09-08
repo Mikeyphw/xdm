@@ -74,6 +74,25 @@ class DownloadUiTruthTest {
     }
 
     @Test
+    fun verificationProgressUsesVerifiedBytesInsteadOfPayloadCompletion() {
+        val item = download(DownloadState.Verifying).copy(bytesReceived = 1024, totalBytes = 1024)
+        val verification = VerificationRecord(
+            id = "verification-id",
+            downloadId = item.id,
+            status = VerificationStatus.Running,
+            algorithm = ChecksumAlgorithm.Sha256,
+            bytesVerified = 256,
+            totalBytes = 1024,
+            message = "Running",
+            createdAtEpochMs = 3,
+            updatedAtEpochMs = 4,
+        )
+        val context = DownloadActionContext(latestVerification = verification)
+        assertEquals(0.25f, DownloadUiTruthPlanner.phaseProgress(item, context))
+        assertTrue(DownloadUiTruthPlanner.truth(item, context).byteProgressText.contains("256"))
+    }
+
+    @Test
     fun verifyingSeparatesPayloadFromOverallCompletion() {
         val item = download(DownloadState.Verifying).copy(bytesReceived = 1024)
         val truth = DownloadUiTruthPlanner.truth(item, DownloadActionContext())

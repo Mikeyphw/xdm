@@ -17,6 +17,7 @@ class CompletionVerificationCoordinator(
     private val verifier: ChecksumVerificationService = ChecksumVerificationService(),
     private val blockManifestService: TrustedBlockManifestService = TrustedBlockManifestService(),
     private val clock: () -> Long = System::currentTimeMillis,
+    private val onVerificationProgress: (VerificationRecord) -> Unit = {},
 ) {
     suspend fun complete(download: Download, snapshot: BackendSnapshot): BackendSnapshot {
         if (snapshot.state != DownloadState.Completed) return snapshot
@@ -66,12 +67,16 @@ class CompletionVerificationCoordinator(
 
         var current = snapshot.copy(state = DownloadState.Verifying, speedBytesPerSecond = 0)
         for (expectation in expectations) {
+            val persistenceThrottle = VerificationProgressThrottle()
             val result = verifier.verify(
                 downloadId = download.id,
                 totalBytes = artifactSize,
                 openInput = { artifactReader.open(completedUri) ?: error("Committed artifact became unreadable during verification") },
                 expectation = expectation,
-                progress = { checksumStore.saveVerification(it) },
+                progress = { record ->
+                    onVerificationProgress(record)
+                    if (persistenceThrottle.shouldPersist(record)) checksumStore.saveVerification(record)
+                },
             )
             checksumStore.saveResult(result)
             if (result.matchesExpectation != true) {

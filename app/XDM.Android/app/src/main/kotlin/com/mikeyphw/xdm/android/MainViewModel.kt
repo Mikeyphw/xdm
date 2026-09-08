@@ -32,6 +32,7 @@ import com.mikeyphw.xdm.android.model.ChecksumExpectation
 import com.mikeyphw.xdm.android.model.ChecksumResult
 import com.mikeyphw.xdm.android.model.ChecksumSource
 import com.mikeyphw.xdm.android.model.VerificationRecord
+import com.mikeyphw.xdm.android.model.VerificationStatus
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.BrowserCaptureCandidateSummary
 import com.mikeyphw.xdm.android.model.BrowserCaptureSessionSummary
@@ -127,6 +128,7 @@ import com.mikeyphw.xdm.android.storage.DestinationUris
 import com.mikeyphw.xdm.android.storage.PersonalDirectStorage
 import com.mikeyphw.xdm.android.termux.TermuxRunStatus
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
+import com.mikeyphw.xdm.android.transfer.BackendSnapshot
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.DownloadRequestApprovalScope
 import com.mikeyphw.xdm.android.transfer.inferDownloadRequestKind
@@ -157,6 +159,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -476,15 +479,32 @@ class MainViewModel(
         }
     }
 
+    /** Byte/speed-only Room checkpoints must not invalidate the expensive whole-app projection. */
+    private val semanticDownloads = repository.downloads.distinctUntilChangedBy { downloads ->
+        downloads.map { download ->
+            download.copy(bytesReceived = 0L, speedBytesPerSecond = 0L, updatedAtEpochMs = 0L)
+        }
+    }
+
+    private val semanticVerificationRecords = repository.verificationRecords.distinctUntilChangedBy { records ->
+        records.map { record ->
+            if (record.status == VerificationStatus.Running) {
+                record.copy(bytesVerified = 0L, message = "Running", updatedAtEpochMs = 0L)
+            } else {
+                record
+            }
+        }
+    }
+
     private val repositoryBaseSnapshot = combine(
-        repository.downloads,
+        semanticDownloads,
         repository.queues,
         repository.schedules,
         repository.recoveryRecords,
         revalidatedDestinationPermissions,
     ) { downloads, queues, schedules, recovery, permissions -> RepositoryBaseSnapshot(downloads, queues, schedules, recovery, permissions) }
 
-    private val verificationSnapshot = combine(repository.checksumResults, repository.verificationRecords) { results, records -> results to records }
+    private val verificationSnapshot = combine(repository.checksumResults, semanticVerificationRecords) { results, records -> results to records }
 
     private data class MediaRepositorySnapshot(
         val captures: List<MediaCaptureRecord>,
@@ -664,11 +684,11 @@ class MainViewModel(
         TermuxUiSnapshot(bridge, aria2, mediaPipeline, postAutomation)
     }
 
-    private val runtimeUi = combine(transferRuntime.summary, queueIntelligenceCoordinator.status, aria2Diagnostics, capabilitySnapshot, termuxUi) { active, queueIntelligence, aria2, capabilities, termux ->
-        RuntimeUiSnapshot(active, queueIntelligence, aria2, backendSelectionPolicy.capabilityRows(capabilities), termux.bridge, termux.aria2, termux.mediaPipeline, termux.postProcessingAutomation)
+    private val runtimeUi = combine(queueIntelligenceCoordinator.status, aria2Diagnostics, capabilitySnapshot, termuxUi) { queueIntelligence, aria2, capabilities, termux ->
+        RuntimeUiSnapshot(ActiveTransferSummary(), queueIntelligence, aria2, backendSelectionPolicy.capabilityRows(capabilities), termux.bridge, termux.aria2, termux.mediaPipeline, termux.postProcessingAutomation)
     }
 
-    val uiState: StateFlow<MainUiState> = combine(
+    private val durableUiState: StateFlow<MainUiState> = combine(
         repositorySnapshot,
         preferencesAndBrowserExtension,
         navigationOverride,
@@ -881,12 +901,49 @@ class MainViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
+    private data class LiveTransferUi(
+        val summary: ActiveTransferSummary,
+        val progress: Map<String, BackendSnapshot>,
+        val verification: Map<String, VerificationRecord>,
+    )
+
+    private val liveTransferUi = combine(
+        transferRuntime.summary,
+        transferRuntime.liveProgress,
+        transferRuntime.liveVerification,
+    ) { summary, progress, verification -> LiveTransferUi(summary, progress, verification) }
+
+    /** Cheap final overlay: high-frequency bytes never recompute release reports/settings/activity. */
+    val uiState: StateFlow<MainUiState> = combine(durableUiState, liveTransferUi) { durable, live ->
+        val downloads = durable.downloads.map { download ->
+            val snapshot = live.progress[download.id] ?: return@map download
+            download.copy(
+                state = snapshot.state,
+                bytesReceived = snapshot.bytesReceived,
+                totalBytes = snapshot.totalBytes ?: download.totalBytes,
+                speedBytesPerSecond = snapshot.speedBytesPerSecond,
+                errorMessage = snapshot.errorMessage,
+            )
+        }
+        val liveVerificationIds = live.verification.keys
+        val verificationRecords = if (liveVerificationIds.isEmpty()) {
+            durable.verificationRecords
+        } else {
+            durable.verificationRecords.filterNot { it.downloadId in liveVerificationIds } + live.verification.values
+        }
+        durable.copy(
+            downloads = downloads,
+            activeTransfers = live.summary,
+            verificationRecords = verificationRecords,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
+
     init {
         viewModelScope.launch {
             if (repository.countQueues() == 0) FakeDataSeeder(repository).seedQueuesOnly()
         }
         viewModelScope.launch(Dispatchers.IO) {
-            repository.downloads.collectLatest { downloads -> operationalActivityStore.observeDownloads(downloads) }
+            semanticDownloads.collectLatest { downloads -> operationalActivityStore.observeDownloads(downloads) }
         }
         refreshAria2Probe()
         refreshBackendCapabilities()

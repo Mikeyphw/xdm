@@ -64,8 +64,14 @@ internal fun DownloadRow(
     val action = DownloadActionPlanner.primaryActionFor(download, actionContext)
     val truth = DownloadUiTruthPlanner.truth(download, actionContext)
     val totalBytes = download.totalBytes
-    val progressVisible = totalBytes != null && download.state !in setOf(DownloadState.Created, DownloadState.Cancelled)
+    val phaseProgress = DownloadUiTruthPlanner.phaseProgress(download, actionContext)
+    val progressVisible = phaseProgress != null
+    val runningVerification = actionContext.latestVerification?.takeIf { it.status == com.mikeyphw.xdm.android.model.VerificationStatus.Running }
+    val verificationTotalBytes = runningVerification?.totalBytes
     val byteText = when {
+        download.state == DownloadState.Verifying && runningVerification != null && verificationTotalBytes != null ->
+            "${runningVerification.bytesVerified.coerceAtMost(verificationTotalBytes).formatBytes()} / ${verificationTotalBytes.formatBytes()} verified"
+        download.state == DownloadState.Verifying && runningVerification != null -> "${runningVerification.bytesVerified.formatBytes()} verified"
         totalBytes != null -> "${download.bytesReceived.coerceAtMost(totalBytes).formatBytes()} / ${totalBytes.formatBytes()}"
         download.bytesReceived > 0L -> download.bytesReceived.formatBytes()
         else -> actionContext.artifact.friendlyLocation
@@ -109,7 +115,7 @@ internal fun DownloadRow(
                     maxLines = if (compact) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (progressVisible) XdmProgressLine(progress = download.progressFraction, stateLabel = truth.overallProgressText)
+                if (progressVisible) XdmProgressLine(progress = requireNotNull(phaseProgress), stateLabel = truth.overallProgressText)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(byteText, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(trailing, style = MaterialTheme.typography.labelMedium, maxLines = 1)

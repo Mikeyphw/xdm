@@ -119,6 +119,8 @@ data class BackendPreparation(
     val runtimeIdentity: BackendRuntimeIdentity,
 )
 
+enum class TransferProgressStage { Resolving, Preparing, Downloading, Merging, Verifying, Finalizing }
+
 data class BackendSnapshot(
     val taskId: String,
     val state: DownloadState,
@@ -139,6 +141,8 @@ data class BackendSnapshot(
     val backendInstanceId: String? = null,
     /** Runtime session currently observing the task. */
     val backendSessionId: String? = null,
+    /** High-frequency execution stage; never required for durable ownership or resume correctness. */
+    val progressStage: TransferProgressStage? = null,
 )
 
 data class BackendShutdownResult(val clean: Boolean, val activeTaskIds: List<String>)
