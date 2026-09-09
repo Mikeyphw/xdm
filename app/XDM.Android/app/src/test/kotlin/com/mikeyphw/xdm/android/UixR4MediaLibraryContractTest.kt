@@ -14,14 +14,15 @@ class UixR4MediaLibraryContractTest {
         val media = inbox + "\n" + card
 
         listOf(
-            "Paste page URL",
+            "Page or media URL",
             "Ready to download",
             "Recently queued",
             "MediaTrackPickerSheet",
-            "Selected quality",
+            "Video quality",
             "Audio track",
             "Subtitle track",
-            "Estimated download size",
+            "Estimated size",
+            "More tools",
         ).forEach { assertTrue("Media R4 missing $it", media.contains(it)) }
 
         listOf(

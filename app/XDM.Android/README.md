@@ -1,6 +1,6 @@
 ## XDM Android 0.21.0
 
-Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed. Room is schema v21. The canonical release gate replays the current capture/manifest/runtime/progress contracts before the full Gradle/device/release matrix.
+Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed, the execution/media semantics repair is the functional baseline, and the Add/Media UX remodel is the current UI release seal. Room is schema v21. The canonical release gate replays these contracts before the full Gradle/device/release matrix.
 
 # XDM Android
 
@@ -10,7 +10,14 @@ Phases 37–41 provide a variant-specific `xdmdownload` intake contract, reposit
 
 ## UIX R6 final experience seal
 
-The Android UI is now sealed as a dark, flat, adaptive five-destination experience with Downloads, Media, Library, Activity, and Settings. Add remains an internal review-first route presented as an adaptive sheet/dialog. UIX R6 adds stable accessibility semantics, 48 dp targets, 200% font-scale qualification, Compact/Medium/Expanded contracts, lazy Developer diagnostics, consumer-safe source scans, device smoke tests, and the final release checklist. See `docs/architecture/UIX-R6-ACCESSIBILITY-PERFORMANCE-RELEASE-SEAL.md`.
+The Android UI retains the dark, flat, adaptive five-destination shell from UIX R6. Add is now a compact adaptive sheet with one explicit **Download** action; the superseded second confirmation is removed, while advanced/session diagnostics stay collapsed. UIX R6 still supplies the underlying accessibility, 48 dp target, font-scale, adaptive-layout, and developer-boundary contracts. See `docs/architecture/UIX-R6-ACCESSIBILITY-PERFORMANCE-RELEASE-SEAL.md`.
+
+
+## Current Add and Media UX
+
+The current Add flow follows the compact interaction model used by mature Android download managers: link/file identity, human-readable destination, and one explicit **Download** action are primary. Browser/session health, backend reasoning, checksum/conflict policy, and media escalation live under **Advanced options**. External browser handoffs never auto-queue, but they also do not require a second review/confirmation step.
+
+The Media workspace treats direct progressive media as a normal one-tap download. Quality/audio/subtitle choices are shown only when an adaptive capture actually exposes meaningful alternatives; batch/debug-style intake tools are collapsed under **More tools**.
 
 ## Downloader-only release seal
 

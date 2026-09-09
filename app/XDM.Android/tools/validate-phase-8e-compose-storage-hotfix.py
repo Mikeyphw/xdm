@@ -97,8 +97,8 @@ for required in (
     "Activity and Library Operational Rules",
     "externalAddDraft.value = downloadIntakePlanner.fromExternal(",
     "externalAddDraft = review.externalAddDraft",
-    "Review download",
-    "Add to queue",
+    "Add route must use one explicit Download action",
+    "screens.contains(\"else -> \\\"Download\\\"\")",
     "retiredBrowserDocs.walkTopDown().none { it.isFile }",
 ):
     if required not in architecture_test:

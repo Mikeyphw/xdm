@@ -68,8 +68,9 @@ class BrowserExtensionPhase43BContractTest {
 
         assertTrue(addSurface.contains("externalOrigin: DownloadIntakeOrigin? = null"))
         assertTrue(addSurface.contains("origin = if (externalDraftId != null && url == initialUrl) externalOrigin"))
-        assertTrue(addSurface.contains("Text(review.mediaInspectionActionLabel)"))
-        assertTrue(addSurface.contains("XdmMetadataText(review.mediaInspectionGuidance)"))
+        assertTrue(addSurface.contains("text = review.mediaInspectionGuidance"))
+        assertTrue(addSurface.contains("preferMediaInspection -> \"Inspect media\""))
+        assertTrue(addSurface.contains("Text(\"Media options\")"))
         assertFalse(addSurface.contains("Media inspection opens the resolver"))
         assertTrue(shell.contains("externalOrigin = state.externalAddDraft?.origin"))
         assertTrue(viewModel.contains("AutomationCommandSource.BrowserExtension -> DownloadIntakeOrigin.BrowserExtension"))

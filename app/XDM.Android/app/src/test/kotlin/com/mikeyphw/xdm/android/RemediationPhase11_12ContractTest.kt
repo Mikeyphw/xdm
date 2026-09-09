@@ -85,10 +85,11 @@ class RemediationPhase11_12ContractTest {
         assertTrue(viewModel.contains("status = AutomationCommandStatus.Rejected"))
         assertTrue(viewModel.contains("rejectionReason = AutomationRejectionReason.UserDeclined"))
         assertTrue(add.contains("Modifier.fillMaxSize().imePadding()"))
-        assertTrue(add.contains("reviewConfirmed = false"))
+        assertTrue(add.contains("advancedExpanded"))
         assertTrue(add.contains("XdmScreenTags.BrowserSessionHealth"))
         assertTrue(add.contains("XdmScreenTags.EngineEscalation"))
-        assertTrue(add.split("XdmScreenTags.AddReview").size - 1 == 1)
+        assertFalse(add.contains("reviewConfirmed"))
+        assertFalse(add.contains("Add to queue"))
     }
 
     @Test

@@ -75,7 +75,7 @@ class RuntimeFoundationPhase57_58ContractTest {
         assertTrue(viewModel.contains("BrowserBridgeDiagnosticsRedactor.sanitize(feedback.title)"))
         assertTrue(viewModel.contains("BrowserBridgeDiagnosticsRedactor.sanitize(feedback.detail)"))
         assertTrue(viewModel.contains("feedback.diagnostics.map(BrowserBridgeDiagnosticsRedactor::sanitize)"))
-        assertTrue(screen.contains("Firefox capture recommended"))
+        assertTrue(screen.contains("Browser capture recommended"))
         assertTrue(screen.contains("intakeFeedback.visible"))
         assertTrue(app.contains("intakeFeedback = state.mediaIntakeFeedback"))
     }

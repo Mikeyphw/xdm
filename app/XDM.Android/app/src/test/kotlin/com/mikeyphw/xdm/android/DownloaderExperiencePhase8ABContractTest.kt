@@ -16,19 +16,19 @@ import org.junit.Test
 
 class DownloaderExperiencePhase8ABContractTest {
     @Test
-    fun addDownloadUsesAReviewFirstManualAndExternalFlow() {
+    fun addDownloadUsesASingleExplicitManualAndExternalFlow() {
         val root = androidRoot()
         val screens = UiSourceTree.readAll(root)
         val shell = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
 
         listOf(
-            "Paste detected URL",
+            "Text(\"Paste\")",
             "DownloadReviewPlanner.plan(",
-            "Review download",
-            "Add to queue",
+            "Advanced options",
+            "else -> \"Download\"",
             "Inspect media",
-            "never creates a transfer automatically",
+            "onInspectMedia(url, name)",
         ).forEach { assertTrue("Add Download missing $it", screens.contains(it)) }
         assertTrue(shell.contains("viewModel.inspectManualMedia(url, fileName)"))
         assertTrue(viewModel.contains("fun inspectManualMedia(url: String, fileName: String)"))

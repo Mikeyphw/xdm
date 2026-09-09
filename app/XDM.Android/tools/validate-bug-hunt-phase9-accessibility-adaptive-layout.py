@@ -72,7 +72,7 @@ checks = [
     ("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt", [
         "Modifier.fillMaxSize().imePadding()",
         "externalDraftId",
-        "reviewConfirmed = false",
+        "advancedExpanded",
     ]),
     ("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAdaptiveShell.kt", [
         'xdmFocusRestorePoint(\"new_download_action\")',

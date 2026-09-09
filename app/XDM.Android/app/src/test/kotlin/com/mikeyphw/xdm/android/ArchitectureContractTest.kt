@@ -61,14 +61,20 @@ class ArchitectureContractTest {
     @Test
     fun addDownloadAllowsFilenameInference() {
         val root = androidRoot()
-        val screens = UiSourceTree.readAll(root)
+        val addSurface = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
-        assertTrue("Filename field should describe inference", screens.contains("XDM infers a name from the link"))
+        assertTrue(
+            "Filename field should describe inference",
+            addSurface.contains("Optional • XDM uses the server or link name when left empty."),
+        )
         assertTrue(
             "Add button should not require a nonblank filename",
-            screens.contains("val canReview = review.canStartDirectly && recommendation?.compatible != false"),
+            addSurface.contains("val canDownload = review.canStartDirectly && recommendation?.compatible != false"),
         )
-        assertTrue("Add button should use the filename-independent submit state", screens.contains("enabled = canReview"))
+        assertTrue(
+            "Add button should use the filename-independent submit state",
+            addSurface.contains("review.normalizedUrl != null else canDownload"),
+        )
         assertTrue("ViewModel should centralize inferred filename resolution", viewModel.contains("private fun resolveFileName"))
         assertFalse("ViewModel should not reject blank filename", viewModel.contains("fileName.isBlank()"))
     }
@@ -256,6 +262,7 @@ class ArchitectureContractTest {
         val root = androidRoot()
         val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
         val screens = UiSourceTree.readAll(root)
+        val addSurface = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt").readText()
 
         assertTrue("UI contract must define Downloads scanability rules", contract.contains("Downloads Scanability Rules"))
         assertTrue("UI contract must define form and settings workflow rules", contract.contains("Form and Settings Workflow Rules"))
@@ -264,18 +271,21 @@ class ArchitectureContractTest {
         assertTrue("Downloads must support sort choices", screens.contains("DownloadDashboardOrdering"))
         assertTrue("Download details must disclose technical data on demand", screens.contains("XdmTechnicalDetails") && screens.contains("Technical details"))
         assertTrue("Filtered empty states must explain what appears in each view", screens.contains("Nothing is moving") || screens.contains("The queue is clear") || screens.contains("No downloads match"))
-        assertTrue("Add route must fold advanced settings", screens.contains("Advanced options") && screens.contains("advancedExpanded"))
+        assertTrue("Add route must fold advanced settings", addSurface.contains("Advanced options") && addSurface.contains("advancedExpanded"))
         assertTrue(
-            "Add route must use a persistent two-step bottom action",
-            screens.contains("Step 1 of 2") &&
-                screens.contains("enabled = canReview") &&
-                screens.contains("Review download") &&
-                screens.contains("Add to queue"),
+            "Add route must use one explicit Download action",
+            addSurface.contains("Add a download with a single explicit action") &&
+                addSurface.contains("else -> \"Download\"") &&
+                addSurface.contains("onAdd(") &&
+                addSurface.contains("preferMediaInspection") &&
+                !addSurface.contains("reviewConfirmed") &&
+                !addSurface.contains("Review download") &&
+                !addSurface.contains("Add to queue"),
         )
         assertTrue("Settings must show unsaved draft state", screens.contains("Unsaved") && screens.contains("Saved"))
         assertTrue("Settings must provide reset paths", screens.contains("Reset"))
         assertFalse("Download history must not be a permanent standalone card", screens.contains("private fun HistoryManagementCard"))
-        assertFalse("Add route must not use the old queue-specific button copy", screens.contains("Add to Default queue"))
+        assertFalse("Add route must not use the old queue-specific button copy", addSurface.contains("Add to Default queue"))
     }
 
 
@@ -300,7 +310,14 @@ class ArchitectureContractTest {
         assertTrue("Scheduler route must expose deletion", screens.contains("Delete schedule") && repository.contains("deleteSchedule") && dao.contains("DELETE FROM schedule_rules"))
         assertTrue("Scheduler must show a next-run summary", screens.contains("Next eligible window"))
         assertTrue("Scheduler must edit human-readable conditions", screens.contains("QueueNetworkRequirement.entries") && screens.contains("Charging required") && screens.contains("Minimum battery %"))
-        assertTrue("Media route must expose a user-facing quality and track selector", UiSourceTree.readUser(root).contains("MediaTrackPickerSheet") && UiSourceTree.readUser(root).contains("Selected quality") && UiSourceTree.readUser(root).contains("Audio track") && UiSourceTree.readUser(root).contains("Subtitle track"))
+        assertTrue(
+            "Media route must expose adaptive quality and track controls without faking them for direct media",
+            UiSourceTree.readUser(root).contains("MediaTrackPickerSheet") &&
+                UiSourceTree.readUser(root).contains("title = \"Video quality\"") &&
+                UiSourceTree.readUser(root).contains("title = \"Audio track\"") &&
+                UiSourceTree.readUser(root).contains("XdmMetadataText(\"Subtitle track\")") &&
+                UiSourceTree.readUser(root).contains("hasTrackChoices"),
+        )
         assertTrue("Media cards must emphasize origin instead of raw URL", screens.contains("mediaOriginLabel") && !screens.contains("XdmMetadataText(capture.sourceUrl"))
         assertTrue("Recovery route must clarify safe record-only removal", screens.contains("Remove record only") && screens.contains("Technical details"))
         assertTrue("Recovery route must lead with consequence copy", screens.contains("recoveryProblemTitle") && screens.contains("recoveryRecommendedExplanation"))

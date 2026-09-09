@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,9 +64,10 @@ fun MediaInboxScreen(
 ) {
     val consumerPlanner = remember { MediaConsumerWorkspacePlanner() }
     val context = LocalContext.current
-    var batchText by remember { mutableStateOf("") }
+    var batchText by rememberSaveable { mutableStateOf("") }
     var batchFeedback by remember { mutableStateOf<String?>(null) }
-    var pageUrlText by remember { mutableStateOf("") }
+    var pageUrlText by rememberSaveable { mutableStateOf("") }
+    var mediaToolsExpanded by rememberSaveable { mutableStateOf(false) }
     val downloadsById = remember(downloads) { downloads.associateBy(Download::id) }
     val reviewableCaptures = remember(captures) {
         // DownloadCreated records remain reviewable: one capture may intentionally produce multiple
@@ -91,10 +94,7 @@ fun MediaInboxScreen(
     Column(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.Media, "Media")) {
         XdmPageHeader(
             title = "Media",
-            subtitle = "Choose quality and tracks before anything is added to Downloads.",
-            actions = {
-                Button(onClick = { context.startActivity(MediaLocatorActivity.intent(context, pageUrlText)) }) { Text("Live locator") }
-            },
+            subtitle = "Direct media downloads in one tap. Playlists show quality and track choices when they exist.",
         )
         LazyColumn(
             modifier = Modifier.fillMaxWidth().weight(1f),
@@ -104,8 +104,7 @@ fun MediaInboxScreen(
             item {
                 XdmGroupedList {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        XdmSectionLabel("Paste page URL")
-                        Text("Paste a watch page, iframe page, HLS playlist, DASH manifest, or direct media URL. XDM fetches a bounded prefix with preserved session headers when available and creates review records only from real probe results.")
+                        XdmSectionLabel("Find media")
                         OutlinedTextField(
                             value = pageUrlText,
                             onValueChange = { pageUrlText = it },
@@ -115,10 +114,13 @@ fun MediaInboxScreen(
                             singleLine = true,
                         )
                         XdmActionFlowRow {
-                            Button(onClick = { onPastePageUrl(pageUrlText) }, enabled = pageUrlText.isNotBlank()) { Text("Static sniff") }
-                            Button(onClick = { context.startActivity(MediaLocatorActivity.intent(context, pageUrlText)) }) { Text("Live media locator") }
-                            TextButton(onClick = { pageUrlText = "" }, enabled = pageUrlText.isNotBlank()) { Text("Clear") }
+                            Button(onClick = { onPastePageUrl(pageUrlText) }, enabled = pageUrlText.isNotBlank()) { Text("Check URL") }
+                            Button(onClick = { context.startActivity(MediaLocatorActivity.intent(context, pageUrlText)) }) { Text("Live locator") }
+                            TextButton(onClick = { mediaToolsExpanded = !mediaToolsExpanded }) {
+                                Text(if (mediaToolsExpanded) "Hide tools" else "More tools")
+                            }
                         }
+                        XdmMetadataText("Captured browser context is used when needed and stays private.")
                     }
                 }
             }
@@ -129,14 +131,14 @@ fun MediaInboxScreen(
                         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             XdmSectionLabel(intakeFeedback.title.ifBlank { "Media intake" })
                             Text(intakeFeedback.detail)
-                            intakeFeedback.diagnostics.take(3).forEach { diagnostic ->
+                            intakeFeedback.diagnostics.take(2).forEach { diagnostic ->
                                 XdmMetadataText(diagnostic)
                             }
                             when (intakeFeedback.kind) {
                                 MediaIntakeFeedbackKind.Working -> XdmStatusBadge("Working", tone = XdmStatusTone.Info)
                                 MediaIntakeFeedbackKind.Found -> XdmStatusBadge("Found", tone = XdmStatusTone.Success)
                                 MediaIntakeFeedbackKind.NeedsBrowserCapture,
-                                MediaIntakeFeedbackKind.AuthenticationRequired -> XdmStatusBadge("Firefox capture recommended", tone = XdmStatusTone.Warning)
+                                MediaIntakeFeedbackKind.AuthenticationRequired -> XdmStatusBadge("Browser capture recommended", tone = XdmStatusTone.Warning)
                                 MediaIntakeFeedbackKind.Unsupported,
                                 MediaIntakeFeedbackKind.Failed -> XdmStatusBadge("Needs attention", tone = XdmStatusTone.Error)
                                 MediaIntakeFeedbackKind.NoMediaFound -> XdmStatusBadge("No media found", tone = XdmStatusTone.Neutral)
@@ -148,47 +150,42 @@ fun MediaInboxScreen(
             }
 
             item {
-                XdmNoticeRow(
-                    text = "Page session details stay private. XDM never shows cookies, authorization values, or temporary media links here.",
-                    tone = XdmStatusTone.Info,
-                )
-            }
-
-            item {
-                MediaBatchInputPanel(
-                    text = batchText,
-                    feedback = batchFeedback,
-                    onTextChanged = {
-                        batchText = it
-                        batchFeedback = null
-                    },
-                    onInspectAll = {
-                        val trimmed = batchText.trim()
-                        if (trimmed.isNotEmpty()) {
-                            onBatchInput(trimmed)
-                            batchFeedback = "Batch sent to the shared app-side media sniffing engine for review."
-                        }
-                    },
-                    onClearInvalid = {
-                        batchText = batchText.lines()
-                            .filter { line -> line.contains("http://", ignoreCase = true) || line.contains("https://", ignoreCase = true) }
-                            .joinToString("\n")
-                        batchFeedback = "Removed lines without supported HTTP(S) URLs."
-                    },
-                    onCopyRejectedLines = {
-                        val rejected = MediaBatchInputParser().parse(batchText).rejectedLinesText
-                        if (rejected.isNotBlank()) {
-                            copyTextToClipboard(context, "XDM rejected media batch lines", rejected)
-                            batchFeedback = "Rejected lines copied."
-                        } else {
-                            batchFeedback = "No rejected lines to copy."
-                        }
-                    },
-                    onAddSelected = { selectedText ->
-                        onBatchInput(selectedText)
-                        batchFeedback = "Selected links sent to the shared app-side media sniffing engine."
-                    },
-                )
+                AnimatedVisibility(mediaToolsExpanded) {
+                    MediaBatchInputPanel(
+                        text = batchText,
+                        feedback = batchFeedback,
+                        onTextChanged = {
+                            batchText = it
+                            batchFeedback = null
+                        },
+                        onInspectAll = {
+                            val trimmed = batchText.trim()
+                            if (trimmed.isNotEmpty()) {
+                                onBatchInput(trimmed)
+                                batchFeedback = "Batch sent for media inspection."
+                            }
+                        },
+                        onClearInvalid = {
+                            batchText = batchText.lines()
+                                .filter { line -> line.contains("http://", ignoreCase = true) || line.contains("https://", ignoreCase = true) }
+                                .joinToString("\n")
+                            batchFeedback = "Removed lines without supported HTTP(S) URLs."
+                        },
+                        onCopyRejectedLines = {
+                            val rejected = MediaBatchInputParser().parse(batchText).rejectedLinesText
+                            if (rejected.isNotBlank()) {
+                                copyTextToClipboard(context, "XDM rejected media batch lines", rejected)
+                                batchFeedback = "Rejected lines copied."
+                            } else {
+                                batchFeedback = "No rejected lines to copy."
+                            }
+                        },
+                        onAddSelected = { selectedText ->
+                            onBatchInput(selectedText)
+                            batchFeedback = "Selected links sent for media inspection."
+                        },
+                    )
+                }
             }
 
             if (reviewableCaptures.isEmpty()) {
@@ -196,11 +193,11 @@ fun MediaInboxScreen(
                     XdmEmptyState(
                         title = if (captures.isEmpty()) "No media waiting" else "Everything is queued",
                         description = if (captures.isEmpty()) {
-                            "Paste a page URL or share a media link to XDM. Firefox capture sessions will arrive here as grouped candidates."
+                            "Paste a URL, open Live locator, or send media from the browser extension."
                         } else {
                             "New captures will appear here when you share or inspect another media link."
                         },
-                        actionLabel = "Paste page URL",
+                        actionLabel = "Check URL",
                         onAction = { if (pageUrlText.isNotBlank()) onPastePageUrl(pageUrlText) },
                     )
                 }

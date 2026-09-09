@@ -116,8 +116,8 @@ def validate(root: Path) -> list[str]:
     ), "Add dismissal/navigation wiring", errors)
     dismiss = view_model.split("fun dismissExternalAddDraft()", 1)[-1].split("\n    fun ", 1)[0]
     require_all(dismiss, ("externalAddDraft.value = null", "AutomationCommandStatus.Rejected", "User dismissed Add Download review", "UserDeclined"), "external Add dismissal state", errors)
-    require_all(add, ("imePadding()", "externalDraftId", "reviewConfirmed = false", "allowFallback = true", "XdmScreenTags.BrowserSessionHealth", "XdmScreenTags.EngineEscalation"), "Add review reset/IME/accessibility", errors)
-    require(add.count("XdmScreenTags.AddReview") == 1, "Add/review semantics tags must be unique per surface", errors)
+    require_all(add, ("imePadding()", "externalDraftId", "advancedExpanded", "allowFallback = true", "XdmScreenTags.BrowserSessionHealth", "XdmScreenTags.EngineEscalation"), "Add single-action/IME/accessibility", errors)
+    require("reviewConfirmed" not in add and "Add to queue" not in add, "Add must not restore the superseded second confirmation", errors)
 
     # M-038 adaptive layout must use actual pane and folding geometry.
     window = read(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmWindowClass.kt", errors)

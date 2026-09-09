@@ -100,13 +100,15 @@ need('requireNotNull(System.getProperty("user.dir"))' in app_test,
      "repair app contract must use a non-null user.dir before constructing java.io.File")
 need("tools/validate-execution-media-semantics-repair.py" in post_dl03_test,
      "post-DL03 carry-forward contract must include the execution/media repair validator")
-need("execution/media semantics repair seal is the current final source of truth" in post_dl03_test and
+need("Add/Media UX remodel seal is the current final UI/release source of truth" in post_dl03_test and
+     "execution/media semantics repair remains its functional baseline" in post_dl03_test and
      "post-DL03 roadmap seal remains its historical baseline" in post_dl03_test,
-     "post-DL03 carry-forward contract must recognize the execution/media repair as current authority")
+     "post-DL03 carry-forward contract must recognize the UX remodel as current authority and execution/media as its functional baseline")
 need('assertTrue(gate.contains("post-DL03 roadmap seal is the current final source of truth"))' not in post_dl03_test,
      "post-DL03 carry-forward contract must not positively require stale current-authority wording")
-need("execution/media semantics repair seal is the current final source of truth" in final_gate,
-     "canonical final gate must expose the execution/media repair as current authority")
+need("Add/Media UX remodel seal is the current final UI/release source of truth" in final_gate and
+     "execution/media semantics repair remains its functional baseline" in final_gate,
+     "canonical final gate must expose the UX remodel as current authority while retaining execution/media as the functional baseline")
 
 need(entry.get("room_schema_current") == 21 and entry.get("room_schema_changed") is False,
      "execution/media repair must retain Room schema 21")

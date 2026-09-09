@@ -77,12 +77,12 @@ require(intake, "fun fromManual(", "Download intake planner")
 
 screens = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "app/src/main/kotlin/com/mikeyphw/xdm/android/ui").rglob("*.kt"))
 for marker in (
-    "Paste detected URL",
+    "Text(\"Paste\")",
     "DownloadReviewPlanner.plan(",
-    "Review download",
-    "Add to queue",
+    "Advanced options",
+    "else -> \"Download\"",
     "Inspect media",
-    "never creates a transfer automatically",
+    "onInspectMedia(review.normalizedUrl",
     "DownloadsWorkspacePlanner.visibleDownloads",
     "DownloadWorkspaceFilter.entries",
     "DownloadDashboardOrdering.entries",

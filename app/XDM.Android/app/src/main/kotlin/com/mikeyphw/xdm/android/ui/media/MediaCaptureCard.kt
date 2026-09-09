@@ -67,6 +67,11 @@ internal fun MediaCaptureCard(
     val videoVariants = remember(captureVariants) {
         captureVariants.filter { it.kind == MediaVariantKind.Video || it.kind == MediaVariantKind.Primary }
     }
+    val hasTrackChoices = remember(capture, captureVariants, videoVariants) {
+        capture.isPlaylist ||
+            videoVariants.size > 1 ||
+            captureVariants.any { it.kind == MediaVariantKind.Audio || it.kind == MediaVariantKind.Subtitle }
+    }
 
     XdmListCard(
         modifier = Modifier.xdmScreen(XdmScreenTags.MediaCapture, "Media capture ${capture.title.ifBlank { capture.fileName }}"),
@@ -92,7 +97,7 @@ internal fun MediaCaptureCard(
             StatusPill(captureStateLabel(summary.state), toneForConsumerState(summary.state))
         }
 
-        if (videoVariants.isNotEmpty()) {
+        if (hasTrackChoices && videoVariants.isNotEmpty()) {
             XdmMetadataText("Quality")
             XdmActionFlowRow {
                 videoVariants.take(4).forEach { variant ->
@@ -119,23 +124,27 @@ internal fun MediaCaptureCard(
             }
         }
 
-        XdmGroupedList(contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
-            XdmListRow(
-                headline = summary.selectedQuality,
-                supporting = "Selected quality",
-            )
-            XdmListSeparator(modifier = Modifier.padding(start = 0.dp))
-            XdmListRow(
-                headline = summary.trackSummary,
-                supporting = "Audio and subtitles",
-            )
-            summary.estimatedSizeBytes?.let { size ->
+        if (hasTrackChoices) {
+            XdmGroupedList(contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
+                XdmListRow(
+                    headline = summary.selectedQuality,
+                    supporting = "Quality",
+                )
                 XdmListSeparator(modifier = Modifier.padding(start = 0.dp))
                 XdmListRow(
-                    headline = "About ${size.formatBytes()}",
-                    supporting = "Estimated download size",
+                    headline = summary.trackSummary,
+                    supporting = "Audio and subtitles",
                 )
+                summary.estimatedSizeBytes?.let { size ->
+                    XdmListSeparator(modifier = Modifier.padding(start = 0.dp))
+                    XdmListRow(
+                        headline = "About ${size.formatBytes()}",
+                        supporting = "Estimated size",
+                    )
+                }
             }
+        } else {
+            summary.estimatedSizeBytes?.let { size -> XdmMetadataText("About ${size.formatBytes()}") }
         }
 
         summary.notice?.let { notice ->
@@ -170,7 +179,7 @@ internal fun MediaCaptureCard(
                 MediaConsumerState.Added -> StatusPill("Added", tone = XdmStatusTone.Success)
                 MediaConsumerState.Protected -> Button(onClick = { detailsVisible = true }) { Text("View details") }
             }
-            TextButton(onClick = { detailsVisible = true }) { Text("More") }
+            TextButton(onClick = { detailsVisible = true }) { Text("Options") }
         }
     }
 
@@ -325,7 +334,7 @@ private fun captureStateLabel(state: MediaConsumerState): String = when (state) 
     MediaConsumerState.Ready -> "Ready"
     MediaConsumerState.NeedsResolution -> "Check needed"
     MediaConsumerState.NeedsRefresh -> "Refresh needed"
-    MediaConsumerState.Failed -> "Could not read"
+    MediaConsumerState.Failed -> "Needs attention"
     MediaConsumerState.Added -> "Added"
     MediaConsumerState.Protected -> "Protected"
 }

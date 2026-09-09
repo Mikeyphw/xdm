@@ -31,25 +31,23 @@ class UixR3DownloadsAddContractTest {
     }
 
     @Test
-    fun addIsReviewFirstAndNeverAutoQueuesMediaInspection() {
+    fun addIsSingleActionAndNeverAutoQueuesMediaInspection() {
         val root = androidRoot()
         val add = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt").readText()
         listOf(
-            "reviewConfirmed",
-            "Review download",
-            "Add to queue",
-            "Step 1 of 2",
-            "Step 2 of 2",
+            "DownloadReviewPlanner.plan(",
             "Advanced options",
-            "ReviewSummaryRow(\"File\"",
-            "ReviewSummaryRow(\"Destination\"",
-            "ReviewSummaryRow(\"Method\"",
-            "Inspect media",
-            "never creates a transfer automatically",
+            "destinationUiLabel(destinationUri)",
+            "preferMediaInspection",
+            "Media options",
+            "else -> \"Download\"",
             "onCancel",
-        ).forEach { assertTrue("Add R3 missing $it", add.contains(it)) }
-        assertTrue("Inspect media must use its dedicated callback", add.contains("onClick = { onInspectMedia(url, name) }"))
-        assertFalse("Inspect media callback must not directly enqueue", add.contains("onClick = { onInspectMedia(url, name); onAdd"))
+        ).forEach { assertTrue("Add R3 current UX missing $it", add.contains(it)) }
+        listOf("reviewConfirmed", "Review download", "Add to queue", "Step 1 of 2", "Step 2 of 2").forEach { stale ->
+            assertFalse("Add must not retain obsolete two-step token $stale", add.contains(stale))
+        }
+        assertTrue("Inspect media must use its dedicated callback", add.contains("onInspectMedia(url, name)"))
+        assertFalse("Inspect media callback must not directly enqueue", add.contains("onInspectMedia(url, name); onAdd"))
     }
 
     private fun androidRoot(): File {

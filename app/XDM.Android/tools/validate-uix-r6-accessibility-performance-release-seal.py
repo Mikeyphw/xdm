@@ -75,7 +75,6 @@ require(
 require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt",
     "XdmScreenTags.AddDownload",
-    "XdmScreenTags.AddReview",
     "rememberSaveable",
     "imePadding()",
 )
@@ -140,7 +139,7 @@ require(
     "addDownloadIsReachableAndBackReturnsToDownloads",
     "settingsIsAVisiblePrimaryDestination",
     "XdmScreenTags.AddDownload",
-    "Review download",
+    "Download",
 )
 require(
     "app/src/test/kotlin/com/mikeyphw/xdm/android/UixR6ReleaseSealContractTest.kt",

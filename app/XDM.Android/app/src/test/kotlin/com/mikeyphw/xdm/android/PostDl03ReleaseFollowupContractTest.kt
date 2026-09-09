@@ -7,7 +7,7 @@ import org.junit.Test
 
 class PostDl03ReleaseFollowupContractTest {
     private fun androidRoot(): File {
-        var current = File(System.getProperty("user.dir")).absoluteFile
+        var current = File(System.getProperty("user.dir") ?: ".").absoluteFile
         repeat(8) {
             if (File(current, "PROJECT_MANIFEST.json").isFile && File(current, "app/build.gradle.kts").isFile) return current
             current = current.parentFile ?: return@repeat
@@ -23,10 +23,13 @@ class PostDl03ReleaseFollowupContractTest {
         assertTrue(gate.contains("tools/validate-dl02-dl03-progress-seal.py"))
         assertTrue(gate.contains("tools/validate-post-dl03-release-followup.py"))
         assertTrue(gate.contains("tools/validate-execution-media-semantics-repair.py"))
+        assertTrue(gate.contains("tools/validate-add-media-ux-remodel.py"))
         assertTrue(gate.contains("matrix_owned_validators=("))
         assertTrue(gate.contains("bash tools/run-bug-hunt-phase11-validation-matrix.sh --static-only --ci"))
-        assertTrue(gate.contains("execution/media semantics repair seal is the current final source of truth"))
+        assertTrue(gate.contains("Add/Media UX remodel seal is the current final UI/release source of truth"))
+        assertTrue(gate.contains("execution/media semantics repair remains its functional baseline"))
         assertTrue(gate.contains("post-DL03 roadmap seal remains its historical baseline"))
+        assertFalse(gate.contains("execution/media semantics repair seal is the current final source of truth"))
         assertFalse(gate.contains("post-DL03 roadmap seal is the current final source of truth"))
         assertFalse(gate.contains("Overlay 13 is the current final source of truth"))
     }
@@ -34,7 +37,7 @@ class PostDl03ReleaseFollowupContractTest {
     @Test
     fun repositoryCiMatchesCurrentAndroidToolchainAndCanonicalGate() {
         val root = androidRoot()
-        val repoRoot = root.parentFile.parentFile
+        val repoRoot = requireNotNull(root.parentFile?.parentFile) { "Could not locate repository root" }
         val workflow = File(repoRoot, ".github/workflows/android.yml").readText()
         assertTrue(Regex("java-version: '21'").findAll(workflow).count() >= 2)
         assertFalse(workflow.contains("java-version: '17'"))

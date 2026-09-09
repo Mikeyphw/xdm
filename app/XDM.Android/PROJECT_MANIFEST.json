@@ -4108,5 +4108,31 @@
     "post_dl03_contract_reconciled": true,
     "nullable_user_dir_warning_fixed": true,
     "overlay_revision": "v3"
+  },
+  "current_release_authority": "add_media_ux_remodel",
+  "add_media_ux_remodel": {
+    "base_commit": "c214240e",
+    "functional_baseline": "execution_media_semantics_repair",
+    "inspiration": "1DM+ compact add-download interaction model",
+    "single_explicit_add_action": true,
+    "second_confirmation_removed": true,
+    "external_handoff_auto_queue": false,
+    "advanced_diagnostics_collapsed": true,
+    "browser_session_diagnostics_collapsed": true,
+    "human_destination_labels": true,
+    "direct_media_primary_action": "Download",
+    "direct_media_fake_quality_choices": false,
+    "adaptive_quality_tracks_only_when_present": true,
+    "media_tools_collapsed_by_default": true,
+    "post_dl03_nullable_user_dir_warning_fixed": true,
+    "post_dl03_nullable_parent_warning_fixed": true,
+    "room_schema_current": 21,
+    "room_schema_changed": false,
+    "canonical_validator": "tools/validate-add-media-ux-remodel.py",
+    "contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/AddMediaUxRemodelContractTest.kt",
+    "report": "XDM_ADD_MEDIA_UX_REMODEL_REPORT.md",
+    "validation_deferred": false,
+    "next_overlay": null,
+    "supersedes_two_step_add_review": true
   }
 }

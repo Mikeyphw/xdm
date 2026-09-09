@@ -161,7 +161,7 @@ Schedule editing exposes network type, charging, minimum battery, storage reserv
 
 Downloads is a transfer-first adaptive workspace. It exposes Active, Queued, Finished, and All filters, a compact live metric strip, contextual queue notices, an explicit search action, and an **Organize downloads** workspace for sort, archive, selection, tags, saved searches, history, and activity links. Long press enters selection mode; permanent row-level Select chips are prohibited. Compact and medium layouts open details in an adaptive sheet, while expanded layouts keep a persistent list-detail pane. Technical engine and request information stays folded and redacted.
 
-Add uses a two-step review contract: **Review download**, then **Add to queue**. File, Destination, and Method are visible in the review summary. Advanced settings remain folded. External handoffs identify their source and never auto-queue. **Inspect media** may open the resolver but must never create a transfer automatically.
+Add uses a single explicit-action contract: the compact sheet shows file/link, human-readable destination, and a **Download** action. There is no second confirmation step. Advanced settings and browser/session diagnostics remain folded. External handoffs identify their source and never auto-queue. **Inspect media** may open the resolver for pages/playlists but must never create a transfer automatically.
 
 
 ## UIX R4 Media and Library Rules

@@ -40,15 +40,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.model.BackendRecommendation
-import com.mikeyphw.xdm.android.model.BrowserSessionHealthReport
-import com.mikeyphw.xdm.android.model.EngineEscalationPlan
 import com.mikeyphw.xdm.android.model.BackendType
+import com.mikeyphw.xdm.android.model.BrowserSessionHealthReport
 import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.DownloadIntakeKind
 import com.mikeyphw.xdm.android.model.DownloadIntakeOrigin
 import com.mikeyphw.xdm.android.model.DownloadReviewPlanner
 import com.mikeyphw.xdm.android.model.DuplicateUrlAction
+import com.mikeyphw.xdm.android.model.EngineEscalationPlan
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
 import com.mikeyphw.xdm.android.storage.DestinationUris
@@ -56,7 +56,7 @@ import com.mikeyphw.xdm.android.storage.PersonalDirectStorage
 import com.mikeyphw.xdm.android.util.formatBytes
 
 @Composable
-@UiSurface(UiAudience.User, "Review and add a download")
+@UiSurface(UiAudience.User, "Add a download with a single explicit action")
 fun AddDownloadScreen(
     destinationUri: String,
     conflictPolicy: FilenameConflictPolicy,
@@ -93,7 +93,6 @@ fun AddDownloadScreen(
     var expectedChecksum by rememberSaveable { mutableStateOf("") }
     var checksumAlgorithm by rememberSaveable { mutableStateOf(ChecksumAlgorithm.Sha256) }
     var advancedExpanded by rememberSaveable { mutableStateOf(false) }
-    var reviewConfirmed by rememberSaveable { mutableStateOf(false) }
     var clipboardMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(externalDraftId) {
@@ -106,7 +105,6 @@ fun AddDownloadScreen(
             checksumAlgorithm = ChecksumAlgorithm.Sha256
             advancedExpanded = false
             clipboardMessage = null
-            reviewConfirmed = false
         }
     }
 
@@ -124,14 +122,10 @@ fun AddDownloadScreen(
     }
 
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        uri?.let {
-            reviewConfirmed = false
-            onSafDestinationSelected(it.toString())
-        }
+        uri?.let { onSafDestinationSelected(it.toString()) }
     }
     val directStoragePermission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()) {
-            reviewConfirmed = false
             onDestinationChanged(DestinationUris.DIRECT_DOWNLOADS)
             clipboardMessage = "Direct file access granted for Download/XDM"
         } else {
@@ -148,71 +142,52 @@ fun AddDownloadScreen(
         destinationUri = destinationUri,
         origin = if (externalDraftId != null && url == initialUrl) externalOrigin ?: DownloadIntakeOrigin.ExternalView else DownloadIntakeOrigin.ManualEntry,
     )
-    val canReview = review.canStartDirectly && recommendation?.compatible != false
+    val canDownload = review.canStartDirectly && recommendation?.compatible != false
     val canInspectMedia = review.canInspectAsMedia && (externalDraftId == null || externalCanInspectMedia || url != initialUrl)
+    val preferMediaInspection = canInspectMedia && review.mediaInspectionRecommended && review.kind in setOf(
+        DownloadIntakeKind.AdaptiveMedia,
+        DownloadIntakeKind.PageOrUnknown,
+    )
     val methodLabel = recommendation?.let { recommendationSummary(it, allowFallback) } ?: "Automatic • resumable"
     val fileLabel = name.ifBlank { inferredFileName(url) }
     val visibleSessionHealth = externalSessionHealth.takeIf { externalDraftId != null && url == initialUrl }
     val visibleEngineEscalation = externalEngineEscalationPlan.takeIf { externalDraftId != null && url == initialUrl }
+    val sourceSummary = listOfNotNull(
+        externalMimeType?.takeIf(String::isNotBlank),
+        externalContentLength?.takeIf { it > 0L }?.formatBytes(),
+        externalPageUrl?.takeIf(String::isNotBlank)?.let(::hostFromUrl),
+        url.takeIf(String::isNotBlank)?.let(::hostFromUrl),
+    ).distinct().joinToString(" • ")
 
     Column(Modifier.fillMaxSize().imePadding().xdmScreen(XdmScreenTags.AddDownload, "New download")) {
         LazyColumn(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (externalDraftId != null) {
-                item {
-                    XdmNoticeRow(
-                        text = "Link received from ${externalSourceLabel ?: "another app"}. Review it before anything enters the queue.",
-                        tone = XdmStatusTone.Info,
-                        icon = Icons.Rounded.Link,
-                    )
-                }
+            if (url.isNotBlank() || externalDraftId != null) {
                 item {
                     XdmGroupedList {
                         XdmListRow(
-                            headline = externalPageTitle?.takeIf(String::isNotBlank) ?: externalKind?.externalLabel() ?: "External download",
-                            supporting = listOfNotNull(
-                                externalKind?.externalLabel(),
-                                externalMimeType?.takeIf(String::isNotBlank),
-                                externalContentLength?.takeIf { it > 0L }?.formatBytes(),
-                                externalPageUrl?.takeIf { it.isNotBlank() && it != initialUrl }?.let { "Page context available" },
-                            ).joinToString(" • ").ifBlank { externalIntakeGuidance(externalKind) },
-                            leading = { Icon(Icons.Rounded.Link, contentDescription = null) },
+                            headline = fileLabel,
+                            supporting = sourceSummary.ifBlank {
+                                externalPageTitle?.takeIf(String::isNotBlank)
+                                    ?: externalKind?.externalLabel()
+                                    ?: "Download"
+                            },
+                            leading = { XdmFileTypeIcon(fileLabel, mimeType = externalMimeType) },
+                            trailing = if (visibleSessionHealth != null) ({
+                                XdmStatusBadge("Browser context", tone = XdmStatusTone.Success)
+                            }) else null,
                         )
                     }
                 }
             }
 
-
-            visibleSessionHealth?.let { health ->
-                item {
-                    BrowserSessionHealthCard(health)
-                }
-            }
-
-            visibleEngineEscalation?.let { plan ->
-                item {
-                    EngineEscalationCard(plan)
-                }
-            }
-
-            item {
-                Text(
-                    "Paste a link. XDM chooses safe defaults and keeps session details backstage.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
             item {
                 OutlinedTextField(
                     value = url,
-                    onValueChange = {
-                        url = it
-                        reviewConfirmed = false
-                    },
+                    onValueChange = { url = it },
                     label = { Text("Download link") },
                     leadingIcon = { Icon(Icons.Rounded.Link, contentDescription = null) },
                     trailingIcon = {
@@ -220,14 +195,13 @@ fun AddDownloadScreen(
                             val candidate = firstDownloadUrlFromClipboard(context)
                             if (candidate != null) {
                                 url = candidate
-                                reviewConfirmed = false
-                                clipboardMessage = "Link pasted from clipboard"
+                                clipboardMessage = "Link pasted"
                             } else {
                                 clipboardMessage = "No supported HTTP, HTTPS, or FTP URL found"
                             }
                         }) {
                             Icon(Icons.Rounded.ContentPaste, contentDescription = null)
-                            Text("Paste detected URL")
+                            Text("Paste")
                         }
                     },
                     supportingText = { clipboardMessage?.let { Text(it) } },
@@ -239,12 +213,9 @@ fun AddDownloadScreen(
             item {
                 OutlinedTextField(
                     value = name,
-                    onValueChange = {
-                        name = it
-                        reviewConfirmed = false
-                    },
+                    onValueChange = { name = it },
                     label = { Text("File name") },
-                    supportingText = { Text("Optional. XDM infers a name from the link when left empty.") },
+                    supportingText = { Text("Optional • XDM uses the server or link name when left empty.") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
@@ -254,7 +225,7 @@ fun AddDownloadScreen(
                 XdmGroupedList {
                     XdmListRow(
                         headline = "Save to",
-                        supporting = destinationUri.ifBlank { "Choose where completed files should be saved." },
+                        supporting = destinationUiLabel(destinationUri),
                         leading = { Icon(Icons.Rounded.Folder, contentDescription = null) },
                         trailing = { TextButton(onClick = { folderPicker.launch(null) }) { Text("Choose") } },
                     )
@@ -265,7 +236,6 @@ fun AddDownloadScreen(
                                 FilterChip(
                                     selected = destinationUri == choice.uri,
                                     onClick = {
-                                        reviewConfirmed = false
                                         if (choice.uri == DestinationUris.DIRECT_DOWNLOADS && !PersonalDirectStorage.isGranted(context)) {
                                             directStoragePermission.launch(PersonalDirectStorage.permissionIntent(context))
                                         } else {
@@ -281,10 +251,7 @@ fun AddDownloadScreen(
                                 .forEach { destination ->
                                     FilterChip(
                                         selected = destinationUri == destination.uri,
-                                        onClick = {
-                                            reviewConfirmed = false
-                                            onDestinationChanged(destination.uri)
-                                        },
+                                        onClick = { onDestinationChanged(destination.uri) },
                                         label = { Text("${destination.displayName} · ${destination.type.uiLabel()}") },
                                     )
                                 }
@@ -297,7 +264,10 @@ fun AddDownloadScreen(
                 XdmGroupedList {
                     XdmListRow(
                         headline = "Advanced options",
-                        supporting = "Engine override, filename conflict, fallback, and checksum.",
+                        supporting = listOfNotNull(
+                            methodLabel,
+                            visibleSessionHealth?.let { "Browser context attached" },
+                        ).joinToString(" • "),
                         onClick = { advancedExpanded = !advancedExpanded },
                         trailing = { Text(if (advancedExpanded) "Hide" else "Show", color = MaterialTheme.colorScheme.primary) },
                     )
@@ -308,10 +278,7 @@ fun AddDownloadScreen(
                                 BackendType.entries.forEach { value ->
                                     FilterChip(
                                         selected = backend == value,
-                                        onClick = {
-                                            backend = value
-                                            reviewConfirmed = false
-                                        },
+                                        onClick = { backend = value },
                                         label = { Text(if (value == BackendType.Automatic) "Automatic (recommended)" else value.uiLabel()) },
                                     )
                                 }
@@ -322,10 +289,7 @@ fun AddDownloadScreen(
                                 FilenameConflictPolicy.entries.forEach { value ->
                                     FilterChip(
                                         selected = conflictPolicy == value,
-                                        onClick = {
-                                            reviewConfirmed = false
-                                            onConflictPolicyChanged(value)
-                                        },
+                                        onClick = { onConflictPolicyChanged(value) },
                                         label = { Text(value.uiLabel()) },
                                     )
                                 }
@@ -338,10 +302,7 @@ fun AddDownloadScreen(
                                 }
                                 Switch(
                                     checked = allowFallback,
-                                    onCheckedChange = {
-                                        allowFallback = it
-                                        reviewConfirmed = false
-                                    },
+                                    onCheckedChange = { allowFallback = it },
                                     modifier = Modifier.xdmStateDescription(
                                         if (allowFallback) "Compatible fallback enabled" else "Compatible fallback disabled",
                                     ),
@@ -350,12 +311,9 @@ fun AddDownloadScreen(
 
                             OutlinedTextField(
                                 value = expectedChecksum,
-                                onValueChange = {
-                                    expectedChecksum = it
-                                    reviewConfirmed = false
-                                },
+                                onValueChange = { expectedChecksum = it },
                                 label = { Text("Checksum (optional)") },
-                                supportingText = { Text("Used to verify the completed file before final success.") },
+                                supportingText = { Text("Verify the completed file before final success.") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                             )
@@ -363,60 +321,42 @@ fun AddDownloadScreen(
                                 ChecksumAlgorithm.entries.forEach { value ->
                                     FilterChip(
                                         selected = checksumAlgorithm == value,
-                                        onClick = {
-                                            checksumAlgorithm = value
-                                            reviewConfirmed = false
-                                        },
+                                        onClick = { checksumAlgorithm = value },
                                         label = { Text(value.uiLabel()) },
                                     )
                                 }
                             }
-                            XdmMetadataText("Private browser context, backend probes, and fallback internals are intentionally hidden from the normal Add flow.")
+
+                            if (canInspectMedia && !preferMediaInspection) {
+                                TextButton(onClick = { onInspectMedia(url, name) }) {
+                                    Icon(Icons.Rounded.Movie, contentDescription = null)
+                                    Text("Media options")
+                                }
+                            }
+                            XdmMetadataText("Browser/session details and backend reasoning stay hidden unless you open Advanced.")
                         }
                     }
                 }
             }
 
-            item {
-                XdmGroupedList(
-                    modifier = Modifier.xdmScreen(XdmScreenTags.AddReview, "Download review summary"),
-                ) {
-                    XdmListRow(
-                        headline = if (reviewConfirmed) "Review confirmed" else review.title,
-                        supporting = if (reviewConfirmed) "Nothing has been queued yet. Add it only when the summary below is correct." else review.guidance,
-                        leading = {
-                            Icon(
-                                if (reviewConfirmed) Icons.Rounded.CheckCircle else Icons.Rounded.Link,
-                                contentDescription = null,
-                                tint = if (reviewConfirmed) XdmTheme.extendedColors.success else MaterialTheme.colorScheme.primary,
-                            )
-                        },
-                    )
-                    XdmListSeparator()
-                    ReviewSummaryRow("File", fileLabel)
-                    XdmListSeparator()
-                    ReviewSummaryRow("Destination", destinationUri.ifBlank { "Not selected" })
-                    XdmListSeparator()
-                    ReviewSummaryRow("Method", methodLabel)
+            visibleSessionHealth?.let { health ->
+                item {
+                    AnimatedVisibility(advancedExpanded) { BrowserSessionHealthCard(health) }
+                }
+            }
+            visibleEngineEscalation?.let { plan ->
+                item {
+                    AnimatedVisibility(advancedExpanded) { EngineEscalationCard(plan) }
                 }
             }
 
-            if (canInspectMedia) {
+            if (preferMediaInspection) {
                 item {
-                    Button(
-                        onClick = { onInspectMedia(url, name) },
-                        enabled = review.normalizedUrl != null,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Icon(Icons.Rounded.Movie, contentDescription = null)
-                        Text(review.mediaInspectionActionLabel)
-                    }
-                }
-                item {
-                    XdmMetadataText(review.mediaInspectionGuidance)
-                }
-                item {
-                    XdmMetadataText("Inspect media uses a review-first path and never creates a transfer automatically.")
+                    XdmNoticeRow(
+                        text = review.mediaInspectionGuidance,
+                        tone = XdmStatusTone.Info,
+                        icon = Icons.Rounded.Movie,
+                    )
                 }
             }
         }
@@ -425,16 +365,14 @@ fun AddDownloadScreen(
             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     when {
-                        !canReview -> review.guidance
-                        !reviewConfirmed -> "Step 1 of 2 • Review the download summary."
-                        else -> "Step 2 of 2 • Add the reviewed request to the queue."
+                        admissionState.message?.isNotBlank() == true -> admissionState.message.orEmpty()
+                        preferMediaInspection -> "Choose media options before downloading this page or playlist."
+                        !canDownload -> review.guidance
+                        else -> "$methodLabel • ${destinationUiLabel(destinationUri)}"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                admissionState.message?.takeIf { it.isNotBlank() }?.let { message ->
-                    Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
                 if (admissionState.awaitingDuplicateDecision) {
                     Text(
                         "Existing download: ${admissionState.duplicateFileName ?: "matching URL"}",
@@ -463,8 +401,8 @@ fun AddDownloadScreen(
                         ) { Text("Cancel") }
                         Button(
                             onClick = {
-                                if (!reviewConfirmed) {
-                                    reviewConfirmed = true
+                                if (preferMediaInspection) {
+                                    onInspectMedia(url, name)
                                 } else {
                                     onAdd(
                                         url,
@@ -478,14 +416,14 @@ fun AddDownloadScreen(
                                     )
                                 }
                             },
-                            enabled = canReview && !admissionState.inFlight,
+                            enabled = (if (preferMediaInspection) review.normalizedUrl != null else canDownload) && !admissionState.inFlight,
                             modifier = Modifier.weight(1.6f),
                         ) {
                             Text(
                                 when {
                                     admissionState.inFlight -> "Adding…"
-                                    reviewConfirmed -> "Add to queue"
-                                    else -> "Review download"
+                                    preferMediaInspection -> "Inspect media"
+                                    else -> "Download"
                                 },
                             )
                         }
@@ -495,6 +433,7 @@ fun AddDownloadScreen(
         }
     }
 }
+
 
 @Composable
 private fun BrowserSessionHealthCard(health: BrowserSessionHealthReport) {

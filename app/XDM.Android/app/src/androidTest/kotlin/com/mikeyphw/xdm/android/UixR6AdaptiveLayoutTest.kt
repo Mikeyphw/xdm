@@ -55,7 +55,7 @@ class UixR6AdaptiveLayoutTest {
                     windowClass = XdmWindowClass.Compact,
                     onDismissRequest = {},
                     title = "New download",
-                ) { Text("Review download") }
+                ) { Text("Download") }
             }
         }
         composeRule.onNodeWithTag(XdmTestTags.AdaptiveSheet).assertExists()

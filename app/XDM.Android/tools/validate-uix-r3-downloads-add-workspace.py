@@ -67,24 +67,28 @@ organize = require(
 )
 add = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt",
-    "reviewConfirmed", "Review download", "Add to queue", "Step 1 of 2", "Step 2 of 2",
-    "Advanced options", 'ReviewSummaryRow("File"', 'ReviewSummaryRow("Destination"', 'ReviewSummaryRow("Method"',
-    "Inspect media", "never creates a transfer automatically", "onCancel",
+    "DownloadReviewPlanner.plan(", "Advanced options", "destinationUiLabel(destinationUri)",
+    'else -> "Download"', 'Text("Paste")', "preferMediaInspection", "Media options", "onCancel",
 )
-if "onAdd(" in add.split("onInspectMedia(url, name)", 1)[0].split("if (canInspectMedia)", 1)[-1]:
-    ERRORS.append("Inspect-media branch must not queue a transfer")
+for stale in ("reviewConfirmed", "Review download", "Add to queue", "Step 1 of 2", "Step 2 of 2"):
+    if stale in add:
+        ERRORS.append(f"Add Download must not retain obsolete two-step confirmation token: {stale}")
+if "if (preferMediaInspection)" not in add or "onInspectMedia(url, name)" not in add or "onAdd(" not in add:
+    ERRORS.append("Add Download must keep explicit media inspection separate from the one-tap direct Download action")
+if add.find("BrowserSessionHealthCard(health)") < add.find("AnimatedVisibility(advancedExpanded)"):
+    ERRORS.append("Browser session diagnostics must remain behind Advanced options")
 for forbidden in ("Text(requestHeaders", "Text(cookies", "backend probe output", "worker bridge"):
     if forbidden.lower() in add.lower():
         ERRORS.append(f"Normal Add flow exposes engineering detail: {forbidden}")
 
 require("app/src/test/kotlin/com/mikeyphw/xdm/android/UixR3DownloadsWorkspaceTest.kt", "filtersKeepEveryTransferInTheExpectedWorkspace", "metricsAggregateOnlyMovingTransferSpeed")
-require("app/src/test/kotlin/com/mikeyphw/xdm/android/UixR3DownloadsAddContractTest.kt", "downloadsIsAnAdaptiveTransferFirstWorkspace", "addIsReviewFirstAndNeverAutoQueuesMediaInspection")
+require("app/src/test/kotlin/com/mikeyphw/xdm/android/UixR3DownloadsAddContractTest.kt", "downloadsIsAnAdaptiveTransferFirstWorkspace", "addIsSingleActionAndNeverAutoQueuesMediaInspection")
 
 manifest = json.loads(read("PROJECT_MANIFEST.json") or "{}")
 r3 = manifest.get("uix_r3_downloads_add_workspace", {})
 expected = {
     "adaptive_list_detail": True, "visible_filters": ["Active", "Queued", "Finished", "All"],
-    "long_press_selection": True, "organize_workspace": True, "two_step_add_review": True,
+    "long_press_selection": True, "organize_workspace": True,
     "media_inspection_auto_queue": False, "room_schema_unchanged": 14,
     "version_name_unchanged": "0.20.0-rc08", "version_code_unchanged": 21,
 }
@@ -95,6 +99,12 @@ for key, value in expected.items():
             ERRORS.append(f"PROJECT_MANIFEST uix_r3_downloads_add_workspace.{key} must retain {value!r}")
     elif r3.get(key) != value:
         ERRORS.append(f"PROJECT_MANIFEST uix_r3_downloads_add_workspace.{key} must equal {value!r}")
+
+ux = manifest.get("add_media_ux_remodel", {})
+if r3.get("two_step_add_review") is not True:
+    ERRORS.append("Historical UIX R3 manifest must retain that R3 originally shipped two-step review")
+if ux and ux.get("supersedes_two_step_add_review") is not True:
+    ERRORS.append("Current Add/Media UX remodel must explicitly supersede the historical two-step Add review")
 
 require("docs/architecture/UIX-R3-DOWNLOADS-ADD-WORKSPACE.md", "transfer-first", "adaptive list-detail", "two-step review", "No Room schema bump")
 validator = "tools/validate-uix-r3-downloads-add-workspace.py"
