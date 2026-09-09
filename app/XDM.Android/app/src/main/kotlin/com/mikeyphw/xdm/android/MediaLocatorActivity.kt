@@ -139,7 +139,17 @@ class MediaLocatorActivity : ComponentActivity() {
     private lateinit var adapter: ArrayAdapter<String>
     private var webViewDisposed = false
 
-    @SuppressLint("SetJavaScriptEnabled")
+    // AndroidX WebKit 1.17.0 exposes COOKIE_INTERCEPT as a public feature constant, but
+    // accidentally omits it from WebViewFeature.WebViewSupportFeature's @StringDef. Keep the
+    // runtime feature gate and suppress only that upstream WrongConstant false positive.
+    @SuppressLint("WrongConstant")
+    private fun enableCookieAwareRequestInterception(webView: WebView) {
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.COOKIE_INTERCEPT)) {
+            WebSettingsCompat.setCookiesIncludedInShouldInterceptRequest(webView.settings, true)
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled", "MissingOnRenderProcessGone")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -194,9 +204,7 @@ class MediaLocatorActivity : ComponentActivity() {
             mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
         }
         locatorUserAgent = webView.settings.userAgentString
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.COOKIE_INTERCEPT)) {
-            WebSettingsCompat.setCookiesIncludedInShouldInterceptRequest(webView.settings, true)
-        }
+        enableCookieAwareRequestInterception(webView)
         webView.addJavascriptInterface(MediaObservationBridge(), JS_BRIDGE)
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             WebViewCompat.addDocumentStartJavaScript(webView, LOCATOR_RUNTIME, setOf("*"))
@@ -473,7 +481,7 @@ class MediaLocatorActivity : ComponentActivity() {
     }
 
     private fun persistLocatedCandidate(candidate: LocatedMedia) {
-        status.text = "Saving captured media…"
+        status.text = getString(R.string.media_locator_saving)
         lifecycleScope.launch(Dispatchers.IO) {
             val repository = (application as XdmApplication).container.repository
             val now = System.currentTimeMillis()

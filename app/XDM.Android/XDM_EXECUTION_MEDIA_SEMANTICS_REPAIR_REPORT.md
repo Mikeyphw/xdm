@@ -40,6 +40,9 @@ A source-level re-audit of the applied release found and closed three carry-forw
 - the legacy `isMediaRequest` compatibility bit no longer influences default `DownloadRequest.transferShape`;
 - redownload/link-refresh keeps a specialized shape when a replacement signed URL is opaque, while explicit `.mp4`/`.m3u8`/`.mpd` evidence may still change it;
 - Live Locator keeps exact source/page/variant URLs together with headers in its bounded process-local context cache, restores saved media kind for opaque manifests, and serializes no executable request URL into Android saved-state.
+- the legacy `isMediaRequest` source-compatibility bit is now inert at the native HTTP wire layer as well: it cannot fabricate `Sec-Fetch-*` or alter default `Accept`; explicit transfer shape/MIME owns those defaults and captured browser headers remain authoritative.
+- Live Locator's AndroidX WebKit 1.17.0 `COOKIE_INTERCEPT` runtime guard keeps cookie-correct `shouldInterceptRequest` capture while narrowly suppressing the upstream `WrongConstant` false positive; lint remains enabled and required.
+- native recovery resume no longer drops an immediate retry while the coroutine that published `RecoveryRequired` is still unwinding; it joins that terminal cleanup window first, then final-save recovery retries publication from staging without touching the network.
 
 Room remains schema 21.
 

@@ -6,6 +6,7 @@ import com.mikeyphw.xdm.android.model.BackendReconciliationClassification
 import com.mikeyphw.xdm.android.model.BackendRuntimeIdentity
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.MediaTransferShape
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.DownloadRequestApprovalScope
 import com.mikeyphw.xdm.android.storage.DestinationConflict
@@ -45,6 +46,7 @@ class NativeHttpDownloadBackendTest {
     private lateinit var server: HttpServer
     private lateinit var payload: ByteArray
     private val ranges = Collections.synchronizedList(mutableListOf<String?>())
+    private val observedWireHeaders = Collections.synchronizedList(mutableListOf<Map<String, String?>>())
     private lateinit var scope: CoroutineScope
     private lateinit var executor: ExecutorService
     private val retryAttempts = AtomicInteger()
@@ -59,6 +61,14 @@ class NativeHttpDownloadBackendTest {
         server.createContext("/changed") { exchange -> serveRangeFile(exchange, "\"new\"") }
         server.createContext("/invalid-range") { exchange -> serveInvalidRange(exchange) }
         server.createContext("/retry") { exchange -> serveRetryingRange(exchange) }
+        server.createContext("/wire-defaults") { exchange ->
+            observedWireHeaders += mapOf(
+                "Accept" to exchange.requestHeaders.getFirst("Accept"),
+                "Sec-Fetch-Mode" to exchange.requestHeaders.getFirst("Sec-Fetch-Mode"),
+                "Sec-Fetch-Site" to exchange.requestHeaders.getFirst("Sec-Fetch-Site"),
+            )
+            serveRangeFile(exchange, "\"stable\"")
+        }
         server.start()
         scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
@@ -89,6 +99,33 @@ class NativeHttpDownloadBackendTest {
         assertEquals(DownloadState.Failed, terminal.state)
         assertTrue(terminal.errorMessage.orEmpty().contains("private", ignoreCase = true))
         assertTrue(!Files.exists(destination))
+    }
+
+
+    @Test
+    fun legacyMediaBooleanCannotChangeNativeWireDefaults() = runBlocking {
+        val directory = Files.createTempDirectory("xdm-native-legacy-media-wire")
+        val destination = directory.resolve("payload.bin")
+        val backend = NativeHttpDownloadBackend(
+            OkHttpClient(), scope,
+            NativeTransferConfig(defaultConnections = 1, segmentThresholdBytes = Long.MAX_VALUE, maximumRetries = 0),
+        )
+        val task = startOwned(
+            backend,
+            request("legacy-media-wire", "/wire-defaults", destination, maxConnections = 1).copy(
+                isMediaRequest = true,
+                transferShape = MediaTransferShape.DirectFile,
+            ),
+        )
+        val terminal = withTimeout(15_000) { backend.observe(task.taskId).first { it.state in terminalStates } }
+
+        assertEquals(terminal.errorMessage, DownloadState.Completed, terminal.state)
+        assertTrue(observedWireHeaders.isNotEmpty())
+        observedWireHeaders.forEach { headers ->
+            assertEquals("*/*", headers["Accept"])
+            assertTrue(headers["Sec-Fetch-Mode"] == null)
+            assertTrue(headers["Sec-Fetch-Site"] == null)
+        }
     }
 
     @Test

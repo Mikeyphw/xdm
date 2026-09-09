@@ -12,6 +12,7 @@ import com.mikeyphw.xdm.android.model.BackendRuntimeIdentity
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import com.mikeyphw.xdm.android.model.MediaTransferShape
 import com.mikeyphw.xdm.android.transfer.BackendShutdownResult
 import com.mikeyphw.xdm.android.transfer.BackendPreparation
 import com.mikeyphw.xdm.android.transfer.BackendReconciliationResult
@@ -206,7 +207,19 @@ class NativeHttpDownloadBackend(
     override suspend fun resume(taskId: String) {
         val control = requireTask(taskId)
         require(control.state.value.state != DownloadState.Cancelled) { "Cancelled tasks cannot be resumed" }
-        if (control.job?.isActive == true) return
+        val activeJob = control.job
+        if (activeJob?.isActive == true) {
+            // Recovery state is published from inside the transfer coroutine before its
+            // finally block has finished. A resume arriving in that short window must
+            // wait for the old job to unwind instead of being dropped as an "already
+            // active" no-op. This is especially important for final-save recovery,
+            // where no network work should be restarted.
+            if (control.state.value.state == DownloadState.RecoveryRequired) {
+                activeJob.join()
+            } else {
+                return
+            }
+        }
         require(control.attachedOwnershipGeneration == control.request.attemptGeneration) {
             "Native task cannot resume without its durable ownership generation"
         }
@@ -864,14 +877,16 @@ class NativeHttpDownloadBackend(
         if ("accept" !in supplied) header("Accept", defaultAcceptHeader(request))
         if ("accept-language" !in supplied) header("Accept-Language", "en-US,en;q=0.9")
         if ("accept-encoding" !in supplied) header("Accept-Encoding", "identity")
-        if (request.isMediaRequest && "sec-fetch-mode" !in supplied) header("Sec-Fetch-Mode", "cors")
-        if (request.isMediaRequest && "sec-fetch-site" !in supplied) header("Sec-Fetch-Site", "cross-site")
+        // Sec-Fetch-* describes a real browser fetch context. Preserve captured values from
+        // request.headers, but never fabricate them from the legacy isMediaRequest bit.
     }
 
     private fun defaultAcceptHeader(request: DownloadRequest): String = when {
         request.mimeType?.startsWith("video/", ignoreCase = true) == true -> "video/*,*/*;q=0.8"
         request.mimeType?.startsWith("audio/", ignoreCase = true) == true -> "audio/*,*/*;q=0.8"
-        request.isMediaRequest -> "video/*,audio/*,application/vnd.apple.mpegurl,application/dash+xml,*/*;q=0.8"
+        request.transferShape == MediaTransferShape.AdaptivePlaylist ->
+            "application/vnd.apple.mpegurl,application/dash+xml,*/*;q=0.8"
+        request.transferShape == MediaTransferShape.DirectMedia -> "video/*,audio/*,*/*;q=0.8"
         else -> "*/*"
     }
 

@@ -4155,10 +4155,26 @@
       "legacy_media_boolean_default_shape_promotion",
       "opaque_specialized_shape_loss_on_clone_or_refresh",
       "live_locator_exact_url_bundle_serialization_and_opaque_kind_restore",
-      "direct_media_options_fake_primary_quality"
+      "direct_media_options_fake_primary_quality",
+      "legacy_media_boolean_native_wire_defaults",
+      "androidx_webkit_cookie_intercept_wrongconstant_lint_false_positive",
+      "native_recovery_resume_unwind_race",
+      "androidx_webkit_kotlin_render_process_gone_lint_false_positive",
+      "media_locator_saving_status_hardcoded_settext"
     ],
     "canonical_validator": "tools/validate-promise-delivery-audit.py",
     "report": "XDM_PROMISE_DELIVERY_AUDIT_2026_09_08.md",
-    "validation_deferred": false
+    "validation_deferred": false,
+    "legacy_media_boolean_changes_native_wire_defaults": false,
+    "native_default_accept_uses_explicit_transfer_shape": true,
+    "captured_sec_fetch_headers_preserved_without_synthesis": true,
+    "androidx_webkit_cookie_intercept_lint_false_positive_scoped": true,
+    "cookie_intercept_runtime_feature_guard_preserved": true,
+    "lint_debug_required": true,
+    "recovery_resume_waits_for_unwinding_job": true,
+    "final_save_retry_without_network_redownload": true,
+    "androidx_webkit_renderer_lint_false_positive_scoped": true,
+    "renderer_process_gone_handler_present": true,
+    "media_locator_saving_status_resource_backed": true
   }
 }

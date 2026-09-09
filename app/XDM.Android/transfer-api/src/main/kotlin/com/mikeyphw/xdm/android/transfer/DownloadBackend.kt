@@ -110,9 +110,10 @@ data class DownloadRequest(
     val allowBackendFallback: Boolean = true,
     val isExpiringUrl: Boolean = false,
     /**
-     * Legacy source-compatibility bit. It is retained only for source compatibility and is fully
-     * ignored by transfer-shape inference and backend compatibility. A progressive MP4 is media
-     * content but is still an ordinary direct HTTP transfer.
+     * Legacy source-compatibility bit. It is retained only for source compatibility and must not
+     * influence transfer-shape inference, backend compatibility/selection, or synthesized HTTP
+     * request headers. A progressive MP4 is media content but is still an ordinary direct HTTP
+     * transfer.
      */
     val isMediaRequest: Boolean = false,
     /** Exact execution semantics. Browser/session context must never promote DirectFile/DirectMedia
