@@ -21,7 +21,7 @@ class DownloaderExperiencePhase8EContractTest {
             "Queues" to "Queues",
             "Schedule" to "Schedules",
             "Recovery" to "Recovery",
-            "Diagnostics" to "Developer tools",
+            "Diagnostics" to "Developer Center",
         )
         expectedPanels.forEach { (panel, label) ->
             assertTrue(panels.contains("$panel(\"$label\")"))

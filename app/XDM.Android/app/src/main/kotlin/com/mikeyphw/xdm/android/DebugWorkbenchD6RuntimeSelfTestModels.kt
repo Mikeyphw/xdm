@@ -102,7 +102,7 @@ object DebugWorkbenchRuntimeSelfTestSuite {
                 id = "recorder-health",
                 title = "Recorder health",
                 statusLabel = if (shellReport.failingChecks == 0) RuntimeSelfTestLabels.Pass else RuntimeSelfTestLabels.Fail,
-                detail = if (shellReport.failingChecks == 0) "Debug recorder, redaction, and support handoff checks are available." else "The Debug Workbench shell reports ${shellReport.failingChecks} failing check(s).",
+                detail = if (shellReport.failingChecks == 0) "Debug recorder, redaction, and support handoff checks are available." else "The diagnostic health surface reports ${shellReport.failingChecks} failing check(s).",
                 fixHint = "Copy debug status and inspect the failing shell check.",
             ),
             RuntimeSelfTestCheck(
@@ -117,7 +117,7 @@ object DebugWorkbenchRuntimeSelfTestSuite {
                 title = "State context",
                 statusLabel = if (downloads.isNotEmpty() || hasExternalDraft || hasMediaCaptures) RuntimeSelfTestLabels.Pass else RuntimeSelfTestLabels.Note,
                 detail = if (downloads.isNotEmpty() || hasExternalDraft || hasMediaCaptures) "There is app state for debugger panels to explain." else "No current transfer, draft, or media capture is active.",
-                fixHint = "Reproduce the issue, then return to Debug Workbench.",
+                fixHint = "Reproduce the issue, then return to Diagnostics & support.",
             ),
         )
         val failing = checks.count { it.statusLabel == RuntimeSelfTestLabels.Fail }

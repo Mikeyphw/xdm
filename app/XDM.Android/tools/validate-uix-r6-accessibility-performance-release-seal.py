@@ -106,8 +106,8 @@ require(
 require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt",
     "XdmScreenTags.Settings",
-    "Developer options enabled",
-    "Developer options disabled",
+    "Developer mode enabled",
+    "Developer mode disabled",
 )
 require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperSettingsScreen.kt",

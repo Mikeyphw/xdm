@@ -70,7 +70,7 @@ data class DebugTestContext(
 ) {
     fun ensureNotStopped() {
         if (isStopRequested()) {
-            throw kotlinx.coroutines.CancellationException("Debug Center run stopped")
+            throw kotlinx.coroutines.CancellationException("Diagnostics run stopped")
         }
     }
 }
@@ -169,7 +169,7 @@ private object AppRuntimeDebugTest : StateDebugTest(
     id = "app-runtime",
     group = DebugTestGroup.BasicHealth,
     name = "App runtime",
-    description = "Checks the Debug Workbench shell, recorder readiness, and runtime status signals.",
+    description = "Checks the diagnostic health surface, recorder readiness, and runtime status signals.",
 ) {
     override suspend fun run(context: DebugTestContext): DebugTestResult {
         val startedAt = context.clock()
@@ -187,7 +187,7 @@ private object AppRuntimeDebugTest : StateDebugTest(
                 "retention" to report.retentionLabel,
             ),
             errorCode = if (status == DebugTestStatus.Failed) "debug-workbench-shell-failed" else null,
-            suggestedAction = if (status == DebugTestStatus.Failed) "Open Advanced Debug Workbench and copy the debug status." else "No action needed.",
+            suggestedAction = if (status == DebugTestStatus.Failed) "Open Advanced Diagnostics & support and copy the debug status." else "No action needed.",
         )
     }
 }
@@ -196,7 +196,7 @@ private object PrivateStorageDebugTest : StateDebugTest(
     id = "private-storage",
     group = DebugTestGroup.Storage,
     name = "Private debug storage",
-    description = "Creates and reads a private Debug Center probe file without touching user downloads.",
+    description = "Creates and reads a private Diagnostics probe file without touching user downloads.",
 ) {
     override suspend fun run(context: DebugTestContext): DebugTestResult {
         val startedAt = context.clock()
@@ -212,7 +212,7 @@ private object PrivateStorageDebugTest : StateDebugTest(
                 status = DebugTestStatus.Passed,
                 context = context,
                 startedAt = startedAt,
-                summary = "Private Debug Center storage is writable and readable.",
+                summary = "Private Diagnostics storage is writable and readable.",
                 details = mapOf("path" to context.privateRoot.absolutePath),
                 suggestedAction = "No action needed.",
             )
@@ -221,7 +221,7 @@ private object PrivateStorageDebugTest : StateDebugTest(
                 status = DebugTestStatus.Failed,
                 context = context,
                 startedAt = startedAt,
-                summary = "Private Debug Center storage could not be written or read.",
+                summary = "Private Diagnostics storage could not be written or read.",
                 details = mapOf("path" to context.privateRoot.absolutePath, "error" to (outcome.exceptionOrNull()?.javaClass?.simpleName ?: "unknown")),
                 errorCode = "debug-storage-unavailable",
                 suggestedAction = "Check app storage state, then rerun Basic Health.",
@@ -234,7 +234,7 @@ private object SupportExportDebugTest : StateDebugTest(
     id = "support-export",
     group = DebugTestGroup.BasicHealth,
     name = "Support export",
-    description = "Verifies that a redacted support report is available to include beside Debug Center results.",
+    description = "Verifies that a redacted support report is available to include beside Diagnostics results.",
 ) {
     override suspend fun run(context: DebugTestContext): DebugTestResult {
         val startedAt = context.clock()
@@ -277,12 +277,12 @@ private object DownloadRepositoryRoundTripDebugTest : StateDebugTest(
             priority = 0,
             createdAtEpochMs = startedAt,
             updatedAtEpochMs = startedAt,
-            userLabel = "Debug Center temporary probe",
+            userLabel = "Diagnostics temporary probe",
             conflictPolicy = FilenameConflictPolicy.Rename,
             mimeType = "application/octet-stream",
             requestedBackend = BackendType.Native,
             backendSelectionReason = BackendSelectionReason.UserForced,
-            backendSelectionExplanation = "Debug Center repository round-trip probe.",
+            backendSelectionExplanation = "Diagnostics repository round-trip probe.",
         )
         val outcome = runCatching {
             check(repository.save(download)) { "Download save returned false" }
@@ -465,7 +465,7 @@ private object MediaDownloadTransactionDebugTest : StateDebugTest(
             id = captureId,
             sourceUrl = source,
             pageUrl = "https://example.invalid/debug-center-page",
-            title = "Debug Center media probe",
+            title = "Diagnostics media probe",
             status = MediaCaptureStatus.MetadataReady,
             kind = MediaSourceKind.DirectFile,
             mimeType = "video/mp4",
@@ -489,7 +489,7 @@ private object MediaDownloadTransactionDebugTest : StateDebugTest(
             kind = MediaVariantKind.Primary,
             mimeType = "video/mp4",
             position = 0,
-            displayLabel = "Debug Center primary variant",
+            displayLabel = "Diagnostics primary variant",
         )
         val download = Download(
             id = downloadId,
@@ -505,11 +505,11 @@ private object MediaDownloadTransactionDebugTest : StateDebugTest(
             priority = 0,
             createdAtEpochMs = startedAt,
             updatedAtEpochMs = startedAt,
-            userLabel = "Debug Center media handoff probe",
+            userLabel = "Diagnostics media handoff probe",
             mimeType = "video/mp4",
             requestedBackend = BackendType.Native,
             backendSelectionReason = BackendSelectionReason.UserForced,
-            backendSelectionExplanation = "Debug Center media-to-download transaction probe.",
+            backendSelectionExplanation = "Diagnostics media-to-download transaction probe.",
         )
         val outcome = runCatching {
             repository.saveMediaCaptureWithVariants(capture, listOf(variant), startedAt)
@@ -790,7 +790,7 @@ private fun syntheticEncryptedCapturePayload(
         .put("createdAt", nowEpochMs)
         .put("expiresAt", nowEpochMs + 60_000L)
         .put("pageUrl", "https://example.invalid/debug-center-page")
-        .put("title", "Debug Center synthetic capture")
+        .put("title", "Diagnostics synthetic capture")
         .put("totalCandidateCount", 1)
         .put("truncated", false)
         .put(
@@ -799,7 +799,7 @@ private fun syntheticEncryptedCapturePayload(
                 JSONObject()
                     .put("url", "https://example.invalid/debug-center-media.mp4")
                     .put("pageUrl", "https://example.invalid/debug-center-page")
-                    .put("title", "Debug Center media")
+                    .put("title", "Diagnostics media")
                     .put("contentType", "video/mp4")
                     .put("stableMediaId", "debug-center-media")
                     .put("sessionRevision", 1L)

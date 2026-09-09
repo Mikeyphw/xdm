@@ -15,6 +15,7 @@ import com.mikeyphw.xdm.android.model.QueueLaunchDecision
 import com.mikeyphw.xdm.android.model.QueueLaunchDisposition
 import com.mikeyphw.xdm.android.model.QueueStateMachinePlanner
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
+import com.mikeyphw.xdm.android.storage.DestinationWriter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -36,7 +37,8 @@ class QueueIntelligenceCoordinator(
     context: Context,
     private val repository: DownloadRepository,
     private val executionStarter: TransferExecutionStarter,
-    private val conditionsReader: AndroidQueueConditionsReader = AndroidQueueConditionsReader(context),
+    destinationWriter: DestinationWriter,
+    private val conditionsReader: AndroidQueueConditionsReader = AndroidQueueConditionsReader(context, destinationWriter),
     private val retryLedger: QueueRetryLedger = QueueRetryLedger(context),
     private val decisionLedger: QueueDecisionLedger = QueueDecisionLedger(context),
     private val admissionGate: DurableQueueAdmissionGate = DurableQueueAdmissionGate(context),

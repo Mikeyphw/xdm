@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
@@ -28,14 +27,14 @@ import com.mikeyphw.xdm.android.model.ClipboardInboxItem
 import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
 
 enum class DeveloperToolSection(val label: String) {
-    RuntimeEngines("Runtime and engines"),
-    TermuxAria2("Termux and aria2"),
-    MediaPipeline("Media pipeline"),
-    DispatchWorkers("Dispatch and workers"),
-    PrivacyCleanup("Privacy and cleanup"),
+    RuntimeEngines("Runtime & engines"),
+    TermuxAria2("Termux"),
+    MediaPipeline("Media"),
+    DispatchWorkers("Queues & workers"),
+    PrivacyCleanup("Privacy"),
     ValidationRelease("Validation and release"),
-    IntakeClipboard("Intake and clipboard"),
-    LogsExports("Redacted logs and exports"),
+    IntakeClipboard("Intake"),
+    LogsExports("Logs"),
 }
 
 @Composable
@@ -81,17 +80,14 @@ fun DeveloperToolsWorkspace(
             compact = true,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         ) {
-            XdmCardTitle("Developer workspace")
+            XdmCardTitle("Developer Center")
             XdmSupportingText(
                 "Technical controls are intentionally separated from normal download, media, library, activity, and settings flows. Copied output is redacted.",
                 maxLines = 4,
             )
         }
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(DeveloperToolSection.entries) { item ->
+        XdmActionFlowRow(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            DeveloperToolSection.entries.forEach { item ->
                 FilterChip(
                     selected = section == item,
                     onClick = { sectionName = item.name },
@@ -126,7 +122,13 @@ fun DeveloperToolsWorkspace(
             )
             DeveloperToolSection.MediaPipeline,
             DeveloperToolSection.DispatchWorkers,
-            DeveloperToolSection.PrivacyCleanup,
+            DeveloperToolSection.PrivacyCleanup -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                item { MediaDeveloperToolsSection(state, section) }
+            }
             DeveloperToolSection.ValidationRelease -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),

@@ -175,6 +175,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             context = this,
             repository = repository,
             executionStarter = executionStarter,
+            destinationWriter = destinationWriter,
             phase4Coordinator = queueSchedulingRecoveryCoordinator,
         )
         // Queue admission remains durably closed until migration and ownership recovery both finish.

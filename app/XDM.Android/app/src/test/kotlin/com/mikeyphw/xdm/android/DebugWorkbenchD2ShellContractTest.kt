@@ -14,9 +14,9 @@ class DebugWorkbenchD2ShellContractTest {
         val settings = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt").readText()
         val appRoute = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
 
-        assertTrue(panels.contains("""DebugWorkbench("Debug Workbench")"""))
+        assertTrue(panels.contains("""DebugWorkbench("Diagnostics & support")"""))
         assertTrue(settings.contains("SettingsPanel.DebugWorkbench -> DebugWorkbenchSettingsScreen(state, viewModel)"))
-        assertTrue(settings.contains("""title = "Debug Workbench""""))
+        assertTrue(settings.contains("""title = "Diagnostics & support""""))
         assertTrue(settings.contains("viewModel.selectSettingsPanel(SettingsPanel.DebugWorkbench)"))
         assertFalse("D2 must not add a top-level route", appRoute.contains("DebugWorkbench"))
     }

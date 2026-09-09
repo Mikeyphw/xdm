@@ -58,7 +58,7 @@ fun SettingsScreen(
             .fillMaxSize()
             .xdmScreen(XdmScreenTags.Settings, "Settings")
             .xdmStateDescription(
-                if (state.developerOptionsEnabled) "Developer options enabled" else "Developer options disabled",
+                if (state.developerOptionsEnabled) "Developer mode enabled" else "Developer mode disabled",
             ),
     ) {
         when (state.settingsPanel) {
@@ -235,32 +235,16 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
         }
         item {
             SettingsActionRow(
-                title = "Copy support report",
-                summary = "Copies a redacted report without cookies, authorization values, tokens, signatures, or credential-bearing URLs.",
-                actionLabel = "Copy",
-                onClick = { copyTextToClipboard(context, "XDM support report", state.supportReportText) },
-            )
-        }
-        item {
-            SettingsActionRow(
-                title = "Export support report",
-                summary = "Shares the same redacted diagnostics through Android's share sheet; no automatic upload is performed.",
-                actionLabel = "Export",
-                onClick = { shareTextReport(context, "XDM support report", state.supportReportText) },
-            )
-        }
-        item {
-            SettingsActionRow(
-                title = "Debug Workbench",
-                summary = "Open recorder status, redaction checks, session controls, and support-bundle readiness.",
+                title = "Diagnostics & support",
+                summary = "Run safe health checks, review recorder status, and copy or export redacted support information.",
                 actionLabel = "Open",
                 onClick = { viewModel.selectSettingsPanel(SettingsPanel.DebugWorkbench) },
             )
         }
         item {
             SettingsSwitchRow(
-                title = "Developer options",
-                summary = "Reveal runtime probes, engine matrices, planner diagnostics, redacted logs, and release checks.",
+                title = "Developer mode",
+                summary = "Unlock deep runtime, engine, media, worker, privacy, log, and release inspection in one Developer Center.",
                 checked = state.developerOptionsEnabled,
                 onCheckedChange = viewModel::setDeveloperOptionsEnabled,
             )
@@ -268,8 +252,8 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
         if (state.developerOptionsEnabled) {
             item {
                 SettingsActionRow(
-                    title = "Developer tools",
-                    summary = "Open the gated technical workspace. These dashboards never appear in normal Media, Library, Activity, or Settings pages.",
+                    title = "Developer Center",
+                    summary = "Inspect redacted technical state and advanced controls without mixing them into normal app screens.",
                     actionLabel = "Open",
                     onClick = viewModel::openDeveloperTools,
                 )

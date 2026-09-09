@@ -17,25 +17,25 @@ import androidx.compose.ui.unit.dp
 internal fun DeveloperSettingsScreen(state: MainUiState, viewModel: MainViewModel) {
     if (!DeveloperWorkspacePolicy.shouldCompose(state.developerOptionsEnabled, state.settingsPanel)) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().xdmScreen(XdmScreenTags.DeveloperTools, "Developer tools"),
+            modifier = Modifier.fillMaxSize().xdmScreen(XdmScreenTags.DeveloperTools, "Developer Center"),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item { SettingsPageHeader("Developer tools", { viewModel.selectSettingsPanel(SettingsPanel.Overview) }) }
+            item { SettingsPageHeader("Developer Center", { viewModel.selectSettingsPanel(SettingsPanel.Overview) }) }
             item {
                 XdmListCard {
-                    XdmCardTitle("Developer options are off")
-                    XdmSupportingText("Enable them to reveal redacted runtime probes, engine controls, media planners, intake diagnostics, and release-readiness checks.", maxLines = 4)
-                    Button(onClick = { viewModel.setDeveloperOptionsEnabled(true) }) { Text("Enable developer options") }
+                    XdmCardTitle("Developer mode is off")
+                    XdmSupportingText("Enable Developer mode to reveal redacted runtime probes, engine controls, media planners, worker diagnostics, logs, and release-readiness checks.", maxLines = 4)
+                    Button(onClick = { viewModel.setDeveloperOptionsEnabled(true) }) { Text("Enable Developer mode") }
                 }
             }
         }
         return
     }
 
-    Column(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.DeveloperTools, "Developer tools")) {
+    Column(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.DeveloperTools, "Developer Center")) {
         SettingsPageHeader(
-            title = "Developer tools",
+            title = "Developer Center",
             onBack = { viewModel.selectSettingsPanel(SettingsPanel.Overview) },
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )

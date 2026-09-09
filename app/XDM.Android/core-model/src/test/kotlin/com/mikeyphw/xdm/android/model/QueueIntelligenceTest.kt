@@ -139,4 +139,30 @@ class QueueIntelligenceTest {
         createdAtEpochMs = created,
         updatedAtEpochMs = created,
     )
+    @Test
+    fun unknownDestinationCapacityDoesNotPretendDestinationIsUnavailable() {
+        val decision = QueueIntelligencePlanner.decision(
+            policy = QueueExecutionPolicy(stopOnStoragePressure = true),
+            conditions = ready.copy(availableStorageBytes = null, destinationSpaceState = DestinationSpaceState.Unknown),
+            queueEnabled = true,
+            scheduleActive = true,
+            activeCount = 0,
+        )
+        assertTrue(decision.canStart)
+    }
+
+    @Test
+    fun unavailableDestinationStillHoldsQueue() {
+        val decision = QueueIntelligencePlanner.decision(
+            policy = QueueExecutionPolicy(stopOnStoragePressure = true),
+            conditions = ready.copy(availableStorageBytes = null, destinationSpaceState = DestinationSpaceState.Unavailable),
+            queueEnabled = true,
+            scheduleActive = true,
+            activeCount = 0,
+        )
+        assertFalse(decision.canStart)
+        assertEquals(QueueHoldReason.StoragePressure, decision.reason)
+        assertEquals("Destination unavailable", decision.title)
+    }
+
 }

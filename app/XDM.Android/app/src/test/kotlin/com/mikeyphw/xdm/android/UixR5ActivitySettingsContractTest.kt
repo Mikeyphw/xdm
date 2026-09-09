@@ -53,14 +53,14 @@ class UixR5ActivitySettingsContractTest {
         val settings = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt").readText()
 
         listOf(
-            "Runtime and engines",
-            "Termux and aria2",
-            "Media pipeline",
-            "Dispatch and workers",
-            "Privacy and cleanup",
+            "Runtime & engines",
+            "Termux",
+            "Media",
+            "Queues & workers",
+            "Privacy",
             "Validation and release",
-            "Intake and clipboard",
-            "Redacted logs and exports",
+            "Intake",
+            "Logs",
             "ReleaseReadinessSection",
         ).forEach { assertTrue("Developer workspace missing $it", workspace.contains(it)) }
         assertTrue("Clipboard URLs must be redacted before rendering", workspace.contains("PrivacyDiagnosticsRedactor.redactUrl(item.url)"))

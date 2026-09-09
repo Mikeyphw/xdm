@@ -81,10 +81,10 @@ class DebugTestRunner(
             mutableRun.value = run
 
             val result = try {
-                if (stopRequested) throw CancellationException("Debug Center run stopped")
+                if (stopRequested) throw CancellationException("Diagnostics run stopped")
                 val completed = test.run(context)
                 if (stopRequested) {
-                    throw CancellationException("Debug Center run stopped")
+                    throw CancellationException("Diagnostics run stopped")
                 }
                 completed
             } catch (cancelled: CancellationException) {

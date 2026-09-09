@@ -36,6 +36,8 @@ data class QueueExecutionPolicy(
     }
 }
 
+enum class DestinationSpaceState { Known, Unknown, Unavailable }
+
 data class QueueRuntimeConditions(
     val connected: Boolean,
     val validated: Boolean = connected,
@@ -44,6 +46,7 @@ data class QueueRuntimeConditions(
     val charging: Boolean,
     val batteryPercent: Int?,
     val availableStorageBytes: Long?,
+    val destinationSpaceState: DestinationSpaceState = if (availableStorageBytes != null) DestinationSpaceState.Known else DestinationSpaceState.Unknown,
     val nowEpochMs: Long,
 )
 
@@ -222,8 +225,21 @@ object QueueIntelligencePlanner {
         }
         val availableStorage = conditions.availableStorageBytes
         if (policy.stopOnStoragePressure) {
-            if (availableStorage == null) return hold(QueueHoldReason.StoragePressure, "Destination storage unavailable", "XDM cannot verify free space for this destination, so storage-pressure policy is held closed.")
-            if (availableStorage < policy.minimumFreeStorageBytes) return hold(QueueHoldReason.StoragePressure, "Storage pressure", "Free destination storage is below the queue reserve. Free space or choose another destination.")
+            when (conditions.destinationSpaceState) {
+                DestinationSpaceState.Unavailable -> return hold(
+                    QueueHoldReason.StoragePressure,
+                    "Destination unavailable",
+                    "XDM cannot access this destination right now. Check its permission or reconnect the storage, then retry.",
+                )
+                DestinationSpaceState.Known -> if (availableStorage != null && availableStorage < policy.minimumFreeStorageBytes) {
+                    return hold(
+                        QueueHoldReason.StoragePressure,
+                        "Storage pressure",
+                        "Free destination storage is below the queue reserve. Free space or choose another destination.",
+                    )
+                }
+                DestinationSpaceState.Unknown -> Unit
+            }
         }
         if (failureMessage != null) {
             val assessment = assessFailure(failureMessage)

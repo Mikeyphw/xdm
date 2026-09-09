@@ -165,7 +165,7 @@ for forbidden in (':browser-extension:packageFirefoxExtensionDark', ':browser-ex
     require(forbidden not in devtool, f"ordinary Devtool validation unexpectedly requires release-package task {forbidden}")
     require(forbidden not in common_validation_script, f"common validation unexpectedly requires release-package task {forbidden}")
 
-require(manifest.get("current_overlay") == "xdm_android_privacy_quality_final_gate_overlay_v2.zip", "PROJECT_MANIFEST current_overlay is not Overlay 13")
+require(manifest.get("current_overlay") in {"xdm_android_privacy_quality_final_gate_overlay_v2.zip", "xdm_android_ux01_ux09_product_foundation_v3.zip"}, "PROJECT_MANIFEST current_overlay is not Overlay 13 or an accepted later overlay")
 database = manifest.get("database", {})
 require(database.get("version") == 21, "PROJECT_MANIFEST authoritative database version is not 21")
 require("18_to_19" in database.get("migrations", []) and "19_to_20" in database.get("migrations", []) and "20_to_21" in database.get("migrations", []), "PROJECT_MANIFEST migration chain does not reach schema 21")

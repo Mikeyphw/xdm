@@ -15,6 +15,7 @@ dependencies {
     implementation(project(":transfer-api"))
     implementation(project(":transfer-native"))
     implementation(project(":transfer-aria2"))
+    implementation(project(":storage"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.kotlinx.coroutines.android)

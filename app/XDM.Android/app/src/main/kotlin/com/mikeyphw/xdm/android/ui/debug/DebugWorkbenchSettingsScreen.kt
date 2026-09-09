@@ -47,9 +47,9 @@ private fun DebugWorkbenchLegacyCards(state: MainUiState) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         XdmSectionHeader("Live status")
         XdmListCard {
-            XdmCardTitle("Debug Workbench")
+            XdmCardTitle("Diagnostic health")
             XdmSupportingText(
-                "Read-only support diagnostics. Nothing here starts transfers, opens viewers, probes files, or uploads reports.",
+                "Read-only support diagnostics. Nothing here starts transfers, opens viewers, modifies downloads, or uploads reports.",
                 maxLines = 4,
             )
             XdmMetricStrip(

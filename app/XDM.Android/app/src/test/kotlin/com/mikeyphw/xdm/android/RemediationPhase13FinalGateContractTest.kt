@@ -143,7 +143,7 @@ class RemediationPhase13FinalGateContractTest {
         assertFalse(commonValidation.contains(":browser-extension:packageFirefoxExtensionDark"))
         assertFalse(commonValidation.contains(":browser-extension:packageFirefoxExtensionAmoled"))
         assertFalse(commonValidation.contains(":browser-extension:verifyFirefoxExtensionReleaseArtifacts"))
-        assertTrue(projectManifest.contains("\"current_overlay\": \"xdm_android_privacy_quality_final_gate_overlay_v2.zip\""))
+        assertTrue(projectManifest.contains("\"current_overlay\": \"xdm_android_ux01_ux09_product_foundation_v3.zip\""))
         assertTrue(projectManifest.contains("\"static_validation_evidence_required\": true"))
         assertTrue(projectManifest.contains("\"full_validation_evidence_required\": true"))
         assertTrue(projectManifest.contains("\"validation_evidence_defaults_false\": true"))

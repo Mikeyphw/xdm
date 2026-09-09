@@ -32,6 +32,7 @@ import com.mikeyphw.xdm.android.XdmApplication
 import com.mikeyphw.xdm.android.MainViewModel
 import com.mikeyphw.xdm.android.SettingsPageHeader
 import com.mikeyphw.xdm.android.SettingsPanel
+import com.mikeyphw.xdm.android.XdmActionFlowRow
 import com.mikeyphw.xdm.android.XdmCardTitle
 import com.mikeyphw.xdm.android.XdmListCard
 import com.mikeyphw.xdm.android.XdmMetadataText
@@ -42,6 +43,7 @@ import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
 import com.mikeyphw.xdm.android.model.RollingJsonlDebugEventRecorder
 import com.mikeyphw.xdm.android.copyTextToClipboard
 import com.mikeyphw.xdm.android.shareDebugCenterZipExport
+import com.mikeyphw.xdm.android.shareTextReport
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.io.File
@@ -50,6 +52,7 @@ private enum class DebugCenterPage(val label: String) {
     Tests("Tests"),
     Results("Results"),
     History("History"),
+    Health("Health"),
 }
 
 @Composable
@@ -116,16 +119,26 @@ fun DebugCenterScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            SettingsPageHeader("Debug Center", { viewModel.selectSettingsPanel(SettingsPanel.Overview) })
+            SettingsPageHeader("Diagnostics & support", { viewModel.selectSettingsPanel(SettingsPanel.Overview) })
         }
         item {
             XdmSupportingText(
-                "Choose one part, a subsystem, selected subsystems, or the full suite. Runs are executed by DebugTestRunner, recorded in private history, and export as a redacted ZIP bundle.",
+                "Run safe local checks, inspect health, and create redacted support information. Nothing is uploaded automatically.",
                 maxLines = 5,
             )
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmListCard(compact = true) {
+                XdmCardTitle("Support report")
+                XdmSupportingText("Credential-like headers, cookies, tokens, signatures, and sensitive URL values are redacted locally.", maxLines = 3)
+                XdmActionFlowRow {
+                    OutlinedButton(onClick = { copyTextToClipboard(context, "XDM support report", state.supportReportText) }) { Text("Copy report") }
+                    OutlinedButton(onClick = { shareTextReport(context, "XDM support report", state.supportReportText) }) { Text("Export report") }
+                }
+            }
+        }
+        item {
+            XdmActionFlowRow {
                 DebugCenterPage.entries.forEach { candidate ->
                     FilterChip(
                         selected = page == candidate,
@@ -163,7 +176,7 @@ fun DebugCenterScreen(
                     }
                 },
                 onRunAgain = { startRun(displayedRun.selectedTestIds.toSet()) },
-                onCopy = { copyTextToClipboard(context, "XDM Debug Center report", displayedRun.toReportText()) },
+                onCopy = { copyTextToClipboard(context, "XDM diagnostics report", displayedRun.toReportText()) },
                 onExport = { exportZip(displayedRun) },
             )
             DebugCenterPage.History -> debugHistoryPage(
@@ -172,19 +185,11 @@ fun DebugCenterScreen(
                     latestRun = run
                     page = DebugCenterPage.Results
                 },
-                onCopy = { run -> copyTextToClipboard(context, "XDM Debug Center report", run.toReportText()) },
+                onCopy = { run -> copyTextToClipboard(context, "XDM diagnostics report", run.toReportText()) },
                 onExport = { run -> exportZip(run) },
             )
+            DebugCenterPage.Health -> item { legacyContent() }
         }
-
-        item {
-            XdmSectionHeader("Advanced Debug Workbench")
-            XdmSupportingText(
-                "Legacy read-only cards remain here for D3-D6 contract coverage and deeper manual inspection. These panels do not start transfers or upload reports.",
-                maxLines = 4,
-            )
-        }
-        item { legacyContent() }
     }
 }
 
@@ -197,7 +202,7 @@ private fun shareDebugCenterZip(
     shareDebugCenterZipExport(
         context = context,
         zip = zip,
-        subject = "XDM Debug Center export",
+        subject = "XDM diagnostics export",
         reportText = run.toReportText(),
     )
 }
@@ -213,7 +218,7 @@ private fun LazyListScope.debugTestsPage(
         XdmListCard {
             XdmCardTitle("Quick tests")
             XdmSupportingText("Use a preset for one area, or select exact checks below.", maxLines = 3)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmActionFlowRow {
                 listOf(DebugTestGroup.BasicHealth, DebugTestGroup.Downloads, DebugTestGroup.Browser, DebugTestGroup.Media).forEach { group ->
                     OutlinedButton(
                         onClick = { onSelectionChange(DebugTestRegistry.groupIds(group)) },
@@ -221,9 +226,9 @@ private fun LazyListScope.debugTestsPage(
                     ) { Text(group.label) }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onRunSelected, enabled = selectedIds.isNotEmpty() && !running) { Text("Run Selected") }
-                OutlinedButton(onClick = onRunAll, enabled = !running) { Text("Run All") }
+            XdmActionFlowRow {
+                Button(onClick = onRunSelected, enabled = selectedIds.isNotEmpty() && !running) { Text("Run selected") }
+                OutlinedButton(onClick = onRunAll, enabled = !running) { Text("Run all") }
             }
         }
     }

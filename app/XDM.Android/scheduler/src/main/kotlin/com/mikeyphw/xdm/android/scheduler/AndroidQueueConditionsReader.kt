@@ -1,19 +1,43 @@
 package com.mikeyphw.xdm.android.scheduler
 
-import androidx.core.net.toUri
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
-import android.os.Environment
-import android.os.StatFs
+import com.mikeyphw.xdm.android.model.DestinationHealthStatus
+import com.mikeyphw.xdm.android.model.DestinationSpaceState
 import com.mikeyphw.xdm.android.model.QueueRuntimeConditions
-import java.io.File
+import com.mikeyphw.xdm.android.storage.DestinationHealth
+import com.mikeyphw.xdm.android.storage.DestinationWriter
 
-class AndroidQueueConditionsReader(private val context: Context) {
-    fun snapshot(nowEpochMs: Long = System.currentTimeMillis(), destinationUri: String? = null): QueueRuntimeConditions {
+internal data class DestinationSpaceSnapshot(
+    val state: DestinationSpaceState,
+    val availableBytes: Long?,
+)
+
+internal object DestinationSpacePolicy {
+    fun fromHealth(health: DestinationHealth): DestinationSpaceSnapshot = when (health.status) {
+        DestinationHealthStatus.Healthy, DestinationHealthStatus.LowSpace -> {
+            if (health.availableBytes != null) {
+                DestinationSpaceSnapshot(DestinationSpaceState.Known, health.availableBytes)
+            } else {
+                DestinationSpaceSnapshot(DestinationSpaceState.Unknown, null)
+            }
+        }
+        DestinationHealthStatus.Unknown -> DestinationSpaceSnapshot(DestinationSpaceState.Unknown, null)
+        DestinationHealthStatus.PermissionMissing,
+        DestinationHealthStatus.Unavailable,
+        DestinationHealthStatus.ReadOnly -> DestinationSpaceSnapshot(DestinationSpaceState.Unavailable, null)
+    }
+}
+
+class AndroidQueueConditionsReader(
+    private val context: Context,
+    private val destinationWriter: DestinationWriter,
+) {
+    suspend fun snapshot(nowEpochMs: Long = System.currentTimeMillis(), destinationUri: String? = null): QueueRuntimeConditions {
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         val activeNetwork = connectivity.activeNetwork
         val capabilities = activeNetwork?.let(connectivity::getNetworkCapabilities)
@@ -24,6 +48,7 @@ class AndroidQueueConditionsReader(private val context: Context) {
         val batteryPercent = if (level >= 0 && scale > 0) ((level * 100f) / scale).toInt().coerceIn(0, 100) else null
         val connected = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         val validated = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+        val destinationSpace = destinationSpace(destinationUri)
         return QueueRuntimeConditions(
             connected = connected,
             validated = validated,
@@ -31,24 +56,19 @@ class AndroidQueueConditionsReader(private val context: Context) {
             wifi = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true,
             charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL,
             batteryPercent = batteryPercent,
-            availableStorageBytes = availableBytesForDestination(destinationUri),
+            availableStorageBytes = destinationSpace.availableBytes,
+            destinationSpaceState = destinationSpace.state,
             nowEpochMs = nowEpochMs,
         )
     }
 
-    private fun availableBytesForDestination(destinationUri: String?): Long? {
+    private suspend fun destinationSpace(destinationUri: String?): DestinationSpaceSnapshot {
         val raw = destinationUri?.trim().orEmpty()
-        val target = when {
-            raw.isBlank() -> return null
-            raw.startsWith("public-downloads://", ignoreCase = true) -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            raw.startsWith("app-private://", ignoreCase = true) -> context.filesDir
-            raw.startsWith("file://", ignoreCase = true) -> runCatching { File(requireNotNull(raw.toUri().path)) }.getOrNull()
-            raw.startsWith('/') -> File(raw)
-            // A generic content:// provider does not expose reliable filesystem free-space through
-            // the URI contract. Returning unknown makes storage-pressure policy fail closed.
-            else -> null
-        } ?: return null
-        val probe = if (target.isDirectory) target else target.parentFile ?: target
-        return runCatching { StatFs(probe.absolutePath).availableBytes }.getOrNull()
+        if (raw.isBlank()) return DestinationSpaceSnapshot(DestinationSpaceState.Unknown, null)
+        return runCatching { destinationWriter.health(raw) }
+            .fold(
+                onSuccess = DestinationSpacePolicy::fromHealth,
+                onFailure = { DestinationSpaceSnapshot(DestinationSpaceState.Unavailable, null) },
+            )
     }
 }

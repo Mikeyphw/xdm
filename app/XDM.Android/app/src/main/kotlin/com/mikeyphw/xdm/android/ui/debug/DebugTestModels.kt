@@ -3,7 +3,7 @@ package com.mikeyphw.xdm.android.ui.debug
 import com.mikeyphw.xdm.android.model.DebugRedactor
 import java.util.Locale
 
-/** Design-plan Debug Center status model. Pending and Running are first-class live states. */
+/** Design-plan Diagnostics status model. Pending and Running are first-class live states. */
 enum class DebugTestStatus(val label: String) {
     Pending("Pending"),
     Running("Running"),
@@ -140,7 +140,7 @@ data class DebugTestRun(
     )
 
     fun toReportText(): String = buildString {
-        appendLine("XDM Debug Center Report")
+        appendLine("XDM diagnostics Report")
         appendLine("Run ID: $id")
         appendLine("Started: $startedAtEpochMs")
         appendLine("Finished: ${finishedAtEpochMs ?: "running"}")
@@ -164,7 +164,7 @@ data class DebugTestRun(
             appendLine(result.toReportText())
         }
         appendLine()
-        appendLine("Privacy: Debug Center exports are redacted locally. No automatic upload is performed.")
+        appendLine("Privacy: Diagnostics exports are redacted locally. No automatic upload is performed.")
     }.trimEnd()
 
     fun toJson(): String = buildString {

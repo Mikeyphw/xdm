@@ -10,8 +10,8 @@ enum class ActivityPanel(val label: String) {
     Queues("Queues"),
     Schedule("Schedules"),
     Recovery("Recovery"),
-    /** Legacy diagnostics entry now maps to Settings > Developer tools. */
-    Diagnostics("Developer tools"),
+    /** Legacy diagnostics entry now maps to Settings > Developer Center. */
+    Diagnostics("Developer Center"),
     ;
 
     val isPrimary: Boolean

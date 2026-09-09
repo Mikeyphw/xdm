@@ -1454,7 +1454,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_privacy_quality_final_gate_overlay_v2.zip",
+  "current_overlay": "xdm_android_ux01_ux09_product_foundation_v3.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -4176,5 +4176,27 @@
     "androidx_webkit_renderer_lint_false_positive_scoped": true,
     "renderer_process_gone_handler_present": true,
     "media_locator_saving_status_resource_backed": true
+  },
+  "ux_product_foundation_ux01_ux09": {
+    "overlay": "xdm_android_ux01_ux09_product_foundation_v3.zip",
+    "date": "2026-09-09",
+    "destination_storage_truth": true,
+    "queue_uses_shared_destination_writer_health": true,
+    "destination_space_states": [
+      "Known",
+      "Unknown",
+      "Unavailable"
+    ],
+    "unknown_capacity_is_non_blocking_when_destination_is_healthy": true,
+    "inaccessible_destination_remains_fail_closed": true,
+    "diagnostics_support_single_surface": true,
+    "developer_mode_single_gate": true,
+    "developer_center_single_workspace": true,
+    "advanced_debug_workbench_duplicate_removed": true,
+    "release_readiness_single_section": true,
+    "room_schema_unchanged": 21,
+    "automatic_upload": false,
+    "automatic_transfer_start_added": false,
+    "storage_permission_added": false
   }
 }

@@ -47,7 +47,7 @@ class DebugTestStore(
             zip.writeEntry("support-report.txt", DebugRedactor.redactExportLine(supportReportText))
             zip.writeEntry(
                 "redaction-report.txt",
-                "XDM Debug Center v4 export. Cookie, Authorization, token, signature, session, key-like values, and URL query secrets are redacted locally before export. No automatic upload is performed.\n",
+                "XDM diagnostics v4 export. Cookie, Authorization, token, signature, session, key-like values, and URL query secrets are redacted locally before export. No automatic upload is performed.\n",
             )
         }
         return destination
@@ -63,7 +63,7 @@ class DebugTestStore(
     }
 
     private fun buildEnvironmentText(run: DebugTestRun): String = buildString {
-        appendLine("Debug Center version: v4")
+        appendLine("Diagnostics version: v4")
         appendLine("Run ID: ${run.id}")
         appendLine("Started: ${run.startedAtEpochMs}")
         appendLine("Finished: ${run.finishedAtEpochMs ?: "running"}")

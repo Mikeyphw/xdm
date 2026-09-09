@@ -10,15 +10,15 @@ class Phase65DiagnosticExportDownloadActionContractTest {
     fun diagnosticsCanBeExportedThroughAndroidShareSheet() {
         val helper = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/common/UiTextHelpers.kt")
         val debugCard = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsWorkspace.kt")
-        val debugScreen = debugCard
+        val debugScreen = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/debug/DebugCenterScreen.kt")
         val settings = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt")
         val model = source("app/src/main/kotlin/com/mikeyphw/xdm/android/DebugWorkbenchD6RuntimeSelfTestModels.kt")
 
         assertTrue(helper.contains("shareTextReport"))
         assertTrue(helper.contains("Intent.ACTION_SEND"))
         assertTrue(debugCard.contains("Export self-test report"))
-        assertTrue(debugScreen.contains("Export support report"))
-        assertTrue(settings.contains("Export support report"))
+        assertTrue(debugScreen.contains("shareTextReport(context, \"XDM support report\", state.supportReportText)"))
+        assertTrue(settings.contains("title = \"Diagnostics & support\""))
         assertTrue(model.contains("Ran check IDs:"))
         assertTrue(model.contains("[${'$'}{check.id}]"))
     }
