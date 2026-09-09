@@ -32,3 +32,14 @@ The first full Gradle run proved the production repair compiled and the canonica
 ## v3 release-contract reconciliation
 
 The second full Gradle run passed media and reached `:app:testDebugUnitTest`, where the historical post-DL03 contract still required the post-DL03 seal to be the current final authority even though the canonical gate had correctly advanced authority to this execution/media repair. v3 carries that contract forward to the new authority while retaining post-DL03 as the historical baseline. It also makes the repair contract's `user.dir` lookup explicitly non-null to remove the Kotlin/Java nullability warning. Production runtime behavior and Room schema remain unchanged from v2.
+
+## Promise-delivery audit follow-up — 2026-09-08
+
+A source-level re-audit of the applied release found and closed three carry-forward gaps in the execution/media repair:
+
+- the legacy `isMediaRequest` compatibility bit no longer influences default `DownloadRequest.transferShape`;
+- redownload/link-refresh keeps a specialized shape when a replacement signed URL is opaque, while explicit `.mp4`/`.m3u8`/`.mpd` evidence may still change it;
+- Live Locator keeps exact source/page/variant URLs together with headers in its bounded process-local context cache, restores saved media kind for opaque manifests, and serializes no executable request URL into Android saved-state.
+
+Room remains schema 21.
+

@@ -86,4 +86,26 @@ class ExecutionSemanticsRepairTest {
         assertTrue(policy.compatibilityIssue(request, native)?.contains("adaptive playlist", ignoreCase = true) == true)
         assertTrue(policy.compatibilityIssue(request, aria2)?.isNotBlank() == true)
     }
+
+    @Test
+    fun legacyMediaBooleanCannotPromoteDirectResourcesToPlaylistSemantics() {
+        val fileRequest = DownloadRequest(
+            id = "legacy-file",
+            sourceUrl = "https://cdn.example.test/download?id=123",
+            destinationUri = "file:///tmp/download.bin",
+            fileName = "download.bin",
+            isMediaRequest = true,
+        )
+        val mediaRequest = DownloadRequest(
+            id = "legacy-media",
+            sourceUrl = "https://cdn.example.test/movie.mp4",
+            destinationUri = "file:///tmp/movie.mp4",
+            fileName = "movie.mp4",
+            isMediaRequest = true,
+        )
+
+        assertEquals(MediaTransferShape.DirectFile, fileRequest.transferShape)
+        assertEquals(MediaTransferShape.DirectMedia, mediaRequest.transferShape)
+        assertNull(policy.compatibilityIssue(mediaRequest, native))
+    }
 }

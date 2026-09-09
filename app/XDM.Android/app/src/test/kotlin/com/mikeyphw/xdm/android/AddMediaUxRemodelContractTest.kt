@@ -49,6 +49,8 @@ class AddMediaUxRemodelContractTest {
         assertTrue(card.contains("val hasTrackChoices"))
         assertTrue(card.contains("if (hasTrackChoices && videoVariants.isNotEmpty())"))
         assertTrue(card.contains("if (hasTrackChoices)"))
+        assertTrue(card.contains("showTrackControls = hasTrackChoices"))
+        assertTrue(card.contains("if (showTrackControls)"))
         assertTrue(card.contains("MediaConsumerState.Ready -> Button("))
         assertTrue(card.contains("summary.primaryActionLabel"))
         assertTrue(workspace.contains("MediaConsumerState.Ready -> if (hasExistingOutput) \"Download again\" else \"Download\""))

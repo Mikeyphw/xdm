@@ -189,6 +189,7 @@ internal fun MediaCaptureCard(
         variants = captureVariants,
         selection = trackSelection,
         summary = summary,
+        showTrackControls = hasTrackChoices,
         onDismiss = { detailsVisible = false },
         onSelectionChanged = { next ->
             trackSelection = next
@@ -213,6 +214,7 @@ private fun MediaTrackPickerSheet(
     variants: List<MediaVariant>,
     selection: MediaTrackSelection,
     summary: MediaConsumerCaptureSummary,
+    showTrackControls: Boolean,
     onDismiss: () -> Unit,
     onSelectionChanged: (MediaTrackSelection) -> Unit,
     onResolve: () -> Unit,
@@ -237,41 +239,43 @@ private fun MediaTrackPickerSheet(
                     XdmSupportingText(summary.trackSummary, maxLines = 2)
                 }
             }
-            trackGroup(
-                title = "Video quality",
-                variants = variants.filter { it.kind == MediaVariantKind.Video || it.kind == MediaVariantKind.Primary },
-                selectedId = selection.videoVariantId,
-                onSelect = { onSelectionChanged(selection.copy(videoVariantId = it.id)) },
-            )
-            trackGroup(
-                title = "Audio track",
-                variants = variants.filter { it.kind == MediaVariantKind.Audio },
-                selectedId = selection.audioVariantId,
-                onSelect = { onSelectionChanged(selection.copy(audioVariantId = it.id)) },
-            )
-            val subtitles = variants.filter { it.kind == MediaVariantKind.Subtitle }
-            if (subtitles.isNotEmpty()) {
-                item {
-                    XdmListCard(compact = true) {
-                        XdmMetadataText("Subtitle track")
-                        FilterChip(
-                            selected = selection.subtitleVariantId == null,
-                            onClick = { onSelectionChanged(selection.copy(subtitleVariantId = null)) },
-                            label = { Text("None") },
-                            modifier = Modifier.clearAndSetSemantics {
-                                role = Role.RadioButton
-                                selected = selection.subtitleVariantId == null
-                                stateDescription = if (selection.subtitleVariantId == null) "No subtitle selected" else "No subtitle not selected"
-                            },
+            if (showTrackControls) {
+                trackGroup(
+                    title = "Video quality",
+                    variants = variants.filter { it.kind == MediaVariantKind.Video || it.kind == MediaVariantKind.Primary },
+                    selectedId = selection.videoVariantId,
+                    onSelect = { onSelectionChanged(selection.copy(videoVariantId = it.id)) },
+                )
+                trackGroup(
+                    title = "Audio track",
+                    variants = variants.filter { it.kind == MediaVariantKind.Audio },
+                    selectedId = selection.audioVariantId,
+                    onSelect = { onSelectionChanged(selection.copy(audioVariantId = it.id)) },
+                )
+                val subtitles = variants.filter { it.kind == MediaVariantKind.Subtitle }
+                if (subtitles.isNotEmpty()) {
+                    item {
+                        XdmListCard(compact = true) {
+                            XdmMetadataText("Subtitle track")
+                            FilterChip(
+                                selected = selection.subtitleVariantId == null,
+                                onClick = { onSelectionChanged(selection.copy(subtitleVariantId = null)) },
+                                label = { Text("None") },
+                                modifier = Modifier.clearAndSetSemantics {
+                                    role = Role.RadioButton
+                                    selected = selection.subtitleVariantId == null
+                                    stateDescription = if (selection.subtitleVariantId == null) "No subtitle selected" else "No subtitle not selected"
+                                },
+                            )
+                        }
+                    }
+                    items(subtitles, key = MediaVariant::id) { variant ->
+                        VariantSelectorRow(
+                            variant = variant,
+                            selected = selection.subtitleVariantId == variant.id,
+                            onSelect = { onSelectionChanged(selection.copy(subtitleVariantId = variant.id)) },
                         )
                     }
-                }
-                items(subtitles, key = MediaVariant::id) { variant ->
-                    VariantSelectorRow(
-                        variant = variant,
-                        selected = selection.subtitleVariantId == variant.id,
-                        onSelect = { onSelectionChanged(selection.copy(subtitleVariantId = variant.id)) },
-                    )
                 }
             }
             item {

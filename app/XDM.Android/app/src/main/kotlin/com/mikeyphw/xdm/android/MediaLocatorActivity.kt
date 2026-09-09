@@ -44,27 +44,42 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
+private data class MediaLocatorRequestContext(
+    val sourceUrl: String,
+    val pageUrl: String?,
+    val headers: Map<String, String>,
+    val variantUrls: Map<String, String>,
+)
+
 private object MediaLocatorRequestContextCache {
     private const val MaxEntries = 128
     private const val TtlMs = 30L * 60L * 1000L
 
-    private data class Entry(val headers: Map<String, String>, val savedAtEpochMs: Long)
+    private data class Entry(val context: MediaLocatorRequestContext, val savedAtEpochMs: Long)
     private val entries = object : LinkedHashMap<String, Entry>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Entry>?): Boolean = size > MaxEntries
     }
 
     @Synchronized
-    fun put(key: String, headers: Map<String, String>, now: Long = System.currentTimeMillis()) {
-        if (key.isBlank() || headers.isEmpty()) return
+    fun put(key: String, context: MediaLocatorRequestContext, now: Long = System.currentTimeMillis()) {
+        if (key.isBlank() || context.sourceUrl.isBlank()) return
         prune(now)
-        entries[key] = Entry(headers.toMap(), now)
+        entries[key] = Entry(
+            context.copy(
+                headers = context.headers.toMap(),
+                variantUrls = context.variantUrls.toMap(),
+            ),
+            now,
+        )
     }
 
     @Synchronized
-    fun get(key: String?, now: Long = System.currentTimeMillis()): Map<String, String>? {
+    fun get(key: String?, now: Long = System.currentTimeMillis()): MediaLocatorRequestContext? {
         if (key.isNullOrBlank()) return null
         prune(now)
-        return entries[key]?.headers?.toMap()
+        return entries[key]?.context?.let {
+            it.copy(headers = it.headers.toMap(), variantUrls = it.variantUrls.toMap())
+        }
     }
 
     private fun prune(now: Long) {
@@ -517,50 +532,55 @@ class MediaLocatorActivity : ComponentActivity() {
     }
 
     private fun encodeSavedCandidate(candidate: LocatedMedia): String {
-        // Raw request headers can include Cookie/Authorization and must never be serialized into
-        // Bundle state. Keep them only in a bounded process-local cache; the Bundle carries a
-        // non-secret capture id so configuration recreation can reattach the exact request context.
+        // Exact request URLs can carry signed query credentials just like Cookie/Authorization.
+        // Keep the whole executable request context process-local; Bundle state contains only a
+        // non-secret cache key plus semantic/display metadata needed to rebuild the list.
         val requestContextKey = candidate.record.id
-        MediaLocatorRequestContextCache.put(requestContextKey, candidate.requestHeaders)
+        MediaLocatorRequestContextCache.put(
+            requestContextKey,
+            MediaLocatorRequestContext(
+                sourceUrl = candidate.url,
+                pageUrl = candidate.pageUrl,
+                headers = candidate.requestHeaders,
+                variantUrls = candidate.variants.associate { it.id to it.url },
+            ),
+        )
         return JSONObject().apply {
-        put("requestContextKey", requestContextKey)
-        put("url", candidate.url)
-        put("mime", candidate.mimeType)
-        put("kind", candidate.kind.name)
-        put("reason", candidate.reason.take(256))
-        put("pageUrl", candidate.pageUrl)
-        put("pageTitle", candidate.pageTitle)
-        put("rank", candidate.rank)
-        put("manifestRole", candidate.record.manifestRole.name)
-        candidate.record.manifestIsLive?.let { put("manifestIsLive", it) }
-        put("manifestProtected", candidate.record.manifestProtected)
-        put("manifestProtectionScheme", candidate.record.manifestProtectionScheme)
-        put("variants", JSONArray().apply {
-            candidate.variants.take(MAX_SAVED_VARIANTS_PER_CANDIDATE).forEach { variant ->
-                put(JSONObject().apply {
-                    put("id", variant.id)
-                    put("url", variant.url)
-                    put("kind", variant.kind.name)
-                    put("mime", variant.mimeType)
-                    variant.width?.let { put("width", it) }
-                    variant.height?.let { put("height", it) }
-                    variant.bitrateBitsPerSecond?.let { put("bitrate", it) }
-                    put("codecs", variant.codecs)
-                    put("language", variant.language)
-                    put("position", variant.position)
-                    put("displayLabel", variant.displayLabel)
-                    variant.expiresAtEpochMs?.let { put("expiresAt", it) }
-                    put("groupId", variant.groupId)
-                    put("audioGroupId", variant.audioGroupId)
-                    put("subtitleGroupId", variant.subtitleGroupId)
-                    put("isDefault", variant.isDefault)
-                    put("isAutoselect", variant.isAutoselect)
-                    put("isForced", variant.isForced)
-                    put("channels", variant.channels)
-                    put("inStreamId", variant.inStreamId)
-                })
-            }
-        })
+            put("requestContextKey", requestContextKey)
+            put("mime", candidate.mimeType)
+            put("kind", candidate.kind.name)
+            put("reason", candidate.reason.take(256))
+            put("pageTitle", candidate.pageTitle)
+            put("rank", candidate.rank)
+            put("manifestRole", candidate.record.manifestRole.name)
+            candidate.record.manifestIsLive?.let { put("manifestIsLive", it) }
+            put("manifestProtected", candidate.record.manifestProtected)
+            put("manifestProtectionScheme", candidate.record.manifestProtectionScheme)
+            put("variants", JSONArray().apply {
+                candidate.variants.take(MAX_SAVED_VARIANTS_PER_CANDIDATE).forEach { variant ->
+                    put(JSONObject().apply {
+                        put("id", variant.id)
+                        put("kind", variant.kind.name)
+                        put("mime", variant.mimeType)
+                        variant.width?.let { put("width", it) }
+                        variant.height?.let { put("height", it) }
+                        variant.bitrateBitsPerSecond?.let { put("bitrate", it) }
+                        put("codecs", variant.codecs)
+                        put("language", variant.language)
+                        put("position", variant.position)
+                        put("displayLabel", variant.displayLabel)
+                        variant.expiresAtEpochMs?.let { put("expiresAt", it) }
+                        put("groupId", variant.groupId)
+                        put("audioGroupId", variant.audioGroupId)
+                        put("subtitleGroupId", variant.subtitleGroupId)
+                        put("isDefault", variant.isDefault)
+                        put("isAutoselect", variant.isAutoselect)
+                        put("isForced", variant.isForced)
+                        put("channels", variant.channels)
+                        put("inStreamId", variant.inStreamId)
+                    })
+                }
+            })
         }.toString()
     }
 
@@ -568,13 +588,23 @@ class MediaLocatorActivity : ComponentActivity() {
         val saved = state.getStringArrayList(STATE_CANDIDATES).orEmpty()
         saved.take(MAX_SAVED_CANDIDATES).forEach { raw ->
             val json = runCatching { JSONObject(raw) }.getOrNull() ?: return@forEach
-            val url = json.optString("url").takeIf(String::isNotBlank) ?: return@forEach
+            val requestContext = MediaLocatorRequestContextCache.get(json.optString("requestContextKey")) ?: return@forEach
+            val url = requestContext.sourceUrl
+            val pageUrl = requestContext.pageUrl
             val mime = json.optString("mime").takeIf(String::isNotBlank)
-            val pageUrl = json.optString("pageUrl").takeIf(String::isNotBlank)
             val title = json.optString("pageTitle").takeIf(String::isNotBlank)
-            val candidate = captureService.candidateFor(url, pageTitle = title, pageUrl = pageUrl, mimeTypeHint = mime) ?: return@forEach
+            val savedKind = runCatching { MediaSourceKind.valueOf(json.optString("kind")) }.getOrNull()
+            val candidate = captureService.candidateFor(
+                url,
+                pageTitle = title,
+                pageUrl = pageUrl,
+                mimeTypeHint = mime ?: savedKind?.restoreMimeHint(),
+            ) ?: return@forEach
             val base = captureService.recordFor(candidate)
             val record = base.copy(
+                kind = savedKind ?: base.kind,
+                // A synthetic restore MIME is classifier evidence only; do not fabricate durable metadata.
+                mimeType = mime,
                 manifestRole = runCatching { com.mikeyphw.xdm.android.model.MediaManifestRole.valueOf(json.optString("manifestRole")) }.getOrDefault(base.manifestRole),
                 manifestIsLive = if (json.has("manifestIsLive")) json.optBoolean("manifestIsLive") else null,
                 manifestProtected = json.optBoolean("manifestProtected", false),
@@ -585,11 +615,12 @@ class MediaLocatorActivity : ComponentActivity() {
                 if (variantsJson != null) {
                     for (index in 0 until minOf(variantsJson.length(), MAX_SAVED_VARIANTS_PER_CANDIDATE)) {
                         val item = variantsJson.optJSONObject(index) ?: continue
-                        val variantUrl = item.optString("url").takeIf(String::isNotBlank) ?: continue
+                        val variantId = item.optString("id").takeIf(String::isNotBlank) ?: "${record.id}:restored:$index"
+                        val variantUrl = requestContext.variantUrls[variantId] ?: continue
                         val kind = runCatching { com.mikeyphw.xdm.android.model.MediaVariantKind.valueOf(item.optString("kind")) }.getOrNull() ?: continue
                         add(
                             MediaVariant(
-                                id = item.optString("id").takeIf(String::isNotBlank) ?: "${record.id}:restored:$index",
+                                id = variantId,
                                 captureId = record.id,
                                 url = variantUrl,
                                 kind = kind,
@@ -615,23 +646,46 @@ class MediaLocatorActivity : ComponentActivity() {
                     }
                 }
             }
+            val effectiveRecord = if (restoredVariants.isEmpty()) {
+                record
+            } else {
+                val selected = restoredVariants.first()
+                record.copy(
+                    variantCount = restoredVariants.size,
+                    selectedVariantId = selected.id,
+                    selectedVariantUrl = selected.url,
+                    resolutionStatus = if (record.isPlaylist) {
+                        com.mikeyphw.xdm.android.model.MediaResolutionStatus.Resolved
+                    } else {
+                        record.resolutionStatus
+                    },
+                )
+            }
             putLocatedBounded(
                 LocatedMedia(
                     url = url,
                     mimeType = mime,
-                    kind = record.kind,
+                    kind = effectiveRecord.kind,
                     reason = json.optString("reason").ifBlank { "restored observation" },
                     pageUrl = pageUrl,
                     pageTitle = title,
-                    requestHeaders = MediaLocatorRequestContextCache.get(json.optString("requestContextKey")) ?: emptyMap(),
+                    requestHeaders = requestContext.headers,
                     rank = json.optInt("rank", 0),
-                    record = record,
+                    record = effectiveRecord,
                     variants = restoredVariants,
                 ),
             )
         }
         refreshList()
         if (located.isNotEmpty()) status.text = resources.getQuantityString(R.plurals.media_locator_candidates_found, located.size, located.size)
+    }
+
+    private fun MediaSourceKind.restoreMimeHint(): String? = when (this) {
+        MediaSourceKind.HlsPlaylist -> "application/vnd.apple.mpegurl"
+        MediaSourceKind.DashManifest -> "application/dash+xml"
+        MediaSourceKind.ProgressiveMedia, MediaSourceKind.VideoStream -> "video/mp4"
+        MediaSourceKind.AudioStream -> "audio/mpeg"
+        MediaSourceKind.DirectFile, MediaSourceKind.Unknown -> null
     }
 
     private fun jsonHeaders(json: JSONObject?): Map<String, String> {

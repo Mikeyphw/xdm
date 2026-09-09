@@ -110,18 +110,14 @@ data class DownloadRequest(
     val allowBackendFallback: Boolean = true,
     val isExpiringUrl: Boolean = false,
     /**
-     * Legacy source-compatibility bit. New callers must use [transferShape]. It is intentionally
-     * not consulted directly by backend compatibility: a progressive MP4 is media content but is
-     * still an ordinary direct HTTP transfer.
+     * Legacy source-compatibility bit. It is retained only for source compatibility and is fully
+     * ignored by transfer-shape inference and backend compatibility. A progressive MP4 is media
+     * content but is still an ordinary direct HTTP transfer.
      */
     val isMediaRequest: Boolean = false,
     /** Exact execution semantics. Browser/session context must never promote DirectFile/DirectMedia
      * into an adaptive playlist workflow merely because headers or an encrypted handoff exist. */
-    val transferShape: MediaTransferShape = if (isMediaRequest) {
-        MediaTransferShape.AdaptivePlaylist
-    } else {
-        inferTransferShape(sourceUrl, mimeType)
-    },
+    val transferShape: MediaTransferShape = inferTransferShape(sourceUrl, mimeType),
     val networkMetered: Boolean = false,
     val previousNativeThroughputBytesPerSecond: Long? = null,
     val previousAria2ThroughputBytesPerSecond: Long? = null,

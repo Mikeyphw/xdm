@@ -32,6 +32,7 @@ migrator = text("app/src/main/kotlin/com/mikeyphw/xdm/android/SensitivePersisten
 transfer_test = text("transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ExecutionSemanticsRepairTest.kt")
 media_test = text("media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionSemanticsRepairTest.kt")
 legacy_media_test = text("media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt")
+scheduler_test = text("scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/SecureRequestEnvelopeStoreTest.kt")
 app_test = text("app/src/test/kotlin/com/mikeyphw/xdm/android/ExecutionMediaSemanticsRepairContractTest.kt")
 post_dl03_test = text("app/src/test/kotlin/com/mikeyphw/xdm/android/PostDl03ReleaseFollowupContractTest.kt")
 final_gate = text("tools/run-final-release-gate.sh")
@@ -40,6 +41,8 @@ entry = manifest.get("execution_media_semantics_repair", {})
 
 need("val transferShape: MediaTransferShape" in backend, "DownloadRequest must carry explicit transferShape")
 need("inferTransferShape(sourceUrl, mimeType)" in backend, "legacy-safe request construction must infer direct-media/adaptive shape from target")
+need("val transferShape: MediaTransferShape = inferTransferShape(sourceUrl, mimeType)" in backend,
+     "legacy media boolean must be ignored by default transfer-shape inference")
 need("MediaTransferShape.DirectMedia ->" in backend and "Direct media request" in backend, "direct media must have a dedicated Native preference")
 need("MediaTransferShape.AdaptivePlaylist -> if (!capability.supportsMediaPlaylists)" in backend, "playlist capability must apply only to adaptive playlists")
 need("request.isMediaRequest && !capabilities.supportsMediaPlaylists" not in backend, "coordinator must not use legacy media boolean as playlist capability")
@@ -51,6 +54,8 @@ need("transferShape = mediaHandoff?.transferShape" in runtime, "runtime must res
 need("isMediaRequest = handoff != null" not in migration, "backend migration must not turn handoff presence into playlist semantics")
 need("transferShape = handoff?.transferShape" in migration, "backend migration must preserve transferShape")
 need("val transferShape: MediaTransferShape" in handoff and "transferShape = transferShape" in handoff and "val transferShape: MediaTransferShape" in envelope, "encrypted request handoff must persist transferShape")
+need("refreshedTransferShape(source.transferShape" in handoff and "refreshedTransferShape(it.transferShape, exactUrl)" in handoff,
+     "clone/refresh must preserve specialized transfer shape across opaque signed URL replacement")
 need('.put("transferShape", transferShape.name)' in envelope and "MediaTransferShape.valueOf" in envelope, "secure envelope JSON must round-trip transferShape")
 
 need("shape == MediaTransferShape.DirectMedia || shape == MediaTransferShape.DirectFile -> MediaDownloadStrategy.Native" in planner,
@@ -77,6 +82,13 @@ need("private object MediaLocatorRequestContextCache" in locator, "Live Locator 
 need('put("requestContextKey", requestContextKey)' in locator, "Live Locator Bundle may carry only a non-secret request-context key")
 need('put("requestHeaders"' not in locator and 'put("headers"' not in locator.split("private fun encodeSavedCandidate",1)[-1].split("private fun restoreLocatorState",1)[0],
      "Live Locator saved-state JSON must not serialize raw request headers")
+locator_saved = locator.split("private fun encodeSavedCandidate",1)[-1].split("private fun restoreLocatorState",1)[0]
+need('put("url"' not in locator_saved and 'put("pageUrl"' not in locator_saved,
+     "Live Locator saved-state JSON must not serialize exact source/page/variant URLs")
+need("variantUrls = candidate.variants.associate" in locator and "requestContext.variantUrls[variantId]" in locator,
+     "Live Locator exact variant URLs must remain process-local and reattach by id")
+need("savedKind?.restoreMimeHint()" in locator and "kind = savedKind ?: base.kind" in locator,
+     "Live Locator must restore saved semantic kind for opaque HLS/DASH candidates")
 need("MediaLocatorRequestContextCache.get" in locator, "Live Locator restore must reattach process-local request context")
 need("isExpiringUrl = candidate.requestHeaders.isNotEmpty()" not in locator, "Live Locator must not mark ordinary browser headers as URL expiry")
 need("isExpiringUrl = headers.isNotEmpty()" not in migrator, "legacy sensitive migration must not turn replay headers into URL expiry")
@@ -84,9 +96,13 @@ need("isExpiringUrl = headers.isNotEmpty()" not in migrator, "legacy sensitive m
 need("browserRefererDoesNotTurnDirectFileIntoMediaWorkflow" in transfer_test, "golden test missing: browser direct file")
 need("progressiveMp4WithCapturedContextIsNativeDirectHttpNotPlaylist" in transfer_test, "golden test missing: protected-context progressive MP4")
 need("adaptivePlaylistStillRequiresPlaylistCapableExecution" in transfer_test, "golden test missing: adaptive playlist capability")
+need("legacyMediaBooleanCannotPromoteDirectResourcesToPlaylistSemantics" in transfer_test,
+     "golden test missing: legacy media boolean ignored by shape inference")
 need("progressiveMp4IsReadyWithoutPlaylistVariants" in media_test, "golden test missing: direct MP4 ready without variants")
 need("refererAndUserAgentDoNotClaimCredentialOrExpiryContext" in media_test, "golden test missing: replay context versus credentials/expiry")
 need("cookieIsCredentialContextWithoutChangingDirectMediaShape" in media_test, "golden test missing: credentials remain orthogonal to transfer shape")
+need("opaqueSpecializedShapeSurvivesCloneAndSignedUrlRefresh" in scheduler_test,
+     "golden test missing: opaque specialized shape survives redownload/link refresh")
 need("mediaEngineHardeningKeepsProgressiveReplayContextOnNativeLane" in legacy_media_test,
      "legacy media suite must carry progressive replay context forward on the Native lane")
 need("directProgressiveMediaNeverSynthesizesAria2TransientFiles" in legacy_media_test,

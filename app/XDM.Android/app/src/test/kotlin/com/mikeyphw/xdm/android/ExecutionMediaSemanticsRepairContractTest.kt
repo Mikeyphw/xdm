@@ -23,6 +23,7 @@ class ExecutionMediaSemanticsRepairContractTest {
         val runtime = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt")
         val migration = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/BackendMigrationCoordinator.kt")
         val main = source("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
+        val handoff = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/MediaRequestHandoffStore.kt")
         assertTrue(backend.contains("MediaTransferShape.DirectMedia ->"))
         assertTrue(backend.contains("selectionPolicy.compatibilityIssue(request, capabilities)"))
         assertFalse(backend.contains("request.isMediaRequest && !capabilities.supportsMediaPlaylists"))
@@ -31,6 +32,8 @@ class ExecutionMediaSemanticsRepairContractTest {
         assertTrue(migration.contains("transferShape = handoff?.transferShape"))
         assertFalse(migration.contains("isMediaRequest = handoff != null"))
         assertTrue(main.contains("candidate?.let(::transferShapeForCandidate) ?: inferTransferShape(url)"))
+        assertTrue(handoff.contains("refreshedTransferShape(source.transferShape"))
+        assertTrue(handoff.contains("refreshedTransferShape(it.transferShape, exactUrl)"))
     }
 
     @Test
@@ -49,9 +52,17 @@ class ExecutionMediaSemanticsRepairContractTest {
         val locator = source("app/src/main/kotlin/com/mikeyphw/xdm/android/MediaLocatorActivity.kt")
         val savedState = locator.substringAfter("private fun encodeSavedCandidate").substringBefore("private fun restoreLocatorState")
         assertTrue(locator.contains("private object MediaLocatorRequestContextCache"))
+        assertTrue(locator.contains("data class MediaLocatorRequestContext"))
         assertTrue(savedState.contains("requestContextKey"))
         assertFalse(savedState.contains("put(\"requestHeaders\""))
         assertFalse(savedState.contains("put(\"headers\""))
+        assertFalse(savedState.contains("put(\"url\""))
+        assertFalse(savedState.contains("put(\"pageUrl\""))
+        assertTrue(locator.contains("variantUrls = candidate.variants.associate"))
         assertTrue(locator.contains("MediaLocatorRequestContextCache.get"))
+        assertTrue(locator.contains("val savedKind = runCatching { MediaSourceKind.valueOf"))
+        assertTrue(locator.contains("savedKind?.restoreMimeHint()"))
+        assertTrue(locator.contains("kind = savedKind ?: base.kind"))
+        assertTrue(locator.contains("requestContext.variantUrls[variantId]"))
     }
 }

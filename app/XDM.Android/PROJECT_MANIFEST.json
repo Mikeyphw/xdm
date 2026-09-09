@@ -4107,7 +4107,13 @@
     "progressive_media_aria2_expectations_retired": true,
     "post_dl03_contract_reconciled": true,
     "nullable_user_dir_warning_fixed": true,
-    "overlay_revision": "v3"
+    "overlay_revision": "v3",
+    "legacy_media_boolean_ignored_by_shape_inference": true,
+    "opaque_specialized_shape_survives_redownload": true,
+    "opaque_specialized_shape_survives_link_refresh": true,
+    "live_locator_bundle_contains_exact_request_urls": false,
+    "live_locator_opaque_kind_restored": true,
+    "promise_audit_followup": "2026-09-08"
   },
   "current_release_authority": "add_media_ux_remodel",
   "add_media_ux_remodel": {
@@ -4133,6 +4139,26 @@
     "report": "XDM_ADD_MEDIA_UX_REMODEL_REPORT.md",
     "validation_deferred": false,
     "next_overlay": null,
-    "supersedes_two_step_add_review": true
+    "supersedes_two_step_add_review": true,
+    "track_picker_hidden_without_meaningful_choices": true,
+    "promise_audit_followup": "2026-09-08"
+  },
+  "promise_delivery_audit_2026_09_08": {
+    "status": "implemented",
+    "scope": [
+      "execution_media_semantics_repair",
+      "add_media_ux_remodel_carry_forward"
+    ],
+    "room_schema_current": 21,
+    "room_schema_changed": false,
+    "gaps_found_and_closed": [
+      "legacy_media_boolean_default_shape_promotion",
+      "opaque_specialized_shape_loss_on_clone_or_refresh",
+      "live_locator_exact_url_bundle_serialization_and_opaque_kind_restore",
+      "direct_media_options_fake_primary_quality"
+    ],
+    "canonical_validator": "tools/validate-promise-delivery-audit.py",
+    "report": "XDM_PROMISE_DELIVERY_AUDIT_2026_09_08.md",
+    "validation_deferred": false
   }
 }

@@ -39,3 +39,8 @@ Turn the now-correct download execution model into a calmer, 1DM+-inspired user 
 ## Validation
 
 The canonical final gate owns `tools/validate-add-media-ux-remodel.py`. The seal asserts the one-action Add flow, collapsed diagnostics, direct-media card behavior, warning fixes, carry-forward release authority, and the absence of the superseded second-confirmation tokens from the active Add surface.
+
+## Promise-delivery audit follow-up — 2026-09-08
+
+The direct-media simplicity promise now applies to the **Options** sheet as well as the main card. `MediaTrackPickerSheet` receives the same `hasTrackChoices` decision and does not render a one-item `Primary` quality group for a normal progressive MP4. Adaptive quality/audio/subtitle controls remain available when choices are meaningful.
+

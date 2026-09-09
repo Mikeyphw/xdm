@@ -53,8 +53,9 @@ need("Direct media downloads in one tap" in inbox, "Media header must state dire
 need("AnimatedVisibility(mediaToolsExpanded)" in inbox and "More tools" in inbox,
      "batch/advanced media intake must be collapsed by default")
 need(inbox.count('Text("Live locator")') == 1, "Media workspace should expose one clear Live locator action, not duplicate it")
-need("val hasTrackChoices" in card and "if (hasTrackChoices && videoVariants.isNotEmpty())" in card and "if (hasTrackChoices)" in card,
-     "quality/track controls must be conditional on meaningful adaptive choices")
+need("val hasTrackChoices" in card and "if (hasTrackChoices && videoVariants.isNotEmpty())" in card and "if (hasTrackChoices)" in card and
+     "showTrackControls = hasTrackChoices" in card and "if (showTrackControls)" in card,
+     "quality/track controls must be conditional on meaningful adaptive choices in both card and Options sheet")
 need("MediaConsumerState.Ready -> Button(" in card and "summary.primaryActionLabel" in card and
      'MediaConsumerState.Ready -> if (hasExistingOutput) "Download again" else "Download"' in workspace,
      "ready direct media must expose Download as the primary action")

@@ -50,6 +50,7 @@ validators=(
   tools/validate-post-dl03-release-followup.py
   tools/validate-execution-media-semantics-repair.py
   tools/validate-add-media-ux-remodel.py
+  tools/validate-promise-delivery-audit.py
 )
 
 for validator in "${matrix_owned_validators[@]}" "${validators[@]}"; do
@@ -78,5 +79,5 @@ Run the full matrix in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-The Add/Media UX remodel seal is the current final UI/release source of truth; the execution/media semantics repair remains its functional baseline and the post-DL03 roadmap seal remains its historical baseline. The common validation runner, current MC/DL validators, and retained Phase-11 device/release matrix provide executable evidence; documentation-only coverage is rejected.
+The Add/Media UX remodel seal is the current final UI/release source of truth; the execution/media semantics repair remains its functional baseline and the post-DL03 roadmap seal remains its historical baseline. The 2026-09-08 promise-delivery audit seals carry-forward correctness for legacy shape isolation, opaque URL refresh, Live Locator recreation privacy, and direct-media Options gating. The common validation runner, current MC/DL validators, and retained Phase-11 device/release matrix provide executable evidence; documentation-only coverage is rejected.
 EOF2

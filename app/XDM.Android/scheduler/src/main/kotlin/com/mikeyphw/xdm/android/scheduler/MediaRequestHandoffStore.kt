@@ -153,7 +153,7 @@ object MediaRequestHandoffStore {
             exactUrl = replacementExactUrl ?: source.exactUrl,
             pageUrl = source.pageUrl,
             requestKind = replacementExactUrl?.let(::inferDownloadRequestKind) ?: source.requestKind,
-            transferShape = replacementExactUrl?.let(::inferTransferShape) ?: source.transferShape,
+            transferShape = replacementExactUrl?.let { refreshedTransferShape(source.transferShape, it) } ?: source.transferShape,
             mirrors = if (replacementExactUrl == null) source.mirrors else emptyList(),
             expiresAtEpochMs = source.expiresAtEpochMs,
             attemptGeneration = 0L,
@@ -175,7 +175,7 @@ object MediaRequestHandoffStore {
             exactUrl = exactUrl,
             pageUrl = source?.pageUrl,
             requestKind = inferDownloadRequestKind(exactUrl),
-            transferShape = inferTransferShape(exactUrl),
+            transferShape = source?.let { refreshedTransferShape(it.transferShape, exactUrl) } ?: inferTransferShape(exactUrl),
             mirrors = emptyList(),
             expiresAtEpochMs = source?.expiresAtEpochMs ?: defaultExpiry(true),
             attemptGeneration = source?.attemptGeneration ?: 0L,
@@ -199,6 +199,20 @@ object MediaRequestHandoffStore {
     fun forgetCommand(commandId: String) = forgetSubject(subject(COMMAND_PREFIX, commandId))
 
     fun verifyForgotten(downloadId: String): Boolean = forDownload(downloadId) == null
+
+    /**
+     * A refreshed/signed URL for the same logical transfer is often opaque. Preserve specialized
+     * semantics when the replacement URL has no stronger shape evidence, while still allowing an
+     * explicit .m3u8/.mpd/media URL to update the shape.
+     */
+    private fun refreshedTransferShape(existing: MediaTransferShape, replacementExactUrl: String): MediaTransferShape {
+        val inferred = inferTransferShape(replacementExactUrl)
+        return if (inferred == MediaTransferShape.DirectFile && existing !in setOf(MediaTransferShape.DirectFile, MediaTransferShape.DirectMedia)) {
+            existing
+        } else {
+            inferred
+        }
+    }
 
     private fun rememberSubject(
         subjectId: String,

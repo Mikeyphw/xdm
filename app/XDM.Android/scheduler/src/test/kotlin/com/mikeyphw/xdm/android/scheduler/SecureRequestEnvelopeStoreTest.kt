@@ -58,4 +58,36 @@ class SecureRequestEnvelopeStoreTest {
         MediaRequestHandoffStore.forget("one")
         assertTrue(MediaRequestHandoffStore.verifyForgotten("one"))
     }
+
+    @Test
+    fun opaqueSpecializedShapeSurvivesCloneAndSignedUrlRefresh() {
+        val store = InMemorySecureRequestEnvelopeStore()
+        MediaRequestHandoffStore.initialize(store)
+        MediaRequestHandoffStore.remember(
+            downloadId = "playlist-source",
+            exactUrl = "https://cdn.example.test/opaque?id=master",
+            headers = mapOf("Referer" to "https://example.test/watch"),
+            redactedSummary = "Referer: <redacted>",
+            isExpiringUrl = false,
+            transferShape = MediaTransferShape.AdaptivePlaylist,
+        )
+
+        assertTrue(
+            MediaRequestHandoffStore.cloneDownload(
+                sourceDownloadId = "playlist-source",
+                targetDownloadId = "playlist-clone",
+                replacementExactUrl = "https://cdn.example.test/opaque?token=fresh",
+            ),
+        )
+        assertEquals(MediaTransferShape.AdaptivePlaylist, MediaRequestHandoffStore.forDownload("playlist-clone")?.transferShape)
+
+        assertTrue(MediaRequestHandoffStore.replaceDownloadUrl("playlist-source", "https://cdn.example.test/next?signature=fresh"))
+        assertEquals(MediaTransferShape.AdaptivePlaylist, MediaRequestHandoffStore.forDownload("playlist-source")?.transferShape)
+
+        assertTrue(MediaRequestHandoffStore.replaceDownloadUrl("playlist-source", "https://cdn.example.test/movie.mp4"))
+        assertEquals(MediaTransferShape.DirectMedia, MediaRequestHandoffStore.forDownload("playlist-source")?.transferShape)
+
+        MediaRequestHandoffStore.forget("playlist-source")
+        MediaRequestHandoffStore.forget("playlist-clone")
+    }
 }
