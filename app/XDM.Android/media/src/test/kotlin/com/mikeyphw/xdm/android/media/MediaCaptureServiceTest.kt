@@ -18,7 +18,42 @@ class MediaCaptureServiceTest {
         assertEquals(MediaSourceKind.ProgressiveMedia, record.kind)
         assertEquals(MediaCaptureStatus.MetadataReady, record.status)
         assertEquals("video/mp4", record.mimeType)
-        assertEquals("finale.mp4", record.fileName)
+        assertEquals("Finale.mp4", record.fileName)
+    }
+
+    @Test
+    fun pageTitleIsDefaultNameForPageDerivedAndExtensionCapturedMedia() {
+        val service = MediaCaptureService(clock = { 43L })
+        val progressive = service.recordFor(requireNotNull(service.candidateFor(
+            url = "https://cdn.example.test/videoplayback?id=opaque-token",
+            pageTitle = "My Holiday in London",
+            pageUrl = "https://video.example.test/watch/holiday",
+            mimeTypeHint = "video/mp4",
+            durationMs = 125_000L,
+            thumbnailUrl = "https://img.example.test/holiday.jpg",
+        )))
+        val adaptive = service.recordFor(requireNotNull(service.candidateFor(
+            url = "https://edge.example.test/master.m3u8?sig=rotating",
+            pageTitle = "Episode 7",
+            pageUrl = "https://video.example.test/watch/7",
+            mimeTypeHint = "application/vnd.apple.mpegurl",
+        )))
+
+        assertEquals("My Holiday in London.mp4", progressive.fileName)
+        assertEquals("Episode 7.m3u8", adaptive.fileName)
+        assertEquals(125_000L, progressive.durationMs)
+        assertEquals("https://img.example.test/holiday.jpg", progressive.thumbnailUrl)
+    }
+
+    @Test
+    fun capturedMediaWithoutPageTitleStillUsesUsefulUrlNameAndMimeBackedExtension() {
+        val service = MediaCaptureService(clock = { 44L })
+        val candidate = service.candidateFor(
+            url = "https://cdn.example.test/audio/session-token",
+            mimeTypeHint = "audio/mpeg",
+        )
+        val record = service.recordFor(requireNotNull(candidate))
+        assertEquals("session-token.mp3", record.fileName)
     }
 
     @Test

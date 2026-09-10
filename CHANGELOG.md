@@ -1,3 +1,12 @@
+## 2026-09-10 — WEB01–WEB03 + NAME01 Live Locator and captured-media naming
+
+- Upgraded Live Locator with page title/host/transport/load-state summary, state-aware navigation controls, keyboard Go, zoom/site compatibility, and a collapsible captured-media panel.
+- Added explicit main-frame network/HTTP/SSL failure surfaces with Retry, fail-closed SSL handling, OBS01 problem correlation, and renderer recovery through the same user-facing flow.
+- Captures video poster/duration plus Open Graph, Twitter, image-src, and bounded JSON-LD artwork and carries it into the shared THUMB01 media pipeline.
+- Fixed Firefox/IronFox extension metadata loss so playback duration and poster/page artwork survive privileged candidate aggregation, capture-session handoff, Android decoding, and Media sniffing.
+- Captured media now defaults to the page title for filenames in both embedded WebView and extension capture paths while preserving MIME/manifest-backed media extensions; ordinary direct-file intake keeps its existing filename behavior.
+- Browser-extension tests and standalone core/media Kotlin compile/smoke checks pass. Full Android Gradle/lint validation remains deferred to the final ACT01/ACT02 seal.
+
 ## 2026-09-10 — THUMB01–THUMB03 + MIME01 media artwork and MIME presentation
 
 - Added one shared `XdmMediaArtwork` pipeline for captured media, recently queued media, Downloads, and Media Library.

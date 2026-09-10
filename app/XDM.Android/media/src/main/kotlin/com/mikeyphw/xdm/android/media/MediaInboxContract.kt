@@ -426,7 +426,7 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             codecs = codecs,
             durationMs = durationMs,
             thumbnailUrl = thumbnailUrl,
-            fileName = fileNameFor(sourceUrl, safeTitle, kind),
+            fileName = fileNameFor(sourceUrl, safeTitle, kind, mimeType),
             variantCount = variants.size.coerceAtLeast(1),
             downloadId = null,
             createdAtEpochMs = now,
@@ -490,20 +490,45 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         URI(url).path.substringAfterLast('/').substringBefore('?').substringBefore('#').takeIf(String::isNotBlank)
     }.getOrNull() ?: "Captured media"
 
-    private fun fileNameFor(url: String, title: String, kind: MediaSourceKind): String {
+    private fun fileNameFor(url: String, title: String, kind: MediaSourceKind, mimeType: String?): String {
         val pathName = runCatching { URI(url).path.substringAfterLast('/').takeIf(String::isNotBlank) }.getOrNull()
-        val extension = when (kind) {
-            MediaSourceKind.HlsPlaylist -> ".m3u8"
-            MediaSourceKind.DashManifest -> ".mpd"
-            MediaSourceKind.AudioStream -> pathName?.substringAfterLast('.', "")?.takeIf(String::isNotBlank)?.let { ".$it" } ?: ".m4a"
-            else -> pathName?.substringAfterLast('.', "")?.takeIf(String::isNotBlank)?.let { ".$it" } ?: ".mp4"
-        }
+        val extension = preferredMediaExtension(pathName, kind, mimeType)
+        // Browser/WebView capture is page-derived: the page title is the human-facing identity and
+        // CDN basenames such as videoplayback/segment/master are implementation details. candidateFor()
+        // already falls back to the URL basename when no page title exists, so title-first naming also
+        // preserves sensible direct-media names without inventing a generic label.
         val base = sanitizeFileName(
-            pathName?.substringBeforeLast('.', missingDelimiterValue = "")?.takeIf(String::isNotBlank) ?: title,
+            title,
             fallback = "captured-media",
-            maxLength = 160,
+            maxLength = (160 - extension.length).coerceAtLeast(80),
         )
         return if (base.endsWith(extension, ignoreCase = true)) base else base + extension
+    }
+
+    private fun preferredMediaExtension(pathName: String?, kind: MediaSourceKind, mimeType: String?): String {
+        if (kind == MediaSourceKind.HlsPlaylist) return ".m3u8"
+        if (kind == MediaSourceKind.DashManifest) return ".mpd"
+        val mime = mimeType?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT)
+        val mimeExtension = when (mime) {
+            "video/mp4", "application/mp4" -> ".mp4"
+            "video/webm" -> ".webm"
+            "video/x-matroska" -> ".mkv"
+            "video/quicktime" -> ".mov"
+            "audio/mpeg" -> ".mp3"
+            "audio/mp4", "audio/x-m4a" -> ".m4a"
+            "audio/aac" -> ".aac"
+            "audio/flac", "audio/x-flac" -> ".flac"
+            "audio/ogg" -> ".ogg"
+            "audio/opus" -> ".opus"
+            "audio/wav", "audio/x-wav", "audio/wave" -> ".wav"
+            else -> null
+        }
+        if (mimeExtension != null) return mimeExtension
+        val pathExtension = pathName?.substringAfterLast('.', "")?.lowercase(Locale.ROOT)?.takeIf {
+            it in setOf("mp4", "m4v", "webm", "mkv", "mov", "avi", "flv", "mpeg", "mpg", "ogv", "mp3", "m4a", "aac", "flac", "wav", "ogg", "opus")
+        }
+        if (pathExtension != null) return ".$pathExtension"
+        return if (kind == MediaSourceKind.AudioStream) ".m4a" else ".mp4"
     }
 
     private fun containerFor(path: String, kind: MediaSourceKind): String? = when {

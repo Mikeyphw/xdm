@@ -460,6 +460,10 @@
         // Headers, exact page/frame attribution and request fingerprint are preserved solely from webRequest evidence.
         headers: evidence.headers || {},
         browserHandoff: evidence.browserHandoff || null,
+        durationMs: Math.max(0, Number(observation.durationMs || evidence.durationMs || 0)),
+        thumbnailUrl: observation.thumbnailUrl || evidence.thumbnailUrl || "",
+        pageUrl: sender && sender.tab ? sender.tab.url || "" : evidence.pageUrl || "",
+        title: sender && sender.tab ? sender.tab.title || "" : evidence.title || "",
         requestFingerprint: evidence.requestFingerprint,
         stableMediaId: evidence.stableMediaId,
         at: Date.now(),
@@ -529,6 +533,10 @@
       confidence: Math.max(Number(evidence.confidence || 0), 930),
       reason: value.reason || evidence.reason || "frame-playback",
       manifest: Boolean(evidence.manifest || CORE.isManifest(evidence.url, evidence.contentType)),
+      durationMs: Math.max(0, Number(value.durationMs || evidence.durationMs || 0)),
+      thumbnailUrl: value.thumbnailUrl || evidence.thumbnailUrl || "",
+      pageUrl: sender && sender.tab ? sender.tab.url || "" : evidence.pageUrl || "",
+      title: sender && sender.tab ? sender.tab.title || "" : evidence.title || "",
       quality: "strong",
       autoOffer: true,
       // Content scripts can report playback state, but request authority stays with webRequest.

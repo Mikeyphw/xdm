@@ -14,7 +14,7 @@ console.log("direct v3 single-candidate handoff tests passed");
     sessionId:"tab-7-session", revision:42, pageUrl:"https://page.example/watch", title:"Episode 4", totalCandidateCount:2,
     candidates:[
       {url:"https://cdn.example/master.m3u8?token=abc",contentType:"application/vnd.apple.mpegurl",requestFingerprint:"request-one-12345678",stableMediaId:"media-one-12345678",manifest:true,browserHandoff:{finalHeaders:{headers:{Referer:"https://page.example/watch",Authorization:"Bearer one"}}}},
-      {url:"https://cdn2.example/video.mp4?token=def",contentType:"video/mp4",requestFingerprint:"request-two-12345678",stableMediaId:"media-two-12345678",playbackObserved:true,browserHandoff:{proposedHeaders:{headers:{Referer:"https://page.example/watch",Cookie:"sid=two"}}}}
+      {url:"https://cdn2.example/video.mp4?token=def",contentType:"video/mp4",durationMs:630000,thumbnailUrl:"https://img.example/poster.jpg",requestFingerprint:"request-two-12345678",stableMediaId:"media-two-12345678",playbackObserved:true,browserHandoff:{proposedHeaders:{headers:{Referer:"https://page.example/watch",Cookie:"sid=two"}}}}
     ]
   });
   const sessionUri=new URL(session);
@@ -27,5 +27,8 @@ console.log("direct v3 single-candidate handoff tests passed");
   assert.strictEqual(batch[1].url,"https://cdn2.example/video.mp4?token=def");
   assert.strictEqual(batch[0].finalHeaders.authorization,"Bearer one");
   assert.strictEqual(batch[1].proposedHeaders.cookie,"sid=two");
+  assert.strictEqual(batch[1].durationMs,630000);
+  assert.strictEqual(batch[1].thumbnailUrl,"https://img.example/poster.jpg");
+  assert.strictEqual(batch[1].title,"Episode 4");
   console.log("bounded direct v3 capture-session tests passed");
 })().catch(error=>{ console.error(error); process.exitCode=1; });

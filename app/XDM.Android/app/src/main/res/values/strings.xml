@@ -23,6 +23,26 @@
     <string name="media_locator_loading">Loading page and watching for media…</string>
     <string name="media_locator_renderer_stopped">The page renderer stopped. Tap Reload to recreate the page safely.</string>
     <string name="media_locator_saving">Saving captured media…</string>
+    <string name="media_locator_retry">Retry page</string>
+    <string name="media_locator_page_summary_empty">No page loaded</string>
+    <string name="media_locator_page_summary">%1$s
+%2$s • %3$s • %4$s</string>
+    <string name="media_locator_https">HTTPS</string>
+    <string name="media_locator_http">HTTP</string>
+    <string name="media_locator_unknown_transport">Unknown connection</string>
+    <string name="media_locator_unknown_host">Unknown host</string>
+    <string name="media_locator_page_loading_short">Loading</string>
+    <string name="media_locator_page_ready_short">Ready</string>
+    <string name="media_locator_error_status">The page could not finish loading. Review the problem below and retry.</string>
+    <string name="media_locator_error_network_title">Couldn’t load this media page</string>
+    <string name="media_locator_error_network_detail">The embedded browser could not reach the page.</string>
+    <string name="media_locator_error_http_title">Page returned HTTP %1$d</string>
+    <string name="media_locator_error_http_detail">The site returned an error response for the main page.</string>
+    <string name="media_locator_error_ssl_title">Secure connection blocked</string>
+    <string name="media_locator_error_ssl_detail">XDM stopped loading because the page certificate could not be trusted.</string>
+    <string name="media_locator_error_action">Check the address or connection and retry. If the problem repeats, open Diagnostics &amp; support for details.</string>
+    <string name="media_locator_candidates_expanded">▾ %1$s</string>
+    <string name="media_locator_candidates_collapsed">▸ %1$s</string>
     <plurals name="media_locator_candidates_found">
         <item quantity="one">%1$d media candidate found. Tap it to review it in XDM.</item>
         <item quantity="other">%1$d media candidates found. Tap one to review it in XDM.</item>

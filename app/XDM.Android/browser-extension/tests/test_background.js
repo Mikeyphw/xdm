@@ -166,6 +166,31 @@ assert.strictEqual(events.message.listeners.length, 1, "page observation receive
   assert.ok(!JSON.stringify(diagnostics["8"]).includes("forged-page-secret"), "page-supplied headers never become privileged diagnostics/handoff evidence");
   assert.ok(!diagnostics["8"].url.includes("token=abc"));
 
+  events.before.listeners[0]({ tabId: 12, requestId: "r12-video", requestHeaders: [{ name: "Referer", value: "https://page.example/watch/12" }] });
+  events.headers.listeners[0]({
+    tabId: 12,
+    frameId: 0,
+    requestId: "r12-video",
+    url: "https://cdn.example/video/playback.mp4",
+    type: "media",
+    responseHeaders: [{ name: "Content-Type", value: "video/mp4" }]
+  });
+  messageListener({
+    type: "xdmFramePlaybackV1",
+    candidate: {
+      url: "https://cdn.example/video/playback.mp4",
+      durationMs: 321000,
+      thumbnailUrl: "https://img.example/video-poster.jpg",
+      reason: "frame-video-playback"
+    }
+  }, { tab: { id: 12, url: "https://page.example/watch/12", title: "Example video 12" }, frameId: 0, url: "https://page.example/watch/12" });
+  await new Promise(resolve => setTimeout(resolve, 700));
+  const metadataHandoff = handoffInputs.slice().reverse().find(input => input.pageUrl === "https://page.example/watch/12");
+  assert.ok(metadataHandoff, "playback-enriched candidate must build a browser capture session");
+  assert.strictEqual(metadataHandoff.candidates[0].durationMs, 321000, "playback duration must survive privileged candidate merge");
+  assert.strictEqual(metadataHandoff.candidates[0].thumbnailUrl, "https://img.example/video-poster.jpg", "poster artwork must survive privileged candidate merge");
+  assert.strictEqual(metadataHandoff.title, "Example video 12", "tab title must remain the extension capture title");
+
   const beforeSegments = executeCalls.length;
   events.headers.listeners[0]({
     tabId: 9,

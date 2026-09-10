@@ -5,11 +5,15 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.net.http.SslError
 import android.util.TypedValue
 import android.view.View
 import android.os.Bundle
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.webkit.JavascriptInterface
+import android.webkit.SslErrorHandler
+import android.webkit.WebResourceError
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.RenderProcessGoneDetail
@@ -60,6 +64,8 @@ private data class MediaLocatorRequestContext(
     val pageUrl: String?,
     val headers: Map<String, String>,
     val variantUrls: Map<String, String>,
+    val durationMs: Long?,
+    val thumbnailUrl: String?,
 )
 
 private object MediaLocatorRequestContextCache {
@@ -150,15 +156,27 @@ class MediaLocatorActivity : ComponentActivity() {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>?): Boolean = size > MAX_RECENT_OBSERVATIONS
     }
     @Volatile private var currentPageUrl: String? = null
+    private var currentPageTitle: String? = null
     private var locatorUserAgent: String? = null
     private lateinit var webView: WebView
     private lateinit var address: EditText
     private lateinit var status: TextView
+    private lateinit var pageSummary: TextView
     private lateinit var resultsHeader: TextView
     private lateinit var progress: ProgressBar
     private lateinit var list: ListView
     private lateinit var adapter: ArrayAdapter<String>
+    private lateinit var pageBackButton: Button
+    private lateinit var pageForwardButton: Button
+    private lateinit var reloadButton: Button
+    private lateinit var stopButton: Button
+    private lateinit var retryButton: Button
+    private lateinit var errorPanel: LinearLayout
+    private lateinit var errorText: TextView
     private var webViewDisposed = false
+    private var pageLoading = false
+    private var resultsExpanded = true
+    private var lastMainFrameError: String? = null
 
     // AndroidX WebKit 1.17.0 exposes COOKIE_INTERCEPT as a public feature constant, but
     // accidentally omits it from WebViewFeature.WebViewSupportFeature's @StringDef. Keep the
@@ -181,6 +199,7 @@ class MediaLocatorActivity : ComponentActivity() {
         address = EditText(this).apply {
             hint = getString(R.string.media_locator_url_hint)
             setSingleLine(true)
+            imeOptions = EditorInfo.IME_ACTION_GO
             setText(savedInstanceState?.getString(STATE_URL) ?: intent.getStringExtra(EXTRA_URL).orEmpty())
         }
         val close = Button(this).apply {
@@ -194,10 +213,10 @@ class MediaLocatorActivity : ComponentActivity() {
             setPadding(dp(8), dp(12), dp(8), dp(12))
         }
         val go = Button(this).apply { text = getString(R.string.media_locator_go) }
-        val pageBack = Button(this).apply { text = getString(R.string.media_locator_back) }
-        val pageForward = Button(this).apply { text = getString(R.string.media_locator_forward) }
-        val reload = Button(this).apply { text = getString(R.string.media_locator_reload) }
-        val stop = Button(this).apply { text = getString(R.string.media_locator_stop) }
+        pageBackButton = Button(this).apply { text = getString(R.string.media_locator_back) }
+        pageForwardButton = Button(this).apply { text = getString(R.string.media_locator_forward) }
+        reloadButton = Button(this).apply { text = getString(R.string.media_locator_reload) }
+        stopButton = Button(this).apply { text = getString(R.string.media_locator_stop) }
         val rescan = Button(this).apply { text = getString(R.string.media_locator_scan) }
         progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
@@ -206,7 +225,25 @@ class MediaLocatorActivity : ComponentActivity() {
         status = TextView(this).apply {
             text = getString(R.string.media_locator_initial_status)
             setTextColor(secondaryText)
-            setPadding(dp(16), dp(10), dp(16), dp(10))
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+        }
+        pageSummary = TextView(this).apply {
+            text = getString(R.string.media_locator_page_summary_empty)
+            setTextColor(secondaryText)
+            textSize = 13f
+            setPadding(dp(16), dp(4), dp(16), dp(8))
+        }
+        errorText = TextView(this).apply {
+            setTextColor(primaryText)
+            setPadding(dp(12), dp(10), dp(12), dp(4))
+        }
+        retryButton = Button(this).apply { text = getString(R.string.media_locator_retry) }
+        errorPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding(dp(8), dp(4), dp(8), dp(8))
+            addView(errorText, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(retryButton, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
         resultsHeader = TextView(this).apply {
             text = getString(R.string.media_locator_no_candidates)
@@ -234,14 +271,14 @@ class MediaLocatorActivity : ComponentActivity() {
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(8), 0, dp(8), 0)
-            addView(pageBack, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(pageForward, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(reload, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(pageBackButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(pageForwardButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(reloadButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
         val scanControls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(8), 0, dp(8), 0)
-            addView(stop, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(stopButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(rescan, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f))
         }
         val root = LinearLayout(this).apply {
@@ -252,7 +289,9 @@ class MediaLocatorActivity : ComponentActivity() {
             addView(controls, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(scanControls, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(progress, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3)))
+            addView(pageSummary, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(status, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(errorPanel, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(webView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 3f))
             addView(resultsHeader, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(list, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 2f))
@@ -273,7 +312,18 @@ class MediaLocatorActivity : ComponentActivity() {
             allowContentAccess = false
             javaScriptCanOpenWindowsAutomatically = false
             setSupportMultipleWindows(false)
+            loadsImagesAutomatically = true
+            useWideViewPort = true
+            loadWithOverviewMode = true
+            setSupportZoom(true)
+            builtInZoomControls = true
+            displayZoomControls = false
             mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        }
+        WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
+        CookieManager.getInstance().apply {
+            setAcceptCookie(true)
+            setAcceptThirdPartyCookies(webView, true)
         }
         locatorUserAgent = webView.settings.userAgentString
         enableCookieAwareRequestInterception(webView)
@@ -284,7 +334,15 @@ class MediaLocatorActivity : ComponentActivity() {
         webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView, newProgress: Int) {
                 progress.progress = newProgress
-                progress.visibility = if (newProgress in 1..99) View.VISIBLE else View.GONE
+                pageLoading = newProgress in 1..99
+                progress.visibility = if (pageLoading) View.VISIBLE else View.GONE
+                updateNavigationState()
+                updatePageSummary()
+            }
+
+            override fun onReceivedTitle(view: WebView, title: String?) {
+                currentPageTitle = title?.trim()?.takeIf(String::isNotBlank)
+                updatePageSummary()
             }
         }
         webView.webViewClient = object : WebViewClient() {
@@ -300,6 +358,10 @@ class MediaLocatorActivity : ComponentActivity() {
 
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                 currentPageUrl = url
+                currentPageTitle = null
+                lastMainFrameError = null
+                hideMainFrameError()
+                pageLoading = true
                 pageOperationId = "webview-${DebugRedactor.fingerprint(url + "|" + System.currentTimeMillis())}"
                 debugRecorder.record(
                     area = DebugArea.WebView,
@@ -311,12 +373,53 @@ class MediaLocatorActivity : ComponentActivity() {
                 address.setText(url)
                 progress.visibility = View.VISIBLE
                 status.text = getString(R.string.media_locator_loading)
+                updateNavigationState()
+                updatePageSummary()
                 if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) injectLocatorRuntime()
             }
 
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 recordNativeRequest(request)
                 return null
+            }
+
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                super.onReceivedError(view, request, error)
+                if (!request.isForMainFrame) return
+                val description = error.description?.toString()?.trim().orEmpty()
+                showMainFrameError(
+                    kind = "network",
+                    title = getString(R.string.media_locator_error_network_title),
+                    detail = description.ifBlank { getString(R.string.media_locator_error_network_detail) },
+                    severity = DebugSeverity.Warning,
+                    notifyUser = false,
+                    diagnosticCode = error.errorCode.toString(),
+                )
+            }
+
+            override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
+                super.onReceivedHttpError(view, request, errorResponse)
+                if (!request.isForMainFrame || errorResponse.statusCode < 400) return
+                showMainFrameError(
+                    kind = "http-${errorResponse.statusCode}",
+                    title = getString(R.string.media_locator_error_http_title, errorResponse.statusCode),
+                    detail = getString(R.string.media_locator_error_http_detail),
+                    severity = DebugSeverity.Warning,
+                    notifyUser = false,
+                    diagnosticCode = errorResponse.statusCode.toString(),
+                )
+            }
+
+            override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
+                handler.cancel()
+                showMainFrameError(
+                    kind = "ssl",
+                    title = getString(R.string.media_locator_error_ssl_title),
+                    detail = getString(R.string.media_locator_error_ssl_detail),
+                    severity = DebugSeverity.Error,
+                    notifyUser = true,
+                    diagnosticCode = error.primaryError.toString(),
+                )
             }
 
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
@@ -343,15 +446,23 @@ class MediaLocatorActivity : ComponentActivity() {
                 view.stopLoading()
                 view.destroy()
                 webViewDisposed = true
+                pageLoading = false
                 address.setText(lastUrl)
                 progress.visibility = View.GONE
+                lastMainFrameError = getString(R.string.media_locator_renderer_stopped)
+                errorText.text = lastMainFrameError
+                errorPanel.visibility = View.VISIBLE
                 status.text = getString(R.string.media_locator_renderer_stopped)
+                updateNavigationState()
+                updatePageSummary()
                 if (detail.didCrash()) recentlyObserved.clear()
                 return true
             }
 
             override fun onPageFinished(view: WebView, url: String) {
                 currentPageUrl = url
+                currentPageTitle = view.title?.trim()?.takeIf(String::isNotBlank) ?: currentPageTitle
+                pageLoading = false
                 debugRecorder.record(
                     area = DebugArea.WebView,
                     action = "page-load",
@@ -361,22 +472,40 @@ class MediaLocatorActivity : ComponentActivity() {
                 )
                 address.setText(url)
                 progress.visibility = View.GONE
-                injectLocatorRuntime(forceScan = true)
-                updateLocatorStatus()
+                if (lastMainFrameError == null) {
+                    injectLocatorRuntime(forceScan = true)
+                    updateLocatorStatus()
+                }
+                updateNavigationState()
+                updatePageSummary()
             }
         }
 
         close.setOnClickListener { finish() }
         go.setOnClickListener { loadAddress() }
-        pageBack.setOnClickListener { if (!webViewDisposed && webView.canGoBack()) webView.goBack() }
-        pageForward.setOnClickListener { if (!webViewDisposed && webView.canGoForward()) webView.goForward() }
-        reload.setOnClickListener {
+        address.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_GO) {
+                loadAddress()
+                true
+            } else false
+        }
+        pageBackButton.setOnClickListener { if (!webViewDisposed && webView.canGoBack()) webView.goBack() }
+        pageForwardButton.setOnClickListener { if (!webViewDisposed && webView.canGoForward()) webView.goForward() }
+        reloadButton.setOnClickListener {
             if (webViewDisposed) loadAddress() else webView.reload()
         }
-        stop.setOnClickListener {
+        stopButton.setOnClickListener {
             if (!webViewDisposed) webView.stopLoading()
+            pageLoading = false
             progress.visibility = View.GONE
             status.text = getString(R.string.media_locator_loading_stopped)
+            updateNavigationState()
+            updatePageSummary()
+        }
+        retryButton.setOnClickListener {
+            lastMainFrameError = null
+            hideMainFrameError()
+            if (webViewDisposed) loadAddress() else webView.reload()
         }
         rescan.setOnClickListener {
             if (webViewDisposed) {
@@ -384,6 +513,12 @@ class MediaLocatorActivity : ComponentActivity() {
             } else {
                 injectLocatorRuntime(forceScan = true)
                 status.text = getString(R.string.media_locator_rescanning)
+            }
+        }
+        resultsHeader.setOnClickListener {
+            if (located.isNotEmpty()) {
+                resultsExpanded = !resultsExpanded
+                updateCandidateHeader()
             }
         }
         list.setOnItemClickListener { _, _, position, _ ->
@@ -394,6 +529,8 @@ class MediaLocatorActivity : ComponentActivity() {
 
         if (savedInstanceState != null) restoreLocatorState(savedInstanceState)
         updateCandidateHeader()
+        updateNavigationState()
+        updatePageSummary()
         val initial = normalizePageUrl(address.text.toString())
         if (initial != null) {
             status.text = getString(R.string.media_locator_loading)
@@ -424,6 +561,9 @@ class MediaLocatorActivity : ComponentActivity() {
             return
         }
         located.clear()
+        resultsExpanded = true
+        lastMainFrameError = null
+        hideMainFrameError()
         refreshList()
         status.text = getString(R.string.media_locator_loading)
         if (webViewDisposed) {
@@ -432,6 +572,76 @@ class MediaLocatorActivity : ComponentActivity() {
             return
         }
         webView.loadUrl(normalized)
+    }
+
+    private fun updateNavigationState() {
+        val active = !webViewDisposed
+        pageBackButton.isEnabled = active && webView.canGoBack()
+        pageForwardButton.isEnabled = active && webView.canGoForward()
+        reloadButton.isEnabled = true
+        stopButton.isEnabled = active && pageLoading
+        retryButton.isEnabled = true
+    }
+
+    private fun updatePageSummary() {
+        val page = currentPageUrl ?: normalizePageUrl(address.text.toString())
+        if (page == null) {
+            pageSummary.text = getString(R.string.media_locator_page_summary_empty)
+            return
+        }
+        val uri = runCatching { URI(page) }.getOrNull()
+        val host = uri?.host.orEmpty().ifBlank { getString(R.string.media_locator_unknown_host) }
+        val transport = when (uri?.scheme?.lowercase(Locale.US)) {
+            "https" -> getString(R.string.media_locator_https)
+            "http" -> getString(R.string.media_locator_http)
+            else -> getString(R.string.media_locator_unknown_transport)
+        }
+        val loading = if (pageLoading) getString(R.string.media_locator_page_loading_short) else getString(R.string.media_locator_page_ready_short)
+        val title = currentPageTitle?.takeIf(String::isNotBlank) ?: host
+        pageSummary.text = getString(R.string.media_locator_page_summary, title.take(120), host, transport, loading)
+    }
+
+    private fun hideMainFrameError() {
+        errorText.text = ""
+        errorPanel.visibility = View.GONE
+    }
+
+    private fun showMainFrameError(
+        kind: String,
+        title: String,
+        detail: String,
+        severity: DebugSeverity,
+        notifyUser: Boolean,
+        diagnosticCode: String,
+    ) {
+        val url = currentPageUrl ?: address.text.toString()
+        pageLoading = false
+        progress.visibility = View.GONE
+        lastMainFrameError = "$title
+$detail"
+        errorText.text = lastMainFrameError
+        errorPanel.visibility = View.VISIBLE
+        status.text = getString(R.string.media_locator_error_status)
+        debugRecorder.record(
+            area = DebugArea.WebView,
+            severity = severity,
+            action = "main-frame-load",
+            result = kind,
+            safeDetails = mapOf("url" to url, "code" to diagnosticCode, "detail" to detail.take(240)),
+            operationId = pageOperationId,
+        )
+        problemReporter?.report(
+            area = DebugArea.WebView,
+            severity = severity,
+            title = title,
+            summary = detail,
+            suggestedAction = getString(R.string.media_locator_error_action),
+            operationId = pageOperationId,
+            dedupeKey = "media-locator-$kind",
+            notifyUser = notifyUser,
+        )
+        updateNavigationState()
+        updatePageSummary()
     }
 
     private fun injectLocatorRuntime(forceScan: Boolean = false) {
@@ -452,6 +662,8 @@ class MediaLocatorActivity : ComponentActivity() {
             val jsHeaders = jsonHeaders(observation.optJSONObject("requestHeaders"))
             val contentDisposition = observation.optString("contentDisposition").trim().takeIf(String::isNotBlank)
             val contentLength = observation.optLong("contentLength", -1L).takeIf { it >= 0L }
+            val durationMs = observation.optLong("durationMs", 0L).takeIf { it > 0L }
+            val thumbnailUrl = normalizePageUrl(observation.optString("thumbnailUrl"))
             val key = correlationKey(url) ?: return
             val observationKey = "$key|${if (body != null) "body" else source}"
             debugRecorder.record(
@@ -482,6 +694,8 @@ class MediaLocatorActivity : ComponentActivity() {
                                 mimeType = mime,
                                 contentDisposition = contentDisposition,
                                 contentLength = contentLength,
+                                durationMs = durationMs,
+                                thumbnailUrl = thumbnailUrl,
                                 bodyPrefix = body,
                                 pageUrl = authoritativePage,
                                 pageTitle = title,
@@ -618,9 +832,11 @@ class MediaLocatorActivity : ComponentActivity() {
         resultsHeader.text = if (located.isEmpty()) {
             getString(R.string.media_locator_no_candidates)
         } else {
-            resources.getQuantityString(R.plurals.media_locator_candidates_header, located.size, located.size)
+            val label = resources.getQuantityString(R.plurals.media_locator_candidates_header, located.size, located.size)
+            getString(if (resultsExpanded) R.string.media_locator_candidates_expanded else R.string.media_locator_candidates_collapsed, label)
         }
-        list.visibility = if (located.isEmpty()) View.GONE else View.VISIBLE
+        resultsHeader.contentDescription = resultsHeader.text
+        list.visibility = if (located.isEmpty() || !resultsExpanded) View.GONE else View.VISIBLE
     }
 
     private fun updateLocatorStatus() {
@@ -725,6 +941,8 @@ class MediaLocatorActivity : ComponentActivity() {
                 pageUrl = candidate.pageUrl,
                 headers = candidate.requestHeaders,
                 variantUrls = candidate.variants.associate { it.id to it.url },
+                durationMs = candidate.record.durationMs,
+                thumbnailUrl = candidate.record.thumbnailUrl,
             ),
         )
         return JSONObject().apply {
@@ -781,6 +999,8 @@ class MediaLocatorActivity : ComponentActivity() {
                 pageTitle = title,
                 pageUrl = pageUrl,
                 mimeTypeHint = mime ?: savedKind?.restoreMimeHint(),
+                durationMs = requestContext.durationMs,
+                thumbnailUrl = requestContext.thumbnailUrl,
             ) ?: return@forEach
             val base = captureService.recordFor(candidate)
             val record = base.copy(
@@ -932,6 +1152,51 @@ class MediaLocatorActivity : ComponentActivity() {
               const HARD_NON_MEDIA = /^(?:text\/(?:html|css|javascript)|application\/(?:javascript|x-javascript)|image\/|font\/)/i;
               const page = () => location.href;
               const title = () => document.title || '';
+              const artworkUrl = (value) => {
+                if (!value || /^(?:blob|data|javascript):/i.test(String(value))) return '';
+                try {
+                  const parsed = new URL(String(value), document.baseURI);
+                  return /^https?:$/.test(parsed.protocol) ? parsed.href : '';
+                } catch (_) { return ''; }
+              };
+              let artworkCache = { at: 0, url: '' };
+              const pageArtwork = () => {
+                const now = Date.now();
+                if (now - artworkCache.at < 2000) return artworkCache.url;
+                let found = '';
+                try {
+                  for (const selector of ['meta[property="og:image"]','meta[property="og:image:url"]','meta[name="twitter:image"]','meta[name="twitter:image:src"]','link[rel="image_src"]']) {
+                    const node = document.querySelector(selector);
+                    found = artworkUrl(node && (node.content || node.href || node.getAttribute('content') || node.getAttribute('href')));
+                    if (found) break;
+                  }
+                } catch (_) {}
+                if (!found) {
+                  try {
+                    const pick = (value, depth = 0) => {
+                      if (depth > 4 || value == null) return '';
+                      if (typeof value === 'string') return artworkUrl(value);
+                      if (Array.isArray(value)) {
+                        for (const item of value.slice(0, 16)) { const hit = pick(item, depth + 1); if (hit) return hit; }
+                        return '';
+                      }
+                      if (typeof value !== 'object') return '';
+                      for (const key of ['thumbnailUrl','thumbnail','image']) {
+                        if (Object.prototype.hasOwnProperty.call(value, key)) { const hit = pick(value[key], depth + 1); if (hit) return hit; }
+                      }
+                      return '';
+                    };
+                    for (const script of [...document.querySelectorAll('script[type="application/ld+json"]')].slice(0, 12)) {
+                      const text = String(script.textContent || '').slice(0, 131072);
+                      if (!text) continue;
+                      try { found = pick(JSON.parse(text)); } catch (_) {}
+                      if (found) break;
+                    }
+                  } catch (_) {}
+                }
+                artworkCache = { at: now, url: found || '' };
+                return artworkCache.url;
+              };
               const safeHeaders = (headers) => {
                 const out = {};
                 try {
@@ -947,7 +1212,8 @@ class MediaLocatorActivity : ComponentActivity() {
                   if (!/^https?:$/.test(u.protocol)) return;
                   const mime = String(data.mime || '').split(';')[0].trim();
                   if (HARD_NON_MEDIA.test(mime) && !data.body) return;
-                  bridge.observe(JSON.stringify({ ...data, url: u.href, mime, pageUrl: page(), title: title() }));
+                  const thumbnailUrl = artworkUrl(data.thumbnailUrl) || pageArtwork();
+                  bridge.observe(JSON.stringify({ ...data, url: u.href, mime, thumbnailUrl, pageUrl: page(), title: title() }));
                 } catch (_) {}
               };
               const boundedText = async (response) => {
@@ -976,10 +1242,14 @@ class MediaLocatorActivity : ComponentActivity() {
                   document.querySelectorAll('video,audio,source').forEach((node) => {
                     const url = node.currentSrc || node.src || node.getAttribute('src');
                     if (!url) return;
+                    const mediaNode = node.tagName === 'SOURCE' ? node.closest('video,audio') : node;
                     let mime = node.getAttribute('type') || '';
-                    if (!mime && node.tagName === 'VIDEO') mime = 'video/unknown';
-                    if (!mime && node.tagName === 'AUDIO') mime = 'audio/unknown';
-                    emit({ url, mime, source: 'dom' });
+                    if (!mime && mediaNode && mediaNode.tagName === 'VIDEO') mime = 'video/unknown';
+                    if (!mime && mediaNode && mediaNode.tagName === 'AUDIO') mime = 'audio/unknown';
+                    const duration = Number(mediaNode && mediaNode.duration || 0);
+                    const durationMs = Number.isFinite(duration) && duration > 0 ? Math.floor(duration * 1000) : 0;
+                    const thumbnailUrl = mediaNode && mediaNode.tagName === 'VIDEO' ? artworkUrl(mediaNode.poster || '') || pageArtwork() : pageArtwork();
+                    emit({ url, mime, durationMs, thumbnailUrl, source: 'dom' });
                   });
                 } catch (_) {}
                 try {

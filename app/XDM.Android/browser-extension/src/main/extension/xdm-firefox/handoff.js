@@ -137,6 +137,8 @@
       title: cleanText(candidate.title || fallbackTitle, 240),
       contentType: String(candidate.contentType || candidate.mimeType || "").split(";", 1)[0].trim().toLowerCase().slice(0, 120),
       contentLength: Math.max(0, Math.trunc(Number(candidate.contentLength || 0))),
+      durationMs: Math.max(0, Math.trunc(Number(candidate.durationMs || 0))),
+      thumbnailUrl: safeHttpUrl(candidate.thumbnailUrl || ""),
       stableMediaId: String(candidate.stableMediaId || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 160),
       requestFingerprint: String(candidate.requestFingerprint || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 96),
       sessionRevision: Math.max(1, Math.trunc(Number(candidate.sessionRevision || revision || 1))),
@@ -149,10 +151,11 @@
       proposedHeaders: sanitizeHeaderBag(proposed || {}),
       finalHeaders: sanitizeHeaderBag(finalSent || {}),
     };
-    for (const key of ["pageUrl", "frameUrl", "title", "contentType", "stableMediaId", "requestFingerprint"]) {
+    for (const key of ["pageUrl", "frameUrl", "title", "contentType", "thumbnailUrl", "stableMediaId", "requestFingerprint"]) {
       if (!result[key]) delete result[key];
     }
     if (!result.contentLength) delete result.contentLength;
+    if (!result.durationMs) delete result.durationMs;
     if (!result.evidence.length) delete result.evidence;
     if (!Object.keys(result.proposedHeaders).length) delete result.proposedHeaders;
     if (!Object.keys(result.finalHeaders).length) delete result.finalHeaders;

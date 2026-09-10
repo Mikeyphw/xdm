@@ -90,6 +90,50 @@
     }
   }
 
+  let pageArtworkCache = { at: 0, url: "" };
+  function pageArtworkUrl() {
+    const now = Date.now();
+    if (now - pageArtworkCache.at < 2000) return pageArtworkCache.url;
+    let found = "";
+    try {
+      const selectors = [
+        'meta[property="og:image"]', 'meta[property="og:image:url"]',
+        'meta[name="twitter:image"]', 'meta[name="twitter:image:src"]',
+        'link[rel="image_src"]'
+      ];
+      for (const selector of selectors) {
+        const node = document.querySelector(selector);
+        found = absoluteUrl(node && (node.content || node.href || node.getAttribute("content") || node.getAttribute("href")));
+        if (found) break;
+      }
+    } catch (_) {}
+    if (!found) {
+      try {
+        const pick = (value, depth = 0) => {
+          if (depth > 4 || value == null) return "";
+          if (typeof value === "string") return absoluteUrl(value);
+          if (Array.isArray(value)) {
+            for (const item of value.slice(0, 16)) { const hit = pick(item, depth + 1); if (hit) return hit; }
+            return "";
+          }
+          if (typeof value !== "object") return "";
+          for (const key of ["thumbnailUrl", "thumbnail", "image"]) {
+            if (Object.prototype.hasOwnProperty.call(value, key)) { const hit = pick(value[key], depth + 1); if (hit) return hit; }
+          }
+          return "";
+        };
+        for (const script of [...document.querySelectorAll('script[type="application/ld+json"]')].slice(0, 12)) {
+          const text = String(script.textContent || "").slice(0, 131072);
+          if (!text) continue;
+          try { found = pick(JSON.parse(text)); } catch (_) {}
+          if (found) break;
+        }
+      } catch (_) {}
+    }
+    pageArtworkCache = { at: now, url: found || "" };
+    return pageArtworkCache.url;
+  }
+
   function isSegment(value) {
     const url = String(value || "");
     if (!url || MANIFEST_RE.test(url)) return false;
@@ -119,7 +163,7 @@
     const duration = Number(video.duration || 0);
     return {
       durationMs: Number.isFinite(duration) && duration > 0 ? Math.floor(duration * 1000) : 0,
-      thumbnailUrl: absoluteUrl(video.poster || "")
+      thumbnailUrl: absoluteUrl(video.poster || "") || pageArtworkUrl()
     };
   }
 
@@ -168,7 +212,7 @@
     recordCandidate(video.src, "video.src", 600, metadata);
     collectElementUrls(video, "video");
     for (const source of video.querySelectorAll("source[src],track[src]")) {
-      recordCandidate(source.src, source.localName, 560, { trusted: true, contentType: source.type || "" });
+      recordCandidate(source.src, source.localName, 560, Object.assign({}, metadata, { trusted: true, contentType: source.type || "" }));
       collectElementUrls(source, source.localName);
     }
   }
@@ -320,6 +364,10 @@ ${location.href}`;
         source: candidate.source || (window.top === window ? "top-playback" : "frame-playback"),
         confidence: score(candidate),
         manifest: Boolean(candidate.manifest),
+        durationMs: Math.max(0, Number(candidate.durationMs || 0)),
+        thumbnailUrl: candidate.thumbnailUrl || pageArtworkUrl(),
+        pageUrl: location.href,
+        title: document.title || "",
         reason: candidate.manifest ? "frame-manifest-playback" : "frame-video-playback"
       }
     });
@@ -434,7 +482,12 @@ ${location.href}`;
     // Main-world page scripts can forge window.postMessage payloads. Treat this only as
     // an untrusted hint; privileged correlation and request headers live in the background
     // webRequest observer. Never add a trusted candidate or accept page-supplied headers here.
-    sendBackground({ type: MESSAGE_TYPE, observation: Object.assign({}, observation, { requestHeaders: {} }) });
+    sendBackground({ type: MESSAGE_TYPE, observation: Object.assign({}, observation, {
+      requestHeaders: {},
+      thumbnailUrl: observation.thumbnailUrl || pageArtworkUrl(),
+      pageUrl: location.href,
+      title: document.title || ""
+    }) });
     evaluateAllVideos();
   });
 

@@ -79,6 +79,12 @@ assert(promotionStore.merge(8, { url: "https://cdn.example/promote.m3u8", reques
 assert(promotionStore.merge(8, { url: "https://cdn.example/promote.m3u8", requestFingerprint: promoteFingerprint, confidence: 740, quality: "possible" }));
 assert.strictEqual(promotionStore.best(8).quality, "strong", "later weak observations must not downgrade promoted evidence");
 assert.strictEqual(promotionStore.best(8).autoOffer, true);
+const metadataFingerprint = core.requestFingerprint({ url: "https://cdn.example/movie.mp4", requestId: "metadata", tabId: 9, frameId: 0, requestGeneration: 1 });
+const metadataStore = new Store({ maxPerTab: 4, ttlMs: 100000 });
+assert(metadataStore.merge(9, { url: "https://cdn.example/movie.mp4", requestFingerprint: metadataFingerprint, confidence: 900, quality: "strong", durationMs: 123000, thumbnailUrl: "https://img.example/movie.jpg", pageUrl: "https://page.example/watch", title: "Movie page" }));
+assert.strictEqual(metadataStore.best(9).durationMs, 123000);
+assert.strictEqual(metadataStore.best(9).thumbnailUrl, "https://img.example/movie.jpg");
+assert.strictEqual(metadataStore.best(9).title, "Movie page");
 
 const signedOne = "https://cdn.example/master.m3u8?sig=one";
 const signedTwo = "https://cdn.example/master.m3u8?sig=two";

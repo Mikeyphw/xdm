@@ -3425,6 +3425,8 @@ class MainViewModel(
                     url = facts.url,
                     mimeType = facts.mimeType,
                     contentLength = facts.contentLength,
+                    durationMs = candidate.durationMs,
+                    thumbnailUrl = candidate.thumbnailUrl,
                     pageUrl = facts.frameUrl ?: facts.pageUrl,
                     pageTitle = facts.pageTitle,
                     requestHeaders = facts.finalHeaders.ifEmpty { facts.proposedHeaders },
