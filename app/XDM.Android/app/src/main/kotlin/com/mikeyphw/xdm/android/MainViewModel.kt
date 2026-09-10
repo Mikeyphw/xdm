@@ -1482,6 +1482,10 @@ class MainViewModel(
         viewModelScope.launch { preferences.setBrowserExtensionRequestedTheme(theme) }
     }
 
+    fun setBrowserExtensionAutoRegenerateOnThemeChange(enabled: Boolean) {
+        viewModelScope.launch { preferences.setBrowserExtensionAutoRegenerateOnThemeChange(enabled) }
+    }
+
     fun generateBrowserExtensionXpi() {
         if (browserExtensionRuntime.value.phase == BrowserExtensionExportPhase.Exporting) return
         viewModelScope.launch(Dispatchers.IO) {

@@ -125,13 +125,14 @@ for needle in (
     require(view_model, needle, "ViewModel integration")
 
 for needle in (
-    "Bridge status",
+    "Firefox extension",
     "Compatibility and recovery",
-    "Open exported XPI",
+    "Install / Update",
     "Copy setup instructions",
     "Redacted diagnostics",
-    "Refresh status",
-    "Regenerate XPI",
+    "Test connection",
+    "Technical details",
+    "Regenerate",
 ):
     require(settings, needle, "truthful settings surface")
 

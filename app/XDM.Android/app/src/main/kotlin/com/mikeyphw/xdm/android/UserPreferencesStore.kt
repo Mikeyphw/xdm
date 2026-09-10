@@ -66,6 +66,7 @@ class UserPreferencesStore(private val context: Context) {
         val BrowserExtensionExportTreeUri = stringPreferencesKey("browser_extension_export_tree_uri")
         val BrowserExtensionDefaultTarget = stringPreferencesKey("browser_extension_default_target")
         val BrowserExtensionRequestedTheme = stringPreferencesKey("browser_extension_requested_theme")
+        val BrowserExtensionAutoRegenerateTheme = booleanPreferencesKey("browser_extension_auto_regenerate_theme")
         val BrowserExtensionLastExportTheme = stringPreferencesKey("browser_extension_last_export_theme")
         val BrowserExtensionLastExportAppVersion = stringPreferencesKey("browser_extension_last_export_app_version")
         val BrowserExtensionLastExportExtensionVersion = stringPreferencesKey("browser_extension_last_export_extension_version")
@@ -127,6 +128,7 @@ class UserPreferencesStore(private val context: Context) {
                 requestedTheme = preferences[Keys.BrowserExtensionRequestedTheme]
                     ?.let { stored -> BrowserExtensionSourceContract.ThemeSelection.entries.firstOrNull { it.wireValue == stored } }
                     ?: BrowserExtensionSourceContract.ThemeSelection.FollowApp,
+                autoRegenerateOnThemeChange = preferences[Keys.BrowserExtensionAutoRegenerateTheme] ?: false,
                 lastExportTheme = preferences[Keys.BrowserExtensionLastExportTheme]
                     ?.let { stored -> BrowserExtensionSourceContract.ThemeMode.entries.firstOrNull { it.wireValue == stored } },
                 lastExportAppVersion = preferences[Keys.BrowserExtensionLastExportAppVersion].orEmpty(),
@@ -262,6 +264,10 @@ class UserPreferencesStore(private val context: Context) {
 
     suspend fun setBrowserExtensionRequestedTheme(theme: BrowserExtensionSourceContract.ThemeSelection) {
         context.dataStore.edit { it[Keys.BrowserExtensionRequestedTheme] = theme.wireValue }
+    }
+
+    suspend fun setBrowserExtensionAutoRegenerateOnThemeChange(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.BrowserExtensionAutoRegenerateTheme] = enabled }
     }
 
     suspend fun recordBrowserExtensionExport(

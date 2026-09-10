@@ -193,19 +193,19 @@ internal fun MediaFinalValidationGateCard(dashboard: MediaFinalValidationDashboa
     Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media final validation gate ${dashboard.summary}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Media final validation gate")
-        XdmMetadataText("Phase 33 re-enables validation; the current release gate retains and extends that evidence.", maxLines = 2)
+        XdmMetadataText("Release validation combines static contracts, build checks, lint, route safety, runtime compatibility, and privacy evidence.", maxLines = 3)
             XdmSupportingText(
-                "Overlay 13 is the final remediation gate: static validators, Gradle build/test/lint, warning-zero policy, route contracts, Termux/chroot safety, and real-filesystem privacy scans must all provide evidence before release readiness.",
+                "Release readiness stays blocked until static contracts, Gradle build/test/lint, warning policy, route safety, Termux compatibility, and privacy scans all provide evidence.",
                 maxLines = 4,
             )
             XdmActionFlowRow {
-                StatusPill(if (dashboard.releaseReady) "release-ready" else "validation pending or blocked", if (dashboard.releaseReady) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.releaseReady) "Ready for release" else "validation pending or blocked", if (dashboard.releaseReady) XdmStatusTone.Success else XdmStatusTone.Warning)
                 dashboard.blockerCount.takeIf { it > 0 }?.let { StatusPill("$it blocker", tone = XdmStatusTone.Error) }
                 dashboard.reviewCount.takeIf { it > 0 }?.let { StatusPill("$it review", tone = XdmStatusTone.Warning) }
                 StatusPill("${dashboard.commandCount} commands", tone = XdmStatusTone.Info)
-                StatusPill(if (dashboard.warningGate) "warning-zero" else "warning review", if (dashboard.warningGate) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.warningGate) "Warnings clear" else "warning review", if (dashboard.warningGate) XdmStatusTone.Success else XdmStatusTone.Warning)
                 StatusPill(if (dashboard.noNewTopLevelRoutes) "no new routes" else "route review", if (dashboard.noNewTopLevelRoutes) XdmStatusTone.Success else XdmStatusTone.Error)
-                StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
+                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
             dashboard.checks.take(6).forEach { check ->
@@ -241,7 +241,7 @@ internal fun MediaMobilePolishCard(dashboard: MediaMobilePolishDashboard) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Media mobile polish")
             XdmSupportingText(
-                "Phase 32 makes the Media stack phone-friendly with a sticky current-job summary, compact action strip, collapsed diagnostics, explicit empty/offline/error states, accessibility labels, and foldable guidance without adding routes.",
+                "Checks whether the Media experience stays usable on phones and larger screens: current-job summary, compact actions, collapsible diagnostics, explicit empty/offline/error states, and accessibility labels.",
                 maxLines = 4,
             )
             XdmActionFlowRow {
@@ -251,7 +251,7 @@ internal fun MediaMobilePolishCard(dashboard: MediaMobilePolishDashboard) {
                 dashboard.attentionCount.takeIf { it > 0 }?.let { StatusPill("$it attention", tone = XdmStatusTone.Warning) }
                 StatusPill(if (dashboard.noTinyScrollIslands) "no tiny scroll islands" else "scroll review", if (dashboard.noTinyScrollIslands) XdmStatusTone.Success else XdmStatusTone.Warning)
                 StatusPill(if (dashboard.accessibilityReady) "accessibility-ready" else "accessibility review", if (dashboard.accessibilityReady) XdmStatusTone.Success else XdmStatusTone.Warning)
-                StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
+                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
             }
             XdmListCard(compact = true) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -299,17 +299,17 @@ internal fun MediaCaptureQualityCard(dashboard: MediaCaptureQualityDashboard) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Media capture quality")
             XdmSupportingText(
-                "Phase 30 improves sniffing quality by grouping duplicates, suppressing analytics noise, flagging stale sessions, and scoring captured media without storing secret query strings.",
+                "Ranks captured media, groups duplicates, suppresses analytics noise, flags stale sessions, and keeps sensitive query values out of durable diagnostics.",
                 maxLines = 3,
             )
             XdmActionFlowRow {
-                StatusPill("${dashboard.treasureCount} treasure", if (dashboard.treasureCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                StatusPill("${dashboard.treasureCount} high confidence", if (dashboard.treasureCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
                 dashboard.noiseCount.takeIf { it > 0 }?.let { StatusPill("$it noise", tone = XdmStatusTone.Warning) }
                 dashboard.duplicateCount.takeIf { it > 0 }?.let { StatusPill("$it grouped", tone = XdmStatusTone.Info) }
                 dashboard.refreshCount.takeIf { it > 0 }?.let { StatusPill("$it refresh", tone = XdmStatusTone.Warning) }
                 dashboard.protectedCount.takeIf { it > 0 }?.let { StatusPill("$it protected", tone = XdmStatusTone.Warning) }
                 dashboard.liveCount.takeIf { it > 0 }?.let { StatusPill("$it live", tone = XdmStatusTone.Info) }
-                StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
             if (dashboard.empty) {
@@ -352,7 +352,7 @@ internal fun SessionPrivacyAuditCard(dashboard: MediaSessionPrivacyAuditDashboar
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Session privacy audit")
             XdmSupportingText(
-                "Phase 31 audits external page context, resolver handoffs, queue specs, sidecars, logs, notifications, temp files, and Termux previews for secret leaks and cleanup gaps.",
+                "Audits page context, resolver handoffs, queue specs, sidecars, logs, notifications, temporary files, and Termux previews for redaction or cleanup gaps.",
                 maxLines = 3,
             )
             XdmActionFlowRow {
@@ -360,7 +360,7 @@ internal fun SessionPrivacyAuditCard(dashboard: MediaSessionPrivacyAuditDashboar
                 dashboard.reviewCount.takeIf { it > 0 }?.let { StatusPill("$it review", tone = XdmStatusTone.Warning) }
                 dashboard.cleanupDueCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup due", tone = XdmStatusTone.Warning) }
                 dashboard.cleanupVerifiedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup verified", tone = XdmStatusTone.Success) }
-                StatusPill(if (dashboard.durableSecretSafe) "durable secret-safe" else "durable leak blocked", if (dashboard.durableSecretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
+                StatusPill(if (dashboard.durableSecretSafe) "Durable data redacted" else "durable leak blocked", if (dashboard.durableSecretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
                 StatusPill(if (dashboard.transientCleanupHealthy) "cleanup healthy" else "cleanup review", if (dashboard.transientCleanupHealthy) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
@@ -397,13 +397,13 @@ internal fun MediaDispatchDashboardCard(dashboard: MediaDispatchDashboard, plans
     Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media dispatch control tower ${dashboard.summary}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Media dispatch control tower")
-            XdmSupportingText("Phase 22 dispatch runbook maps each resolver choice to a safe lane, background policy, retry policy, progress signals, and terminal cleanup before the job leaves the Media inbox.", maxLines = 3)
+            XdmSupportingText("Maps each resolver choice to its execution lane, background policy, retry behavior, progress signals, and terminal cleanup before dispatch.", maxLines = 3)
             XdmActionFlowRow {
                 StatusPill("${dashboard.readyCount} ready", if (dashboard.readyCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
                 dashboard.blockedCount.takeIf { it > 0 }?.let { StatusPill("$it blocked", tone = XdmStatusTone.Warning) }
                 dashboard.refreshCount.takeIf { it > 0 }?.let { StatusPill("$it refresh", tone = XdmStatusTone.Warning) }
                 dashboard.termuxSetupCount.takeIf { it > 0 }?.let { StatusPill("$it Termux setup", tone = XdmStatusTone.Info) }
-                StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
             if (plans.isEmpty()) {
@@ -440,16 +440,16 @@ internal fun MediaQueueTelemetryCard(deck: MediaQueueTelemetryDeck) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Media queue telemetry")
             XdmSupportingText(
-                "Phase 23 turns dispatch runbooks into a control-room telemetry deck with progress pulse, next action, cleanup status, and redaction health before final validation.",
+                "Shows live dispatch telemetry: progress, next action, cleanup status, and redaction health for queued media work.",
                 maxLines = 3,
             )
             XdmActionFlowRow {
                 StatusPill("${deck.readyToLaunchCount} ready", if (deck.readyToLaunchCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
                 deck.activeCount.takeIf { it > 0 }?.let { StatusPill("$it active", tone = XdmStatusTone.Info) }
                 deck.needsAttentionCount.takeIf { it > 0 }?.let { StatusPill("$it attention", tone = XdmStatusTone.Warning) }
-                deck.cleanupArmedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup armed", tone = XdmStatusTone.Neutral) }
+                deck.cleanupArmedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup ready", tone = XdmStatusTone.Neutral) }
                 deck.terminalCount.takeIf { it > 0 }?.let { StatusPill("$it terminal", tone = XdmStatusTone.Neutral) }
-                StatusPill(if (deck.secretSafe) "secret-safe telemetry" else "redaction review", if (deck.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (deck.secretSafe) "Telemetry redacted" else "redaction review", if (deck.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(deck.summary, maxLines = 3)
             if (deck.empty) {
@@ -483,7 +483,7 @@ internal fun MediaNativeDirectDownloadEngineCard(dashboard: NativeDirectDashboar
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Native direct download engine")
             XdmSupportingText(
-                "Phase 27 plans Android-native direct media transfers with transient headers, resume metadata, destination policy, and redacted diagnostics before any byte writer is enabled.",
+                "Plans native direct-media transfers with transient headers, resume metadata, destination policy, and redacted diagnostics before execution.",
                 maxLines = 3,
             )
             XdmActionFlowRow {
@@ -491,7 +491,7 @@ internal fun MediaNativeDirectDownloadEngineCard(dashboard: NativeDirectDashboar
                 dashboard.resumeCount.takeIf { it > 0 }?.let { StatusPill("$it resumable", tone = XdmStatusTone.Info) }
                 dashboard.permissionCount.takeIf { it > 0 }?.let { StatusPill("$it permission", tone = XdmStatusTone.Warning) }
                 dashboard.unsupportedCount.takeIf { it > 0 }?.let { StatusPill("$it adaptive", tone = XdmStatusTone.Neutral) }
-                StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             dashboard.plans.take(3).forEach { plan -> NativeDirectDownloadPlanRow(plan) }
             if (dashboard.plans.isEmpty()) {
@@ -513,14 +513,14 @@ internal fun MediaTermuxRuntimeAdapterCard(dashboard: TermuxRuntimeDashboard) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Media Termux runtime adapter")
             XdmSupportingText(
-                "Phase 26 turns worker bridge requests into typed yt-dlp and aria2 Termux launch plans with capability probes, transient Netscape cookie/input/session files, and terminal cleanup checks.",
+                "Builds typed yt-dlp and aria2 Termux launch plans with capability probes, transient session files, and terminal cleanup checks.",
                 maxLines = 3,
             )
             XdmActionFlowRow {
-                StatusPill("${dashboard.launchableCount} launchable", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                StatusPill("${dashboard.launchableCount} ready", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
                 dashboard.missingToolCount.takeIf { it > 0 }?.let { StatusPill("$it missing tools", tone = XdmStatusTone.Warning) }
-                dashboard.cleanupArmedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup armed", tone = XdmStatusTone.Info) }
-                StatusPill(if (dashboard.secretSafe) "secret-safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                dashboard.cleanupArmedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup ready", tone = XdmStatusTone.Info) }
+                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             dashboard.plans.take(3).forEach { plan -> TermuxRuntimeLaunchPlanRow(plan) }
             if (dashboard.plans.isEmpty()) {
@@ -545,16 +545,16 @@ internal fun MediaWorkerBridgeCard(dashboard: MediaWorkerBridgeDashboard) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Media worker bridge")
             XdmSupportingText(
-                "Phase 25 converts ready media actions into Android UIDT, WorkManager foreground, aria2, native, or Termux yt-dlp bridge requests without launching services yet.",
+                "Translates ready media work into Android, aria2, native, or Termux worker requests before anything is launched.",
                 maxLines = 3,
             )
             XdmActionFlowRow {
-                StatusPill("${dashboard.launchableCount} launchable", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                StatusPill("${dashboard.launchableCount} ready", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
                 dashboard.androidWorkerCount.takeIf { it > 0 }?.let { StatusPill("$it Android", tone = XdmStatusTone.Info) }
                 dashboard.termuxWorkerCount.takeIf { it > 0 }?.let { StatusPill("$it Termux", tone = XdmStatusTone.Info) }
                 dashboard.blockedCount.takeIf { it > 0 }?.let { StatusPill("$it blocked", tone = XdmStatusTone.Warning) }
                 dashboard.confirmationCount.takeIf { it > 0 }?.let { StatusPill("$it confirm", tone = XdmStatusTone.Warning) }
-                StatusPill(if (dashboard.secretSafe) "secret-safe bridge" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "Bridge redacted" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
             if (dashboard.empty) {
@@ -599,16 +599,16 @@ internal fun MediaQueueActionsCard(dashboard: MediaQueueActionDashboard) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Media queue actions")
             XdmSupportingText(
-                "Phase 24 turns telemetry into safe action eligibility for pause, resume, retry, cancel, cleanup, refresh, Termux setup, and library handoff without executing raw commands.",
+                "Derives safe action eligibility for pause, resume, retry, cancel, cleanup, refresh, Termux setup, and library handoff without exposing raw commands.",
                 maxLines = 3,
             )
             XdmActionFlowRow {
-                StatusPill("${dashboard.launchableCount} launch", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                StatusPill("${dashboard.launchableCount} ready", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
                 dashboard.pausableCount.takeIf { it > 0 }?.let { StatusPill("$it pause", tone = XdmStatusTone.Info) }
                 dashboard.retryableCount.takeIf { it > 0 }?.let { StatusPill("$it retry/resume", tone = XdmStatusTone.Warning) }
                 dashboard.cancellableCount.takeIf { it > 0 }?.let { StatusPill("$it cancel", tone = XdmStatusTone.Warning) }
                 dashboard.cleanupCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup", tone = XdmStatusTone.Neutral) }
-                StatusPill(if (dashboard.secretSafe) "secret-safe actions" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "Actions redacted" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
             if (dashboard.empty) {
@@ -1163,7 +1163,7 @@ internal fun OfflineLibraryV2Card(dashboard: OfflineLibraryV2Dashboard) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Offline Library 2.0")
             XdmSupportingText(
-                "Phase 28 makes completed media filterable by video, audio, failed, playable, missing file, source host, and cleanup state with safe sidecar actions.",
+                "Checks completed-media filtering by type, failure/playability, missing files, source host, and cleanup state with safe sidecar actions.",
                 maxLines = 3,
             )
             XdmActionFlowRow {
@@ -1222,7 +1222,7 @@ internal fun PlayerDiagnosticsDeckCard(reports: List<MediaPlayerDiagnosticReport
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Player diagnostics deck")
             XdmSupportingText(
-                "Phase 29 makes Media3 playback failures explainable with source, network, decoder, codec, subtitle, and protected-media buckets plus retry-prepare guidance.",
+                "Classifies playback failures by source, network, decoder, codec, subtitle, or protected-media cause and provides retry guidance.",
                 maxLines = 3,
             )
             XdmActionFlowRow {

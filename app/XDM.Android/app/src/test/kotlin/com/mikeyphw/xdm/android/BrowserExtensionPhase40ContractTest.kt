@@ -28,9 +28,10 @@ class BrowserExtensionPhase40ContractTest {
         val preferences = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferencesStore.kt").readText()
         assertTrue(models.contains("ThemeSelection.FollowApp"))
         assertTrue(models.contains("isThemeStale"))
-        assertTrue(screen.contains("Regeneration needed"))
+        assertTrue(screen.contains("Package theme needs updating"))
         assertTrue(screen.contains("preferences.resolvedTheme(state.themeMode)"))
         assertTrue(preferences.contains("ThemeSelection.entries"))
+        assertTrue(preferences.contains("BrowserExtensionAutoRegenerateTheme"))
     }
 
     @Test

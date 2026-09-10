@@ -686,7 +686,7 @@ class ArchitectureContractTest {
             assertTrue("Queue telemetry missing $token", telemetry.contains(token))
         }
         assertTrue("Queue telemetry must model cleanup and next action", telemetry.contains("cleanupArmed") && telemetry.contains("nextActionLabel") && telemetry.contains("safeDiagnostic"))
-        assertTrue("Developer tools must expose queue telemetry", UiSourceTree.readDeveloper(root).contains("Media queue telemetry") && UiSourceTree.readDeveloper(root).contains("Phase 23 turns dispatch runbooks"))
+        assertTrue("Developer tools must expose queue telemetry", UiSourceTree.readDeveloper(root).contains("Media queue telemetry"))
         assertTrue("Normal Media must not render telemetry", !UiSourceTree.readUser(root).contains("MediaQueueTelemetryCard(queueTelemetry)"))
         assertTrue("Tests must cover telemetry redaction and retry action", tests.contains("mediaQueueTelemetryDeckShowsReadyCleanup") && tests.contains("mediaQueueTelemetryRedactsFailedJobDetails"))
         assertTrue("Project manifest must record queue telemetry", manifestJson.contains("media_queue_telemetry") && manifestJson.contains("no_validation_until_final_phase"))
@@ -707,7 +707,7 @@ class ArchitectureContractTest {
             assertTrue("Queue actions missing $token", actions.contains(token))
         }
         assertTrue("Queue actions must model pause resume retry cancel cleanup", actions.contains("Pause media") && actions.contains("Resume media") && actions.contains("Retry media") && actions.contains("Cancel media") && actions.contains("Cleanup finished"))
-        assertTrue("Developer tools must expose queue actions", UiSourceTree.readDeveloper(root).contains("Media queue actions") && UiSourceTree.readDeveloper(root).contains("Phase 24 turns telemetry"))
+        assertTrue("Developer tools must expose queue actions", UiSourceTree.readDeveloper(root).contains("Media queue actions"))
         assertTrue("Normal Media must not render queue-action planners", !UiSourceTree.readUser(root).contains("MediaQueueActionsCard(queueActions)"))
         assertTrue("Tests must cover queue actions and redaction", tests.contains("mediaQueueActionsExposeLaunchRetryCancelAndCleanupWithoutSecrets") && tests.contains("mediaQueueActionsExplainBlockedPreQueueStates"))
         assertTrue("Project manifest must record queue actions", manifestJson.contains("media_queue_actions") && manifestJson.contains("no_validation_until_final_phase"))
@@ -730,7 +730,7 @@ class ArchitectureContractTest {
         }
         assertTrue("Worker bridge must model UIDT WorkManager Termux aria2 yt-dlp", bridge.contains("Android UIDT worker") && bridge.contains("WorkManager foreground worker") && bridge.contains("aria2 launch adapter") && bridge.contains("Termux yt-dlp adapter"))
         assertTrue("Worker bridge must keep typed adapters", bridge.contains("rawShellExposed") && bridge.contains("typedArguments") && bridge.contains("redactedPreview"))
-        assertTrue("Developer tools must expose worker bridge diagnostics", UiSourceTree.readDeveloper(root).contains("Media worker bridge") && UiSourceTree.readDeveloper(root).contains("Phase 25 converts ready media actions"))
+        assertTrue("Developer tools must expose worker bridge diagnostics", UiSourceTree.readDeveloper(root).contains("Media worker bridge"))
         assertTrue("Normal Media must not render worker bridge diagnostics", !UiSourceTree.readUser(root).contains("MediaWorkerBridgeCard(workerBridge)"))
         assertTrue("Tests must cover worker bridge redaction", tests.contains("mediaWorkerBridgeBuildsUidtRequestForDirectMediaWithoutSecrets") && tests.contains("mediaWorkerBridgeBuildsTypedTermuxYtDlpRequestWithCleanupOwnedSecrets"))
         assertTrue("Project manifest must record worker bridge", manifestJson.contains("media_worker_bridge") && manifestJson.contains("no_validation_until_final_phase"))
@@ -749,7 +749,7 @@ class ArchitectureContractTest {
         assertTrue("Runtime adapter must expose typed launch plans", adapter.contains("TermuxRuntimeLaunchPlan") && adapter.contains("typedArguments"))
         assertTrue("Runtime adapter must expose capability probes", adapter.contains("TermuxMediaRuntimeCapabilityReport") && adapter.contains("Install yt-dlp"))
         assertTrue("Runtime adapter must model transient cleanup", adapter.contains("Netscape cookie file") && adapter.contains("delete after terminal state"))
-        assertTrue("Developer tools must expose Termux runtime adapter diagnostics", UiSourceTree.readDeveloper(root).contains("Media Termux runtime adapter") && UiSourceTree.readDeveloper(root).contains("Phase 26 turns worker bridge requests"))
+        assertTrue("Developer tools must expose Termux runtime adapter diagnostics", UiSourceTree.readDeveloper(root).contains("Media Termux runtime adapter"))
         assertTrue("Manifest must record Phase 26", manifest.contains("media_termux_runtime_adapter"))
         assertFalse("Termux runtime adapter must not add top-level routes", AppRoute.entries.any { it.label == "Runtime" || it.label == "Termux runtime" || it.label == "yt-dlp" })
     }
@@ -765,7 +765,7 @@ class ArchitectureContractTest {
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Native engine must expose direct request plans", planner.contains("NativeDirectDownloadRequestPlan") && planner.contains("NativeDirectHeaderPolicy"))
         assertTrue("Native engine must expose resume planning", planner.contains("NativeDirectResumePlan") && planner.contains("Range=bytes="))
-        assertTrue("Developer tools must expose native direct engine diagnostics", UiSourceTree.readDeveloper(root).contains("Native direct download engine") && UiSourceTree.readDeveloper(root).contains("Phase 27 plans Android-native direct media transfers"))
+        assertTrue("Developer tools must expose native direct engine diagnostics", UiSourceTree.readDeveloper(root).contains("Native direct download engine"))
         assertTrue("Manifest must record Phase 27", manifest.contains("media_native_direct_download_engine"))
         assertFalse("Native direct engine must not add top-level routes", AppRoute.entries.any { it.label == "Native" || it.label == "Direct engine" || it.label == "Media engine" })
     }
@@ -781,7 +781,7 @@ class ArchitectureContractTest {
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Offline Library 2.0 must expose filter/sort dashboard", planner.contains("OfflineLibraryV2Filter") && planner.contains("OfflineLibraryV2SortKey") && planner.contains("OfflineLibraryV2Dashboard"))
         assertTrue("Offline Library 2.0 must keep safe exports and sidecar actions", planner.contains("safeExportJson") && planner.contains("RemoveSidecar") && planner.contains("RenameSidecar"))
-        assertTrue("Developer tools must preserve Offline Library 2.0 diagnostics", UiSourceTree.readDeveloper(root).contains("Offline Library 2.0") && UiSourceTree.readDeveloper(root).contains("Phase 28 makes completed media filterable"))
+        assertTrue("Developer tools must preserve Offline Library 2.0 diagnostics", UiSourceTree.readDeveloper(root).contains("Offline Library 2.0"))
         assertTrue("Manifest must record Phase 28", manifest.contains("media_offline_library_v2"))
         assertFalse("Offline Library 2.0 must not expose implementation-detail routes", AppRoute.entries.any { it.label == "Offline" || it.label == "Player" })
     }
@@ -797,7 +797,7 @@ class ArchitectureContractTest {
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Player diagnostics must expose buckets and retry prepare", planner.contains("MediaPlayerDiagnosticBucket") && planner.contains("RetryPrepare") && planner.contains("Protected media diagnostics only"))
         assertTrue("Normal playback must hide diagnostics until an actual error exposes support details", player.contains("playerError?.let") && player.contains("Support details") && player.contains("Track availability") && player.contains("Playback position") && !player.contains("Player 2.0 diagnostics"))
-        assertTrue("Developer tools must preserve player diagnostics", UiSourceTree.readDeveloper(root).contains("Player diagnostics deck") && UiSourceTree.readDeveloper(root).contains("Phase 29 makes Media3 playback failures"))
+        assertTrue("Developer tools must preserve player diagnostics", UiSourceTree.readDeveloper(root).contains("Player diagnostics deck"))
         assertTrue("Manifest must record Phase 29", manifest.contains("media_player_diagnostics"))
         assertFalse("Player diagnostics must not add top-level routes", AppRoute.entries.any { it.label == "Player" || it.label == "Playback" })
     }
@@ -813,7 +813,7 @@ class ArchitectureContractTest {
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Capture quality must expose dispositions and signals", planner.contains("CaptureQualityDisposition") && planner.contains("AnalyticsBeacon") && planner.contains("GroupWithExisting"))
         assertTrue("Capture quality must score and redact diagnostics", planner.contains("confidenceScore") && planner.contains("secret-safe capture quality") && planner.contains("redactKnownSecrets"))
-        assertTrue("Developer tools must expose capture-quality diagnostics", UiSourceTree.readDeveloper(root).contains("Media capture quality") && UiSourceTree.readDeveloper(root).contains("Phase 30 improves sniffing quality"))
+        assertTrue("Developer tools must expose capture-quality diagnostics", UiSourceTree.readDeveloper(root).contains("Media capture quality"))
         assertTrue("Manifest must record Phase 30", manifest.contains("media_capture_quality"))
         assertFalse("Media capture quality must not add top-level routes", AppRoute.entries.any { it.label == "Capture" || it.label == "Quality" || it.label == "Sniffer" })
     }
@@ -828,7 +828,7 @@ class ArchitectureContractTest {
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Privacy audit must scan expected surfaces", planner.contains("MediaPrivacySurface") && planner.contains("TermuxCommandPreview") && planner.contains("TempFiles"))
         assertTrue("Privacy audit must classify cleanup and blockers", planner.contains("MediaCleanupState") && planner.contains("durable secret-safe") && planner.contains("transientCleanupHealthy"))
-        assertTrue("Developer tools must expose the privacy audit", UiSourceTree.readDeveloper(root).contains("Session privacy audit") && UiSourceTree.readDeveloper(root).contains("Phase 31 audits external page context"))
+        assertTrue("Developer tools must expose the privacy audit", UiSourceTree.readDeveloper(root).contains("Session privacy audit"))
         assertTrue("Manifest must record Phase 31", manifest.contains("media_session_privacy_audit"))
         assertFalse("Session privacy audit must not add top-level routes", AppRoute.entries.any { it.label == "Privacy" || it.label == "Audit" || it.label == "Cleanup" })
     }
@@ -844,7 +844,7 @@ class ArchitectureContractTest {
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Mobile polish must expose phone-first dashboard concepts", planner.contains("MediaMobilePolishDashboard") && planner.contains("StickyCurrentJob") && planner.contains("NoTinyScrollIslands"))
         assertTrue("Mobile polish must include accessibility and foldable rules", planner.contains("AccessibilityLabels") && planner.contains("FoldableReady") && planner.contains("TouchTargetSafe"))
-        assertTrue("Developer tools must preserve mobile-polish diagnostics", UiSourceTree.readDeveloper(root).contains("Media mobile polish") && UiSourceTree.readDeveloper(root).contains("Phase 32 makes the Media stack phone-friendly"))
+        assertTrue("Developer tools must preserve mobile-polish diagnostics", UiSourceTree.readDeveloper(root).contains("Media mobile polish"))
         assertTrue("Manifest must record Phase 32", manifest.contains("media_mobile_polish"))
         assertFalse("Media mobile polish must not add top-level routes", AppRoute.entries.any { it.label == "Mobile" || it.label == "Polish" || it.label == "Media UX" })
     }
@@ -862,7 +862,7 @@ class ArchitectureContractTest {
         val workflow = File(root, ".github/workflows/android.yml").readText()
         assertTrue("Final gate planner must expose checks and commands", planner.contains("MediaFinalValidationGatePlanner") && planner.contains("DefaultGradleCommand") && planner.contains("warning-zero gate"))
         assertTrue("Final gate must scan secrets and known Kotlin traps", planner.contains("PrivacyLeakScan") && planner.contains("KotlinTrapScan") && planner.contains("TermuxChrootSafety"))
-        assertTrue("Developer tools must preserve final-validation diagnostics", UiSourceTree.readDeveloper(root).contains("Media final validation gate") && UiSourceTree.readDeveloper(root).contains("Phase 33 re-enables validation"))
+        assertTrue("Developer tools must preserve final-validation diagnostics", UiSourceTree.readDeveloper(root).contains("Media final validation gate"))
         assertTrue("Manifest must record Phase 33", manifest.contains("media_final_validation_gate") && (manifest.contains("\"final_phase\": true") || manifest.contains("\"next_phase\": \"complete\"")))
         assertTrue("Final gate script must include media validators", runGate.contains("validate-media-final-validation-gate.py") && runGate.contains("validate-media-mobile-polish.py"))
         assertTrue("CI must include final media validator", workflow.contains("validate-media-final-validation-gate.py"))

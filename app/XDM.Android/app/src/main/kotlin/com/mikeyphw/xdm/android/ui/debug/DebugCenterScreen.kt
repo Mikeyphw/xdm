@@ -38,7 +38,10 @@ import com.mikeyphw.xdm.android.XdmListCard
 import com.mikeyphw.xdm.android.XdmMetadataText
 import com.mikeyphw.xdm.android.XdmSectionHeader
 import com.mikeyphw.xdm.android.XdmSupportingText
+import com.mikeyphw.xdm.android.XdmStatusBadge
+import com.mikeyphw.xdm.android.XdmStatusTone
 import com.mikeyphw.xdm.android.model.DebugRecorderProvider
+import com.mikeyphw.xdm.android.model.DebugRedactor
 import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
 import com.mikeyphw.xdm.android.model.RollingJsonlDebugEventRecorder
 import com.mikeyphw.xdm.android.copyTextToClipboard
@@ -177,6 +180,7 @@ fun DebugCenterScreen(
                 },
                 onRunAgain = { startRun(displayedRun.selectedTestIds.toSet()) },
                 onCopy = { copyTextToClipboard(context, "XDM diagnostics report", displayedRun.toReportText()) },
+                onCopyResult = { result -> copyTextToClipboard(context, "XDM diagnostic details", result.toReportText()) },
                 onExport = { exportZip(displayedRun) },
             )
             DebugCenterPage.History -> debugHistoryPage(
@@ -284,33 +288,46 @@ private fun LazyListScope.debugResultsPage(
     onRetestFailed: () -> Unit,
     onRunAgain: () -> Unit,
     onCopy: () -> Unit,
+    onCopyResult: (DebugTestResult) -> Unit,
     onExport: () -> Unit,
 ) {
     item {
         XdmListCard {
-            XdmCardTitle("Test Results")
-            XdmSupportingText(run.summaryLabel, maxLines = 2)
-            if (run.total > 0) {
-                LinearProgressIndicator(
-                    progress = { run.progressFraction },
-                    modifier = Modifier.fillMaxWidth(),
+            XdmCardTitle("Test results")
+            if (running) {
+                XdmStatusBadge("Running", tone = XdmStatusTone.Info)
+                XdmSupportingText(run.summaryLabel, maxLines = 2)
+                if (run.total > 0) {
+                    LinearProgressIndicator(
+                        progress = { run.progressFraction },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else if (run.results.isNotEmpty()) {
+                XdmStatusBadge(
+                    text = if (run.failed > 0) "Run complete • action needed" else "Run complete",
+                    tone = if (run.failed > 0) XdmStatusTone.Warning else XdmStatusTone.Success,
                 )
+                XdmSupportingText(run.summaryLabel, maxLines = 2)
+            } else {
+                XdmSupportingText("No test run yet", maxLines = 2)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdmActionFlowRow {
                 if (running) {
                     Button(onClick = onStop) { Text("Stop") }
                 }
-                Button(onClick = onRetestFailed, enabled = !running && run.failureIds().isNotEmpty()) { Text("Retest Failed") }
-                OutlinedButton(onClick = onRunAgain, enabled = !running && run.selectedTestIds.isNotEmpty()) { Text("Run Again") }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onCopy, enabled = run.results.isNotEmpty()) { Text("Copy Results") }
+                Button(onClick = onRetestFailed, enabled = !running && run.failureIds().isNotEmpty()) { Text("Retest failed") }
+                OutlinedButton(onClick = onRunAgain, enabled = !running && run.selectedTestIds.isNotEmpty()) { Text("Run again") }
+                OutlinedButton(onClick = onCopy, enabled = run.results.isNotEmpty()) { Text("Copy results") }
                 OutlinedButton(onClick = onExport, enabled = run.results.isNotEmpty() && !running) { Text("Export ZIP") }
             }
         }
     }
 
-    items(run.sortedResults()) { result ->
+    items(run.sortedResults(), key = { it.testId }) { result ->
+        var showTechnicalDetails by remember(result.testId, result.startedAtEpochMs) { mutableStateOf(false) }
+        val important = result.status == DebugTestStatus.Failed || result.status == DebugTestStatus.Warning
+        val redactedDetails = remember(result.details) { DebugRedactor.redactDetails(result.details) }
         XdmListCard(compact = true) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -319,16 +336,47 @@ private fun LazyListScope.debugResultsPage(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(result.displayTitle)
-                    XdmMetadataText(result.groupId)
                 }
-                Text(result.status.label)
+                XdmStatusBadge(
+                    result.status.label,
+                    tone = when (result.status) {
+                        DebugTestStatus.Failed -> XdmStatusTone.Error
+                        DebugTestStatus.Warning -> XdmStatusTone.Warning
+                        DebugTestStatus.Passed -> XdmStatusTone.Success
+                        DebugTestStatus.Running -> XdmStatusTone.Info
+                        else -> XdmStatusTone.Neutral
+                    },
+                )
             }
-            Text(result.summary)
+            XdmSupportingText(conciseDebugSummary(result.summary), maxLines = if (important) 4 else 3)
             result.suggestedAction?.takeIf(String::isNotBlank)?.let { action ->
-                XdmMetadataText("Next: $action", maxLines = 3)
+                XdmMetadataText("Recommended action: ${DebugRedactor.redactText(action)}", maxLines = 4)
+            }
+            if (important && (result.errorCode?.isNotBlank() == true || redactedDetails.isNotEmpty() || result.summary.contains('\n'))) {
+                TextButton(onClick = { showTechnicalDetails = !showTechnicalDetails }) {
+                    Text(if (showTechnicalDetails) "Hide technical details" else "Technical details")
+                }
+            }
+            if (showTechnicalDetails) {
+                XdmMetadataText("Group: ${result.groupId}")
+                result.errorCode?.takeIf(String::isNotBlank)?.let { code ->
+                    XdmMetadataText("Error: ${DebugRedactor.redactText(code)}", maxLines = 5)
+                }
+                if (result.summary.contains('\n')) {
+                    XdmMetadataText("Full summary: ${DebugRedactor.redactText(result.summary)}", maxLines = 12)
+                }
+                redactedDetails.forEach { (key, value) ->
+                    XdmMetadataText("$key: $value", maxLines = 8)
+                }
+                TextButton(onClick = { onCopyResult(result) }) { Text("Copy technical details") }
             }
         }
     }
+}
+
+private fun conciseDebugSummary(summary: String): String {
+    val firstUsefulLine = summary.lineSequence().map(String::trim).firstOrNull(String::isNotBlank).orEmpty()
+    return if (firstUsefulLine.length <= 240) firstUsefulLine else firstUsefulLine.take(237) + "…"
 }
 
 private fun LazyListScope.debugHistoryPage(

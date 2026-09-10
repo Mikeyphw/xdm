@@ -423,9 +423,10 @@ private fun destinationSummary(uri: String): String = when {
 }
 
 private fun browserExtensionSummary(state: MainUiState): String = when {
-    state.browserExtension.lastExportFileName.isNotBlank() -> "${state.browserExtension.lastExportFileName} • verified SHA-256 export"
-    state.browserExtension.exportTreeUri.isNotBlank() -> "Export folder selected • ready to generate the Firefox XPI"
-    else -> "Generate the XDM Firefox bridge into a folder you choose"
+    state.browserBridgeStatus.isReady -> "Firefox extension connected • handoff ready"
+    state.browserExtension.lastExportFileName.isNotBlank() -> "Verified Firefox extension package available"
+    state.browserExtension.exportTreeUri.isNotBlank() -> "Package folder selected • ready to generate extension"
+    else -> "Connect Firefox and prepare the XDM extension"
 }
 
 private fun queueSummary(state: MainUiState): String {

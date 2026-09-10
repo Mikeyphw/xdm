@@ -491,6 +491,26 @@ internal fun ExternalToolsSettingsScreen(state: MainUiState, viewModel: MainView
         item {
             XdmSupportingText("Optional integrations live here so normal download and storage settings remain focused. Root actions still require the existing explicit authorization path.", maxLines = 4)
         }
+        item {
+            XdmListCard {
+                XdmCardTitle("Integration status")
+                XdmActionFlowRow {
+                    XdmStatusBadge(
+                        state.termuxBridge.readinessLabel,
+                        tone = if (state.termuxBridge.canRunProbe) XdmStatusTone.Success else XdmStatusTone.Warning,
+                    )
+                    XdmStatusBadge(
+                        state.termuxAria2.readinessLabel,
+                        tone = if (state.termuxAria2.daemonState.name == "Running") XdmStatusTone.Success else XdmStatusTone.Neutral,
+                    )
+                }
+                XdmSupportingText(state.termuxBridge.summary, maxLines = 3)
+                XdmActionFlowRow {
+                    Button(onClick = viewModel::runTermuxToolProbe, enabled = state.termuxBridge.canRunProbe) { Text("Check Termux") }
+                    TextButton(onClick = viewModel::openTermux, enabled = state.termuxBridge.termuxInstalled) { Text("Open Termux") }
+                }
+            }
+        }
         item { XdmSectionHeader("Termux") }
         item {
             TermuxBridgeSettingsCard(

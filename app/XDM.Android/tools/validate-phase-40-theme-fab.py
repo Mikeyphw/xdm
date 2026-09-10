@@ -63,7 +63,7 @@ for token in ('FollowApp("follow-app"', "fun resolve(appTheme"):
 for token in ("ThemeSelection.FollowApp", "resolvedTheme", "isThemeStale"):
     require(models, token, "export theme state")
 require(preferences, "ThemeSelection.entries", "persisted theme migration")
-for token in ("Follow app", "Regeneration needed", "Regenerate XPI", "preferences.resolvedTheme(state.themeMode)"):
+for token in ("Follow app", "Package theme needs updating", "Regenerate", "preferences.resolvedTheme(state.themeMode)"):
     require(settings, token, "browser extension settings")
 
 for token in (

@@ -89,7 +89,8 @@ for token in (".part", ".backup", "writeAndVerify", "snapshot", "renameSupported
 require(settings_panel, 'BrowserExtension("Browser extension")', "Settings subpanel")
 require(settings_screen, "SettingsPanel.BrowserExtension", "Settings navigation")
 require(extension_screen, "ActivityResultContracts.OpenDocumentTree()", "SAF folder picker")
-require(extension_screen, "Generate XPI", "generation action")
+require(extension_screen, "Extension package", "generation action")
+require(extension_screen, "Generate", "generation action")
 forbid(routes, "BrowserExtension", "top-level route contract")
 
 for required in (

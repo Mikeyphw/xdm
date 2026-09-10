@@ -11,6 +11,7 @@ data class BrowserExtensionExportPreferences(
     val exportTreeUri: String = "",
     val defaultTarget: BrowserExtensionSourceContract.Target = BrowserExtensionSourceContract.Target.Xdm,
     val requestedTheme: BrowserExtensionSourceContract.ThemeSelection = BrowserExtensionSourceContract.ThemeSelection.FollowApp,
+    val autoRegenerateOnThemeChange: Boolean = false,
     val lastExportTheme: BrowserExtensionSourceContract.ThemeMode? = null,
     val lastExportAppVersion: String = "",
     val lastExportExtensionVersion: String = "",

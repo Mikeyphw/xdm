@@ -1454,7 +1454,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_ux08_ux09_settings_information_architecture_v1.zip",
+  "current_overlay": "xdm_android_ux10_ux11_developer_browser_polish_v1.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -3028,7 +3028,8 @@
   "next_phase": "UX10/UX11 developer diagnostics and workspace refinement",
   "notes": [
     "Phase 1 r4 updates scheduler FileProvider contract test to match CompletedFileGrantPolicy delegation.",
-    "UX08/UX09 reorganizes Settings by user intent without deleting capabilities; apply as an intermediate overlay with --no-validate."
+    "UX08/UX09 reorganizes Settings by user intent without deleting capabilities; apply as an intermediate overlay with --no-validate.",
+    "UX10/UX11 polishes Developer Center diagnostics and Browser/External Tools surfaces; apply as an intermediate overlay with --no-validate."
   ],
   "organization_history_power_tools": {
     "archive_unarchive": true,
@@ -4357,5 +4358,31 @@
     ],
     "safety_stages_not_reorderable": true,
     "room_schema_unchanged": 21
+  },
+  "ux10_developer_diagnostics_polish": {
+    "status": "complete",
+    "completed_run_progress_not_shown_as_success_bar": true,
+    "concise_failure_summary": true,
+    "recommended_action_prominent": true,
+    "technical_details_expandable": true,
+    "technical_details_copyable": true,
+    "roadmap_phase_numbers_removed_from_runtime_developer_ui": true,
+    "developer_status_vocabulary_humanized": true,
+    "release_readiness_single_section_preserved": true,
+    "room_schema_unchanged": 21
+  },
+  "ux11_browser_external_surface_polish": {
+    "status": "complete",
+    "browser_product_status": "Firefox extension",
+    "connection_test_action": true,
+    "install_update_action": true,
+    "technical_bridge_details_collapsed_by_default": true,
+    "human_saf_export_folder_label": true,
+    "theme_preview": true,
+    "auto_regenerate_on_app_theme_change_opt_in": true,
+    "normal_settings_hide_hash_first_summary": true,
+    "external_tools_health_summary": true,
+    "room_schema_unchanged": 21,
+    "next_roadmap_overlay": "UX12 accessibility, terminology, and visual-system seal"
   }
 }

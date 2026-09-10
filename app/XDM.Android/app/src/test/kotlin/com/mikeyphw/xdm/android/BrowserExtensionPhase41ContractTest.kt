@@ -12,12 +12,13 @@ class BrowserExtensionPhase41ContractTest {
     fun settingsExposeTruthfulStatusRecoveryOpenAndCopyActions() {
         val source = repo.resolve("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/BrowserExtensionSettingsScreen.kt").readText()
         listOf(
-            "Bridge status",
+            "Firefox extension",
             "Compatibility and recovery",
-            "Open exported XPI",
+            "Install / Update",
             "Copy setup instructions",
             "Redacted diagnostics",
-            "Refresh status",
+            "Test connection",
+            "Technical details",
         ).forEach { assertTrue("Missing settings contract: $it", source.contains(it)) }
     }
 
