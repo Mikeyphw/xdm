@@ -25,6 +25,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.BatteryChargingFull
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -167,7 +172,7 @@ fun DownloadsScreen(
     val detailDownload = downloads.firstOrNull { it.id == detailDownloadId }
     val actionDownload = downloads.firstOrNull { it.id == actionDownloadId }
     val confirmationDownload = downloads.firstOrNull { it.id == confirmationDownloadId }
-    val heldDownload = DownloadsWorkspacePlanner.firstPolicyHeldDownload(downloads)
+    val queueIssue = DownloadsWorkspacePlanner.queueIssue(queueIntelligence)
     val copy = DownloadsWorkspacePlanner.copyFor(filter)
     val selectionMode = selectedIds.isNotEmpty()
     fun actionContext(download: Download): DownloadActionContext = DownloadUiTruthPlanner.contextFor(
@@ -293,10 +298,11 @@ fun DownloadsScreen(
     Column(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.Downloads, "Downloads")) {
         DownloadsOverviewHeader(
             windowClass = windowClass,
-            activeCount = active.activeCount,
+            downloadingCount = metrics.downloadingCount,
+            waitingCount = metrics.waitingCount,
+            queuedCount = metrics.queuedCount,
             aggregateSpeed = metrics.aggregateSpeedBytesPerSecond,
             remainingSeconds = metrics.remainingSeconds,
-            queuedCount = metrics.queuedCount,
             searchVisible = searchVisible,
             onToggleSearch = { searchVisible = !searchVisible },
             onOpenOrganize = { organizeVisible = true },
@@ -318,21 +324,12 @@ fun DownloadsScreen(
             )
         }
 
-        if (heldDownload != null) {
+        queueIssue?.let { issue ->
             XdmNoticeRow(
-                text = "Smart queue is protecting your connection. ${heldDownload.fileName} is waiting for an allowed network.",
-                icon = Icons.Rounded.Wifi,
-                tone = XdmStatusTone.Info,
-                actionLabel = "Start now",
-                onAction = { onStartIgnoringQueuePolicy(heldDownload) },
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
-            )
-        } else if (queueIntelligence.heldForNetwork + queueIntelligence.heldForPower + queueIntelligence.heldForStorage + queueIntelligence.heldForSchedule + queueIntelligence.waitingForRetry > 0) {
-            XdmNoticeRow(
-                text = queueIntelligence.message,
-                icon = Icons.Rounded.Wifi,
-                tone = XdmStatusTone.Info,
-                actionLabel = "Check now",
+                text = "${issue.title}. ${issue.detail}",
+                icon = issue.iconVector(),
+                tone = if (issue.kind == DownloadQueueIssueKind.Review) XdmStatusTone.Warning else XdmStatusTone.Info,
+                actionLabel = issue.actionLabel,
                 onAction = onEvaluateQueueIntelligence,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
             )
@@ -352,7 +349,8 @@ fun DownloadsScreen(
         DownloadSectionHeader(
             title = copy.title,
             subtitle = copy.subtitle,
-            activeFilter = filter == DownloadWorkspaceFilter.Active,
+            downloadingFilter = filter == DownloadWorkspaceFilter.Downloading,
+            waitingFilter = filter == DownloadWorkspaceFilter.Waiting,
             activeCount = active.activeCount,
             pausedCount = downloads.count { it.state == DownloadState.Paused },
             selectionCount = selectedIds.size,
@@ -685,25 +683,27 @@ fun DownloadsScreen(
 @Composable
 private fun DownloadsOverviewHeader(
     windowClass: XdmWindowClass,
-    activeCount: Int,
+    downloadingCount: Int,
+    waitingCount: Int,
+    queuedCount: Int,
     aggregateSpeed: Long,
     remainingSeconds: Long?,
-    queuedCount: Int,
     searchVisible: Boolean,
     onToggleSearch: () -> Unit,
     onOpenOrganize: () -> Unit,
 ) {
-    val metrics = listOf(
-        XdmMetric("active", activeCount.toString()),
-        XdmMetric("total speed", if (aggregateSpeed > 0L) aggregateSpeed.formatSpeed() else "Idle"),
-        if (remainingSeconds != null) XdmMetric("remaining", formatRemainingTime(remainingSeconds))
-        else XdmMetric("queued", queuedCount.toString()),
-    )
+    val metrics = buildList {
+        add(XdmMetric("downloading", downloadingCount.toString()))
+        add(XdmMetric("waiting", waitingCount.toString()))
+        add(XdmMetric("queued", queuedCount.toString()))
+        add(XdmMetric("total speed", if (aggregateSpeed > 0L) aggregateSpeed.formatSpeed() else "Idle"))
+        remainingSeconds?.let { add(XdmMetric("remaining", formatRemainingTime(it))) }
+    }
     Column(Modifier.fillMaxWidth()) {
         if (windowClass == XdmWindowClass.Expanded) {
             XdmPageHeader(
                 title = "Downloads",
-                subtitle = "Everything in motion, without the engine-room noise.",
+                subtitle = "Downloads, waiting work, and anything that needs attention.",
                 actions = {
                     IconButton(
                         onClick = onToggleSearch,
@@ -722,7 +722,7 @@ private fun DownloadsOverviewHeader(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Everything in motion, without the engine-room noise.",
+                    "Downloads, waiting work, and anything that needs attention.",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -745,7 +745,8 @@ private fun DownloadsOverviewHeader(
 private fun DownloadSectionHeader(
     title: String,
     subtitle: String,
-    activeFilter: Boolean,
+    downloadingFilter: Boolean,
+    waitingFilter: Boolean,
     activeCount: Int,
     pausedCount: Int,
     selectionCount: Int,
@@ -766,10 +767,10 @@ private fun DownloadSectionHeader(
         if (selectionCount > 0) {
             TextButton(onClick = onOpenOrganize) { Text("$selectionCount selected") }
             IconButton(onClick = onClearSelection) { Icon(Icons.Rounded.Close, contentDescription = "Clear selection") }
-        } else if (activeFilter && activeCount > 0) {
+        } else if (downloadingFilter && activeCount > 0) {
             TextButton(onClick = onPauseAll) { Text("Pause all") }
-        } else if (activeFilter && pausedCount > 0) {
-            TextButton(onClick = onResumeAll) { Text("Resume all") }
+        } else if (waitingFilter && pausedCount > 0) {
+            TextButton(onClick = onResumeAll) { Text("Resume paused") }
         }
     }
 }
@@ -972,6 +973,15 @@ private fun shareText(context: android.content.Context, title: String, value: St
     context.startActivity(Intent.createChooser(intent, title))
 }
 
+private fun DownloadQueueIssue.iconVector(): androidx.compose.ui.graphics.vector.ImageVector = when (kind) {
+    DownloadQueueIssueKind.Storage -> Icons.Rounded.Storage
+    DownloadQueueIssueKind.Network -> Icons.Rounded.Wifi
+    DownloadQueueIssueKind.Power -> Icons.Rounded.BatteryChargingFull
+    DownloadQueueIssueKind.Schedule -> Icons.Rounded.Schedule
+    DownloadQueueIssueKind.Retry -> Icons.Rounded.Refresh
+    DownloadQueueIssueKind.Review -> Icons.Rounded.Info
+}
+
 private fun Set<String>.toggle(id: String): Set<String> = if (id in this) this - id else this + id
 
 private fun backendMigrationAvailable(download: Download, capabilities: List<BackendCapabilityRow>): Boolean {
@@ -988,9 +998,8 @@ private fun backendMigrationAvailable(download: Download, capabilities: List<Bac
 }
 
 private fun DownloadState?.toWorkspaceFilter(): DownloadWorkspaceFilter = when (this) {
-    DownloadState.Connecting, DownloadState.Downloading, DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing -> DownloadWorkspaceFilter.Active
-    DownloadState.Created, DownloadState.Queued, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower -> DownloadWorkspaceFilter.Queued
-    DownloadState.Paused -> DownloadWorkspaceFilter.Paused
+    DownloadState.Connecting, DownloadState.Downloading, DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing -> DownloadWorkspaceFilter.Downloading
+    DownloadState.Created, DownloadState.Queued, DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower -> DownloadWorkspaceFilter.Waiting
     DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired -> DownloadWorkspaceFilter.Finished
     null -> DownloadWorkspaceFilter.All
 }

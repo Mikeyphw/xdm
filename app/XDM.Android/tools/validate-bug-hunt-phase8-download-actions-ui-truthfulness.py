@@ -130,8 +130,9 @@ details = require(
 )
 workspace = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsWorkspace.kt",
-    "Paused(\"Paused\")",
-    "DownloadWorkspaceFilter.Paused -> download.state == DownloadState.Paused",
+    "Waiting(\"Waiting\")",
+    "private val waitingStates = queuedStates + DownloadState.Paused",
+    "DownloadWorkspaceFilter.Waiting -> download.state in waitingStates",
     "DownloadState.Verifying",
     "DownloadState.Repairing",
     "DownloadState.Finalizing",

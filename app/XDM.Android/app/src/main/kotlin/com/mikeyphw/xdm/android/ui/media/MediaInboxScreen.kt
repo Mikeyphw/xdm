@@ -92,10 +92,12 @@ fun MediaInboxScreen(
     }
 
     Column(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.Media, "Media")) {
-        XdmPageHeader(
-            title = "Media",
-            subtitle = "Direct media downloads in one tap. Playlists show quality and track choices when they exist.",
-        )
+        val intro = "Direct media downloads in one tap. Playlists show quality and track choices when they exist."
+        if (LocalXdmWindowClass.current == XdmWindowClass.Expanded) {
+            XdmPageHeader(title = "Media", subtitle = intro)
+        } else {
+            XdmPageIntro(intro)
+        }
         LazyColumn(
             modifier = Modifier.fillMaxWidth().weight(1f),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),

@@ -8,6 +8,8 @@ cd "$ROOT"
 # The Phase-11 static matrix owns these validators. Keep the literals here for
 # release-contract/source-harmony checks, but do not execute them twice.
 matrix_owned_validators=(
+  tools/validate-ux03-downloads-queue-product-ui.py
+  tools/validate-ux02-navigation-visual-hierarchy.py
   tools/validate-bug-hunt-phase1-external-control-secrets-privacy.py
   tools/validate-bug-hunt-phase2-download-execution.py
   tools/validate-bug-hunt-phase3-storage-publication-verification-repair.py

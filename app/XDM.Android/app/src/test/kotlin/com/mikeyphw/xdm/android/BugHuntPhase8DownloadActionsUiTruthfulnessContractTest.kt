@@ -38,7 +38,7 @@ class BugHuntPhase8DownloadActionsUiTruthfulnessContractTest {
         val truth = source("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadUiTruth.kt")
         assertTrue(row.contains("DownloadUiTruthPlanner.truth"))
         assertTrue(details.contains("DownloadUiTruthPlanner.truth"))
-        assertTrue(workspace.contains("Paused(\"Paused\")"))
+        assertTrue(workspace.contains("Waiting(\"Waiting\")") && workspace.contains("private val waitingStates = queuedStates + DownloadState.Paused"))
         assertTrue(truth.contains("CompletedArtifactHealth.Missing -> \"Completed record; saved file is missing\""))
         assertTrue(truth.contains("context.verificationFailed() -> \"Completed file failed verification\""))
         assertTrue(truth.contains("DownloadState.Downloading && download.speedBytesPerSecond > 0L"))

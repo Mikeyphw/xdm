@@ -159,14 +159,16 @@ private fun XdmCompactTopBar(route: AppRoute, onAddDownload: () -> Unit) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            IconButton(
-                onClick = { focusRestorationController.markLastFocused("new_download_action"); onAddDownload() },
-                modifier = Modifier
-                    .xdmMinimumTouchTarget()
-                    .xdmFocusRestorePoint("new_download_action")
-                    .semantics { contentDescription = "New download" },
-            ) {
-                Icon(Icons.Rounded.Add, contentDescription = null)
+            if (route == AppRoute.Downloads) {
+                IconButton(
+                    onClick = { focusRestorationController.markLastFocused("new_download_action"); onAddDownload() },
+                    modifier = Modifier
+                        .xdmMinimumTouchTarget()
+                        .xdmFocusRestorePoint("new_download_action")
+                        .semantics { contentDescription = "New download" },
+                ) {
+                    Icon(Icons.Rounded.Add, contentDescription = null)
+                }
             }
         }
     }

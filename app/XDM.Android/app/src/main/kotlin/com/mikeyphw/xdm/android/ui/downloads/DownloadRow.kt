@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Link
@@ -78,9 +79,12 @@ internal fun DownloadRow(
     }
     val trailing = when {
         download.state == DownloadState.Downloading && download.speedBytesPerSecond > 0L -> download.speedBytesPerSecond.formatSpeed()
+        download.state in setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower) && download.speedBytesPerSecond > 0L -> "${download.speedBytesPerSecond.formatSpeed()} last"
         download.state == DownloadState.Completed -> actionContext.artifact.sizeBytes?.formatBytes() ?: truth.trailingText
         else -> truth.trailingText
     }
+    val rowStatus = DownloadsWorkspacePlanner.rowStatus(download, truth)
+    val destination = destinationUiLabel(download.destinationUri)
 
     Surface(
         modifier = Modifier.fillMaxWidth().combinedClickable(role = Role.Button, onClick = onClick, onLongClick = onLongClick).semantics {
@@ -109,9 +113,9 @@ internal fun DownloadRow(
                     XdmStatusBadge(truth.badge, tone = download.state.statusTone())
                 }
                 Text(
-                    truth.supportingText,
+                    rowStatus,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.76f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f) else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = if (compact) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -120,6 +124,13 @@ internal fun DownloadRow(
                     Text(byteText, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(trailing, style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
+                Text(
+                    destination,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Spacer(Modifier.width(2.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -142,6 +153,7 @@ internal fun DownloadAction.iconVector(): androidx.compose.ui.graphics.vector.Im
     DownloadActionIcon.Details -> Icons.Rounded.Info
     DownloadActionIcon.Recovery -> Icons.Rounded.Refresh
     DownloadActionIcon.Pause -> Icons.Rounded.Pause
+    DownloadActionIcon.Resume -> Icons.Rounded.Download
     DownloadActionIcon.Play -> Icons.Rounded.PlayArrow
     DownloadActionIcon.Refresh -> Icons.Rounded.Refresh
     DownloadActionIcon.Cancel -> Icons.Rounded.Close

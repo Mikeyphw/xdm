@@ -17,9 +17,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -37,6 +41,7 @@ import com.mikeyphw.xdm.android.storage.PersonalDirectStorage
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.role
@@ -95,7 +100,6 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            XdmSectionHeader("Settings")
             XdmSupportingText("Everyday preferences first. Advanced engines and diagnostics stay one level deeper.", maxLines = 3)
         }
         item { XdmSectionHeader("Downloads") }
@@ -386,11 +390,22 @@ internal fun SettingsPageHeader(
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        XdmSectionHeader(title)
-        TextButton(onClick = onBack) { Text("Back") }
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier
+                .xdmMinimumTouchTarget()
+                .semantics { contentDescription = "Back to Settings" },
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
+        }
+        Text(
+            title,
+            modifier = Modifier.weight(1f).semantics { heading() },
+            style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+        )
     }
 }
 

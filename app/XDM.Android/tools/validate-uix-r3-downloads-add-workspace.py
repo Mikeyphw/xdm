@@ -26,13 +26,13 @@ def require(relative: str, *needles: str) -> str:
 planner = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsWorkspace.kt",
     "enum class DownloadWorkspaceFilter",
-    'Active("Active")', 'Queued("Queued")', 'Paused("Paused")', 'Finished("Finished")', 'All("All")',
-    "fun visibleDownloads(", "fun metrics(", "fun firstPolicyHeldDownload(",
+    'All("All")', 'Downloading("Downloading")', 'Waiting("Waiting")', 'Finished("Finished")',
+    "fun visibleDownloads(", "fun metrics(", "fun queueIssue(", "fun rowStatus(",
 )
 screen = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
     "XdmMetricStrip(", "DownloadWorkspaceFilter.entries", "Search downloads", "Organize downloads",
-    "XdmWindowClass.Expanded", "XdmAdaptiveSheet(", "onStartIgnoringQueuePolicy",
+    "XdmWindowClass.Expanded", "XdmAdaptiveSheet(", "queueIssue",
 )
 row = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt",
@@ -81,7 +81,7 @@ for forbidden in ("Text(requestHeaders", "Text(cookies", "backend probe output",
     if forbidden.lower() in add.lower():
         ERRORS.append(f"Normal Add flow exposes engineering detail: {forbidden}")
 
-require("app/src/test/kotlin/com/mikeyphw/xdm/android/UixR3DownloadsWorkspaceTest.kt", "filtersKeepEveryTransferInTheExpectedWorkspace", "metricsAggregateOnlyMovingTransferSpeed")
+require("app/src/test/kotlin/com/mikeyphw/xdm/android/UixR3DownloadsWorkspaceTest.kt", "filtersKeepEveryTransferInTheExpectedWorkspace", "metricsExposeDownloadingWaitingQueuedAndMovingSpeedSeparately")
 require("app/src/test/kotlin/com/mikeyphw/xdm/android/UixR3DownloadsAddContractTest.kt", "downloadsIsAnAdaptiveTransferFirstWorkspace", "addIsSingleActionAndNeverAutoQueuesMediaInspection")
 
 manifest = json.loads(read("PROJECT_MANIFEST.json") or "{}")

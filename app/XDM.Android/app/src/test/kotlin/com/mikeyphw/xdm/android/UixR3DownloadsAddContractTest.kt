@@ -13,12 +13,13 @@ class UixR3DownloadsAddContractTest {
             .joinToString("\n") { File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/$it").readText() }
         listOf(
             "DownloadWorkspaceFilter",
-            "Active(\"Active\")",
-            "Queued(\"Queued\")",
-            "Paused(\"Paused\")",
-            "Finished(\"Finished\")",
             "All(\"All\")",
+            "Downloading(\"Downloading\")",
+            "Waiting(\"Waiting\")",
+            "Finished(\"Finished\")",
             "XdmMetricStrip",
+            "queueIssue(queueIntelligence)",
+            "rowStatus(download, truth)",
             "Organize downloads",
             "combinedClickable",
             "onLongClick",

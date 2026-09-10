@@ -75,10 +75,12 @@ fun MediaLibraryScreen(
     val playableCount = allItems.count { it.toPlaybackCandidate() != null }
 
     Column(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.Library, "Media library")) {
-        XdmPageHeader(
-            title = "Library",
-            subtitle = "Completed video and audio, ready to play or manage.",
-        )
+        val intro = "Completed video and audio, ready to play or manage."
+        if (LocalXdmWindowClass.current == XdmWindowClass.Expanded) {
+            XdmPageHeader(title = "Library", subtitle = intro)
+        } else {
+            XdmPageIntro(intro)
+        }
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

@@ -1454,7 +1454,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_ux01_ux09_product_foundation_v3.zip",
+  "current_overlay": "xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -4198,5 +4198,49 @@
     "automatic_upload": false,
     "automatic_transfer_start_added": false,
     "storage_permission_added": false
+  },
+  "ux02_ux03_navigation_downloads_product_ui": {
+    "overlay": "xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip",
+    "date": "2026-09-09",
+    "depends_on": "xdm_android_ux01_ux09_product_foundation_v3r2.zip",
+    "ux02_navigation_visual_hierarchy_complete": true,
+    "compact_title_single_owner": true,
+    "contextual_compact_add_action": true,
+    "compact_add_action_routes": [
+      "Downloads"
+    ],
+    "expanded_sidebar_new_download_remains_explicit": true,
+    "media_library_compact_headers_use_intro_only": true,
+    "activity_settings_duplicate_content_titles_removed": true,
+    "settings_back_arrow": true,
+    "disabled_row_readability": true,
+    "ux03_downloads_queue_product_ui_complete": true,
+    "four_primary_download_filters": true,
+    "primary_download_filters": [
+      "All",
+      "Downloading",
+      "Waiting",
+      "Finished"
+    ],
+    "waiting_includes": [
+      "Created",
+      "Queued",
+      "Paused",
+      "WaitingForNetwork",
+      "WaitingForPower"
+    ],
+    "waiting_metrics_truthful": true,
+    "queue_issue_grouping": true,
+    "raw_queue_summary_hidden_from_primary_downloads_ui": true,
+    "concise_download_rows": true,
+    "destination_metadata_separate_from_actions": true,
+    "paused_waiting_progress_preserved": true,
+    "resume_download_icon": true,
+    "room_schema_unchanged": 21,
+    "new_top_level_route": false,
+    "storage_permission_added": false,
+    "automatic_transfer_start_added": false,
+    "automatic_file_deletion_added": false,
+    "next_roadmap_overlay": "UX04 New Download and destination selection/preflight"
   }
 }

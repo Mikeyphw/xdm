@@ -215,9 +215,8 @@ internal fun OrganizeDownloadsContent(
 }
 
 private fun DownloadWorkspaceFilter.asDownloadState(): DownloadState? = when (this) {
-    DownloadWorkspaceFilter.Active -> DownloadState.Downloading
-    DownloadWorkspaceFilter.Queued -> DownloadState.Queued
-    DownloadWorkspaceFilter.Paused -> DownloadState.Paused
+    DownloadWorkspaceFilter.Downloading -> DownloadState.Downloading
+    DownloadWorkspaceFilter.Waiting -> DownloadState.Queued
     DownloadWorkspaceFilter.Finished -> DownloadState.Completed
     DownloadWorkspaceFilter.All -> null
 }

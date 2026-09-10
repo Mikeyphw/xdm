@@ -35,6 +35,7 @@ enum class DownloadActionIcon {
     Details,
     Recovery,
     Pause,
+    Resume,
     Play,
     Refresh,
     Cancel,
@@ -232,7 +233,7 @@ object DownloadActionPlanner {
     private fun resume(label: String = "Resume", primary: Boolean = false, validated: Boolean) = DownloadAction(
         DownloadActionKind.Resume,
         label,
-        DownloadActionIcon.Play,
+        DownloadActionIcon.Resume,
         primary = primary,
         supportingText = if (validated) {
             "Continue from partial data whose durable validators are still available."
@@ -263,7 +264,7 @@ object DownloadActionPlanner {
     private fun startNow(primary: Boolean = false) = DownloadAction(
         DownloadActionKind.StartNow,
         "Start now",
-        DownloadActionIcon.Play,
+        DownloadActionIcon.Resume,
         primary = primary,
         supportingText = "Request an immediate queue claim. This never routes through Pause.",
     )

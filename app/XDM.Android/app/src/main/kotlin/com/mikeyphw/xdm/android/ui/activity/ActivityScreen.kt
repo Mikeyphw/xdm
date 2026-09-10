@@ -60,10 +60,11 @@ fun ActivityWorkspaceScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(Modifier.weight(1f)) {
-                    XdmSectionHeader("Activity")
-                    XdmSupportingText("See what needs a decision now and what happened recently.", maxLines = 2)
-                }
+                XdmSupportingText(
+                    "See what needs a decision now and what happened recently.",
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2,
+                )
                 TextButton(onClick = onOpenManage) { Text("Manage") }
             }
         }

@@ -270,7 +270,7 @@ class ArchitectureContractTest {
         assertTrue("Downloads must support search", screens.contains("Search downloads"))
         assertTrue("Downloads must support sort choices", screens.contains("DownloadDashboardOrdering"))
         assertTrue("Download details must disclose technical data on demand", screens.contains("XdmTechnicalDetails") && screens.contains("Technical details"))
-        assertTrue("Filtered empty states must explain what appears in each view", screens.contains("Nothing is moving") || screens.contains("The queue is clear") || screens.contains("No downloads match"))
+        assertTrue("Filtered empty states must explain what appears in each view", screens.contains("Nothing is downloading") && screens.contains("Nothing is waiting") && screens.contains("No matching downloads"))
         assertTrue("Add route must fold advanced settings", addSurface.contains("Advanced options") && addSurface.contains("advancedExpanded"))
         assertTrue(
             "Add route must use one explicit Download action",
