@@ -1,13 +1,22 @@
 package com.mikeyphw.xdm.android
 
 import java.io.File
-import kotlin.test.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import org.junit.Test
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 
 class Ux06LiveLocatorNativeShellContractTest {
-    private val source = File("app/src/main/kotlin/com/mikeyphw/xdm/android/MediaLocatorActivity.kt").readText()
-    private val strings = File("app/src/main/res/values/strings.xml").readText()
+    private val root = androidRoot()
+    private val source = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MediaLocatorActivity.kt").readText()
+    private val strings = File(root, "app/src/main/res/values/strings.xml").readText()
+
+    private fun androidRoot(): File {
+        var cursor = File(System.getProperty("user.dir") ?: ".").canonicalFile
+        while (true) {
+            if (File(cursor, "settings.gradle.kts").isFile && File(cursor, "app").isDirectory) return cursor
+            cursor = cursor.parentFile ?: error("Could not locate XDM.Android root from ${System.getProperty("user.dir")}")
+        }
+    }
 
     @Test
     fun liveLocatorUsesNativeThemedShellAndSafeRendererRecovery() {

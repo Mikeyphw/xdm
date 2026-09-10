@@ -79,7 +79,7 @@ class RemediationPhase13FinalGateContractTest {
     }
 
     @Test
-    fun browserDirectAddAndDirectV3MediaCaptureRemainSeparateReviewRoutes() {
+    fun browserDirectAddAndDirectV3MediaCaptureRemainSeparateRoutes() {
         val handoff = source("browser-extension/src/main/extension/xdm-firefox/handoff.js")
         val bridge = source("browser-extension/src/main/extension/xdm-firefox/frame-bridge.js")
         val detector = source("browser-extension/src/main/extension/xdm-firefox/detector-core.js")
@@ -143,7 +143,7 @@ class RemediationPhase13FinalGateContractTest {
         assertFalse(commonValidation.contains(":browser-extension:packageFirefoxExtensionDark"))
         assertFalse(commonValidation.contains(":browser-extension:packageFirefoxExtensionAmoled"))
         assertFalse(commonValidation.contains(":browser-extension:verifyFirefoxExtensionReleaseArtifacts"))
-        assertTrue(projectManifest.contains("\"current_overlay\": \"xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip\""))
+        assertTrue(projectManifest.contains("\"current_overlay\": \"xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip\""))
         assertTrue(projectManifest.contains("\"static_validation_evidence_required\": true"))
         assertTrue(projectManifest.contains("\"full_validation_evidence_required\": true"))
         assertTrue(projectManifest.contains("\"validation_evidence_defaults_false\": true"))

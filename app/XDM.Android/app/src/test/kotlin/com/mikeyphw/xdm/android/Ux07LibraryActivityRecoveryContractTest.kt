@@ -1,15 +1,24 @@
 package com.mikeyphw.xdm.android
 
 import java.io.File
-import kotlin.test.Test
-import kotlin.test.assertTrue
+import org.junit.Test
+import org.junit.Assert.assertTrue
 
 class Ux07LibraryActivityRecoveryContractTest {
-    private val library = File("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/library/MediaLibraryScreen.kt").readText()
-    private val activity = File("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/activity/ActivityScreen.kt").readText()
-    private val planner = File("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/activity/ActivityWorkspace.kt").readText()
-    private val app = File("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
-    private val operational = File("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/OperationalActivity.kt").readText()
+    private val root = androidRoot()
+    private val library = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/library/MediaLibraryScreen.kt").readText()
+    private val activity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/activity/ActivityScreen.kt").readText()
+    private val planner = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/activity/ActivityWorkspace.kt").readText()
+    private val app = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
+    private val operational = File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/OperationalActivity.kt").readText()
+
+    private fun androidRoot(): File {
+        var cursor = File(System.getProperty("user.dir") ?: ".").canonicalFile
+        while (true) {
+            if (File(cursor, "settings.gradle.kts").isFile && File(cursor, "app").isDirectory) return cursor
+            cursor = cursor.parentFile ?: error("Could not locate XDM.Android root from ${System.getProperty("user.dir")}")
+        }
+    }
 
     @Test
     fun libraryAddsUsefulEmptyStateSortingStorageAndFileActions() {

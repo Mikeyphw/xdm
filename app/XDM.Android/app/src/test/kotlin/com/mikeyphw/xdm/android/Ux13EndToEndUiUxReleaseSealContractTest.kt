@@ -65,7 +65,7 @@ class Ux13EndToEndUiUxReleaseSealContractTest {
         assertFalse(settings.contains("\"Advanced Debug Workbench\""))
         assertFalse(settings.contains("\"Developer tools\""))
 
-        assertTrue(manifest.contains("\"current_overlay\": \"xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip\""))
+        assertTrue(manifest.contains("\"current_overlay\": \"xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip\""))
         assertTrue(manifest.contains("\"next_phase\": \"complete\""))
         assertTrue(manifest.contains("\"validation_deferred\": false"))
         assertTrue(manifest.contains("\"version\": 21"))

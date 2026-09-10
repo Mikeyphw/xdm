@@ -28,11 +28,12 @@ class UixR5ActivitySettingsContractTest {
         val developer = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperSettingsScreen.kt").readText()
         val preferences = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferencesStore.kt").readText()
 
-        val storage = settings.indexOf("Storage & destinations")
-        val behavior = settings.indexOf("Download behavior")
-        val network = settings.indexOf("Network")
-        val media = settings.indexOf("Media & capture")
-        val support = settings.indexOf("Diagnostics & support")
+        val overview = settings.substringAfter("private fun SettingsOverview").substringBefore("private data class SettingsNavigationItem")
+        val storage = overview.indexOf("Storage & destinations")
+        val behavior = overview.indexOf("Download behavior")
+        val network = overview.indexOf("Network")
+        val media = overview.indexOf("Media & capture")
+        val support = overview.indexOf("Diagnostics & support")
         assertTrue(
             "Everyday settings categories must lead before support tooling",
             storage >= 0 && behavior > storage && network > behavior && media > network && support > media,

@@ -3122,6 +3122,9 @@ class MainViewModel(
     private fun mediaIntakeFailureDetail(error: Throwable): String =
         BrowserBridgeDiagnosticsRedactor.sanitize(error.message ?: error::class.java.simpleName)
 
+    private fun mediaItemCountLabel(count: Int): String =
+        if (count == 1) "1 media item" else "$count media items"
+
     private fun feedbackForEmptyMediaPlan(plan: MediaSniffingPlan, sourceLabel: String): MediaIntakeFeedbackUi {
         val diagnostics = plan.diagnostics.map(BrowserBridgeDiagnosticsRedactor::sanitize).filter(String::isNotBlank).takeLast(6)
         val joined = diagnostics.joinToString(" ").lowercase()
@@ -3129,31 +3132,31 @@ class MainViewModel(
             "401" in joined || "403" in joined || "auth" in joined || "forbidden" in joined -> MediaIntakeFeedbackUi(
                 MediaIntakeFeedbackKind.AuthenticationRequired,
                 "Browser session required",
-                "$sourceLabel could not access the media with the available request context. Capture it from Firefox so XDM can use the browser-observed request in a later capture session.",
+                "$sourceLabel could not access this media directly. Play it in Firefox and send the detected media to XDM.",
                 diagnostics,
             )
             "unsupported scheme" in joined || "rejected" in joined -> MediaIntakeFeedbackUi(
                 MediaIntakeFeedbackKind.Unsupported,
                 "Unsupported media input",
-                "$sourceLabel was rejected before capture. Use an HTTP(S) page or media URL.",
+                "$sourceLabel could not be checked. Use an HTTP(S) page or media URL.",
                 diagnostics,
             )
             "failed" in joined || "open failed" in joined -> MediaIntakeFeedbackUi(
                 MediaIntakeFeedbackKind.Failed,
                 "Media inspection failed",
-                "$sourceLabel could not complete the probe. The diagnostic summary is shown below.",
+                "$sourceLabel could not be checked. Open Technical details for diagnostic information.",
                 diagnostics,
             )
             plan.diagnostics.any { it.contains("no-js", ignoreCase = true) || it.contains("page-probe", ignoreCase = true) } -> MediaIntakeFeedbackUi(
                 MediaIntakeFeedbackKind.NeedsBrowserCapture,
-                "No media found in the static page probe",
-                "The page was fetched, but XDM does not execute page JavaScript here. If playback creates the stream dynamically, play it in Firefox and send the captured media request to XDM.",
+                "No media found on this page",
+                "XDM checked the page without running its JavaScript. If playback creates the stream dynamically, play it in Firefox and send the detected media to XDM.",
                 diagnostics,
             )
             else -> MediaIntakeFeedbackUi(
                 MediaIntakeFeedbackKind.NoMediaFound,
                 "No media found",
-                "$sourceLabel completed without producing a reviewable media candidate.",
+                "$sourceLabel finished without finding downloadable media.",
                 diagnostics,
             )
         }
@@ -3165,7 +3168,7 @@ class MainViewModel(
             publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Unsupported, "Paste a page or media URL", "XDM needs a non-empty HTTP(S) URL to inspect."))
             return
         }
-        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Inspecting page", "Fetching a bounded page prefix and checking it for media candidates."))
+        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Checking page", "Checking this page for downloadable media."))
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { mediaPageProbe.probePage(normalized, pageTitle = pageTitle) }
                 .onSuccess { plan ->
@@ -3183,7 +3186,7 @@ class MainViewModel(
                         }
                     }
                     repository.saveMediaCapturesWithVariants(merged, plan.variants, now)
-                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media captured", "${merged.size} reviewable media item(s) were added to the Media inbox.", plan.diagnostics.takeLast(4)))
+                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media ready", "${mediaItemCountLabel(merged.size)} added to Media.", plan.diagnostics.takeLast(4)))
                 }
                 .onFailure { error ->
                     publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Media inspection failed", mediaIntakeFailureDetail(error)))
@@ -3214,7 +3217,7 @@ class MainViewModel(
             publishMediaIntakeFeedback(feedbackForEmptyMediaPlan(sniffingPlan, "Shared content"))
             return
         }
-        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Importing shared media", "Saving detected candidates for review."))
+        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Adding shared media", "Adding detected media to Media."))
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 val now = System.currentTimeMillis()
@@ -3237,7 +3240,7 @@ class MainViewModel(
                 repository.saveMediaCapturesWithVariants(merged, sniffingPlan.variants, now)
                 merged
             }.onSuccess { merged ->
-                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media captured", "${merged.size} reviewable media item(s) were added from shared content.", sniffingPlan.diagnostics.takeLast(4)))
+                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media ready", "${mediaItemCountLabel(merged.size)} added from shared content.", sniffingPlan.diagnostics.takeLast(4)))
             }.onFailure { error ->
                 publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not save captured media", mediaIntakeFailureDetail(error)))
             }
@@ -3301,8 +3304,8 @@ class MainViewModel(
                 publishMediaIntakeFeedback(
                 MediaIntakeFeedbackUi(
                     MediaIntakeFeedbackKind.Working,
-                    "Receiving browser capture session",
-                    "Recovering the encrypted browser capture and importing its reviewable media candidates.",
+                    "Receiving browser media",
+                    "Recovering the browser capture and adding its media to Media.",
                 ),
             )
             entries.forEach { entry ->
@@ -3351,7 +3354,7 @@ class MainViewModel(
                 MediaIntakeFeedbackUi(
                     MediaIntakeFeedbackKind.Found,
                     "Newer browser capture already imported",
-                    "A newer durable revision of this browser capture session already exists. The stale replay was ignored.",
+                    "A newer version of this browser capture is already in Media. The older copy was ignored.",
                 ),
             )
             navigate(AppRoute.Media)
@@ -3369,7 +3372,7 @@ class MainViewModel(
                     MediaIntakeFeedbackUi(
                         MediaIntakeFeedbackKind.Found,
                         "Browser capture already imported",
-                        "This browser capture-session revision and its durable request handoffs are already present. Replay was ignored.",
+                        "This browser capture is already in Media. Nothing was added again.",
                     ),
                 )
                 navigate(AppRoute.Media)
@@ -3505,8 +3508,8 @@ class MainViewModel(
             publishMediaIntakeFeedback(
                 MediaIntakeFeedbackUi(
                     MediaIntakeFeedbackKind.NoMediaFound,
-                    "Browser capture had no reviewable media",
-                    "The browser session reached XDM, but none of its ${decoded.candidates.size} candidates matched a downloadable media shape.",
+                    "Browser capture had no downloadable media",
+                    "The browser capture reached XDM, but none of the detected items matched a downloadable media format.",
                 ),
             )
             return
@@ -3582,8 +3585,8 @@ class MainViewModel(
         publishMediaIntakeFeedback(
             MediaIntakeFeedbackUi(
                 MediaIntakeFeedbackKind.Found,
-                "Browser capture session imported",
-                "${distinctRecords.size} reviewable item(s) are grouped in the Media inbox${if (decoded.truncated) "; the browser had more candidates than the bounded secure handoff could carry" else ""}.",
+                "Browser media ready",
+                "${mediaItemCountLabel(distinctRecords.size)} added to Media${if (decoded.truncated) "; additional browser results were not included" else ""}.",
                 diagnostics = listOf(
                     "session=${decoded.sessionId.take(48)}",
                     "browserCandidates=${decoded.totalCandidateCount}",
@@ -3627,10 +3630,10 @@ class MainViewModel(
             return
         }
         if (intake == null) {
-            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.NoMediaFound, "Browser capture had no reviewable media", "The handoff reached XDM, but it did not contain a media request XDM can review."))
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.NoMediaFound, "Browser capture had no downloadable media", "The browser capture reached XDM, but it did not contain downloadable media."))
             return
         }
-        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Receiving browser capture", "Importing the browser-observed media request."))
+        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Receiving browser media", "Adding the detected media to Media."))
         val now = System.currentTimeMillis()
         val preparedSession = runCatching {
             browserHandoffMediaCoordinator.prepareBrowserRevision(
@@ -3712,7 +3715,7 @@ class MainViewModel(
         if (plan.records.isEmpty()) {
             publishMediaIntakeFeedback(feedbackForEmptyMediaPlan(MediaSniffingPlan(plan.sniffingCandidates, plan.records, plan.variants, plan.sniffingDiagnostics), "Batch inspection"))
         } else {
-            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Importing media batch", "Saving ${plan.records.size} reviewable item(s)."))
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Adding media batch", "Adding ${mediaItemCountLabel(plan.records.size)} to Media."))
         }
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -3735,7 +3738,7 @@ class MainViewModel(
                         }
                     }
                     repository.saveMediaCapturesWithVariants(merged, plan.variants, now)
-                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media batch captured", "${merged.size} reviewable media item(s) were added."), navigateToMedia = false)
+                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media batch ready", "${mediaItemCountLabel(merged.size)} added to Media."), navigateToMedia = false)
                 }
                 navigate(AppRoute.Media)
             } catch (error: Throwable) {
@@ -3767,10 +3770,10 @@ class MainViewModel(
             return
         }
         if (intake == null) {
-            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.NoMediaFound, "No reviewable media found", "The supplied URL reached XDM, but it did not produce a media item that can be reviewed."))
+            publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.NoMediaFound, "No downloadable media found", "XDM checked the supplied URL but did not find a downloadable media item."))
             return
         }
-        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Inspecting media", "Resolving the supplied media request and saving reviewable variants."))
+        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Preparing media", "Preparing the available media formats."))
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 val existing = repository.findMediaCapture(intake.record.id)
@@ -3851,7 +3854,7 @@ class MainViewModel(
                 externalAddDraft.value = null
                 Pair(resolved, externalVariants)
             }.onSuccess { (_, externalVariants) ->
-                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media ready for review", "Saved ${externalVariants.size.coerceAtLeast(1)} media candidate(s) for review."))
+                publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media ready", "${mediaItemCountLabel(externalVariants.size.coerceAtLeast(1))} ready in Media."))
                 navigate(AppRoute.Media)
             }.onFailure { error ->
                 publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not inspect media", mediaIntakeFailureDetail(error)))

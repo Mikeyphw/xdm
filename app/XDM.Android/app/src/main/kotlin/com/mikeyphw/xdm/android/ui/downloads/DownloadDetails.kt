@@ -281,7 +281,7 @@ private fun downloadIssuePresentation(
     }
     return DownloadIssuePresentation(
         title = when (download.state) {
-            DownloadState.RecoveryRequired -> "Needs recovery"
+            DownloadState.RecoveryRequired -> "Needs action"
             DownloadState.Failed -> "Download failed"
             else -> "Needs action"
         },

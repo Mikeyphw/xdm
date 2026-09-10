@@ -29,7 +29,7 @@ fun DownloadState.uiLabel(): String = when (this) {
     DownloadState.Completed -> "Completed"
     DownloadState.Failed -> "Failed"
     DownloadState.Cancelled -> "Cancelled"
-    DownloadState.RecoveryRequired -> "Needs recovery"
+    DownloadState.RecoveryRequired -> "Needs action"
 }
 
 fun DownloadState.statusTone(): XdmStatusTone = when (this) {
@@ -170,7 +170,7 @@ fun BackendMigrationStage.uiLabel(): String = when (this) {
     BackendMigrationStage.TargetAttached -> "Target attached"
     BackendMigrationStage.Completed -> "Completed"
     BackendMigrationStage.Failed -> "Failed"
-    BackendMigrationStage.RecoveryRequired -> "Needs recovery"
+    BackendMigrationStage.RecoveryRequired -> "Needs action"
 }
 
 fun enabledLabel(enabled: Boolean): String = if (enabled) "Enabled" else "Disabled"

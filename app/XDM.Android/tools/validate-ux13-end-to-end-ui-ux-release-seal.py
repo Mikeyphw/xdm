@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ERRORS: list[str] = []
 OVERLAY = "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
+POST_UX13_HOTFIX = "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip"
 
 
 def text(relative: str) -> str:
@@ -41,7 +42,7 @@ design = text("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmDesignSystem.kt")
 shell = text("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAdaptiveShell.kt")
 ux12_contract = text("app/src/test/kotlin/com/mikeyphw/xdm/android/Ux12AccessibilityTerminologyVisualSealContractTest.kt")
 
-require(manifest.get("current_overlay") == OVERLAY, "PROJECT_MANIFEST current_overlay must point to UX13")
+require(manifest.get("current_overlay") in {OVERLAY, POST_UX13_HOTFIX}, "PROJECT_MANIFEST current_overlay must point to UX13 or its accepted post-release hotfix")
 require(manifest.get("next_phase") == "complete", "UX13 must close the roadmap with next_phase=complete")
 require(manifest.get("database", {}).get("version") == 21, "UX13 must keep authoritative Room schema 21")
 phase = manifest.get("ux13_end_to_end_ui_ux_release_seal", {})

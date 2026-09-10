@@ -692,6 +692,7 @@ private fun DownloadsOverviewHeader(
     onToggleSearch: () -> Unit,
     onOpenOrganize: () -> Unit,
 ) {
+    val showMetrics = downloadingCount > 0 || waitingCount > 0 || queuedCount > 0 || aggregateSpeed > 0L || remainingSeconds != null
     val metrics = buildList {
         add(XdmMetric("downloading", downloadingCount.toString()))
         add(XdmMetric("waiting", waitingCount.toString()))
@@ -737,7 +738,9 @@ private fun DownloadsOverviewHeader(
                 ) { Icon(Icons.Rounded.MoreVert, contentDescription = null) }
             }
         }
-        XdmMetricStrip(metrics, Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+        if (showMetrics) {
+            XdmMetricStrip(metrics, Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+        }
     }
 }
 

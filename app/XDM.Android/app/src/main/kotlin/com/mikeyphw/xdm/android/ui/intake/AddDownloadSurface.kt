@@ -245,7 +245,7 @@ fun AddDownloadScreen(
 
             if (url.isNotBlank()) {
                 item {
-                    DownloadUrlPreflightSummary(urlPreflight, review.kind.externalLabel())
+                    DownloadUrlPreflightSummary(urlPreflight, review.kind?.externalLabel() ?: "Link")
                 }
             }
 

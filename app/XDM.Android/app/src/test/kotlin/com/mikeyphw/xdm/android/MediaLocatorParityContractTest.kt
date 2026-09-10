@@ -48,8 +48,8 @@ class MediaLocatorParityContractTest {
         assertFalse(locator.contains("ExternalHandoffReviewActivity::class.java"))
         assertTrue(manifest.contains("android:name=\".MediaLocatorActivity\""))
         assertTrue(manifest.substringAfter("android:name=\".MediaLocatorActivity\"").substringBefore("/>").contains("android:exported=\"false\""))
-        assertTrue(screen.contains("Live media locator"))
-        assertTrue(screen.contains("Static sniff"))
+        assertTrue(screen.contains("Live locator"))
+        assertTrue(screen.contains("Check URL"))
     }
 
     @Test

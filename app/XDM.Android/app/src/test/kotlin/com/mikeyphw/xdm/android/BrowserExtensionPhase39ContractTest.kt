@@ -14,7 +14,7 @@ class BrowserExtensionPhase39ContractTest {
     fun `browser extension remains a settings subpanel`() {
         val panel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/SettingsPanel.kt").readText()
         val routes = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/AppRoute.kt").readText()
-        assertTrue(panel.contains("BrowserExtension(\"Browser extension\")"))
+        assertTrue(panel.contains("BrowserExtension(\"Browser integration\")"))
         assertFalse(routes.contains("BrowserExtension"))
     }
 

@@ -193,7 +193,7 @@ internal object DownloadsWorkspacePlanner {
             download.state == DownloadState.Failed && !download.errorMessage.isNullOrBlank() ->
                 "Failed — ${firstUsefulLine(download.errorMessage.orEmpty())}"
             download.state == DownloadState.RecoveryRequired && !download.errorMessage.isNullOrBlank() ->
-                "Needs recovery — ${firstUsefulLine(download.errorMessage.orEmpty())}"
+                "Needs action — ${firstUsefulLine(download.errorMessage.orEmpty())}"
             else -> truth.status
         }
     }

@@ -1454,7 +1454,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip",
+  "current_overlay": "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -4117,7 +4117,7 @@
     "live_locator_opaque_kind_restored": true,
     "promise_audit_followup": "2026-09-08"
   },
-  "current_release_authority": "add_media_ux_remodel",
+  "current_release_authority": "post_ux13_roadmap_completion_hotfix",
   "add_media_ux_remodel": {
     "base_commit": "c214240e",
     "functional_baseline": "execution_media_semantics_repair",
@@ -4461,6 +4461,36 @@
     "validation_owner": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip",
     "phase11_static_matrix_rows": 80,
     "device_release_matrix_retained": true,
-    "documentation_only_evidence_rejected": true
+    "documentation_only_evidence_rejected": true,
+    "post_release_hotfix": "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip"
+  },
+  "post_ux13_roadmap_completion_hotfix": {
+    "status": "implemented_final_hotfix",
+    "overlay": "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip",
+    "date": "2026-09-09",
+    "depends_on": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip",
+    "direct_browser_media_review_dialog_removed": true,
+    "direct_browser_capture_routes_internal_without_interstitial": true,
+    "generic_external_command_review_preserved": true,
+    "legacy_encrypted_capture_boundary_preserved": true,
+    "media_intake_technical_diagnostics_collapsed": true,
+    "media_intake_internal_jargon_removed": true,
+    "download_recovery_vocabulary_normalized": true,
+    "downloads_zero_activity_metrics_hidden": true,
+    "developer_center_duplicate_intro_title_removed": true,
+    "readme_release_authority_reconciled": true,
+    "roadmap_reaudit_complete": true,
+    "roadmap_remaining_gaps": [],
+    "room_schema_unchanged": 21,
+    "validation_deferred": false,
+    "validation_owner": "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip",
+    "next_overlay": null,
+    "legacy_current_release_authority_reconciled": true,
+    "validation_repair_revision": "v4",
+    "test_framework_consistency_repaired": true,
+    "test_framework_static_preflight": true,
+    "validation_repair_artifact": "xdm_android_post_ux13_roadmap_completion_hotfix_v4.zip",
+    "test_source_root_resolution_repaired": true,
+    "test_source_root_static_preflight": true
   }
 }

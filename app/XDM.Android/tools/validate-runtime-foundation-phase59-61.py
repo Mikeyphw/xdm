@@ -59,7 +59,8 @@ for token in ("exactUrl", "requestHeaders", "authorization"):
 for token in (
     "browserCaptureSessionRegistry.record",
     "browserCaptureSessionRegistry.snapshot().firstOrNull",
-    "Replay was ignored",
+    "A newer version of this browser capture is already in Media. The older copy was ignored.",
+    "This browser capture is already in Media. Nothing was added again.",
     "MediaRequestHandoffStore.rememberCapture",
     "decoded.candidates.forEach",
     "navigate(AppRoute.Media)",

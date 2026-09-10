@@ -147,17 +147,21 @@ fun MediaInboxScreen(
                         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             XdmSectionLabel(intakeFeedback.title.ifBlank { "Media intake" })
                             Text(intakeFeedback.detail)
-                            intakeFeedback.diagnostics.take(2).forEach { diagnostic ->
-                                XdmMetadataText(diagnostic)
+                            if (intakeFeedback.diagnostics.isNotEmpty()) {
+                                XdmTechnicalDetails(label = "Technical details") {
+                                    intakeFeedback.diagnostics.take(6).forEach { diagnostic ->
+                                        XdmTechnicalText(diagnostic)
+                                    }
+                                }
                             }
                             when (intakeFeedback.kind) {
-                                MediaIntakeFeedbackKind.Working -> XdmStatusBadge("Working", tone = XdmStatusTone.Info)
-                                MediaIntakeFeedbackKind.Found -> XdmStatusBadge("Found", tone = XdmStatusTone.Success)
+                                MediaIntakeFeedbackKind.Working -> XdmStatusBadge("Running", tone = XdmStatusTone.Info)
+                                MediaIntakeFeedbackKind.Found -> XdmStatusBadge("Ready", tone = XdmStatusTone.Success)
                                 MediaIntakeFeedbackKind.NeedsBrowserCapture,
-                                MediaIntakeFeedbackKind.AuthenticationRequired -> XdmStatusBadge("Browser capture recommended", tone = XdmStatusTone.Warning)
-                                MediaIntakeFeedbackKind.Unsupported,
-                                MediaIntakeFeedbackKind.Failed -> XdmStatusBadge("Needs action", tone = XdmStatusTone.Error)
-                                MediaIntakeFeedbackKind.NoMediaFound -> XdmStatusBadge("No media found", tone = XdmStatusTone.Neutral)
+                                MediaIntakeFeedbackKind.AuthenticationRequired,
+                                MediaIntakeFeedbackKind.Unsupported -> XdmStatusBadge("Needs action", tone = XdmStatusTone.Warning)
+                                MediaIntakeFeedbackKind.Failed -> XdmStatusBadge("Failed", tone = XdmStatusTone.Error)
+                                MediaIntakeFeedbackKind.NoMediaFound -> XdmStatusBadge("Completed", tone = XdmStatusTone.Neutral)
                                 MediaIntakeFeedbackKind.Idle -> Unit
                             }
                         }

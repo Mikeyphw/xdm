@@ -382,7 +382,7 @@ private fun SettingsActionRow(
 }
 
 @Composable
-private fun SettingsSwitchRow(
+internal fun SettingsSwitchRow(
     title: String,
     summary: String,
     checked: Boolean,
@@ -422,14 +422,14 @@ private fun destinationSummary(uri: String): String = when {
     else -> "Configured download folder"
 }
 
-private fun browserExtensionSummary(state: MainUiState): String = when {
+internal fun browserExtensionSummary(state: MainUiState): String = when {
     state.browserBridgeStatus.isReady -> "Firefox extension connected • handoff ready"
     state.browserExtension.lastExportFileName.isNotBlank() -> "Verified Firefox extension package available"
     state.browserExtension.exportTreeUri.isNotBlank() -> "Package folder selected • ready to generate extension"
     else -> "Connect Firefox and prepare the XDM extension"
 }
 
-private fun queueSummary(state: MainUiState): String {
+internal fun queueSummary(state: MainUiState): String {
     val enabled = state.queues.count { it.isEnabled }
     val schedules = state.schedules.count { it.enabled }
     return "$enabled enabled queues • $schedules active schedules • ${state.queueIntelligence.message}"

@@ -67,10 +67,11 @@ class AddMediaUxRemodelContractTest {
         assertTrue(post.contains("System.getProperty(\"user.dir\") ?: \".\""))
         assertTrue(post.contains("requireNotNull(root.parentFile?.parentFile)"))
         assertTrue(gate.contains("tools/validate-add-media-ux-remodel.py"))
-        assertTrue(gate.contains("UX13 is the current end-to-end UI/UX release source of truth"))
+        assertTrue(gate.contains("post-UX13 roadmap-completion hotfix is the current UI release authority"))
+        assertTrue(gate.contains("UX13 remains the end-to-end UI/UX baseline"))
         assertTrue(gate.contains("Add/Media UX remodel remains a retained functional milestone"))
         assertTrue(gate.contains("execution/media semantics repair remains its functional baseline"))
-        assertTrue(manifest.contains("\"current_release_authority\": \"add_media_ux_remodel\""))
+        assertTrue(manifest.contains("\"current_release_authority\": \"post_ux13_roadmap_completion_hotfix\""))
         assertTrue(manifest.contains("\"room_schema_current\": 21"))
     }
 }

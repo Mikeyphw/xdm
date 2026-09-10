@@ -16,7 +16,7 @@ class DebugWorkbenchD2ShellContractTest {
 
         assertTrue(panels.contains("""DebugWorkbench("Diagnostics & support")"""))
         assertTrue(settings.contains("SettingsPanel.DebugWorkbench -> DebugWorkbenchSettingsScreen(state, viewModel)"))
-        assertTrue(settings.contains("""title = "Diagnostics & support""""))
+        assertTrue(settings.contains("\"Diagnostics & support\""))
         assertTrue(settings.contains("viewModel.selectSettingsPanel(SettingsPanel.DebugWorkbench)"))
         assertFalse("D2 must not add a top-level route", appRoute.contains("DebugWorkbench"))
     }

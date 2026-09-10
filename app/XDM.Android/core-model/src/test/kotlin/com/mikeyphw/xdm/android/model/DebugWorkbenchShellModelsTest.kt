@@ -45,7 +45,8 @@ class DebugWorkbenchShellModelsTest {
             automationHandoffs = 0,
         )
         val text = report.toClipboardReport()
-        assertTrue(text.contains("XDM Debug Workbench"))
+        assertTrue(text.contains("XDM Diagnostics & support"))
+        assertFalse(text.contains("XDM Debug Workbench"))
         assertTrue(text.contains("Support bundle"))
         assertTrue(text.contains("Redaction"))
         assertFalse(text.contains("onClick = {}"))

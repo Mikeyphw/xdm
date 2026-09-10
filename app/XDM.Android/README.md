@@ -1,6 +1,6 @@
 ## XDM Android 0.21.0
 
-Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed, the execution/media semantics repair is the functional baseline, and the Add/Media UX remodel is the current UI release seal. Room is schema v21. The canonical release gate replays these contracts before the full Gradle/device/release matrix.
+Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed, the execution/media semantics repair remains the functional baseline, UX13 is the end-to-end UI/UX release baseline, and the post-UX13 roadmap-completion hotfix is the current UI release authority. Room is schema v21. The canonical release gate replays these contracts before the full Gradle/device/release matrix.
 
 # XDM Android
 
@@ -21,7 +21,7 @@ The Media workspace treats direct progressive media as a normal one-tap download
 
 ## Downloader-only release seal
 
-XDM Android is a focused download manager with six stable destinations: Downloads, Add, Media, Library, Activity, and Settings. It integrates with external browsers through explicit sharing, typed download intents, file-extension handlers, and Android download-manager actions. It does not contain WebView or register as a general browser.
+XDM Android is a focused download manager with six stable destinations: Downloads, Add, Media, Library, Activity, and Settings. It integrates with external browsers through explicit sharing, typed download intents, file-extension handlers, and Android download-manager actions. It does not register as a general browser; Live Locator uses a constrained in-app WebView only for user-requested runtime media observation.
 
 The permanent product and release contract is documented in `docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md`. The final browser-removal validator is `tools/validate-browser-removal-phase-7.py`.
 

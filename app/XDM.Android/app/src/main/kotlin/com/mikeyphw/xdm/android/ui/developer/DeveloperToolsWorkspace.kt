@@ -76,16 +76,11 @@ fun DeveloperToolsWorkspace(
         .getOrDefault(DeveloperToolSection.RuntimeEngines)
 
     Column(Modifier.fillMaxSize()) {
-        XdmListCard(
-            compact = true,
+        XdmSupportingText(
+            "Technical controls are separated from normal app settings. Copied output is redacted.",
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-        ) {
-            XdmCardTitle("Developer Center")
-            XdmSupportingText(
-                "Technical controls are intentionally separated from normal download, media, library, activity, and settings flows. Copied output is redacted.",
-                maxLines = 4,
-            )
-        }
+            maxLines = 3,
+        )
         XdmActionFlowRow(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             DeveloperToolSection.entries.forEach { item ->
                 FilterChip(

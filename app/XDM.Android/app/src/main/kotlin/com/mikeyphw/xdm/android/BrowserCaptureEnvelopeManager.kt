@@ -131,7 +131,7 @@ class BrowserCaptureEnvelopeManager {
         parseSession(String(clear, StandardCharsets.UTF_8), payload.captureSessionId, nowEpochMs)
     }
 
-    /** Parse the bounded direct/keyless v3 candidate batch after the exported review surface approves it. */
+    /** Parse the bounded direct/keyless v3 candidate batch after the exported intake boundary validates and routes it. */
     fun decodeDirect(payload: XdmBrowserDeepLinkPayload, nowEpochMs: Long = System.currentTimeMillis()): Result<DecodedSession> = runCatching {
         require(payload.hasDirectCaptureSession) { "Direct browser capture session is incomplete" }
         val sessionId = payload.captureSessionId.safeToken(96) ?: error("Direct browser capture session id is invalid")

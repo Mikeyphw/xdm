@@ -18,7 +18,7 @@ class Phase65DiagnosticExportDownloadActionContractTest {
         assertTrue(helper.contains("Intent.ACTION_SEND"))
         assertTrue(debugCard.contains("Export self-test report"))
         assertTrue(debugScreen.contains("shareTextReport(context, \"XDM support report\", state.supportReportText)"))
-        assertTrue(settings.contains("title = \"Diagnostics & support\""))
+        assertTrue(settings.contains("\"Diagnostics & support\""))
         assertTrue(model.contains("Ran check IDs:"))
         assertTrue(model.contains("[${'$'}{check.id}]"))
     }

@@ -116,17 +116,19 @@ need('requireNotNull(System.getProperty("user.dir"))' in app_test,
      "repair app contract must use a non-null user.dir before constructing java.io.File")
 need("tools/validate-execution-media-semantics-repair.py" in post_dl03_test,
      "post-DL03 carry-forward contract must include the execution/media repair validator")
-need("UX13 is the current end-to-end UI/UX release source of truth" in post_dl03_test and
+need("post-UX13 roadmap-completion hotfix is the current UI release authority" in post_dl03_test and
+     "UX13 remains the end-to-end UI/UX baseline" in post_dl03_test and
      "Add/Media UX remodel remains a retained functional milestone" in post_dl03_test and
      "execution/media semantics repair remains its functional baseline" in post_dl03_test and
      "post-DL03 roadmap seal remains its historical baseline" in post_dl03_test,
-     "post-DL03 carry-forward contract must recognize UX13 as current authority while retaining Add/Media and execution/media provenance")
+     "post-DL03 carry-forward contract must recognize the post-UX13 hotfix as current authority while retaining UX13/Add-Media/execution provenance")
 need('assertTrue(gate.contains("post-DL03 roadmap seal is the current final source of truth"))' not in post_dl03_test,
      "post-DL03 carry-forward contract must not positively require stale current-authority wording")
-need("UX13 is the current end-to-end UI/UX release source of truth" in final_gate and
+need("post-UX13 roadmap-completion hotfix is the current UI release authority" in final_gate and
+     "UX13 remains the end-to-end UI/UX baseline" in final_gate and
      "Add/Media UX remodel remains a retained functional milestone" in final_gate and
      "execution/media semantics repair remains its functional baseline" in final_gate,
-     "canonical final gate must expose UX13 as current authority while retaining Add/Media and execution/media provenance")
+     "canonical final gate must expose the post-UX13 hotfix as current authority while retaining UX13/Add-Media/execution provenance")
 
 need(entry.get("room_schema_current") == 21 and entry.get("room_schema_changed") is False,
      "execution/media repair must retain Room schema 21")

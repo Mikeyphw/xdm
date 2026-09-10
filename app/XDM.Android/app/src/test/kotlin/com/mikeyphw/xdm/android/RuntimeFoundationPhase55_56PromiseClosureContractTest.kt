@@ -37,7 +37,7 @@ class RuntimeFoundationPhase55_56PromiseClosureContractTest {
         val termux = source("app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxShellTemplates.kt")
         val nativeProbe = source("transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeStoragePathProbe.kt")
         val direct = source("storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/PersonalDirectStorage.kt")
-        val settings = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt")
+        val storageSettings = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/AdvancedDownloadSettingsScreen.kt")
         listOf("mkdir", "create", "write+fsync", "rename", "read", "delete").forEach {
             assertTrue("Storage doctor missing $it", doctor.contains("\"$it\""))
         }
@@ -52,7 +52,7 @@ class RuntimeFoundationPhase55_56PromiseClosureContractTest {
         assertTrue(termux.contains("yt-dlp --version"))
         assertTrue(termux.contains("ffmpeg -version"))
         assertTrue(termux.contains("XDM_STORAGE_PROBE"))
-        assertTrue(settings.contains("Storage doctor"))
+        assertTrue(storageSettings.contains("Storage doctor"))
     }
 
     @Test

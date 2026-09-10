@@ -15,15 +15,17 @@ class UixR4MediaLibraryContractTest {
 
         listOf(
             "Page or media URL",
-            "Ready to download",
             "Recently queued",
+            "More tools",
+        ).forEach { assertTrue("Media inbox R4 missing $it", inbox.contains(it)) }
+        listOf(
             "MediaTrackPickerSheet",
             "Video quality",
             "Audio track",
             "Subtitle track",
             "Estimated size",
-            "More tools",
-        ).forEach { assertTrue("Media R4 missing $it", media.contains(it)) }
+            "MediaConsumerState.Ready -> \"Ready\"",
+        ).forEach { assertTrue("Media card R4 missing $it", card.contains(it)) }
 
         listOf(
             "Resolver workspace",

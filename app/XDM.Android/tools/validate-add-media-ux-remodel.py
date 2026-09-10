@@ -66,14 +66,16 @@ need('System.getProperty("user.dir") ?: "."' in post,
 need("requireNotNull(root.parentFile?.parentFile)" in post,
      "post-DL03 contract must avoid nullable parentFile warning")
 need("tools/validate-add-media-ux-remodel.py" in gate, "canonical final gate must execute the Add/Media UX remodel validator")
-need("UX13 is the current end-to-end UI/UX release source of truth" in gate,
-     "canonical gate must identify UX13 as current UI/UX release authority")
+need("post-UX13 roadmap-completion hotfix is the current UI release authority" in gate and
+     "UX13 remains the end-to-end UI/UX baseline" in gate,
+     "canonical gate must identify the post-UX13 hotfix as current authority and UX13 as baseline")
 need("Add/Media UX remodel remains a retained functional milestone" in gate,
      "canonical gate must retain the Add/Media UX remodel as a functional milestone")
 need("execution/media semantics repair remains its functional baseline" in gate,
      "canonical gate must retain execution/media repair as the functional baseline")
-need("UX13 is the current end-to-end UI/UX release source of truth" in post,
-     "post-DL03 carry-forward contract must recognize UX13 as the newer UX authority")
+need("post-UX13 roadmap-completion hotfix is the current UI release authority" in post and
+     "UX13 remains the end-to-end UI/UX baseline" in post,
+     "post-DL03 carry-forward contract must recognize the post-UX13 hotfix authority and UX13 baseline")
 need("Add/Media UX remodel remains a retained functional milestone" in post,
      "post-DL03 carry-forward contract must retain Add/Media milestone provenance")
 need("one explicit **Download** action" in readme and "Current Add and Media UX" in readme,
@@ -81,8 +83,8 @@ need("one explicit **Download** action" in readme and "Current Add and Media UX"
 need("The old `Review download -> Add to queue` second confirmation is removed." in report,
      "UX remodel report must record removal of the redundant confirmation")
 
-need(manifest.get("current_release_authority") == "add_media_ux_remodel",
-     "manifest must identify add_media_ux_remodel as current release authority")
+need(manifest.get("current_release_authority") == "post_ux13_roadmap_completion_hotfix",
+     "manifest must identify the post-UX13 hotfix as current release authority")
 need(entry.get("base_commit") == "c214240e", "UX remodel base commit must be c214240e")
 need(entry.get("functional_baseline") == "execution_media_semantics_repair", "UX remodel must retain execution/media functional baseline")
 need(entry.get("single_explicit_add_action") is True and entry.get("second_confirmation_removed") is True,
@@ -117,8 +119,8 @@ need("text = review.mediaInspectionGuidance" in browser_extension_contract and
      "browser-extension Add contract must use the remodeled inspection guidance/action")
 need("onInspectMedia(url, name)" in downloader_experience_contract,
      "downloader-experience contract must match the one-action Add inspection callback")
-need("Browser capture recommended" in runtime_foundation_contract and "Firefox capture recommended" not in runtime_foundation_contract,
-     "runtime-foundation contract must use source-neutral browser capture feedback")
+need("Needs action" in runtime_foundation_contract and "Browser capture recommended" not in runtime_foundation_contract,
+     "runtime-foundation contract must use the normalized Needs action feedback vocabulary")
 need(all(token in uix_r4_contract for token in ("Page or media URL", "Video quality", "Estimated size", "More tools")),
      "UIX-R4 media contract must carry the simplified direct-media/adaptive-media copy")
 

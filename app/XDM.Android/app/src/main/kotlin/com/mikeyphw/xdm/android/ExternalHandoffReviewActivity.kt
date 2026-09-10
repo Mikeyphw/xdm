@@ -17,7 +17,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Exported review-only surface for browser, share-sheet, and generic VIEW handoffs. */
+/** Exported intake boundary for browser, share-sheet, and generic VIEW handoffs.
+ * Direct browser media captures route immediately into the internal Media intake path; generic
+ * external commands and legacy encrypted capture envelopes retain their existing review boundary.
+ */
 open class ExternalHandoffReviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,7 +35,7 @@ open class ExternalHandoffReviewActivity : ComponentActivity() {
             return
         }
         if (deepLink is XdmBrowserDeepLinkParseResult.Accepted && deepLink.payload.hasDirectCaptureSession) {
-            reviewDirectBrowserCapture(deepLink.payload, draft)
+            routeDirectBrowserCapture(draft)
             return
         }
         AlertDialog.Builder(this)
@@ -52,25 +55,17 @@ open class ExternalHandoffReviewActivity : ComponentActivity() {
             .show()
     }
 
-    private fun reviewDirectBrowserCapture(payload: XdmBrowserDeepLinkPayload, draft: AutomationCommandDraft) {
-        val candidateCount = (payload.totalCandidateCount ?: 1).coerceAtLeast(1)
-        AlertDialog.Builder(this)
-            .setTitle("Open browser media in XDM")
-            .setMessage(ExternalIntentDraftFactory.displaySummary(draft) + "\n\nBrowser session: $candidateCount candidate(s). XDM will import the bounded candidate set after you continue.")
-            .setNegativeButton("Cancel") { _, _ -> rejectAndFinish(draft) }
-            .setPositiveButton("Continue") { _, _ ->
-                val privateNetworkApproved = draft.normalizedUrl != null && ExternalUrlPolicy.requiresPrivateNetworkApproval(draft.normalizedUrl)
-                startActivity(
-                    Intent(this, MainActivity::class.java)
-                        .setAction(MainActivity.ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT)
-                        .putExtra(MainActivity.EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI, intent.dataString)
-                        .putExtra(MainActivity.EXTRA_INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED, privateNetworkApproved)
-                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                )
-                finish()
-            }
-            .setOnCancelListener { rejectAndFinish(draft) }
-            .show()
+    private fun routeDirectBrowserCapture(draft: AutomationCommandDraft) {
+        val privateNetworkApproved = draft.normalizedUrl != null &&
+            ExternalUrlPolicy.requiresPrivateNetworkApproval(draft.normalizedUrl)
+        startActivity(
+            Intent(this, MainActivity::class.java)
+                .setAction(MainActivity.ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT)
+                .putExtra(MainActivity.EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI, intent.dataString)
+                .putExtra(MainActivity.EXTRA_INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED, privateNetworkApproved)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        )
+        finish()
     }
 
     private fun reviewEncryptedBrowserCapture(payload: XdmBrowserDeepLinkPayload) {
