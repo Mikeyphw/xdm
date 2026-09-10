@@ -68,7 +68,14 @@ fun SettingsScreen(
     ) {
         when (state.settingsPanel) {
             SettingsPanel.Overview -> SettingsOverview(state, viewModel)
+            SettingsPanel.StorageDestinations -> StorageDestinationsSettingsScreen(state, viewModel)
             SettingsPanel.AdvancedDownloads -> AdvancedDownloadSettingsScreen(state, viewModel)
+            SettingsPanel.Network -> NetworkSettingsScreen(state, viewModel)
+            SettingsPanel.Media -> MediaCaptureSettingsScreen(state, viewModel)
+            SettingsPanel.ExternalTools -> ExternalToolsSettingsScreen(state, viewModel)
+            SettingsPanel.PostProcessing -> PostProcessingSettingsScreen(state, viewModel)
+            SettingsPanel.Appearance -> AppearanceSettingsScreen(state, viewModel)
+            SettingsPanel.BackupRestore -> BackupRestoreSettingsScreen(state, viewModel)
             SettingsPanel.Privacy -> PrivacySettingsScreen(state, viewModel)
             SettingsPanel.BrowserExtension -> BrowserExtensionSettingsScreen(state, viewModel)
             SettingsPanel.DebugWorkbench -> DebugWorkbenchSettingsScreen(state, viewModel)
@@ -80,19 +87,6 @@ fun SettingsScreen(
 @Composable
 private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
     val context = LocalContext.current
-    val destinationPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        uri?.toString()?.let(viewModel::registerSafDestination)
-    }
-    val directStorageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (PersonalDirectStorage.isGranted(context)) {
-            viewModel.setDestination(DestinationUris.DIRECT_DOWNLOADS)
-        }
-    }
-    val directStorageSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-    val directStorageGranted = directStorageSupported && PersonalDirectStorage.isGranted(context)
-    var showCustomDirectPath by remember { mutableStateOf(false) }
-    var customDirectPath by remember { mutableStateOf(PersonalDirectStorage.downloadsDirectory().absolutePath) }
-    var customDirectPathError by remember { mutableStateOf<String?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -100,149 +94,94 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            XdmSupportingText("Everyday preferences first. Advanced engines and diagnostics stay one level deeper.", maxLines = 3)
+            XdmSupportingText(
+                "Choose a category. Everyday download, storage, network, media, and app settings stay separate from diagnostics and developer controls.",
+                maxLines = 3,
+            )
         }
+
         item { XdmSectionHeader("Downloads") }
-        if (directStorageSupported) {
-            item {
-                SettingsActionRow(
-                    title = "Direct file access",
-                    summary = if (directStorageGranted) {
-                        "Granted. Download engines can write directly to Download/XDM."
-                    } else {
-                        "Recommended for this personal build. Grant Android all-files access for direct shared-storage paths."
-                    },
-                    actionLabel = if (directStorageGranted) "Use" else "Grant",
-                    onClick = {
-                        if (directStorageGranted) {
-                            viewModel.setDestination(DestinationUris.DIRECT_DOWNLOADS)
-                        } else {
-                            directStorageLauncher.launch(PersonalDirectStorage.permissionIntent(context))
-                        }
-                    },
-                )
-            }
-        }
-        if (directStorageSupported && directStorageGranted) {
-            item {
-                SettingsActionRow(
-                    title = "Custom direct folder",
-                    summary = if (state.destinationUri.startsWith("file://", ignoreCase = true) && state.destinationUri.endsWith('/')) {
-                        state.destinationUri.removePrefix("file://")
-                    } else {
-                        "Use another ordinary folder inside shared storage. Android/data and Android/obb are excluded."
-                    },
-                    actionLabel = "Set",
-                    onClick = { showCustomDirectPath = true },
-                )
-            }
-        }
-        if (directStorageSupported) {
-            item {
-                SettingsActionRow(
-                    title = "Storage doctor",
-                    summary = "${state.aria2Diagnostics.storageDoctor.status}. ${state.aria2Diagnostics.storageDoctor.detail}",
-                    actionLabel = if (state.aria2Diagnostics.storageDoctor.running) "Running…" else "Run",
-                    onClick = viewModel::runStorageDoctor,
-                )
-            }
-        }
         item {
-            SettingsActionRow(
-                title = "Public Downloads via Android",
-                summary = "Use MediaStore without broad file access.",
-                actionLabel = "Use",
-                onClick = { viewModel.setDestination(DestinationUris.PUBLIC_DOWNLOADS) },
-            )
-        }
-        item {
-            SettingsActionRow(
-                title = "Android folder (SAF)",
-                summary = destinationSummary(state.destinationUri),
-                actionLabel = "Choose",
-                onClick = { destinationPicker.launch(null) },
-            )
-        }
-        item {
-            SettingsActionRow(
-                title = "Smart queue",
-                summary = queueSummary(state),
-                actionLabel = "Manage",
-                onClick = { viewModel.navigateActivity(ActivityPanel.Queues) },
-            )
-        }
-        item {
-            SettingsActionRow(
-                title = "Notifications",
-                summary = "Choose whether Android shows active-transfer and completion notifications.",
-                actionLabel = "Open",
-                onClick = {
-                    context.startActivity(
-                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
-                    )
-                },
-            )
-        }
-        item {
-            SettingsActionRow(
-                title = "Advanced download rules",
-                summary = "Destinations, duplicate handling, proxy, Termux, aria2, conversion, and settings backup.",
-                actionLabel = "Open",
-                onClick = { viewModel.selectSettingsPanel(SettingsPanel.AdvancedDownloads) },
+            SettingsNavigationGroup(
+                rows = listOf(
+                    SettingsNavigationItem(
+                        "Storage & destinations",
+                        destinationSettingsSummary(state),
+                    ) { viewModel.selectSettingsPanel(SettingsPanel.StorageDestinations) },
+                    SettingsNavigationItem(
+                        "Download behavior",
+                        "Destination rules, duplicate handling, conflicts, and smart queue controls.",
+                    ) { viewModel.selectSettingsPanel(SettingsPanel.AdvancedDownloads) },
+                    SettingsNavigationItem(
+                        "Network",
+                        if (state.proxySettings.enabled) state.proxySettings.redactedSummary else "Proxy and connection profile.",
+                    ) { viewModel.selectSettingsPanel(SettingsPanel.Network) },
+                    SettingsNavigationItem(
+                        "Post-processing",
+                        state.postProcessingSettings.redactedSummary,
+                    ) { viewModel.selectSettingsPanel(SettingsPanel.PostProcessing) },
+                ),
             )
         }
 
-        item { XdmSectionHeader("Appearance") }
+        item { XdmSectionHeader("Media & integrations") }
         item {
-            XdmListCard(compact = true) {
-                XdmCardTitle("Theme")
-                XdmSupportingText("Both themes stay dark and borderless. AMOLED black removes the remaining background glow.", maxLines = 3)
-                XdmActionFlowRow {
-                    XdmThemeMode.entries.forEach { mode ->
-                        FilterChip(
-                            selected = state.themeMode == mode,
-                            onClick = { viewModel.setThemeMode(mode) },
-                            label = { Text(mode.label) },
+            SettingsNavigationGroup(
+                rows = listOf(
+                    SettingsNavigationItem(
+                        "Media & capture",
+                        "Live Locator, browser capture, completed-media behavior, and media processing entry points.",
+                    ) { viewModel.selectSettingsPanel(SettingsPanel.Media) },
+                    SettingsNavigationItem(
+                        "Browser integration",
+                        browserExtensionSummary(state),
+                    ) { viewModel.selectSettingsPanel(SettingsPanel.BrowserExtension) },
+                    SettingsNavigationItem(
+                        "External tools",
+                        "Termux, aria2, optional privileged actions, and runtime integration.",
+                    ) { viewModel.selectSettingsPanel(SettingsPanel.ExternalTools) },
+                ),
+            )
+        }
+
+        item { XdmSectionHeader("App") }
+        item {
+            SettingsNavigationGroup(
+                rows = listOf(
+                    SettingsNavigationItem(
+                        "Notifications",
+                        "Android transfer and completion notification settings.",
+                    ) {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
                         )
-                    }
-                }
-            }
-        }
-        item {
-            SettingsSwitchRow(
-                title = "Compact rows",
-                summary = "Fit more downloads on screen without hiding progress or primary actions.",
-                checked = state.compactDensity,
-                onCheckedChange = viewModel::setCompactDensity,
+                    },
+                    SettingsNavigationItem(
+                        "Appearance",
+                        "${state.themeMode.label} theme • ${if (state.compactDensity) "Compact" else "Comfortable"} rows",
+                    ) { viewModel.selectSettingsPanel(SettingsPanel.Appearance) },
+                    SettingsNavigationItem(
+                        "Privacy",
+                        "Redaction, private media sessions, clipboard intake, automation trust, and cleanup.",
+                    ) { viewModel.selectSettingsPanel(SettingsPanel.Privacy) },
+                    SettingsNavigationItem(
+                        "Backup & restore",
+                        state.backupRestoreReport.summary,
+                    ) { viewModel.selectSettingsPanel(SettingsPanel.BackupRestore) },
+                ),
             )
         }
 
-        item { XdmSectionHeader("Browser integration") }
+        item { XdmSectionHeader("Support") }
         item {
-            SettingsActionRow(
-                title = "Browser extension",
-                summary = browserExtensionSummary(state),
-                actionLabel = "Open",
-                onClick = { viewModel.selectSettingsPanel(SettingsPanel.BrowserExtension) },
-            )
-        }
-
-        item { XdmSectionHeader("Privacy and support") }
-        item {
-            SettingsActionRow(
-                title = "Privacy",
-                summary = "Review redaction, private media sessions, clipboard intake, and cleanup behavior.",
-                actionLabel = "Open",
-                onClick = { viewModel.selectSettingsPanel(SettingsPanel.Privacy) },
-            )
-        }
-        item {
-            SettingsActionRow(
-                title = "Diagnostics & support",
-                summary = "Run safe health checks, review recorder status, and copy or export redacted support information.",
-                actionLabel = "Open",
-                onClick = { viewModel.selectSettingsPanel(SettingsPanel.DebugWorkbench) },
+            SettingsNavigationGroup(
+                rows = listOf(
+                    SettingsNavigationItem(
+                        "Diagnostics & support",
+                        "Safe health checks, recorder status, and redacted support exports.",
+                    ) { viewModel.selectSettingsPanel(SettingsPanel.DebugWorkbench) },
+                ),
             )
         }
         item {
@@ -255,58 +194,58 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
         }
         if (state.developerOptionsEnabled) {
             item {
-                SettingsActionRow(
-                    title = "Developer Center",
-                    summary = "Inspect redacted technical state and advanced controls without mixing them into normal app screens.",
-                    actionLabel = "Open",
-                    onClick = viewModel::openDeveloperTools,
+                SettingsNavigationGroup(
+                    rows = listOf(
+                        SettingsNavigationItem(
+                            "Developer Center",
+                            "Inspect redacted technical state and advanced controls without mixing them into normal settings.",
+                            viewModel::openDeveloperTools,
+                        ),
+                    ),
                 )
             }
         }
 
         item { XdmSectionHeader("About") }
         item {
-            XdmListCard(compact = true) {
-                XdmCardTitle("XDM Android")
-                XdmSupportingText("Version ${BuildConfig.VERSION_NAME.removeSuffix("-debug")} • ${releaseChannelLabel()}")
-                XdmMetadataText("Downloader-only Android app with external browser handoff and no built-in browser.", maxLines = 3)
+            XdmGroupedList {
+                XdmListRow(
+                    headline = "XDM Android",
+                    supporting = "Version ${BuildConfig.VERSION_NAME.removeSuffix("-debug")} • ${releaseChannelLabel()} • Downloader-only Android app",
+                )
             }
         }
     }
+}
 
-    if (showCustomDirectPath) {
-        AlertDialog(
-            onDismissRequest = { showCustomDirectPath = false },
-            title = { Text("Custom direct folder") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Enter an absolute folder inside shared storage. XDM will use it as a directory, not as a document-provider URI.")
-                    OutlinedTextField(
-                        value = customDirectPath,
-                        onValueChange = { customDirectPath = it; customDirectPathError = null },
-                        label = { Text("Folder path") },
-                        isError = customDirectPathError != null,
-                        singleLine = true,
-                    )
-                    customDirectPathError?.let { error ->
-                        XdmMetadataText(error, maxLines = 3)
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    runCatching { PersonalDirectStorage.customDirectoryUri(customDirectPath) }
-                        .onSuccess { uri ->
-                            viewModel.setDestination(uri)
-                            customDirectPathError = null
-                            showCustomDirectPath = false
-                        }
-                        .onFailure { error -> customDirectPathError = error.message ?: "Invalid shared-storage path." }
-                }) { Text("Use folder") }
-            },
-            dismissButton = { TextButton(onClick = { showCustomDirectPath = false }) { Text("Cancel") } },
-        )
+private data class SettingsNavigationItem(
+    val title: String,
+    val summary: String,
+    val onClick: () -> Unit,
+)
+
+@Composable
+private fun SettingsNavigationGroup(rows: List<SettingsNavigationItem>) {
+    XdmGroupedList {
+        rows.forEachIndexed { index, row ->
+            XdmListRow(
+                headline = row.title,
+                supporting = row.summary,
+                trailing = { Text("Open", color = androidx.compose.material3.MaterialTheme.colorScheme.primary) },
+                onClick = row.onClick,
+            )
+            if (index != rows.lastIndex) XdmListSeparator()
+        }
     }
+}
+
+private fun destinationSettingsSummary(state: MainUiState): String {
+    val current = state.destinationPermissions.firstOrNull { it.uri == state.destinationUri }
+    val status = current?.status?.name
+        ?.replace(Regex("([a-z])([A-Z])"), "$1 $2")
+        ?.lowercase()
+        ?.replaceFirstChar(Char::titlecase)
+    return listOfNotNull(destinationSummary(state.destinationUri), status).joinToString(" • ")
 }
 
 @Composable

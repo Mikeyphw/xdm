@@ -28,18 +28,16 @@ class UixR5ActivitySettingsContractTest {
         val developer = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperSettingsScreen.kt").readText()
         val preferences = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/UserPreferencesStore.kt").readText()
 
-        val storage = listOf(
-            settings.indexOf("Direct file access"),
-            settings.indexOf("Public Downloads via Android"),
-            settings.indexOf("Android folder (SAF)"),
-        ).filter { it >= 0 }.minOrNull() ?: -1
-        val queue = settings.indexOf("Smart queue")
-        val advanced = settings.indexOf("Advanced download rules")
-        val support = settings.indexOf("Copy support report")
+        val storage = settings.indexOf("Storage & destinations")
+        val behavior = settings.indexOf("Download behavior")
+        val network = settings.indexOf("Network")
+        val media = settings.indexOf("Media & capture")
+        val support = settings.indexOf("Diagnostics & support")
         assertTrue(
-            "Everyday settings must lead",
-            storage >= 0 && queue > storage && advanced > queue && support > advanced,
+            "Everyday settings categories must lead before support tooling",
+            storage >= 0 && behavior > storage && network > behavior && media > network && support > media,
         )
+        assertFalse("The old overloaded advanced bucket must be gone", settings.contains("Advanced download rules"))
         assertTrue("Developer options must default off", preferences.contains("developerOptionsEnabled: Boolean = false"))
         assertTrue("Developer preference must persist", preferences.contains("DeveloperOptionsEnabled") && preferences.contains("setDeveloperOptionsEnabled"))
         assertTrue("Developer workspace must refuse access while disabled", developer.contains("DeveloperWorkspacePolicy.shouldCompose(state.developerOptionsEnabled, state.settingsPanel)"))

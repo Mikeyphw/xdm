@@ -1454,7 +1454,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_ux06_ux07_live_locator_library_activity_v1.zip",
+  "current_overlay": "xdm_android_ux08_ux09_settings_information_architecture_v1.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -3025,9 +3025,10 @@
     "workmanager_foreground_fallback": true,
     "yt_dlp_launch_adapter_contract": true
   },
-  "next_phase": "complete",
+  "next_phase": "UX10/UX11 developer diagnostics and workspace refinement",
   "notes": [
-    "Phase 1 r4 updates scheduler FileProvider contract test to match CompletedFileGrantPolicy delegation."
+    "Phase 1 r4 updates scheduler FileProvider contract test to match CompletedFileGrantPolicy delegation.",
+    "UX08/UX09 reorganizes Settings by user intent without deleting capabilities; apply as an intermediate overlay with --no-validate."
   ],
   "organization_history_power_tools": {
     "archive_unarchive": true,
@@ -4314,6 +4315,47 @@
     ],
     "manage_surface": "Queue & recovery",
     "storage_pressure_primary_action": "Retry storage check",
+    "room_schema_unchanged": 21
+  },
+  "ux08_settings_information_architecture": {
+    "status": "complete",
+    "settings_categories": [
+      "Storage & destinations",
+      "Download behavior",
+      "Network",
+      "Media & capture",
+      "Browser integration",
+      "External tools",
+      "Post-processing",
+      "Appearance",
+      "Backup & restore",
+      "Privacy",
+      "Diagnostics & support",
+      "Developer Center"
+    ],
+    "grouped_navigation_rows": true,
+    "overloaded_advanced_bucket_removed": true,
+    "advanced_downloads_persisted_route_compatible": true,
+    "storage_destination_settings_co_located": true,
+    "appearance_dedicated_surface": true,
+    "room_schema_unchanged": 21
+  },
+  "ux09_advanced_settings_reorganization": {
+    "status": "complete",
+    "download_behavior_isolated": true,
+    "network_isolated": true,
+    "media_capture_settings_surface": true,
+    "external_tools_isolated": true,
+    "post_processing_isolated": true,
+    "backup_restore_isolated": true,
+    "destination_rules_use_human_destination_picker": true,
+    "technical_destination_uri_developer_only": true,
+    "post_processing_pipeline_order": [
+      "Finalize and publish file",
+      "Durable automation",
+      "Transformation"
+    ],
+    "safety_stages_not_reorderable": true,
     "room_schema_unchanged": 21
   }
 }
