@@ -16,8 +16,6 @@
     <string name="media_locator_loading_stopped">Page loading stopped. Scan the current page or load another address.</string>
     <string name="media_locator_no_candidates">No media detected yet</string>
     <string name="media_locator_url_hint" translatable="false">https://site.example/watch/episode</string>
-    <string name="media_locator_locate">Locate media</string>
-    <string name="media_locator_rescan">Rescan page</string>
     <string name="media_locator_initial_status">Load a page. XDM will list only evidence-backed media candidates.</string>
     <string name="media_locator_waiting_for_evidence">Page loaded. Waiting for playback/network evidence; start the video if the site requires it.</string>
     <string name="media_locator_rescanning">Rescanning DOM and recent media resources…</string>

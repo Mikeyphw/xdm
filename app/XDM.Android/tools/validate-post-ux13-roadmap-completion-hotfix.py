@@ -42,6 +42,7 @@ developer = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/Deve
 readme = text("README.md")
 final_gate = text("tools/run-final-release-gate.sh")
 ux13_validator = text("tools/validate-ux13-end-to-end-ui-ux-release-seal.py")
+strings_xml = text("app/src/main/res/values/strings.xml")
 
 # Final-authority truth.
 require(manifest.get("current_overlay") == HOTFIX, "PROJECT_MANIFEST current_overlay must point to the post-UX13 hotfix")
@@ -66,6 +67,14 @@ for key in (
 require(phase.get("roadmap_remaining_gaps") == [], "hotfix manifest must record no remaining roadmap gaps")
 require(phase.get("room_schema_unchanged") == 21, "hotfix manifest block must retain schema 21")
 require(phase.get("validation_deferred") is False, "final hotfix may not defer validation")
+require(phase.get("validation_repair_revision") == "v5", "post-UX13 hotfix must identify validation repair revision v5")
+require(phase.get("lint_unused_media_locator_resources_removed") is True,
+        "hotfix manifest must seal removal of obsolete Live Locator resources")
+require(phase.get("lint_unused_resource_static_preflight") is True,
+        "hotfix manifest must seal the unused-resource static preflight")
+for obsolete_name in ("media_locator_locate", "media_locator_rescan"):
+    forbid(strings_xml, f'name="{obsolete_name}"',
+           f"obsolete Live Locator resource must remain removed: {obsolete_name}")
 
 # Direct browser-media capture: no review AlertDialog/interstitial; retain internal-only routing.
 require("payload.hasDirectCaptureSession" in external, "direct browser capture detection must remain")
@@ -185,6 +194,8 @@ require("Validation repair revision v3" in report,
         "hotfix report must document validation repair revision v3")
 require("Validation repair revision v4" in report,
         "hotfix report must document validation repair revision v4")
+require("Validation repair revision v5" in report,
+        "hotfix report must document validation repair revision v5")
 
 if ERRORS:
     print("Post-UX13 roadmap-completion hotfix validation failed:")

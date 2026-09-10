@@ -70,3 +70,10 @@ The post-UX13 static validator now rejects unrooted `File("app/src/...` and `Fil
 
 For product/source-truth compatibility, `PROJECT_MANIFEST.current_overlay` continues to identify `xdm_android_post_ux13_roadmap_completion_hotfix_v1` as the semantic product overlay. `xdm_android_post_ux13_roadmap_completion_hotfix_v4` is the test-root/validation repair revision that supersedes v3 for application from the same post-UX13 baseline.
 
+## Validation repair revision v5
+
+After revision v4 was applied and committed, a standalone Android lint run reported two obsolete Live Locator string resources: `media_locator_locate` and `media_locator_rescan`. UX06 replaced those actions with the current native-shell `Scan media`/reload flow, so the old resources had no remaining production or XML references.
+
+Revision v5 removes those two dead resource declarations rather than suppressing `UnusedResources`. The post-UX13 static validator now also forbids both resource names, allowing the canonical static gate to catch this exact regression before Android lint. No runtime behavior, route, persistence contract, Room schema, or browser-media handoff behavior changes.
+
+Revision v5 is a delta on top of the successfully applied and committed v4 state. `PROJECT_MANIFEST.current_overlay` remains the semantic v1 post-UX13 product hotfix; `validation_repair_artifact` identifies v5 as the latest validation/lint repair revision.

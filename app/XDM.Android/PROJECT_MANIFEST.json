@@ -4486,11 +4486,17 @@
     "validation_owner": "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip",
     "next_overlay": null,
     "legacy_current_release_authority_reconciled": true,
-    "validation_repair_revision": "v4",
+    "validation_repair_revision": "v5",
     "test_framework_consistency_repaired": true,
     "test_framework_static_preflight": true,
-    "validation_repair_artifact": "xdm_android_post_ux13_roadmap_completion_hotfix_v4.zip",
+    "validation_repair_artifact": "xdm_android_post_ux13_roadmap_completion_hotfix_v5.zip",
     "test_source_root_resolution_repaired": true,
-    "test_source_root_static_preflight": true
+    "test_source_root_static_preflight": true,
+    "lint_unused_media_locator_resources_removed": true,
+    "lint_unused_media_locator_resources": [
+      "media_locator_locate",
+      "media_locator_rescan"
+    ],
+    "lint_unused_resource_static_preflight": true
   }
 }
