@@ -3,6 +3,7 @@ package com.mikeyphw.xdm.android.media
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
+import com.mikeyphw.xdm.android.model.MediaThumbnailProvenance
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaManifestRole
 import com.mikeyphw.xdm.android.model.MediaVariant
@@ -24,12 +25,14 @@ data class MediaCaptureCandidate(
     val sourceUrl: String,
     val pageUrl: String? = null,
     val title: String? = null,
+    val titleIsPageDerived: Boolean = false,
     val kind: MediaSourceKind,
     val mimeType: String?,
     val container: String?,
     val codecs: String? = null,
     val durationMs: Long? = null,
     val thumbnailUrl: String? = null,
+    val thumbnailProvenance: MediaThumbnailProvenance = MediaThumbnailProvenance.Unknown,
     val variants: List<MediaVariant> = emptyList(),
 )
 
@@ -118,8 +121,14 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
 
     fun recordFor(candidate: MediaCaptureCandidate): MediaCaptureRecord = candidate.toRecord(clock())
 
-    fun recordsFor(candidates: List<MediaCaptureCandidate>): List<MediaCaptureRecord> =
-        candidates.map { it.toRecord(clock()) }.distinctBy(MediaCaptureRecord::id)
+    fun recordsFor(candidates: List<MediaCaptureCandidate>): List<MediaCaptureRecord> {
+        val seenNames = linkedSetOf<String>()
+        return candidates.map { it.toRecord(clock()) }.distinctBy(MediaCaptureRecord::id).map { record ->
+            val unique = uniqueFileName(record.fileName, seenNames)
+            seenNames += unique.lowercase(Locale.ROOT)
+            if (unique == record.fileName) record else record.copy(fileName = unique)
+        }
+    }
 
     fun candidates(text: String, pageTitle: String? = null, pageUrl: String? = null): List<MediaCaptureCandidate> {
         val urls = urlPattern.findAll(text).map { it.value.trimEnd(')', ']', ',', '.', ';') }.distinct().toList()
@@ -145,6 +154,7 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         headers: Map<String, String> = emptyMap(),
         durationMs: Long? = null,
         thumbnailUrl: String? = null,
+        thumbnailProvenance: MediaThumbnailProvenance = MediaThumbnailProvenance.Unknown,
     ): MediaCaptureCandidate? {
         val normalized = url.trim()
         val facts = MediaRequestFacts(normalized, mimeTypeHint, contentLength, pageUrl, pageTitle, headers)
@@ -174,11 +184,13 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             sourceUrl = normalized,
             pageUrl = pageUrl,
             title = pageTitle?.takeIf(String::isNotBlank) ?: inferredTitle(normalized),
+            titleIsPageDerived = !pageTitle.isNullOrBlank(),
             kind = kind,
             mimeType = mimeType,
             container = containerFor(lowerPath, kind),
             durationMs = durationMs?.takeIf { it > 0L },
             thumbnailUrl = thumbnailUrl?.takeIf(String::isNotBlank),
+            thumbnailProvenance = thumbnailProvenance.takeIf { !thumbnailUrl.isNullOrBlank() } ?: MediaThumbnailProvenance.Unknown,
             variants = variants,
         )
     }
@@ -426,7 +438,8 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             codecs = codecs,
             durationMs = durationMs,
             thumbnailUrl = thumbnailUrl,
-            fileName = fileNameFor(sourceUrl, safeTitle, kind, mimeType),
+            thumbnailProvenance = thumbnailProvenance,
+            fileName = fileNameFor(sourceUrl, safeTitle, kind, mimeType, variants, hasExplicitTitle = titleIsPageDerived),
             variantCount = variants.size.coerceAtLeast(1),
             downloadId = null,
             createdAtEpochMs = now,
@@ -490,19 +503,42 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         URI(url).path.substringAfterLast('/').substringBefore('?').substringBefore('#').takeIf(String::isNotBlank)
     }.getOrNull() ?: "Captured media"
 
-    private fun fileNameFor(url: String, title: String, kind: MediaSourceKind, mimeType: String?): String {
+    private fun fileNameFor(url: String, title: String, kind: MediaSourceKind, mimeType: String?, variants: List<MediaVariant>, hasExplicitTitle: Boolean): String {
         val pathName = runCatching { URI(url).path.substringAfterLast('/').takeIf(String::isNotBlank) }.getOrNull()
         val extension = preferredMediaExtension(pathName, kind, mimeType)
         // Browser/WebView capture is page-derived: the page title is the human-facing identity and
         // CDN basenames such as videoplayback/segment/master are implementation details. candidateFor()
         // already falls back to the URL basename when no page title exists, so title-first naming also
         // preserves sensible direct-media names without inventing a generic label.
+        val discriminator = if (hasExplicitTitle) fileNameDiscriminator(kind, variants) else null
+        val titled = if (discriminator == null || title.endsWith(discriminator, ignoreCase = true)) title else "$title - $discriminator"
         val base = sanitizeFileName(
-            title,
+            titled,
             fallback = "captured-media",
             maxLength = (160 - extension.length).coerceAtLeast(80),
         )
         return if (base.endsWith(extension, ignoreCase = true)) base else base + extension
+    }
+
+    private fun fileNameDiscriminator(kind: MediaSourceKind, variants: List<MediaVariant>): String? {
+        variants.firstOrNull { it.height != null && it.kind in setOf(MediaVariantKind.Primary, MediaVariantKind.Video) }
+            ?.height?.takeIf { it > 0 }?.let { return "${it}p" }
+        if (kind == MediaSourceKind.AudioStream || variants.any { it.kind == MediaVariantKind.Audio }) {
+            variants.firstOrNull { it.kind == MediaVariantKind.Audio }?.bitrateBitsPerSecond?.takeIf { it > 0 }
+                ?.let { return "${it / 1000}kbps audio" }
+            return "audio"
+        }
+        return null
+    }
+
+    fun uniqueFileName(fileName: String, existingLowercaseNames: Set<String>): String {
+            if (fileName.lowercase(Locale.ROOT) !in existingLowercaseNames) return fileName
+            val dot = fileName.lastIndexOf('.').takeIf { it > 0 } ?: fileName.length
+            val base = fileName.substring(0, dot)
+            val extension = fileName.substring(dot)
+            var index = 2
+            while ("$base ($index)$extension".lowercase(Locale.ROOT) in existingLowercaseNames) index++
+            return "$base ($index)$extension"
     }
 
     private fun preferredMediaExtension(pathName: String?, kind: MediaSourceKind, mimeType: String?): String {

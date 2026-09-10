@@ -33,7 +33,7 @@ class RemediationPhase13FinalGateContractTest {
         assertTrue(gate.contains("val releaseReady: Boolean"))
         assertTrue(gate.contains("releaseReady = ready"))
         assertTrue(gate.contains("FinalOverlayArtifact: String = \"xdm_android_privacy_quality_final_gate_overlay_v2.zip\""))
-        assertTrue(gate.contains("CurrentRoomSchema: Int = 21"))
+        assertTrue(gate.contains("CurrentRoomSchema: Int = 22"))
     }
 
     @Test
@@ -143,12 +143,13 @@ class RemediationPhase13FinalGateContractTest {
         assertFalse(commonValidation.contains(":browser-extension:packageFirefoxExtensionDark"))
         assertFalse(commonValidation.contains(":browser-extension:packageFirefoxExtensionAmoled"))
         assertFalse(commonValidation.contains(":browser-extension:verifyFirefoxExtensionReleaseArtifacts"))
-        assertTrue(projectManifest.contains("\"current_overlay\": \"xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip\""))
+        assertTrue(projectManifest.contains("\"current_release_authority\": \"post_ux13_roadmap_completion_hotfix\""))
+        assertTrue(projectManifest.contains("\"current_runtime_quality_authority\": \"notification_webview_gap_hotfix_2026_09_10\""))
         assertTrue(projectManifest.contains("\"static_validation_evidence_required\": true"))
         assertTrue(projectManifest.contains("\"full_validation_evidence_required\": true"))
         assertTrue(projectManifest.contains("\"validation_evidence_defaults_false\": true"))
-        assertTrue(projectManifest.contains("\"version\": 21"))
-        assertTrue(projectManifest.contains("\"room_schema_locked\": 21"))
+        assertTrue(projectManifest.contains("\"room_schema_current\": 22") || projectManifest.contains("\"version\": 22"))
+        assertTrue(projectManifest.contains("\"room_schema_current\": 22"))
         assertTrue(projectManifest.contains("\"version_code\": 22"))
         assertTrue(projectManifest.contains("\"readiness_evidence_fail_closed\": true"))
     }

@@ -13,6 +13,18 @@
     <string name="media_locator_reload">Reload</string>
     <string name="media_locator_stop">Stop</string>
     <string name="media_locator_scan">Scan media</string>
+    <string name="media_locator_favicon">Page icon</string>
+    <string name="media_locator_find">Find</string>
+    <string name="media_locator_find_hint">Find on page</string>
+    <string name="media_locator_find_next">Next</string>
+    <string name="media_locator_find_close">Close</string>
+    <string name="media_locator_share">Share</string>
+    <string name="media_locator_share_chooser">Share media page</string>
+    <string name="media_locator_open_external">Browser</string>
+    <string name="media_locator_no_external_browser">No browser app can open this page.</string>
+    <string name="media_locator_candidate_thumbnail">Preview for %1$s</string>
+    <string name="media_locator_type_inferred">type inferred</string>
+    <string name="media_locator_candidate_details">%1$s • %2$s\n%3$s • %4$s</string>
     <string name="media_locator_loading_stopped">Page loading stopped. Scan the current page or load another address.</string>
     <string name="media_locator_no_candidates">No media detected yet</string>
     <string name="media_locator_url_hint" translatable="false">https://site.example/watch/episode</string>

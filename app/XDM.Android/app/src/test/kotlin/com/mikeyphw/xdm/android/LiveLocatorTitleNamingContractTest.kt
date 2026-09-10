@@ -58,7 +58,8 @@ class LiveLocatorTitleNamingContractTest {
         val capture = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaInboxContract.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
 
-        assertTrue(capture.contains("fileNameFor(sourceUrl, safeTitle, kind, mimeType)"))
+        assertTrue(capture.contains("fileNameFor(sourceUrl, safeTitle, kind, mimeType, variants, hasExplicitTitle = titleIsPageDerived)"))
+        assertTrue(capture.contains("val discriminator = if (hasExplicitTitle) fileNameDiscriminator(kind, variants) else null"))
         assertTrue(capture.contains("preferredMediaExtension(pathName, kind, mimeType)"))
         assertTrue(capture.contains("\"video/mp4\", \"application/mp4\" -> \".mp4\""))
         assertTrue(viewModel.contains("pageTitle = candidate.title ?: decoded.pageTitle"))

@@ -93,6 +93,7 @@ fun AddDownloadScreen(
     val context = LocalContext.current
     var url by rememberSaveable { mutableStateOf(initialUrl.orEmpty()) }
     var name by rememberSaveable { mutableStateOf(initialFileName.orEmpty()) }
+    var nameEditedByUser by rememberSaveable { mutableStateOf(false) }
     var backend by rememberSaveable { mutableStateOf(BackendType.Automatic) }
     var allowFallback by rememberSaveable { mutableStateOf(true) }
     var expectedChecksum by rememberSaveable { mutableStateOf("") }
@@ -106,6 +107,7 @@ fun AddDownloadScreen(
         if (externalDraftId != null) {
             url = initialUrl.orEmpty()
             name = initialFileName.orEmpty()
+            nameEditedByUser = false
             backend = BackendType.Automatic
             allowFallback = true
             expectedChecksum = ""
@@ -154,12 +156,15 @@ fun AddDownloadScreen(
             clipboardMessage = "Direct file access was not granted; SAF and MediaStore remain available"
         }
     }
+    val applicableUrlPreflight = urlPreflight.takeIf { it.requestedUrl == url.trim() }
+    val inferredOrServerName = applicableUrlPreflight?.suggestedFileName ?: inferredFileName(url)
+    val effectiveFileName = name.ifBlank { inferredOrServerName }
     val recommendation = url.takeIf(String::isNotBlank)?.let {
-        recommend(url, name, backend, destinationUri, conflictPolicy, allowFallback)
+        recommend(url, effectiveFileName, backend, destinationUri, conflictPolicy, allowFallback)
     }
     val review = DownloadReviewPlanner.plan(
         url = url,
-        fileName = name,
+        fileName = effectiveFileName,
         mimeType = externalMimeType.takeIf { url == initialUrl },
         destinationUri = destinationUri,
         origin = if (externalDraftId != null && url == initialUrl) externalOrigin ?: DownloadIntakeOrigin.ExternalView else DownloadIntakeOrigin.ManualEntry,
@@ -171,7 +176,18 @@ fun AddDownloadScreen(
         DownloadIntakeKind.PageOrUnknown,
     )
     val methodLabel = recommendation?.let { recommendationSummary(it, allowFallback) } ?: "Automatic • resumable"
-    val fileLabel = name.ifBlank { urlPreflight.suggestedFileName ?: inferredFileName(url) }
+    val fileLabel = effectiveFileName
+    val fileNameSupporting = when {
+        nameEditedByUser -> "Custom name • XDM will use this name."
+        name.isNotBlank() && externalDraftId != null -> "Suggested by the browser/page capture • You can edit it."
+        applicableUrlPreflight?.suggestedFileNameSource == DownloadFileNameSuggestionSource.ServerContentDisposition ->
+            "Suggested by the server (Content-Disposition) • Leave blank to use it, or type another name."
+        applicableUrlPreflight?.suggestedFileNameSource == DownloadFileNameSuggestionSource.RedirectTargetPath ->
+            "Suggested from the redirected download link • Leave blank to use it, or type another name."
+        applicableUrlPreflight?.suggestedFileNameSource == DownloadFileNameSuggestionSource.LinkPath ->
+            "Suggested from the download link • Leave blank to use it, or type another name."
+        else -> "Optional • XDM will infer a name when left empty."
+    }
     val visibleSessionHealth = externalSessionHealth.takeIf { externalDraftId != null && url == initialUrl }
     val visibleEngineEscalation = externalEngineEscalationPlan.takeIf { externalDraftId != null && url == initialUrl }
     val sourceSummary = listOfNotNull(
@@ -235,9 +251,12 @@ fun AddDownloadScreen(
             item {
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = {
+                        name = it
+                        nameEditedByUser = true
+                    },
                     label = { Text("File name") },
-                    supportingText = { Text("Optional • XDM uses the server or link name when left empty.") },
+                    supportingText = { Text(fileNameSupporting) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
@@ -347,7 +366,7 @@ fun AddDownloadScreen(
                             }
 
                             if (canInspectMedia && !preferMediaInspection) {
-                                TextButton(onClick = { onInspectMedia(url, name) }) {
+                                TextButton(onClick = { onInspectMedia(url, effectiveFileName) }) {
                                     Icon(Icons.Rounded.Movie, contentDescription = null)
                                     Text("Media options")
                                 }
@@ -421,11 +440,11 @@ fun AddDownloadScreen(
                         Button(
                             onClick = {
                                 if (preferMediaInspection) {
-                                    onInspectMedia(url, name)
+                                    onInspectMedia(url, effectiveFileName)
                                 } else {
                                     onAdd(
                                         url,
-                                        name,
+                                        effectiveFileName,
                                         backend,
                                         destinationUri,
                                         conflictPolicy,
@@ -516,7 +535,15 @@ private fun DownloadUrlPreflightSummary(preflight: DownloadUrlPreflightUi, intak
                 DownloadPreflightState.Idle -> XdmMetadataText("XDM will inspect this link before the transfer starts.")
                 else -> {
                     val details = buildList {
-                        preflight.suggestedFileName?.takeIf(String::isNotBlank)?.let { add(it) }
+                        preflight.suggestedFileName?.takeIf(String::isNotBlank)?.let { suggested ->
+                            val source = when (preflight.suggestedFileNameSource) {
+                                DownloadFileNameSuggestionSource.ServerContentDisposition -> "server"
+                                DownloadFileNameSuggestionSource.RedirectTargetPath -> "redirected link"
+                                DownloadFileNameSuggestionSource.LinkPath -> "link"
+                                null -> null
+                            }
+                            add(if (source == null) suggested else "$suggested • from $source")
+                        }
                         preflight.mimeType?.takeIf(String::isNotBlank)?.let { add(it) }
                         preflight.contentLength?.takeIf { it > 0L }?.let { add(it.formatBytes()) }
                     }

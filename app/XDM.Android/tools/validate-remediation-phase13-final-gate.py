@@ -65,7 +65,7 @@ require("staticValidationPassed: Boolean = false" in gate, "media static evidenc
 require("fullValidationPassed: Boolean = false" in gate, "media full evidence must default false")
 require("val releaseReady: Boolean" in gate and "releaseReady = ready" in gate, "media gate must expose release readiness only after evidence")
 require('FinalOverlayArtifact: String = "xdm_android_privacy_quality_final_gate_overlay_v2.zip"' in gate, "final overlay identity is stale")
-require("CurrentRoomSchema: Int = 21" in gate, "final media gate does not use Room schema 21")
+require("CurrentRoomSchema: Int = 22" in gate, "final media gate does not use Room schema 22")
 
 # M-046: inspect bounded real filesystem surfaces and report measurable coverage.
 for marker in (
@@ -167,8 +167,8 @@ for forbidden in (':browser-extension:packageFirefoxExtensionDark', ':browser-ex
 
 require(manifest.get("current_overlay") in {"xdm_android_privacy_quality_final_gate_overlay_v2.zip", "xdm_android_ux01_ux09_product_foundation_v3.zip", "xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip", "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip", "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip"}, "PROJECT_MANIFEST current_overlay is not Overlay 13 or an accepted later overlay")
 database = manifest.get("database", {})
-require(database.get("version") == 21, "PROJECT_MANIFEST authoritative database version is not 21")
-require("18_to_19" in database.get("migrations", []) and "19_to_20" in database.get("migrations", []) and "20_to_21" in database.get("migrations", []), "PROJECT_MANIFEST migration chain does not reach schema 21")
+require(database.get("version") == 22, "PROJECT_MANIFEST authoritative database version is not 22")
+require("18_to_19" in database.get("migrations", []) and "19_to_20" in database.get("migrations", []) and "20_to_21" in database.get("migrations", []) and "21_to_22" in database.get("migrations", []), "PROJECT_MANIFEST migration chain does not reach schema 22")
 public_gate = manifest.get("final_public_release_gate", {})
 require(public_gate.get("room_schema_locked") == 21, "PROJECT_MANIFEST final public gate still claims an old Room schema")
 require(public_gate.get("version_code") == 22 and public_gate.get("version_name") == "0.21.0", "PROJECT_MANIFEST final public gate version metadata is stale")

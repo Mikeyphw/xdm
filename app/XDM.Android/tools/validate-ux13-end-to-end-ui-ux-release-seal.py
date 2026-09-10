@@ -44,7 +44,7 @@ ux12_contract = text("app/src/test/kotlin/com/mikeyphw/xdm/android/Ux12Accessibi
 
 require(manifest.get("current_overlay") in {OVERLAY, POST_UX13_HOTFIX}, "PROJECT_MANIFEST current_overlay must point to UX13 or its accepted post-release hotfix")
 require(manifest.get("next_phase") == "complete", "UX13 must close the roadmap with next_phase=complete")
-require(manifest.get("database", {}).get("version") == 21, "UX13 must keep authoritative Room schema 21")
+require(manifest.get("database", {}).get("version", 0) >= 21, "later schema evolution must retain at least the UX13 Room 21 baseline")
 phase = manifest.get("ux13_end_to_end_ui_ux_release_seal", {})
 require(phase.get("status") == "implemented_final_seal", "UX13 manifest block must be final-seal status")
 require(phase.get("roadmap_complete") is True, "UX13 manifest must mark the UX roadmap complete")

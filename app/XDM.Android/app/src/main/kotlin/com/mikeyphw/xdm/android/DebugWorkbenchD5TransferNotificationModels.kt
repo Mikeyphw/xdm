@@ -106,14 +106,14 @@ object TransferNotificationDebugReporter {
     private fun notificationPathLabel(download: Download?): String = when (download?.state) {
         null -> "No notification path selected"
         DownloadState.Completed -> "Status notification with completed-file tap and Open XDM fallback"
-        DownloadState.Failed -> "Status notification with Retry and Mute actions"
-        DownloadState.RecoveryRequired -> "Status notification with Retry and recovery detail"
-        DownloadState.Paused -> "Status notification with Resume and Mute actions"
-        DownloadState.Cancelled -> "Status notification with Mute action"
-        DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading, DownloadState.Finalizing, DownloadState.Repairing -> "Active notification with Pause, Resume all, and Cancel actions"
-        DownloadState.WaitingForNetwork -> "Status notification waits for network before retry"
-        DownloadState.WaitingForPower -> "Status notification waits for power before retry"
-        DownloadState.Verifying -> "Active notification while verification completes"
+        DownloadState.Failed -> "Attention notification with Retry and Dismiss actions"
+        DownloadState.RecoveryRequired -> "Attention notification with Review recovery and Dismiss actions"
+        DownloadState.Paused -> "Routine notification with Resume and Dismiss actions"
+        DownloadState.Cancelled -> "Routine notification with Dismiss action"
+        DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading, DownloadState.Finalizing, DownloadState.Repairing -> "Active notification: one identified download gets Pause/Cancel; grouped work gets only truthful aggregate controls"
+        DownloadState.WaitingForNetwork -> "Routine notification says exactly that the download is waiting for network"
+        DownloadState.WaitingForPower -> "Routine notification says exactly that the download is waiting for power"
+        DownloadState.Verifying -> "Active notification while verification completes; grouped controls remain aggregate only"
         DownloadState.Created -> "No active notification until the transfer is queued"
     }
 

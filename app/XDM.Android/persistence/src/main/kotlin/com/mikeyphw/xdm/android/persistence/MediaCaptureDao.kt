@@ -28,6 +28,9 @@ interface MediaCaptureDao {
     @Query("SELECT * FROM media_captures WHERE id = :id")
     suspend fun findById(id: String): MediaCaptureEntity?
 
+    @Query("SELECT * FROM media_captures ORDER BY updatedAtEpochMs DESC")
+    suspend fun listAll(): List<MediaCaptureEntity>
+
     @Upsert
     suspend fun upsert(entity: MediaCaptureEntity)
 

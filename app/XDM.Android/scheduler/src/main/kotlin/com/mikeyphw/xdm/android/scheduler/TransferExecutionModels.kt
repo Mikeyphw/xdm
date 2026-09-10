@@ -10,7 +10,8 @@ data class ActiveTransferSummary(
     val primaryDownloadId: String? = null,
     val primaryFileName: String? = null,
     val primaryState: DownloadState? = null,
-    val bandwidthProfile: String = "Unrestricted",
+    val aggregateStates: Set<DownloadState> = emptySet(),
+    val bandwidthProfile: String = "",
 ) {
     val progressPercent: Int?
         get() = totalBytes?.takeIf { it > 0 }?.let { ((bytesReceived * 100L) / it).coerceIn(0, 100).toInt() }

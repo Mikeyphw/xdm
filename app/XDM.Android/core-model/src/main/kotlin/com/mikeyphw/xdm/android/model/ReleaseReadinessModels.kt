@@ -89,7 +89,7 @@ object ReleaseInstallReadinessGate {
                     ),
                 )
             }
-            if (schemaVersion != 21) {
+            if (schemaVersion != 22) {
                 add(
                     ReleaseReadinessCheck(
                         id = "database.schema",

@@ -1,6 +1,6 @@
 ## XDM Android 0.21.0
 
-Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed, the execution/media semantics repair remains the functional baseline, UX13 is the end-to-end UI/UX release baseline, and the post-UX13 roadmap-completion hotfix is the current UI release authority. Room is schema v21. The canonical release gate replays these contracts before the full Gradle/device/release matrix.
+Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed. The post-UX13 roadmap-completion hotfix is the current UI release authority; UX13 is the end-to-end UI/UX release baseline; ACT01/ACT02 is the current experience-polish authority; and the 2026-09-10 notification/WebView gap hotfix is the current runtime-quality authority. Room is schema v22. The canonical release gate replays these contracts before the full Gradle/device/release matrix.
 
 # XDM Android
 
@@ -38,7 +38,7 @@ Standalone Android download manager implemented through Phase 7: modular Kotlin/
 
 ## Current final release gate
 
-Phase 17 established the original public-release boundary at Room schema v14; that phase is now historical. The current product is Room schema v21 and the canonical gate carries the later browser-removal, remediation, MC04/MC05, and DL02/DL03 contracts forward.
+Phase 17 established the original public-release boundary at Room schema v14; that phase is now historical. The current product is Room schema v22 and the canonical gate carries the later browser-removal, remediation, MC04/MC05, and DL02/DL03 contracts forward.
 
 From `app/XDM.Android`, run the static gate with:
 
@@ -265,3 +265,8 @@ The final remediation stage makes validation evidence fail-closed, audits real a
 The final gate also repaired the browser bridge after direct JS testing: popup/page/manual/probe Add uses the separate `xdmdownload://add?v=1` compatibility contract, while detected media requires a prebuilt encrypted-v2 capture link and fails closed without one. The optional `idmdownload:` route is restored without reintroducing plaintext XDM capture.
 
 `finalRemediationStaticGate` is wired into Devtool validation. The final Overlay-13 artifact does not allow deferred validation: Android compile/unit/lint and browser-extension Gradle gates must pass in the target environment before the final remediation commit is accepted.
+
+
+## 2026-09-10 notification/media promise-closure v2
+
+The notification + Live Locator hotfix has a second-pass closure audit. Runtime notification ownership now removes stale UIDT progress at job end unless a terminal replacement was actually installed, terminal delivery remains Pending until Android accepts it, replay is alert-idempotent, and restart diagnostics rehydrate the same terminal actions production displays. Media artwork now preserves higher-quality provenance, keeps captured/resolver video artwork ahead of generated local frames, and follows additional media output generations into Downloads. Add Download uses a server `Content-Disposition` filename when the field is left blank and tells the user whether the suggestion came from the server, a redirect, or the link. Room remains schema 22.

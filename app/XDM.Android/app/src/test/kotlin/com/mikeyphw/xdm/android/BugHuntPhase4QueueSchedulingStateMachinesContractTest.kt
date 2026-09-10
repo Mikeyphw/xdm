@@ -46,6 +46,7 @@ class BugHuntPhase4QueueSchedulingStateMachinesContractTest {
         val model = source("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/QueueStateMachineModels.kt")
         val coordinator = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinator.kt")
         val notifications = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotifications.kt")
+        val terminalPolicy = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TerminalNotificationActionPolicy.kt")
         val receiver = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferActionReceiver.kt")
         listOf(
             "RecoveryOperationOutcome",
@@ -57,8 +58,9 @@ class BugHuntPhase4QueueSchedulingStateMachinesContractTest {
             "NotificationPermissionState",
             "needsInAppControlWarning",
         ).forEach { expected -> assertTrue("Missing Phase 4 recovery/notification contract: $expected", model.contains(expected)) }
-        assertTrue(coordinator.contains("putIfAbsent(record.idempotencyKey"))
-        assertTrue(notifications.contains("Review recovery"))
+        assertTrue(coordinator.contains("terminalNotificationsLocked().firstOrNull { it.idempotencyKey == record.idempotencyKey }"))
+        assertTrue(coordinator.contains("\"terminal-dispatched\""))
+        assertTrue((notifications + terminalPolicy).contains("Review recovery"))
         assertTrue(notifications.contains("Dismiss"))
         assertTrue(receiver.contains("ACTION_REVIEW_RECOVERY"))
         assertTrue(receiver.contains("ACTION_DISMISS"))

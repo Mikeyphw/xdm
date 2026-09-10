@@ -48,7 +48,7 @@ strings_xml = text("app/src/main/res/values/strings.xml")
 require(manifest.get("current_overlay") == HOTFIX, "PROJECT_MANIFEST current_overlay must point to the post-UX13 hotfix")
 require(manifest.get("next_phase") == "complete", "roadmap must remain complete")
 require(manifest.get("current_release_authority") == "post_ux13_roadmap_completion_hotfix", "legacy current_release_authority must point to the final hotfix")
-require(manifest.get("database", {}).get("version") == 21, "hotfix must retain Room schema 21")
+require(manifest.get("database", {}).get("version", 0) >= 21, "later schema evolution must retain at least the Room 21 hotfix baseline")
 phase = manifest.get("post_ux13_roadmap_completion_hotfix", {})
 require(phase.get("status") == "implemented_final_hotfix", "post-UX13 hotfix manifest block must be final")
 for key in (

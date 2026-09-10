@@ -85,7 +85,7 @@ require(phase.get('signed_checksums_required') is True, 'manifest must require s
 
 
 main_vm=text('app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt')
-for needle in ['CurrentRoomSchemaVersion = 21','BuildConfig.XDM_RELEASE_SIGNING_CONFIGURED','BuildConfig.XDM_PINNED_RELEASE_SIGNER_SHA256','releaseSigningAttestationConfigured()']:
+for needle in ['CurrentRoomSchemaVersion = 22','BuildConfig.XDM_RELEASE_SIGNING_CONFIGURED','BuildConfig.XDM_PINNED_RELEASE_SIGNER_SHA256','releaseSigningAttestationConfigured()']:
     require(needle in main_vm, f'MainViewModel release readiness missing {needle}')
 require('releaseSigningConfigured = !BuildConfig.DEBUG' not in main_vm, 'MainViewModel must not derive release signing from !BuildConfig.DEBUG')
 require('schemaVersion = 14' not in main_vm, 'MainViewModel must not hardcode old schema 14')

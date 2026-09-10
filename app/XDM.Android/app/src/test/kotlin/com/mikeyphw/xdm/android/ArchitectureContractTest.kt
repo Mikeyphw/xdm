@@ -64,8 +64,9 @@ class ArchitectureContractTest {
         val addSurface = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         assertTrue(
-            "Filename field should describe inference",
-            addSurface.contains("Optional • XDM uses the server or link name when left empty."),
+            "Filename field should describe server and fallback inference",
+            addSurface.contains("Suggested by the server (Content-Disposition)") &&
+                addSurface.contains("Optional • XDM will infer a name when left empty."),
         )
         assertTrue(
             "Add button should not require a nonblank filename",
@@ -120,7 +121,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 14 validator is missing", File(root, "tools/validate-phase-14.py").isFile)
         assertTrue("Release safety model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 14", manifest.contains("14"))
-        assertTrue("Manifest must record current Room schema v21", manifest.contains("\"version\": 21"))
+        assertTrue("Manifest must record current Room schema v22", manifest.contains("\"version\": 22"))
         val phaseFourteenVersion = Regex("""versionName = "0\.(\d+)\.0(?:-(?:alpha01|rc\d+))?"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.14", phaseFourteenVersion != null && phaseFourteenVersion >= 14)
         assertTrue("Diagnostics must expose privacy-safe app integrity summary", screens.contains("App integrity"))
@@ -139,7 +140,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 15 architecture contract is missing", File(root, "docs/architecture/PHASE-15-UX-ACCESSIBILITY-POLISH.md").isFile)
         assertTrue("Phase 15 validator is missing", File(root, "tools/validate-phase-15.py").isFile)
         assertTrue("Manifest must record implemented phase 15", manifest.contains("15"))
-        assertTrue("Phase 15 baseline must be carried forward through current Room schema v21", manifest.contains("\"schema_version\": 21") || manifest.contains("\"version\": 21"))
+        assertTrue("Phase 15 baseline must be carried forward through current Room schema v22", manifest.contains("\"room_schema_current\": 22") || manifest.contains("\"version\": 22"))
         val phaseFifteenVersion = Regex("""versionName = "0\.(\d+)\.0(?:-(?:alpha01|rc\d+))?"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.15", phaseFifteenVersion != null && phaseFifteenVersion >= 15)
         assertTrue("Downloads must expose compact transfer metrics", screens.contains("XdmMetricStrip") && screens.contains("DownloadWorkspaceMetrics"))
@@ -164,7 +165,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 16 validator is missing", File(root, "tools/validate-phase-16.py").isFile)
         assertTrue("Release readiness model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 16", manifest.contains("16"))
-        assertTrue("Phase 16 baseline must be carried forward through current Room schema v21", manifest.contains("\"schema_version\": 21") || manifest.contains("\"version\": 21"))
+        assertTrue("Phase 16 baseline must be carried forward through current Room schema v22", manifest.contains("\"room_schema_current\": 22") || manifest.contains("\"version\": 22"))
         assertTrue("Build metadata must be at least 0.16", Regex("""versionName = "0\.(\d+)\.0(?:-(?:alpha01|rc\d+))?"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()?.let { it >= 16 } == true)
         assertTrue("Diagnostics must expose user-facing update compatibility", screens.contains("Update compatibility"))
         assertFalse("Diagnostics must not expose install/update implementation wording", screens.contains("Install/update readiness"))
@@ -189,7 +190,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 17 validator is missing", File(root, "tools/validate-phase-17.py").isFile)
         assertTrue("Final release model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/FinalReleaseGateModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 17", manifest.contains("17"))
-        assertTrue("Phase 17 baseline must be carried forward through current Room schema v21", manifest.contains("\"room_schema_locked\": 21") || manifest.contains("\"schema_version\": 21") || manifest.contains("\"version\": 21"))
+        assertTrue("Phase 17 baseline must be carried forward through current Room schema v22", manifest.contains("\"room_schema_current\": 22") || manifest.contains("\"version\": 22"))
         val finalGateVersion = Regex("""versionName\s*=\s*"0\.(\d+)\.0(?:-(?:alpha01|rc\d+))?"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         val finalGateVersionCode = Regex("""versionCode\s*(?:=|\.set\()\s*(\d+)""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must stay on a 0.21+ release train", finalGateVersion?.let { it >= 21 } == true)
@@ -213,7 +214,7 @@ class ArchitectureContractTest {
         assertTrue("Post-17 parity validator is missing", File(root, "tools/validate-post17-desktop-parity.py").isFile)
         assertTrue("Desktop parity model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DesktopParityModels.kt").isFile)
         assertTrue("Manifest must record desktop parity", manifest.contains("desktop_parity"))
-        assertTrue("Desktop parity must be carried forward through current Room schema v21", manifest.contains("\"schema_version\": 21") || manifest.contains("\"version\": 21"))
+        assertTrue("Desktop parity must be carried forward through current Room schema v22", manifest.contains("\"room_schema_current\": 22") || manifest.contains("\"version\": 22"))
         assertTrue("Settings must expose backup and restore", screens.contains("Backup & restore") && screens.contains("Portable settings snapshot"))
         assertTrue("Downloads must expose history management", screens.contains("History management"))
         assertTrue("Settings must expose proxy credentials", screens.contains("Proxy profile") && screens.contains("Credential alias"))
@@ -331,7 +332,6 @@ class ArchitectureContractTest {
         val root = androidRoot()
         val contract = File(root, "docs/architecture/UI_UX_TOPOGRAPHY_CONTRACT.md").readText()
         val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
-        val activity = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainActivity.kt").readText()
         val externalIntake = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationSecurity.kt").readText()
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val screens = UiSourceTree.readAll(root)
@@ -567,7 +567,6 @@ class ArchitectureContractTest {
     @Test
     fun mediaResolverPlayerOverlayContractsArePresent() {
         val root = androidRoot()
-        val screens = UiSourceTree.readAll(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt").readText()
         val player = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt").readText()
@@ -626,7 +625,6 @@ class ArchitectureContractTest {
     @Test
     fun mediaDownloadEngineHardeningContractsArePresent() {
         val root = androidRoot()
-        val screens = UiSourceTree.readAll(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val execution = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionLibrary.kt").readText()
         val player = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt").readText()
@@ -653,7 +651,6 @@ class ArchitectureContractTest {
     @Test
     fun mediaDispatchControlTowerContractsArePresent() {
         val root = androidRoot()
-        val screens = UiSourceTree.readAll(root)
         val dispatcher = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionDispatcher.kt").readText()
         val tests = File(root, "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt").readText()
         val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
@@ -675,7 +672,6 @@ class ArchitectureContractTest {
     @Test
     fun mediaQueueTelemetryContractsArePresent() {
         val root = androidRoot()
-        val screens = UiSourceTree.readAll(root)
         val telemetry = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaQueueTelemetry.kt").readText()
         val tests = File(root, "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt").readText()
         val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
@@ -696,7 +692,6 @@ class ArchitectureContractTest {
     @Test
     fun mediaQueueActionsContractsArePresent() {
         val root = androidRoot()
-        val screens = UiSourceTree.readAll(root)
         val actions = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaQueueActions.kt").readText()
         val tests = File(root, "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt").readText()
         val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
@@ -718,7 +713,6 @@ class ArchitectureContractTest {
     @Test
     fun mediaWorkerBridgeContractsArePresent() {
         val root = androidRoot()
-        val screens = UiSourceTree.readAll(root)
         val bridge = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaWorkerBridge.kt").readText()
         val tests = File(root, "media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureServiceTest.kt").readText()
         val manifestJson = File(root, "PROJECT_MANIFEST.json").readText()
@@ -743,7 +737,6 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 26 contract doc is missing", File(root, "docs/architecture/PHASE-26-MEDIA-TERMUX-RUNTIME-ADAPTER.md").isFile)
         assertTrue("Phase 26 validator is missing", File(root, "tools/validate-media-termux-runtime-adapter.py").isFile)
-        val screens = UiSourceTree.readAll(root)
         val adapter = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaTermuxRuntimeAdapter.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Runtime adapter must expose typed launch plans", adapter.contains("TermuxRuntimeLaunchPlan") && adapter.contains("typedArguments"))
@@ -760,7 +753,6 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 27 contract doc is missing", File(root, "docs/architecture/PHASE-27-MEDIA-NATIVE-DIRECT-DOWNLOAD-ENGINE.md").isFile)
         assertTrue("Phase 27 validator is missing", File(root, "tools/validate-media-native-direct-download-engine.py").isFile)
-        val screens = UiSourceTree.readAll(root)
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaNativeDirectDownloadEngine.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Native engine must expose direct request plans", planner.contains("NativeDirectDownloadRequestPlan") && planner.contains("NativeDirectHeaderPolicy"))
@@ -776,7 +768,6 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 28 contract doc is missing", File(root, "docs/architecture/PHASE-28-MEDIA-OFFLINE-LIBRARY-V2.md").isFile)
         assertTrue("Phase 28 validator is missing", File(root, "tools/validate-media-offline-library-v2.py").isFile)
-        val screens = UiSourceTree.readAll(root)
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaOfflineLibraryV2.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Offline Library 2.0 must expose filter/sort dashboard", planner.contains("OfflineLibraryV2Filter") && planner.contains("OfflineLibraryV2SortKey") && planner.contains("OfflineLibraryV2Dashboard"))
@@ -791,7 +782,6 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 29 contract doc is missing", File(root, "docs/architecture/PHASE-29-MEDIA-PLAYER-DIAGNOSTICS.md").isFile)
         assertTrue("Phase 29 validator is missing", File(root, "tools/validate-media-player-diagnostics.py").isFile)
-        val screens = UiSourceTree.readAll(root)
         val player = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/Media3PlayerScreen.kt").readText()
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaPlayerDiagnostics.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
@@ -808,7 +798,6 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 30 contract doc is missing", File(root, "docs/architecture/PHASE-30-MEDIA-CAPTURE-QUALITY.md").isFile)
         assertTrue("Phase 30 validator is missing", File(root, "tools/validate-media-capture-quality.py").isFile)
-        val screens = UiSourceTree.readAll(root)
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureQuality.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Capture quality must expose dispositions and signals", planner.contains("CaptureQualityDisposition") && planner.contains("AnalyticsBeacon") && planner.contains("GroupWithExisting"))
@@ -823,7 +812,6 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 31 contract doc is missing", File(root, "docs/architecture/PHASE-31-SESSION-PRIVACY-CLEANUP-AUDIT.md").isFile)
         assertTrue("Phase 31 validator is missing", File(root, "tools/validate-media-session-privacy-audit.py").isFile)
-        val screens = UiSourceTree.readAll(root)
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSessionPrivacyAudit.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Privacy audit must scan expected surfaces", planner.contains("MediaPrivacySurface") && planner.contains("TermuxCommandPreview") && planner.contains("TempFiles"))
@@ -839,7 +827,6 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 32 contract doc is missing", File(root, "docs/architecture/PHASE-32-MEDIA-MOBILE-POLISH.md").isFile)
         assertTrue("Phase 32 validator is missing", File(root, "tools/validate-media-mobile-polish.py").isFile)
-        val screens = UiSourceTree.readAll(root)
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaMobilePolish.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue("Mobile polish must expose phone-first dashboard concepts", planner.contains("MediaMobilePolishDashboard") && planner.contains("StickyCurrentJob") && planner.contains("NoTinyScrollIslands"))
@@ -855,7 +842,6 @@ class ArchitectureContractTest {
         val root = androidRoot()
         assertTrue("Phase 33 contract doc is missing", File(root, "docs/architecture/PHASE-33-MEDIA-FINAL-VALIDATION-GATE.md").isFile)
         assertTrue("Phase 33 validator is missing", File(root, "tools/validate-media-final-validation-gate.py").isFile)
-        val screens = UiSourceTree.readAll(root)
         val planner = File(root, "media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaFinalValidationGate.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         val runGate = File(root, "tools/run-final-release-gate.sh").readText()

@@ -29,6 +29,8 @@ import com.mikeyphw.xdm.android.model.DuplicateUrlRule
 import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaSourceKind
+import com.mikeyphw.xdm.android.model.MediaArtworkMergePolicy
+import com.mikeyphw.xdm.android.model.MediaThumbnailProvenance
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaManifestRole
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
@@ -51,6 +53,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
+import java.util.Locale
 import java.util.UUID
 
 
@@ -169,8 +172,12 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun saveChecksumResult(result: ChecksumResult) = database.checksumDao().upsertResult(result.toEntity())
     suspend fun saveVerificationRecord(record: VerificationRecord) = database.checksumDao().upsertVerification(record.toEntity())
     suspend fun saveTrustedManifest(manifest: TrustedBlockManifest) = database.checksumDao().upsertTrustedManifest(manifest.toEntity())
-    suspend fun saveMediaCapture(record: MediaCaptureRecord) = database.mediaCaptureDao().upsert(record.redactedForPersistence().toEntity())
-    suspend fun saveMediaCaptures(records: List<MediaCaptureRecord>) = database.mediaCaptureDao().upsertAll(records.map { it.redactedForPersistence().toEntity() })
+    suspend fun saveMediaCapture(record: MediaCaptureRecord) = database.withTransaction {
+        database.mediaCaptureDao().upsert(uniqueMediaFileNames(listOf(record)).single().redactedForPersistence().toEntity())
+    }
+    suspend fun saveMediaCaptures(records: List<MediaCaptureRecord>) = database.withTransaction {
+        if (records.isNotEmpty()) database.mediaCaptureDao().upsertAll(uniqueMediaFileNames(records).map { it.redactedForPersistence().toEntity() })
+    }
     suspend fun saveMediaVariants(records: List<MediaVariant>) = database.mediaCaptureDao().upsertVariants(records.map { it.redactedForPersistence().toEntity() })
     suspend fun replaceMediaVariants(records: List<MediaVariant>) = database.downloadGraphTransactionDao()
         .replaceMediaVariantsForCaptures(records.map { it.redactedForPersistence().toEntity() }, System.currentTimeMillis())
@@ -181,7 +188,8 @@ class DownloadRepository(private val database: AppDatabase) {
             updatedAtEpochMs,
         )
     suspend fun saveMediaCaptureWithVariants(record: MediaCaptureRecord, variants: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.withTransaction {
-        database.mediaCaptureDao().upsert(record.redactedForPersistence().toEntity())
+        val uniqueRecord = uniqueMediaFileNames(listOf(record)).single()
+        database.mediaCaptureDao().upsert(uniqueRecord.redactedForPersistence().toEntity())
         // Empty is a real replacement result: never leave executable stale variants attached after
         // a failed/empty refresh or a newer capture revision.
         database.downloadGraphTransactionDao().replaceMediaVariantsForCapture(
@@ -191,7 +199,8 @@ class DownloadRepository(private val database: AppDatabase) {
         )
     }
     suspend fun saveMediaCapturesWithVariants(records: List<MediaCaptureRecord>, variants: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.withTransaction {
-        if (records.isNotEmpty()) database.mediaCaptureDao().upsertAll(records.map { it.redactedForPersistence().toEntity() })
+        val uniqueRecords = uniqueMediaFileNames(records)
+        if (uniqueRecords.isNotEmpty()) database.mediaCaptureDao().upsertAll(uniqueRecords.map { it.redactedForPersistence().toEntity() })
         // Replace every capture's variant set inside this transaction, including an explicit empty
         // set. This prevents a retried/repaired browser import from retaining stale variants from
         // an earlier partial session revision.
@@ -202,6 +211,40 @@ class DownloadRepository(private val database: AppDatabase) {
             )
         }
     }
+    private suspend fun uniqueMediaFileNames(records: List<MediaCaptureRecord>): List<MediaCaptureRecord> {
+        if (records.isEmpty()) return emptyList()
+        val replacingIds = records.mapTo(hashSetOf()) { it.id }
+        val persisted = database.mediaCaptureDao().listAll()
+        val persistedById = persisted.associateBy { it.id }
+        val used = persisted
+            .asSequence()
+            .filterNot { it.id in replacingIds }
+            .map { it.fileName.trim().lowercase(Locale.ROOT) }
+            .filter(String::isNotBlank)
+            .toMutableSet()
+        return records.map { incoming ->
+            val record = MediaArtworkMergePolicy.merge(incoming, persistedById[incoming.id]?.toModel())
+            val candidate = uniqueCaptureFileName(record.fileName, used)
+            used += candidate.lowercase(Locale.ROOT)
+            if (candidate == record.fileName) record else record.copy(fileName = candidate)
+        }
+    }
+
+    private fun uniqueCaptureFileName(fileName: String, used: Set<String>): String {
+        val trimmed = fileName.trim().ifBlank { "media.bin" }
+        if (trimmed.lowercase(Locale.ROOT) !in used) return trimmed
+        val dot = trimmed.lastIndexOf('.')
+        val hasExtension = dot in 1 until trimmed.lastIndex
+        val base = if (hasExtension) trimmed.substring(0, dot) else trimmed
+        val extension = if (hasExtension) trimmed.substring(dot) else ""
+        var index = 2
+        while (true) {
+            val candidate = "$base ($index)$extension"
+            if (candidate.lowercase(Locale.ROOT) !in used) return candidate
+            index++
+        }
+    }
+
     suspend fun variantsForMediaCapture(captureId: String): List<MediaVariant> = database.mediaCaptureDao().variantsForCapture(captureId).map { it.toModel() }
     suspend fun mediaOutputsForCapture(captureId: String): List<MediaOutputRecord> = database.mediaCaptureDao().outputsForCapture(captureId).map { it.toModel() }
     suspend fun saveMediaOutput(record: MediaOutputRecord) = database.mediaCaptureDao().upsertOutput(record.toEntity())
@@ -779,6 +822,7 @@ private fun MediaCaptureEntity.toModel() = MediaCaptureRecord(
     codecs = codecs,
     durationMs = durationMs,
     thumbnailUrl = thumbnailUrl,
+    thumbnailProvenance = safeEnum(thumbnailProvenance, MediaThumbnailProvenance.Unknown),
     fileName = fileName,
     variantCount = variantCount,
     downloadId = downloadId,
@@ -807,6 +851,7 @@ private fun MediaCaptureRecord.toEntity() = MediaCaptureEntity(
     codecs = codecs,
     durationMs = durationMs,
     thumbnailUrl = thumbnailUrl,
+    thumbnailProvenance = thumbnailProvenance.name,
     fileName = fileName,
     variantCount = variantCount,
     downloadId = downloadId,

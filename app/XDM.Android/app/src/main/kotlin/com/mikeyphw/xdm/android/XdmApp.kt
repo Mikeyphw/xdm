@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -27,6 +29,7 @@ import com.mikeyphw.xdm.android.model.BrowserSessionHealthPlanner
 import com.mikeyphw.xdm.android.model.EngineEscalationPlanner
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.OperationalActivityEvent
+import com.mikeyphw.xdm.android.model.NotificationPermissionState
 import com.mikeyphw.xdm.android.media.MediaExternalJobSnapshot
 import com.mikeyphw.xdm.android.termux.TermuxMediaJobKind
 import com.mikeyphw.xdm.android.termux.TermuxMediaJobStatus
@@ -35,7 +38,12 @@ private val routeTopology = AppRoute.entries
 private val primaryRoutes = routeTopology.filterNot { it == AppRoute.Add }
 
 @Composable
-fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
+fun XdmApp(
+    viewModel: MainViewModel,
+    requestNotifications: () -> Unit = {},
+    notificationPermissionState: NotificationPermissionState? = null,
+    openNotificationSettings: () -> Unit = {},
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val downloadAdmission by viewModel.downloadAdmissionState.collectAsStateWithLifecycle()
     val destinationPreflight by viewModel.destinationPreflightState.collectAsStateWithLifecycle()
@@ -91,15 +99,28 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
                 destinations = primaryRoutes,
                 activeTransferCount = state.activeTransfers.activeCount,
                 queuedTransferCount = state.downloads.count { it.state == DownloadState.Queued },
-                runtimeLabel = state.activeTransfers.bandwidthProfile,
+                runtimeLabel = state.activeTransfers.bandwidthProfile.ifBlank {
+                    if (state.activeTransfers.activeCount > 0) "Active" else "Idle"
+                },
                 onNavigate = viewModel::navigate,
                 onAddDownload = { viewModel.navigate(AppRoute.Add) },
             ) {
-                XdmRouteContent(
-                    route = visibleRoute,
-                    state = state,
-                    viewModel = viewModel,
-                )
+                Column(Modifier.fillMaxSize()) {
+                    notificationPermissionState?.takeIf { it.needsInAppControlWarning }?.let { permission ->
+                        NotificationPermissionBanner(
+                            state = permission,
+                            requestNotifications = requestNotifications,
+                            openNotificationSettings = openNotificationSettings,
+                        )
+                    }
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        XdmRouteContent(
+                            route = visibleRoute,
+                            state = state,
+                            viewModel = viewModel,
+                        )
+                    }
+                }
             }
             XdmAdaptiveSheet(
                 visible = state.route == AppRoute.Add,
@@ -175,6 +196,32 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
 }
 
 @Composable
+private fun NotificationPermissionBanner(
+    state: NotificationPermissionState,
+    requestNotifications: () -> Unit,
+    openNotificationSettings: () -> Unit,
+) {
+    XdmListCard(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), compact = true) {
+        XdmCardTitle("Download notifications need attention")
+        XdmSupportingText(
+            when {
+                state.drawerPermissionGranted == false -> "Android is hiding XDM download notifications. Downloads can still run; keep control in XDM or Android's active-app/task controls, then allow notifications to restore drawer progress and actions."
+                !state.appNotificationsEnabled -> "Notifications are disabled for XDM in Android settings. Downloads still run, but progress and controls may not appear in the notification drawer."
+                !state.activeChannelEnabled -> "The Active downloads notification channel is disabled. Downloads still run, but live progress and controls are hidden from the drawer."
+                else -> "One or more XDM notification channels are disabled. Review Android notification settings to restore the alerts you want."
+            },
+            maxLines = 5,
+        )
+        XdmActionFlowRow {
+            if (state.drawerPermissionGranted == false) {
+                Button(onClick = requestNotifications) { Text("Allow notifications") }
+            }
+            OutlinedButton(onClick = openNotificationSettings) { Text("Notification settings") }
+        }
+    }
+}
+
+@Composable
 private fun XdmRouteContent(
     route: AppRoute,
     state: MainUiState,
@@ -186,6 +233,7 @@ private fun XdmRouteContent(
                 downloads = state.downloads,
                 mediaCaptures = state.mediaCaptures,
                 mediaVariants = state.mediaVariants,
+                mediaOutputs = state.mediaOutputs,
                 requestedDetailDownloadId = state.selectedDownloadDetailId,
                 compact = state.compactDensity,
                 active = state.activeTransfers,

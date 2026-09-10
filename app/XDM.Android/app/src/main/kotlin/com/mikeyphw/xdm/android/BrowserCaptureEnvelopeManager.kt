@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkPayload
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import com.mikeyphw.xdm.android.model.MediaThumbnailProvenance
 import org.json.JSONArray
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
@@ -34,6 +35,7 @@ class BrowserCaptureEnvelopeManager {
         val contentLength: Long?,
         val durationMs: Long?,
         val thumbnailUrl: String?,
+        val thumbnailProvenance: MediaThumbnailProvenance,
         val stableMediaId: String?,
         val requestFingerprint: String,
         val sessionRevision: Long,
@@ -163,6 +165,7 @@ class BrowserCaptureEnvelopeManager {
                         contentLength = item.optLong("contentLength", 0L).takeIf { it > 0L },
                         durationMs = item.optLong("durationMs", 0L).takeIf { it > 0L },
                         thumbnailUrl = ExternalUrlPolicy.normalizedUrl(item.optString("thumbnailUrl").takeIf(String::isNotBlank)),
+                        thumbnailProvenance = item.optString("thumbnailProvenance").toThumbnailProvenance(),
                         stableMediaId = stableId,
                         requestFingerprint = requestFingerprint,
                         sessionRevision = candidateRevision,
@@ -231,6 +234,7 @@ class BrowserCaptureEnvelopeManager {
                         contentLength = item.optLong("contentLength", 0L).takeIf { it > 0L },
                         durationMs = item.optLong("durationMs", 0L).takeIf { it > 0L },
                         thumbnailUrl = ExternalUrlPolicy.normalizedUrl(item.optString("thumbnailUrl").takeIf(String::isNotBlank)),
+                        thumbnailProvenance = item.optString("thumbnailProvenance").toThumbnailProvenance(),
                         stableMediaId = stableId,
                         requestFingerprint = requestFingerprint,
                         sessionRevision = candidateRevision,
@@ -318,6 +322,9 @@ class BrowserCaptureEnvelopeManager {
 
     private fun String.sanitizeMime(): String? = substringBefore(';').trim().lowercase().take(120)
         .takeIf { it.matches(Regex("[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+")) }
+
+    private fun String?.toThumbnailProvenance(): MediaThumbnailProvenance =
+        runCatching { MediaThumbnailProvenance.valueOf(this?.trim().orEmpty()) }.getOrDefault(MediaThumbnailProvenance.BrowserExtension)
 
     private fun ByteArray.sha256Hex(): String = MessageDigest.getInstance("SHA-256")
         .digest(this).joinToString("") { "%02x".format(it) }

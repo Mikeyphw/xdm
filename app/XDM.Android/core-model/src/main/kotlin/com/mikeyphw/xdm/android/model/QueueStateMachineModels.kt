@@ -8,7 +8,19 @@ enum class QueueConditionScope { StartOnly, Ongoing, DrainOnly }
 
 enum class QueueDrainPolicy { ContinueActive, DrainNaturally, PauseExcess }
 
-enum class QueueControlCommand { PauseAll, ResumeAll, PauseOne, ResumeOne, CancelOne, RetryOne, StartOne, DisableQueue }
+enum class QueueControlCommand {
+    PauseAll,
+    ResumeAll,
+    PauseOne,
+    ResumeOne,
+    CancelOne,
+    RetryOne,
+    StartOne,
+    OpenOne,
+    ReviewRecovery,
+    DismissNotification,
+    DisableQueue,
+}
 
 enum class QueueControlOutcome { Accepted, PartiallyApplied, Rejected, NeedsUserAction }
 
@@ -178,11 +190,23 @@ data class TerminalNotificationRecord(
 data class NotificationPermissionState(
     val android13OrNewer: Boolean,
     val drawerPermissionGranted: Boolean?,
+    val appNotificationsEnabled: Boolean = true,
+    val activeChannelEnabled: Boolean = true,
+    val statusChannelEnabled: Boolean = true,
+    val attentionChannelEnabled: Boolean = true,
+    val problemsChannelEnabled: Boolean = true,
     val promptDismissed: Boolean = false,
     val upgradePreGranted: Boolean = false,
     val previouslyDeniedUpgrade: Boolean = false,
 ) {
-    val needsInAppControlWarning: Boolean get() = android13OrNewer && drawerPermissionGranted == false
+    val drawerDeliveryAvailable: Boolean
+        get() = drawerPermissionGranted != false && appNotificationsEnabled &&
+            activeChannelEnabled && (statusChannelEnabled || attentionChannelEnabled)
+
+    val needsInAppControlWarning: Boolean
+        get() = (android13OrNewer && drawerPermissionGranted == false) ||
+            !appNotificationsEnabled || !activeChannelEnabled || !statusChannelEnabled ||
+            !attentionChannelEnabled || !problemsChannelEnabled
 }
 
 object QueueStateMachinePlanner {
@@ -279,7 +303,7 @@ object QueueStateMachinePlanner {
                 NotificationActionModel(QueueControlCommand.PauseOne, "Pause", NotificationActionVisibility.Show, downloadId),
                 NotificationActionModel(QueueControlCommand.CancelOne, "Cancel", NotificationActionVisibility.Show, downloadId),
             )
-            DownloadState.RecoveryRequired -> listOf(NotificationActionModel(QueueControlCommand.RetryOne, "Review recovery", NotificationActionVisibility.Show, downloadId))
+            DownloadState.RecoveryRequired -> listOf(NotificationActionModel(QueueControlCommand.ReviewRecovery, "Review recovery", NotificationActionVisibility.Show, downloadId))
             DownloadState.Failed -> listOf(NotificationActionModel(QueueControlCommand.RetryOne, "Retry", NotificationActionVisibility.Show, downloadId))
             else -> emptyList()
         }

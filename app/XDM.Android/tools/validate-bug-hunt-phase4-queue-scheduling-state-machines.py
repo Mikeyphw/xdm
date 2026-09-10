@@ -28,6 +28,7 @@ queue_coordinator = read("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/sch
 foreground_service = read("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt")
 job = read("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt")
 notifications = read("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotifications.kt")
+terminal_policy = read("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TerminalNotificationActionPolicy.kt")
 receiver = read("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferActionReceiver.kt")
 view_model = read("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
 application = read("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
@@ -63,7 +64,7 @@ for needle, label in [
     ("QueueSchedulingRecoveryStore", "durable coordinator store"),
     ("saveImmediateReevaluation", "durable reevaluation store"),
     ("coalesceKey", "reevaluation coalescing"),
-    ("putIfAbsent(record.idempotencyKey", "terminal notification idempotency"),
+    ("if (terminalNotifications.containsKey(record.idempotencyKey)) return false", "terminal notification idempotency"),
     ("TransferExecutionStopReasonRecorder", "stop reason recorder"),
 ]:
     require(coordinator, needle, label)
@@ -95,7 +96,7 @@ require(application, "TransferExecutionStopReasonRecorder.installPersistentRoot"
 
 require(worker, "getStopReason()", "WorkManager stop reason capture")
 require(job, "params.stopReason", "JobParameters stop reason capture")
-require(notifications, "Review recovery", "RecoveryRequired notification review action")
+require(notifications + terminal_policy, "Review recovery", "RecoveryRequired notification review action")
 require(notifications, "Dismiss", "dismiss copy")
 require(receiver, "ACTION_REVIEW_RECOVERY", "review recovery action routing")
 require(receiver, "ACTION_DISMISS", "dismiss action routing")

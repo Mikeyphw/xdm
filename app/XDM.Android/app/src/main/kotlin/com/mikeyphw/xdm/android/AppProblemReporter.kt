@@ -16,6 +16,9 @@ import com.mikeyphw.xdm.android.model.DebugSeverity
 import com.mikeyphw.xdm.android.model.FileProblemIncidentStore
 import com.mikeyphw.xdm.android.model.ProblemIncident
 import com.mikeyphw.xdm.android.model.ProblemIncidentDraft
+import com.mikeyphw.xdm.android.scheduler.TransferActionReceiver
+import com.mikeyphw.xdm.android.scheduler.TransferNotifications
+import com.mikeyphw.xdm.android.util.sanitizeNotificationText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -133,14 +136,16 @@ class AppProblemNotifications(private val context: Context) {
         if (!problem.isActionable || !canPostNotifications()) return false
         ensureChannel()
         val pendingIntent = reviewPendingIntent(problem)
+        val safeTitle = sanitizeNotificationText(problem.title, "XDM problem")
+        val safeSummary = sanitizeNotificationText(problem.summary, "Open XDM for details.", maxLength = 360)
+        val safeAction = problem.suggestedAction?.let { sanitizeNotificationText(it, "Open XDM for details.", maxLength = 240) }
         val notification = NotificationCompat.Builder(context, CHANNEL_PROBLEMS)
             .setSmallIcon(android.R.drawable.stat_notify_error)
             .setContentTitle("XDM needs attention")
-            .setContentText(problem.title)
+            .setContentText(safeTitle)
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
-                    listOf(problem.title, problem.summary, problem.suggestedAction)
-                        .filterNotNull()
+                    listOfNotNull(safeTitle, safeSummary, safeAction)
                         .filter(String::isNotBlank)
                         .joinToString("\n"),
                 ),
@@ -151,6 +156,11 @@ class AppProblemNotifications(private val context: Context) {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .addAction(android.R.drawable.ic_menu_view, "Review", pendingIntent)
+            .apply {
+                problem.downloadId?.takeIf(String::isNotBlank)?.let { downloadId ->
+                    addAction(android.R.drawable.ic_popup_sync, "Retry", retryPendingIntent(problem.id, downloadId))
+                }
+            }
             .build()
         manager?.notify(notificationId(problem.id), notification)
         return manager != null
@@ -173,9 +183,27 @@ class AppProblemNotifications(private val context: Context) {
         )
     }
 
-    private fun canPostNotifications(): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+    private fun retryPendingIntent(problemId: String, downloadId: String): PendingIntent {
+        val intent = Intent(context, TransferActionReceiver::class.java)
+            .setAction(TransferNotifications.ACTION_RETRY)
+            .putExtra(TransferNotifications.EXTRA_DOWNLOAD_ID, downloadId)
+        return PendingIntent.getBroadcast(
+            context,
+            notificationId(problemId) + 1,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun canPostNotifications(): Boolean {
+        val notificationManager = manager ?: return false
+        ensureChannel()
+        val runtimeGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        if (!runtimeGranted || !notificationManager.areNotificationsEnabled()) return false
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+            notificationManager.getNotificationChannel(CHANNEL_PROBLEMS)?.importance != NotificationManager.IMPORTANCE_NONE
+    }
 
     private fun notificationId(problemId: String): Int =
         PROBLEM_NOTIFICATION_ID_BASE + ((problemId.hashCode() and Int.MAX_VALUE) % PROBLEM_NOTIFICATION_ID_RANGE)

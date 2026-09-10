@@ -22,6 +22,8 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** WorkManager-owned foreground execution for automatic work and legal FGS fallback. */
@@ -42,25 +44,27 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
                     ClaimedExecutionAuthorization.Ready -> Unit
                 }
                 val download = runtime.findDownload(claimedDownloadId) ?: return Result.success()
-                setForeground(createForegroundInfo(1, download.id))
-                executeAndNotify(download.id, download.fileName, queueClaimToken, coordinator, runtime)
+                withLiveForeground(runtime, download.id, download.fileName) {
+                    executeAndNotify(download.id, download.fileName, queueClaimToken, coordinator, runtime)
+                }
                 return Result.success()
             }
             repeat(MAX_DRAIN_ROUNDS) {
                 val outcome = coordinator.evaluateAndClaim()
                 if (outcome.eligibleDownloads.isEmpty()) return Result.success()
-                setForeground(createForegroundInfo(outcome.eligibleDownloads.size, outcome.eligibleDownloads.first().id))
-                coroutineScope {
-                    outcome.eligibleDownloads.map { download ->
-                        async {
-                            when (coordinator.authorizeClaimedExecution(download.id, download.updatedAtEpochMs)) {
-                                ClaimedExecutionAuthorization.Ready ->
-                                    executeAndNotify(download.id, download.fileName, download.updatedAtEpochMs, coordinator, runtime)
-                                ClaimedExecutionAuthorization.TemporarilyHeld,
-                                ClaimedExecutionAuthorization.Stale -> Unit
+                withLiveForeground(runtime, exactDownloadId = null, fallbackFileName = null, initialActiveCount = outcome.eligibleDownloads.size) {
+                    coroutineScope {
+                        outcome.eligibleDownloads.map { download ->
+                            async {
+                                when (coordinator.authorizeClaimedExecution(download.id, download.updatedAtEpochMs)) {
+                                    ClaimedExecutionAuthorization.Ready ->
+                                        executeAndNotify(download.id, download.fileName, download.updatedAtEpochMs, coordinator, runtime)
+                                    ClaimedExecutionAuthorization.TemporarilyHeld,
+                                    ClaimedExecutionAuthorization.Stale -> Unit
+                                }
                             }
-                        }
-                    }.awaitAll()
+                        }.awaitAll()
+                    }
                 }
             }
             Result.retry()
@@ -115,8 +119,12 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
             mimeType = event.mimeType,
             attemptGeneration = event.attemptGeneration,
         )?.let { notification ->
-            applicationContext.getSystemService(NotificationManager::class.java)
-                .notify(TransferSystemIdRegistry(applicationContext).idFor(downloadId), notification)
+            runCatching {
+                applicationContext.getSystemService(NotificationManager::class.java)
+                    .notify(TransferSystemIdRegistry(applicationContext).idFor(downloadId), notification)
+            }.onSuccess {
+                TransferNotifications(applicationContext).markTerminalDispatched(event.downloadId, event.attemptGeneration, event.state)
+            }
         }
     }
 
@@ -142,11 +150,43 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
         owned.keys.forEach(ownedClaims::remove)
     }
 
-    private fun createForegroundInfo(activeCount: Int, primaryDownloadId: String): ForegroundInfo {
-        val notification = TransferNotifications(applicationContext).active(
-            ActiveTransferSummary(activeCount = activeCount, primaryDownloadId = primaryDownloadId),
-            primaryDownloadId,
-        )
+    private suspend fun <T> withLiveForeground(
+        runtime: TransferExecutionRuntime,
+        exactDownloadId: String?,
+        fallbackFileName: String?,
+        initialActiveCount: Int = 1,
+        block: suspend () -> T,
+    ): T = coroutineScope {
+        val notifications = TransferNotifications(applicationContext)
+        val initial = if (exactDownloadId != null) {
+            runtime.liveSummaryFor(exactDownloadId, fallbackFileName).let { summary ->
+                if (summary.activeCount == 0) summary.copy(activeCount = 1, primaryDownloadId = exactDownloadId, primaryFileName = fallbackFileName) else summary
+            }
+        } else {
+            runtime.summary.value.let { summary -> if (summary.activeCount == 0) summary.copy(activeCount = initialActiveCount) else summary }
+        }
+        setForeground(createForegroundInfo(initial, exactDownloadId))
+        val throttle = NotificationUpdateThrottle()
+        val updater = launch {
+            if (exactDownloadId != null) {
+                runtime.liveProgress.collectLatest {
+                    if (throttle.shouldPublish()) setForeground(createForegroundInfo(runtime.liveSummaryFor(exactDownloadId, fallbackFileName), exactDownloadId))
+                }
+            } else {
+                runtime.summary.collectLatest { summary ->
+                    if (throttle.shouldPublish(summary.activeCount == 0)) setForeground(createForegroundInfo(summary, null))
+                }
+            }
+        }
+        try {
+            block()
+        } finally {
+            updater.cancel()
+        }
+    }
+
+    private fun createForegroundInfo(summary: ActiveTransferSummary, exactDownloadId: String?): ForegroundInfo {
+        val notification = TransferNotifications(applicationContext).active(summary, exactDownloadId)
         val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC else 0
         return ForegroundInfo(FOREGROUND_NOTIFICATION_ID, notification, serviceType)
     }

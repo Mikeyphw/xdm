@@ -33,10 +33,20 @@ fun sanitizeFileName(value: String, fallback: String = "download.bin", maxLength
 }
 
 fun sanitizeNotificationText(message: String?, fallback: String, maxLength: Int = 180): String {
-    val normalized = collapseUserVisibleWhitespace(message.orEmpty())
+    var normalized = collapseUserVisibleWhitespace(message.orEmpty())
     if (normalized.isBlank()) return fallback
     if (internalExceptionMarkers.any { marker -> normalized.contains(marker, ignoreCase = true) }) return fallback
     if (normalized.contains("Exception:") || normalized.contains(" at ")) return fallback
+
+    // Notifications can appear on lock screens. Redact credentials more aggressively than ordinary UI.
+    normalized = normalized
+        .replace(Regex("""(?i)\b(authorization|proxy-authorization|cookie|set-cookie|x-api-key|api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|password)\s*[:=]\s*[^\s,;]+""")) { match ->
+            "${match.groupValues[1]}=<redacted>"
+        }
+        .replace(Regex("""(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{6,}"""), "$1 <redacted>")
+        .replace(Regex("""(?i)(https?://)([^/@\s:]+):([^/@\s]+)@"""), "$1<redacted>@")
+        .replace(Regex("""(?i)([?&](?:token|access_token|refresh_token|api[_-]?key|key|secret|password|signature|sig|auth|authorization)=)[^&#\s]+"""), "$1<redacted>")
+
     return normalized.take(maxLength).trim().ifBlank { fallback }
 }
 

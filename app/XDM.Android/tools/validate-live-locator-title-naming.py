@@ -68,8 +68,8 @@ need("val durationMs: Long?" in envelope and "val thumbnailUrl: String?" in enve
 need("durationMs = candidate.durationMs" in view_model and "thumbnailUrl = candidate.thumbnailUrl" in view_model,
      "extension metadata must reach Android MediaSniffingInput")
 
-need("fileName = fileNameFor(sourceUrl, safeTitle, kind, mimeType)" in media,
-     "captured-media naming must use the canonical safe page title")
+need("fileName = fileNameFor(sourceUrl, safeTitle, kind, mimeType, variants, hasExplicitTitle = titleIsPageDerived)" in media,
+     "captured-media naming must use the canonical safe page title and explicit page-title provenance")
 need("preferredMediaExtension(pathName, kind, mimeType)" in media and 'MediaSourceKind.HlsPlaylist) return ".m3u8"' in media,
      "captured-media title naming must preserve the real media extension")
 need('"video/mp4", "application/mp4" -> ".mp4"' in media and '"audio/mpeg" -> ".mp3"' in media,

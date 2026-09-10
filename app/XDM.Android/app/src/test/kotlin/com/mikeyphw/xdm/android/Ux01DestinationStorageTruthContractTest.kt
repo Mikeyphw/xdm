@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Ux01DestinationStorageTruthContractTest {
-    private val root = File(System.getProperty("user.dir")).let { cwd ->
+    private val root = File(requireNotNull(System.getProperty("user.dir"))).let { cwd ->
         generateSequence(cwd) { it.parentFile }.first { File(it, "settings.gradle.kts").isFile }
     }
 

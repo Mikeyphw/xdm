@@ -43,6 +43,7 @@
         title: candidate.title || previous.title || "",
         durationMs: Math.max(0, Number(candidate.durationMs || previous.durationMs || 0)),
         thumbnailUrl: candidate.thumbnailUrl || previous.thumbnailUrl || "",
+        thumbnailProvenance: candidate.thumbnailProvenance || previous.thumbnailProvenance || "Unknown",
         contentDisposition: candidate.contentDisposition || previous.contentDisposition || "",
         source: candidate.source || previous.source || "network",
         requestId: candidate.requestId || previous.requestId || "",

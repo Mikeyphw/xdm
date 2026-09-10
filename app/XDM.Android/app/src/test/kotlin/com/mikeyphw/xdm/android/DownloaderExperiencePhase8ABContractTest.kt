@@ -28,7 +28,7 @@ class DownloaderExperiencePhase8ABContractTest {
             "Advanced options",
             "else -> \"Download\"",
             "Inspect media",
-            "onInspectMedia(url, name)",
+            "onInspectMedia(url, effectiveFileName)",
         ).forEach { assertTrue("Add Download missing $it", screens.contains(it)) }
         assertTrue(shell.contains("viewModel.inspectManualMedia(url, fileName)"))
         assertTrue(viewModel.contains("fun inspectManualMedia(url: String, fileName: String)"))

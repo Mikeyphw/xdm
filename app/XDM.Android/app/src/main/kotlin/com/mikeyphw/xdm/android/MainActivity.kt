@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import androidx.compose.runtime.mutableStateOf
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -18,12 +20,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkParseResult
 import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkParser
 import com.mikeyphw.xdm.android.scheduler.TransferNotifications
+import com.mikeyphw.xdm.android.scheduler.NotificationPermissionStore
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
         MainViewModel.Factory((application as XdmApplication).container)
     }
-    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    private val notificationPermissionState = mutableStateOf<com.mikeyphw.xdm.android.model.NotificationPermissionState?>(null)
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        NotificationPermissionStore(this).recordPromptResult(granted)
+        refreshNotificationPermissionState()
+    }
     private val legacyStoragePermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,10 +42,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             val state by viewModel.uiState.collectAsStateWithLifecycle()
             XdmTheme(mode = state.themeMode) {
-                XdmApp(viewModel, requestNotifications = ::requestNotificationPermissionIfNeeded)
+                XdmApp(
+                    viewModel = viewModel,
+                    requestNotifications = ::requestNotificationPermissionIfNeeded,
+                    notificationPermissionState = notificationPermissionState.value,
+                    openNotificationSettings = ::openNotificationSettings,
+                )
             }
         }
         requestLegacyStoragePermissionsIfNeeded()
+        refreshNotificationPermissionState()
         // A recreated Activity must not replay the launch intent. New deliveries arrive in onNewIntent.
         if (savedInstanceState == null) consumeLaunchIntent(intent)
     }
@@ -47,6 +60,11 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         consumeLaunchIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshNotificationPermissionState()
     }
 
     private fun consumeLaunchIntent(incoming: Intent?): Boolean =
@@ -86,9 +104,10 @@ class MainActivity : ComponentActivity() {
 
     private fun consumeProblemNavigation(incoming: Intent?): Boolean {
         if (incoming?.action != AppProblemNotifications.ACTION_OPEN_PROBLEM) return false
+        val problemId = incoming.getStringExtra(AppProblemNotifications.EXTRA_PROBLEM_ID)?.trim()?.takeIf(String::isNotBlank)
         incoming.removeExtra(AppProblemNotifications.EXTRA_PROBLEM_ID)
         setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
-        viewModel.selectSettingsPanel(SettingsPanel.DebugWorkbench)
+        if (problemId != null) viewModel.openProblemFromNotification(problemId) else viewModel.selectSettingsPanel(SettingsPanel.DebugWorkbench)
         return true
     }
 
@@ -134,8 +153,27 @@ class MainActivity : ComponentActivity() {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
+            NotificationPermissionStore(this).recordPromptRequested()
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            refreshNotificationPermissionState()
         }
+    }
+
+    private fun refreshNotificationPermissionState() {
+        notificationPermissionState.value = runCatching {
+            TransferNotifications(this).also { notifications ->
+                // A user can re-enable app/channels in Settings while XDM is backgrounded. Reconcile
+                // any terminal rows that intentionally stayed Pending while drawer delivery was blocked.
+                notifications.reconcilePendingTerminalNotifications()
+            }.notificationPermissionState()
+        }.getOrNull()
+    }
+
+    private fun openNotificationSettings() {
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        startActivity(intent)
     }
 
     companion object {

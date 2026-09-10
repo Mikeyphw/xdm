@@ -150,6 +150,7 @@ data class MediaCaptureEntity(
     val codecs: String?,
     val durationMs: Long?,
     val thumbnailUrl: String?,
+    @ColumnInfo(defaultValue = "'Unknown'") val thumbnailProvenance: String,
     val fileName: String,
     val variantCount: Int,
     val downloadId: String?,

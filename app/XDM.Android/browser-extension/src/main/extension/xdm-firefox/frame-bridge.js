@@ -90,21 +90,22 @@
     }
   }
 
-  let pageArtworkCache = { at: 0, url: "" };
-  function pageArtworkUrl() {
+  let pageArtworkCache = { at: 0, url: "", provenance: "Unknown" };
+  function pageArtworkMetadata() {
     const now = Date.now();
-    if (now - pageArtworkCache.at < 2000) return pageArtworkCache.url;
+    if (now - pageArtworkCache.at < 2000) return pageArtworkCache;
     let found = "";
+    let provenance = "Unknown";
     try {
       const selectors = [
-        'meta[property="og:image"]', 'meta[property="og:image:url"]',
-        'meta[name="twitter:image"]', 'meta[name="twitter:image:src"]',
-        'link[rel="image_src"]'
+        ['meta[property="og:image"]', "OpenGraph"], ['meta[property="og:image:url"]', "OpenGraph"],
+        ['meta[name="twitter:image"]', "TwitterCard"], ['meta[name="twitter:image:src"]', "TwitterCard"],
+        ['link[rel="image_src"]', "LinkImage"]
       ];
-      for (const selector of selectors) {
+      for (const [selector, source] of selectors) {
         const node = document.querySelector(selector);
         found = absoluteUrl(node && (node.content || node.href || node.getAttribute("content") || node.getAttribute("href")));
-        if (found) break;
+        if (found) { provenance = source; break; }
       }
     } catch (_) {}
     if (!found) {
@@ -126,13 +127,14 @@
           const text = String(script.textContent || "").slice(0, 131072);
           if (!text) continue;
           try { found = pick(JSON.parse(text)); } catch (_) {}
-          if (found) break;
+          if (found) { provenance = "JsonLd"; break; }
         }
       } catch (_) {}
     }
-    pageArtworkCache = { at: now, url: found || "" };
-    return pageArtworkCache.url;
+    pageArtworkCache = { at: now, url: found || "", provenance: found ? provenance : "Unknown" };
+    return pageArtworkCache;
   }
+  function pageArtworkUrl() { return pageArtworkMetadata().url; }
 
   function isSegment(value) {
     const url = String(value || "");
@@ -161,9 +163,12 @@
   function elementMetadata(video) {
     if (!(video instanceof HTMLVideoElement)) return {};
     const duration = Number(video.duration || 0);
+    const poster = absoluteUrl(video.poster || "");
+    const artwork = poster ? { url: poster, provenance: "PagePoster" } : pageArtworkMetadata();
     return {
       durationMs: Number.isFinite(duration) && duration > 0 ? Math.floor(duration * 1000) : 0,
-      thumbnailUrl: absoluteUrl(video.poster || "") || pageArtworkUrl()
+      thumbnailUrl: artwork.url,
+      thumbnailProvenance: artwork.provenance
     };
   }
 
@@ -185,6 +190,7 @@
       contentLength: Number(metadata.contentLength || previous.contentLength || 0),
       durationMs: Number(metadata.durationMs || previous.durationMs || 0),
       thumbnailUrl: metadata.thumbnailUrl || previous.thumbnailUrl || "",
+      thumbnailProvenance: metadata.thumbnailProvenance || previous.thumbnailProvenance || "Unknown",
       trusted: trusted || previous.trusted === true,
       bodyDerived: Boolean(metadata.bodyDerived || previous.bodyDerived),
       at: Date.now()
@@ -366,6 +372,7 @@ ${location.href}`;
         manifest: Boolean(candidate.manifest),
         durationMs: Math.max(0, Number(candidate.durationMs || 0)),
         thumbnailUrl: candidate.thumbnailUrl || pageArtworkUrl(),
+        thumbnailProvenance: candidate.thumbnailProvenance || (candidate.thumbnailUrl ? "Unknown" : pageArtworkMetadata().provenance),
         pageUrl: location.href,
         title: document.title || "",
         reason: candidate.manifest ? "frame-manifest-playback" : "frame-video-playback"
@@ -426,6 +433,7 @@ ${location.href}`;
         contentLength: input.contentLength || 0,
         durationMs: input.durationMs || 0,
         thumbnailUrl: input.thumbnailUrl || "",
+        thumbnailProvenance: input.thumbnailProvenance || "Unknown",
         stableMediaId: input.stableMediaId || "",
         sessionRevision: input.sessionRevision || Date.now(),
         frameUrl: input.frameUrl || "",
@@ -485,6 +493,7 @@ ${location.href}`;
     sendBackground({ type: MESSAGE_TYPE, observation: Object.assign({}, observation, {
       requestHeaders: {},
       thumbnailUrl: observation.thumbnailUrl || pageArtworkUrl(),
+      thumbnailProvenance: observation.thumbnailProvenance || (observation.thumbnailUrl ? "Unknown" : pageArtworkMetadata().provenance),
       pageUrl: location.href,
       title: document.title || ""
     }) });

@@ -83,9 +83,10 @@ class PostUx13RoadmapCompletionHotfixContractTest {
         val gate = source("tools/run-final-release-gate.sh")
         val report = source("XDM_POST_UX13_ROADMAP_COMPLETION_HOTFIX_REPORT.md")
 
-        assertTrue(manifest.contains("\"current_overlay\": \"xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip\""))
+        assertTrue(manifest.contains("\"current_release_authority\": \"post_ux13_roadmap_completion_hotfix\""))
+        assertTrue(manifest.contains("\"current_runtime_quality_authority\": \"notification_webview_gap_hotfix_2026_09_10\""))
         assertTrue(manifest.contains("\"roadmap_remaining_gaps\": []"))
-        assertTrue(manifest.contains("\"version\": 21"))
+        assertTrue(manifest.contains("\"room_schema_current\": 22") || manifest.contains("\"version\": 22"))
         assertTrue(gate.contains("validate-post-ux13-roadmap-completion-hotfix.py"))
         assertTrue(gate.contains("run-bug-hunt-phase11-validation-matrix.sh --static-only --ci"))
         assertTrue(report.contains("xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"))

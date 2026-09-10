@@ -47,8 +47,8 @@ class UixR3DownloadsAddContractTest {
         listOf("reviewConfirmed", "Review download", "Add to queue", "Step 1 of 2", "Step 2 of 2").forEach { stale ->
             assertFalse("Add must not retain obsolete two-step token $stale", add.contains(stale))
         }
-        assertTrue("Inspect media must use its dedicated callback", add.contains("onInspectMedia(url, name)"))
-        assertFalse("Inspect media callback must not directly enqueue", add.contains("onInspectMedia(url, name); onAdd"))
+        assertTrue("Inspect media must use its dedicated callback", add.contains("onInspectMedia(url, effectiveFileName)"))
+        assertFalse("Inspect media callback must not directly enqueue", add.contains("onInspectMedia(url, effectiveFileName); onAdd"))
     }
 
     private fun androidRoot(): File {

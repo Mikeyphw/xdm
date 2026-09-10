@@ -81,7 +81,9 @@ fun DebugCenterScreen(
     val liveRun by runner.currentRun.collectAsState()
     val scope = rememberCoroutineScope()
 
-    var page by remember { mutableStateOf(if (problems.any { !it.resolved }) DebugCenterPage.Problems else DebugCenterPage.Tests) }
+    var page by remember(state.selectedProblemId) {
+        mutableStateOf(if (state.selectedProblemId != null || problems.any { !it.resolved }) DebugCenterPage.Problems else DebugCenterPage.Tests)
+    }
     var selectedIds by remember { mutableStateOf(DebugTestRegistry.defaultSelection()) }
     var latestRun by remember { mutableStateOf(store.loadRuns().firstOrNull() ?: emptyDebugRun()) }
     var history by remember { mutableStateOf(store.loadRuns()) }
@@ -190,7 +192,8 @@ fun DebugCenterScreen(
 
         when (page) {
             DebugCenterPage.Problems -> debugProblemsPage(
-                problems = problems,
+                problems = problems.sortedWith(compareByDescending<ProblemIncident> { it.id == state.selectedProblemId }.thenByDescending { it.lastSeenEpochMs }),
+                selectedProblemId = state.selectedProblemId,
                 onResolve = { problemReporter?.resolve(it) },
                 onReopen = { problemReporter?.reopen(it) },
                 onClearResolved = { problemReporter?.clearResolved() },
@@ -241,6 +244,7 @@ fun DebugCenterScreen(
 
 private fun LazyListScope.debugProblemsPage(
     problems: List<ProblemIncident>,
+    selectedProblemId: String?,
     onResolve: (String) -> Unit,
     onReopen: (String) -> Unit,
     onClearResolved: () -> Unit,
@@ -273,9 +277,10 @@ private fun LazyListScope.debugProblemsPage(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(problem.title)
                     XdmMetadataText(
-                        listOf(
+                        listOfNotNull(
                             problem.area.name.replace(Regex("([a-z])([A-Z])"), "$1 $2"),
                             if (problem.occurrenceCount == 1) "1 occurrence" else "${problem.occurrenceCount} occurrences",
+                            "Opened from notification".takeIf { problem.id == selectedProblemId },
                         ).joinToString(" • "),
                         maxLines = 2,
                     )

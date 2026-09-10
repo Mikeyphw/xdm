@@ -1,88 +1,128 @@
 package com.mikeyphw.xdm.android.scheduler
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import com.mikeyphw.xdm.android.model.TerminalNotificationRecord
-import com.mikeyphw.xdm.android.model.TerminalNotificationKey
-import com.mikeyphw.xdm.android.model.QueueControlCommand
-import com.mikeyphw.xdm.android.model.NotificationPermissionState
-import com.mikeyphw.xdm.android.model.NotificationActionVisibility
-import com.mikeyphw.xdm.android.model.NotificationActionModel
-import android.os.Build
 import android.content.pm.PackageManager
-import android.Manifest
-import com.mikeyphw.xdm.android.model.DownloadState
-import com.mikeyphw.xdm.android.util.sanitizeNotificationText
-import java.util.Locale
+import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
+import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.NotificationPermissionState
+import com.mikeyphw.xdm.android.model.QueueControlCommand
+import com.mikeyphw.xdm.android.model.QueueStateMachinePlanner
+import com.mikeyphw.xdm.android.model.TerminalNotificationKey
+import com.mikeyphw.xdm.android.model.TerminalNotificationRecord
+import com.mikeyphw.xdm.android.util.sanitizeNotificationText
+import java.util.Locale
 
 class TransferNotifications(private val context: Context) {
     private val manager = requireNotNull(context.getSystemService<NotificationManager>())
     private val systemIds = TransferSystemIdRegistry(context)
+    private val permissionStore = NotificationPermissionStore(context)
     private val phase4Coordinator: QueueSchedulingRecoveryCoordinator =
         (context.applicationContext as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
             ?: QueueSchedulingRecoveryCoordinator(FileBackedQueueSchedulingRecoveryStore(java.io.File(context.filesDir, "queue-scheduling-recovery")))
 
     fun ensureChannels() {
         manager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ACTIVE,
-                "Active downloads",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "Progress and controls for active XDM downloads"
+            NotificationChannel(CHANNEL_ACTIVE, "Active downloads", NotificationManager.IMPORTANCE_LOW).apply {
+                description = "Live progress and truthful controls for active XDM downloads"
                 setShowBadge(false)
             },
         )
         manager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_STATUS,
-                "Download status",
-                NotificationManager.IMPORTANCE_DEFAULT,
-            ).apply { description = "Completed, failed, and recovery notifications" },
+            NotificationChannel(CHANNEL_STATUS, "Completed downloads", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Completed download results"
+            },
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_ATTENTION, "Download problems", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Failed downloads and recovery-required results that need attention"
+            },
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_ROUTINE, "Download state changes", NotificationManager.IMPORTANCE_LOW).apply {
+                description = "Paused, cancelled, restored, and waiting download state changes"
+                setShowBadge(false)
+            },
         )
     }
 
+    /**
+     * Active notifications are either a truthful single-transfer card or an aggregate card.
+     * Aggregate cards never expose a per-file action for a file the title does not identify.
+     */
     fun active(summary: ActiveTransferSummary, downloadId: String? = summary.primaryDownloadId): Notification {
         ensureChannels()
+        val isSingle = summary.activeCount == 1 && !downloadId.isNullOrBlank()
+        val identifiedDownloadId = downloadId.takeIf { isSingle }
         val title = when (summary.activeCount) {
             0 -> "XDM is preparing downloads"
             1 -> summary.primaryFileName ?: "Downloading file"
             else -> "${summary.activeCount} active downloads"
         }
-        val text = buildString {
-            summary.progressPercent?.let { append("$it% • ") }
-            append(formatSpeed(summary.speedBytesPerSecond))
-            append(" • ").append(summary.bandwidthProfile)
-        }
-        val permissionWarning = notificationPermissionState().takeIf { it.needsInAppControlWarning }
-        val displayText = if (permissionWarning != null) "$text • Notifications blocked: use in-app controls" else text
+        val text = buildList {
+            summary.progressPercent?.let { add("$it%") }
+            add(formatSpeed(summary.speedBytesPerSecond))
+            summary.bandwidthProfile.trim().takeIf(String::isNotBlank)?.let(::add)
+        }.joinToString(" • ")
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ACTIVE)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle(title)
-            .setContentText(displayText)
-            .setSubText(permissionWarning?.let { "Notification permission denied" })
+            .setContentText(text)
             .setOnlyAlertOnce(true)
             .setOngoing(summary.activeCount > 0)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
-            .setContentIntent(openAppPendingIntent())
-            .addAction(android.R.drawable.ic_media_pause, "Pause all", actionPendingIntent(ACTION_PAUSE_ALL, null, 11))
-            .addAction(android.R.drawable.ic_media_play, "Resume all", actionPendingIntent(ACTION_RESUME_ALL, null, 12))
-        if (downloadId != null) {
-            val paused = summary.primaryState == DownloadState.Paused
-            builder.addAction(
-                if (paused) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause,
-                if (paused) "Resume" else "Pause",
-                actionPendingIntent(if (paused) ACTION_RESUME else ACTION_PAUSE, downloadId, systemIds.idFor(downloadId)),
-            )
-            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", actionPendingIntent(ACTION_CANCEL, downloadId, systemIds.idFor(downloadId)))
+            .setContentIntent(openAppPendingIntent(identifiedDownloadId))
+
+        if (isSingle) {
+            when (summary.primaryState) {
+                DownloadState.Paused -> builder.addAction(
+                    android.R.drawable.ic_media_play,
+                    "Resume",
+                    actionPendingIntent(ACTION_RESUME, identifiedDownloadId, systemIds.idFor(requireNotNull(identifiedDownloadId))),
+                )
+                DownloadState.Connecting,
+                DownloadState.Downloading,
+                DownloadState.Finalizing,
+                DownloadState.Verifying,
+                DownloadState.Repairing -> {
+                    builder.addAction(
+                        android.R.drawable.ic_media_pause,
+                        "Pause",
+                        actionPendingIntent(ACTION_PAUSE, identifiedDownloadId, systemIds.idFor(requireNotNull(identifiedDownloadId))),
+                    )
+                    builder.addAction(
+                        android.R.drawable.ic_menu_close_clear_cancel,
+                        "Cancel",
+                        actionPendingIntent(ACTION_CANCEL, identifiedDownloadId, systemIds.idFor(requireNotNull(identifiedDownloadId)) + 1),
+                    )
+                }
+                else -> Unit
+            }
+        } else if (summary.activeCount > 1) {
+            val aggregateStates = summary.aggregateStates
+            when {
+                aggregateStates.any { it in QueueStateMachinePlanner.activePauseStates } -> builder.addAction(
+                    android.R.drawable.ic_media_pause,
+                    "Pause all",
+                    actionPendingIntent(ACTION_PAUSE_ALL, null, 11),
+                )
+                DownloadState.Paused in aggregateStates -> builder.addAction(
+                    android.R.drawable.ic_media_play,
+                    "Resume all",
+                    actionPendingIntent(ACTION_RESUME_ALL, null, 12),
+                )
+            }
         }
+
         val total = summary.totalBytes
         if (total != null && total > 0) {
             val progress = summary.bytesReceived.coerceIn(0, total)
@@ -95,15 +135,22 @@ class TransferNotifications(private val context: Context) {
 
     fun restored(count: Int): Notification {
         ensureChannels()
-        return NotificationCompat.Builder(context, CHANNEL_STATUS)
+        return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
             .setSmallIcon(android.R.drawable.stat_notify_sync_noanim)
             .setContentTitle("Downloads restored")
             .setContentText("$count interrupted download${if (count == 1) " is" else "s are"} paused and ready to resume.")
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .setGroup(GROUP_TERMINAL)
             .setContentIntent(openAppPendingIntent())
             .build()
     }
 
+    /**
+     * Reserves one attempt-generation terminal notification as Pending. The caller must invoke
+     * [markTerminalDispatched] only after NotificationManager.notify()/JobService.setNotification()
+     * returns. A process death in between is reconciled on startup using the same system ID.
+     */
     fun terminalIfFirst(
         downloadId: String,
         fileName: String,
@@ -114,20 +161,45 @@ class TransferNotifications(private val context: Context) {
         attemptGeneration: Long = 0L,
     ): Notification? {
         val profile = notificationProfile(state, fileName, message)
-        val now = System.currentTimeMillis()
         val record = TerminalNotificationRecord(
             key = TerminalNotificationKey(downloadId, attemptGeneration, state),
             title = profile.title,
             text = profile.text,
-            actions = terminalActionModels(state, downloadId),
-            createdAtEpochMs = now,
-            dispatchedAtEpochMs = now,
+            actions = TerminalNotificationActionPolicy.actionsFor(state, downloadId),
+            createdAtEpochMs = System.currentTimeMillis(),
+            dispatchedAtEpochMs = null,
         )
-        return if (phase4Coordinator.recordTerminalNotification(record)) {
-            terminal(downloadId, fileName, state, message, destinationUri, mimeType)
-        } else {
-            null
+        if (!phase4Coordinator.recordTerminalNotification(record)) return null
+        // Reservation is durable even when delivery is currently blocked. Keep it Pending so a
+        // later channel/app re-enable can reconcile it instead of falsely marking it delivered.
+        if (!canPostChannel(channelFor(state))) return null
+        return terminal(downloadId, fileName, state, message, destinationUri, mimeType)
+    }
+
+    fun markTerminalDispatched(downloadId: String, attemptGeneration: Long, state: DownloadState) {
+        phase4Coordinator.markTerminalNotificationDispatched(
+            TerminalNotificationRecord(
+                key = TerminalNotificationKey(downloadId, attemptGeneration, state),
+                title = "",
+                text = "",
+                actions = emptyList(),
+                createdAtEpochMs = 0L,
+            ).idempotencyKey,
+        )
+    }
+
+    /** Re-posts Pending terminal rows with their stable per-download notification ID. */
+    fun reconcilePendingTerminalNotifications(): Int {
+        var posted = 0
+        phase4Coordinator.pendingTerminalNotifications().forEach { record ->
+            if (!canPostChannel(channelFor(record.key.state))) return@forEach
+            runCatching {
+                manager.notify(systemIds.idFor(record.key.downloadId), terminalFromRecord(record))
+                phase4Coordinator.markTerminalNotificationDispatched(record.idempotencyKey)
+                posted++
+            }
         }
+        return posted
     }
 
     fun terminal(
@@ -140,99 +212,118 @@ class TransferNotifications(private val context: Context) {
     ): Notification {
         ensureChannels()
         val profile = notificationProfile(state, fileName, message)
-        val contentIntent = if (state == DownloadState.Completed) {
-            openCompletedPendingIntent(downloadId)
-        } else {
-            openAppPendingIntent(downloadId)
-        }
-        return NotificationCompat.Builder(context, CHANNEL_STATUS)
-            .setSmallIcon(profile.icon)
-            .setContentTitle(profile.title)
-            .setContentText(profile.text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(profile.text))
-            .setAutoCancel(true)
-            .setContentIntent(contentIntent)
-            .apply {
-                when (state) {
-                    DownloadState.Completed -> addAction(android.R.drawable.ic_menu_view, "Open XDM", openAppPendingIntent(downloadId))
-                    DownloadState.Paused -> addAction(android.R.drawable.ic_media_play, "Resume", actionPendingIntent(ACTION_RESUME, downloadId, systemIds.idFor(downloadId)))
-                    DownloadState.Failed -> addAction(android.R.drawable.ic_popup_sync, "Retry", actionPendingIntent(ACTION_RETRY, downloadId, systemIds.idFor(downloadId)))
-                    DownloadState.RecoveryRequired -> addAction(android.R.drawable.ic_menu_manage, "Review recovery", actionPendingIntent(ACTION_REVIEW_RECOVERY, downloadId, systemIds.idFor(downloadId)))
-                    else -> Unit
-                }
-                addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", actionPendingIntent(ACTION_DISMISS, downloadId, systemIds.idFor(downloadId)))
-            }
-            .build()
+        return buildTerminalNotification(downloadId, state, profile.title, profile.text)
     }
 
     fun terminal(downloadId: String, fileName: String, completed: Boolean, message: String?): Notification =
         terminal(downloadId, fileName, if (completed) DownloadState.Completed else DownloadState.Failed, message)
 
-    private fun terminalActionModels(state: DownloadState, downloadId: String): List<NotificationActionModel> = buildList {
-        when (state) {
-            DownloadState.Completed -> add(NotificationActionModel(QueueControlCommand.StartOne, "Open XDM", NotificationActionVisibility.Show, downloadId))
-            DownloadState.Paused -> add(NotificationActionModel(QueueControlCommand.ResumeOne, "Resume", NotificationActionVisibility.Show, downloadId))
-            DownloadState.Failed -> add(NotificationActionModel(QueueControlCommand.RetryOne, "Retry", NotificationActionVisibility.Show, downloadId))
-            DownloadState.RecoveryRequired -> add(NotificationActionModel(QueueControlCommand.RetryOne, "Review recovery", NotificationActionVisibility.Show, downloadId))
-            else -> Unit
-        }
-        add(NotificationActionModel(QueueControlCommand.DisableQueue, "Dismiss", NotificationActionVisibility.Show, downloadId))
+    private fun terminalFromRecord(record: TerminalNotificationRecord): Notification =
+        buildTerminalNotification(record.key.downloadId, record.key.state, record.title, record.text)
+
+    private fun buildTerminalNotification(downloadId: String, state: DownloadState, title: String, text: String): Notification {
+        ensureChannels()
+        val contentIntent = if (state == DownloadState.Completed) openCompletedPendingIntent(downloadId) else openAppPendingIntent(downloadId)
+        return NotificationCompat.Builder(context, channelFor(state))
+            .setSmallIcon(notificationProfile(state, "", null).icon)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .setGroup(GROUP_TERMINAL)
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_ALL)
+            .setContentIntent(contentIntent)
+            .apply {
+                TerminalNotificationActionPolicy.actionsFor(state, downloadId).forEach { action ->
+                    when (action.command) {
+                        QueueControlCommand.OpenOne -> addAction(android.R.drawable.ic_menu_view, action.label, openAppPendingIntent(downloadId))
+                        QueueControlCommand.ResumeOne -> addAction(android.R.drawable.ic_media_play, action.label, actionPendingIntent(ACTION_RESUME, downloadId, systemIds.idFor(downloadId)))
+                        QueueControlCommand.RetryOne -> addAction(android.R.drawable.ic_popup_sync, action.label, actionPendingIntent(ACTION_RETRY, downloadId, systemIds.idFor(downloadId)))
+                        QueueControlCommand.ReviewRecovery -> addAction(android.R.drawable.ic_menu_manage, action.label, actionPendingIntent(ACTION_REVIEW_RECOVERY, downloadId, systemIds.idFor(downloadId)))
+                        QueueControlCommand.DismissNotification -> addAction(android.R.drawable.ic_menu_close_clear_cancel, action.label, actionPendingIntent(ACTION_DISMISS, downloadId, systemIds.idFor(downloadId) + 2))
+                        else -> Unit
+                    }
+                }
+            }
+            .build()
     }
 
     fun notificationPermissionState(): NotificationPermissionState {
+        ensureChannels()
         val android13OrNewer = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-        val granted = if (android13OrNewer) {
+        val runtimeGranted = if (android13OrNewer) {
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        } else {
-            true
-        }
+        } else true
+        val appEnabled = manager.areNotificationsEnabled()
+        val requested = permissionStore.promptRequested
+        val lastGranted = permissionStore.lastPromptGranted
         return NotificationPermissionState(
             android13OrNewer = android13OrNewer,
-            drawerPermissionGranted = granted,
+            drawerPermissionGranted = runtimeGranted,
+            appNotificationsEnabled = appEnabled,
+            activeChannelEnabled = channelEnabled(CHANNEL_ACTIVE),
+            statusChannelEnabled = channelEnabled(CHANNEL_STATUS),
+            attentionChannelEnabled = channelEnabled(CHANNEL_ATTENTION),
+            problemsChannelEnabled = channelEnabled(PROBLEMS_CHANNEL_ID),
+            promptDismissed = requested && lastGranted == false && !runtimeGranted,
+            upgradePreGranted = android13OrNewer && runtimeGranted && !requested,
+            previouslyDeniedUpgrade = permissionStore.deniedOnce && !runtimeGranted,
         )
+    }
+
+    private fun canPostChannel(channelId: String): Boolean {
+        val state = notificationPermissionState()
+        if (state.drawerPermissionGranted == false || !state.appNotificationsEnabled) return false
+        return when (channelId) {
+            CHANNEL_ACTIVE -> state.activeChannelEnabled
+            CHANNEL_STATUS -> state.statusChannelEnabled
+            CHANNEL_ATTENTION -> state.attentionChannelEnabled
+            CHANNEL_ROUTINE -> channelEnabled(CHANNEL_ROUTINE)
+            PROBLEMS_CHANNEL_ID -> state.problemsChannelEnabled
+            else -> channelEnabled(channelId)
+        }
+    }
+
+    private fun channelEnabled(channelId: String): Boolean =
+        manager.getNotificationChannel(channelId)?.importance != NotificationManager.IMPORTANCE_NONE
+
+    private fun channelFor(state: DownloadState): String = when (state) {
+        DownloadState.Completed -> CHANNEL_STATUS
+        DownloadState.Failed, DownloadState.RecoveryRequired -> CHANNEL_ATTENTION
+        else -> CHANNEL_ROUTINE
     }
 
     private fun notificationProfile(state: DownloadState, fileName: String, message: String?): NotificationProfile = when (state) {
-        DownloadState.Completed -> NotificationProfile(
-            icon = android.R.drawable.stat_sys_download_done,
-            title = "Download complete",
-            text = fileName,
-        )
-        DownloadState.Paused -> NotificationProfile(
-            icon = android.R.drawable.stat_sys_download,
-            title = "Download paused",
-            text = "Partial download preserved. Tap Resume to continue.",
-        )
-        DownloadState.Cancelled -> NotificationProfile(
-            icon = android.R.drawable.stat_notify_error,
-            title = "Download cancelled",
-            text = fileName,
-        )
+        DownloadState.Completed -> NotificationProfile(android.R.drawable.stat_sys_download_done, "Download complete", fileName.ifBlank { "Completed download" })
+        DownloadState.Paused -> NotificationProfile(android.R.drawable.stat_sys_download, "Download paused", "Partial download preserved. Tap Resume to continue.")
+        DownloadState.Cancelled -> NotificationProfile(android.R.drawable.stat_notify_error, "Download cancelled", fileName.ifBlank { "The download was cancelled." })
+        DownloadState.WaitingForNetwork -> NotificationProfile(android.R.drawable.stat_notify_sync_noanim, "Waiting for network", "The download will continue when its network requirement is available.")
+        DownloadState.WaitingForPower -> NotificationProfile(android.R.drawable.stat_notify_sync_noanim, "Waiting for power", "The download will continue when its power requirement is satisfied.")
+        DownloadState.Queued, DownloadState.Created -> NotificationProfile(android.R.drawable.stat_notify_sync_noanim, "Download queued", fileName.ifBlank { "Waiting for an execution slot." })
         DownloadState.RecoveryRequired -> NotificationProfile(
-            icon = android.R.drawable.stat_notify_error,
-            title = "Download needs action",
-            text = sanitizeNotificationText(message, "Download needs recovery before it can resume. Open XDM for details."),
+            android.R.drawable.stat_notify_error,
+            "Download needs action",
+            sanitizeNotificationText(message, "Download needs recovery before it can resume. Open XDM for details."),
         )
         DownloadState.Failed -> NotificationProfile(
-            icon = android.R.drawable.stat_notify_error,
-            title = "Download failed",
-            text = sanitizeNotificationText(message, "Download could not continue. Open XDM for details."),
+            android.R.drawable.stat_notify_error,
+            "Download failed",
+            sanitizeNotificationText(message, "Download could not continue. Open XDM for details."),
         )
-        else -> NotificationProfile(
-            icon = android.R.drawable.stat_sys_download,
-            title = "Download paused",
-            text = "Partial download preserved. Tap Resume to continue.",
-        )
+        DownloadState.Connecting -> NotificationProfile(android.R.drawable.stat_sys_download, "Connecting", fileName.ifBlank { "Connecting to the download source." })
+        DownloadState.Downloading -> NotificationProfile(android.R.drawable.stat_sys_download, "Downloading", fileName.ifBlank { "Download in progress." })
+        DownloadState.Verifying -> NotificationProfile(android.R.drawable.stat_notify_sync_noanim, "Verifying download", fileName.ifBlank { "Checking downloaded data." })
+        DownloadState.Repairing -> NotificationProfile(android.R.drawable.stat_notify_sync_noanim, "Repairing download", fileName.ifBlank { "Repairing downloaded data." })
+        DownloadState.Finalizing -> NotificationProfile(android.R.drawable.stat_notify_sync_noanim, "Finishing download", fileName.ifBlank { "Finalizing the downloaded file." })
     }
 
-    private data class NotificationProfile(
-        val icon: Int,
-        val title: String,
-        val text: String,
-    )
+    private data class NotificationProfile(val icon: Int, val title: String, val text: String)
 
     fun notifyRestored(count: Int) {
-        if (count > 0) manager.notify(RESTORE_NOTIFICATION_ID, restored(count))
+        if (count > 0 && canPostChannel(CHANNEL_ROUTINE)) {
+            runCatching { manager.notify(RESTORE_NOTIFICATION_ID, restored(count)) }
+        }
     }
 
     private fun openAppPendingIntent(downloadId: String? = null): PendingIntent {
@@ -261,6 +352,10 @@ class TransferNotifications(private val context: Context) {
     companion object {
         const val CHANNEL_ACTIVE = "xdm_active_downloads"
         const val CHANNEL_STATUS = "xdm_download_status"
+        const val CHANNEL_ATTENTION = "xdm_download_attention"
+        const val CHANNEL_ROUTINE = "xdm_download_routine"
+        private const val PROBLEMS_CHANNEL_ID = "xdm_runtime_problems"
+        const val GROUP_TERMINAL = "xdm_terminal_downloads"
         const val ACTIVE_NOTIFICATION_ID = 4100
         const val RESTORE_NOTIFICATION_ID = 4101
         const val ACTION_PAUSE_ALL = "com.mikeyphw.xdm.android.action.PAUSE_ALL"

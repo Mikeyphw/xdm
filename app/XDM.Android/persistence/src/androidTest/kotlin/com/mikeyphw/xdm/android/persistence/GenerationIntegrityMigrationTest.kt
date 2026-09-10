@@ -129,12 +129,27 @@ class GenerationIntegrityMigrationTest {
     }
 
     @Test
-    fun migrate4To21ValidatesOldestExportedProductionChain() {
-        val name = "generation-integrity-4-21-${System.nanoTime()}"
+    fun migrate21To22PersistsThumbnailProvenance() {
+        val name = "generation-integrity-21-22-${System.nanoTime()}"
+        val legacy = helper.createDatabase(name, 21)
+        legacy.execSQL("""INSERT INTO media_captures
+                (id,sourceUrl,pageUrl,title,status,kind,mimeType,container,codecs,durationMs,thumbnailUrl,fileName,variantCount,downloadId,createdAtEpochMs,updatedAtEpochMs,selectedVariantId,selectedVariantUrl,manifestExpiresAtEpochMs,lastResolvedAtEpochMs,resolutionStatus,manifestRole,manifestIsLive,manifestProtected,manifestProtectionScheme)
+                VALUES ('capture-22','https://example.com/video.mp4','https://example.com/watch','Movie','MetadataReady','ProgressiveMedia','video/mp4','mp4',NULL,1000,'https://example.com/poster.jpg','Movie.mp4',1,NULL,1,1,NULL,NULL,NULL,NULL,'Resolved','Unknown',NULL,0,NULL)""")
+        legacy.close()
+        val db = helper.runMigrationsAndValidate(name, 22, true, Migrations.Migration21To22)
+        assertEquals(22L, db.longValue("PRAGMA user_version"))
+        assertTrue(db.columnNames("media_captures").contains("thumbnailProvenance"))
+        assertEquals("Unknown", db.stringValue("SELECT thumbnailProvenance FROM media_captures WHERE id='capture-22'"))
+        db.close()
+    }
+
+    @Test
+    fun migrate4To22ValidatesOldestExportedProductionChain() {
+        val name = "generation-integrity-4-22-${System.nanoTime()}"
         helper.createDatabase(name, 4).close()
         val db = helper.runMigrationsAndValidate(
             name,
-            21,
+            22,
             true,
             Migrations.Migration4To5,
             Migrations.Migration5To6,
@@ -153,20 +168,21 @@ class GenerationIntegrityMigrationTest {
             Migrations.Migration18To19,
             Migrations.Migration19To20,
             Migrations.Migration20To21,
+            Migrations.Migration21To22,
         )
-        assertEquals(21L, db.longValue("PRAGMA user_version"))
+        assertEquals(22L, db.longValue("PRAGMA user_version"))
         assertTrue(db.columnNames("downloads").contains("attemptGeneration"))
         assertTrue(db.hasForeignKey("checksum_expectations", "downloadId", "downloads", "CASCADE"))
         db.close()
     }
 
     @Test
-    fun migrate14To21ValidatesFullProductionChain() {
-        val name = "generation-integrity-14-21-${System.nanoTime()}"
+    fun migrate14To22ValidatesFullProductionChain() {
+        val name = "generation-integrity-14-22-${System.nanoTime()}"
         helper.createDatabase(name, 14).close()
         val db = helper.runMigrationsAndValidate(
             name,
-            21,
+            22,
             true,
             Migrations.Migration14To15,
             Migrations.Migration15To16,
@@ -175,8 +191,9 @@ class GenerationIntegrityMigrationTest {
             Migrations.Migration18To19,
             Migrations.Migration19To20,
             Migrations.Migration20To21,
+            Migrations.Migration21To22,
         )
-        assertEquals(21L, db.longValue("PRAGMA user_version"))
+        assertEquals(22L, db.longValue("PRAGMA user_version"))
         assertTrue(db.columnNames("downloads").contains("attemptGeneration"))
         assertTrue(db.columnNames("media_outputs").contains("ownerKind"))
         db.close()

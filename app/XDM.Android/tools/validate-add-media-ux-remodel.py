@@ -122,15 +122,16 @@ need("addSheetUsesOneExplicitDownloadActionWithoutSecondConfirmation" in contrac
 need("kotlin.test" not in contract, "UX remodel contract must use the app module's JUnit 4 test API")
 need("val addSurface = File(root, \"app/src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt\").readText()" in architecture_contract,
      "Architecture Add contracts must scope negative checks to the real Add surface rather than legacy Screens.kt")
-need("Optional • XDM uses the server or link name when left empty." in architecture_contract and
+need("Suggested by the server (Content-Disposition)" in architecture_contract and
+     "Optional • XDM will infer a name when left empty." in architecture_contract and
      "val canDownload = review.canStartDirectly" in architecture_contract,
-     "Architecture filename/add-state contracts must carry the one-action Add copy forward")
+     "Architecture filename/add-state contracts must carry server-aware one-action Add inference forward")
 need(r'title = \"Video quality\"' in architecture_contract and "hasTrackChoices" in architecture_contract,
      "Architecture media contract must assert adaptive-only quality/track choices")
 need("text = review.mediaInspectionGuidance" in browser_extension_contract and
      r'preferMediaInspection -> \"Inspect media\"' in browser_extension_contract,
      "browser-extension Add contract must use the remodeled inspection guidance/action")
-need("onInspectMedia(url, name)" in downloader_experience_contract,
+need("onInspectMedia(url, effectiveFileName)" in downloader_experience_contract,
      "downloader-experience contract must match the one-action Add inspection callback")
 need("Needs action" in runtime_foundation_contract and "Browser capture recommended" not in runtime_foundation_contract,
      "runtime-foundation contract must use the normalized Needs action feedback vocabulary")

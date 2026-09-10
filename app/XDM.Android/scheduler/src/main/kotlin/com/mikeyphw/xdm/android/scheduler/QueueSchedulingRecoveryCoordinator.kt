@@ -4,6 +4,8 @@ import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.DurableQueueCommandResult
 import com.mikeyphw.xdm.android.model.ImmediateReevaluationEvent
 import com.mikeyphw.xdm.android.model.NotificationActionModel
+import com.mikeyphw.xdm.android.model.QueueControlCommand
+import com.mikeyphw.xdm.android.model.QueueControlOutcome
 import com.mikeyphw.xdm.android.model.QueueDeletionDisposition
 import com.mikeyphw.xdm.android.model.QueueDeletionPlan
 import com.mikeyphw.xdm.android.model.QueueSlotReservation
@@ -46,6 +48,7 @@ interface QueueSchedulingRecoveryStore {
     fun saveRecoveryPlan(plan: RecoveryExecutionPlan)
     fun recoveryPlan(downloadId: String, attemptGeneration: Long): RecoveryExecutionPlan?
     fun saveTerminalNotification(record: TerminalNotificationRecord): Boolean
+    fun markTerminalNotificationDispatched(idempotencyKey: String, dispatchedAtEpochMs: Long)
     fun terminalNotifications(): List<TerminalNotificationRecord>
     fun saveQueueDeletion(plan: QueueDeletionPlan)
     fun queueDeletionPlans(): List<QueueDeletionPlan>
@@ -70,7 +73,14 @@ class InMemoryQueueSchedulingRecoveryStore : QueueSchedulingRecoveryStore {
     override fun pendingImmediateReevaluations(): List<ImmediateReevaluationEvent> = reevaluations.values.toList()
     override fun saveRecoveryPlan(plan: RecoveryExecutionPlan) { recoveryPlans[planKey(plan.downloadId, plan.attemptGeneration)] = plan }
     override fun recoveryPlan(downloadId: String, attemptGeneration: Long): RecoveryExecutionPlan? = recoveryPlans[planKey(downloadId, attemptGeneration)]
-    override fun saveTerminalNotification(record: TerminalNotificationRecord): Boolean = terminalNotifications.putIfAbsent(record.idempotencyKey, record) == null
+    override fun saveTerminalNotification(record: TerminalNotificationRecord): Boolean {
+        if (terminalNotifications.containsKey(record.idempotencyKey)) return false
+        terminalNotifications[record.idempotencyKey] = record.copy(dispatchedAtEpochMs = null)
+        return true
+    }
+    override fun markTerminalNotificationDispatched(idempotencyKey: String, dispatchedAtEpochMs: Long) {
+        terminalNotifications[idempotencyKey]?.let { terminalNotifications[idempotencyKey] = it.copy(dispatchedAtEpochMs = dispatchedAtEpochMs) }
+    }
     override fun terminalNotifications(): List<TerminalNotificationRecord> = terminalNotifications.values.toList()
     override fun saveQueueDeletion(plan: QueueDeletionPlan) { queueDeletionPlans += plan }
     override fun queueDeletionPlans(): List<QueueDeletionPlan> = queueDeletionPlans.toList()
@@ -252,43 +262,66 @@ class FileBackedQueueSchedulingRecoveryStore(private val root: File) : QueueSche
     }
 
     override fun saveTerminalNotification(record: TerminalNotificationRecord): Boolean = synchronized(lock) {
-        if (readLines("terminal-notifications.log").any { fields -> fields.getOrNull(1) == record.idempotencyKey }) {
-            return@synchronized false
-        }
+        val existing = terminalNotificationsLocked().firstOrNull { it.idempotencyKey == record.idempotencyKey }
+        if (existing != null) return@synchronized false
         appendLocked(
-            "terminal-notifications.log",
-            listOf(
-                "terminal",
-                record.idempotencyKey,
-                record.key.downloadId,
-                record.key.attemptGeneration.toString(),
-                record.key.state.name,
-                record.title,
-                record.text,
-                record.createdAtEpochMs.toString(),
-                record.dispatchedAtEpochMs?.toString().orEmpty(),
-                record.actions.joinToString(",") { it.label },
-            ),
-        )
+                "terminal-notifications.log",
+                listOf(
+                    "terminal",
+                    record.idempotencyKey,
+                    record.key.downloadId,
+                    record.key.attemptGeneration.toString(),
+                    record.key.state.name,
+                    record.title,
+                    record.text,
+                    record.createdAtEpochMs.toString(),
+                    "",
+                    record.actions.joinToString(",") { it.label },
+                ),
+            )
         true
     }
 
-    override fun terminalNotifications(): List<TerminalNotificationRecord> = readLines("terminal-notifications.log").mapNotNull { fields ->
-        runCatching {
-            TerminalNotificationRecord(
-                key = com.mikeyphw.xdm.android.model.TerminalNotificationKey(
-                    downloadId = fields[2],
-                    attemptGeneration = fields[3].toLong(),
-                    state = DownloadState.valueOf(fields[4]),
-                ),
-                title = fields[5],
-                text = fields[6],
-                actions = emptyList<NotificationActionModel>(),
-                createdAtEpochMs = fields[7].toLong(),
-                dispatchedAtEpochMs = fields[8].toLongOrNull(),
-            )
-        }.getOrNull()
+    override fun markTerminalNotificationDispatched(idempotencyKey: String, dispatchedAtEpochMs: Long) = synchronized(lock) {
+        val current = terminalNotificationsLocked().firstOrNull { it.idempotencyKey == idempotencyKey } ?: return@synchronized
+        if (current.dispatchedAtEpochMs != null) return@synchronized
+        appendLocked(
+            "terminal-notifications.log",
+            listOf("terminal-dispatched", idempotencyKey, dispatchedAtEpochMs.toString()),
+        )
     }
+
+    override fun terminalNotifications(): List<TerminalNotificationRecord> = synchronized(lock) { terminalNotificationsLocked() }
+
+    private fun terminalNotificationsLocked(): List<TerminalNotificationRecord> {
+        val records = LinkedHashMap<String, TerminalNotificationRecord>()
+        val dispatched = LinkedHashMap<String, Long>()
+        readLinesUnlocked("terminal-notifications.log").forEach { fields ->
+            when (fields.getOrNull(0)) {
+                "terminal" -> runCatching {
+                    TerminalNotificationRecord(
+                        key = com.mikeyphw.xdm.android.model.TerminalNotificationKey(
+                            downloadId = fields[2],
+                            attemptGeneration = fields[3].toLong(),
+                            state = DownloadState.valueOf(fields[4]),
+                        ),
+                        title = fields[5],
+                        text = fields[6],
+                        actions = TerminalNotificationActionPolicy.actionsFor(DownloadState.valueOf(fields[4]), fields[2]),
+                        createdAtEpochMs = fields[7].toLong(),
+                        dispatchedAtEpochMs = fields.getOrNull(8)?.toLongOrNull(),
+                    )
+                }.getOrNull()?.let { records[it.idempotencyKey] = it }
+                "terminal-dispatched" -> fields.getOrNull(2)?.toLongOrNull()?.let { dispatchedAt ->
+                    fields.getOrNull(1)?.let { key -> dispatched[key] = dispatchedAt }
+                }
+            }
+        }
+        return records.map { (key, record) ->
+            dispatched[key]?.let { record.copy(dispatchedAtEpochMs = it) } ?: record
+        }
+    }
+
 
     override fun saveQueueDeletion(plan: QueueDeletionPlan) = append(
         "queue-deletions.log",
@@ -325,11 +358,12 @@ class FileBackedQueueSchedulingRecoveryStore(private val root: File) : QueueSche
         }
     }
 
-    private fun readLines(name: String): List<List<String>> = synchronized(lock) {
+    private fun readLines(name: String): List<List<String>> = synchronized(lock) { readLinesUnlocked(name) }
+
+    private fun readLinesUnlocked(name: String): List<List<String>> =
         file(name).takeIf(File::exists)?.readLines().orEmpty().mapNotNull { line ->
             runCatching { line.split('\t').map(::decode) }.getOrNull()
         }
-    }
 
     private fun file(name: String): File = File(root, name)
     private fun csv(value: String): List<String> = value.split(',').filter(String::isNotBlank)
@@ -402,6 +436,33 @@ class QueueSchedulingRecoveryCoordinator(private val store: QueueSchedulingRecov
     }
 
     fun recordTerminalNotification(record: TerminalNotificationRecord): Boolean = store.saveTerminalNotification(record)
+
+    fun markTerminalNotificationDispatched(idempotencyKey: String, dispatchedAtEpochMs: Long = System.currentTimeMillis()) {
+        store.markTerminalNotificationDispatched(idempotencyKey, dispatchedAtEpochMs)
+    }
+
+    fun pendingTerminalNotifications(): List<TerminalNotificationRecord> =
+        store.terminalNotifications().filter { it.dispatchedAtEpochMs == null }
+
+    /** Persist notification-originated transfer controls before executing their side effects. */
+    fun recordNotificationControlCommand(command: QueueControlCommand, downloadId: String?, nowEpochMs: Long = System.currentTimeMillis()) {
+        require(command in setOf(
+            QueueControlCommand.ResumeAll,
+            QueueControlCommand.PauseOne,
+            QueueControlCommand.ResumeOne,
+            QueueControlCommand.CancelOne,
+            QueueControlCommand.RetryOne,
+        )) { "Only executable notification transfer controls belong in the durable queue command journal." }
+        store.saveQueueCommand(
+            DurableQueueCommandResult(
+                command = command,
+                generation = nowEpochMs.coerceAtLeast(1L),
+                outcome = QueueControlOutcome.Accepted,
+                affectedDownloadIds = downloadId?.let(::listOf).orEmpty(),
+                message = "Notification control persisted before execution.",
+            ),
+        )
+    }
 
     fun recordQueueDeletion(plan: QueueDeletionPlan) { store.saveQueueDeletion(plan) }
 

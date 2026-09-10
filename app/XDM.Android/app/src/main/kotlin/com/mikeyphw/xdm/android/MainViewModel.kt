@@ -211,7 +211,7 @@ data class Aria2DiagnosticsUi(
     val storageDoctor: StorageDoctorUi = StorageDoctorUi(),
 )
 
-private const val CurrentRoomSchemaVersion = 21
+private const val CurrentRoomSchemaVersion = 22
 private const val UnpinnedReleaseSigner = "UNPINNED"
 
 private fun releaseSigningAttestationConfigured(): Boolean =
@@ -250,6 +250,7 @@ data class MainUiState(
     val selectedDownloadDetailId: String? = null,
     val selectedRecoveryDownloadId: String? = null,
     val selectedRecoveryAction: String? = null,
+    val selectedProblemId: String? = null,
     val settingsPanel: SettingsPanel = SettingsPanel.Overview,
     val activityEvents: List<OperationalActivityEvent> = emptyList(),
     val activitySummary: OperationalActivitySummary = OperationalActivitySummary(),
@@ -374,6 +375,7 @@ class MainViewModel(
         val selectedDownloadDetailId: String? = null,
         val selectedRecoveryDownloadId: String? = null,
         val selectedRecoveryAction: String? = null,
+        val selectedProblemId: String? = null,
     )
 
     private data class BrowserVariantImportHandoff(
@@ -839,6 +841,7 @@ class MainViewModel(
             selectedDownloadDetailId = navigation.selectedDownloadDetailId ?: prefs.selectedDownloadDetailId,
             selectedRecoveryDownloadId = navigation.selectedRecoveryDownloadId ?: prefs.selectedRecoveryDownloadId,
             selectedRecoveryAction = navigation.selectedRecoveryAction ?: prefs.selectedRecoveryAction,
+            selectedProblemId = navigation.selectedProblemId,
             settingsPanel = navigation.settingsPanel ?: prefs.lastSettingsPanel,
             activityEvents = activityEvents,
             activitySummary = activitySummary,
@@ -1007,7 +1010,7 @@ class MainViewModel(
                 selectedRecoveryDownloadId = current.selectedRecoveryDownloadId,
                 selectedRecoveryAction = current.selectedRecoveryAction,
             )
-            AppRoute.Settings -> NavigationOverride(route = route, settingsPanel = current.settingsPanel)
+            AppRoute.Settings -> NavigationOverride(route = route, settingsPanel = current.settingsPanel, selectedProblemId = current.selectedProblemId)
             else -> NavigationOverride(route = route)
         }
         if (route != AppRoute.Add) viewModelScope.launch { preferences.setRoute(route) }
@@ -1079,6 +1082,16 @@ class MainViewModel(
             selectedRecoveryAction = action.name,
         )
         viewModelScope.launch { preferences.setActivityNavigation(ActivityPanel.Recovery, download.id, action.name) }
+    }
+
+    fun openProblemFromNotification(problemId: String) {
+        val normalized = problemId.trim().takeIf(String::isNotBlank) ?: return
+        navigationOverride.value = NavigationOverride(
+            route = AppRoute.Settings,
+            settingsPanel = SettingsPanel.DebugWorkbench,
+            selectedProblemId = normalized,
+        )
+        viewModelScope.launch { preferences.setSettingsNavigation(SettingsPanel.DebugWorkbench) }
     }
 
     fun selectSettingsPanel(panel: SettingsPanel) {
@@ -3427,6 +3440,7 @@ class MainViewModel(
                     contentLength = facts.contentLength,
                     durationMs = candidate.durationMs,
                     thumbnailUrl = candidate.thumbnailUrl,
+                    thumbnailProvenance = candidate.thumbnailProvenance,
                     pageUrl = facts.frameUrl ?: facts.pageUrl,
                     pageTitle = facts.pageTitle,
                     requestHeaders = facts.finalHeaders.ifEmpty { facts.proposedHeaders },

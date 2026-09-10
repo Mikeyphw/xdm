@@ -139,6 +139,7 @@
       contentLength: Math.max(0, Math.trunc(Number(candidate.contentLength || 0))),
       durationMs: Math.max(0, Math.trunc(Number(candidate.durationMs || 0))),
       thumbnailUrl: safeHttpUrl(candidate.thumbnailUrl || ""),
+      thumbnailProvenance: cleanText(candidate.thumbnailProvenance || "Unknown", 32).replace(/[^A-Za-z]/g, "") || "Unknown",
       stableMediaId: String(candidate.stableMediaId || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 160),
       requestFingerprint: String(candidate.requestFingerprint || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 96),
       sessionRevision: Math.max(1, Math.trunc(Number(candidate.sessionRevision || revision || 1))),

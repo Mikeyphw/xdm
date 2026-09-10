@@ -52,7 +52,7 @@ internal data class XdmArtworkRequest(
         ?: sourceUrl.validHttpUrl()?.takeIf { presentation.kind == MimePresentationKind.Image }
     val effectiveLocalUri: String? = localUri.validLocalUri()
     val cacheKey: String = sha256(
-        listOf(fileName, mimeType.orEmpty(), remoteUrl.orEmpty(), effectiveLocalUri.orEmpty(), presentation.kind.name).joinToString("\u0000"),
+        listOf("artwork-policy-v2", fileName, mimeType.orEmpty(), remoteUrl.orEmpty(), effectiveLocalUri.orEmpty(), presentation.kind.name).joinToString("\u0000"),
     )
 
     private fun String?.validHttpUrl(): String? = this?.trim()?.takeIf { raw ->
@@ -120,7 +120,7 @@ fun XdmMediaArtwork(
     }
 }
 
-private object XdmArtworkLoader {
+internal object XdmArtworkLoader {
     private const val MAX_REMOTE_BYTES = 6 * 1024 * 1024
     private const val MAX_DISK_BYTES = 32L * 1024L * 1024L
     private const val TARGET_EDGE_PX = 320
@@ -136,17 +136,15 @@ private object XdmArtworkLoader {
         val diskFile = cacheFile(context, request.cacheKey)
         decodeFile(diskFile)?.let { return remember(request.cacheKey, it) }
 
-        val local = request.effectiveLocalUri?.let { uri ->
-            when (request.presentation.kind) {
-                MimePresentationKind.Image -> decodeLocalImage(context, uri)
-                MimePresentationKind.Video, MimePresentationKind.AdaptiveMedia -> extractLocalVideoFrame(context, uri)
-                else -> null
-            }
-        }
-        if (local != null) {
-            persistBitmap(diskFile, local)
+        // A completed local image is authoritative. For video/adaptive media, however, retain
+        // captured/resolver artwork when available and generate a local frame only as a fallback;
+        // otherwise the artwork visibly changes when a capture becomes a completed download.
+        val localImage = request.effectiveLocalUri?.takeIf { request.presentation.kind == MimePresentationKind.Image }
+            ?.let { decodeLocalImage(context, it) }
+        if (localImage != null) {
+            persistBitmap(diskFile, localImage)
             prune(context)
-            return remember(request.cacheKey, local)
+            return remember(request.cacheKey, localImage)
         }
 
         val remote = request.remoteUrl?.let { loadRemoteImage(it) }
@@ -154,6 +152,15 @@ private object XdmArtworkLoader {
             persistBitmap(diskFile, remote)
             prune(context)
             return remember(request.cacheKey, remote)
+        }
+
+        val generatedFrame = request.effectiveLocalUri
+            ?.takeIf { request.presentation.kind in setOf(MimePresentationKind.Video, MimePresentationKind.AdaptiveMedia) }
+            ?.let { extractLocalVideoFrame(context, it) }
+        if (generatedFrame != null) {
+            persistBitmap(diskFile, generatedFrame)
+            prune(context)
+            return remember(request.cacheKey, generatedFrame)
         }
 
         traceFailure(context, request)

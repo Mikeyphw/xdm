@@ -72,7 +72,7 @@ class QueueStateMachineModelsTest {
         assertTrue(activeActions.any { it.command == QueueControlCommand.PauseOne && it.downloadId == "download-1" })
 
         val recoveryActions = QueueStateMachinePlanner.notificationActions(DownloadState.RecoveryRequired, setOf(DownloadState.RecoveryRequired), "download-2")
-        assertTrue(recoveryActions.any { it.label == "Review recovery" })
+        assertTrue(recoveryActions.any { it.command == QueueControlCommand.ReviewRecovery && it.label == "Review recovery" })
         assertFalse(recoveryActions.any { it.label == "Pause all" })
     }
 

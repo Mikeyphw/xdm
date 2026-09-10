@@ -3,6 +3,7 @@ package com.mikeyphw.xdm.android.scheduler
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.mikeyphw.xdm.android.model.QueueControlCommand
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -30,13 +31,29 @@ class TransferActionReceiver : BroadcastReceiver() {
             try {
                 val runtime = (context.applicationContext as TransferRuntimeProvider).transferRuntime
                 val queue = (context.applicationContext as? QueueIntelligenceProvider)?.queueIntelligenceCoordinator
+                val phase4 = (context.applicationContext as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
                 when (intent.action) {
-                    TransferNotifications.ACTION_PAUSE_ALL -> if (queue != null) { queue.pauseAllDurably(); runtime.pauseAll() }
-                    TransferNotifications.ACTION_RESUME_ALL -> queue?.resumeAllManual()
-                    TransferNotifications.ACTION_PAUSE -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { runtime.pause(it) }
-                    TransferNotifications.ACTION_CANCEL -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { runtime.cancel(it) }
+                    TransferNotifications.ACTION_PAUSE_ALL -> if (queue != null) {
+                        // pauseAllDurably() owns the canonical durable PauseAll journal entry.
+                        queue.pauseAllDurably()
+                        runtime.pauseAll()
+                    }
+                    TransferNotifications.ACTION_RESUME_ALL -> {
+                        phase4?.recordNotificationControlCommand(QueueControlCommand.ResumeAll, null)
+                        queue?.resumeAllManual()
+                    }
+                    TransferNotifications.ACTION_PAUSE -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id ->
+                        phase4?.recordNotificationControlCommand(QueueControlCommand.PauseOne, id)
+                        runtime.pause(id)
+                    }
+                    TransferNotifications.ACTION_CANCEL -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id ->
+                        phase4?.recordNotificationControlCommand(QueueControlCommand.CancelOne, id)
+                        runtime.cancel(id)
+                    }
                     TransferNotifications.ACTION_RESUME,
                     TransferNotifications.ACTION_RETRY -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id ->
+                        val command = if (intent.action == TransferNotifications.ACTION_RETRY) QueueControlCommand.RetryOne else QueueControlCommand.ResumeOne
+                        phase4?.recordNotificationControlCommand(command, id)
                         // Queue policy chooses UIDT/FGS/WorkManager legally; the BroadcastReceiver never starts an FGS directly.
                         queue?.requestStart(id, userVisible = true, manual = true)
                     }

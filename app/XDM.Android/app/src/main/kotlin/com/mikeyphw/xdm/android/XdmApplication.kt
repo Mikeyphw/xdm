@@ -104,6 +104,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
                 Migrations.Migration18To19,
                 Migrations.Migration19To20,
                 Migrations.Migration20To21,
+                Migrations.Migration21To22,
             )
             .build()
         val repository = DownloadRepository(database)
@@ -179,7 +180,10 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val browserCaptureSessionRegistry = BrowserCaptureSessionRegistry(File(filesDir, "browser-capture-session-index"))
         val browserCaptureImportJournal = BrowserCaptureImportJournal(File(filesDir, "browser-capture-import-journal"))
         TransferExecutionStopReasonRecorder.installPersistentRoot(File(filesDir, "queue-scheduling-recovery"))
-        TransferNotifications(this).ensureChannels()
+        TransferNotifications(this).apply {
+            ensureChannels()
+            reconcilePendingTerminalNotifications()
+        }
         val executionStarter = TransferExecutionStarter(this)
         queueIntelligenceCoordinator = QueueIntelligenceCoordinator(
             context = this,

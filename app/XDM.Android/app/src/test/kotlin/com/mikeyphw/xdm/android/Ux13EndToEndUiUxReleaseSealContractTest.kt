@@ -65,10 +65,11 @@ class Ux13EndToEndUiUxReleaseSealContractTest {
         assertFalse(settings.contains("\"Advanced Debug Workbench\""))
         assertFalse(settings.contains("\"Developer tools\""))
 
-        assertTrue(manifest.contains("\"current_overlay\": \"xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip\""))
+        assertTrue(manifest.contains("\"current_release_authority\": \"post_ux13_roadmap_completion_hotfix\""))
+        assertTrue(manifest.contains("\"current_runtime_quality_authority\": \"notification_webview_gap_hotfix_2026_09_10\""))
         assertTrue(manifest.contains("\"next_phase\": \"complete\""))
         assertTrue(manifest.contains("\"validation_deferred\": false"))
-        assertTrue(manifest.contains("\"version\": 21"))
+        assertTrue(manifest.contains("\"room_schema_current\": 22") || manifest.contains("\"version\": 22"))
         assertTrue(finalGate.contains("validate-ux13-end-to-end-ui-ux-release-seal.py"))
         assertTrue(finalGate.contains("run-bug-hunt-phase11-validation-matrix.sh --static-only --ci"))
     }

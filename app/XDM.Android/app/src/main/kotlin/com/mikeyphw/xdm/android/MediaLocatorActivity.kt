@@ -5,6 +5,8 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Bitmap
+import android.net.Uri
 import android.net.http.SslError
 import android.util.TypedValue
 import android.view.View
@@ -21,7 +23,8 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebChromeClient
-import android.widget.ArrayAdapter
+import android.widget.BaseAdapter
+import android.widget.ImageView
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -29,6 +32,7 @@ import android.widget.ListView
 import android.widget.TextView
 import android.widget.ProgressBar
 import androidx.activity.ComponentActivity
+import androidx.core.os.BundleCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -47,6 +51,7 @@ import com.mikeyphw.xdm.android.model.DebugSeverity
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaThumbnailProvenance
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import java.net.URI
@@ -66,6 +71,7 @@ private data class MediaLocatorRequestContext(
     val variantUrls: Map<String, String>,
     val durationMs: Long?,
     val thumbnailUrl: String?,
+    val thumbnailProvenance: MediaThumbnailProvenance,
 )
 
 private object MediaLocatorRequestContextCache {
@@ -165,7 +171,11 @@ class MediaLocatorActivity : ComponentActivity() {
     private lateinit var resultsHeader: TextView
     private lateinit var progress: ProgressBar
     private lateinit var list: ListView
-    private lateinit var adapter: ArrayAdapter<String>
+    private lateinit var adapter: CandidateAdapter
+    private lateinit var faviconView: ImageView
+    private lateinit var findBar: LinearLayout
+    private lateinit var findText: EditText
+    private var currentFavicon: Bitmap? = null
     private lateinit var pageBackButton: Button
     private lateinit var pageForwardButton: Button
     private lateinit var reloadButton: Button
@@ -253,13 +263,19 @@ class MediaLocatorActivity : ComponentActivity() {
         }
         webView = WebView(this)
         list = ListView(this)
-        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_2, android.R.id.text1, mutableListOf())
+        adapter = CandidateAdapter()
         list.adapter = adapter
+        faviconView = ImageView(this).apply {
+            contentDescription = getString(R.string.media_locator_favicon)
+            visibility = View.GONE
+            scaleType = ImageView.ScaleType.CENTER_CROP
+        }
 
         val topBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
             addView(close, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(faviconView, LinearLayout.LayoutParams(dp(32), dp(32)).apply { marginStart = dp(6) })
             addView(title, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
         val addressRow = LinearLayout(this).apply {
@@ -275,6 +291,31 @@ class MediaLocatorActivity : ComponentActivity() {
             addView(pageForwardButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(reloadButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
+        val findButton = Button(this).apply { text = getString(R.string.media_locator_find) }
+        val shareButton = Button(this).apply { text = getString(R.string.media_locator_share) }
+        val externalButton = Button(this).apply { text = getString(R.string.media_locator_open_external) }
+        val browserTools = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(8), 0, dp(8), 0)
+            addView(findButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(shareButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(externalButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        findText = EditText(this).apply {
+            hint = getString(R.string.media_locator_find_hint)
+            setSingleLine(true)
+            imeOptions = EditorInfo.IME_ACTION_SEARCH
+        }
+        val findNext = Button(this).apply { text = getString(R.string.media_locator_find_next) }
+        val findClose = Button(this).apply { text = getString(R.string.media_locator_find_close) }
+        findBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            visibility = View.GONE
+            setPadding(dp(8), 0, dp(8), 0)
+            addView(findText, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(findNext, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(findClose, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
         val scanControls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(8), 0, dp(8), 0)
@@ -287,6 +328,8 @@ class MediaLocatorActivity : ComponentActivity() {
             addView(topBar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(addressRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(controls, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(browserTools, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(findBar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(scanControls, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(progress, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3)))
             addView(pageSummary, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -344,6 +387,10 @@ class MediaLocatorActivity : ComponentActivity() {
                 currentPageTitle = title?.trim()?.takeIf(String::isNotBlank)
                 updatePageSummary()
             }
+
+            override fun onReceivedIcon(view: WebView, icon: Bitmap?) {
+                updateFavicon(icon)
+            }
         }
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -359,6 +406,7 @@ class MediaLocatorActivity : ComponentActivity() {
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                 currentPageUrl = url
                 currentPageTitle = null
+                updateFavicon(favicon)
                 lastMainFrameError = null
                 hideMainFrameError()
                 pageLoading = true
@@ -515,6 +563,28 @@ class MediaLocatorActivity : ComponentActivity() {
                 status.text = getString(R.string.media_locator_rescanning)
             }
         }
+        findButton.setOnClickListener {
+            findBar.visibility = if (findBar.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+            if (findBar.visibility == View.VISIBLE) findText.requestFocus() else webView.clearMatches()
+        }
+        val runFind = {
+            val query = findText.text.toString().trim()
+            if (query.isNotBlank() && !webViewDisposed) webView.findAllAsync(query)
+        }
+        findText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) { runFind(); true } else false
+        }
+        findNext.setOnClickListener {
+            val query = findText.text.toString().trim()
+            if (query.isNotBlank() && !webViewDisposed) { webView.findAllAsync(query); webView.findNext(true) }
+        }
+        findClose.setOnClickListener {
+            if (!webViewDisposed) webView.clearMatches()
+            findBar.visibility = View.GONE
+        }
+        shareButton.setOnClickListener { shareCurrentPage() }
+        externalButton.setOnClickListener { openCurrentPageExternally() }
+
         resultsHeader.setOnClickListener {
             if (located.isNotEmpty()) {
                 resultsExpanded = !resultsExpanded
@@ -528,11 +598,24 @@ class MediaLocatorActivity : ComponentActivity() {
         }
 
         if (savedInstanceState != null) restoreLocatorState(savedInstanceState)
+        val webStateRestored = savedInstanceState?.getBundle(STATE_WEBVIEW)?.let { state ->
+            runCatching { webView.restoreState(state) != null }.getOrDefault(false)
+        } == true
+        if (webStateRestored) {
+            val restoredState = requireNotNull(savedInstanceState)
+            currentPageUrl = webView.url ?: restoredState.getString(STATE_URL)
+            currentPageTitle = restoredState.getString(STATE_TITLE)?.takeIf(String::isNotBlank) ?: webView.title
+            BundleCompat.getParcelable(restoredState, STATE_FAVICON, Bitmap::class.java)?.let(::updateFavicon)
+            val savedX = restoredState.getInt(STATE_SCROLL_X, 0)
+            val savedY = restoredState.getInt(STATE_SCROLL_Y, 0)
+            webView.post { if (!webViewDisposed) webView.scrollTo(savedX, savedY) }
+            currentPageUrl?.let(address::setText)
+        }
         updateCandidateHeader()
         updateNavigationState()
         updatePageSummary()
         val initial = normalizePageUrl(address.text.toString())
-        if (initial != null) {
+        if (!webStateRestored && initial != null) {
             status.text = getString(R.string.media_locator_loading)
             webView.loadUrl(initial)
         }
@@ -541,6 +624,14 @@ class MediaLocatorActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString(STATE_URL, currentPageUrl ?: address.text.toString())
+        outState.putString(STATE_TITLE, currentPageTitle)
+        outState.putInt(STATE_SCROLL_X, if (webViewDisposed) 0 else webView.scrollX)
+        outState.putInt(STATE_SCROLL_Y, if (webViewDisposed) 0 else webView.scrollY)
+        currentFavicon?.let { favicon -> outState.putParcelable(STATE_FAVICON, favicon.scaleDown(48)) }
+        if (!webViewDisposed) Bundle().also { webState ->
+            runCatching { webView.saveState(webState) }
+            outState.putBundle(STATE_WEBVIEW, webState)
+        }
         outState.putStringArrayList(STATE_CANDIDATES, ArrayList(located.values.take(MAX_SAVED_CANDIDATES).map(::encodeSavedCandidate)))
     }
 
@@ -663,6 +754,9 @@ class MediaLocatorActivity : ComponentActivity() {
             val contentLength = observation.optLong("contentLength", -1L).takeIf { it >= 0L }
             val durationMs = observation.optLong("durationMs", 0L).takeIf { it > 0L }
             val thumbnailUrl = normalizePageUrl(observation.optString("thumbnailUrl"))
+            val thumbnailProvenance = runCatching { MediaThumbnailProvenance.valueOf(observation.optString("thumbnailProvenance")) }
+                .getOrDefault(MediaThumbnailProvenance.Unknown)
+                .takeIf { thumbnailUrl != null } ?: MediaThumbnailProvenance.Unknown
             val key = correlationKey(url) ?: return
             val observationKey = "$key|${if (body != null) "body" else source}"
             debugRecorder.record(
@@ -695,6 +789,7 @@ class MediaLocatorActivity : ComponentActivity() {
                                 contentLength = contentLength,
                                 durationMs = durationMs,
                                 thumbnailUrl = thumbnailUrl,
+                                thumbnailProvenance = thumbnailProvenance,
                                 bodyPrefix = body,
                                 pageUrl = authoritativePage,
                                 pageTitle = title,
@@ -815,16 +910,102 @@ class MediaLocatorActivity : ComponentActivity() {
     }
 
     private fun refreshList() {
-        val labels = located.values
-            .sortedWith(compareByDescending<LocatedMedia> { it.rank }.thenBy { it.url })
-            .map { item ->
-                val host = runCatching { URI(item.url).host }.getOrNull().orEmpty()
-                "${item.kind.name.replace('_', ' ')} • ${item.mimeType ?: "type inferred"}\n$host • ${item.reason}"
-            }
-        adapter.clear()
-        adapter.addAll(labels)
-        adapter.notifyDataSetChanged()
+        adapter.replace(
+            located.values.sortedWith(compareByDescending<LocatedMedia> { it.rank }.thenBy { it.url }),
+        )
         updateCandidateHeader()
+    }
+
+    private inner class CandidateAdapter : BaseAdapter() {
+        private var items: List<LocatedMedia> = emptyList()
+
+        fun replace(next: List<LocatedMedia>) {
+            items = next
+            notifyDataSetChanged()
+        }
+
+        override fun getCount(): Int = items.size
+        override fun getItem(position: Int): LocatedMedia = items[position]
+        override fun getItemId(position: Int): Long = getItem(position).record.id.hashCode().toLong()
+
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+            val item = getItem(position)
+            val row = LinearLayout(this@MediaLocatorActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(dp(12), dp(8), dp(12), dp(8))
+            }
+            val artwork = ImageView(this@MediaLocatorActivity).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                contentDescription = getString(R.string.media_locator_candidate_thumbnail, item.record.title)
+                setImageResource(android.R.drawable.ic_menu_gallery)
+                tag = item.record.id
+            }
+            val labels = LinearLayout(this@MediaLocatorActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(12), 0, 0, 0)
+                val host = runCatching { URI(item.url).host }.getOrNull().orEmpty()
+                addView(TextView(this@MediaLocatorActivity).apply {
+                    text = item.record.title.take(120)
+                    textSize = 15f
+                })
+                addView(TextView(this@MediaLocatorActivity).apply {
+                    val kindLabel = item.kind.name.replace('_', ' ')
+                    val mimeLabel = item.mimeType ?: getString(R.string.media_locator_type_inferred)
+                    text = getString(
+                        R.string.media_locator_candidate_details,
+                        kindLabel,
+                        mimeLabel,
+                        host,
+                        item.reason,
+                    )
+                    textSize = 12f
+                })
+            }
+            row.addView(artwork, LinearLayout.LayoutParams(dp(96), dp(60)))
+            row.addView(labels, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            val request = XdmArtworkRequest(
+                fileName = item.record.fileName,
+                mimeType = item.record.mimeType,
+                thumbnailUrl = item.record.thumbnailUrl,
+                sourceUrl = item.record.sourceUrl,
+                localUri = null,
+            )
+            XdmArtworkLoader.peek(request.cacheKey)?.let(artwork::setImageBitmap) ?: lifecycleScope.launch(Dispatchers.IO) {
+                val bitmap = XdmArtworkLoader.load(applicationContext, request) ?: return@launch
+                withContext(Dispatchers.Main) { if (artwork.tag == item.record.id) artwork.setImageBitmap(bitmap) }
+            }
+            return row
+        }
+    }
+
+    private fun updateFavicon(icon: Bitmap?) {
+        currentFavicon = icon?.scaleDown(48)
+        faviconView.setImageBitmap(currentFavicon)
+        faviconView.visibility = if (currentFavicon == null) View.GONE else View.VISIBLE
+    }
+
+    private fun Bitmap.scaleDown(maxEdge: Int): Bitmap {
+        val largest = maxOf(width, height)
+        if (largest <= maxEdge || largest <= 0) return this
+        val ratio = maxEdge.toFloat() / largest
+        return Bitmap.createScaledBitmap(this, (width * ratio).toInt().coerceAtLeast(1), (height * ratio).toInt().coerceAtLeast(1), true)
+    }
+
+    private fun shareCurrentPage() {
+        val url = currentPageUrl ?: normalizePageUrl(address.text.toString()) ?: return
+        val share = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, url)
+            currentPageTitle?.takeIf(String::isNotBlank)?.let { putExtra(Intent.EXTRA_SUBJECT, it) }
+        }
+        startActivity(Intent.createChooser(share, getString(R.string.media_locator_share_chooser)))
+    }
+
+    private fun openCurrentPageExternally() {
+        val url = currentPageUrl ?: normalizePageUrl(address.text.toString()) ?: return
+        runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            .onFailure { status.text = getString(R.string.media_locator_no_external_browser) }
     }
 
     private fun updateCandidateHeader() {
@@ -942,6 +1123,7 @@ class MediaLocatorActivity : ComponentActivity() {
                 variantUrls = candidate.variants.associate { it.id to it.url },
                 durationMs = candidate.record.durationMs,
                 thumbnailUrl = candidate.record.thumbnailUrl,
+                thumbnailProvenance = candidate.record.thumbnailProvenance,
             ),
         )
         return JSONObject().apply {
@@ -951,6 +1133,7 @@ class MediaLocatorActivity : ComponentActivity() {
             put("reason", candidate.reason.take(256))
             put("pageTitle", candidate.pageTitle)
             put("rank", candidate.rank)
+            put("thumbnailProvenance", candidate.record.thumbnailProvenance.name)
             put("manifestRole", candidate.record.manifestRole.name)
             candidate.record.manifestIsLive?.let { put("manifestIsLive", it) }
             put("manifestProtected", candidate.record.manifestProtected)
@@ -1000,6 +1183,8 @@ class MediaLocatorActivity : ComponentActivity() {
                 mimeTypeHint = mime ?: savedKind?.restoreMimeHint(),
                 durationMs = requestContext.durationMs,
                 thumbnailUrl = requestContext.thumbnailUrl,
+                thumbnailProvenance = runCatching { MediaThumbnailProvenance.valueOf(json.optString("thumbnailProvenance")) }
+                    .getOrDefault(requestContext.thumbnailProvenance),
             ) ?: return@forEach
             val base = captureService.recordFor(candidate)
             val record = base.copy(
@@ -1125,6 +1310,11 @@ class MediaLocatorActivity : ComponentActivity() {
         private const val EXTRA_URL = "xdm.media_locator.url"
         private const val JS_BRIDGE = "XdmMediaLocator"
         private const val STATE_URL = "xdm.media_locator.state.url"
+        private const val STATE_TITLE = "xdm.media_locator.state.title"
+        private const val STATE_WEBVIEW = "xdm.media_locator.state.webview"
+        private const val STATE_SCROLL_X = "xdm.media_locator.state.scroll_x"
+        private const val STATE_SCROLL_Y = "xdm.media_locator.state.scroll_y"
+        private const val STATE_FAVICON = "xdm.media_locator.state.favicon"
         private const val STATE_CANDIDATES = "xdm.media_locator.state.candidates"
         private const val MAX_NATIVE_REQUESTS = 256
         private const val MAX_RECENT_OBSERVATIONS = 512
@@ -1158,16 +1348,22 @@ class MediaLocatorActivity : ComponentActivity() {
                   return /^https?:$/.test(parsed.protocol) ? parsed.href : '';
                 } catch (_) { return ''; }
               };
-              let artworkCache = { at: 0, url: '' };
+              let artworkCache = { at: 0, url: '', provenance: 'Unknown' };
               const pageArtwork = () => {
                 const now = Date.now();
-                if (now - artworkCache.at < 2000) return artworkCache.url;
+                if (now - artworkCache.at < 2000) return artworkCache;
                 let found = '';
+                let provenance = 'Unknown';
                 try {
-                  for (const selector of ['meta[property="og:image"]','meta[property="og:image:url"]','meta[name="twitter:image"]','meta[name="twitter:image:src"]','link[rel="image_src"]']) {
+                  const selectors = [
+                    ['meta[property="og:image"]', 'OpenGraph'], ['meta[property="og:image:url"]', 'OpenGraph'],
+                    ['meta[name="twitter:image"]', 'TwitterCard'], ['meta[name="twitter:image:src"]', 'TwitterCard'],
+                    ['link[rel="image_src"]', 'LinkImage']
+                  ];
+                  for (const [selector, source] of selectors) {
                     const node = document.querySelector(selector);
                     found = artworkUrl(node && (node.content || node.href || node.getAttribute('content') || node.getAttribute('href')));
-                    if (found) break;
+                    if (found) { provenance = source; break; }
                   }
                 } catch (_) {}
                 if (!found) {
@@ -1189,12 +1385,12 @@ class MediaLocatorActivity : ComponentActivity() {
                       const text = String(script.textContent || '').slice(0, 131072);
                       if (!text) continue;
                       try { found = pick(JSON.parse(text)); } catch (_) {}
-                      if (found) break;
+                      if (found) { provenance = 'JsonLd'; break; }
                     }
                   } catch (_) {}
                 }
-                artworkCache = { at: now, url: found || '' };
-                return artworkCache.url;
+                artworkCache = { at: now, url: found || '', provenance: found ? provenance : 'Unknown' };
+                return artworkCache;
               };
               const safeHeaders = (headers) => {
                 const out = {};
@@ -1211,8 +1407,9 @@ class MediaLocatorActivity : ComponentActivity() {
                   if (!/^https?:$/.test(u.protocol)) return;
                   const mime = String(data.mime || '').split(';')[0].trim();
                   if (HARD_NON_MEDIA.test(mime) && !data.body) return;
-                  const thumbnailUrl = artworkUrl(data.thumbnailUrl) || pageArtwork();
-                  bridge.observe(JSON.stringify({ ...data, url: u.href, mime, thumbnailUrl, pageUrl: page(), title: title() }));
+                  const explicitThumbnail = artworkUrl(data.thumbnailUrl);
+                  const fallbackArtwork = explicitThumbnail ? { url: explicitThumbnail, provenance: data.thumbnailProvenance || 'Unknown' } : pageArtwork();
+                  bridge.observe(JSON.stringify({ ...data, url: u.href, mime, thumbnailUrl: fallbackArtwork.url, thumbnailProvenance: fallbackArtwork.provenance, pageUrl: page(), title: title() }));
                 } catch (_) {}
               };
               const boundedText = async (response) => {
@@ -1247,8 +1444,9 @@ class MediaLocatorActivity : ComponentActivity() {
                     if (!mime && mediaNode && mediaNode.tagName === 'AUDIO') mime = 'audio/unknown';
                     const duration = Number(mediaNode && mediaNode.duration || 0);
                     const durationMs = Number.isFinite(duration) && duration > 0 ? Math.floor(duration * 1000) : 0;
-                    const thumbnailUrl = mediaNode && mediaNode.tagName === 'VIDEO' ? artworkUrl(mediaNode.poster || '') || pageArtwork() : pageArtwork();
-                    emit({ url, mime, durationMs, thumbnailUrl, source: 'dom' });
+                    const posterUrl = mediaNode && mediaNode.tagName === 'VIDEO' ? artworkUrl(mediaNode.poster || '') : '';
+                    const artwork = posterUrl ? { url: posterUrl, provenance: 'PagePoster' } : pageArtwork();
+                    emit({ url, mime, durationMs, thumbnailUrl: artwork.url, thumbnailProvenance: artwork.provenance, source: 'dom' });
                   });
                 } catch (_) {}
                 try {

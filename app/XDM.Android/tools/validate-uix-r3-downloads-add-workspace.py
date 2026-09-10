@@ -75,7 +75,7 @@ add = require(
 for stale in ("reviewConfirmed", "Review download", "Add to queue", "Step 1 of 2", "Step 2 of 2"):
     if stale in add:
         ERRORS.append(f"Add Download must not retain obsolete two-step confirmation token: {stale}")
-if "if (preferMediaInspection)" not in add or "onInspectMedia(url, name)" not in add or "onAdd(" not in add:
+if "if (preferMediaInspection)" not in add or "onInspectMedia(url, effectiveFileName)" not in add or "onAdd(" not in add:
     ERRORS.append("Add Download must keep explicit media inspection separate from the one-tap direct Download action")
 if add.find("BrowserSessionHealthCard(health)") < add.find("AnimatedVisibility(advancedExpanded)"):
     ERRORS.append("Browser session diagnostics must remain behind Advanced options")

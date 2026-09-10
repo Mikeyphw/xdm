@@ -55,7 +55,7 @@ class PostDl03ReleaseFollowupContractTest {
         val readme = File(root, "README.md").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
         assertTrue(readme.contains("## XDM Android 0.21.0"))
-        assertTrue(readme.contains("Room is schema v21"))
+        assertTrue(readme.contains("Room is schema v22"))
         assertTrue(readme.contains("Phase 17 established the original public-release boundary at Room schema v14; that phase is now historical."))
         assertTrue(manifest.contains("\"roadmap_status\": \"MC01-MC05 and DL01-DL03 sealed\""))
         assertTrue(manifest.contains("\"next_overlay\": null"))

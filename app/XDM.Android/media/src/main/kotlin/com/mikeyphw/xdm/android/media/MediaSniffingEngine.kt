@@ -4,6 +4,7 @@ import com.mikeyphw.xdm.android.model.DebugArea
 import com.mikeyphw.xdm.android.model.DebugEventRecorder
 import com.mikeyphw.xdm.android.model.DebugSeverity
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaThumbnailProvenance
 import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
@@ -33,6 +34,7 @@ data class MediaSniffingInput(
     val contentLength: Long? = null,
     val durationMs: Long? = null,
     val thumbnailUrl: String? = null,
+    val thumbnailProvenance: MediaThumbnailProvenance = MediaThumbnailProvenance.Unknown,
     val bodyPrefix: String? = null,
     val pageUrl: String? = null,
     val pageTitle: String? = null,
@@ -354,6 +356,7 @@ class MediaSniffingEngine(
                 headers = input.requestHeaders,
                 durationMs = input.durationMs,
                 thumbnailUrl = input.thumbnailUrl,
+                thumbnailProvenance = input.thumbnailProvenance,
             )
         }
         val inlineManifest = captureCandidates.associate { candidate ->

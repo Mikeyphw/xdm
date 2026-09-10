@@ -61,6 +61,7 @@ import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.ChecksumResult
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.DownloadAction
@@ -94,6 +95,7 @@ fun DownloadsScreen(
     downloads: List<Download>,
     mediaCaptures: List<MediaCaptureRecord> = emptyList(),
     mediaVariants: List<MediaVariant> = emptyList(),
+    mediaOutputs: List<MediaOutputRecord> = emptyList(),
     requestedDetailDownloadId: String? = null,
     compact: Boolean,
     active: ActiveTransferSummary,
@@ -164,20 +166,27 @@ fun DownloadsScreen(
     var artifactInspectionKeys by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var resumeInspectionKeys by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var twoPaneLayoutActive by remember { mutableStateOf(false) }
-    val mediaThumbnailByDownloadId = remember(mediaCaptures, mediaVariants) {
+    val mediaThumbnailByDownloadId = remember(mediaCaptures, mediaVariants, mediaOutputs) {
         val variantThumbnailByCapture = mediaVariants
             .asSequence()
             .filter { it.kind == MediaVariantKind.Thumbnail }
             .groupBy(MediaVariant::captureId)
             .mapValues { (_, rows) -> rows.firstOrNull()?.url }
-        mediaCaptures
-            .asSequence()
-            .mapNotNull { capture ->
-                val thumbnail = capture.thumbnailUrl ?: variantThumbnailByCapture[capture.id]
-                capture.downloadId?.let { it to thumbnail }
+        val thumbnailByCapture = mediaCaptures.associate { capture ->
+            capture.id to (capture.thumbnailUrl ?: variantThumbnailByCapture[capture.id])
+        }
+        buildMap {
+            mediaCaptures.forEach { capture ->
+                val thumbnail = thumbnailByCapture[capture.id]
+                if (!thumbnail.isNullOrBlank()) capture.downloadId?.let { put(it, thumbnail) }
             }
-            .filter { (_, thumbnail) -> !thumbnail.isNullOrBlank() }
-            .toMap()
+            // Additional generations have their own download ids; carry the capture artwork to
+            // every app-owned media output, not only the capture's original primary download.
+            mediaOutputs.forEach { output ->
+                val thumbnail = thumbnailByCapture[output.captureId]
+                if (!thumbnail.isNullOrBlank()) output.downloadId?.let { put(it, thumbnail) }
+            }
+        }
     }
 
     val metrics = DownloadsWorkspacePlanner.metrics(downloads.filterNot { it.archived })

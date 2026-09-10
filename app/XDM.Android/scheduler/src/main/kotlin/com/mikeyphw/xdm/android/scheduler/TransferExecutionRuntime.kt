@@ -362,6 +362,29 @@ class TransferExecutionRuntime(
 
     suspend fun findDownload(downloadId: String): Download? = store.find(downloadId)
 
+    /** Exact live snapshot for one execution owner. Never substitute the aggregate summary for UIDT. */
+    fun liveSummaryFor(downloadId: String, fallbackFileName: String? = null): ActiveTransferSummary {
+        val snapshot = snapshots.value[downloadId]
+        return if (snapshot != null) {
+            ActiveTransferSummary(
+                activeCount = 1,
+                bytesReceived = snapshot.bytesReceived,
+                totalBytes = snapshot.totalBytes,
+                speedBytesPerSecond = snapshot.speedBytesPerSecond,
+                primaryDownloadId = downloadId,
+                primaryFileName = fileNames[downloadId] ?: fallbackFileName,
+                primaryState = snapshot.state,
+                aggregateStates = setOf(snapshot.state),
+            )
+        } else {
+            ActiveTransferSummary(
+                activeCount = if (fallbackFileName != null) 1 else 0,
+                primaryDownloadId = downloadId,
+                primaryFileName = fallbackFileName,
+            )
+        }
+    }
+
     /** Backend ownership generation currently attached in this process, if one exists. */
     fun activeAttemptGeneration(downloadId: String): Long? = attemptGenerations[downloadId]
 
@@ -1011,6 +1034,7 @@ class TransferExecutionRuntime(
             primaryDownloadId = primary?.key,
             primaryFileName = primary?.key?.let(fileNames::get),
             primaryState = primary?.value?.state,
+            aggregateStates = active.mapTo(linkedSetOf()) { it.value.state },
         )
     }
 

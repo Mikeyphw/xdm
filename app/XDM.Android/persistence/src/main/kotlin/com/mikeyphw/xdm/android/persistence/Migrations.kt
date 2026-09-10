@@ -730,4 +730,10 @@ object Migrations {
         }
     }
 
+    val Migration21To22 = object : Migration(21, 22) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN thumbnailProvenance TEXT NOT NULL DEFAULT 'Unknown'")
+        }
+    }
+
 }

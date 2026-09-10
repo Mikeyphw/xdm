@@ -28,6 +28,33 @@ enum class RepairBlockStatus { Trusted, Missing, Corrupt, Unknown }
 
 
 enum class MediaCaptureStatus { Captured, MetadataReady, MetadataMissing, DownloadCreated, Expired, Archived }
+enum class MediaThumbnailProvenance { Unknown, PagePoster, OpenGraph, TwitterCard, JsonLd, LinkImage, BrowserExtension, Resolver, DirectImage, GeneratedFrame }
+
+object MediaArtworkMergePolicy {
+    fun priority(provenance: MediaThumbnailProvenance): Int = when (provenance) {
+        MediaThumbnailProvenance.Resolver -> 100
+        MediaThumbnailProvenance.GeneratedFrame -> 95
+        MediaThumbnailProvenance.DirectImage -> 90
+        MediaThumbnailProvenance.PagePoster -> 80
+        MediaThumbnailProvenance.BrowserExtension -> 75
+        MediaThumbnailProvenance.OpenGraph -> 70
+        MediaThumbnailProvenance.TwitterCard -> 65
+        MediaThumbnailProvenance.JsonLd -> 60
+        MediaThumbnailProvenance.LinkImage -> 50
+        MediaThumbnailProvenance.Unknown -> 0
+    }
+
+    /** Preserve richer persisted artwork while still allowing equal/higher-quality refreshes. */
+    fun merge(incoming: MediaCaptureRecord, persisted: MediaCaptureRecord?): MediaCaptureRecord {
+        if (persisted == null || persisted.thumbnailUrl.isNullOrBlank()) return incoming
+        val incomingUrl = incoming.thumbnailUrl?.takeIf(String::isNotBlank)
+        val keepPersisted = incomingUrl == null || priority(persisted.thumbnailProvenance) > priority(incoming.thumbnailProvenance)
+        return if (keepPersisted) incoming.copy(
+            thumbnailUrl = persisted.thumbnailUrl,
+            thumbnailProvenance = persisted.thumbnailProvenance,
+        ) else incoming
+    }
+}
 enum class MediaResolutionStatus { Unresolved, Resolved, RequiresRefresh, Failed }
 enum class MediaSourceKind { DirectFile, ProgressiveMedia, HlsPlaylist, DashManifest, AudioStream, VideoStream, Unknown }
 enum class MediaManifestRole { Unknown, HlsMaster, HlsMedia, DashMpd }
@@ -115,6 +142,7 @@ data class MediaCaptureRecord(
     val codecs: String?,
     val durationMs: Long?,
     val thumbnailUrl: String?,
+    val thumbnailProvenance: MediaThumbnailProvenance = MediaThumbnailProvenance.Unknown,
     val fileName: String,
     val variantCount: Int,
     val downloadId: String?,

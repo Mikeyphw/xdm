@@ -29,7 +29,12 @@ class UserInitiatedTransferJobService : JobService() {
         val queue = (application as QueueIntelligenceProvider).queueIntelligenceCoordinator
         val notifications = TransferNotifications(this)
         val notificationId = TransferSystemIdRegistry(this).idFor(downloadId)
-        setNotification(params, notificationId, notifications.active(ActiveTransferSummary(activeCount = 1, primaryDownloadId = downloadId)), JOB_END_NOTIFICATION_POLICY_DETACH)
+        setNotification(
+            params,
+            notificationId,
+            notifications.active(ActiveTransferSummary(activeCount = 1, primaryDownloadId = downloadId), downloadId),
+            JOB_END_NOTIFICATION_POLICY_REMOVE,
+        )
         jobs[params.jobId] = scope.launch {
             when (queue.authorizeClaimedExecution(downloadId, queueClaimToken)) {
                 ClaimedExecutionAuthorization.TemporarilyHeld -> {
@@ -44,9 +49,14 @@ class UserInitiatedTransferJobService : JobService() {
                 }
                 ClaimedExecutionAuthorization.Ready -> Unit
             }
+            val initial = runtime.findDownload(downloadId)
+            val throttle = NotificationUpdateThrottle()
             val updater = launch {
-                runtime.summary.collectLatest { summary ->
-                    setNotification(params, notificationId, notifications.active(summary, downloadId), JOB_END_NOTIFICATION_POLICY_DETACH)
+                runtime.liveProgress.collectLatest {
+                    if (throttle.shouldPublish()) {
+                        val exact = runtime.liveSummaryFor(downloadId, initial?.fileName ?: "Download")
+                        setNotification(params, notificationId, notifications.active(exact, downloadId), JOB_END_NOTIFICATION_POLICY_REMOVE)
+                    }
                 }
             }
             val state = runtime.execute(downloadId, queueClaimToken)
@@ -66,7 +76,13 @@ class UserInitiatedTransferJobService : JobService() {
                 },
                 mimeType = result?.mimeType,
                 attemptGeneration = result?.attemptGeneration ?: 0L,
-            )?.let { setNotification(params, notificationId, it, JOB_END_NOTIFICATION_POLICY_DETACH) }
+            )?.let { terminal ->
+                runCatching {
+                    setNotification(params, notificationId, terminal, JOB_END_NOTIFICATION_POLICY_DETACH)
+                }.onSuccess {
+                    notifications.markTerminalDispatched(downloadId, result?.attemptGeneration ?: 0L, state)
+                }
+            }
             AndroidExecutionClaimRegistry.release(downloadId, queueClaimToken)
             val reschedule = state in setOf(DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)
             jobFinished(params, reschedule)

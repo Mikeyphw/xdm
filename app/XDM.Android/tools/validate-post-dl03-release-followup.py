@@ -63,8 +63,8 @@ need(root_ci.count("gradle-version: '9.7.1'") >= 2,
      "repository validate and signed-release jobs must both pin Gradle 9.7.1")
 need("gradle-version: '9.7.0'" not in root_ci and "--gradle-version 9.7.0" not in root_ci,
      "repository Android CI must not retain Gradle 9.7.0 drift")
-need("## XDM Android 0.21.0" in readme and "Room is schema v21" in readme,
-     "README must expose current 0.21.0 / Room v21 release truth")
+need("## XDM Android 0.21.0" in readme and "Room is schema v22" in readme,
+     "README must expose current 0.21.0 / Room v22 release truth")
 need("## Current final release gate" in readme,
      "README must identify the current release gate explicitly")
 need("Phase 17 established the original public-release boundary at Room schema v14; that phase is now historical." in readme,

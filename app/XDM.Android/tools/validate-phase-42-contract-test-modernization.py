@@ -53,7 +53,7 @@ require(uix2, 'fun(?:\\\\s+<[^>]+>)?\\\\s+$primitive\\\\(', "Generic primitive d
 require(uix2, "XdmMinimumTouchTarget", "Touch-target token contract")
 reject(uix2, "private val XdmBackground = Color(0xFF090B0F)", "Shared theme token contract")
 
-require(uix3, 'onClick = { onInspectMedia(url, name) }', "Review-first media inspection contract")
+require(uix3, 'onClick = { onInspectMedia(url, effectiveFileName) }', "Review-first media inspection contract")
 reject(uix3, 'Regex("onInspectMedia\\\\([^)]*\\\\).*onAdd"', "Review-first media inspection contract")
 require(uix5, "DeveloperWorkspacePolicy.shouldCompose", "Developer workspace gate contract")
 

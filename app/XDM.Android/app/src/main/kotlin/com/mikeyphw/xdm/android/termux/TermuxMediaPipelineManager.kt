@@ -18,6 +18,7 @@ import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
+import com.mikeyphw.xdm.android.model.MediaThumbnailProvenance
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.persistence.AppDatabase
@@ -1496,6 +1497,7 @@ class TermuxMediaPipelineManager(
         }
         if (variants.isNotEmpty()) repository.replaceMediaVariants(variants)
         val extension = json.optString("ext").takeIf(String::isNotBlank)
+        val resolvedThumbnail = PostProcessingExecutionPolicy.sanitizeDurableRemoteUrl(json.optString("thumbnail"))
         repository.saveMediaCapture(
             capture.copy(
                 title = json.optString("title").takeIf(String::isNotBlank) ?: capture.title,
@@ -1504,7 +1506,8 @@ class TermuxMediaPipelineManager(
                 container = extension ?: capture.container,
                 codecs = listOf(json.optString("vcodec"), json.optString("acodec")).filter { it.isNotBlank() && it != "none" }.joinToString(",").takeIf(String::isNotBlank) ?: capture.codecs,
                 durationMs = json.optDouble("duration").takeIf { it > 0.0 }?.times(1000.0)?.toLong() ?: capture.durationMs,
-                thumbnailUrl = PostProcessingExecutionPolicy.sanitizeDurableRemoteUrl(json.optString("thumbnail")) ?: capture.thumbnailUrl,
+                thumbnailUrl = resolvedThumbnail ?: capture.thumbnailUrl,
+                thumbnailProvenance = if (resolvedThumbnail != null) MediaThumbnailProvenance.Resolver else capture.thumbnailProvenance,
                 fileName = extension?.let { "${safeBase(capture)}.$it" } ?: capture.fileName,
                 variantCount = variants.size.takeIf { it > 0 } ?: capture.variantCount,
                 updatedAtEpochMs = System.currentTimeMillis(),

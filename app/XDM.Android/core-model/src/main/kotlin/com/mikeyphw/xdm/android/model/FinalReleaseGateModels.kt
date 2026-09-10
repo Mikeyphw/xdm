@@ -130,7 +130,7 @@ object FinalReleaseGateExplainer {
     private fun fixActionFor(id: String): String = when (id) {
         "version.phase17", "version.code", "version.alpha" -> "Update versionName/versionCode to the current release-candidate contract."
         "package.identity" -> "Restore the stable package id before building release artifacts."
-        "database.schema" -> "Keep reviewed schema 21 and its complete migration chain, or add a reviewed migration and update the release contract."
+        "database.schema" -> "Keep reviewed schema 22 and its complete migration chain, or add a reviewed migration and update the release contract."
         "release.safety" -> "Run and fix the release safety validator chain."
         "install.update" -> "Run install/update readiness checks and resolve reported failures."
         "diagnostics.redaction" -> "Fix diagnostic redaction before exporting support bundles or release artifacts."
@@ -247,7 +247,7 @@ object FinalPublicReleaseGate {
                     ),
                 )
             }
-            if (schemaVersion != 21) {
+            if (schemaVersion != 22) {
                 add(
                     FinalReleaseGateCheck(
                         id = "database.schema",
