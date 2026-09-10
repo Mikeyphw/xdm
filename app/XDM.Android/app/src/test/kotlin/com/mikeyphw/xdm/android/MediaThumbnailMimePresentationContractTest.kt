@@ -39,7 +39,9 @@ class MediaThumbnailMimePresentationContractTest {
     }
 
     private fun androidRoot(): File {
-        val cwd = File(System.getProperty("user.dir")).canonicalFile
-        return if (File(cwd, "settings.gradle.kts").isFile) cwd else File(cwd, "app/XDM.Android").canonicalFile
+        val cwd = File(System.getProperty("user.dir") ?: ".").canonicalFile
+        return generateSequence(cwd) { it.parentFile }
+            .firstOrNull { File(it, "settings.gradle.kts").isFile && File(it, "core-model").isDirectory }
+            ?: error("Could not locate XDM.Android root from $cwd")
     }
 }

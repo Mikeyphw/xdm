@@ -617,8 +617,7 @@ class MediaLocatorActivity : ComponentActivity() {
         val url = currentPageUrl ?: address.text.toString()
         pageLoading = false
         progress.visibility = View.GONE
-        lastMainFrameError = "$title
-$detail"
+        lastMainFrameError = "$title\n$detail"
         errorText.text = lastMainFrameError
         errorPanel.visibility = View.VISIBLE
         status.text = getString(R.string.media_locator_error_status)

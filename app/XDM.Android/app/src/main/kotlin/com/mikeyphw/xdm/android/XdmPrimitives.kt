@@ -46,7 +46,7 @@ import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
 import androidx.compose.material.icons.rounded.Movie
-import androidx.compose.material.icons.rounded.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.DataObject
 import androidx.compose.material3.Button
@@ -378,7 +378,7 @@ fun XdmFileTypeIcon(
         MimePresentationKind.Document, MimePresentationKind.Text -> Icons.Rounded.Description
         MimePresentationKind.Code -> Icons.Rounded.Code
         MimePresentationKind.Subtitle -> Icons.Rounded.Subtitles
-        MimePresentationKind.Playlist -> Icons.Rounded.QueueMusic
+        MimePresentationKind.Playlist -> Icons.AutoMirrored.Rounded.QueueMusic
         MimePresentationKind.Package -> Icons.Rounded.Android
         MimePresentationKind.Torrent -> Icons.Rounded.CloudDownload
         MimePresentationKind.Font -> Icons.Rounded.FontDownload

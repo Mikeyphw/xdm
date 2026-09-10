@@ -268,7 +268,7 @@ private object XdmArtworkLoader {
     private fun traceFailure(context: Context, request: XdmArtworkRequest) {
         val recorder = (context.applicationContext as? DebugRecorderProvider)?.debugEventRecorder ?: return
         recorder.record(
-            area = DebugArea.Media,
+            area = DebugArea.Thumbnail,
             severity = DebugSeverity.Trace,
             action = "thumbnail-load",
             result = "fallback-icon",
