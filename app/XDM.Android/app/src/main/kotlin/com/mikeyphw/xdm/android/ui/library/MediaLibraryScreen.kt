@@ -15,7 +15,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -38,9 +40,16 @@ import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
 import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaVariant
+import com.mikeyphw.xdm.android.util.formatBytes
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+
+private enum class LibrarySort(val label: String) {
+    Recent("Recent"),
+    Title("Title"),
+    Size("Size"),
+}
 
 @Composable
 @UiSurface(UiAudience.User, "Browse completed playable media")
@@ -53,6 +62,8 @@ fun MediaLibraryScreen(
     onResumeOrRetryDownload: (Download) -> Unit,
     onRetryExternalJob: (String) -> Unit,
     onRemoveRecord: (OfflineMediaLibraryItem) -> Unit,
+    onFindMedia: () -> Unit,
+    onDeleteSavedFile: (OfflineMediaLibraryItem) -> Unit,
 ) {
     val executionPlanner = remember { MediaExecutionLibraryPlanner() }
     val consumerPlanner = remember { MediaConsumerWorkspacePlanner() }
@@ -67,12 +78,26 @@ fun MediaLibraryScreen(
         )
     }
     var filter by rememberSaveable { mutableStateOf(MediaLibraryFilter.All) }
+    var sort by rememberSaveable { mutableStateOf(LibrarySort.Recent) }
     var selectedPlayerItem by remember { mutableStateOf<OfflineMediaLibraryItem?>(null) }
     var selectedDetailsItem by remember { mutableStateOf<OfflineMediaLibraryItem?>(null) }
-    val visibleItems = remember(allItems, filter) {
-        consumerPlanner.filterLibrary(allItems, filter, System.currentTimeMillis())
+    var pendingDeleteItem by remember { mutableStateOf<OfflineMediaLibraryItem?>(null) }
+    val downloadsById = remember(downloads) { downloads.associateBy(Download::id) }
+    val visibleItems = remember(allItems, filter, sort, downloadsById) {
+        val filtered = consumerPlanner.filterLibrary(allItems, filter, System.currentTimeMillis())
+        when (sort) {
+            LibrarySort.Recent -> filtered.sortedByDescending { it.sidecar.completedAtEpochMs ?: 0L }
+            LibrarySort.Title -> filtered.sortedBy { it.title.lowercase() }
+            LibrarySort.Size -> filtered.sortedByDescending { libraryItemSize(it, downloadsById) }
+        }
     }
     val playableCount = allItems.count { it.toPlaybackCandidate() != null }
+    val storedBytes = remember(allItems, downloadsById) {
+        allItems.mapNotNull(OfflineMediaLibraryItem::downloadId)
+            .distinct()
+            .mapNotNull(downloadsById::get)
+            .sumOf { it.completedArtifactBytes ?: it.totalBytes ?: it.bytesReceived }
+    }
 
     Column(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.Library, "Media library")) {
         val intro = "Completed video and audio, ready to play or manage."
@@ -89,6 +114,7 @@ fun MediaLibraryScreen(
                 metrics = listOf(
                     XdmMetric("Items", allItems.size.toString()),
                     XdmMetric("Playable", playableCount.toString()),
+                    XdmMetric("Stored", storedBytes.formatBytes()),
                 ),
             )
             XdmSegmentedControl(
@@ -97,17 +123,28 @@ fun MediaLibraryScreen(
                 label = MediaLibraryFilter::label,
                 onSelected = { filter = it },
             )
+            XdmActionFlowRow {
+                LibrarySort.entries.forEach { option ->
+                    FilterChip(
+                        selected = sort == option,
+                        onClick = { sort = option },
+                        label = { Text("Sort: ${option.label}") },
+                    )
+                }
+            }
         }
 
         if (visibleItems.isEmpty()) {
             XdmEmptyState(
-                title = if (allItems.isEmpty()) "Your library is empty" else "Nothing in this filter",
+                title = if (allItems.isEmpty()) "No media yet" else "Nothing in this filter",
                 description = if (allItems.isEmpty()) {
-                    "Completed media appears here automatically after a download finishes."
+                    "Completed video and audio will appear here automatically."
                 } else {
                     "Choose another filter to see your completed media."
                 },
                 modifier = Modifier.weight(1f),
+                actionLabel = if (allItems.isEmpty()) "Find media" else null,
+                onAction = if (allItems.isEmpty()) onFindMedia else null,
             )
         } else if (LocalXdmWindowClass.current == XdmWindowClass.Compact) {
             LazyColumn(
@@ -186,6 +223,29 @@ fun MediaLibraryScreen(
                 onRemoveRecord(item)
                 selectedDetailsItem = null
             },
+            onDeleteSavedFile = if (item.downloadId != null && item.isCompleted) {
+                {
+                    pendingDeleteItem = item
+                    selectedDetailsItem = null
+                }
+            } else null,
+        )
+    }
+
+    pendingDeleteItem?.let { item ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteItem = null },
+            title = { Text("Delete saved file?") },
+            text = { Text("This permanently deletes the downloaded file and its XDM download entry. This cannot be undone.") },
+            confirmButton = {
+                Button(onClick = {
+                    onDeleteSavedFile(item)
+                    pendingDeleteItem = null
+                }) { Text("Delete file") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteItem = null }) { Text("Cancel") }
+            },
         )
     }
 }
@@ -247,7 +307,7 @@ private fun LibraryPrimaryActions(
 ) {
     XdmActionFlowRow {
         when {
-            item.toPlaybackCandidate() != null -> Button(onClick = onPlay) { Text("Play") }
+            item.toPlaybackCandidate() != null -> Button(onClick = onPlay) { Text("Open") }
             item.canResume -> Button(onClick = onResumeOrRetry) { Text("Resume download") }
             item.canRetry -> Button(onClick = onResumeOrRetry) { Text("Retry") }
             else -> StatusPill("Unavailable", tone = XdmStatusTone.Warning)
@@ -264,6 +324,7 @@ private fun LibraryItemDetailsSheet(
     onDismiss: () -> Unit,
     onResumeOrRetry: () -> Unit,
     onRemoveRecord: (() -> Unit)?,
+    onDeleteSavedFile: (() -> Unit)?,
 ) {
     val context = LocalContext.current
     XdmAdaptiveSheet(
@@ -286,7 +347,13 @@ private fun LibraryItemDetailsSheet(
                 item.canRetry -> Button(onClick = onResumeOrRetry) { Text("Retry download") }
             }
             item.playbackUrl?.let { url ->
-                TextButton(onClick = { openMediaFile(context, url, item.sidecar.mimeType) }) { Text("Open file") }
+                XdmActionFlowRow {
+                    TextButton(onClick = { openMediaFile(context, url, item.sidecar.mimeType) }) { Text("Open file") }
+                    TextButton(onClick = { shareMediaFile(context, url, item.sidecar.mimeType, item.title) }) { Text("Share") }
+                }
+            }
+            onDeleteSavedFile?.let { deleteSavedFile ->
+                TextButton(onClick = deleteSavedFile) { Text("Delete saved file") }
             }
             onRemoveRecord?.let { removeRecord ->
                 TextButton(onClick = removeRecord) { Text("Remove library record") }
@@ -311,6 +378,28 @@ private fun formatLibraryDate(epochMs: Long): String = runCatching {
         .withZone(ZoneId.systemDefault())
         .format(Instant.ofEpochMilli(epochMs))
 }.getOrDefault("recently")
+
+private fun libraryItemSize(item: OfflineMediaLibraryItem, downloadsById: Map<String, Download>): Long =
+    item.downloadId?.let(downloadsById::get)?.let { download ->
+        download.completedArtifactBytes ?: download.totalBytes ?: download.bytesReceived
+    } ?: 0L
+
+private fun shareMediaFile(context: android.content.Context, url: String, mimeType: String?, title: String) {
+    val uri = Uri.parse(url)
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = mimeType ?: "*/*"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        putExtra(Intent.EXTRA_SUBJECT, title)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    try {
+        context.startActivity(Intent.createChooser(intent, "Share media"))
+    } catch (_: ActivityNotFoundException) {
+        // Keep the library usable even when the device has no compatible share target.
+    } catch (_: SecurityException) {
+        // Some providers do not grant external share access; embedded playback remains available.
+    }
+}
 
 private fun openMediaFile(context: android.content.Context, url: String, mimeType: String?) {
     val intent = Intent(Intent.ACTION_VIEW).apply {

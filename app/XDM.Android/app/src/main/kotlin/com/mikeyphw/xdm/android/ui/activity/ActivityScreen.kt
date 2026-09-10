@@ -42,7 +42,7 @@ fun ActivityWorkspaceScreen(
 ) {
     val normalizedPanel = selectedPanel.normalized(false).takeIf { it.isPrimary } ?: ActivityPanel.Attention
     val metrics = remember(events) { ActivityWorkspacePlanner.metrics(events) }
-    val visibleEvents = remember(events, normalizedPanel) { ActivityWorkspacePlanner.forPanel(events, normalizedPanel) }
+    val visibleGroups = remember(events, normalizedPanel) { ActivityWorkspacePlanner.groupsForPanel(events, normalizedPanel) }
 
     LazyColumn(
         modifier = Modifier
@@ -65,21 +65,17 @@ fun ActivityWorkspaceScreen(
                     modifier = Modifier.weight(1f),
                     maxLines = 2,
                 )
-                TextButton(onClick = onOpenManage) { Text("Manage") }
+                TextButton(onClick = onOpenManage) { Text("Queue & recovery") }
             }
         }
         item {
             XdmListCard(compact = true) {
                 XdmActionFlowRow {
                     StatusPill(
-                        "${metrics.needsAttention} need attention",
+                        "${metrics.needsAttention} unresolved",
                         if (metrics.needsAttention > 0) XdmStatusTone.Warning else XdmStatusTone.Success,
                     )
-                    StatusPill(
-                        "${metrics.decisionsWaiting} decisions",
-                        if (metrics.decisionsWaiting > 0) XdmStatusTone.Info else XdmStatusTone.Neutral,
-                    )
-                    StatusPill("${metrics.eventsToday} today", XdmStatusTone.Neutral)
+                    StatusPill("${metrics.eventsToday} events today", XdmStatusTone.Neutral)
                 }
             }
         }
@@ -101,7 +97,7 @@ fun ActivityWorkspaceScreen(
                 }
             }
         }
-        if (visibleEvents.isEmpty()) {
+        if (visibleGroups.isEmpty()) {
             item {
                 XdmListCard {
                     XdmCardTitle(if (normalizedPanel == ActivityPanel.Attention) "Nothing needs attention" else "No recent activity")
@@ -116,8 +112,8 @@ fun ActivityWorkspaceScreen(
                 }
             }
         } else {
-            items(visibleEvents, key = OperationalActivityEvent::id) { event ->
-                ActivityEventRow(event = event, onAction = onAction, onDismiss = onDismiss)
+            items(visibleGroups, key = ActivityEventGroup::key) { group ->
+                ActivityEventRow(group = group, onAction = onAction, onDismiss = onDismiss)
             }
         }
     }
@@ -125,10 +121,11 @@ fun ActivityWorkspaceScreen(
 
 @Composable
 private fun ActivityEventRow(
-    event: OperationalActivityEvent,
+    group: ActivityEventGroup,
     onAction: (OperationalActivityEvent) -> Unit,
     onDismiss: (String) -> Unit,
 ) {
+    val event = group.representative
     XdmListCard(
         compact = true,
         modifier = Modifier.semantics {
@@ -142,8 +139,11 @@ private fun ActivityEventRow(
         ) {
             Column(Modifier.weight(1f)) {
                 XdmCardTitle(event.title, maxLines = 2)
-                event.fileName?.takeIf(String::isNotBlank)?.let { XdmMetricText(it) }
-                XdmMetadataText(formatActivityTime(event.createdAtEpochMs), maxLines = 1)
+                group.fileSummary?.let { XdmMetricText(it) }
+                XdmMetadataText(
+                    listOfNotNull(group.summary, "Last checked ${formatActivityTime(group.latestAtEpochMs)}").joinToString(" • "),
+                    maxLines = 2,
+                )
             }
             StatusPill(event.severity.userLabel, event.severity.tone)
         }
@@ -153,7 +153,7 @@ private fun ActivityEventRow(
         event.actionLabel?.let { actionLabel ->
             Button(onClick = { onAction(event) }) { Text(actionLabel) }
         } ?: run {
-            TextButton(onClick = { onDismiss(event.id) }) { Text("Dismiss") }
+            TextButton(onClick = { group.events.forEach { onDismiss(it.id) } }) { Text("Dismiss") }
         }
     }
 }

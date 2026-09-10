@@ -274,6 +274,12 @@ private fun XdmRouteContent(
                 onResumeOrRetryDownload = viewModel::togglePause,
                 onRetryExternalJob = viewModel::retryTermuxMediaJob,
                 onRemoveRecord = viewModel::removeMediaLibraryRecord,
+                onFindMedia = { viewModel.navigate(AppRoute.Media) },
+                onDeleteSavedFile = { item ->
+                    item.downloadId
+                        ?.let { id -> state.downloads.firstOrNull { it.id == id } }
+                        ?.let { download -> viewModel.deleteSavedFile(download, removeEntry = true) { } }
+                },
             )
             AppRoute.Activity -> ActivityHub(state, viewModel)
             AppRoute.Settings -> SettingsScreen(state, viewModel)
@@ -302,6 +308,7 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
         when (event.actionLabel) {
             "Start anyway" -> download?.let(viewModel::startIgnoringQueuePolicy)
             "Retry now", "Review transfer", "Verify or redownload" -> download?.let(viewModel::togglePause)
+            "Retry storage check" -> viewModel.runQueueIntelligenceNow()
             "Open recovery", "Validate", "Verify and repair", "Resume", "Restart", "Adopt file", "Locate file", "Remove record" -> viewModel.selectActivityPanel(ActivityPanel.Recovery)
             "Review request context", "Review intake", "Change destination", "Repair permission" -> viewModel.navigate(AppRoute.Add)
             "Open resolver diagnostics" -> viewModel.navigate(AppRoute.Media)
@@ -321,7 +328,7 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
         visible = panel.isManage,
         windowClass = LocalXdmWindowClass.current,
         onDismissRequest = { viewModel.selectActivityPanel(lastPrimary) },
-        title = "Manage activity",
+        title = "Queue & recovery",
         scrollContent = false,
     ) {
         Column(Modifier.fillMaxSize()) {

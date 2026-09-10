@@ -5,6 +5,8 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.util.TypedValue
+import android.view.View
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
@@ -14,14 +16,18 @@ import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebChromeClient
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextView
+import android.widget.ProgressBar
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
@@ -135,6 +141,8 @@ class MediaLocatorActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private lateinit var address: EditText
     private lateinit var status: TextView
+    private lateinit var resultsHeader: TextView
+    private lateinit var progress: ProgressBar
     private lateinit var list: ListView
     private lateinit var adapter: ArrayAdapter<String>
     private var webViewDisposed = false
@@ -153,54 +161,105 @@ class MediaLocatorActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val background = resolveThemeColor(android.R.attr.colorBackground, Color.rgb(18, 18, 18))
+        val primaryText = resolveThemeColor(android.R.attr.textColorPrimary, Color.WHITE)
+        val secondaryText = resolveThemeColor(android.R.attr.textColorSecondary, Color.LTGRAY)
+
         address = EditText(this).apply {
             hint = getString(R.string.media_locator_url_hint)
             setSingleLine(true)
             setText(savedInstanceState?.getString(STATE_URL) ?: intent.getStringExtra(EXTRA_URL).orEmpty())
         }
-        val go = Button(this).apply { text = getString(R.string.media_locator_locate) }
-        val rescan = Button(this).apply { text = getString(R.string.media_locator_rescan) }
+        val close = Button(this).apply {
+            text = "←"
+            contentDescription = getString(R.string.media_locator_close)
+        }
+        val title = TextView(this).apply {
+            text = getString(R.string.media_locator_title)
+            setTextColor(primaryText)
+            textSize = 20f
+            setPadding(dp(8), dp(12), dp(8), dp(12))
+        }
+        val go = Button(this).apply { text = getString(R.string.media_locator_go) }
+        val pageBack = Button(this).apply { text = getString(R.string.media_locator_back) }
+        val pageForward = Button(this).apply { text = getString(R.string.media_locator_forward) }
+        val reload = Button(this).apply { text = getString(R.string.media_locator_reload) }
+        val stop = Button(this).apply { text = getString(R.string.media_locator_stop) }
+        val rescan = Button(this).apply { text = getString(R.string.media_locator_scan) }
+        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            visibility = View.GONE
+        }
         status = TextView(this).apply {
             text = getString(R.string.media_locator_initial_status)
-            setPadding(dp(12), dp(8), dp(12), dp(8))
+            setTextColor(secondaryText)
+            setPadding(dp(16), dp(10), dp(16), dp(10))
+        }
+        resultsHeader = TextView(this).apply {
+            text = getString(R.string.media_locator_no_candidates)
+            setTextColor(primaryText)
+            textSize = 16f
+            setPadding(dp(16), dp(10), dp(16), dp(6))
         }
         webView = WebView(this)
         list = ListView(this)
         adapter = ArrayAdapter(this, android.R.layout.simple_list_item_2, android.R.id.text1, mutableListOf())
         list.adapter = adapter
 
-        val buttons = LinearLayout(this).apply {
+        val topBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            addView(go, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(rescan, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            addView(close, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(title, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        val addressRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(8), 0, dp(8), 0)
+            addView(address, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(go, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        val controls = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(8), 0, dp(8), 0)
+            addView(pageBack, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(pageForward, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(reload, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        val scanControls = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(8), 0, dp(8), 0)
+            addView(stop, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(rescan, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f))
         }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.WHITE)
-            addView(address, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            addView(buttons, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            setBackgroundColor(background)
+            addView(topBar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(addressRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(controls, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(scanControls, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(progress, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3)))
             addView(status, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(webView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 3f))
+            addView(resultsHeader, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(list, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 2f))
         }
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
         setContentView(root)
+        ViewCompat.requestApplyInsets(root)
 
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             mediaPlaybackRequiresUserGesture = false
-
-            // The WebView exists only as an isolated media-observation runtime.
-            // Do not allow it to become a local-file/content browser.
             allowFileAccess = false
             allowContentAccess = false
-
-            // No popup/general-browser window surface.
             javaScriptCanOpenWindowsAutomatically = false
             setSupportMultipleWindows(false)
-
-            // Do not permit HTTPS pages to downgrade media/resource requests to
-            // cleartext HTTP inside the locator.
             mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
         }
         locatorUserAgent = webView.settings.userAgentString
@@ -208,6 +267,12 @@ class MediaLocatorActivity : ComponentActivity() {
         webView.addJavascriptInterface(MediaObservationBridge(), JS_BRIDGE)
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             WebViewCompat.addDocumentStartJavaScript(webView, LOCATOR_RUNTIME, setOf("*"))
+        }
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onProgressChanged(view: WebView, newProgress: Int) {
+                progress.progress = newProgress
+                progress.visibility = if (newProgress in 1..99) View.VISIBLE else View.GONE
+            }
         }
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -223,7 +288,8 @@ class MediaLocatorActivity : ComponentActivity() {
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                 currentPageUrl = url
                 address.setText(url)
-                // Fallback for old WebView providers without document-start injection support.
+                progress.visibility = View.VISIBLE
+                status.text = getString(R.string.media_locator_loading)
                 if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) injectLocatorRuntime()
             }
 
@@ -239,6 +305,7 @@ class MediaLocatorActivity : ComponentActivity() {
                 view.destroy()
                 webViewDisposed = true
                 address.setText(lastUrl)
+                progress.visibility = View.GONE
                 status.text = getString(R.string.media_locator_renderer_stopped)
                 if (detail.didCrash()) recentlyObserved.clear()
                 return true
@@ -247,23 +314,31 @@ class MediaLocatorActivity : ComponentActivity() {
             override fun onPageFinished(view: WebView, url: String) {
                 currentPageUrl = url
                 address.setText(url)
+                progress.visibility = View.GONE
                 injectLocatorRuntime(forceScan = true)
-                status.text = if (located.isEmpty()) {
-                    getString(R.string.media_locator_waiting_for_evidence)
-                } else {
-                    resources.getQuantityString(
-                        R.plurals.media_locator_candidates_found,
-                        located.size,
-                        located.size,
-                    )
-                }
+                updateLocatorStatus()
             }
         }
 
+        close.setOnClickListener { finish() }
         go.setOnClickListener { loadAddress() }
+        pageBack.setOnClickListener { if (!webViewDisposed && webView.canGoBack()) webView.goBack() }
+        pageForward.setOnClickListener { if (!webViewDisposed && webView.canGoForward()) webView.goForward() }
+        reload.setOnClickListener {
+            if (webViewDisposed) loadAddress() else webView.reload()
+        }
+        stop.setOnClickListener {
+            if (!webViewDisposed) webView.stopLoading()
+            progress.visibility = View.GONE
+            status.text = getString(R.string.media_locator_loading_stopped)
+        }
         rescan.setOnClickListener {
-            injectLocatorRuntime(forceScan = true)
-            status.text = getString(R.string.media_locator_rescanning)
+            if (webViewDisposed) {
+                loadAddress()
+            } else {
+                injectLocatorRuntime(forceScan = true)
+                status.text = getString(R.string.media_locator_rescanning)
+            }
         }
         list.setOnItemClickListener { _, _, position, _ ->
             located.values.sortedWith(compareByDescending<LocatedMedia> { it.rank }.thenBy { it.url })
@@ -272,6 +347,7 @@ class MediaLocatorActivity : ComponentActivity() {
         }
 
         if (savedInstanceState != null) restoreLocatorState(savedInstanceState)
+        updateCandidateHeader()
         val initial = normalizePageUrl(address.text.toString())
         if (initial != null) {
             status.text = getString(R.string.media_locator_loading)
@@ -304,10 +380,16 @@ class MediaLocatorActivity : ComponentActivity() {
         located.clear()
         refreshList()
         status.text = getString(R.string.media_locator_loading)
+        if (webViewDisposed) {
+            intent.putExtra(EXTRA_URL, normalized)
+            recreate()
+            return
+        }
         webView.loadUrl(normalized)
     }
 
     private fun injectLocatorRuntime(forceScan: Boolean = false) {
+        if (webViewDisposed) return
         val script = LOCATOR_RUNTIME + if (forceScan) ";window.__xdmLocatorScan && window.__xdmLocatorScan();" else ""
         webView.evaluateJavascript(script, null)
     }
@@ -463,6 +545,32 @@ class MediaLocatorActivity : ComponentActivity() {
         adapter.clear()
         adapter.addAll(labels)
         adapter.notifyDataSetChanged()
+        updateCandidateHeader()
+    }
+
+    private fun updateCandidateHeader() {
+        resultsHeader.text = if (located.isEmpty()) {
+            getString(R.string.media_locator_no_candidates)
+        } else {
+            resources.getQuantityString(R.plurals.media_locator_candidates_header, located.size, located.size)
+        }
+        list.visibility = if (located.isEmpty()) View.GONE else View.VISIBLE
+    }
+
+    private fun updateLocatorStatus() {
+        status.text = if (located.isEmpty()) {
+            getString(R.string.media_locator_waiting_for_evidence)
+        } else {
+            resources.getQuantityString(R.plurals.media_locator_candidates_found, located.size, located.size)
+        }
+        updateCandidateHeader()
+    }
+
+    private fun resolveThemeColor(attr: Int, fallback: Int): Int {
+        val value = TypedValue()
+        return if (theme.resolveAttribute(attr, value, true)) {
+            if (value.resourceId != 0) getColor(value.resourceId) else value.data
+        } else fallback
     }
 
     private fun reviewCandidate(candidate: LocatedMedia) {
@@ -685,7 +793,7 @@ class MediaLocatorActivity : ComponentActivity() {
             )
         }
         refreshList()
-        if (located.isNotEmpty()) status.text = resources.getQuantityString(R.plurals.media_locator_candidates_found, located.size, located.size)
+        updateLocatorStatus()
     }
 
     private fun MediaSourceKind.restoreMimeHint(): String? = when (this) {

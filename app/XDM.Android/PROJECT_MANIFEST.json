@@ -1454,7 +1454,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_ux04_ux05_new_download_media_product_ui_v1.zip",
+  "current_overlay": "xdm_android_ux06_ux07_live_locator_library_activity_v1.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -4282,6 +4282,38 @@
     "batch_intake_simplified": true,
     "empty_state_live_locator_action": true,
     "raw_session_values_hidden": true,
+    "room_schema_unchanged": 21
+  },
+  "ux06_live_locator_native_shell": {
+    "status": "complete",
+    "native_themed_shell": true,
+    "system_insets": true,
+    "native_address_and_navigation_controls": true,
+    "loading_progress": true,
+    "candidate_count_header": true,
+    "webview_renderer_recovery": true,
+    "destroyed_webview_not_reused": true,
+    "reload_recreates_activity_after_renderer_loss": true,
+    "white_utility_shell_removed": true,
+    "room_schema_unchanged": 21
+  },
+  "ux07_library_activity_recovery": {
+    "status": "complete",
+    "library_empty_find_media_action": true,
+    "library_sorting": [
+      "recent",
+      "title",
+      "size"
+    ],
+    "library_storage_usage": true,
+    "library_open_share_delete": true,
+    "activity_repeated_incident_grouping": true,
+    "activity_primary_metrics": [
+      "unresolved",
+      "events today"
+    ],
+    "manage_surface": "Queue & recovery",
+    "storage_pressure_primary_action": "Retry storage check",
     "room_schema_unchanged": 21
   }
 }

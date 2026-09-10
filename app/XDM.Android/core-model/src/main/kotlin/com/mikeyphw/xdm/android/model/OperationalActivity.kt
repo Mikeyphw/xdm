@@ -325,8 +325,8 @@ object OperationalActivityPlanner {
             engine = engineLabel(download.backend.name),
             actionLabel = when (attention.kind) {
                 DownloadAttentionKind.Authentication -> "Review request context"
-                DownloadAttentionKind.Storage,
-                DownloadAttentionKind.Permission -> "Change destination"
+                DownloadAttentionKind.Storage -> "Retry storage check"
+                DownloadAttentionKind.Permission -> "Repair permission"
                 DownloadAttentionKind.Verification -> "Verify or redownload"
                 DownloadAttentionKind.Network -> "Retry now"
                 DownloadAttentionKind.Recovery -> "Open recovery"
@@ -348,7 +348,7 @@ object OperationalActivityPlanner {
         QueueHoldReason.QueueDisabled,
         QueueHoldReason.ConcurrencyLimit,
         QueueHoldReason.RetryBackoff -> "Start anyway"
-        QueueHoldReason.StoragePressure -> "Change destination"
+        QueueHoldReason.StoragePressure -> "Retry storage check"
         QueueHoldReason.AuthenticationRequired -> "Review request context"
         QueueHoldReason.PermissionRequired -> "Repair permission"
         QueueHoldReason.VerificationFailed -> "Verify or redownload"

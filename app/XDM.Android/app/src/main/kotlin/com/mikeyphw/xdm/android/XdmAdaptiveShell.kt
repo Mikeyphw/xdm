@@ -350,7 +350,7 @@ private fun AppRoute.shellSubtitle(): String = when (label) {
     "Downloads" -> "Track transfers, queue work, and resolve anything that needs attention."
     "Media" -> "Inspect captured media and choose what to download."
     "Library" -> "Open completed media and continue where you left off."
-    "Activity" -> "Review transfer history, decisions, schedules, and recovery."
+    "Activity" -> "Review unresolved issues, queue controls, schedules, and recovery."
     "Settings" -> "Tune XDM behavior without exposing implementation noise."
     else -> "Review and manage XDM."
 }
