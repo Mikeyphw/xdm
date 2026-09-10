@@ -69,6 +69,9 @@ internal fun MediaCaptureCard(
     val videoVariants = remember(captureVariants) {
         captureVariants.filter { it.kind == MediaVariantKind.Video || it.kind == MediaVariantKind.Primary }
     }
+    val artworkUrl = remember(capture.thumbnailUrl, captureVariants) {
+        capture.thumbnailUrl ?: captureVariants.firstOrNull { it.kind == MediaVariantKind.Thumbnail }?.url
+    }
     val hasTrackChoices = remember(capture, captureVariants, videoVariants) {
         capture.isPlaylist ||
             videoVariants.size > 1 ||
@@ -83,7 +86,13 @@ internal fun MediaCaptureCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            XdmFileTypeIcon(capture.fileName, mimeType = capture.mimeType, contentDescription = capture.kind.uiLabel())
+            XdmMediaArtwork(
+                fileName = capture.fileName,
+                mimeType = capture.mimeType,
+                thumbnailUrl = artworkUrl,
+                sourceUrl = capture.sourceUrl,
+                contentDescription = capture.kind.uiLabel(),
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 XdmCardTitle(capture.title.ifBlank { capture.fileName }, maxLines = 2)
                 XdmMetadataText(mediaOriginLabel(capture), maxLines = 1)

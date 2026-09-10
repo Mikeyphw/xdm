@@ -42,6 +42,7 @@ import com.mikeyphw.xdm.android.model.MediaOutputAdmissionMode
 import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.MediaVariant
+import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.util.formatBytes
 import com.mikeyphw.xdm.android.util.formatSpeed
 
@@ -280,6 +281,8 @@ fun MediaInboxScreen(
                             RecentlyQueuedMediaRow(
                                 title = capture.title.ifBlank { download.fileName },
                                 download = download,
+                                thumbnailUrl = capture.thumbnailUrl ?: variants.firstOrNull { it.captureId == capture.id && it.kind == MediaVariantKind.Thumbnail }?.url,
+                                sourceUrl = capture.sourceUrl,
                                 onResumeOrRetry = { onResumeOrRetryDownload(download) },
                             )
                             if (index != recentlyQueued.lastIndex) XdmListSeparator()
@@ -422,6 +425,8 @@ private fun openMediaOutput(context: android.content.Context, output: MediaOutpu
 private fun RecentlyQueuedMediaRow(
     title: String,
     download: Download,
+    thumbnailUrl: String?,
+    sourceUrl: String?,
     onResumeOrRetry: () -> Unit,
 ) {
     val progress = download.totalBytes?.takeIf { it > 0L }?.let { download.progressFraction }
@@ -433,7 +438,17 @@ private fun RecentlyQueuedMediaRow(
                 download.totalBytes?.let { add("${download.bytesReceived.formatBytes()} of ${it.formatBytes()}") }
                 if (download.speedBytesPerSecond > 0L) add(download.speedBytesPerSecond.formatSpeed())
             }.joinToString(" • "),
-            leading = { XdmFileTypeIcon(download.fileName, mimeType = download.mimeType) },
+            leading = {
+                XdmMediaArtwork(
+                    fileName = download.fileName,
+                    mimeType = download.mimeType,
+                    thumbnailUrl = thumbnailUrl,
+                    sourceUrl = sourceUrl,
+                    localUri = download.completedArtifactUri,
+                    width = 64.dp,
+                    height = 44.dp,
+                )
+            },
             trailing = {
                 val action = when (download.state) {
                     DownloadState.Downloading,

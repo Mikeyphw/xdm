@@ -264,7 +264,14 @@ private fun MediaLibraryListItem(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            XdmFileTypeIcon(item.fileName, mimeType = item.sidecar.mimeType)
+            XdmMediaArtwork(
+                fileName = item.fileName,
+                mimeType = item.sidecar.mimeType,
+                thumbnailUrl = item.thumbnailUrl,
+                localUri = item.playbackUrl,
+                width = 72.dp,
+                height = 48.dp,
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 XdmCardTitle(item.title, maxLines = 2)
                 XdmMetadataText(libraryMetadata(item, consumerPlanner), maxLines = 2)
@@ -285,7 +292,14 @@ private fun MediaLibraryGridItem(
 ) {
     XdmListCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-            XdmFileTypeIcon(item.fileName, mimeType = item.sidecar.mimeType)
+            XdmMediaArtwork(
+                fileName = item.fileName,
+                mimeType = item.sidecar.mimeType,
+                thumbnailUrl = item.thumbnailUrl,
+                localUri = item.playbackUrl,
+                width = 96.dp,
+                height = 60.dp,
+            )
             StatusPill(
                 if (consumerPlanner.mediaType(item) == "audio") "Audio" else "Video",
                 tone = XdmStatusTone.Info,

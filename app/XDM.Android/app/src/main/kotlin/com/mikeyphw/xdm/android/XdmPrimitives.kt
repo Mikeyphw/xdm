@@ -28,15 +28,27 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AudioFile
+import androidx.compose.material.icons.rounded.Android
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.ContactPage
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.FontDownload
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FolderZip
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.PictureAsPdf
+import androidx.compose.material.icons.rounded.Slideshow
+import androidx.compose.material.icons.rounded.Subtitles
+import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
 import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.DataObject
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -80,6 +92,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.mikeyphw.xdm.android.model.MimePresentationKind
+import com.mikeyphw.xdm.android.model.MimePresentationResolver
 
 object XdmTestTags {
     const val PageHeader = "xdm_page_header"
@@ -350,20 +364,32 @@ fun XdmFileTypeIcon(
     modifier: Modifier = Modifier,
     mimeType: String? = null,
     contentDescription: String? = null,
+    containerSize: androidx.compose.ui.unit.Dp = 40.dp,
 ) {
-    val lowerName = fileName.lowercase()
-    val lowerMime = mimeType.orEmpty().lowercase()
-    val icon = when {
-        lowerMime.startsWith("video/") || lowerName.endsWith(".mp4") || lowerName.endsWith(".mkv") || lowerName.endsWith(".webm") -> Icons.Rounded.Movie
-        lowerMime.startsWith("audio/") || lowerName.endsWith(".mp3") || lowerName.endsWith(".flac") || lowerName.endsWith(".m4a") -> Icons.Rounded.AudioFile
-        lowerMime.startsWith("image/") || lowerName.endsWith(".png") || lowerName.endsWith(".jpg") || lowerName.endsWith(".webp") -> Icons.Rounded.Image
-        lowerName.endsWith(".zip") || lowerName.endsWith(".7z") || lowerName.endsWith(".tar") || lowerName.endsWith(".gz") -> Icons.Rounded.FolderZip
-        lowerMime.startsWith("text/") || lowerName.endsWith(".pdf") || lowerName.endsWith(".txt") -> Icons.Rounded.Description
-        fileName.isBlank() -> Icons.Rounded.Download
-        else -> Icons.AutoMirrored.Rounded.InsertDriveFile
+    val presentation = MimePresentationResolver.resolve(fileName, mimeType)
+    val icon: ImageVector = when (presentation.kind) {
+        MimePresentationKind.AdaptiveMedia, MimePresentationKind.Video -> Icons.Rounded.Movie
+        MimePresentationKind.Audio -> Icons.Rounded.AudioFile
+        MimePresentationKind.Image -> Icons.Rounded.Image
+        MimePresentationKind.Pdf -> Icons.Rounded.PictureAsPdf
+        MimePresentationKind.Archive -> Icons.Rounded.FolderZip
+        MimePresentationKind.Spreadsheet -> Icons.Rounded.TableChart
+        MimePresentationKind.Presentation -> Icons.Rounded.Slideshow
+        MimePresentationKind.Document, MimePresentationKind.Text -> Icons.Rounded.Description
+        MimePresentationKind.Code -> Icons.Rounded.Code
+        MimePresentationKind.Subtitle -> Icons.Rounded.Subtitles
+        MimePresentationKind.Playlist -> Icons.Rounded.QueueMusic
+        MimePresentationKind.Package -> Icons.Rounded.Android
+        MimePresentationKind.Torrent -> Icons.Rounded.CloudDownload
+        MimePresentationKind.Font -> Icons.Rounded.FontDownload
+        MimePresentationKind.Calendar -> Icons.Rounded.CalendarMonth
+        MimePresentationKind.Contact -> Icons.Rounded.ContactPage
+        MimePresentationKind.Binary -> Icons.Rounded.DataObject
+        MimePresentationKind.Download -> Icons.Rounded.Download
+        MimePresentationKind.Generic -> Icons.AutoMirrored.Rounded.InsertDriveFile
     }
     Surface(
-        modifier = modifier.size(40.dp),
+        modifier = modifier.size(containerSize),
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         shape = MaterialTheme.shapes.medium,
@@ -371,7 +397,11 @@ fun XdmFileTypeIcon(
         shadowElevation = 0.dp,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(21.dp))
+            Icon(
+                icon,
+                contentDescription = contentDescription ?: MimePresentationResolver.contentDescription(fileName, mimeType),
+                modifier = Modifier.size((containerSize * 0.53f).coerceIn(20.dp, 26.dp)),
+            )
         }
     }
 }

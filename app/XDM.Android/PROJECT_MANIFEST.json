@@ -4524,5 +4524,33 @@
     "report": "XDM_OBSERVABILITY_PROBLEM_REPORTING_OBS01_OBS02_REPORT.md",
     "validation_deferred": true,
     "next_overlay": "xdm_android_media_thumbnail_mime_presentation_v1.zip"
+  },
+  "media_thumbnail_mime_presentation_thumb01_thumb03_mime01": {
+    "status": "implemented_intermediate",
+    "overlay": "xdm_android_media_thumbnail_mime_presentation_v1.zip",
+    "date": "2026-09-10",
+    "depends_on": "xdm_android_observability_problem_reporting_v1.zip",
+    "shared_artwork_component": "XdmMediaArtwork",
+    "captured_media_thumbnails": true,
+    "variant_thumbnail_fallback": true,
+    "recently_queued_thumbnails": true,
+    "downloads_media_thumbnails": true,
+    "media_library_thumbnails": true,
+    "direct_image_preview": true,
+    "completed_local_image_decode": true,
+    "completed_local_video_frame": true,
+    "memory_cache": true,
+    "disk_cache_limit_mib": 32,
+    "thumbnail_failures_best_effort": true,
+    "thumbnail_trace_logging": true,
+    "mime_first_icons": true,
+    "adaptive_stream_media_icon": true,
+    "external_image_library_added": false,
+    "room_schema_unchanged": 21,
+    "canonical_validator": "tools/validate-media-thumbnail-mime-presentation.py",
+    "contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/MediaThumbnailMimePresentationContractTest.kt",
+    "report": "XDM_MEDIA_THUMBNAIL_MIME_PRESENTATION_THUMB01_THUMB03_MIME01_REPORT.md",
+    "validation_deferred": true,
+    "next_overlay": "xdm_android_live_locator_title_naming_v1.zip"
   }
 }

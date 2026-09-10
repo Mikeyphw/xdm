@@ -184,6 +184,8 @@ private fun XdmRouteContent(
         when (route) {
             AppRoute.Downloads -> DownloadsScreen(
                 downloads = state.downloads,
+                mediaCaptures = state.mediaCaptures,
+                mediaVariants = state.mediaVariants,
                 requestedDetailDownloadId = state.selectedDownloadDetailId,
                 compact = state.compactDensity,
                 active = state.activeTransfers,

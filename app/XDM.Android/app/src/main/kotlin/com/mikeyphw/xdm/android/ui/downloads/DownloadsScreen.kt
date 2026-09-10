@@ -60,6 +60,9 @@ import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.ChecksumResult
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaVariant
+import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.DownloadAction
 import com.mikeyphw.xdm.android.model.DownloadActionKind
 import com.mikeyphw.xdm.android.model.DownloadActionPlanner
@@ -89,6 +92,8 @@ import androidx.core.net.toUri
 @UiSurface(UiAudience.User, "Manage downloads and transfer state")
 fun DownloadsScreen(
     downloads: List<Download>,
+    mediaCaptures: List<MediaCaptureRecord> = emptyList(),
+    mediaVariants: List<MediaVariant> = emptyList(),
     requestedDetailDownloadId: String? = null,
     compact: Boolean,
     active: ActiveTransferSummary,
@@ -159,6 +164,21 @@ fun DownloadsScreen(
     var artifactInspectionKeys by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var resumeInspectionKeys by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var twoPaneLayoutActive by remember { mutableStateOf(false) }
+    val mediaThumbnailByDownloadId = remember(mediaCaptures, mediaVariants) {
+        val variantThumbnailByCapture = mediaVariants
+            .asSequence()
+            .filter { it.kind == MediaVariantKind.Thumbnail }
+            .groupBy(MediaVariant::captureId)
+            .mapValues { (_, rows) -> rows.firstOrNull()?.url }
+        mediaCaptures
+            .asSequence()
+            .mapNotNull { capture ->
+                val thumbnail = capture.thumbnailUrl ?: variantThumbnailByCapture[capture.id]
+                capture.downloadId?.let { it to thumbnail }
+            }
+            .filter { (_, thumbnail) -> !thumbnail.isNullOrBlank() }
+            .toMap()
+    }
 
     val metrics = DownloadsWorkspacePlanner.metrics(downloads.filterNot { it.archived })
     val visibleDownloads = DownloadsWorkspacePlanner.visibleDownloads(
@@ -389,6 +409,7 @@ fun DownloadsScreen(
                     DownloadWorkspaceList(
                         downloads = visibleDownloads,
                         actionContextFor = ::actionContext,
+                        thumbnailFor = { download -> mediaThumbnailByDownloadId[download.id] },
                         compact = compact,
                         selectionMode = selectionMode,
                         selectedIds = selectedIds,
@@ -462,6 +483,7 @@ fun DownloadsScreen(
                 DownloadWorkspaceList(
                     downloads = visibleDownloads,
                     actionContextFor = ::actionContext,
+                    thumbnailFor = { download -> mediaThumbnailByDownloadId[download.id] },
                     compact = compact,
                     selectionMode = selectionMode,
                     selectedIds = selectedIds,
@@ -782,6 +804,7 @@ private fun DownloadSectionHeader(
 private fun DownloadWorkspaceList(
     downloads: List<Download>,
     actionContextFor: (Download) -> DownloadActionContext,
+    thumbnailFor: (Download) -> String?,
     compact: Boolean,
     selectionMode: Boolean,
     selectedIds: Set<String>,
@@ -814,6 +837,7 @@ private fun DownloadWorkspaceList(
                 compact = compact,
                 selected = download.id in selectedIds,
                 selectionMode = selectionMode,
+                thumbnailUrl = thumbnailFor(download),
                 onClick = { onDownloadClick(download) },
                 onLongClick = { onDownloadLongClick(download) },
                 onPrimaryAction = { onPrimaryAction(download) },

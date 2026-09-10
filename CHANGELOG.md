@@ -1,3 +1,12 @@
+## 2026-09-10 — THUMB01–THUMB03 + MIME01 media artwork and MIME presentation
+
+- Added one shared `XdmMediaArtwork` pipeline for captured media, recently queued media, Downloads, and Media Library.
+- Reuses captured/resolver thumbnail URLs, shows direct image sources as previews, decodes completed local images, and extracts a representative frame from completed local video when no artwork exists.
+- Added bounded in-memory and 32 MiB app-cache artwork caching with best-effort Trace diagnostics; thumbnail failures fall back safely and never become transfer failures.
+- Replaced coarse extension checks with a MIME-first presentation resolver covering adaptive HLS/DASH, video/audio/images, PDF, archives, documents, spreadsheets, presentations, subtitles/playlists, packages/APKs, torrents, fonts, calendar/contact files, code/text, binary, and generic files.
+- Media variant thumbnails now fill gaps when capture-level artwork is absent, including the Downloads view for media-linked transfers.
+- No Room migration or external image-loading dependency. Full Gradle/lint validation remains deferred to the final roadmap seal; this intermediate overlay is applied with `--no-validate`.
+
 ## 2026-09-10 — OBS01/OBS02 observability and problem reporting
 
 - Extended the existing redacted Debug Center recorder with persisted standard/verbose logging and new media/WebView/backend/storage/persistence/thumbnail areas.

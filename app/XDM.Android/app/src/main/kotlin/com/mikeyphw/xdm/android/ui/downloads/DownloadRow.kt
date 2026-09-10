@@ -57,6 +57,7 @@ internal fun DownloadRow(
     compact: Boolean,
     selected: Boolean,
     selectionMode: Boolean,
+    thumbnailUrl: String? = null,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onPrimaryAction: () -> Unit,
@@ -106,7 +107,16 @@ internal fun DownloadRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            XdmFileTypeIcon(download.fileName, mimeType = download.mimeType, contentDescription = null)
+            XdmMediaArtwork(
+                fileName = download.fileName,
+                mimeType = download.mimeType,
+                thumbnailUrl = thumbnailUrl,
+                sourceUrl = download.sourceUrl,
+                localUri = download.completedArtifactUri,
+                width = if (compact) 54.dp else 64.dp,
+                height = if (compact) 42.dp else 48.dp,
+                contentDescription = null,
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(download.fileName, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
