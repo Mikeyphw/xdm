@@ -30,6 +30,7 @@ matrix_owned_validators=(
 validators=(
   tools/validate-uix-r3-downloads-add-workspace.py
   tools/validate-uix-r6-accessibility-performance-release-seal.py
+  tools/validate-ux13-end-to-end-ui-ux-release-seal.py
   tools/validate-debug-workbench-d7-final-debug-seal.py
   tools/validate-phase61-final-gate-validator-harmony.py
   tools/validate-runtime-foundation-phase59-61.py
@@ -81,5 +82,5 @@ Run the full matrix in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-The Add/Media UX remodel seal is the current final UI/release source of truth; the execution/media semantics repair remains its functional baseline and the post-DL03 roadmap seal remains its historical baseline. The 2026-09-08 promise-delivery audit seals carry-forward correctness for legacy shape/wire isolation, opaque URL refresh, Live Locator recreation privacy, direct-media Options gating, the scoped AndroidX WebKit COOKIE_INTERCEPT and Kotlin renderer-detector lint guards, resource-backed Live Locator status text, and recovery-resume unwind synchronization. The common validation runner, current MC/DL validators, and retained Phase-11 device/release matrix provide executable evidence; documentation-only coverage is rejected.
+UX13 is the current end-to-end UI/UX release source of truth; UX12 remains its accessibility/terminology baseline, the Add/Media UX remodel remains a retained functional milestone, the execution/media semantics repair remains its functional baseline, and the post-DL03 roadmap seal remains its historical baseline. The 2026-09-08 promise-delivery audit seals carry-forward correctness for legacy shape/wire isolation, opaque URL refresh, Live Locator recreation privacy, direct-media Options gating, the scoped AndroidX WebKit COOKIE_INTERCEPT and Kotlin renderer-detector lint guards, resource-backed Live Locator status text, and recovery-resume unwind synchronization. The common validation runner, current MC/DL validators, and retained Phase-11 device/release matrix provide executable evidence; documentation-only coverage is rejected.
 EOF2

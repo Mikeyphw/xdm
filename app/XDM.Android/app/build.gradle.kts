@@ -206,7 +206,7 @@ dependencies {
 
 tasks.register<Exec>("finalRemediationStaticGate") {
     group = "verification"
-    description = "Run the Overlay 13 final static remediation gate."
+    description = "Run the canonical XDM final static release gate, including the UX13 end-to-end UI/UX seal."
     workingDir(rootProject.projectDir)
     commandLine("bash", "tools/run-final-release-gate.sh", "--ci")
 }

@@ -19,7 +19,7 @@ def require(condition: bool, message: str) -> None:
 
 build = text("app/build.gradle.kts")
 view_model = text("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
-developer = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsScreen.kt")
+developer = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsScreen.kt") + "\n" + text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsWorkspace.kt")
 gate = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaFinalValidationGate.kt")
 privacy = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaSessionPrivacyAudit.kt")
 quality = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaCaptureQuality.kt")
@@ -165,7 +165,7 @@ for forbidden in (':browser-extension:packageFirefoxExtensionDark', ':browser-ex
     require(forbidden not in devtool, f"ordinary Devtool validation unexpectedly requires release-package task {forbidden}")
     require(forbidden not in common_validation_script, f"common validation unexpectedly requires release-package task {forbidden}")
 
-require(manifest.get("current_overlay") in {"xdm_android_privacy_quality_final_gate_overlay_v2.zip", "xdm_android_ux01_ux09_product_foundation_v3.zip", "xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip"}, "PROJECT_MANIFEST current_overlay is not Overlay 13 or an accepted later overlay")
+require(manifest.get("current_overlay") in {"xdm_android_privacy_quality_final_gate_overlay_v2.zip", "xdm_android_ux01_ux09_product_foundation_v3.zip", "xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip", "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"}, "PROJECT_MANIFEST current_overlay is not Overlay 13 or an accepted later overlay")
 database = manifest.get("database", {})
 require(database.get("version") == 21, "PROJECT_MANIFEST authoritative database version is not 21")
 require("18_to_19" in database.get("migrations", []) and "19_to_20" in database.get("migrations", []) and "20_to_21" in database.get("migrations", []), "PROJECT_MANIFEST migration chain does not reach schema 21")
@@ -189,7 +189,8 @@ for key in (
 ):
     require(media_gate.get(key) is True, f"PROJECT_MANIFEST final-gate promise missing: {key}")
 
-require("Overlay 13 is the final remediation gate" in developer, "Developer Tools still describes the obsolete Phase-33 gate")
+require("Application release readiness" in developer and "Final gate:" in developer, "Developer Center must expose current release-readiness signals")
+require("Overlay 13 is the final remediation gate" not in developer, "Developer Center must not expose historical remediation-phase copy")
 require("ready for full validation" not in developer, "UI still labels already-validated release evidence as merely ready for validation")
 
 print("Phase 13 privacy/quality/final-gate contract passed")

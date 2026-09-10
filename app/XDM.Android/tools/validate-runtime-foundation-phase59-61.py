@@ -67,7 +67,7 @@ for token in (
     need(vm, token, "Android session import")
 need(vm, "CurrentRoomSchemaVersion = 21", "Room schema")
 
-for token in ("Firefox capture sessions", "BrowserCaptureSessionHeader", "bounded browser handoff"):
+for token in ("BrowserCaptureSessionHeader", "Browser session values stay private", "XDM kept the highest-confidence results in this handoff"):
     need(screen, token, "captured media inbox")
 need(config, "@@CONTRACT_VERSION@@", "generated extension config")
 for token in ("captureKeyId", "capturePublicKeySpki", "captureOaepHash"):

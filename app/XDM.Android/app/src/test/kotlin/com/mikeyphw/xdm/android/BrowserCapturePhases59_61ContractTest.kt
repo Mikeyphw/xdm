@@ -21,8 +21,8 @@ class BrowserCapturePhases59_61ContractTest {
         assertFalse(registry.contains("sourceUrl"))
         assertFalse(registry.contains("authorization", ignoreCase = true))
         assertTrue(viewModel.contains("browserCaptureSessionRegistry.record"))
-        assertTrue(screen.contains("Firefox capture sessions"))
         assertTrue(screen.contains("BrowserCaptureSessionHeader"))
+        assertTrue(screen.contains("Browser session values stay private and are used only when a request needs them."))
     }
 
     @Test
@@ -69,7 +69,7 @@ class BrowserCapturePhases59_61ContractTest {
         assertTrue(handoff.contains("for (let count = requested.length; count >= 1; count -= 1)"))
         assertTrue(detector.contains("HARD_NON_MEDIA_MIME_RE"))
         assertTrue(pageSniffer.contains("HARD_NON_MEDIA_MIME_RE"))
-        assertTrue(screen.contains("bounded browser handoff"))
+        assertTrue(screen.contains("XDM kept the highest-confidence results in this handoff."))
     }
 
     @Test

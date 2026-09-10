@@ -1454,7 +1454,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_ux12_accessibility_terminology_visual_seal_v1.zip",
+  "current_overlay": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -3025,7 +3025,7 @@
     "workmanager_foreground_fallback": true,
     "yt_dlp_launch_adapter_contract": true
   },
-  "next_phase": "UX13 end-to-end UI/UX release seal",
+  "next_phase": "complete",
   "notes": [
     "Phase 1 r4 updates scheduler FileProvider contract test to match CompletedFileGrantPolicy delegation.",
     "UX08/UX09 reorganizes Settings by user intent without deleting capabilities; apply as an intermediate overlay with --no-validate.",
@@ -4264,7 +4264,8 @@
       "Skip",
       "Compare"
     ],
-    "room_schema_unchanged": 21
+    "room_schema_unchanged": 21,
+    "validation_closed_by": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
   },
   "ux05_media_capture_product_ui": {
     "status": "implemented",
@@ -4284,7 +4285,8 @@
     "batch_intake_simplified": true,
     "empty_state_live_locator_action": true,
     "raw_session_values_hidden": true,
-    "room_schema_unchanged": 21
+    "room_schema_unchanged": 21,
+    "validation_closed_by": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
   },
   "ux06_live_locator_native_shell": {
     "status": "complete",
@@ -4297,7 +4299,8 @@
     "destroyed_webview_not_reused": true,
     "reload_recreates_activity_after_renderer_loss": true,
     "white_utility_shell_removed": true,
-    "room_schema_unchanged": 21
+    "room_schema_unchanged": 21,
+    "validation_closed_by": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
   },
   "ux07_library_activity_recovery": {
     "status": "complete",
@@ -4316,7 +4319,8 @@
     ],
     "manage_surface": "Queue & recovery",
     "storage_pressure_primary_action": "Retry storage check",
-    "room_schema_unchanged": 21
+    "room_schema_unchanged": 21,
+    "validation_closed_by": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
   },
   "ux08_settings_information_architecture": {
     "status": "complete",
@@ -4339,7 +4343,8 @@
     "advanced_downloads_persisted_route_compatible": true,
     "storage_destination_settings_co_located": true,
     "appearance_dedicated_surface": true,
-    "room_schema_unchanged": 21
+    "room_schema_unchanged": 21,
+    "validation_closed_by": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
   },
   "ux09_advanced_settings_reorganization": {
     "status": "complete",
@@ -4357,7 +4362,8 @@
       "Transformation"
     ],
     "safety_stages_not_reorderable": true,
-    "room_schema_unchanged": 21
+    "room_schema_unchanged": 21,
+    "validation_closed_by": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
   },
   "ux10_developer_diagnostics_polish": {
     "status": "complete",
@@ -4369,7 +4375,8 @@
     "roadmap_phase_numbers_removed_from_runtime_developer_ui": true,
     "developer_status_vocabulary_humanized": true,
     "release_readiness_single_section_preserved": true,
-    "room_schema_unchanged": 21
+    "room_schema_unchanged": 21,
+    "validation_closed_by": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
   },
   "ux11_browser_external_surface_polish": {
     "status": "complete",
@@ -4383,10 +4390,11 @@
     "normal_settings_hide_hash_first_summary": true,
     "external_tools_health_summary": true,
     "room_schema_unchanged": 21,
-    "next_roadmap_overlay": "xdm_android_ux12_accessibility_terminology_visual_seal_v1.zip"
+    "next_roadmap_overlay": "xdm_android_ux12_accessibility_terminology_visual_seal_v1.zip",
+    "validation_closed_by": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
   },
   "ux12_accessibility_terminology_visual_seal": {
-    "status": "implemented_intermediate_validation_deferred",
+    "status": "complete",
     "overlay": "xdm_android_ux12_accessibility_terminology_visual_seal_v1.zip",
     "date": "2026-09-09",
     "depends_on": "xdm_android_ux10_ux11_developer_browser_polish_v1.zip",
@@ -4422,7 +4430,37 @@
     "legacy_debug_workbench_copy_removed_from_current_support_report": true,
     "queue_internal_copy_humanized": true,
     "room_schema_unchanged": 21,
-    "validation_deferred": true,
-    "next_overlay": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
+    "validation_deferred": false,
+    "next_overlay": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip",
+    "validation_closed_by": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
+  },
+  "ux13_end_to_end_ui_ux_release_seal": {
+    "status": "implemented_final_seal",
+    "overlay": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip",
+    "date": "2026-09-09",
+    "depends_on": "xdm_android_ux12_accessibility_terminology_visual_seal_v1.zip",
+    "roadmap_complete": true,
+    "cross_screen_state_consistency": true,
+    "storage_truth_consistency": true,
+    "download_state_consistency": true,
+    "media_state_consistency": true,
+    "developer_mode_single_center": true,
+    "legacy_debug_surface_duplication_forbidden": true,
+    "normal_ui_internal_contract_copy_forbidden": true,
+    "accessibility_seal_required": true,
+    "full_static_gate_required": true,
+    "app_unit_tests_required": true,
+    "core_model_tests_required": true,
+    "scheduler_tests_required": true,
+    "media_tests_required": true,
+    "transfer_native_tests_required": true,
+    "lint_required": true,
+    "room_schema_unchanged": 21,
+    "validation_deferred": false,
+    "next_overlay": null,
+    "validation_owner": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip",
+    "phase11_static_matrix_rows": 80,
+    "device_release_matrix_retained": true,
+    "documentation_only_evidence_rejected": true
   }
 }

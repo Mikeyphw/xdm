@@ -118,7 +118,8 @@ capture = view_model.split('private suspend fun executeCaptureMediaCommand', 1)[
 need(capture, 'AutomationRejectionReason.NoMediaDetected', "app final media authority")
 need(capture, 'Non-media capture ignored', "false-positive feedback")
 forbid(capture, 'openExternalAddDraft', "media rejection fallback")
-need(screen, 'Static sniff does not execute page JavaScript.', "truthful static/live locator copy")
+need(screen, 'Static inspection does not run page JavaScript.', "truthful static/live locator copy")
+need(screen, 'Live locator can observe media loaded by the page.', "truthful live-locator capability copy")
 need(parity_test, 'browserAndAppKeepWeakEvidenceInternalUntilCorroboratedAndNeverFallbackToGenericDownload', "Android parity contract")
 
 if errors:

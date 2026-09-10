@@ -66,12 +66,16 @@ need('System.getProperty("user.dir") ?: "."' in post,
 need("requireNotNull(root.parentFile?.parentFile)" in post,
      "post-DL03 contract must avoid nullable parentFile warning")
 need("tools/validate-add-media-ux-remodel.py" in gate, "canonical final gate must execute the Add/Media UX remodel validator")
-need("Add/Media UX remodel seal is the current final UI/release source of truth" in gate,
-     "canonical gate must identify the UX remodel as current UI/release authority")
+need("UX13 is the current end-to-end UI/UX release source of truth" in gate,
+     "canonical gate must identify UX13 as current UI/UX release authority")
+need("Add/Media UX remodel remains a retained functional milestone" in gate,
+     "canonical gate must retain the Add/Media UX remodel as a functional milestone")
 need("execution/media semantics repair remains its functional baseline" in gate,
      "canonical gate must retain execution/media repair as the functional baseline")
-need("Add/Media UX remodel seal is the current final UI/release source of truth" in post,
-     "post-DL03 carry-forward contract must recognize the newer UX authority")
+need("UX13 is the current end-to-end UI/UX release source of truth" in post,
+     "post-DL03 carry-forward contract must recognize UX13 as the newer UX authority")
+need("Add/Media UX remodel remains a retained functional milestone" in post,
+     "post-DL03 carry-forward contract must retain Add/Media milestone provenance")
 need("one explicit **Download** action" in readme and "Current Add and Media UX" in readme,
      "README must expose the current one-action Add/Media user model")
 need("The old `Review download -> Add to queue` second confirmation is removed." in report,
