@@ -54,7 +54,7 @@ class AddMediaUxRemodelContractTest {
         assertTrue(card.contains("MediaConsumerState.Ready -> Button("))
         assertTrue(card.contains("summary.primaryActionLabel"))
         assertTrue(workspace.contains("MediaConsumerState.Downloaded -> \"Open\""))
-        assertTrue(card.contains("Text(\"Details\")"))
+        assertTrue(card.contains("Text(\"Edit\")"))
         assertTrue(card.contains("MediaConsumerState.Unavailable -> \"Unavailable\""))
     }
 
@@ -67,7 +67,8 @@ class AddMediaUxRemodelContractTest {
         assertTrue(post.contains("System.getProperty(\"user.dir\") ?: \".\""))
         assertTrue(post.contains("requireNotNull(root.parentFile?.parentFile)"))
         assertTrue(gate.contains("tools/validate-add-media-ux-remodel.py"))
-        assertTrue(gate.contains("post-UX13 roadmap-completion hotfix is the current UI release authority"))
+        assertTrue(gate.contains("post-UX13 roadmap-completion hotfix remains the historical UI release baseline"))
+        assertTrue(gate.contains("ACT01/ACT02 list quick-actions final seal is the current experience-polish validation authority"))
         assertTrue(gate.contains("UX13 remains the end-to-end UI/UX baseline"))
         assertTrue(gate.contains("Add/Media UX remodel remains a retained functional milestone"))
         assertTrue(gate.contains("execution/media semantics repair remains its functional baseline"))

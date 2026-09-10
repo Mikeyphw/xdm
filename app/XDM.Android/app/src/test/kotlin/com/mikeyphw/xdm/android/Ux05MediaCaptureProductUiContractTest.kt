@@ -22,7 +22,7 @@ class Ux05MediaCaptureProductUiContractTest {
         assertTrue(card.contains("MediaConsumerState.Downloaded ->"))
         assertTrue(card.contains("Button(onClick = { onOpenOutput(output) })"))
         assertTrue(card.contains("\"Download again\""))
-        assertTrue(card.contains("Text(\"Details\")"))
+        assertTrue(card.contains("Text(\"Edit\")"))
         assertFalse(card.contains("Text(\"Options\")"))
     }
 

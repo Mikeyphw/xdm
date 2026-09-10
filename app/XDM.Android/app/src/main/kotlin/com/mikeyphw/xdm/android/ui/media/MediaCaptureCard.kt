@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
@@ -56,6 +57,7 @@ internal fun MediaCaptureCard(
     onRemove: (MediaCaptureRecord) -> Unit,
 ) {
     var detailsVisible by rememberSaveable(capture.id) { mutableStateOf(false) }
+    var removeConfirmVisible by rememberSaveable(capture.id) { mutableStateOf(false) }
     var trackSelection by remember(capture.id) {
         mutableStateOf(persistedSelection.copy(videoVariantId = persistedSelection.videoVariantId ?: capture.selectedVariantId))
     }
@@ -198,9 +200,12 @@ internal fun MediaCaptureCard(
                 MediaConsumerState.Unavailable -> Button(onClick = { onResolve(capture) }) {
                     Text(summary.primaryActionLabel)
                 }
-                MediaConsumerState.Protected -> Button(onClick = { detailsVisible = true }) { Text("View details") }
+                MediaConsumerState.Protected -> Button(onClick = { detailsVisible = true }) { Text("Edit") }
             }
-            TextButton(onClick = { detailsVisible = true }) { Text("Details") }
+            if (summary.state != MediaConsumerState.Protected) {
+                TextButton(onClick = { detailsVisible = true }) { Text("Edit") }
+            }
+            TextButton(onClick = { removeConfirmVisible = true }) { Text("Remove") }
         }
     }
 
@@ -223,9 +228,26 @@ internal fun MediaCaptureCard(
         },
         onRemove = {
             detailsVisible = false
-            onRemove(capture)
+            removeConfirmVisible = true
         },
     )
+
+    if (removeConfirmVisible) {
+        AlertDialog(
+            onDismissRequest = { removeConfirmVisible = false },
+            title = { Text("Remove captured media?") },
+            text = { Text("This removes the captured-media record from XDM. Existing downloaded files are not deleted.") },
+            confirmButton = {
+                Button(onClick = {
+                    removeConfirmVisible = false
+                    onRemove(capture)
+                }) { Text("Remove") }
+            },
+            dismissButton = {
+                TextButton(onClick = { removeConfirmVisible = false }) { Text("Keep") }
+            },
+        )
+    }
 }
 
 @Composable

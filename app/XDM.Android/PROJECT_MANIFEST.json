@@ -4523,7 +4523,8 @@
     "contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/ObservabilityProblemReportingContractTest.kt",
     "report": "XDM_OBSERVABILITY_PROBLEM_REPORTING_OBS01_OBS02_REPORT.md",
     "validation_deferred": true,
-    "next_overlay": "xdm_android_media_thumbnail_mime_presentation_v1.zip"
+    "next_overlay": "xdm_android_media_thumbnail_mime_presentation_v1.zip",
+    "validation_closed_by": "xdm_android_list_quick_actions_final_seal_v1.zip"
   },
   "media_thumbnail_mime_presentation_thumb01_thumb03_mime01": {
     "status": "implemented_intermediate",
@@ -4551,7 +4552,8 @@
     "contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/MediaThumbnailMimePresentationContractTest.kt",
     "report": "XDM_MEDIA_THUMBNAIL_MIME_PRESENTATION_THUMB01_THUMB03_MIME01_REPORT.md",
     "validation_deferred": true,
-    "next_overlay": "xdm_android_live_locator_title_naming_v1.zip"
+    "next_overlay": "xdm_android_live_locator_title_naming_v1.zip",
+    "validation_closed_by": "xdm_android_list_quick_actions_final_seal_v1.zip"
   },
   "live_locator_title_naming_web01_web03_name01": {
     "status": "implemented_intermediate",
@@ -4583,6 +4585,76 @@
     "contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/LiveLocatorTitleNamingContractTest.kt",
     "report": "XDM_LIVE_LOCATOR_TITLE_NAMING_WEB01_WEB03_NAME01_REPORT.md",
     "validation_deferred": true,
-    "next_overlay": "xdm_android_list_quick_actions_final_seal_v1.zip"
-  }
+    "next_overlay": "xdm_android_list_quick_actions_final_seal_v1.zip",
+    "validation_closed_by": "xdm_android_list_quick_actions_final_seal_v1.zip"
+  },
+  "list_quick_actions_final_seal_act01_act02": {
+    "status": "implemented_final_seal",
+    "overlay": "xdm_android_list_quick_actions_final_seal_v1.zip",
+    "date": "2026-09-10",
+    "depends_on": "xdm_android_live_locator_title_naming_v1.zip",
+    "download_quick_actions_planner_owned": true,
+    "download_quick_action_limit": 2,
+    "download_primary_action_preserved": true,
+    "download_contextual_cancel": true,
+    "download_contextual_share": true,
+    "download_contextual_source_edit": true,
+    "download_destructive_confirmation_preserved": true,
+    "captured_media_direct_edit": true,
+    "captured_media_direct_remove": true,
+    "captured_media_remove_confirmed": true,
+    "recent_media_direct_cancel": true,
+    "recent_media_manage_download_deeplink": true,
+    "library_direct_share": true,
+    "library_direct_manage": true,
+    "library_direct_remove": true,
+    "library_remove_keeps_file": true,
+    "roadmap_promises_complete": true,
+    "roadmap_promises": {
+      "proper_logging_and_debug_logging": true,
+      "problem_notifications": true,
+      "download_media_thumbnails": true,
+      "captured_media_thumbnails": true,
+      "webview_capture_artwork": true,
+      "extension_capture_artwork": true,
+      "media_captured_list_artwork": true,
+      "webview_improvements": true,
+      "page_title_default_naming_webview": true,
+      "page_title_default_naming_extension": true,
+      "mime_backed_fallback_icons": true,
+      "easier_card_actions": true
+    },
+    "canonical_validator": "tools/validate-list-quick-actions-final-seal.py",
+    "contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/ListQuickActionsFinalSealContractTest.kt",
+    "report": "XDM_LIST_QUICK_ACTIONS_FINAL_SEAL_ACT01_ACT02_REPORT.md",
+    "final_release_gate_carries_all_2026_09_10_validators": true,
+    "full_validation_required": true,
+    "required_final_validation_tasks": [
+      ":app:finalRemediationStaticGate",
+      ":app:compileDebugKotlin",
+      ":core-model:test",
+      ":core-utils:test",
+      ":transfer-api:test",
+      ":browser-integration:testDebugUnitTest",
+      ":storage:testDebugUnitTest",
+      ":transfer-native:testDebugUnitTest",
+      ":transfer-aria2:test",
+      ":scheduler:testDebugUnitTest",
+      ":media:test",
+      ":persistence:testDebugUnitTest",
+      ":app:testDebugUnitTest",
+      ":app:lintDebug",
+      ":browser-extension:test",
+      ":browser-extension:jsTest",
+      ":browser-extension:validateFirefoxExtension",
+      ":app:checkBrowserIntegration",
+      "assembleDebug",
+      ":app:assembleDebugAndroidTest"
+    ],
+    "validation_deferred": false,
+    "validation_owner": "xdm_android_list_quick_actions_final_seal_v1.zip",
+    "room_schema_unchanged": 21,
+    "next_overlay": null
+  },
+  "current_experience_polish_authority": "list_quick_actions_final_seal_act01_act02"
 }

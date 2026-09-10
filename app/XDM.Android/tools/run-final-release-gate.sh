@@ -55,6 +55,10 @@ validators=(
   tools/validate-execution-media-semantics-repair.py
   tools/validate-add-media-ux-remodel.py
   tools/validate-promise-delivery-audit.py
+  tools/validate-observability-problem-reporting.py
+  tools/validate-media-thumbnail-mime-presentation.py
+  tools/validate-live-locator-title-naming.py
+  tools/validate-list-quick-actions-final-seal.py
 )
 
 for validator in "${matrix_owned_validators[@]}" "${validators[@]}"; do
@@ -83,5 +87,5 @@ Run the full matrix in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-The post-UX13 roadmap-completion hotfix is the current UI release authority; UX13 remains the end-to-end UI/UX baseline and UX12 remains its accessibility/terminology baseline, the Add/Media UX remodel remains a retained functional milestone, the execution/media semantics repair remains its functional baseline, and the post-DL03 roadmap seal remains its historical baseline. The 2026-09-08 promise-delivery audit seals carry-forward correctness for legacy shape/wire isolation, opaque URL refresh, Live Locator recreation privacy, direct-media Options gating, the scoped AndroidX WebKit COOKIE_INTERCEPT and Kotlin renderer-detector lint guards, resource-backed Live Locator status text, and recovery-resume unwind synchronization. The common validation runner, current MC/DL validators, and retained Phase-11 device/release matrix provide executable evidence; documentation-only coverage is rejected.
+The post-UX13 roadmap-completion hotfix remains the historical UI release baseline; the 2026-09-10 ACT01/ACT02 list quick-actions final seal is the current experience-polish validation authority for the observability, thumbnail/MIME, Live Locator/title-naming, and card-action roadmap. UX13 remains the end-to-end UI/UX baseline and UX12 remains its accessibility/terminology baseline, the Add/Media UX remodel remains a retained functional milestone, the execution/media semantics repair remains its functional baseline, and the post-DL03 roadmap seal remains its historical baseline. The 2026-09-08 promise-delivery audit seals carry-forward correctness for legacy shape/wire isolation, opaque URL refresh, Live Locator recreation privacy, direct-media Options gating, the scoped AndroidX WebKit COOKIE_INTERCEPT and Kotlin renderer-detector lint guards, resource-backed Live Locator status text, and recovery-resume unwind synchronization. The common validation runner, current MC/DL validators, all four 2026-09-10 roadmap validators, and retained Phase-11 device/release matrix provide executable evidence; documentation-only coverage is rejected.
 EOF2

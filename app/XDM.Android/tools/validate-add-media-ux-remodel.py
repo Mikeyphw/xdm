@@ -58,7 +58,8 @@ need("val hasTrackChoices" in card and "if (hasTrackChoices && videoVariants.isN
      "quality/track controls must be conditional on meaningful adaptive choices in both card and Options sheet")
 need("MediaConsumerState.Ready -> Button(" in card and 'MediaConsumerState.Downloaded -> "Open"' in workspace,
      "ready direct media must expose Download and downloaded media must expose Open")
-need('Text("Details")' in card, "secondary media controls must use a compact Details affordance")
+need('Text("Edit")' in card or 'Text("Details")' in card,
+     "secondary media controls must retain a compact editable Details/Edit affordance")
 need('MediaConsumerState.Unavailable -> "Unavailable"' in card, "media unavailable state must remain truthful")
 
 need('System.getProperty("user.dir") ?: "."' in post,
@@ -66,16 +67,28 @@ need('System.getProperty("user.dir") ?: "."' in post,
 need("requireNotNull(root.parentFile?.parentFile)" in post,
      "post-DL03 contract must avoid nullable parentFile warning")
 need("tools/validate-add-media-ux-remodel.py" in gate, "canonical final gate must execute the Add/Media UX remodel validator")
-need("post-UX13 roadmap-completion hotfix is the current UI release authority" in gate and
-     "UX13 remains the end-to-end UI/UX baseline" in gate,
-     "canonical gate must identify the post-UX13 hotfix as current authority and UX13 as baseline")
+gate_authority_ok = (
+    "post-UX13 roadmap-completion hotfix is the current UI release authority" in gate
+    or (
+        "post-UX13 roadmap-completion hotfix remains the historical UI release baseline" in gate
+        and "ACT01/ACT02 list quick-actions final seal is the current experience-polish validation authority" in gate
+    )
+)
+need(gate_authority_ok and "UX13 remains the end-to-end UI/UX baseline" in gate,
+     "canonical gate must retain post-UX13 and UX13 provenance while allowing a later validated experience-polish authority")
 need("Add/Media UX remodel remains a retained functional milestone" in gate,
      "canonical gate must retain the Add/Media UX remodel as a functional milestone")
 need("execution/media semantics repair remains its functional baseline" in gate,
      "canonical gate must retain execution/media repair as the functional baseline")
-need("post-UX13 roadmap-completion hotfix is the current UI release authority" in post and
-     "UX13 remains the end-to-end UI/UX baseline" in post,
-     "post-DL03 carry-forward contract must recognize the post-UX13 hotfix authority and UX13 baseline")
+post_authority_ok = (
+    "post-UX13 roadmap-completion hotfix is the current UI release authority" in post
+    or (
+        "post-UX13 roadmap-completion hotfix remains the historical UI release baseline" in post
+        and "ACT01/ACT02 list quick-actions final seal is the current experience-polish validation authority" in post
+    )
+)
+need(post_authority_ok and "UX13 remains the end-to-end UI/UX baseline" in post,
+     "post-DL03 carry-forward contract must retain post-UX13 and UX13 provenance under the current experience-polish authority")
 need("Add/Media UX remodel remains a retained functional milestone" in post,
      "post-DL03 carry-forward contract must retain Add/Media milestone provenance")
 need("one explicit **Download** action" in readme and "Current Add and Media UX" in readme,

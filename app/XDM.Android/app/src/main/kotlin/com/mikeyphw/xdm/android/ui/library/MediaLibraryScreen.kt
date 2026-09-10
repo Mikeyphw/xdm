@@ -67,6 +67,7 @@ fun MediaLibraryScreen(
 ) {
     val executionPlanner = remember { MediaExecutionLibraryPlanner() }
     val consumerPlanner = remember { MediaConsumerWorkspacePlanner() }
+    val context = LocalContext.current
     val allItems = remember(captures, downloads, variants, outputs, externalJobs) {
         executionPlanner.offlineLibraryItems(
             captures = captures,
@@ -82,6 +83,7 @@ fun MediaLibraryScreen(
     var selectedPlayerItem by remember { mutableStateOf<OfflineMediaLibraryItem?>(null) }
     var selectedDetailsItem by remember { mutableStateOf<OfflineMediaLibraryItem?>(null) }
     var pendingDeleteItem by remember { mutableStateOf<OfflineMediaLibraryItem?>(null) }
+    var pendingRemoveItem by remember { mutableStateOf<OfflineMediaLibraryItem?>(null) }
     val downloadsById = remember(downloads) { downloads.associateBy(Download::id) }
     val visibleItems = remember(allItems, filter, sort, downloadsById) {
         val filtered = consumerPlanner.filterLibrary(allItems, filter, System.currentTimeMillis())
@@ -164,6 +166,8 @@ fun MediaLibraryScreen(
                             if (item.ownerKind == MediaOutputOwnerKind.TermuxJob) onRetryExternalJob(item.ownerId)
                             else item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload)
                         },
+                        onShare = item.playbackUrl?.let { url -> { shareMediaFile(context, url, item.sidecar.mimeType, item.title) } },
+                        onRemove = { pendingRemoveItem = item },
                         onMore = { selectedDetailsItem = item },
                     )
                 }
@@ -188,6 +192,8 @@ fun MediaLibraryScreen(
                             if (item.ownerKind == MediaOutputOwnerKind.TermuxJob) onRetryExternalJob(item.ownerId)
                             else item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload)
                         },
+                        onShare = item.playbackUrl?.let { url -> { shareMediaFile(context, url, item.sidecar.mimeType, item.title) } },
+                        onRemove = { pendingRemoveItem = item },
                         onMore = { selectedDetailsItem = item },
                     )
                 }
@@ -220,7 +226,7 @@ fun MediaLibraryScreen(
                 selectedDetailsItem = null
             },
             onRemoveRecord = {
-                onRemoveRecord(item)
+                pendingRemoveItem = item
                 selectedDetailsItem = null
             },
             onDeleteSavedFile = if (item.downloadId != null && item.isCompleted) {
@@ -248,6 +254,23 @@ fun MediaLibraryScreen(
             },
         )
     }
+
+    pendingRemoveItem?.let { item ->
+        AlertDialog(
+            onDismissRequest = { pendingRemoveItem = null },
+            title = { Text("Remove from Library?") },
+            text = { Text("This removes the Library record only. The downloaded file is kept on your device.") },
+            confirmButton = {
+                Button(onClick = {
+                    onRemoveRecord(item)
+                    pendingRemoveItem = null
+                }) { Text("Remove") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemoveItem = null }) { Text("Keep") }
+            },
+        )
+    }
 }
 
 @Composable
@@ -256,6 +279,8 @@ private fun MediaLibraryListItem(
     consumerPlanner: MediaConsumerWorkspacePlanner,
     onPlay: () -> Unit,
     onResumeOrRetry: () -> Unit,
+    onShare: (() -> Unit)?,
+    onRemove: () -> Unit,
     onMore: () -> Unit,
 ) {
     XdmListCard(compact = true) {
@@ -278,7 +303,7 @@ private fun MediaLibraryListItem(
                 XdmSupportingText(consumerPlanner.libraryStateLabel(item), maxLines = 1)
             }
         }
-        LibraryPrimaryActions(item, onPlay, onResumeOrRetry, onMore)
+        LibraryPrimaryActions(item, onPlay, onResumeOrRetry, onShare, onRemove, onMore)
     }
 }
 
@@ -288,6 +313,8 @@ private fun MediaLibraryGridItem(
     consumerPlanner: MediaConsumerWorkspacePlanner,
     onPlay: () -> Unit,
     onResumeOrRetry: () -> Unit,
+    onShare: (() -> Unit)?,
+    onRemove: () -> Unit,
     onMore: () -> Unit,
 ) {
     XdmListCard {
@@ -308,7 +335,7 @@ private fun MediaLibraryGridItem(
         XdmCardTitle(item.title, maxLines = 2)
         XdmMetadataText(libraryMetadata(item, consumerPlanner), maxLines = 2)
         XdmSupportingText(consumerPlanner.libraryStateLabel(item), maxLines = 1)
-        LibraryPrimaryActions(item, onPlay, onResumeOrRetry, onMore)
+        LibraryPrimaryActions(item, onPlay, onResumeOrRetry, onShare, onRemove, onMore)
     }
 }
 
@@ -317,6 +344,8 @@ private fun LibraryPrimaryActions(
     item: OfflineMediaLibraryItem,
     onPlay: () -> Unit,
     onResumeOrRetry: () -> Unit,
+    onShare: (() -> Unit)?,
+    onRemove: () -> Unit,
     onMore: () -> Unit,
 ) {
     XdmActionFlowRow {
@@ -326,7 +355,9 @@ private fun LibraryPrimaryActions(
             item.canRetry -> Button(onClick = onResumeOrRetry) { Text("Retry") }
             else -> StatusPill("Unavailable", tone = XdmStatusTone.Warning)
         }
-        TextButton(onClick = onMore) { Text("More") }
+        onShare?.let { share -> TextButton(onClick = share) { Text("Share") } }
+        TextButton(onClick = onMore) { Text("Manage") }
+        TextButton(onClick = onRemove) { Text("Remove") }
     }
 }
 

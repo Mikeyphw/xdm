@@ -116,19 +116,33 @@ need('requireNotNull(System.getProperty("user.dir"))' in app_test,
      "repair app contract must use a non-null user.dir before constructing java.io.File")
 need("tools/validate-execution-media-semantics-repair.py" in post_dl03_test,
      "post-DL03 carry-forward contract must include the execution/media repair validator")
-need("post-UX13 roadmap-completion hotfix is the current UI release authority" in post_dl03_test and
+post_test_authority_ok = (
+    "post-UX13 roadmap-completion hotfix is the current UI release authority" in post_dl03_test
+    or (
+        "post-UX13 roadmap-completion hotfix remains the historical UI release baseline" in post_dl03_test
+        and "ACT01/ACT02 list quick-actions final seal is the current experience-polish validation authority" in post_dl03_test
+    )
+)
+need(post_test_authority_ok and
      "UX13 remains the end-to-end UI/UX baseline" in post_dl03_test and
      "Add/Media UX remodel remains a retained functional milestone" in post_dl03_test and
      "execution/media semantics repair remains its functional baseline" in post_dl03_test and
      "post-DL03 roadmap seal remains its historical baseline" in post_dl03_test,
-     "post-DL03 carry-forward contract must recognize the post-UX13 hotfix as current authority while retaining UX13/Add-Media/execution provenance")
+     "post-DL03 carry-forward contract must retain post-UX13/UX13/Add-Media/execution provenance under the current experience-polish authority")
 need('assertTrue(gate.contains("post-DL03 roadmap seal is the current final source of truth"))' not in post_dl03_test,
      "post-DL03 carry-forward contract must not positively require stale current-authority wording")
-need("post-UX13 roadmap-completion hotfix is the current UI release authority" in final_gate and
+authority_wording_ok = (
+    "post-UX13 roadmap-completion hotfix is the current UI release authority" in final_gate
+    or (
+        "post-UX13 roadmap-completion hotfix remains the historical UI release baseline" in final_gate
+        and "ACT01/ACT02 list quick-actions final seal is the current experience-polish validation authority" in final_gate
+    )
+)
+need(authority_wording_ok and
      "UX13 remains the end-to-end UI/UX baseline" in final_gate and
      "Add/Media UX remodel remains a retained functional milestone" in final_gate and
      "execution/media semantics repair remains its functional baseline" in final_gate,
-     "canonical final gate must expose the post-UX13 hotfix as current authority while retaining UX13/Add-Media/execution provenance")
+     "canonical final gate must retain post-UX13/UX13/Add-Media/execution provenance while allowing a later validated experience-polish authority")
 
 need(entry.get("room_schema_current") == 21 and entry.get("room_schema_changed") is False,
      "execution/media repair must retain Room schema 21")

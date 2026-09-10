@@ -423,10 +423,7 @@ fun DownloadsScreen(
                             }
                         },
                         onDownloadLongClick = { download -> selectedIds = selectedIds.toggle(download.id) },
-                        onPrimaryAction = { download ->
-                            val action = DownloadActionPlanner.primaryActionFor(download, actionContext(download))
-                            runDownloadAction(download, action)
-                        },
+                        onQuickAction = { download, action -> runDownloadAction(download, action) },
                         onMoreActions = { download -> actionDownloadId = download.id },
                         modifier = Modifier
                             .then(
@@ -493,10 +490,7 @@ fun DownloadsScreen(
                         if (selectionMode) selectedIds = selectedIds.toggle(download.id) else detailDownloadId = download.id
                     },
                     onDownloadLongClick = { download -> selectedIds = selectedIds.toggle(download.id) },
-                    onPrimaryAction = { download ->
-                        val action = DownloadActionPlanner.primaryActionFor(download, actionContext(download))
-                        runDownloadAction(download, action)
-                    },
+                    onQuickAction = { download, action -> runDownloadAction(download, action) },
                     onMoreActions = { download -> actionDownloadId = download.id },
                     modifier = Modifier
                         .fillMaxSize()
@@ -812,7 +806,7 @@ private fun DownloadWorkspaceList(
     emptyDescription: String,
     onDownloadClick: (Download) -> Unit,
     onDownloadLongClick: (Download) -> Unit,
-    onPrimaryAction: (Download) -> Unit,
+    onQuickAction: (Download, DownloadAction) -> Unit,
     onMoreActions: (Download) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -840,7 +834,7 @@ private fun DownloadWorkspaceList(
                 thumbnailUrl = thumbnailFor(download),
                 onClick = { onDownloadClick(download) },
                 onLongClick = { onDownloadLongClick(download) },
-                onPrimaryAction = { onPrimaryAction(download) },
+                onQuickAction = { action -> onQuickAction(download, action) },
                 onMoreActions = { onMoreActions(download) },
             )
         }

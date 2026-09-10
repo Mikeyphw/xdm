@@ -165,6 +165,56 @@ object DownloadActionPlanner {
             ?: actionsFor(download, context).firstOrNull { it.enabled && !it.destructive }
             ?: details(primary = true)
 
+    /**
+     * Small, state-aware action set intended for download cards. The first entry is always the
+     * canonical primary action. The second entry is the most useful adjacent operation for the
+     * current state; destructive entries keep their normal confirmation requirement when invoked.
+     */
+    fun quickActionsFor(download: Download, context: DownloadActionContext = DownloadActionContext()): List<DownloadAction> {
+        val actions = actionsFor(download, context)
+        val primary = primaryActionFor(download, context)
+        val preferredSecondaryKinds = when (download.state) {
+            DownloadState.Downloading,
+            DownloadState.Connecting,
+            DownloadState.Finalizing,
+            DownloadState.Verifying,
+            DownloadState.Repairing,
+            DownloadState.Queued,
+            DownloadState.Created,
+            -> listOf(DownloadActionKind.Cancel, DownloadActionKind.OpenDetails)
+
+            DownloadState.Paused,
+            DownloadState.WaitingForNetwork,
+            DownloadState.WaitingForPower,
+            DownloadState.Failed,
+            -> listOf(DownloadActionKind.RefreshLink, DownloadActionKind.OpenDetails)
+
+            DownloadState.Completed -> listOf(
+                DownloadActionKind.ShareFile,
+                DownloadActionKind.Rename,
+                DownloadActionKind.OpenDetails,
+            )
+
+            DownloadState.RecoveryRequired -> listOf(
+                DownloadActionKind.ReviewRecovery,
+                DownloadActionKind.LocateFile,
+                DownloadActionKind.OpenDetails,
+            )
+
+            DownloadState.Cancelled -> listOf(
+                DownloadActionKind.Redownload,
+                DownloadActionKind.DeleteRecord,
+                DownloadActionKind.OpenDetails,
+            )
+        }
+        val secondary = preferredSecondaryKinds.asSequence()
+            .mapNotNull { kind -> actions.firstOrNull { it.kind == kind && it.enabled && it.kind != primary.kind } }
+            .firstOrNull()
+            ?: actions.firstOrNull { it.enabled && it.kind != primary.kind && !it.destructive }
+            ?: actions.firstOrNull { it.enabled && it.kind != primary.kind }
+        return listOfNotNull(primary, secondary).distinctBy(DownloadAction::kind).take(2)
+    }
+
     fun batchActionsFor(downloads: List<Download>): List<DownloadAction> {
         if (downloads.isEmpty()) return emptyList()
         val states = downloads.mapTo(linkedSetOf()) { it.state }

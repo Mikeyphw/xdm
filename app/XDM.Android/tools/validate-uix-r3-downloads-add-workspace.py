@@ -36,10 +36,12 @@ screen = require(
 )
 row = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt",
-    "combinedClickable(", "onLongClick", "XdmFileTypeIcon(", "XdmProgressLine(",
+    "combinedClickable(", "onLongClick", "XdmMediaArtwork(", "XdmProgressLine(",
     "DownloadActionPlanner.primaryActionFor(download, actionContext)", "DownloadAction.iconVector()",
 )
 
+# THUMB01: the row's historical XdmFileTypeIcon fallback is now owned by the shared
+# XdmMediaArtwork component, which itself provides MIME-backed fallback presentation.
 # Phase61: UIX R3 originally required the old row-local primaryRowAction symbol.
 # Phase44 intentionally retired that local planner; the current contract is planner-backed.
 if "private fun Download.primaryRowAction" in row or "private data class DownloadRowAction" in row:

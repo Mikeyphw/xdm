@@ -61,6 +61,8 @@ fun MediaInboxScreen(
     onBatchInput: (String) -> Unit,
     onDownload: (MediaCaptureRecord, MediaTrackSelection, MediaOutputAdmissionMode) -> Unit,
     onResumeOrRetryDownload: (Download) -> Unit,
+    onCancelDownload: (Download) -> Unit,
+    onOpenDownload: (Download) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
     onTrackSelectionChanged: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
@@ -284,6 +286,8 @@ fun MediaInboxScreen(
                                 thumbnailUrl = capture.thumbnailUrl ?: variants.firstOrNull { it.captureId == capture.id && it.kind == MediaVariantKind.Thumbnail }?.url,
                                 sourceUrl = capture.sourceUrl,
                                 onResumeOrRetry = { onResumeOrRetryDownload(download) },
+                                onCancel = { onCancelDownload(download) },
+                                onManage = { onOpenDownload(download) },
                             )
                             if (index != recentlyQueued.lastIndex) XdmListSeparator()
                         }
@@ -428,6 +432,8 @@ private fun RecentlyQueuedMediaRow(
     thumbnailUrl: String?,
     sourceUrl: String?,
     onResumeOrRetry: () -> Unit,
+    onCancel: () -> Unit,
+    onManage: () -> Unit,
 ) {
     val progress = download.totalBytes?.takeIf { it > 0L }?.let { download.progressFraction }
     Column(Modifier.fillMaxWidth()) {
@@ -449,22 +455,30 @@ private fun RecentlyQueuedMediaRow(
                     height = 44.dp,
                 )
             },
-            trailing = {
-                val action = when (download.state) {
-                    DownloadState.Downloading,
-                    DownloadState.Connecting,
-                    DownloadState.Queued,
-                    DownloadState.Finalizing -> "Pause"
-                    DownloadState.Paused,
-                    DownloadState.Failed,
-                    DownloadState.WaitingForNetwork,
-                    DownloadState.WaitingForPower -> "Resume"
-                    DownloadState.RecoveryRequired -> if (download.errorMessage.orEmpty().startsWith("Final save failed")) "Retry save" else null
-                    else -> null
-                }
-                action?.let { TextButton(onClick = onResumeOrRetry) { Text(it) } }
-            },
         )
+        val primaryAction = when (download.state) {
+            DownloadState.Downloading,
+            DownloadState.Connecting,
+            DownloadState.Queued,
+            DownloadState.Finalizing -> "Pause"
+            DownloadState.Paused,
+            DownloadState.Failed,
+            DownloadState.WaitingForNetwork,
+            DownloadState.WaitingForPower -> if (download.state == DownloadState.Failed) "Retry" else "Resume"
+            DownloadState.RecoveryRequired -> if (download.errorMessage.orEmpty().startsWith("Final save failed")) "Retry save" else null
+            else -> null
+        }
+        XdmActionFlowRow(Modifier.padding(start = 68.dp, end = 14.dp, bottom = 6.dp)) {
+            primaryAction?.let { TextButton(onClick = onResumeOrRetry) { Text(it) } }
+            if (download.state in setOf(
+                    DownloadState.Downloading, DownloadState.Connecting, DownloadState.Queued, DownloadState.Finalizing,
+                    DownloadState.Verifying, DownloadState.Repairing,
+                )
+            ) {
+                TextButton(onClick = onCancel) { Text("Cancel") }
+            }
+            TextButton(onClick = onManage) { Text("Manage") }
+        }
         if (download.state !in setOf(DownloadState.Completed, DownloadState.Cancelled, DownloadState.Failed)) {
             Row(
                 Modifier.fillMaxWidth().padding(start = 68.dp, end = 14.dp, bottom = 10.dp),

@@ -1,3 +1,12 @@
+## 2026-09-10 — ACT01/ACT02 list quick actions and final roadmap seal
+
+- Added planner-owned two-action download-card shortcuts: the canonical primary action plus a contextual Cancel, Replace source URL, Share, recovery, or redownload/remove shortcut as appropriate.
+- Direct destructive download shortcuts still route through the existing confirmation sheet; the complete overflow action model remains available.
+- Captured-media cards now expose Edit and confirmed Remove directly; recently queued media exposes Pause/Resume/Retry, Cancel, and Manage with exact download-detail navigation.
+- Media Library cards now expose direct Share, Manage, and confirmed record-only Remove while keeping permanent saved-file deletion separate.
+- Re-audited the complete OBS/THUMB/WEB/NAME/ACT promise set and added all four 2026-09-10 validators to the canonical final release gate.
+- This overlay owns full explicit Android validation and closes the roadmap with Room schema 21 unchanged.
+
 ## 2026-09-10 — WEB01–WEB03 + NAME01 Live Locator and captured-media naming
 
 - Upgraded Live Locator with page title/host/transport/load-state summary, state-aware navigation controls, keyboard Go, zoom/site compatibility, and a collapsible captured-media panel.

@@ -248,6 +248,11 @@ private fun XdmRouteContent(
                 onBatchInput = viewModel::captureMediaBatchInput,
                 onDownload = viewModel::downloadMediaCapture,
                 onResumeOrRetryDownload = viewModel::togglePause,
+                onCancelDownload = viewModel::cancelDownload,
+                onOpenDownload = { download ->
+                    viewModel.selectDownloadDetail(download.id)
+                    viewModel.navigate(AppRoute.Downloads)
+                },
                 onResolve = viewModel::resolveMediaCapture,
                 onSelectVariant = viewModel::selectMediaVariant,
                 onTrackSelectionChanged = viewModel::updateMediaTrackSelection,

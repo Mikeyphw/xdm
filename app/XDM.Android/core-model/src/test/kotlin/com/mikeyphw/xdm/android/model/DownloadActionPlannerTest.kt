@@ -6,6 +6,40 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DownloadActionPlannerTest {
+
+    @Test
+    fun quickActionsExposePrimaryPlusContextualShortcut() {
+        val active = DownloadActionPlanner.quickActionsFor(download(DownloadState.Downloading))
+        assertEquals(listOf(DownloadActionKind.Pause, DownloadActionKind.Cancel), active.map { it.kind })
+        assertTrue(active[1].requiresConfirmation)
+
+        val failed = DownloadActionPlanner.quickActionsFor(download(DownloadState.Failed))
+        assertEquals(listOf(DownloadActionKind.Retry, DownloadActionKind.RefreshLink), failed.map { it.kind })
+
+        val completed = DownloadActionPlanner.quickActionsFor(
+            download(DownloadState.Completed),
+            DownloadActionContext(
+                artifact = CompletedArtifactCapabilities(
+                    health = CompletedArtifactHealth.Present,
+                    readable = true,
+                    shareable = true,
+                    renameable = true,
+                ),
+            ),
+        )
+        assertEquals(listOf(DownloadActionKind.OpenFile, DownloadActionKind.ShareFile), completed.map { it.kind })
+    }
+
+    @Test
+    fun quickActionsNeverDuplicatePrimaryAndStayBounded() {
+        DownloadState.entries.forEach { state ->
+            val quick = DownloadActionPlanner.quickActionsFor(download(state))
+            assertTrue("$state quick actions must stay compact", quick.size in 1..2)
+            assertEquals(quick.map { it.kind }.distinct(), quick.map { it.kind })
+            assertEquals(DownloadActionPlanner.primaryActionFor(download(state)).kind, quick.first().kind)
+        }
+    }
+
     @Test
     fun verifyingAndRepairingNeverAdvertisePauseButAlwaysOfferCancel() {
         listOf(DownloadState.Verifying, DownloadState.Repairing).forEach { state ->

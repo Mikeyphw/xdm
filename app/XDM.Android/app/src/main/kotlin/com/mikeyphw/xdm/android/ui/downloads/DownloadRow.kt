@@ -60,10 +60,11 @@ internal fun DownloadRow(
     thumbnailUrl: String? = null,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onPrimaryAction: () -> Unit,
+    onQuickAction: (DownloadAction) -> Unit,
     onMoreActions: () -> Unit,
 ) {
     val action = DownloadActionPlanner.primaryActionFor(download, actionContext)
+    val quickActions = DownloadActionPlanner.quickActionsFor(download, actionContext)
     val truth = DownloadUiTruthPlanner.truth(download, actionContext)
     val totalBytes = download.totalBytes
     val phaseProgress = DownloadUiTruthPlanner.phaseProgress(download, actionContext)
@@ -144,11 +145,15 @@ internal fun DownloadRow(
             }
             Spacer(Modifier.width(2.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = onPrimaryAction,
-                    enabled = action.enabled,
-                    modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = "${action.label} ${download.fileName}" },
-                ) { Icon(action.iconVector(), contentDescription = null) }
+                quickActions.forEach { quickAction ->
+                    IconButton(
+                        onClick = { onQuickAction(quickAction) },
+                        enabled = quickAction.enabled,
+                        modifier = Modifier
+                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                            .semantics { contentDescription = "${quickAction.label} ${download.fileName}" },
+                    ) { Icon(quickAction.iconVector(), contentDescription = null) }
+                }
                 IconButton(
                     onClick = onMoreActions,
                     modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = "More actions for ${download.fileName}" },
