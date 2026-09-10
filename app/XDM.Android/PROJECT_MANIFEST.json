@@ -1454,7 +1454,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip",
+  "current_overlay": "xdm_android_ux04_ux05_new_download_media_product_ui_v1.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -4242,5 +4242,46 @@
     "automatic_transfer_start_added": false,
     "automatic_file_deletion_added": false,
     "next_roadmap_overlay": "UX04 New Download and destination selection/preflight"
+  },
+  "ux04_new_download_destination_preflight": {
+    "status": "implemented",
+    "single_save_to_selector": true,
+    "destination_picker": true,
+    "destination_health_preflight": true,
+    "capacity_known_unknown_supported": true,
+    "remote_link_preflight": true,
+    "remote_preflight_advisory_not_blocking": true,
+    "suggested_filename_mime_size_resume_redirect": true,
+    "advanced_engine_choices_collapsed": true,
+    "common_conflicts_primary": [
+      "Rename",
+      "Resume",
+      "Overwrite"
+    ],
+    "additional_conflicts": [
+      "Skip",
+      "Compare"
+    ],
+    "room_schema_unchanged": 21
+  },
+  "ux05_media_capture_product_ui": {
+    "status": "implemented",
+    "consumer_states": [
+      "Captured",
+      "Ready",
+      "Downloading",
+      "Downloaded",
+      "Refresh needed",
+      "Unavailable",
+      "Protected"
+    ],
+    "downloaded_primary_action": "Open",
+    "downloaded_secondary_action": "Download again",
+    "browser_capture_summary_simplified": true,
+    "capture_evidence_technical_details_only": true,
+    "batch_intake_simplified": true,
+    "empty_state_live_locator_action": true,
+    "raw_session_values_hidden": true,
+    "room_schema_unchanged": 21
   }
 }

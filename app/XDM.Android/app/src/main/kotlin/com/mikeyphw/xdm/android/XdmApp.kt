@@ -38,6 +38,8 @@ private val primaryRoutes = routeTopology.filterNot { it == AppRoute.Add }
 fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val downloadAdmission by viewModel.downloadAdmissionState.collectAsStateWithLifecycle()
+    val destinationPreflight by viewModel.destinationPreflightState.collectAsStateWithLifecycle()
+    val downloadUrlPreflight by viewModel.downloadUrlPreflightState.collectAsStateWithLifecycle()
     var lastPrimaryRouteName by rememberSaveable { mutableStateOf(AppRoute.Downloads.name) }
 
     LaunchedEffect(state.route) {
@@ -155,6 +157,10 @@ fun XdmApp(viewModel: MainViewModel, requestNotifications: () -> Unit = {}) {
                     onSafDestinationSelected = viewModel::registerSafDestination,
                     onConflictPolicyChanged = viewModel::setConflictPolicy,
                     admissionState = downloadAdmission,
+                    destinationPreflight = destinationPreflight,
+                    urlPreflight = downloadUrlPreflight,
+                    onInspectDestination = viewModel::inspectDownloadDestination,
+                    onInspectUrl = viewModel::inspectDownloadUrl,
                     onDismissAdmission = viewModel::dismissDuplicateAddPrompt,
                     onDuplicateDecision = viewModel::resolveDuplicateDownload,
                     onAdd = { url, name, backend, destination, conflictPolicy, allowFallback, expectedChecksum, checksumAlgorithm ->

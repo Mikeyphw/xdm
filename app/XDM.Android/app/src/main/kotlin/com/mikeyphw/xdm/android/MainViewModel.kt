@@ -156,6 +156,8 @@ import java.net.URI
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -420,6 +422,12 @@ class MainViewModel(
     private val externalAddDraft = MutableStateFlow<DownloadIntakeDraft?>(null)
     private val _downloadAdmissionState = MutableStateFlow(DownloadAdmissionUiState())
     val downloadAdmissionState: StateFlow<DownloadAdmissionUiState> = _downloadAdmissionState
+    private val _destinationPreflightState = MutableStateFlow(DestinationPreflightUi())
+    val destinationPreflightState: StateFlow<DestinationPreflightUi> = _destinationPreflightState
+    private val _downloadUrlPreflightState = MutableStateFlow(DownloadUrlPreflightUi())
+    val downloadUrlPreflightState: StateFlow<DownloadUrlPreflightUi> = _downloadUrlPreflightState
+    private val downloadPreflightProbe = DownloadPreflightProbe()
+    private var downloadUrlPreflightJob: Job? = null
     private var pendingDownloadAdmission: PendingDownloadAdmission? = null
     private val mediaIntakeFeedback = MutableStateFlow(MediaIntakeFeedbackUi())
     private val mediaOutputAdmissionClaims = ConcurrentHashMap.newKeySet<String>()
@@ -4198,11 +4206,85 @@ class MainViewModel(
         }
     }
 
+    fun inspectDownloadDestination(uri: String) {
+        val raw = uri.trim()
+        if (raw.isBlank()) {
+            _destinationPreflightState.value = DestinationPreflightUi()
+            return
+        }
+        _destinationPreflightState.value = DestinationPreflightUi(
+            destinationUri = raw,
+            state = DownloadPreflightState.Checking,
+            displayName = destinationUiLabel(raw),
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = runCatching { destinationWriter.health(raw).toPreflightUi() }
+                .getOrElse { error ->
+                    DestinationPreflightUi(
+                        destinationUri = raw,
+                        state = DownloadPreflightState.Failed,
+                        displayName = destinationUiLabel(raw),
+                        status = com.mikeyphw.xdm.android.model.DestinationHealthStatus.Unavailable,
+                        message = error.message ?: "Destination check failed",
+                    )
+                }
+            if (_destinationPreflightState.value.destinationUri == raw) {
+                _destinationPreflightState.value = result
+            }
+        }
+    }
+
+    fun inspectDownloadUrl(
+        url: String,
+        providedMimeType: String? = null,
+        providedContentLength: Long? = null,
+        allowNetwork: Boolean = true,
+    ) {
+        val raw = url.trim()
+        downloadUrlPreflightJob?.cancel()
+        if (raw.isBlank()) {
+            _downloadUrlPreflightState.value = DownloadUrlPreflightUi()
+            return
+        }
+        _downloadUrlPreflightState.value = DownloadUrlPreflightUi(
+            requestedUrl = raw,
+            state = DownloadPreflightState.Checking,
+            mimeType = providedMimeType,
+            contentLength = providedContentLength,
+        )
+        downloadUrlPreflightJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(450)
+            val result = downloadPreflightProbe.probe(
+                url = raw,
+                providedMimeType = providedMimeType,
+                providedContentLength = providedContentLength,
+                allowNetwork = allowNetwork,
+            )
+            if (_downloadUrlPreflightState.value.requestedUrl == raw) {
+                _downloadUrlPreflightState.value = result
+            }
+        }
+    }
+
     fun setDestination(uri: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val health = runCatching { destinationWriter.health(uri) }.getOrNull() ?: return@launch
+            val health = runCatching { destinationWriter.health(uri) }.getOrElse { error ->
+                _destinationPreflightState.value = DestinationPreflightUi(
+                    destinationUri = uri,
+                    state = DownloadPreflightState.Failed,
+                    displayName = destinationUiLabel(uri),
+                    status = com.mikeyphw.xdm.android.model.DestinationHealthStatus.Unavailable,
+                    message = error.message ?: "Destination check failed",
+                )
+                return@launch
+            }
+            _destinationPreflightState.value = health.toPreflightUi()
             refreshSavedDestination(uri, health)
-            if (runCatching { destinationWriter.canWrite(uri) }.getOrDefault(false)) preferences.setDestination(uri)
+            if (health.status == com.mikeyphw.xdm.android.model.DestinationHealthStatus.Healthy ||
+                health.status == com.mikeyphw.xdm.android.model.DestinationHealthStatus.LowSpace
+            ) {
+                preferences.setDestination(uri)
+            }
         }
     }
 
@@ -4242,6 +4324,7 @@ class MainViewModel(
             val parsed = Uri.parse(uri)
             destinationWriter.persistTreePermission(parsed)
             val health = runCatching { destinationWriter.health(uri) }.getOrNull() ?: return@launch
+            _destinationPreflightState.value = health.toPreflightUi()
             val writable = runCatching { destinationWriter.canWrite(uri) }.getOrDefault(false)
             repository.saveDestinationPermission(
                 DestinationPermission(

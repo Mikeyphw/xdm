@@ -44,6 +44,7 @@ import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.BrowserSessionHealthReport
 import com.mikeyphw.xdm.android.model.ChecksumAlgorithm
 import com.mikeyphw.xdm.android.model.DestinationPermission
+import com.mikeyphw.xdm.android.model.DestinationHealthStatus
 import com.mikeyphw.xdm.android.model.DownloadIntakeKind
 import com.mikeyphw.xdm.android.model.DownloadIntakeOrigin
 import com.mikeyphw.xdm.android.model.DownloadReviewPlanner
@@ -80,6 +81,10 @@ fun AddDownloadScreen(
     onSafDestinationSelected: (String) -> Unit,
     onConflictPolicyChanged: (FilenameConflictPolicy) -> Unit,
     admissionState: DownloadAdmissionUiState = DownloadAdmissionUiState(),
+    destinationPreflight: DestinationPreflightUi = DestinationPreflightUi(),
+    urlPreflight: DownloadUrlPreflightUi = DownloadUrlPreflightUi(),
+    onInspectDestination: (String) -> Unit = {},
+    onInspectUrl: (String, String?, Long?, Boolean) -> Unit = { _, _, _, _ -> },
     onDismissAdmission: () -> Unit = {},
     onDuplicateDecision: (DuplicateUrlAction) -> Unit = {},
     onAdd: (String, String, BackendType, String, FilenameConflictPolicy, Boolean, String, ChecksumAlgorithm) -> Unit,
@@ -93,6 +98,8 @@ fun AddDownloadScreen(
     var expectedChecksum by rememberSaveable { mutableStateOf("") }
     var checksumAlgorithm by rememberSaveable { mutableStateOf(ChecksumAlgorithm.Sha256) }
     var advancedExpanded by rememberSaveable { mutableStateOf(false) }
+    var destinationPickerVisible by rememberSaveable { mutableStateOf(false) }
+    var showAllConflictOptions by rememberSaveable { mutableStateOf(false) }
     var clipboardMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(externalDraftId) {
@@ -104,6 +111,8 @@ fun AddDownloadScreen(
             expectedChecksum = ""
             checksumAlgorithm = ChecksumAlgorithm.Sha256
             advancedExpanded = false
+            destinationPickerVisible = false
+            showAllConflictOptions = false
             clipboardMessage = null
         }
     }
@@ -119,6 +128,19 @@ fun AddDownloadScreen(
         checksumAlgorithm,
     ) {
         onDismissAdmission()
+    }
+
+    LaunchedEffect(destinationUri) {
+        onInspectDestination(destinationUri)
+    }
+
+    LaunchedEffect(url, externalMimeType, externalContentLength, externalDraftId, initialUrl) {
+        onInspectUrl(
+            url,
+            externalMimeType.takeIf { url == initialUrl },
+            externalContentLength.takeIf { url == initialUrl },
+            externalDraftId == null || url != initialUrl,
+        )
     }
 
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -149,7 +171,7 @@ fun AddDownloadScreen(
         DownloadIntakeKind.PageOrUnknown,
     )
     val methodLabel = recommendation?.let { recommendationSummary(it, allowFallback) } ?: "Automatic • resumable"
-    val fileLabel = name.ifBlank { inferredFileName(url) }
+    val fileLabel = name.ifBlank { urlPreflight.suggestedFileName ?: inferredFileName(url) }
     val visibleSessionHealth = externalSessionHealth.takeIf { externalDraftId != null && url == initialUrl }
     val visibleEngineEscalation = externalEngineEscalationPlan.takeIf { externalDraftId != null && url == initialUrl }
     val sourceSummary = listOfNotNull(
@@ -221,42 +243,23 @@ fun AddDownloadScreen(
                 )
             }
 
+            if (url.isNotBlank()) {
+                item {
+                    DownloadUrlPreflightSummary(urlPreflight, review.kind.externalLabel())
+                }
+            }
+
             item {
                 XdmGroupedList {
                     XdmListRow(
                         headline = "Save to",
                         supporting = destinationUiLabel(destinationUri),
                         leading = { Icon(Icons.Rounded.Folder, contentDescription = null) },
-                        trailing = { TextButton(onClick = { folderPicker.launch(null) }) { Text("Choose") } },
+                        trailing = { TextButton(onClick = { destinationPickerVisible = true }) { Text("Change") } },
+                        onClick = { destinationPickerVisible = true },
                     )
                     XdmListSeparator()
-                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        XdmActionFlowRow {
-                            DestinationCatalog.available(Build.VERSION.SDK_INT).forEach { choice ->
-                                FilterChip(
-                                    selected = destinationUri == choice.uri,
-                                    onClick = {
-                                        if (choice.uri == DestinationUris.DIRECT_DOWNLOADS && !PersonalDirectStorage.isGranted(context)) {
-                                            directStoragePermission.launch(PersonalDirectStorage.permissionIntent(context))
-                                        } else {
-                                            onDestinationChanged(choice.uri)
-                                        }
-                                    },
-                                    label = { Text(choice.label) },
-                                )
-                            }
-                            savedDestinations
-                                .filter { it.persistedWrite && it.status == com.mikeyphw.xdm.android.model.DestinationHealthStatus.Healthy }
-                                .take(5)
-                                .forEach { destination ->
-                                    FilterChip(
-                                        selected = destinationUri == destination.uri,
-                                        onClick = { onDestinationChanged(destination.uri) },
-                                        label = { Text("${destination.displayName} · ${destination.type.uiLabel()}") },
-                                    )
-                                }
-                        }
-                    }
+                    DestinationPreflightSummary(destinationPreflight, destinationUri)
                 }
             }
 
@@ -284,27 +287,43 @@ fun AddDownloadScreen(
                                 }
                             }
 
-                            XdmSectionLabel("File conflict")
+                            XdmSectionLabel("If a file already exists")
                             XdmActionFlowRow {
-                                FilenameConflictPolicy.entries.forEach { value ->
+                                listOf(
+                                    FilenameConflictPolicy.Rename,
+                                    FilenameConflictPolicy.Resume,
+                                    FilenameConflictPolicy.Overwrite,
+                                ).forEach { value ->
                                     FilterChip(
                                         selected = conflictPolicy == value,
                                         onClick = { onConflictPolicyChanged(value) },
                                         label = { Text(value.uiLabel()) },
                                     )
                                 }
+                                if (showAllConflictOptions) {
+                                    listOf(FilenameConflictPolicy.Skip, FilenameConflictPolicy.Compare).forEach { value ->
+                                        FilterChip(
+                                            selected = conflictPolicy == value,
+                                            onClick = { onConflictPolicyChanged(value) },
+                                            label = { Text(value.uiLabel()) },
+                                        )
+                                    }
+                                }
+                                TextButton(onClick = { showAllConflictOptions = !showAllConflictOptions }) {
+                                    Text(if (showAllConflictOptions) "Fewer options" else "More options")
+                                }
                             }
 
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
-                                    Text("Compatible fallback", style = MaterialTheme.typography.bodyMedium)
-                                    XdmMetadataText("Used only before a backend owns the destination.")
+                                    Text("Try another engine if needed", style = MaterialTheme.typography.bodyMedium)
+                                    XdmMetadataText("Before a transfer owns the file, XDM may switch to another compatible engine if the selected one cannot start.")
                                 }
                                 Switch(
                                     checked = allowFallback,
                                     onCheckedChange = { allowFallback = it },
                                     modifier = Modifier.xdmStateDescription(
-                                        if (allowFallback) "Compatible fallback enabled" else "Compatible fallback disabled",
+                                        if (allowFallback) "Engine fallback enabled" else "Engine fallback disabled",
                                     ),
                                 )
                             }
@@ -432,8 +451,154 @@ fun AddDownloadScreen(
             }
         }
     }
+
+    DestinationPickerSheet(
+        visible = destinationPickerVisible,
+        selectedUri = destinationUri,
+        savedDestinations = savedDestinations,
+        onDismiss = { destinationPickerVisible = false },
+        onChoose = { choiceUri ->
+            if (choiceUri == DestinationUris.DIRECT_DOWNLOADS && !PersonalDirectStorage.isGranted(context)) {
+                destinationPickerVisible = false
+                directStoragePermission.launch(PersonalDirectStorage.permissionIntent(context))
+            } else {
+                onDestinationChanged(choiceUri)
+                destinationPickerVisible = false
+            }
+        },
+        onChooseFolder = {
+            destinationPickerVisible = false
+            folderPicker.launch(null)
+        },
+    )
 }
 
+
+@Composable
+private fun DestinationPreflightSummary(preflight: DestinationPreflightUi, destinationUri: String) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        when {
+            preflight.destinationUri != destinationUri && preflight.state !in setOf(DownloadPreflightState.Idle, DownloadPreflightState.Checking) && !preflight.writable -> {
+                XdmStatusBadge("Could not switch", tone = XdmStatusTone.Warning)
+                XdmMetadataText(preflight.message ?: "${preflight.displayName.ifBlank { "That destination" }} is not writable, so XDM kept your previous save location.")
+            }
+            preflight.destinationUri != destinationUri || preflight.state == DownloadPreflightState.Idle ->
+                XdmMetadataText("XDM checks access and available space before you start.")
+            preflight.state == DownloadPreflightState.Checking ->
+                XdmMetadataText("Checking folder access and free space…")
+            preflight.writable -> {
+                val capacity = preflight.availableBytes?.let { "${it.formatBytes()} available" } ?: "Free space not reported"
+                XdmStatusBadge("Writable", tone = XdmStatusTone.Success)
+                XdmMetadataText(capacity)
+                if (preflight.availableBytes == null) {
+                    XdmMetadataText("This provider does not report capacity. XDM will still stop safely if Android reports that storage is full.")
+                }
+            }
+            else -> {
+                XdmStatusBadge("Needs attention", tone = XdmStatusTone.Warning)
+                XdmMetadataText(preflight.message ?: when (preflight.status) {
+                    DestinationHealthStatus.PermissionMissing -> "Folder access is not granted."
+                    DestinationHealthStatus.ReadOnly -> "This folder is read-only."
+                    else -> "XDM cannot write to this destination right now."
+                })
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadUrlPreflightSummary(preflight: DownloadUrlPreflightUi, intakeKind: String) {
+    XdmGroupedList {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            XdmSectionLabel("Link details")
+            when (preflight.state) {
+                DownloadPreflightState.Checking -> XdmMetadataText("Checking file details…")
+                DownloadPreflightState.Idle -> XdmMetadataText("XDM will inspect this link before the transfer starts.")
+                else -> {
+                    val details = buildList {
+                        preflight.suggestedFileName?.takeIf(String::isNotBlank)?.let { add(it) }
+                        preflight.mimeType?.takeIf(String::isNotBlank)?.let { add(it) }
+                        preflight.contentLength?.takeIf { it > 0L }?.let { add(it.formatBytes()) }
+                    }
+                    XdmSupportingText(details.joinToString(" • ").ifBlank { intakeKind }, maxLines = 2)
+                    XdmActionFlowRow {
+                        preflight.resumable?.let { resumable ->
+                            XdmStatusBadge(if (resumable) "Resume supported" else "Resume unknown", tone = if (resumable) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                        }
+                        if (preflight.redirected) XdmStatusBadge("Redirected", tone = XdmStatusTone.Info)
+                    }
+                    preflight.message?.let { XdmMetadataText(it) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DestinationPickerSheet(
+    visible: Boolean,
+    selectedUri: String,
+    savedDestinations: List<DestinationPermission>,
+    onDismiss: () -> Unit,
+    onChoose: (String) -> Unit,
+    onChooseFolder: () -> Unit,
+) {
+    XdmAdaptiveSheet(
+        visible = visible,
+        windowClass = LocalXdmWindowClass.current,
+        onDismissRequest = onDismiss,
+        title = "Choose destination",
+        scrollContent = false,
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            item { XdmSectionLabel("Common locations") }
+            DestinationCatalog.available(Build.VERSION.SDK_INT).forEach { choice ->
+                item(key = choice.uri) {
+                    XdmGroupedList {
+                        XdmListRow(
+                            headline = choice.label,
+                            supporting = destinationUiHint(choice.uri),
+                            leading = { Icon(Icons.Rounded.Folder, contentDescription = null) },
+                            trailing = if (choice.uri == selectedUri) ({ XdmStatusBadge("Selected", tone = XdmStatusTone.Success) }) else null,
+                            onClick = { onChoose(choice.uri) },
+                        )
+                    }
+                }
+            }
+            val custom = savedDestinations
+                .filter { it.persistedWrite && it.status == DestinationHealthStatus.Healthy }
+                .distinctBy(DestinationPermission::uri)
+                .sortedByDescending { it.lastValidatedAtEpochMs }
+                .take(8)
+            if (custom.isNotEmpty()) {
+                item { XdmSectionLabel("Your folders") }
+                custom.forEach { destination ->
+                    item(key = destination.uri) {
+                        XdmGroupedList {
+                            XdmListRow(
+                                headline = destination.displayName,
+                                supporting = destination.type.uiLabel(),
+                                leading = { Icon(Icons.Rounded.Folder, contentDescription = null) },
+                                trailing = if (destination.uri == selectedUri) ({ XdmStatusBadge("Selected", tone = XdmStatusTone.Success) }) else null,
+                                onClick = { onChoose(destination.uri) },
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                Button(onClick = onChooseFolder, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Rounded.Folder, contentDescription = null)
+                    Text("Choose another folder")
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun BrowserSessionHealthCard(health: BrowserSessionHealthReport) {

@@ -4,17 +4,20 @@ import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
+import com.mikeyphw.xdm.android.model.MediaOutputRecord
+import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 
 /** User-facing media state. Internal engine and resolver stages intentionally stay out of this model. */
 enum class MediaConsumerState {
+    Captured,
     Ready,
-    NeedsResolution,
-    NeedsRefresh,
-    Failed,
-    Added,
+    Downloading,
+    Downloaded,
+    RefreshNeeded,
+    Unavailable,
     Protected,
 }
 
@@ -25,6 +28,7 @@ data class MediaConsumerCaptureSummary(
     val estimatedSizeBytes: Long?,
     val notice: String?,
     val canDownload: Boolean,
+    val canOpen: Boolean,
     val primaryActionLabel: String,
 )
 
@@ -42,7 +46,7 @@ class MediaConsumerWorkspacePlanner(
         capture: MediaCaptureRecord,
         variants: List<MediaVariant>,
         selection: MediaTrackSelection,
-        hasExistingOutput: Boolean = capture.downloadId != null || capture.status == MediaCaptureStatus.DownloadCreated,
+        latestOutput: MediaOutputRecord? = null,
     ): MediaConsumerCaptureSummary {
         val plan = downloadPlanner.plan(capture, variants, selection = selection)
         val selectedVideo = variants.firstOrNull { it.id == plan.trackSelection.videoVariantId }
@@ -51,27 +55,34 @@ class MediaConsumerWorkspacePlanner(
         val selectedAudio = variants.firstOrNull { it.id == plan.trackSelection.audioVariantId }
         val selectedSubtitle = variants.firstOrNull { it.id == plan.trackSelection.subtitleVariantId }
         val estimatedSize = estimateSizeBytes(capture.durationMs, selectedVideo?.bitrateBitsPerSecond)
+        val previousOutputFailed = latestOutput?.state in setOf(
+            MediaOutputState.Failed,
+            MediaOutputState.Cancelled,
+            MediaOutputState.RecoveryRequired,
+        )
         val state = when {
-            capture.status == MediaCaptureStatus.Archived -> MediaConsumerState.Added
+            latestOutput?.state == MediaOutputState.Completed && !latestOutput.completedArtifactUri.isNullOrBlank() -> MediaConsumerState.Downloaded
+            latestOutput?.state in setOf(MediaOutputState.Queued, MediaOutputState.Active) -> MediaConsumerState.Downloading
             plan.protectedDiagnostic.protected -> MediaConsumerState.Protected
-            capture.status == MediaCaptureStatus.Expired || capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh -> MediaConsumerState.NeedsRefresh
-            capture.resolutionStatus == MediaResolutionStatus.Failed -> MediaConsumerState.Failed
-            capture.resolutionStatus == MediaResolutionStatus.Unresolved -> MediaConsumerState.NeedsResolution
+            capture.status == MediaCaptureStatus.Expired || capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh -> MediaConsumerState.RefreshNeeded
+            capture.resolutionStatus == MediaResolutionStatus.Failed -> MediaConsumerState.Unavailable
+            capture.resolutionStatus == MediaResolutionStatus.Unresolved -> MediaConsumerState.Captured
             variants.isEmpty() && plan.transferShape in setOf(
                 com.mikeyphw.xdm.android.model.MediaTransferShape.AdaptivePlaylist,
                 com.mikeyphw.xdm.android.model.MediaTransferShape.SiteResolver,
-            ) -> MediaConsumerState.NeedsResolution
+            ) -> MediaConsumerState.Captured
             else -> MediaConsumerState.Ready
         }
         val notice = when (state) {
-            MediaConsumerState.Ready -> if (hasExistingOutput) {
-                "This capture already has an output. Downloading again creates another output generation."
+            MediaConsumerState.Captured -> "Check this capture to discover available quality and track options."
+            MediaConsumerState.Ready -> if (previousOutputFailed) {
+                "A previous download did not finish. You can download this media again."
             } else null
-            MediaConsumerState.Added -> "This media is already in Downloads."
+            MediaConsumerState.Downloading -> "This media is already being downloaded. Progress is available in Downloads."
+            MediaConsumerState.Downloaded -> "Already downloaded. Open the saved file or download another copy."
+            MediaConsumerState.RefreshNeeded -> "This media link expired. Refresh it before downloading."
+            MediaConsumerState.Unavailable -> "XDM could not prepare a downloadable media request. Check the page again or use Live locator."
             MediaConsumerState.Protected -> "This media is protected. XDM can inspect it, but does not bypass DRM."
-            MediaConsumerState.NeedsRefresh -> "This media link expired. Refresh it before downloading."
-            MediaConsumerState.Failed -> "XDM could not resolve executable media details. Refresh the capture or try the direct media request."
-            MediaConsumerState.NeedsResolution -> "Check this capture to discover executable quality and track options."
         }
         return MediaConsumerCaptureSummary(
             state = state,
@@ -80,11 +91,14 @@ class MediaConsumerWorkspacePlanner(
             estimatedSizeBytes = estimatedSize,
             notice = notice,
             canDownload = state == MediaConsumerState.Ready && plan.canQueueDirectly,
+            canOpen = state == MediaConsumerState.Downloaded && !latestOutput?.completedArtifactUri.isNullOrBlank(),
             primaryActionLabel = when (state) {
-                MediaConsumerState.Ready -> if (hasExistingOutput) "Download again" else "Download"
-                MediaConsumerState.Added -> "Added"
-                MediaConsumerState.NeedsRefresh -> "Refresh"
-                MediaConsumerState.Failed, MediaConsumerState.NeedsResolution -> "Check media"
+                MediaConsumerState.Captured -> "Check media"
+                MediaConsumerState.Ready -> "Download"
+                MediaConsumerState.Downloading -> "Downloading"
+                MediaConsumerState.Downloaded -> "Open"
+                MediaConsumerState.RefreshNeeded -> "Refresh"
+                MediaConsumerState.Unavailable -> "Check media"
                 MediaConsumerState.Protected -> "View details"
             },
         )

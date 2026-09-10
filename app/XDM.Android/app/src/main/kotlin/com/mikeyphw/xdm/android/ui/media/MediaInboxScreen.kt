@@ -1,5 +1,8 @@
 package com.mikeyphw.xdm.android
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -69,6 +72,17 @@ fun MediaInboxScreen(
     var pageUrlText by rememberSaveable { mutableStateOf("") }
     var mediaToolsExpanded by rememberSaveable { mutableStateOf(false) }
     val downloadsById = remember(downloads) { downloads.associateBy(Download::id) }
+    val latestOutputsByCaptureId = remember(outputs) {
+        outputs.filter { it.state != MediaOutputState.Hidden }
+            .groupBy { it.captureId }
+            .mapValues { (_, records) ->
+                records.filter { it.state in setOf(MediaOutputState.Active, MediaOutputState.Queued) }
+                    .maxByOrNull { it.updatedAtEpochMs }
+                    ?: records.filter { it.state == MediaOutputState.Completed && !it.completedArtifactUri.isNullOrBlank() }
+                        .maxByOrNull { it.updatedAtEpochMs }
+                    ?: records.maxByOrNull { it.updatedAtEpochMs }
+            }
+    }
     val reviewableCaptures = remember(captures) {
         // DownloadCreated records remain reviewable: one capture may intentionally produce multiple
         // output records/generations with different track selections or destinations.
@@ -193,19 +207,19 @@ fun MediaInboxScreen(
             if (reviewableCaptures.isEmpty()) {
                 item {
                     XdmEmptyState(
-                        title = if (captures.isEmpty()) "No media waiting" else "Everything is queued",
+                        title = if (captures.isEmpty()) "No captured media" else "Everything is already handled",
                         description = if (captures.isEmpty()) {
-                            "Paste a URL, open Live locator, or send media from the browser extension."
+                            "Open Live locator, paste a media link, or share media from your browser."
                         } else {
-                            "New captures will appear here when you share or inspect another media link."
+                            "New captures will appear here when you inspect or share another media link."
                         },
-                        actionLabel = "Check URL",
-                        onAction = { if (pageUrlText.isNotBlank()) onPastePageUrl(pageUrlText) },
+                        actionLabel = "Open Live locator",
+                        onAction = { context.startActivity(MediaLocatorActivity.intent(context, pageUrlText)) },
                     )
                 }
             } else {
                 if (activeBrowserSessions.isNotEmpty()) {
-                    item { XdmSectionLabel("Firefox capture sessions") }
+                    item { XdmSectionLabel("From Firefox") }
                     activeBrowserSessions.forEach { session ->
                         item(key = "browser-session:${session.sessionId}") {
                             BrowserCaptureSessionHeader(session)
@@ -219,9 +233,10 @@ fun MediaInboxScreen(
                                 persistedSelection = mediaTrackSelections[capture.id]
                                     ?: MediaTrackSelection(videoVariantId = capture.selectedVariantId),
                                 consumerPlanner = consumerPlanner,
-                                hasExistingOutput = outputs.any { it.captureId == capture.id && it.state != MediaOutputState.Hidden },
+                                latestOutput = latestOutputsByCaptureId[capture.id],
                                 downloadInFlight = capture.id in mediaOutputAdmissionsInFlight,
                                 onDownload = onDownload,
+                                onOpenOutput = { output -> openMediaOutput(context, output) },
                                 onResolve = onResolve,
                                 onSelectVariant = onSelectVariant,
                                 onTrackSelectionChanged = onTrackSelectionChanged,
@@ -231,7 +246,7 @@ fun MediaInboxScreen(
                     }
                 }
                 if (ungroupedCaptures.isNotEmpty()) {
-                    item { XdmSectionLabel(if (activeBrowserSessions.isEmpty()) "Ready to download" else "Other captured media") }
+                    item { XdmSectionLabel(if (activeBrowserSessions.isEmpty()) "Captured media" else "Other captured media") }
                     items(ungroupedCaptures, key = MediaCaptureRecord::id) { capture ->
                         val captureVariants = variants.filter { it.captureId == capture.id }.sortedBy { it.position }
                         MediaCaptureCard(
@@ -240,9 +255,10 @@ fun MediaInboxScreen(
                             persistedSelection = mediaTrackSelections[capture.id]
                                 ?: MediaTrackSelection(videoVariantId = capture.selectedVariantId),
                             consumerPlanner = consumerPlanner,
-                            hasExistingOutput = outputs.any { it.captureId == capture.id && it.state != MediaOutputState.Hidden },
+                            latestOutput = latestOutputsByCaptureId[capture.id],
                             downloadInFlight = capture.id in mediaOutputAdmissionsInFlight,
                             onDownload = onDownload,
+                            onOpenOutput = { output -> openMediaOutput(context, output) },
                             onResolve = onResolve,
                             onSelectVariant = onSelectVariant,
                             onTrackSelectionChanged = onTrackSelectionChanged,
@@ -282,21 +298,22 @@ private fun BrowserCaptureSessionHeader(session: BrowserCaptureSessionSummary) {
             ) {
                 Column(Modifier.weight(1f)) {
                     XdmCardTitle(session.pageTitle.ifBlank { session.pageHost.ifBlank { "Firefox capture" } }, maxLines = 2)
-                    XdmMetadataText(session.pageHost.ifBlank { "Browser-observed media" })
+                    XdmMetadataText(session.pageHost.ifBlank { "Browser capture" })
                 }
-                XdmStatusBadge("Session available", tone = XdmStatusTone.Success)
+                XdmStatusBadge("${session.importedCandidateCount} found", tone = XdmStatusTone.Success)
             }
-            Text(
-                "${session.importedCandidateCount} reviewable candidate(s) from ${session.totalCandidateCount} browser observation(s). " +
-                    "Cookies, authorization values, and exact temporary URLs remain hidden.",
+            XdmSupportingText(
+                if (session.importedCandidateCount == 1) "1 media item is ready to review." else "${session.importedCandidateCount} media items are ready to review.",
+                maxLines = 2,
             )
-            val evidence = session.candidates.flatMap { it.evidence }.distinct().take(5)
-            if (evidence.isNotEmpty()) XdmMetadataText("Evidence: ${evidence.joinToString(" • ")}")
-            if (session.truncated) {
-                XdmNoticeRow(
-                    text = "The page exposed more candidates than the bounded browser handoff could carry. Highest-confidence candidates are shown.",
-                    tone = XdmStatusTone.Warning,
-                )
+            XdmMetadataText("Browser session values stay private and are used only when a request needs them.")
+            XdmTechnicalDetails(label = "Capture details") {
+                XdmMetadataText("Browser observations: ${session.totalCandidateCount}")
+                val evidence = session.candidates.flatMap { it.evidence }.distinct().take(5)
+                if (evidence.isNotEmpty()) XdmMetadataText("Evidence: ${evidence.joinToString(" • ")}")
+                if (session.truncated) {
+                    XdmMetadataText("More candidates were observed; XDM kept the highest-confidence results in this handoff.")
+                }
             }
         }
     }
@@ -324,11 +341,11 @@ private fun MediaBatchInputPanel(
 
     XdmGroupedList {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            XdmSectionLabel("Batch media intake")
-            Text(
-                "Paste URLs or page text. XDM extracts HTTP(S) media links, dedupes them, and sends reviewable media through the shared app-side media sniffing engine.",
-            )
-            XdmMetadataText("Static sniff does not execute page JavaScript. Live media locator runs the page in XDM’s WebView and observes media DOM/network activity. Neither path bypasses DRM or displays raw cookies/tokens.")
+            XdmSectionLabel("Batch media")
+            Text("Paste links or page source. XDM will find supported media links and remove duplicates.")
+            XdmTechnicalDetails(label = "How batch inspection works") {
+                XdmMetadataText("Static inspection does not run page JavaScript. Live locator can observe media loaded by the page. XDM does not bypass DRM or display private browser values.")
+            }
             OutlinedTextField(
                 value = text,
                 onValueChange = onTextChanged,
@@ -379,6 +396,21 @@ private fun MediaBatchInputPanel(
                 ) { Text("Add selected") }
             }
         }
+    }
+}
+
+private fun openMediaOutput(context: android.content.Context, output: MediaOutputRecord) {
+    val uri = output.completedArtifactUri?.takeIf(String::isNotBlank) ?: return
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(Uri.parse(uri), output.mimeType ?: "*/*")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    try {
+        context.startActivity(intent)
+    } catch (_: ActivityNotFoundException) {
+        // The Library remains the fallback place to open completed media.
+    } catch (_: SecurityException) {
+        // Some document providers cannot grant an external reader access.
     }
 }
 

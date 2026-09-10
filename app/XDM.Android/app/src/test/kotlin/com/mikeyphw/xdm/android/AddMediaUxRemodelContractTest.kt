@@ -53,9 +53,9 @@ class AddMediaUxRemodelContractTest {
         assertTrue(card.contains("if (showTrackControls)"))
         assertTrue(card.contains("MediaConsumerState.Ready -> Button("))
         assertTrue(card.contains("summary.primaryActionLabel"))
-        assertTrue(workspace.contains("MediaConsumerState.Ready -> if (hasExistingOutput) \"Download again\" else \"Download\""))
-        assertTrue(card.contains("Text(\"Options\")"))
-        assertTrue(card.contains("MediaConsumerState.Failed -> \"Needs attention\""))
+        assertTrue(workspace.contains("MediaConsumerState.Downloaded -> \"Open\""))
+        assertTrue(card.contains("Text(\"Details\")"))
+        assertTrue(card.contains("MediaConsumerState.Unavailable -> \"Unavailable\""))
     }
 
     @Test

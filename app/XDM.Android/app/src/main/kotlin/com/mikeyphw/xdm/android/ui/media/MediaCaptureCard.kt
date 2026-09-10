@@ -34,6 +34,7 @@ import com.mikeyphw.xdm.android.media.MediaConsumerWorkspacePlanner
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaOutputAdmissionMode
+import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.util.formatBytes
@@ -45,9 +46,10 @@ internal fun MediaCaptureCard(
     captureVariants: List<MediaVariant>,
     persistedSelection: MediaTrackSelection,
     consumerPlanner: MediaConsumerWorkspacePlanner,
-    hasExistingOutput: Boolean,
+    latestOutput: MediaOutputRecord?,
     downloadInFlight: Boolean,
     onDownload: (MediaCaptureRecord, MediaTrackSelection, MediaOutputAdmissionMode) -> Unit,
+    onOpenOutput: (MediaOutputRecord) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
     onTrackSelectionChanged: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
@@ -61,8 +63,8 @@ internal fun MediaCaptureCard(
         trackSelection = persistedSelection.copy(videoVariantId = persistedSelection.videoVariantId ?: capture.selectedVariantId)
     }
 
-    val summary = remember(capture, captureVariants, trackSelection, hasExistingOutput) {
-        consumerPlanner.summarizeCapture(capture, captureVariants, trackSelection, hasExistingOutput)
+    val summary = remember(capture, captureVariants, trackSelection, latestOutput) {
+        consumerPlanner.summarizeCapture(capture, captureVariants, trackSelection, latestOutput)
     }
     val videoVariants = remember(captureVariants) {
         captureVariants.filter { it.kind == MediaVariantKind.Video || it.kind == MediaVariantKind.Primary }
@@ -87,10 +89,10 @@ internal fun MediaCaptureCard(
                 XdmMetadataText(mediaOriginLabel(capture), maxLines = 1)
                 XdmSupportingText(
                     listOfNotNull(
-                        capture.durationMs?.let(::formatDurationSeconds),
+                        summary.selectedQuality.takeIf { it.isNotBlank() && it != "Automatic" },
                         capture.container,
-                        capture.kind.uiLabel(),
-                    ).joinToString(" • ").ifBlank { "Media details will appear after checking this page." },
+                        capture.durationMs?.let(::formatDurationSeconds),
+                    ).joinToString(" • ").ifBlank { capture.kind.uiLabel() },
                     maxLines = 2,
                 )
             }
@@ -151,10 +153,10 @@ internal fun MediaCaptureCard(
             XdmNoticeRow(
                 text = notice,
                 tone = when (summary.state) {
-                    MediaConsumerState.Failed, MediaConsumerState.Protected -> XdmStatusTone.Error
-                    MediaConsumerState.NeedsRefresh, MediaConsumerState.NeedsResolution -> XdmStatusTone.Warning
-                    MediaConsumerState.Added -> XdmStatusTone.Success
-                    MediaConsumerState.Ready -> XdmStatusTone.Info
+                    MediaConsumerState.Unavailable, MediaConsumerState.Protected -> XdmStatusTone.Error
+                    MediaConsumerState.RefreshNeeded, MediaConsumerState.Captured -> XdmStatusTone.Warning
+                    MediaConsumerState.Downloaded -> XdmStatusTone.Success
+                    MediaConsumerState.Downloading, MediaConsumerState.Ready -> XdmStatusTone.Info
                 },
             )
         }
@@ -166,20 +168,30 @@ internal fun MediaCaptureCard(
                         onDownload(
                             capture,
                             trackSelection,
-                            if (hasExistingOutput) MediaOutputAdmissionMode.AdditionalGeneration else MediaOutputAdmissionMode.Primary,
+                            MediaOutputAdmissionMode.Primary,
                         )
                     },
                     enabled = summary.canDownload && !downloadInFlight,
-                ) { Text(if (downloadInFlight) "Adding…" else summary.primaryActionLabel) }
-                MediaConsumerState.NeedsRefresh,
-                MediaConsumerState.NeedsResolution,
-                MediaConsumerState.Failed -> Button(onClick = { onResolve(capture) }) {
+                ) { Text(if (downloadInFlight) "Adding…" else "Download") }
+                MediaConsumerState.Downloaded -> {
+                    val output = latestOutput
+                    if (output != null && summary.canOpen) {
+                        Button(onClick = { onOpenOutput(output) }) { Text("Open") }
+                    }
+                    TextButton(
+                        onClick = { onDownload(capture, trackSelection, MediaOutputAdmissionMode.AdditionalGeneration) },
+                        enabled = !downloadInFlight,
+                    ) { Text(if (downloadInFlight) "Adding…" else "Download again") }
+                }
+                MediaConsumerState.Downloading -> StatusPill("Downloading", tone = XdmStatusTone.Info)
+                MediaConsumerState.Captured,
+                MediaConsumerState.RefreshNeeded,
+                MediaConsumerState.Unavailable -> Button(onClick = { onResolve(capture) }) {
                     Text(summary.primaryActionLabel)
                 }
-                MediaConsumerState.Added -> StatusPill("Added", tone = XdmStatusTone.Success)
                 MediaConsumerState.Protected -> Button(onClick = { detailsVisible = true }) { Text("View details") }
             }
-            TextButton(onClick = { detailsVisible = true }) { Text("Options") }
+            TextButton(onClick = { detailsVisible = true }) { Text("Details") }
         }
     }
 
@@ -335,16 +347,18 @@ internal fun VariantSelectorRow(variant: MediaVariant, selected: Boolean, onSele
 }
 
 private fun captureStateLabel(state: MediaConsumerState): String = when (state) {
+    MediaConsumerState.Captured -> "Captured"
     MediaConsumerState.Ready -> "Ready"
-    MediaConsumerState.NeedsResolution -> "Check needed"
-    MediaConsumerState.NeedsRefresh -> "Refresh needed"
-    MediaConsumerState.Failed -> "Needs attention"
-    MediaConsumerState.Added -> "Added"
+    MediaConsumerState.Downloading -> "Downloading"
+    MediaConsumerState.Downloaded -> "Downloaded"
+    MediaConsumerState.RefreshNeeded -> "Refresh needed"
+    MediaConsumerState.Unavailable -> "Unavailable"
     MediaConsumerState.Protected -> "Protected"
 }
 
 private fun toneForConsumerState(state: MediaConsumerState): XdmStatusTone = when (state) {
-    MediaConsumerState.Ready, MediaConsumerState.Added -> XdmStatusTone.Success
-    MediaConsumerState.NeedsResolution, MediaConsumerState.NeedsRefresh -> XdmStatusTone.Warning
-    MediaConsumerState.Failed, MediaConsumerState.Protected -> XdmStatusTone.Error
+    MediaConsumerState.Ready, MediaConsumerState.Downloaded -> XdmStatusTone.Success
+    MediaConsumerState.Downloading -> XdmStatusTone.Info
+    MediaConsumerState.Captured, MediaConsumerState.RefreshNeeded -> XdmStatusTone.Warning
+    MediaConsumerState.Unavailable, MediaConsumerState.Protected -> XdmStatusTone.Error
 }

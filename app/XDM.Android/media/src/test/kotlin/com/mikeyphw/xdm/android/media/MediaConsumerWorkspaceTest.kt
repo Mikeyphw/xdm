@@ -6,6 +6,8 @@ import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
+import com.mikeyphw.xdm.android.model.MediaOutputRecord
+import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import org.junit.Assert.assertEquals
@@ -40,16 +42,35 @@ class MediaConsumerWorkspaceTest {
     }
 
     @Test
-    fun captureWithExistingDownloadRemainsReadyForAnotherOutputGeneration() {
+    fun completedOutputBecomesDownloadedWithOpenAsPrimaryAction() {
         val capture = capture(status = MediaCaptureStatus.DownloadCreated)
         val variants = listOf(variant("video-1080", MediaVariantKind.Video, "1080p"))
+        val output = mediaOutput(MediaOutputState.Completed, "content://media/output")
 
-        val summary = planner.summarizeCapture(capture, variants, MediaTrackSelection(videoVariantId = "video-1080"))
+        val summary = planner.summarizeCapture(
+            capture,
+            variants,
+            MediaTrackSelection(videoVariantId = "video-1080"),
+            output,
+        )
 
-        assertEquals(MediaConsumerState.Ready, summary.state)
-        assertTrue(summary.canDownload)
-        assertEquals("Download again", summary.primaryActionLabel)
-        assertTrue(summary.notice.orEmpty().contains("another output generation"))
+        assertEquals(MediaConsumerState.Downloaded, summary.state)
+        assertFalse(summary.canDownload)
+        assertTrue(summary.canOpen)
+        assertEquals("Open", summary.primaryActionLabel)
+        assertTrue(summary.notice.orEmpty().contains("Already downloaded"))
+    }
+
+    @Test
+    fun activeOutputBecomesDownloading() {
+        val summary = planner.summarizeCapture(
+            capture(),
+            listOf(variant("video-1080", MediaVariantKind.Video, "1080p")),
+            MediaTrackSelection(videoVariantId = "video-1080"),
+            mediaOutput(MediaOutputState.Active, null),
+        )
+        assertEquals(MediaConsumerState.Downloading, summary.state)
+        assertFalse(summary.canDownload)
     }
 
     @Test
@@ -63,7 +84,7 @@ class MediaConsumerWorkspaceTest {
         val summary = planner.summarizeCapture(capture, listOf(variant("video", MediaVariantKind.Video, "720p")), MediaTrackSelection())
         val visibleCopy = listOfNotNull(summary.notice, summary.selectedQuality, summary.trackSummary, summary.primaryActionLabel).joinToString(" ")
 
-        assertEquals(MediaConsumerState.NeedsRefresh, summary.state)
+        assertEquals(MediaConsumerState.RefreshNeeded, summary.state)
         assertEquals("Refresh", summary.primaryActionLabel)
         assertFalse(visibleCopy.contains("secret-value"))
         assertFalse(visibleCopy.contains("https://"))
@@ -126,6 +147,24 @@ class MediaConsumerWorkspaceTest {
         bitrateBitsPerSecond = bitrate,
         language = language,
         displayLabel = label,
+    )
+
+    private fun mediaOutput(state: MediaOutputState, artifactUri: String?) = MediaOutputRecord(
+        id = "output",
+        captureId = "capture",
+        ownerKind = MediaOutputOwnerKind.AppDownload,
+        ownerId = "download-output",
+        downloadId = "download-output",
+        attemptGeneration = 1L,
+        destinationUri = "xdm://filesystem/downloads",
+        fileName = "movie.mp4",
+        mimeType = "video/mp4",
+        selectedTrackIds = emptySet(),
+        state = state,
+        completedArtifactUri = artifactUri,
+        completedArtifactGeneration = if (artifactUri != null) 1L else null,
+        createdAtEpochMs = 1L,
+        updatedAtEpochMs = 2L,
     )
 
     private fun libraryItem(

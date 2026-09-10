@@ -56,11 +56,10 @@ need(inbox.count('Text("Live locator")') == 1, "Media workspace should expose on
 need("val hasTrackChoices" in card and "if (hasTrackChoices && videoVariants.isNotEmpty())" in card and "if (hasTrackChoices)" in card and
      "showTrackControls = hasTrackChoices" in card and "if (showTrackControls)" in card,
      "quality/track controls must be conditional on meaningful adaptive choices in both card and Options sheet")
-need("MediaConsumerState.Ready -> Button(" in card and "summary.primaryActionLabel" in card and
-     'MediaConsumerState.Ready -> if (hasExistingOutput) "Download again" else "Download"' in workspace,
-     "ready direct media must expose Download as the primary action")
-need('Text("Options")' in card, "secondary media controls must use compact Options affordance")
-need('MediaConsumerState.Failed -> "Needs attention"' in card, "media execution/resolution attention wording must remain truthful")
+need("MediaConsumerState.Ready -> Button(" in card and 'MediaConsumerState.Downloaded -> "Open"' in workspace,
+     "ready direct media must expose Download and downloaded media must expose Open")
+need('Text("Details")' in card, "secondary media controls must use a compact Details affordance")
+need('MediaConsumerState.Unavailable -> "Unavailable"' in card, "media unavailable state must remain truthful")
 
 need('System.getProperty("user.dir") ?: "."' in post,
      "post-DL03 contract must avoid nullable user.dir Java-platform warning")
