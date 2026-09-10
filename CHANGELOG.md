@@ -1,3 +1,11 @@
+## 2026-09-10 — OBS01/OBS02 observability and problem reporting
+
+- Extended the existing redacted Debug Center recorder with persisted standard/verbose logging and new media/WebView/backend/storage/persistence/thumbnail areas.
+- Added a bounded app-private problem ledger with deduplication, occurrence counts, resolve/reopen state, notification cooldown, and actionable “XDM needs attention” review notifications.
+- Kept existing transfer failure/recovery notifications authoritative to avoid duplicate alerts, while correlating terminal failures into Diagnostics & support.
+- Added WebView lifecycle/request trace events, renderer-crash incidents, startup runtime incidents, Media resolver failure incidents, and `problem-incidents.txt` support export.
+- No Room migration or automatic upload. Full Gradle/lint validation is deferred to the final roadmap overlay; this intermediate overlay is applied with `--no-validate`.
+
 ## 2026-08-15 — Android master remediation combined Overlays 11–12
 
 - Hardened Termux/post-processing ownership: strict result tokens, durable control-before-signal, attach-CAS orphan cancellation, canonical root path authorization, terminal bridge cleanup, and real Termux-private filesystem privacy auditing.

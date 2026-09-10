@@ -81,6 +81,33 @@ class DebugEventModelsTest {
         }
     }
 
+
+    @Test
+    fun traceEventsRequireExplicitVerboseLogging() {
+        val root = createTempDirectory("xdm-debug-verbose").toFile()
+        try {
+            val recorder = RollingJsonlDebugEventRecorder(rootDirectory = root, sessionId = "verbose-test")
+            recorder.record(
+                area = DebugArea.WebView,
+                severity = DebugSeverity.Trace,
+                action = "network-request",
+                result = "observed",
+            )
+            assertTrue(recorder.copySanitizedTimeline().isBlank())
+
+            recorder.setVerboseLoggingEnabled(true)
+            recorder.record(
+                area = DebugArea.WebView,
+                severity = DebugSeverity.Trace,
+                action = "network-request",
+                result = "observed",
+            )
+            assertTrue(recorder.copySanitizedTimeline().contains("network-request"))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     @Test
     fun downloadIntakePlannerEmitsSafeDebugEventsWhenRecorderIsProvided() {
         val events = mutableListOf<DebugEvent>()

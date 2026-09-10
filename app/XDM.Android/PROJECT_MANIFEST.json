@@ -4498,5 +4498,31 @@
       "media_locator_rescan"
     ],
     "lint_unused_resource_static_preflight": true
+  },
+  "observability_problem_reporting_obs01_obs02": {
+    "status": "implemented_intermediate",
+    "overlay": "xdm_android_observability_problem_reporting_v1.zip",
+    "date": "2026-09-10",
+    "depends_on": "xdm_android_post_ux13_roadmap_completion_hotfix_v5.zip",
+    "standard_logging_default": true,
+    "verbose_trace_opt_in": true,
+    "structured_operation_correlation": true,
+    "durable_problem_ledger": true,
+    "problem_deduplication": true,
+    "problem_notification_cooldown": true,
+    "problem_notifications": true,
+    "duplicate_transfer_notifications": false,
+    "webview_runtime_observability": true,
+    "media_failure_problem_reporting": true,
+    "startup_failure_problem_reporting": true,
+    "problem_support_export": true,
+    "diagnostics_best_effort": true,
+    "automatic_upload": false,
+    "room_schema_unchanged": 21,
+    "canonical_validator": "tools/validate-observability-problem-reporting.py",
+    "contract_test": "app/src/test/kotlin/com/mikeyphw/xdm/android/ObservabilityProblemReportingContractTest.kt",
+    "report": "XDM_OBSERVABILITY_PROBLEM_REPORTING_OBS01_OBS02_REPORT.md",
+    "validation_deferred": true,
+    "next_overlay": "xdm_android_media_thumbnail_mime_presentation_v1.zip"
   }
 }

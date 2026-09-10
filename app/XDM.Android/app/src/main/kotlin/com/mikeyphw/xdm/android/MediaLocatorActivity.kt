@@ -36,7 +36,12 @@ import com.mikeyphw.xdm.android.media.MediaSniffingEngine
 import com.mikeyphw.xdm.android.media.MediaSniffingInput
 import com.mikeyphw.xdm.android.media.MediaSniffingSource
 import com.mikeyphw.xdm.android.model.BrowserHandoffMediaPolicy
+import com.mikeyphw.xdm.android.model.DebugArea
+import com.mikeyphw.xdm.android.model.DebugRecorderProvider
+import com.mikeyphw.xdm.android.model.DebugRedactor
+import com.mikeyphw.xdm.android.model.DebugSeverity
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
@@ -105,6 +110,14 @@ private object MediaLocatorRequestContextCache {
  * same evidence gate used by browser-extension and app intake. Nothing is downloaded directly.
  */
 class MediaLocatorActivity : ComponentActivity() {
+    private val debugRecorder by lazy {
+        (applicationContext as? DebugRecorderProvider)?.debugEventRecorder ?: NoOpDebugEventRecorder
+    }
+    private val problemReporter by lazy {
+        (applicationContext as? ProblemReporterProvider)?.problemReporter
+    }
+    private var pageOperationId: String? = null
+
     private data class LocatedMedia(
         val url: String,
         val mimeType: String?,
@@ -287,6 +300,14 @@ class MediaLocatorActivity : ComponentActivity() {
 
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                 currentPageUrl = url
+                pageOperationId = "webview-${DebugRedactor.fingerprint(url + "|" + System.currentTimeMillis())}"
+                debugRecorder.record(
+                    area = DebugArea.WebView,
+                    action = "page-load",
+                    result = "started",
+                    safeDetails = mapOf("url" to url),
+                    operationId = pageOperationId,
+                )
                 address.setText(url)
                 progress.visibility = View.VISIBLE
                 status.text = getString(R.string.media_locator_loading)
@@ -300,6 +321,24 @@ class MediaLocatorActivity : ComponentActivity() {
 
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
                 val lastUrl = currentPageUrl ?: address.text.toString()
+                debugRecorder.record(
+                    area = DebugArea.WebView,
+                    severity = DebugSeverity.Error,
+                    action = "renderer-process",
+                    result = if (detail.didCrash()) "crashed" else "terminated",
+                    safeDetails = mapOf("url" to lastUrl, "didCrash" to detail.didCrash().toString()),
+                    operationId = pageOperationId,
+                )
+                problemReporter?.report(
+                    area = DebugArea.WebView,
+                    severity = DebugSeverity.Error,
+                    title = "Media browser renderer stopped",
+                    summary = if (detail.didCrash()) "The embedded media browser renderer crashed while inspecting this page." else "Android stopped the embedded media browser renderer while inspecting this page.",
+                    suggestedAction = "Reopen the page and retry. If it repeats, open Diagnostics & support and export the debug report.",
+                    operationId = pageOperationId,
+                    dedupeKey = "media-locator-renderer-${detail.didCrash()}",
+                    notifyUser = true,
+                )
                 (view.parent as? ViewGroup)?.removeView(view)
                 view.stopLoading()
                 view.destroy()
@@ -313,6 +352,13 @@ class MediaLocatorActivity : ComponentActivity() {
 
             override fun onPageFinished(view: WebView, url: String) {
                 currentPageUrl = url
+                debugRecorder.record(
+                    area = DebugArea.WebView,
+                    action = "page-load",
+                    result = "finished",
+                    safeDetails = mapOf("url" to url, "candidateCount" to located.size.toString()),
+                    operationId = pageOperationId,
+                )
                 address.setText(url)
                 progress.visibility = View.GONE
                 injectLocatorRuntime(forceScan = true)
@@ -408,6 +454,14 @@ class MediaLocatorActivity : ComponentActivity() {
             val contentLength = observation.optLong("contentLength", -1L).takeIf { it >= 0L }
             val key = correlationKey(url) ?: return
             val observationKey = "$key|${if (body != null) "body" else source}"
+            debugRecorder.record(
+                area = DebugArea.WebView,
+                severity = DebugSeverity.Trace,
+                action = "media-observation",
+                result = "received",
+                safeDetails = mapOf("url" to url, "mime" to mime.orEmpty(), "source" to source),
+                operationId = pageOperationId,
+            )
             if (!reserveObservation(observationKey)) return
 
             lifecycleScope.launch {
@@ -500,6 +554,18 @@ class MediaLocatorActivity : ComponentActivity() {
     private fun recordNativeRequest(request: WebResourceRequest) {
         val url = request.url.toString()
         val key = correlationKey(url) ?: return
+        debugRecorder.record(
+            area = DebugArea.WebView,
+            severity = DebugSeverity.Trace,
+            action = "network-request",
+            result = "observed",
+            safeDetails = mapOf(
+                "url" to url,
+                "method" to request.method,
+                "mainFrame" to request.isForMainFrame.toString(),
+            ),
+            operationId = pageOperationId,
+        )
         val headers = request.requestHeaders.entries.mapNotNull { (name, value) ->
             val trimmed = value.trim()
             if (name.isBlank() || trimmed.isBlank() || '\n' in trimmed || '\r' in trimmed) null else name to trimmed.take(8192)

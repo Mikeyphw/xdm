@@ -34,6 +34,7 @@ data class UserPreferences(
     val compactDensity: Boolean = false,
     val themeMode: XdmThemeMode = XdmThemeMode.Dark,
     val developerOptionsEnabled: Boolean = false,
+    val verboseDebugLoggingEnabled: Boolean = false,
     val destinationUri: String = DestinationUris.PUBLIC_DOWNLOADS,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val proxySettings: ProxyCredentialSettings = ProxyCredentialSettings(),
@@ -53,6 +54,7 @@ class UserPreferencesStore(private val context: Context) {
         val CompactDensity = booleanPreferencesKey("compact_density")
         val ThemeMode = stringPreferencesKey("theme_mode")
         val DeveloperOptionsEnabled = booleanPreferencesKey("developer_options_enabled")
+        val VerboseDebugLoggingEnabled = booleanPreferencesKey("verbose_debug_logging_enabled")
         val DestinationUri = stringPreferencesKey("destination_uri")
         val ConflictPolicy = stringPreferencesKey("filename_conflict_policy")
         val ProxyEnabled = booleanPreferencesKey("proxy_enabled")
@@ -106,6 +108,7 @@ class UserPreferencesStore(private val context: Context) {
                 ?.let { runCatching { XdmThemeMode.valueOf(it) }.getOrNull() }
                 ?: XdmThemeMode.Dark,
             developerOptionsEnabled = preferences[Keys.DeveloperOptionsEnabled] ?: false,
+            verboseDebugLoggingEnabled = preferences[Keys.VerboseDebugLoggingEnabled] ?: false,
             destinationUri = preferences[Keys.DestinationUri] ?: defaultDestinationUri(),
             conflictPolicy = preferences[Keys.ConflictPolicy]?.let { runCatching { FilenameConflictPolicy.valueOf(it) }.getOrNull() } ?: FilenameConflictPolicy.Rename,
             proxySettings = ProxyCredentialSettings(
@@ -225,6 +228,10 @@ class UserPreferencesStore(private val context: Context) {
 
     suspend fun setDeveloperOptionsEnabled(enabled: Boolean) {
         context.dataStore.edit { it[Keys.DeveloperOptionsEnabled] = enabled }
+    }
+
+    suspend fun setVerboseDebugLoggingEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.VerboseDebugLoggingEnabled] = enabled }
     }
 
     suspend fun setDestination(uri: String) {

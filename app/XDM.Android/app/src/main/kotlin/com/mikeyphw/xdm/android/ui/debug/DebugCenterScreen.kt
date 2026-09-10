@@ -14,6 +14,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,6 +45,7 @@ import com.mikeyphw.xdm.android.XdmStatusTone
 import com.mikeyphw.xdm.android.model.DebugRecorderProvider
 import com.mikeyphw.xdm.android.model.DebugRedactor
 import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
+import com.mikeyphw.xdm.android.model.ProblemIncident
 import com.mikeyphw.xdm.android.model.RollingJsonlDebugEventRecorder
 import com.mikeyphw.xdm.android.copyTextToClipboard
 import com.mikeyphw.xdm.android.shareDebugCenterZipExport
@@ -53,6 +55,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 private enum class DebugCenterPage(val label: String) {
+    Problems("Problems"),
     Tests("Tests"),
     Results("Results"),
     History("History"),
@@ -67,14 +70,18 @@ fun DebugCenterScreen(
 ) {
     val context = LocalContext.current
     val appRecorder = (context.applicationContext as? DebugRecorderProvider)?.debugEventRecorder ?: NoOpDebugEventRecorder
-    val appContainer = (context.applicationContext as? XdmApplication)?.container
+    val xdmApplication = context.applicationContext as? XdmApplication
+    val appContainer = xdmApplication?.container
+    val problemReporter = xdmApplication?.problemReporter
+    val problemFlow = remember(problemReporter) { problemReporter?.problems ?: kotlinx.coroutines.flow.MutableStateFlow<List<ProblemIncident>>(emptyList()) }
+    val problems by problemFlow.collectAsState()
     val rootDirectory = remember(context) { File(context.filesDir, "debug-center") }
     val store = remember(rootDirectory) { DebugTestStore(rootDirectory) }
     val runner = remember(rootDirectory, appRecorder) { DebugTestRunner(rootDirectory, appRecorder, store) }
     val liveRun by runner.currentRun.collectAsState()
     val scope = rememberCoroutineScope()
 
-    var page by remember { mutableStateOf(DebugCenterPage.Tests) }
+    var page by remember { mutableStateOf(if (problems.any { !it.resolved }) DebugCenterPage.Problems else DebugCenterPage.Tests) }
     var selectedIds by remember { mutableStateOf(DebugTestRegistry.defaultSelection()) }
     var latestRun by remember { mutableStateOf(store.loadRuns().firstOrNull() ?: emptyDebugRun()) }
     var history by remember { mutableStateOf(store.loadRuns()) }
@@ -112,6 +119,7 @@ fun DebugCenterScreen(
             run = run,
             supportReportText = state.supportReportText,
             debugTimelineJsonl = timeline,
+            problemIncidentsText = problemReporter?.exportText().orEmpty(),
         )
         latestRun = run
         history = store.loadRuns()
@@ -142,6 +150,30 @@ fun DebugCenterScreen(
             }
         }
         item {
+            XdmListCard(compact = true) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        XdmCardTitle("Debug logging")
+                        XdmSupportingText(
+                            if (state.verboseDebugLoggingEnabled)
+                                "Verbose logging is on. Trace events are retained locally with the normal privacy redaction and rolling size limit."
+                            else
+                                "Standard logging is on. XDM retains normal, warning, and error events while suppressing high-volume trace events.",
+                            maxLines = 4,
+                        )
+                    }
+                    Switch(
+                        checked = state.verboseDebugLoggingEnabled,
+                        onCheckedChange = viewModel::setVerboseDebugLoggingEnabled,
+                    )
+                }
+            }
+        }
+        item {
             XdmActionFlowRow {
                 DebugCenterPage.entries.forEach { candidate ->
                     FilterChip(
@@ -157,6 +189,13 @@ fun DebugCenterScreen(
         }
 
         when (page) {
+            DebugCenterPage.Problems -> debugProblemsPage(
+                problems = problems,
+                onResolve = { problemReporter?.resolve(it) },
+                onReopen = { problemReporter?.reopen(it) },
+                onClearResolved = { problemReporter?.clearResolved() },
+                onCopy = { problem -> copyTextToClipboard(context, "XDM problem details", problem.toExportText()) },
+            )
             DebugCenterPage.Tests -> debugTestsPage(
                 selectedIds = selectedIds,
                 running = running,
@@ -198,6 +237,76 @@ fun DebugCenterScreen(
     }
 }
 
+
+
+private fun LazyListScope.debugProblemsPage(
+    problems: List<ProblemIncident>,
+    onResolve: (String) -> Unit,
+    onReopen: (String) -> Unit,
+    onClearResolved: () -> Unit,
+    onCopy: (ProblemIncident) -> Unit,
+) {
+    val activeCount = problems.count { !it.resolved }
+    item {
+        XdmListCard {
+            XdmCardTitle("Runtime problems")
+            XdmSupportingText(
+                if (activeCount == 0)
+                    "No unresolved runtime problems are recorded. XDM keeps this list local and bounded."
+                else
+                    "$activeCount unresolved problem${if (activeCount == 1) "" else "s"}. Repeated occurrences are grouped so the notification drawer is not spammed.",
+                maxLines = 4,
+            )
+            XdmActionFlowRow {
+                OutlinedButton(onClick = onClearResolved, enabled = problems.any(ProblemIncident::resolved)) { Text("Clear resolved") }
+            }
+        }
+    }
+    if (problems.isEmpty()) return
+    items(problems, key = { it.id }) { problem ->
+        XdmListCard(compact = true) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(problem.title)
+                    XdmMetadataText(
+                        listOf(
+                            problem.area.name.replace(Regex("([a-z])([A-Z])"), "$1 $2"),
+                            if (problem.occurrenceCount == 1) "1 occurrence" else "${problem.occurrenceCount} occurrences",
+                        ).joinToString(" • "),
+                        maxLines = 2,
+                    )
+                }
+                XdmStatusBadge(
+                    text = if (problem.resolved) "Resolved" else problem.severity.name,
+                    tone = when {
+                        problem.resolved -> XdmStatusTone.Neutral
+                        problem.severity == com.mikeyphw.xdm.android.model.DebugSeverity.Error -> XdmStatusTone.Error
+                        problem.severity == com.mikeyphw.xdm.android.model.DebugSeverity.Warning -> XdmStatusTone.Warning
+                        else -> XdmStatusTone.Info
+                    },
+                )
+            }
+            XdmSupportingText(problem.summary, maxLines = 5)
+            problem.suggestedAction?.takeIf(String::isNotBlank)?.let { action ->
+                XdmMetadataText("Recommended action: $action", maxLines = 4)
+            }
+            problem.operationId?.takeIf(String::isNotBlank)?.let { XdmTechnicalText("Operation: $it", maxLines = 2) }
+            problem.downloadId?.takeIf(String::isNotBlank)?.let { XdmTechnicalText("Download: $it", maxLines = 2) }
+            XdmActionFlowRow {
+                if (problem.resolved) {
+                    OutlinedButton(onClick = { onReopen(problem.id) }) { Text("Reopen") }
+                } else {
+                    Button(onClick = { onResolve(problem.id) }) { Text("Mark resolved") }
+                }
+                TextButton(onClick = { onCopy(problem) }) { Text("Copy details") }
+            }
+        }
+    }
+}
 
 private fun shareDebugCenterZip(
     context: Context,

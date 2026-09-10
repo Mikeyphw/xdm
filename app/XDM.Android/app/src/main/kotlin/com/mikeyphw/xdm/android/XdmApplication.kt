@@ -56,7 +56,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 
-class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, DebugRecorderProvider, TermuxResultRouterProvider {
+class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, DebugRecorderProvider, ProblemReporterProvider, TermuxResultRouterProvider {
     lateinit var container: AppContainer
         private set
 
@@ -70,6 +70,9 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         private set
 
     override lateinit var debugEventRecorder: DebugEventRecorder
+        private set
+
+    override lateinit var problemReporter: AppProblemReporter
         private set
 
     private lateinit var queueConditionMonitor: QueueConditionMonitor
@@ -104,10 +107,11 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             )
             .build()
         val repository = DownloadRepository(database)
-        debugEventRecorder = RollingJsonlDebugEventRecorder(
+        val rollingDebugRecorder = RollingJsonlDebugEventRecorder(
             rootDirectory = File(filesDir, "debug-sessions"),
             sessionId = "xdm-debug-workbench",
         )
+        debugEventRecorder = rollingDebugRecorder
         val ownershipStore = RoomBackendOwnershipStore(database)
         val migrationStore = RoomBackendMigrationStore(database)
         val aria2MappingStore = RoomAria2TaskMappingStore(database)
@@ -122,6 +126,12 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val termuxBridgeManager = TermuxBridgeManager(this)
         val termuxAria2CockpitManager = TermuxAria2CockpitManager(this)
         val preferences = UserPreferencesStore(this)
+        problemReporter = AppProblemReporter(this, debugEventRecorder).also { it.ensureNotificationChannel() }
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            preferences.values.collectLatest { prefs ->
+                rollingDebugRecorder.setVerboseLoggingEnabled(prefs.verboseDebugLoggingEnabled)
+            }
+        }
         val termuxMediaPipelineManager = TermuxMediaPipelineManager(this, database, repository, destinationWriter)
         val postProcessingAutomationManager = PostProcessingAutomationManager(preferences, repository, termuxMediaPipelineManager)
         val downloadArtifactActionManager = DownloadArtifactActionManager(this)
@@ -204,6 +214,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             browserCaptureSessionRegistry = browserCaptureSessionRegistry,
             browserCaptureImportJournal = browserCaptureImportJournal,
             debugEventRecorder = debugEventRecorder,
+            problemReporter = problemReporter,
         )
         termuxMediaPipelineManager.recoverInterruptedJobs()
         postProcessingAutomationManager.startAutomaticProcessing()
@@ -217,6 +228,33 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             val migration = runCatching { sensitivePersistenceMigrator.migrateIfNeeded() }
             val recovery = transferRuntime.recoverForStartup()
             val monitor = runCatching { queueConditionMonitor.start() }
+            migration.exceptionOrNull()?.let { error ->
+                problemReporter.report(
+                    area = com.mikeyphw.xdm.android.model.DebugArea.Persistence,
+                    title = "Startup data migration failed",
+                    summary = error.message ?: error::class.java.simpleName,
+                    suggestedAction = "Open Diagnostics & support, review the problem, then restart XDM after correcting the reported storage or database issue.",
+                    dedupeKey = "startup-sensitive-persistence-migration",
+                )
+            }
+            if (!recovery.admissionSafe) {
+                problemReporter.report(
+                    area = com.mikeyphw.xdm.android.model.DebugArea.Scheduler,
+                    title = "Download recovery needs attention",
+                    summary = "XDM kept new transfer admission paused because startup recovery did not complete safely.",
+                    suggestedAction = "Open Recovery and Diagnostics & support before starting new downloads.",
+                    dedupeKey = "startup-transfer-recovery",
+                )
+            }
+            monitor.exceptionOrNull()?.let { error ->
+                problemReporter.report(
+                    area = com.mikeyphw.xdm.android.model.DebugArea.Scheduler,
+                    title = "Queue condition monitoring failed",
+                    summary = error.message ?: error::class.java.simpleName,
+                    suggestedAction = "Open Diagnostics & support and restart XDM after reviewing network and power scheduling state.",
+                    dedupeKey = "startup-queue-condition-monitor",
+                )
+            }
             if (migration.isSuccess && recovery.admissionSafe && monitor.isSuccess) {
                 queueIntelligenceCoordinator.clearStartupRecoveryHold()
                 QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)
@@ -226,6 +264,21 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             transferRuntime.terminalEvents.collectLatest { event ->
                 queueIntelligenceCoordinator.recordTerminalEvent(event)
                 postProcessingAutomationManager.handleTransferTerminalEvent(event)
+                if (event.state == com.mikeyphw.xdm.android.model.DownloadState.Failed ||
+                    event.state == com.mikeyphw.xdm.android.model.DownloadState.RecoveryRequired
+                ) {
+                    problemReporter.report(
+                        area = com.mikeyphw.xdm.android.model.DebugArea.Backend,
+                        title = if (event.state == com.mikeyphw.xdm.android.model.DownloadState.RecoveryRequired) "Download needs recovery" else "Download failed",
+                        summary = event.message ?: "The transfer ended without a usable completed file.",
+                        suggestedAction = if (event.state == com.mikeyphw.xdm.android.model.DownloadState.RecoveryRequired) "Open Recovery and review the recommended action." else "Open the download details, review the error, and retry when ready.",
+                        operationId = "download-${event.downloadId}",
+                        downloadId = event.downloadId,
+                        dedupeKey = "terminal-${event.state.name}",
+                        // TransferNotifications already owns the user-facing terminal notification.
+                        notifyUser = false,
+                    )
+                }
                 QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)
             }
         }
@@ -256,4 +309,5 @@ data class AppContainer(
     val browserCaptureSessionRegistry: BrowserCaptureSessionRegistry,
     val browserCaptureImportJournal: BrowserCaptureImportJournal,
     val debugEventRecorder: DebugEventRecorder,
+    val problemReporter: AppProblemReporter,
 )

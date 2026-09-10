@@ -14,7 +14,13 @@ enum class DebugArea {
     ExternalIntent,
     AddDownload,
     MediaSniffing,
+    MediaResolver,
+    WebView,
     TransferPlanner,
+    Backend,
+    Storage,
+    Persistence,
+    Thumbnail,
     Scheduler,
     Notification,
     FileOpen,
@@ -227,19 +233,34 @@ class RollingJsonlDebugEventRecorder(
     private val maxSessionBytes: Long = 2L * 1024L * 1024L,
     private val retainedSessions: Int = 5,
     private val clock: () -> Long = System::currentTimeMillis,
+    verboseLoggingEnabled: Boolean = false,
 ) : DebugEventRecorder {
     private val lock = Any()
+
+    @Volatile
+    private var verboseLoggingEnabled: Boolean = verboseLoggingEnabled
+
+    fun setVerboseLoggingEnabled(enabled: Boolean) {
+        verboseLoggingEnabled = enabled
+    }
+
+    fun isVerboseLoggingEnabled(): Boolean = verboseLoggingEnabled
     private val sessionsDirectory: File get() = File(rootDirectory, "sessions")
     private val currentFile: File get() = File(rootDirectory, "current.jsonl")
 
     override fun record(event: DebugEvent) {
-        val safeEvent = event.copy(sessionId = event.sessionId.ifBlank { sessionId })
-        val line = safeEvent.toJsonLine() + "\n"
-        synchronized(lock) {
-            rootDirectory.mkdirs()
-            sessionsDirectory.mkdirs()
-            rotateIfNeeded(line.toByteArray(Charsets.UTF_8).size.toLong())
-            currentFile.appendText(line, Charsets.UTF_8)
+        // Diagnostics are strictly best-effort: a full/unavailable private filesystem must never
+        // become the cause of a failed transfer, capture, or UI operation.
+        if (event.severity == DebugSeverity.Trace && !verboseLoggingEnabled) return
+        runCatching {
+            val safeEvent = event.copy(sessionId = event.sessionId.ifBlank { sessionId })
+            val line = safeEvent.toJsonLine() + "\n"
+            synchronized(lock) {
+                rootDirectory.mkdirs()
+                sessionsDirectory.mkdirs()
+                rotateIfNeeded(line.toByteArray(Charsets.UTF_8).size.toLong())
+                currentFile.appendText(line, Charsets.UTF_8)
+            }
         }
     }
 

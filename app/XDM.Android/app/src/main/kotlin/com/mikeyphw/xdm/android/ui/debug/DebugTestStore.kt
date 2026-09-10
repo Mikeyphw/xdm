@@ -36,6 +36,7 @@ class DebugTestStore(
         run: DebugTestRun,
         supportReportText: String,
         debugTimelineJsonl: String,
+        problemIncidentsText: String = "",
     ): File {
         exportsDirectory.mkdirs()
         val destination = File(exportsDirectory, safeFileName(run.id) + ".zip")
@@ -43,6 +44,7 @@ class DebugTestStore(
             zip.writeEntry("report.txt", run.toReportText())
             zip.writeEntry("test-results.json", run.toJson())
             zip.writeEntry("debug-events.jsonl", listOf(run.toDebugEventJsonl(), debugTimelineJsonl).filter { it.isNotBlank() }.joinToString("\n"))
+            if (problemIncidentsText.isNotBlank()) zip.writeEntry("problem-incidents.txt", problemIncidentsText)
             zip.writeEntry("environment.txt", buildEnvironmentText(run))
             zip.writeEntry("support-report.txt", DebugRedactor.redactExportLine(supportReportText))
             zip.writeEntry(

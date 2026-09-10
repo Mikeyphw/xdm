@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun consumeLaunchIntent(incoming: Intent?): Boolean =
-        consumeInternalMediaCapture(incoming) || consumeInternalDirectBrowserCapture(incoming) || consumeInternalBrowserCapture(incoming) || consumeInternalAutomation(incoming) || consumeNotificationNavigation(incoming)
+        consumeInternalMediaCapture(incoming) || consumeInternalDirectBrowserCapture(incoming) || consumeInternalBrowserCapture(incoming) || consumeInternalAutomation(incoming) || consumeProblemNavigation(incoming) || consumeNotificationNavigation(incoming)
 
     private fun consumeInternalDirectBrowserCapture(incoming: Intent?): Boolean {
         if (incoming?.action != ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT) return false
@@ -80,6 +80,15 @@ class MainActivity : ComponentActivity() {
         incoming.removeExtra(EXTRA_INTERNAL_BROWSER_CAPTURE_SESSION_ID)
         setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
         viewModel.recoverPendingBrowserCaptureImports(sessionId)
+        return true
+    }
+
+
+    private fun consumeProblemNavigation(incoming: Intent?): Boolean {
+        if (incoming?.action != AppProblemNotifications.ACTION_OPEN_PROBLEM) return false
+        incoming.removeExtra(AppProblemNotifications.EXTRA_PROBLEM_ID)
+        setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+        viewModel.selectSettingsPanel(SettingsPanel.DebugWorkbench)
         return true
     }
 

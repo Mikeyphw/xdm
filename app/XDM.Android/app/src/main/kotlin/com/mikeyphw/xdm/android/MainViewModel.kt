@@ -235,6 +235,7 @@ data class MainUiState(
     val compactDensity: Boolean = false,
     val themeMode: XdmThemeMode = XdmThemeMode.Dark,
     val developerOptionsEnabled: Boolean = false,
+    val verboseDebugLoggingEnabled: Boolean = false,
     val browserExtension: BrowserExtensionExportPreferences = BrowserExtensionExportPreferences(),
     val browserExtensionRuntime: BrowserExtensionRuntimeStatus = BrowserExtensionRuntimeStatus(),
     val browserBridgeStatus: BrowserBridgeIntegrationStatus = BrowserBridgeIntegrationStatus(),
@@ -364,6 +365,7 @@ class MainViewModel(
     private val browserCaptureSessionRegistry: BrowserCaptureSessionRegistry,
     private val browserCaptureImportJournal: BrowserCaptureImportJournal,
     private val debugEventRecorder: DebugEventRecorder,
+    private val problemReporter: AppProblemReporter,
 ) : ViewModel() {
     private data class NavigationOverride(
         val route: AppRoute? = null,
@@ -822,6 +824,7 @@ class MainViewModel(
             compactDensity = prefs.compactDensity,
             themeMode = prefs.themeMode,
             developerOptionsEnabled = prefs.developerOptionsEnabled,
+            verboseDebugLoggingEnabled = prefs.verboseDebugLoggingEnabled,
             browserExtension = prefs.browserExtension,
             browserExtensionRuntime = browserExtensionRuntimeStatus,
             browserBridgeStatus = browserBridgeIntegrationStatus,
@@ -1676,6 +1679,10 @@ class MainViewModel(
             viewModelScope.launch { preferences.setSettingsNavigation(SettingsPanel.Overview) }
         }
         viewModelScope.launch { preferences.setDeveloperOptionsEnabled(enabled) }
+    }
+
+    fun setVerboseDebugLoggingEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferences.setVerboseDebugLoggingEnabled(enabled) }
     }
 
     fun setProxySettings(settings: ProxyCredentialSettings) {
@@ -3111,11 +3118,23 @@ class MainViewModel(
 
 
     private fun publishMediaIntakeFeedback(feedback: MediaIntakeFeedbackUi, navigateToMedia: Boolean = true) {
-        mediaIntakeFeedback.value = feedback.copy(
+        val sanitized = feedback.copy(
             title = BrowserBridgeDiagnosticsRedactor.sanitize(feedback.title).take(120),
             detail = BrowserBridgeDiagnosticsRedactor.sanitize(feedback.detail).take(512),
             diagnostics = feedback.diagnostics.map(BrowserBridgeDiagnosticsRedactor::sanitize).filter(String::isNotBlank).takeLast(6),
         )
+        mediaIntakeFeedback.value = sanitized
+        if (sanitized.kind == MediaIntakeFeedbackKind.Failed) {
+            problemReporter.report(
+                area = com.mikeyphw.xdm.android.model.DebugArea.MediaResolver,
+                severity = com.mikeyphw.xdm.android.model.DebugSeverity.Error,
+                title = sanitized.title.ifBlank { "Media operation failed" },
+                summary = sanitized.detail.ifBlank { "XDM could not complete the media operation." },
+                suggestedAction = "Review Media technical details, correct the reported issue, and retry.",
+                dedupeKey = sanitized.title.ifBlank { "media-operation-failed" },
+                notifyUser = true,
+            )
+        }
         if (navigateToMedia) navigate(AppRoute.Media)
     }
 
@@ -4499,6 +4518,7 @@ class MainViewModel(
             container.browserCaptureSessionRegistry,
             container.browserCaptureImportJournal,
             container.debugEventRecorder,
+            container.problemReporter,
         ) as T
     }
 }
