@@ -703,7 +703,7 @@ private fun DownloadsOverviewHeader(
         if (windowClass == XdmWindowClass.Expanded) {
             XdmPageHeader(
                 title = "Downloads",
-                subtitle = "Downloads, waiting work, and anything that needs attention.",
+                subtitle = "Downloads, waiting work, and anything that needs action.",
                 actions = {
                     IconButton(
                         onClick = onToggleSearch,
@@ -722,7 +722,7 @@ private fun DownloadsOverviewHeader(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Downloads, waiting work, and anything that needs attention.",
+                    "Downloads, waiting work, and anything that needs action.",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

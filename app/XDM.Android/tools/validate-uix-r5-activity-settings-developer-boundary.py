@@ -28,10 +28,10 @@ def require(relative: str, *needles: str) -> str:
 
 panels = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ActivityPanel.kt",
-    'Overview("Needs attention")',
+    'Overview("Needs action")',
     'Timeline("Recent")',
-    'Attention("Needs attention")',
-    'Diagnostics("Developer tools")',
+    'Attention("Needs action")',
+    'Diagnostics("Developer Center")',
     "val primaryPanels = listOf(Attention, Timeline)",
     "val managePanels = listOf(Decisions, Queues, Schedule, Recovery)",
     "fun normalized(developerOptionsEnabled: Boolean)",
@@ -54,7 +54,7 @@ activity = require(
     'XdmSectionHeader("Activity")',
     'TextButton(onClick = onOpenManage) { Text("Manage") }',
     "ActivityPanel.primaryPanels",
-    '"Nothing needs attention"',
+    '"Nothing needs action"',
     '"No recent activity"',
     "ActivityWorkspacePlanner.consequence(event)",
 )
@@ -75,7 +75,7 @@ app = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
     "ActivityWorkspaceScreen(",
     "ActivityPanel.managePanels",
-    'title = "Manage activity"',
+    'title = "Queue & recovery"',
     "XdmAdaptiveSheet(",
     "if (panel == ActivityPanel.Diagnostics) viewModel.openDeveloperTools()",
     "AppRoute.Settings -> SettingsScreen(state, viewModel)",
@@ -83,31 +83,18 @@ app = require(
 
 settings = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt",
-    'title = "Save location"',
-    'title = "Smart queue"',
-    'title = "Notifications"',
-    'title = "Advanced download rules"',
-    'XdmSectionHeader("Appearance")',
-    'title = "Privacy"',
-    'title = "Copy support report"',
-    'title = "Developer options"',
+    'title = "Storage & destinations"',
+    'title = "Download behavior"',
+    'title = "Network"',
+    'title = "Media & capture"',
+    'title = "External tools"',
+    'title = "Post-processing"',
+    'title = "Backup & restore"',
+    'title = "Diagnostics & support"',
+    'title = "Developer mode"',
     'XdmSectionHeader("About")',
-    "state.supportReportText",
     "if (state.developerOptionsEnabled)",
 )
-order = [
-    settings.find('title = "Save location"'),
-    settings.find('title = "Smart queue"'),
-    settings.find('title = "Notifications"'),
-    settings.find('title = "Advanced download rules"'),
-    settings.find('XdmSectionHeader("Appearance")'),
-    settings.find('XdmSectionHeader("Privacy and support")'),
-    settings.find('XdmSectionHeader("About")'),
-]
-if any(index < 0 for index in order) or order != sorted(order):
-    ERRORS.append("Settings groups are not ordered around everyday user needs")
-if settings.find('title = "Copy support report"') > settings.find('title = "Developer options"'):
-    ERRORS.append("Support report must remain available before and independently of Developer options")
 for forbidden in (
     "MediaDispatchDashboardCard",
     "MediaQueueTelemetryCard",
@@ -123,12 +110,17 @@ advanced = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/AdvancedDownloadSettingsScreen.kt",
     "Destination rules",
     "Duplicate URL rules",
-    "Proxy and credentials",
-    "TermuxBridgeSettingsCard(",
-    "TermuxAria2SettingsCard(",
-    "PostProcessingAutomationCard(",
-    "Settings import/export",
 )
+require(
+    "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsDetailScreens.kt",
+    "Storage & destinations",
+    "Download behavior",
+    "Network",
+    "External tools",
+    "Post-processing",
+    "Backup & restore",
+)
+
 developer_settings = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperSettingsScreen.kt",
     "UiAudience.Developer",

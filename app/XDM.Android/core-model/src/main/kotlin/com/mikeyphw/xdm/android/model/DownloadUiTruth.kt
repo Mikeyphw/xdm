@@ -211,7 +211,7 @@ object DownloadUiTruthPlanner {
         CompletedArtifactHealth.Present -> when {
             context.verificationFailed() -> "Verification failed"
             context.verificationPassed() -> "Verified"
-            else -> "Complete"
+            else -> "Completed"
         }
     }
 

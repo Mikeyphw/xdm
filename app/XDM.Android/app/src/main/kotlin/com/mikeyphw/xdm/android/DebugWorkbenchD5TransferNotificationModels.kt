@@ -36,7 +36,7 @@ object TransferNotificationDebugReporter {
             primary == null -> "Idle"
             primary.state == DownloadState.Completed -> "Completed"
             primary.state == DownloadState.Failed -> "Failed"
-            primary.state == DownloadState.RecoveryRequired -> "Needs attention"
+            primary.state == DownloadState.RecoveryRequired -> "Needs action"
             primary.state == DownloadState.Paused -> "Paused"
             else -> primary.state.transferStateLabel()
         }

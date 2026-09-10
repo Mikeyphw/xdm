@@ -98,7 +98,7 @@ require(
 require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/activity/ActivityScreen.kt",
     "XdmScreenTags.Activity",
-    "Needs attention selected",
+    "Needs action selected",
     "Recent selected",
     "XdmScreenTags.ActivityAttention",
     "XdmScreenTags.ActivityRecent",

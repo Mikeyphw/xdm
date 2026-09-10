@@ -199,13 +199,13 @@ internal fun MediaFinalValidationGateCard(dashboard: MediaFinalValidationDashboa
                 maxLines = 4,
             )
             XdmActionFlowRow {
-                StatusPill(if (dashboard.releaseReady) "Ready for release" else "validation pending or blocked", if (dashboard.releaseReady) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.releaseReady) "Ready for release" else "Needs action", if (dashboard.releaseReady) XdmStatusTone.Success else XdmStatusTone.Warning)
                 dashboard.blockerCount.takeIf { it > 0 }?.let { StatusPill("$it blocker", tone = XdmStatusTone.Error) }
                 dashboard.reviewCount.takeIf { it > 0 }?.let { StatusPill("$it review", tone = XdmStatusTone.Warning) }
                 StatusPill("${dashboard.commandCount} commands", tone = XdmStatusTone.Info)
-                StatusPill(if (dashboard.warningGate) "Warnings clear" else "warning review", if (dashboard.warningGate) XdmStatusTone.Success else XdmStatusTone.Warning)
-                StatusPill(if (dashboard.noNewTopLevelRoutes) "no new routes" else "route review", if (dashboard.noNewTopLevelRoutes) XdmStatusTone.Success else XdmStatusTone.Error)
-                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
+                StatusPill(if (dashboard.warningGate) "Warnings clear" else "Needs warning review", if (dashboard.warningGate) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.noNewTopLevelRoutes) "Routes unchanged" else "Needs route review", if (dashboard.noNewTopLevelRoutes) XdmStatusTone.Success else XdmStatusTone.Error)
+                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "Needs redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
             dashboard.checks.take(6).forEach { check ->
@@ -216,7 +216,7 @@ internal fun MediaFinalValidationGateCard(dashboard: MediaFinalValidationDashboa
                             XdmSupportingText(check.summary, maxLines = 2)
                             XdmMetadataText(check.evidence, maxLines = 2)
                         }
-                        StatusPill(if (check.passing) "pass" else check.severity.label, toneForFinalValidation(check.severity, check.passing))
+                        StatusPill(if (check.passing) "Passed" else check.severity.label, toneForFinalValidation(check.severity, check.passing))
                     }
                 }
             }
@@ -248,10 +248,10 @@ internal fun MediaMobilePolishCard(dashboard: MediaMobilePolishDashboard) {
                 StatusPill(dashboard.mode.label, tone = XdmStatusTone.Info)
                 StatusPill("${dashboard.visiblePrimarySectionCount} primary", tone = XdmStatusTone.Neutral)
                 dashboard.collapsedDiagnosticsCount.takeIf { it > 0 }?.let { StatusPill("$it collapsed", tone = XdmStatusTone.Info) }
-                dashboard.attentionCount.takeIf { it > 0 }?.let { StatusPill("$it attention", tone = XdmStatusTone.Warning) }
-                StatusPill(if (dashboard.noTinyScrollIslands) "no tiny scroll islands" else "scroll review", if (dashboard.noTinyScrollIslands) XdmStatusTone.Success else XdmStatusTone.Warning)
-                StatusPill(if (dashboard.accessibilityReady) "accessibility-ready" else "accessibility review", if (dashboard.accessibilityReady) XdmStatusTone.Success else XdmStatusTone.Warning)
-                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
+                dashboard.attentionCount.takeIf { it > 0 }?.let { StatusPill("$it need action", tone = XdmStatusTone.Warning) }
+                StatusPill(if (dashboard.noTinyScrollIslands) "Scrolling ready" else "Needs scroll review", if (dashboard.noTinyScrollIslands) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.accessibilityReady) "Accessibility ready" else "Needs accessibility review", if (dashboard.accessibilityReady) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "Needs redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
             }
             XdmListCard(compact = true) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -309,7 +309,7 @@ internal fun MediaCaptureQualityCard(dashboard: MediaCaptureQualityDashboard) {
                 dashboard.refreshCount.takeIf { it > 0 }?.let { StatusPill("$it refresh", tone = XdmStatusTone.Warning) }
                 dashboard.protectedCount.takeIf { it > 0 }?.let { StatusPill("$it protected", tone = XdmStatusTone.Warning) }
                 dashboard.liveCount.takeIf { it > 0 }?.let { StatusPill("$it live", tone = XdmStatusTone.Info) }
-                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "Needs redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
             if (dashboard.empty) {
@@ -358,7 +358,7 @@ internal fun SessionPrivacyAuditCard(dashboard: MediaSessionPrivacyAuditDashboar
             XdmActionFlowRow {
                 dashboard.blockerCount.takeIf { it > 0 }?.let { StatusPill("$it blocker", tone = XdmStatusTone.Error) }
                 dashboard.reviewCount.takeIf { it > 0 }?.let { StatusPill("$it review", tone = XdmStatusTone.Warning) }
-                dashboard.cleanupDueCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup due", tone = XdmStatusTone.Warning) }
+                dashboard.cleanupDueCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup needed", tone = XdmStatusTone.Warning) }
                 dashboard.cleanupVerifiedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup verified", tone = XdmStatusTone.Success) }
                 StatusPill(if (dashboard.durableSecretSafe) "Durable data redacted" else "durable leak blocked", if (dashboard.durableSecretSafe) XdmStatusTone.Success else XdmStatusTone.Error)
                 StatusPill(if (dashboard.transientCleanupHealthy) "cleanup healthy" else "cleanup review", if (dashboard.transientCleanupHealthy) XdmStatusTone.Success else XdmStatusTone.Warning)
@@ -403,7 +403,7 @@ internal fun MediaDispatchDashboardCard(dashboard: MediaDispatchDashboard, plans
                 dashboard.blockedCount.takeIf { it > 0 }?.let { StatusPill("$it blocked", tone = XdmStatusTone.Warning) }
                 dashboard.refreshCount.takeIf { it > 0 }?.let { StatusPill("$it refresh", tone = XdmStatusTone.Warning) }
                 dashboard.termuxSetupCount.takeIf { it > 0 }?.let { StatusPill("$it Termux setup", tone = XdmStatusTone.Info) }
-                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "Needs redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
             if (plans.isEmpty()) {
@@ -446,10 +446,10 @@ internal fun MediaQueueTelemetryCard(deck: MediaQueueTelemetryDeck) {
             XdmActionFlowRow {
                 StatusPill("${deck.readyToLaunchCount} ready", if (deck.readyToLaunchCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
                 deck.activeCount.takeIf { it > 0 }?.let { StatusPill("$it active", tone = XdmStatusTone.Info) }
-                deck.needsAttentionCount.takeIf { it > 0 }?.let { StatusPill("$it attention", tone = XdmStatusTone.Warning) }
+                deck.needsAttentionCount.takeIf { it > 0 }?.let { StatusPill("$it need action", tone = XdmStatusTone.Warning) }
                 deck.cleanupArmedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup ready", tone = XdmStatusTone.Neutral) }
-                deck.terminalCount.takeIf { it > 0 }?.let { StatusPill("$it terminal", tone = XdmStatusTone.Neutral) }
-                StatusPill(if (deck.secretSafe) "Telemetry redacted" else "redaction review", if (deck.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                deck.terminalCount.takeIf { it > 0 }?.let { StatusPill("$it finished", tone = XdmStatusTone.Neutral) }
+                StatusPill(if (deck.secretSafe) "Telemetry redacted" else "Needs redaction review", if (deck.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(deck.summary, maxLines = 3)
             if (deck.empty) {
@@ -491,7 +491,7 @@ internal fun MediaNativeDirectDownloadEngineCard(dashboard: NativeDirectDashboar
                 dashboard.resumeCount.takeIf { it > 0 }?.let { StatusPill("$it resumable", tone = XdmStatusTone.Info) }
                 dashboard.permissionCount.takeIf { it > 0 }?.let { StatusPill("$it permission", tone = XdmStatusTone.Warning) }
                 dashboard.unsupportedCount.takeIf { it > 0 }?.let { StatusPill("$it adaptive", tone = XdmStatusTone.Neutral) }
-                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "Needs redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             dashboard.plans.take(3).forEach { plan -> NativeDirectDownloadPlanRow(plan) }
             if (dashboard.plans.isEmpty()) {
@@ -520,7 +520,7 @@ internal fun MediaTermuxRuntimeAdapterCard(dashboard: TermuxRuntimeDashboard) {
                 StatusPill("${dashboard.launchableCount} ready", if (dashboard.launchableCount > 0) XdmStatusTone.Success else XdmStatusTone.Neutral)
                 dashboard.missingToolCount.takeIf { it > 0 }?.let { StatusPill("$it missing tools", tone = XdmStatusTone.Warning) }
                 dashboard.cleanupArmedCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup ready", tone = XdmStatusTone.Info) }
-                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "Redaction safe" else "Needs redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             dashboard.plans.take(3).forEach { plan -> TermuxRuntimeLaunchPlanRow(plan) }
             if (dashboard.plans.isEmpty()) {
@@ -554,7 +554,7 @@ internal fun MediaWorkerBridgeCard(dashboard: MediaWorkerBridgeDashboard) {
                 dashboard.termuxWorkerCount.takeIf { it > 0 }?.let { StatusPill("$it Termux", tone = XdmStatusTone.Info) }
                 dashboard.blockedCount.takeIf { it > 0 }?.let { StatusPill("$it blocked", tone = XdmStatusTone.Warning) }
                 dashboard.confirmationCount.takeIf { it > 0 }?.let { StatusPill("$it confirm", tone = XdmStatusTone.Warning) }
-                StatusPill(if (dashboard.secretSafe) "Bridge redacted" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "Bridge redacted" else "Needs redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
             if (dashboard.empty) {
@@ -608,7 +608,7 @@ internal fun MediaQueueActionsCard(dashboard: MediaQueueActionDashboard) {
                 dashboard.retryableCount.takeIf { it > 0 }?.let { StatusPill("$it retry/resume", tone = XdmStatusTone.Warning) }
                 dashboard.cancellableCount.takeIf { it > 0 }?.let { StatusPill("$it cancel", tone = XdmStatusTone.Warning) }
                 dashboard.cleanupCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup", tone = XdmStatusTone.Neutral) }
-                StatusPill(if (dashboard.secretSafe) "Actions redacted" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "Actions redacted" else "Needs redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText(dashboard.summary, maxLines = 3)
             if (dashboard.empty) {
@@ -1174,7 +1174,7 @@ internal fun OfflineLibraryV2Card(dashboard: OfflineLibraryV2Dashboard) {
                 dashboard.failedCount.takeIf { it > 0 }?.let { StatusPill("$it failed", tone = XdmStatusTone.Warning) }
                 dashboard.missingCount.takeIf { it > 0 }?.let { StatusPill("$it missing", tone = XdmStatusTone.Warning) }
                 dashboard.cleanupCount.takeIf { it > 0 }?.let { StatusPill("$it cleanup", tone = XdmStatusTone.Neutral) }
-                StatusPill(if (dashboard.secretSafe) "safe export" else "redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (dashboard.secretSafe) "safe export" else "Needs redaction review", if (dashboard.secretSafe) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             XdmMetadataText("Filters: ${OfflineLibraryV2Filter.entries.joinToString { it.label }}", maxLines = 2)
             dashboard.sourceHosts.takeIf { it.isNotEmpty() }?.let { hosts -> XdmMetadataText("Source hosts: ${hosts.take(5).joinToString()}", maxLines = 2) }
@@ -1229,7 +1229,7 @@ internal fun PlayerDiagnosticsDeckCard(reports: List<MediaPlayerDiagnosticReport
                 StatusPill("${reports.size} reports", tone = XdmStatusTone.Neutral)
                 reports.count { it.retryPrepareAvailable }.takeIf { it > 0 }?.let { StatusPill("$it retry", tone = XdmStatusTone.Info) }
                 reports.count { it.protectedDiagnosticOnly }.takeIf { it > 0 }?.let { StatusPill("$it protected", tone = XdmStatusTone.Warning) }
-                StatusPill(if (reports.all { it.sourceSafe }) "source-safe" else "redaction review", if (reports.all { it.sourceSafe }) XdmStatusTone.Success else XdmStatusTone.Warning)
+                StatusPill(if (reports.all { it.sourceSafe }) "Source redacted" else "Needs redaction review", if (reports.all { it.sourceSafe }) XdmStatusTone.Success else XdmStatusTone.Warning)
             }
             reports.take(3).forEach { report -> PlayerDiagnosticsReportCard(report) }
             if (reports.isEmpty()) {

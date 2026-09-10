@@ -123,7 +123,7 @@ object DebugWorkbenchRuntimeSelfTestSuite {
         val failing = checks.count { it.statusLabel == RuntimeSelfTestLabels.Fail }
         val notes = checks.count { it.statusLabel == RuntimeSelfTestLabels.Note }
         val status = when {
-            failing > 0 -> "Needs attention"
+            failing > 0 -> "Needs action"
             notes > 0 -> "Ready with notes"
             else -> "Ready"
         }

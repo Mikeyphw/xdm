@@ -98,13 +98,13 @@ fun ActivityAttentionScreen(
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            label = { Text("Search attention") },
+            label = { Text("Search unresolved activity") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         )
         ActivityEventList(
             events = filtered,
-            emptyTitle = "Nothing needs attention",
+            emptyTitle = "Nothing needs action",
             emptyDescription = "Policy holds, authentication failures, storage problems, verification failures, and recovery records will appear here.",
             onAction = onAction,
             onDismiss = onDismiss,
@@ -124,16 +124,16 @@ fun ActivityDecisionsScreen(
         XdmListCard(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), compact = true) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    XdmCardTitle("Explainable queue decisions")
-                    XdmSupportingText("Network, power, storage, schedule, retry, and concurrency holds remain visible instead of silently stalling transfers.", maxLines = 3)
+                    XdmCardTitle("Queue holds")
+                    XdmSupportingText("See why downloads are waiting because of network, power, storage, schedule, retry, or concurrency limits.", maxLines = 3)
                 }
                 TextButton(onClick = onEvaluateNow) { Text("Evaluate now") }
             }
         }
         ActivityEventList(
             events = decisions,
-            emptyTitle = "No queue decisions yet",
-            emptyDescription = "Run queue evaluation or add a queued transfer to create a privacy-safe decision trail.",
+            emptyTitle = "No queue holds yet",
+            emptyDescription = "Queue holds will appear here when a download is waiting for a condition to change.",
             onAction = onAction,
             onDismiss = onDismiss,
         )
@@ -152,14 +152,14 @@ fun OperationalActivityOverviewCard(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 XdmCardTitle("Operational timeline")
-                XdmSupportingText("Transfers, policy decisions, handoffs, verification, recovery, and diagnostics share one searchable flight recorder.", maxLines = 3)
+                XdmSupportingText("Transfers, queue holds, handoffs, verification, recovery, and diagnostics appear in one searchable timeline.", maxLines = 3)
             }
             TextButton(onClick = onOpenTimeline) { Text("Open timeline") }
         }
         XdmActionFlowRow {
             XdmStatusBadge("${summary.total} events", tone = XdmStatusTone.Neutral)
-            summary.unresolved.takeIf { it > 0 }?.let { XdmStatusBadge("$it attention", tone = XdmStatusTone.Error) }
-            summary.policyHolds.takeIf { it > 0 }?.let { XdmStatusBadge("$it decisions", tone = XdmStatusTone.Warning) }
+            summary.unresolved.takeIf { it > 0 }?.let { XdmStatusBadge("$it unresolved", tone = XdmStatusTone.Error) }
+            summary.policyHolds.takeIf { it > 0 }?.let { XdmStatusBadge("$it queue holds", tone = XdmStatusTone.Warning) }
             summary.networkHolds.takeIf { it > 0 }?.let { XdmStatusBadge("$it network", tone = XdmStatusTone.Info) }
             summary.storageHolds.takeIf { it > 0 }?.let { XdmStatusBadge("$it storage", tone = XdmStatusTone.Warning) }
         }
@@ -167,8 +167,8 @@ fun OperationalActivityOverviewCard(
             XdmMetadataText("${formatActivityTime(event.createdAtEpochMs)} • ${event.title} • ${event.fileName ?: event.category.label}", maxLines = 2)
         }
         XdmActionFlowRow {
-            TextButton(onClick = onOpenAttention, enabled = summary.unresolved > 0) { Text("Attention") }
-            TextButton(onClick = onOpenDecisions, enabled = summary.policyHolds > 0) { Text("Decisions") }
+            TextButton(onClick = onOpenAttention, enabled = summary.unresolved > 0) { Text("Unresolved") }
+            TextButton(onClick = onOpenDecisions, enabled = summary.policyHolds > 0) { Text("Queue holds") }
         }
     }
 }
@@ -183,10 +183,10 @@ fun OperationalDiagnosticsHeader(
     val context = LocalContext.current
     XdmListCard(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), compact = true) {
         XdmCardTitle("Privacy-safe operational export")
-        XdmSupportingText("Exports app/build identity, engines, transfer states, policy decisions, failure categories, and recent events. Cookie, authorization, token, signature, and credential values stay redacted.", maxLines = 4)
+        XdmSupportingText("Exports app/build identity, engines, transfer states, queue holds, failure categories, and recent events. Cookie, authorization, token, signature, and credential values stay redacted.", maxLines = 4)
         XdmActionFlowRow {
             XdmStatusBadge("${summary.total} events", tone = XdmStatusTone.Neutral)
-            XdmStatusBadge(if (diagnosticsExport.contains("<redacted>")) "redaction sealed" else "safe fields only", tone = XdmStatusTone.Success)
+            XdmStatusBadge(if (diagnosticsExport.contains("<redacted>")) "Sensitive data redacted" else "Safe diagnostic fields", tone = XdmStatusTone.Success)
             summary.unresolved.takeIf { it > 0 }?.let { XdmStatusBadge("$it unresolved", tone = XdmStatusTone.Warning) }
         }
         XdmActionFlowRow {

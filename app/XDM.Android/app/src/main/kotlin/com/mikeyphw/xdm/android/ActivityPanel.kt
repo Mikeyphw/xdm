@@ -2,11 +2,11 @@ package com.mikeyphw.xdm.android
 
 /** Stable subsections inside the single Activity top-level destination. */
 enum class ActivityPanel(val label: String) {
-    /** Legacy value mapped to Needs attention. */
-    Overview("Needs attention"),
+    /** Legacy value mapped to the primary Needs action panel. */
+    Overview("Needs action"),
     Timeline("Recent"),
-    Attention("Needs attention"),
-    Decisions("Queue decisions"),
+    Attention("Needs action"),
+    Decisions("Queue holds"),
     Queues("Queues"),
     Schedule("Schedules"),
     Recovery("Recovery"),

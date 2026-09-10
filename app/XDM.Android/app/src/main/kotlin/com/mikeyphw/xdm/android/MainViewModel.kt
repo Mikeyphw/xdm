@@ -411,7 +411,7 @@ class MainViewModel(
                 running -> "Running"
                 message == null -> "Not run"
                 message.startsWith("PASS:") -> "Passed"
-                else -> "Needs attention"
+                else -> "Needs action"
             },
             detail = message?.removePrefix("PASS:")?.removePrefix("FAIL:")?.trim()
                 ?: StorageDoctorUi().detail,

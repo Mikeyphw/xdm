@@ -63,7 +63,7 @@ object DownloadReviewPlanner {
         }
         val title = when (readiness) {
             DownloadReviewReadiness.MissingLink -> "Add a download link"
-            DownloadReviewReadiness.InvalidLink -> "Link needs attention"
+            DownloadReviewReadiness.InvalidLink -> "Link needs action"
             DownloadReviewReadiness.ChooseDestination -> "Choose a destination"
             DownloadReviewReadiness.ChoiceRecommended -> when (kind) {
                 DownloadIntakeKind.AdaptiveMedia -> "Playlist detected"
@@ -184,7 +184,7 @@ enum class DownloadDashboardOrdering(val label: String) {
 }
 
 enum class DownloadDashboardBucket(val label: String) {
-    NeedsAttention("Needs attention"),
+    NeedsAttention("Needs action"),
     Active("Active"),
     Queued("Queued"),
     Completed("Completed"),

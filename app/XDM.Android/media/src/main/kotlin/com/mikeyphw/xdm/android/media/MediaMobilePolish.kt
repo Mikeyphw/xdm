@@ -31,7 +31,7 @@ enum class MediaMobilePolishSignal(val label: String) {
     CompactActionRail("compact action rail"),
     CollapsedDiagnostics("collapsed diagnostics"),
     EmptyStateReady("empty/offline/error state"),
-    NoTinyScrollIslands("no tiny scroll islands"),
+    NoTinyScrollIslands("Scrolling ready"),
     AccessibilityLabels("accessibility labels"),
     TouchTargetSafe("touch-target safe"),
     FoldableReady("foldable ready"),
@@ -99,8 +99,8 @@ data class MediaMobilePolishDashboard(
         "collapsedDiagnostics=$collapsedDiagnosticsCount",
         "attention=$attentionCount",
         emptyStateLabel,
-        if (noTinyScrollIslands) "no tiny scroll islands" else "scroll review",
-        if (accessibilityReady) "accessibility-ready" else "accessibility review",
+        if (noTinyScrollIslands) "Scrolling ready" else "Needs scroll review",
+        if (accessibilityReady) "Accessibility ready" else "Needs accessibility review",
         if (foldableReady) "foldable-ready" else "foldable review",
         if (secretSafe) "secret-safe" else "redaction review",
     ).joinToString(" • ")
@@ -298,7 +298,7 @@ class MediaMobilePolishPlanner {
         )
         items += MediaMobileRecommendation(
             title = "Collapsed diagnostics",
-            detail = "Player, privacy, and capture-quality details are summarized until attention is needed.",
+            detail = "Player, privacy, and capture-quality details stay summarized until action is needed.",
             signal = MediaMobilePolishSignal.CollapsedDiagnostics,
             blocking = privacyAudit.blockerCount > 0 || playerReports.any { it.bucket != MediaPlayerDiagnosticBucket.Ready },
         )
@@ -347,7 +347,7 @@ class MediaMobilePolishPlanner {
         queueTelemetry.activeCount > 0 -> "Active downloads: keep progress and pause/cancel in the sticky summary."
         captures.isEmpty() && library.visibleCount == 0 -> "Empty: browse, share, or paste a media page to start capture."
         captures.isEmpty() && library.visibleCount > 0 -> "Offline: library remains useful even when capture inbox is empty."
-        queueTelemetry.needsAttentionCount > 0 -> "Needs attention: refresh metadata, choose tracks, or open Termux setup."
+        queueTelemetry.needsAttentionCount > 0 -> "Needs action: refresh metadata, choose tracks, or open Termux setup."
         else -> "Ready: queue selected media or continue browsing inside Media."
     }
 

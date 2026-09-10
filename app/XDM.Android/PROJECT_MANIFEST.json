@@ -1454,7 +1454,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_ux10_ux11_developer_browser_polish_v1.zip",
+  "current_overlay": "xdm_android_ux12_accessibility_terminology_visual_seal_v1.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -3025,7 +3025,7 @@
     "workmanager_foreground_fallback": true,
     "yt_dlp_launch_adapter_contract": true
   },
-  "next_phase": "UX10/UX11 developer diagnostics and workspace refinement",
+  "next_phase": "UX13 end-to-end UI/UX release seal",
   "notes": [
     "Phase 1 r4 updates scheduler FileProvider contract test to match CompletedFileGrantPolicy delegation.",
     "UX08/UX09 reorganizes Settings by user intent without deleting capabilities; apply as an intermediate overlay with --no-validate.",
@@ -4383,6 +4383,46 @@
     "normal_settings_hide_hash_first_summary": true,
     "external_tools_health_summary": true,
     "room_schema_unchanged": 21,
-    "next_roadmap_overlay": "UX12 accessibility, terminology, and visual-system seal"
+    "next_roadmap_overlay": "xdm_android_ux12_accessibility_terminology_visual_seal_v1.zip"
+  },
+  "ux12_accessibility_terminology_visual_seal": {
+    "status": "implemented_intermediate_validation_deferred",
+    "overlay": "xdm_android_ux12_accessibility_terminology_visual_seal_v1.zip",
+    "date": "2026-09-09",
+    "depends_on": "xdm_android_ux10_ux11_developer_browser_polish_v1.zip",
+    "non_color_status_semantics": true,
+    "notice_severity_semantics": true,
+    "large_text_shared_copy_untruncated": true,
+    "large_text_metric_reflow": true,
+    "large_text_page_actions_stack": true,
+    "large_text_bottom_navigation_adaptive": true,
+    "large_text_sidebar_widened": true,
+    "disabled_navigation_contrast_improved": true,
+    "section_labels_sentence_case": true,
+    "empty_state_alignment_centered": true,
+    "user_status_vocabulary": [
+      "Ready",
+      "Running",
+      "Waiting",
+      "Paused",
+      "Needs action",
+      "Failed",
+      "Completed",
+      "Disabled"
+    ],
+    "activity_queue_language": "Needs action / Queue holds",
+    "technical_text_selectable_monospace": true,
+    "technical_text_copy_actions_preserved": true,
+    "download_error_structure": [
+      "What happened",
+      "What XDM will do",
+      "What you can do",
+      "Technical details"
+    ],
+    "legacy_debug_workbench_copy_removed_from_current_support_report": true,
+    "queue_internal_copy_humanized": true,
+    "room_schema_unchanged": 21,
+    "validation_deferred": true,
+    "next_overlay": "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
   }
 }

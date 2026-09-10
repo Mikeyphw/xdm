@@ -19,7 +19,7 @@ class DownloadUiTruthTest {
                 health = CompletedArtifactHealth.Present,
             ),
         )
-        assertEquals("Complete", DownloadUiTruthPlanner.truth(item, present).badge)
+        assertEquals("Completed", DownloadUiTruthPlanner.truth(item, present).badge)
         assertTrue(
             DownloadUiTruthPlanner.truth(item, present)
                 .status

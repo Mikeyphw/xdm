@@ -14,10 +14,10 @@ class DownloaderExperiencePhase8EContractTest {
         val panels = root.resolve("app/src/main/kotlin/com/mikeyphw/xdm/android/ActivityPanel.kt").readText()
         val screens = root.resolve("app/src/main/kotlin/com/mikeyphw/xdm/android/OperationalActivityScreens.kt").readText()
         val expectedPanels = mapOf(
-            "Overview" to "Needs attention",
+            "Overview" to "Needs action",
             "Timeline" to "Recent",
-            "Attention" to "Needs attention",
-            "Decisions" to "Queue decisions",
+            "Attention" to "Needs action",
+            "Decisions" to "Queue holds",
             "Queues" to "Queues",
             "Schedule" to "Schedules",
             "Recovery" to "Recovery",

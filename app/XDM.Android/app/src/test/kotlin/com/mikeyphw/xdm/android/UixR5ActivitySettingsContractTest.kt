@@ -13,7 +13,7 @@ class UixR5ActivitySettingsContractTest {
         val app = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
         val panels = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/ActivityPanel.kt").readText()
 
-        listOf("Needs attention", "Recent", "Manage", "ActivityPanel.primaryPanels").forEach {
+        listOf("Needs action", "Recent", "Manage", "ActivityPanel.primaryPanels").forEach {
             assertTrue("Activity R5 missing $it", activity.contains(it) || panels.contains(it))
         }
         assertTrue("Management must use an adaptive secondary surface", app.contains("XdmAdaptiveSheet(") && app.contains("ActivityPanel.managePanels"))

@@ -69,7 +69,7 @@ data class MediaPlayerDiagnosticReport(
     val positionMemory: MediaPlayerPositionMemoryPlan,
     val sourceSafe: Boolean,
 ) {
-    val summary: String get() = listOf(bucket.label, message, if (retryPrepareAvailable) "retry prepare" else "retry withheld", if (sourceSafe) "source-safe" else "redaction review").joinToString(" • ")
+    val summary: String get() = listOf(bucket.label, message, if (retryPrepareAvailable) "retry prepare" else "retry withheld", if (sourceSafe) "Source redacted" else "Needs redaction review").joinToString(" • ")
 }
 
 class MediaPlayerDiagnosticsPlanner {

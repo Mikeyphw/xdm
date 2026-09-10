@@ -31,7 +31,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-@UiSurface(UiAudience.User, "Review items that need attention and recent transfer activity")
+@UiSurface(UiAudience.User, "Review items that need action and recent transfer activity")
 fun ActivityWorkspaceScreen(
     events: List<OperationalActivityEvent>,
     selectedPanel: ActivityPanel,
@@ -49,7 +49,7 @@ fun ActivityWorkspaceScreen(
             .fillMaxSize()
             .xdmScreen(XdmScreenTags.Activity, "Activity")
             .xdmStateDescription(
-                if (normalizedPanel == ActivityPanel.Attention) "Needs attention selected" else "Recent selected",
+                if (normalizedPanel == ActivityPanel.Attention) "Needs action selected" else "Recent selected",
             ),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -100,12 +100,12 @@ fun ActivityWorkspaceScreen(
         if (visibleGroups.isEmpty()) {
             item {
                 XdmListCard {
-                    XdmCardTitle(if (normalizedPanel == ActivityPanel.Attention) "Nothing needs attention" else "No recent activity")
+                    XdmCardTitle(if (normalizedPanel == ActivityPanel.Attention) "Nothing needs action" else "No recent activity")
                     XdmSupportingText(
                         if (normalizedPanel == ActivityPanel.Attention) {
                             "Downloads that need a decision, permission, connection, verification, or recovery step will appear here."
                         } else {
-                            "Transfer progress, completed downloads, queue decisions, and external handoffs will appear here."
+                            "Transfer progress, completed downloads, queue holds, and external handoffs will appear here."
                         },
                         maxLines = 4,
                     )

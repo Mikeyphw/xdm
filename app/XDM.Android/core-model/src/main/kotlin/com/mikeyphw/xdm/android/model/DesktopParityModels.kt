@@ -255,7 +255,7 @@ object ClipboardInboxPolicy {
 }
 
 data class BackupRestoreReport(val safe: Boolean, val itemCount: Int, val message: String) {
-    val summary: String get() = if (safe) "Backup ready: $itemCount portable items" else "Backup needs attention: $message"
+    val summary: String get() = if (safe) "Backup ready: $itemCount portable items" else "Backup needs action: $message"
 }
 
 object BackupRestorePolicy {

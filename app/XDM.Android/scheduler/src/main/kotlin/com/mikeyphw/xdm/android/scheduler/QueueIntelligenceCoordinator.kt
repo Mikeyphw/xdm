@@ -267,8 +267,8 @@ class QueueIntelligenceCoordinator(
                 recentDecisions = decisionLedger.recent(),
                 message = when {
                     started > 0 -> "Durably claimed $started transfer${if (started == 1) "" else "s"} after evaluating current conditions."
-                    waitingTotal > 0 -> "Queue conditions evaluated; waiting downloads remain explainably held."
-                    else -> "Queue conditions evaluated; there are no eligible waiting downloads."
+                    waitingTotal > 0 -> "Some downloads are waiting for their queue conditions."
+                    else -> "No waiting downloads are ready to start."
                 },
             )
             _status.value = summary

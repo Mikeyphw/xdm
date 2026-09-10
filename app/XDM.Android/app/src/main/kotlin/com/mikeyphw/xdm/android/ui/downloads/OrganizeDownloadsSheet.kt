@@ -205,8 +205,8 @@ internal fun OrganizeDownloadsContent(
                 XdmMetadataText("History actions remove app records only; downloaded files stay in their destination.")
                 if (activitySummary.unresolved > 0 || activitySummary.policyHolds > 0) {
                     XdmActionFlowRow {
-                        TextButton(onClick = onOpenActivityAttention, enabled = activitySummary.unresolved > 0) { Text("Open attention") }
-                        TextButton(onClick = onOpenActivityDecisions, enabled = activitySummary.policyHolds > 0) { Text("Queue decisions") }
+                        TextButton(onClick = onOpenActivityAttention, enabled = activitySummary.unresolved > 0) { Text("Open unresolved") }
+                        TextButton(onClick = onOpenActivityDecisions, enabled = activitySummary.policyHolds > 0) { Text("Queue holds") }
                     }
                 }
             }

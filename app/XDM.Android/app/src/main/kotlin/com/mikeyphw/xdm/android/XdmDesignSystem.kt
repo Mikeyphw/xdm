@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android
 
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -16,9 +17,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,13 +64,31 @@ fun XdmSectionHeader(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
+internal fun xdmResponsiveMaxLines(requested: Int): Int {
+    if (requested == Int.MAX_VALUE) return requested
+    return if (LocalDensity.current.fontScale >= 1.30f) Int.MAX_VALUE else requested
+}
+
+@Composable
 fun XdmCardTitle(text: String, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE) {
-    Text(text = text, modifier = modifier, style = MaterialTheme.typography.titleMedium, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+    Text(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.titleMedium,
+        maxLines = xdmResponsiveMaxLines(maxLines),
+        overflow = TextOverflow.Ellipsis,
+    )
 }
 
 @Composable
 fun XdmSupportingText(text: String, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE) {
-    Text(text = text, modifier = modifier, style = MaterialTheme.typography.bodyMedium, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+    Text(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.bodyMedium,
+        maxLines = xdmResponsiveMaxLines(maxLines),
+        overflow = TextOverflow.Ellipsis,
+    )
 }
 
 @Composable
@@ -76,9 +98,27 @@ fun XdmMetadataText(text: String, modifier: Modifier = Modifier, maxLines: Int =
         modifier = modifier,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = maxLines,
+        maxLines = xdmResponsiveMaxLines(maxLines),
         overflow = TextOverflow.Ellipsis,
     )
+}
+
+@Composable
+fun XdmTechnicalText(
+    text: String,
+    modifier: Modifier = Modifier,
+    maxLines: Int = Int.MAX_VALUE,
+) {
+    SelectionContainer {
+        Text(
+            text = text,
+            modifier = modifier,
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = xdmResponsiveMaxLines(maxLines),
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 @Composable
@@ -102,6 +142,14 @@ fun XdmActionFlowRow(
     )
 }
 
+internal fun XdmStatusTone.accessibilityLabel(): String = when (this) {
+    XdmStatusTone.Neutral -> "Status"
+    XdmStatusTone.Success -> "Positive status"
+    XdmStatusTone.Warning -> "Warning"
+    XdmStatusTone.Error -> "Error"
+    XdmStatusTone.Info -> "Information"
+}
+
 @Composable
 fun XdmStatusBadge(text: String, modifier: Modifier = Modifier, tone: XdmStatusTone = XdmStatusTone.Neutral) {
     val scheme = MaterialTheme.colorScheme
@@ -122,7 +170,7 @@ fun XdmStatusBadge(text: String, modifier: Modifier = Modifier, tone: XdmStatusT
     }
     val foreground = XdmContrastPolicy.ensureReadableContentColor(background, preferredForeground, scheme.onSurface)
     Surface(
-        modifier = modifier,
+        modifier = modifier.semantics { stateDescription = "${tone.accessibilityLabel()}: $text" },
         color = background,
         contentColor = foreground,
         shape = MaterialTheme.shapes.small,
@@ -135,7 +183,7 @@ fun XdmStatusBadge(text: String, modifier: Modifier = Modifier, tone: XdmStatusT
                 .sizeIn(minHeight = 32.dp)
                 .padding(horizontal = XdmSpacing.BadgeHorizontalPadding, vertical = XdmSpacing.BadgeVerticalPadding),
             style = MaterialTheme.typography.labelMedium,
-            maxLines = 1,
+            maxLines = if (LocalDensity.current.fontScale >= 1.30f) 2 else 1,
             overflow = TextOverflow.Ellipsis,
         )
     }

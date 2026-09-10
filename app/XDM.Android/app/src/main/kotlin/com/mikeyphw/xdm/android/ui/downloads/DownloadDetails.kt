@@ -149,12 +149,21 @@ internal fun DownloadDetails(
         }
 
         download.errorMessage?.takeIf(String::isNotBlank)?.let { error ->
-            XdmNoticeRow(
-                text = error.removePrefix("Queue policy:").trim(),
-                tone = if (queuePolicyHeld) XdmStatusTone.Warning else XdmStatusTone.Error,
-                actionLabel = if (queuePolicyHeld) "Start now" else null,
-                onAction = if (queuePolicyHeld) ({ actions.firstOrNull { it.kind in setOf(DownloadActionKind.StartNow, DownloadActionKind.Resume) }?.let(onDownloadAction) }) else null,
-            )
+            val issue = downloadIssuePresentation(download, error, queuePolicyHeld)
+            XdmListCard {
+                XdmCardTitle(issue.title)
+                XdmSupportingText("What happened: ${issue.whatHappened}", maxLines = 4)
+                XdmSupportingText("What XDM will do: ${issue.whatXdmWillDo}", maxLines = 4)
+                XdmSupportingText("What you can do: ${issue.whatYouCanDo}", maxLines = 4)
+                if (queuePolicyHeld) {
+                    actions.firstOrNull { it.kind in setOf(DownloadActionKind.StartNow, DownloadActionKind.Resume) }?.let { action ->
+                        TextButton(onClick = { onDownloadAction(action) }, enabled = action.enabled) { Text("Start now") }
+                    }
+                }
+                XdmTechnicalDetails {
+                    XdmTechnicalText(error, maxLines = 12)
+                }
+            }
         }
 
         recoveryPlan?.let { plan ->
@@ -241,6 +250,54 @@ private fun Download.redactedFileManagementSummary(context: DownloadActionContex
     appendLine("Verification: ${DownloadUiTruthPlanner.truth(this@redactedFileManagementSummary, context).verificationText}")
     mimeType?.takeIf(String::isNotBlank)?.let { appendLine("MIME type: $it") }
 }.trimEnd()
+
+private data class DownloadIssuePresentation(
+    val title: String,
+    val whatHappened: String,
+    val whatXdmWillDo: String,
+    val whatYouCanDo: String,
+)
+
+private fun downloadIssuePresentation(
+    download: Download,
+    rawError: String,
+    queuePolicyHeld: Boolean,
+): DownloadIssuePresentation {
+    val concise = rawError
+        .removePrefix("Queue policy:")
+        .lineSequence()
+        .map(String::trim)
+        .firstOrNull(String::isNotBlank)
+        .orEmpty()
+        .let { if (it.length <= 240) it else it.take(237) + "…" }
+        .ifBlank { "XDM could not continue this download." }
+    if (queuePolicyHeld) {
+        return DownloadIssuePresentation(
+            title = "Waiting",
+            whatHappened = concise,
+            whatXdmWillDo = "XDM will retry automatically when the queue condition clears.",
+            whatYouCanDo = "Wait for the condition to clear, or use Start now when XDM offers it safely.",
+        )
+    }
+    return DownloadIssuePresentation(
+        title = when (download.state) {
+            DownloadState.RecoveryRequired -> "Needs recovery"
+            DownloadState.Failed -> "Download failed"
+            else -> "Needs action"
+        },
+        whatHappened = concise,
+        whatXdmWillDo = when (download.state) {
+            DownloadState.RecoveryRequired -> "XDM kept the recoverable state and preserved the partial file when possible."
+            DownloadState.Failed -> "XDM kept the download record and any safe recovery information."
+            else -> "XDM will keep the current state until the blocking condition changes or you choose an action."
+        },
+        whatYouCanDo = when (download.state) {
+            DownloadState.RecoveryRequired -> "Review the recovery options below before restarting from zero."
+            DownloadState.Failed -> "Use Retry, change the download method when available, or open Technical details for the exact failure."
+            else -> "Choose one of the available actions below, or open Technical details if you need the exact diagnostic message."
+        },
+    )
+}
 
 @Composable
 private fun RuntimeFailureRecoveryCard(

@@ -26,7 +26,7 @@ fun DownloadState.uiLabel(): String = when (this) {
     DownloadState.Verifying -> "Verifying"
     DownloadState.Repairing -> "Repairing"
     DownloadState.Finalizing -> "Finishing"
-    DownloadState.Completed -> "Complete"
+    DownloadState.Completed -> "Completed"
     DownloadState.Failed -> "Failed"
     DownloadState.Cancelled -> "Cancelled"
     DownloadState.RecoveryRequired -> "Needs recovery"
@@ -91,18 +91,18 @@ fun FilenameConflictPolicy.uiLabel(): String = when (this) {
 
 fun MediaCaptureStatus.uiLabel(): String = when (this) {
     MediaCaptureStatus.Captured -> "Captured"
-    MediaCaptureStatus.MetadataReady -> "Metadata ready"
-    MediaCaptureStatus.MetadataMissing -> "Metadata missing"
+    MediaCaptureStatus.MetadataReady -> "Ready"
+    MediaCaptureStatus.MetadataMissing -> "Refresh needed"
     MediaCaptureStatus.DownloadCreated -> "Added to downloads"
-    MediaCaptureStatus.Expired -> "Expired"
+    MediaCaptureStatus.Expired -> "Unavailable"
     MediaCaptureStatus.Archived -> "Archived"
 }
 
 fun MediaResolutionStatus.uiLabel(): String = when (this) {
-    MediaResolutionStatus.Unresolved -> "Not resolved"
-    MediaResolutionStatus.Resolved -> "Resolved"
-    MediaResolutionStatus.RequiresRefresh -> "Needs refresh"
-    MediaResolutionStatus.Failed -> "Resolution failed"
+    MediaResolutionStatus.Unresolved -> "Captured"
+    MediaResolutionStatus.Resolved -> "Ready"
+    MediaResolutionStatus.RequiresRefresh -> "Refresh needed"
+    MediaResolutionStatus.Failed -> "Unavailable"
 }
 
 fun MediaSourceKind.uiLabel(): String = when (this) {
@@ -168,7 +168,7 @@ fun BackendMigrationStage.uiLabel(): String = when (this) {
     BackendMigrationStage.TargetPrepared -> "Target prepared"
     BackendMigrationStage.OwnershipTransferred -> "Ownership transferred"
     BackendMigrationStage.TargetAttached -> "Target attached"
-    BackendMigrationStage.Completed -> "Complete"
+    BackendMigrationStage.Completed -> "Completed"
     BackendMigrationStage.Failed -> "Failed"
     BackendMigrationStage.RecoveryRequired -> "Needs recovery"
 }

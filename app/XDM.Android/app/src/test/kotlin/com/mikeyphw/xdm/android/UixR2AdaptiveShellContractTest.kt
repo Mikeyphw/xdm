@@ -40,7 +40,8 @@ class UixR2AdaptiveShellContractTest {
 
         assertTrue(window.contains("widthDp < 600f"))
         assertTrue(window.contains("widthDp < 840f"))
-        assertTrue(shell.contains(".width(224.dp)"))
+        assertTrue(shell.contains("val sidebarWidth = if (LocalDensity.current.fontScale >= 1.30f) 272.dp else 224.dp"))
+        assertTrue(shell.contains(".width(sidebarWidth)"))
         assertTrue(shell.contains("NavigationBar("))
         assertTrue(shell.contains("XdmNavigationSidebar("))
         assertTrue(shell.contains("WindowInsets.safeDrawing"))

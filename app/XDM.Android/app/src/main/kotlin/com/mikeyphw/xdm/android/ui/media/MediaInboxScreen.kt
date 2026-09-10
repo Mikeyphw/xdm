@@ -156,7 +156,7 @@ fun MediaInboxScreen(
                                 MediaIntakeFeedbackKind.NeedsBrowserCapture,
                                 MediaIntakeFeedbackKind.AuthenticationRequired -> XdmStatusBadge("Browser capture recommended", tone = XdmStatusTone.Warning)
                                 MediaIntakeFeedbackKind.Unsupported,
-                                MediaIntakeFeedbackKind.Failed -> XdmStatusBadge("Needs attention", tone = XdmStatusTone.Error)
+                                MediaIntakeFeedbackKind.Failed -> XdmStatusBadge("Needs action", tone = XdmStatusTone.Error)
                                 MediaIntakeFeedbackKind.NoMediaFound -> XdmStatusBadge("No media found", tone = XdmStatusTone.Neutral)
                                 MediaIntakeFeedbackKind.Idle -> Unit
                             }

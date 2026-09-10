@@ -72,7 +72,7 @@ internal object DownloadsWorkspacePlanner {
             title = "All downloads",
             subtitle = "Current transfers, waiting work, and recent outcomes in one place.",
             emptyTitle = "No downloads yet",
-            emptyDescription = "Use New download to add a link. XDM will show progress and anything that needs attention here.",
+            emptyDescription = "Use New download to add a link. XDM will show progress and anything that needs action here.",
         )
         DownloadWorkspaceFilter.Downloading -> DownloadWorkspaceCopy(
             title = "Downloading",
@@ -165,7 +165,7 @@ internal object DownloadsWorkspacePlanner {
             DownloadQueueIssue(
                 DownloadQueueIssueKind.Review,
                 count,
-                affectedTitle(count, "download needs attention", "downloads need attention"),
+                affectedTitle(count, "download needs action", "downloads need action"),
                 "Review the affected downloads for a recovery or retry decision.",
                 actionLabel = "Check now",
             )

@@ -43,10 +43,11 @@ require(phase41, 'File(it, "settings.gradle.kts").isFile', "Phase 41 test root d
 reject(phase41, 'private val repo = File(System.getProperty("user.dir"))', "Phase 41 test root discovery")
 
 require(removal, "val userScreens = UiSourceTree.readUser(root)", "Browser-removal user-surface contract")
-require(activity, '"Overview" to "Needs attention"', "Activity label contract")
+require(activity, '"Overview" to "Needs action"', "Activity label contract")
 require(activity, 'val activitySources = shell + "\\n" + screens', "Activity modular source contract")
 
-require(uix2, 'shell.contains(".width(224.dp)")', "Adaptive shell contract")
+require(uix2, 'shell.contains("val sidebarWidth = if (LocalDensity.current.fontScale >= 1.30f) 272.dp else 224.dp")', "Adaptive shell large-text contract")
+require(uix2, 'shell.contains(".width(sidebarWidth)")', "Adaptive shell width contract")
 require(uix2, 'background = 0xFF090B0F', "Shared theme token contract")
 require(uix2, 'fun(?:\\\\s+<[^>]+>)?\\\\s+$primitive\\\\(', "Generic primitive declaration contract")
 require(uix2, "XdmMinimumTouchTarget", "Touch-target token contract")

@@ -57,7 +57,7 @@ private fun DebugWorkbenchLegacyCards(state: MainUiState) {
                     XdmMetric("Status", report.overallLabel),
                     XdmMetric(
                         "Checks",
-                        "${report.passingChecks} pass • ${report.warningChecks} notes • ${report.failingChecks} attention",
+                        "${report.passingChecks} passed • ${report.warningChecks} notes • ${report.failingChecks} need action",
                     ),
                     XdmMetric(
                         "First check",

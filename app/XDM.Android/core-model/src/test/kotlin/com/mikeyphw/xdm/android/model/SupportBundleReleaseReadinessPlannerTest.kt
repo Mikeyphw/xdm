@@ -49,7 +49,7 @@ class SupportBundleReleaseReadinessPlannerTest {
 
         assertFalse(seal.readyForSupportHandoff)
         assertTrue(seal.issueCount == 2)
-        assertTrue(seal.redactedSummary().contains("needs attention"))
+        assertTrue(seal.redactedSummary().contains("needs action"))
         assertTrue(seal.checks.any { it.title == "Final-release warning explanations" && it.status == SupportBundleSealStatus.NeedsAttention })
         assertTrue(seal.checks.any { it.title == "Privacy redaction boundary" && it.status == SupportBundleSealStatus.NeedsAttention })
     }

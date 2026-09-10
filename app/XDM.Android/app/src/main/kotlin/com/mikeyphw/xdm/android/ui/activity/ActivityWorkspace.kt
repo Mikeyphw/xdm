@@ -82,7 +82,7 @@ internal object ActivityWorkspacePlanner {
         OperationalActivityCategory.Recovery -> "The file may remain incomplete until recovery is resolved."
         OperationalActivityCategory.Verification -> "XDM cannot confirm that the file is intact yet."
         OperationalActivityCategory.Handoff -> "The external link was not added automatically."
-        OperationalActivityCategory.Engine -> "The selected download method needs attention before work can continue."
+        OperationalActivityCategory.Engine -> "The selected download method needs action before work can continue."
         OperationalActivityCategory.Media -> "The media item needs review before it can be downloaded or played."
         OperationalActivityCategory.Transfer -> if (event.unresolved) "The transfer is paused until this issue is resolved." else "The transfer state changed."
         OperationalActivityCategory.System -> "XDM recorded an app-level event."

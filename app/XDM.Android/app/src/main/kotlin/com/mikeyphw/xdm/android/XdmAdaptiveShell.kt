@@ -40,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.isTraversalGroup
@@ -180,6 +181,7 @@ private fun XdmBottomNavigation(
     destinations: List<AppRoute>,
     onNavigate: (AppRoute) -> Unit,
 ) {
+    val fontScale = LocalDensity.current.fontScale
     NavigationBar(
         modifier = Modifier.xdmScreen(XdmScreenTags.BottomNavigation, "Primary navigation").xdmTraversalOrder(XdmTraversalOrder.Navigation).semantics { isTraversalGroup = true },
         containerColor = MaterialTheme.colorScheme.surface,
@@ -193,19 +195,19 @@ private fun XdmBottomNavigation(
                 selected = selected,
                 onClick = { onNavigate(route) },
                 modifier = Modifier.semantics {
-                    stateDescription = if (selected) "${route.label} selected" else "${route.label} not selected"
+                    stateDescription = if (selected) "Selected" else "Not selected"
                 },
                 icon = { Icon(route.icon, contentDescription = null) },
-                label = { Text(route.label, maxLines = 1) },
-                alwaysShowLabel = true,
+                label = { Text(route.label, maxLines = if (fontScale >= 1.30f) 2 else 1, overflow = TextOverflow.Ellipsis) },
+                alwaysShowLabel = fontScale < 1.60f || selected,
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     selectedTextColor = MaterialTheme.colorScheme.onSurface,
                     indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                     unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    disabledIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                    disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                    disabledIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.56f),
+                    disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.56f),
                 ),
             )
         }
@@ -223,9 +225,10 @@ private fun XdmNavigationSidebar(
     onAddDownload: () -> Unit,
 ) {
     val focusRestorationController = LocalXdmFocusRestorationController.current
+    val sidebarWidth = if (LocalDensity.current.fontScale >= 1.30f) 272.dp else 224.dp
     Surface(
         modifier = Modifier
-            .width(224.dp)
+            .width(sidebarWidth)
             .fillMaxHeight()
             .xdmScreen(XdmScreenTags.NavigationSidebar, "Primary navigation").xdmTraversalOrder(XdmTraversalOrder.Navigation),
         color = MaterialTheme.colorScheme.surface,
@@ -347,7 +350,7 @@ private fun XdmRuntimeSummary(activeTransferCount: Int, queuedTransferCount: Int
 
 
 private fun AppRoute.shellSubtitle(): String = when (label) {
-    "Downloads" -> "Track transfers, queue work, and resolve anything that needs attention."
+    "Downloads" -> "Track transfers, queue work, and resolve anything that needs action."
     "Media" -> "Inspect captured media and choose what to download."
     "Library" -> "Open completed media and continue where you left off."
     "Activity" -> "Review unresolved issues, queue controls, schedules, and recovery."

@@ -28,8 +28,8 @@ data class SupportBundleReleaseReadinessSeal(
 
     val summary: String get() = when (issueCount) {
         0 -> "Support bundle seal is ready"
-        1 -> "1 support bundle issue needs attention"
-        else -> "$issueCount support bundle issues need attention"
+        1 -> "1 support bundle issue needs action"
+        else -> "$issueCount support bundle issues need action"
     }
 
     fun redactedSummary(): String = buildString {
@@ -45,7 +45,7 @@ data class SupportBundleReleaseReadinessSeal(
 
     private fun SupportBundleSealStatus.humanLabel(): String = when (this) {
         SupportBundleSealStatus.Ready -> "ready"
-        SupportBundleSealStatus.NeedsAttention -> "needs attention"
+        SupportBundleSealStatus.NeedsAttention -> "needs action"
     }
 }
 

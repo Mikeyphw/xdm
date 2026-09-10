@@ -277,7 +277,7 @@ class RollingJsonlDebugEventRecorder(
             zip.closeEntry()
             zip.putNextEntry(ZipEntry("redaction-report.txt"))
             zip.write(
-                "XDM Debug Workbench D1 redacted support bundle. No automatic upload. Cookie, Authorization, token, signature, session, and key-like values are redacted before export.\n"
+                "XDM Diagnostics & support redacted bundle. No automatic upload. Cookie, Authorization, token, signature, session, and key-like values are redacted before export.\n"
                     .toByteArray(Charsets.UTF_8),
             )
             zip.closeEntry()

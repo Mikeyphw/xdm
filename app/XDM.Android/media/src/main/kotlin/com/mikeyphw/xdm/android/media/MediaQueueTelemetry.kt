@@ -11,7 +11,7 @@ package com.mikeyphw.xdm.android.media
 enum class MediaQueueTelemetryTone(val label: String) {
     Stable("Stable"),
     Active("Active"),
-    Attention("Needs attention"),
+    Attention("Needs action"),
     Blocked("Blocked"),
 }
 

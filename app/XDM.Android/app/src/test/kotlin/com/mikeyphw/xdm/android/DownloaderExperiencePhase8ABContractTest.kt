@@ -65,7 +65,7 @@ class DownloaderExperiencePhase8ABContractTest {
             "combinedClickable",
         ).forEach { assertTrue("Downloads workspace missing $it", screens.contains(it)) }
         val model = File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloaderExperience.kt").readText()
-        listOf("Needs attention", "Retry available").forEach {
+        listOf("Needs action", "Retry available").forEach {
             assertTrue("Dashboard model missing $it", model.contains(it))
         }
 

@@ -83,7 +83,7 @@ internal fun BrowserExtensionSettingsScreen(
             XdmListCard {
                 XdmCardTitle("Firefox extension")
                 XdmStatusBadge(
-                    text = if (health.isReady) "Connected" else "Needs attention",
+                    text = if (health.isReady) "Connected" else "Needs action",
                     tone = if (health.isReady) XdmStatusTone.Success else XdmStatusTone.Warning,
                 )
                 XdmSupportingText(
@@ -104,10 +104,10 @@ internal fun BrowserExtensionSettingsScreen(
                     }
                 }
                 if (showTechnicalDetails) {
-                    XdmMetadataText("Scheme registration: ${health.schemeState.displayLabel}")
-                    XdmMetadataText("Document access: ${health.safState.displayLabel}")
-                    XdmMetadataText("Scheme: ${BuildConfig.XDM_BROWSER_SCHEME}", maxLines = 2)
-                    XdmMetadataText(
+                    XdmTechnicalText("Scheme registration: ${health.schemeState.displayLabel}")
+                    XdmTechnicalText("Document access: ${health.safState.displayLabel}")
+                    XdmTechnicalText("Scheme: ${BuildConfig.XDM_BROWSER_SCHEME}", maxLines = 2)
+                    XdmTechnicalText(
                         "Extension ${BrowserExtensionSourceContract.DevelopmentVersion} • Contract ${BrowserExtensionSourceContract.ContractVersion}",
                         maxLines = 2,
                     )
@@ -272,19 +272,19 @@ internal fun BrowserExtensionSettingsScreen(
             item {
                 XdmListCard {
                     XdmCardTitle("Redacted diagnostics")
-                    XdmMetadataText(
+                    XdmTechnicalText(
                         "Last accepted link: ${diagnostics.lastAcceptedSummary.ifBlank { "None recorded" }}${diagnosticTime(diagnostics.lastAcceptedEpochMs)}",
                         maxLines = 4,
                     )
-                    XdmMetadataText(
+                    XdmTechnicalText(
                         "Last rejected link: ${diagnostics.lastRejectedSummary.ifBlank { "None recorded" }}${diagnosticTime(diagnostics.lastRejectedEpochMs)}",
                         maxLines = 4,
                     )
-                    XdmMetadataText(
+                    XdmTechnicalText(
                         "Last generation: ${diagnostics.lastGenerationPhase} • ${diagnostics.lastGenerationMessage.ifBlank { "No result recorded" }}${diagnosticTime(diagnostics.lastGenerationEpochMs)}",
                         maxLines = 5,
                     )
-                    XdmMetadataText(
+                    XdmTechnicalText(
                         "Detector build ${health.detectorVersion} • contract ${health.contractVersion} • inspection cap ${BrowserExtensionSourceContract.BodyInspectionLimitBytes / 1024} KiB",
                         maxLines = 3,
                     )

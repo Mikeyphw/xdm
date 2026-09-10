@@ -1,6 +1,6 @@
 package com.mikeyphw.xdm.android.model
 
-/** User-visible health for the Debug Workbench shell. This policy is UI-only and does not change downloader behavior. */
+/** User-visible health for Diagnostics & support. This policy is UI-only and does not change downloader behavior. */
 enum class DebugWorkbenchCheckState { Pass, Warning, Fail }
 
 fun DebugArea.supportLabel(): String = when (this) {
@@ -19,7 +19,7 @@ fun DebugArea.supportLabel(): String = when (this) {
 fun DebugWorkbenchCheckState.displayLabel(): String = when (this) {
     DebugWorkbenchCheckState.Pass -> "Pass"
     DebugWorkbenchCheckState.Warning -> "Note"
-    DebugWorkbenchCheckState.Fail -> "Needs attention"
+    DebugWorkbenchCheckState.Fail -> "Needs action"
 }
 
 data class DebugWorkbenchCheck(
@@ -43,7 +43,7 @@ data class DebugWorkbenchShellReport(
     val failingChecks: Int get() = checks.count { it.state == DebugWorkbenchCheckState.Fail }
 
     fun toClipboardReport(): String = buildString {
-        appendLine("XDM Debug Workbench")
+        appendLine("XDM Diagnostics & support")
         appendLine("Status: $overallLabel")
         appendLine("Session: $sessionLabel")
         appendLine("Storage: $recorderStorageLabel")
@@ -102,13 +102,13 @@ object DebugWorkbenchShellPolicy {
                 id = "developer-boundary",
                 title = "Developer boundary",
                 state = if (developerOptionsEnabled) DebugWorkbenchCheckState.Pass else DebugWorkbenchCheckState.Warning,
-                detail = if (developerOptionsEnabled) "Developer tools are visible; Debug Workbench stays in Settings." else "Developer tools are hidden; Debug Workbench remains safe for support use.",
+                detail = if (developerOptionsEnabled) "Developer Center is available from Settings." else "Developer Center is hidden; Diagnostics & support remains available.",
             ),
         )
         val failed = checks.count { it.state == DebugWorkbenchCheckState.Fail }
         val warnings = checks.count { it.state == DebugWorkbenchCheckState.Warning }
         val overall = when {
-            failed > 0 -> "Needs attention"
+            failed > 0 -> "Needs action"
             warnings > 0 -> "Ready with notes"
             else -> "Ready"
         }

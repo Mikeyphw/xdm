@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
@@ -63,6 +62,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -75,6 +75,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -108,7 +109,7 @@ fun XdmPageHeader(
             .xdmPane("$title page header")
             .padding(horizontal = XdmSpacing.ScreenPadding, vertical = 18.dp),
     ) {
-        val stackActions = maxWidth < 420.dp
+        val stackActions = maxWidth < 420.dp || LocalDensity.current.fontScale >= 1.30f
         if (stackActions) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -133,7 +134,7 @@ fun XdmPageHeader(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
                     subtitle?.takeIf(String::isNotBlank)?.let {
-                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = xdmResponsiveMaxLines(3), overflow = TextOverflow.Ellipsis)
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
@@ -169,7 +170,13 @@ fun XdmMetricStrip(metrics: List<XdmMetric>, modifier: Modifier = Modifier) {
         shadowElevation = 0.dp,
     ) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val columns = if (maxWidth < 520.dp) 2 else metrics.size.coerceAtMost(4)
+            val fontScale = LocalDensity.current.fontScale
+            val columns = when {
+                fontScale >= 1.60f -> 1
+                fontScale >= 1.30f -> metrics.size.coerceAtMost(2)
+                maxWidth < 520.dp -> 2
+                else -> metrics.size.coerceAtMost(4)
+            }
             Column(
                 Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -178,8 +185,8 @@ fun XdmMetricStrip(metrics: List<XdmMetric>, modifier: Modifier = Modifier) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                         rowMetrics.forEach { metric ->
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(metric.value, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                Text(metric.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                                Text(metric.value, style = MaterialTheme.typography.titleMedium, maxLines = xdmResponsiveMaxLines(2), overflow = TextOverflow.Ellipsis)
+                                Text(metric.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = xdmResponsiveMaxLines(2))
                             }
                         }
                         repeat(columns - rowMetrics.size) { Spacer(Modifier.weight(1f)) }
@@ -201,7 +208,14 @@ fun XdmNoticeRow(
 ) {
     val colors = xdmToneColors(tone)
     Surface(
-        modifier = modifier.fillMaxWidth().xdmMinimumTouchTarget().testTag(XdmTestTags.NoticeRow).semantics { contentDescription = text },
+        modifier = modifier
+            .fillMaxWidth()
+            .xdmMinimumTouchTarget()
+            .testTag(XdmTestTags.NoticeRow)
+            .semantics {
+                contentDescription = text
+                stateDescription = "${tone.accessibilityLabel()} notice"
+            },
         color = colors.container,
         contentColor = colors.content,
         shape = MaterialTheme.shapes.medium,
@@ -275,9 +289,9 @@ fun XdmListRow(
     ) {
         leading?.invoke()
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(headline, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(headline, style = MaterialTheme.typography.bodyMedium, maxLines = xdmResponsiveMaxLines(2), overflow = TextOverflow.Ellipsis)
             supporting?.takeIf(String::isNotBlank)?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = xdmResponsiveMaxLines(2), overflow = TextOverflow.Ellipsis)
             }
         }
         trailing?.invoke()
@@ -382,7 +396,7 @@ fun XdmProgressLine(
 @Composable
 fun XdmSectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
-        text = text.uppercase(),
+        text = text,
         modifier = modifier.semantics { heading() },
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -544,8 +558,13 @@ fun XdmEmptyState(
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             }
         }
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        Text(
+            description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
         if (actionLabel != null && onAction != null) Button(onClick = onAction, modifier = Modifier.xdmMinimumTouchTarget()) { Text(actionLabel) }
     }
 }

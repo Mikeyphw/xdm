@@ -38,6 +38,7 @@ import com.mikeyphw.xdm.android.XdmListCard
 import com.mikeyphw.xdm.android.XdmMetadataText
 import com.mikeyphw.xdm.android.XdmSectionHeader
 import com.mikeyphw.xdm.android.XdmSupportingText
+import com.mikeyphw.xdm.android.XdmTechnicalText
 import com.mikeyphw.xdm.android.XdmStatusBadge
 import com.mikeyphw.xdm.android.XdmStatusTone
 import com.mikeyphw.xdm.android.model.DebugRecorderProvider
@@ -358,15 +359,15 @@ private fun LazyListScope.debugResultsPage(
                 }
             }
             if (showTechnicalDetails) {
-                XdmMetadataText("Group: ${result.groupId}")
+                XdmTechnicalText("Group: ${result.groupId}")
                 result.errorCode?.takeIf(String::isNotBlank)?.let { code ->
-                    XdmMetadataText("Error: ${DebugRedactor.redactText(code)}", maxLines = 5)
+                    XdmTechnicalText("Error: ${DebugRedactor.redactText(code)}", maxLines = 5)
                 }
                 if (result.summary.contains('\n')) {
-                    XdmMetadataText("Full summary: ${DebugRedactor.redactText(result.summary)}", maxLines = 12)
+                    XdmTechnicalText("Full summary: ${DebugRedactor.redactText(result.summary)}", maxLines = 12)
                 }
                 redactedDetails.forEach { (key, value) ->
-                    XdmMetadataText("$key: $value", maxLines = 8)
+                    XdmTechnicalText("$key: $value", maxLines = 8)
                 }
                 TextButton(onClick = { onCopyResult(result) }) { Text("Copy technical details") }
             }
@@ -396,7 +397,8 @@ private fun LazyListScope.debugHistoryPage(
     }
     items(history) { run ->
         XdmListCard {
-            XdmCardTitle(run.id)
+            XdmCardTitle("Diagnostic run")
+            XdmTechnicalText(run.id, maxLines = 2)
             XdmSupportingText(run.summaryLabel, maxLines = 2)
             XdmMetadataText("Started: ${run.startedAtEpochMs} • Finished: ${run.finishedAtEpochMs ?: "running"}")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -41,7 +41,7 @@ object BrowserBridgeDebugReporter {
         diagnostics: BrowserBridgeDiagnosticsPreferences,
         scheme: String,
     ): BrowserBridgeDebugReport {
-        val readiness = if (status.isReady) "Ready" else "Needs attention"
+        val readiness = if (status.isReady) "Ready" else "Needs action"
         val compatibility = status.compatibilityIssues
             .map(BrowserBridgeDiagnosticsRedactor::sanitize)
             .ifEmpty { listOf("Current") }
@@ -111,7 +111,7 @@ object AddDownloadDebugReporter {
         val inspection = when {
             review.canInspectAsMedia -> review.mediaInspectionActionLabel
             review.canStartDirectly -> "Direct review available"
-            else -> "Needs review attention"
+            else -> "Needs review"
         }
         val rows = listOf(
             DebugReportRow("Origin", draft.origin.debugLabel()),

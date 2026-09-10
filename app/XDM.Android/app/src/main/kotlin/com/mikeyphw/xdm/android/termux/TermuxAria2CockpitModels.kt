@@ -55,7 +55,7 @@ data class TermuxAria2CockpitStatus(
     val readinessLabel: String get() = when {
         !enabled -> "Termux aria2 disabled"
         daemonState == TermuxAria2DaemonState.Running -> "RPC daemon ready"
-        daemonState == TermuxAria2DaemonState.Failed -> "Needs attention"
+        daemonState == TermuxAria2DaemonState.Failed -> "Needs action"
         else -> daemonState.label
     }
 

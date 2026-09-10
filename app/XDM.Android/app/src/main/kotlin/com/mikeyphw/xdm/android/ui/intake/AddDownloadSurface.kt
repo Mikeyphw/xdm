@@ -495,7 +495,7 @@ private fun DestinationPreflightSummary(preflight: DestinationPreflightUi, desti
                 }
             }
             else -> {
-                XdmStatusBadge("Needs attention", tone = XdmStatusTone.Warning)
+                XdmStatusBadge("Needs action", tone = XdmStatusTone.Warning)
                 XdmMetadataText(preflight.message ?: when (preflight.status) {
                     DestinationHealthStatus.PermissionMissing -> "Folder access is not granted."
                     DestinationHealthStatus.ReadOnly -> "This folder is read-only."

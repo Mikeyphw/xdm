@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.ui.debug.DebugWorkbenchSettingsScreen
 
 @Composable
-@UiSurface(UiAudience.User, "Configure downloads, appearance, privacy, support, and optional developer tools")
+@UiSurface(UiAudience.User, "Configure downloads, appearance, privacy, support, and the optional Developer Center")
 fun SettingsScreen(
     state: MainUiState,
     viewModel: MainViewModel,

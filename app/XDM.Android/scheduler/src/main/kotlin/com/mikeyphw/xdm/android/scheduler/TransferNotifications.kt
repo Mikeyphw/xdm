@@ -210,7 +210,7 @@ class TransferNotifications(private val context: Context) {
         )
         DownloadState.RecoveryRequired -> NotificationProfile(
             icon = android.R.drawable.stat_notify_error,
-            title = "Download needs attention",
+            title = "Download needs action",
             text = sanitizeNotificationText(message, "Download needs recovery before it can resume. Open XDM for details."),
         )
         DownloadState.Failed -> NotificationProfile(

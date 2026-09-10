@@ -106,14 +106,14 @@ require(coordinator, "Queue decision history cleared; transfer records were not 
 
 panels = read("app/src/main/kotlin/com/mikeyphw/xdm/android/ActivityPanel.kt")
 for marker in (
-    'Overview("Needs attention")',
+    'Overview("Needs action")',
     'Timeline("Recent")',
-    'Attention("Needs attention")',
-    'Decisions("Queue decisions")',
+    'Attention("Needs action")',
+    'Decisions("Queue holds")',
     'Queues("Queues")',
     'Schedule("Schedules")',
     'Recovery("Recovery")',
-    'Diagnostics("Developer tools")',
+    'Diagnostics("Developer Center")',
     "val primaryPanels = listOf(Attention, Timeline)",
     "val managePanels = listOf(Decisions, Queues, Schedule, Recovery)",
 ):
