@@ -64,9 +64,11 @@ require(accessibility, "const val MediaOptionsChooser", "quality chooser semanti
 
 # Notification actions: completed notifications act on the artifact and retain details fallback.
 require(terminal_policy, "NotificationActionModel(QueueControlCommand.OpenOne, \"Open file\"", "open file terminal action")
+require(terminal_policy, "NotificationActionModel(QueueControlCommand.ShareOne, \"Share\"", "share terminal action")
 require(terminal_policy, "NotificationActionModel(QueueControlCommand.StartOne, \"Details\"", "details terminal action")
 require(notifications, "if (state == DownloadState.Completed) openCompletedPendingIntent(downloadId)", "tap opens completed artifact")
 require(notifications, "QueueControlCommand.OpenOne -> addAction(android.R.drawable.ic_menu_view, action.label, openCompletedPendingIntent(downloadId))", "open file button")
+require(notifications, "QueueControlCommand.ShareOne -> addAction(android.R.drawable.ic_menu_share, action.label, shareCompletedPendingIntent(downloadId))", "share button")
 require(notifications, "QueueControlCommand.StartOne -> addAction(android.R.drawable.ic_menu_info_details, action.label, openAppPendingIntent(downloadId))", "details button")
 
 # Release model and manifest truth.

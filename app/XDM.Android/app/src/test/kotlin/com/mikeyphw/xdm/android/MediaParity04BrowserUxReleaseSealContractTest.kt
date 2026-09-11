@@ -40,8 +40,10 @@ class MediaParity04BrowserUxReleaseSealContractTest {
         val notifications = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotifications.kt").readText()
         val policy = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TerminalNotificationActionPolicy.kt").readText()
         assertTrue(policy.contains("NotificationActionModel(QueueControlCommand.OpenOne, \"Open file\""))
+        assertTrue(policy.contains("NotificationActionModel(QueueControlCommand.ShareOne, \"Share\""))
         assertTrue(policy.contains("NotificationActionModel(QueueControlCommand.StartOne, \"Details\""))
         assertTrue(notifications.contains("QueueControlCommand.OpenOne -> addAction(android.R.drawable.ic_menu_view, action.label, openCompletedPendingIntent(downloadId))"))
+        assertTrue(notifications.contains("QueueControlCommand.ShareOne -> addAction(android.R.drawable.ic_menu_share, action.label, shareCompletedPendingIntent(downloadId))"))
         assertTrue(notifications.contains("QueueControlCommand.StartOne -> addAction(android.R.drawable.ic_menu_info_details, action.label, openAppPendingIntent(downloadId))"))
     }
 

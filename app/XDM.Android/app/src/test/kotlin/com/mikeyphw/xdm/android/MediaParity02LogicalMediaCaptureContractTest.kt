@@ -7,21 +7,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MediaParity02LogicalMediaCaptureContractTest {
-    private val root: Path = Path.of(System.getProperty("user.dir")).let { cwd ->
-        when {
-            Files.isRegularFile(cwd.resolve("settings.gradle.kts")) -> cwd
-            Files.isRegularFile(cwd.resolve("app/XDM.Android/settings.gradle.kts")) -> cwd.resolve("app/XDM.Android")
-            else -> error("XDM Android root not found from $cwd")
-        }
-    }
-    private fun text(relative: String): String = Files.readString(root.resolve(relative))
+    private val root: Path = generateSequence(Path.of(System.getProperty("user.dir") ?: ".").toAbsolutePath().normalize()) { it.parent }
+        .firstOrNull { Files.isRegularFile(it.resolve("settings.gradle.kts")) && Files.isDirectory(it.resolve("app/src/main")) }
+        ?: error("XDM Android root not found from ${System.getProperty("user.dir")}")
+    private fun text(relative: String): String = String(Files.readAllBytes(root.resolve(relative)), Charsets.UTF_8)
 
     @Test fun room23CarriesLogicalMediaAndBoundedObservationEvidence() {
         val database = text("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt")
         val migrations = text("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt")
         val entities = text("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt")
         val repository = text("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt")
-        assertTrue(database.contains("version = 23"))
+        assertTrue(database.contains("version = 24"))
         assertTrue(migrations.contains("Migration22To23 = object : Migration(22, 23)"))
         assertTrue(migrations.contains("media_observations"))
         assertTrue(entities.contains("data class MediaObservationEntity"))

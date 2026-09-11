@@ -57,7 +57,7 @@ class ReleaseSecurityModelsTest {
     fun cleanReleaseGateProducesInfoFinding() {
         val report = ReleaseSecurityGate.evaluate(
             versionName = "0.21.0-rc01",
-            schemaVersion = 22,
+            schemaVersion = 24,
             buildType = "release",
             debuggable = false,
             privacySafeDiagnostics = true,

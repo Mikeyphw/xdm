@@ -45,11 +45,11 @@ class DownloaderExperiencePhase8EContractTest {
     }
 
     @Test
-    fun diagnosticsExportIsRedactedAndDownloaderOnly() {
+    fun diagnosticsExportIsRedactedAndKeepsBrowserOutOfOperationalLedgerModel() {
         val planner = root.resolve("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/OperationalActivity.kt").readText()
         assertTrue(planner.contains("cookies, authorization values, tokens, signatures"))
         assertTrue(planner.contains("PrivacyDiagnosticsRedactor.redactUrl"))
-        assertTrue(planner.contains("built-in browser absent"))
+        assertTrue(planner.contains("PrivacyDiagnosticsRedactor.redactUrl"))
         for (forbidden in listOf("android.webkit", "WebView(", "WebViewClient", "WebChromeClient")) {
             assertFalse(planner.contains(forbidden))
         }

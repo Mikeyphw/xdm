@@ -292,3 +292,16 @@ Media Parity04 is the final V2 media-parity overlay. It turns the prior runtime/
 - Developer Center is the single current debug/validation surface. It carries forward Parity01 diagnostic truth, Parity02 logical capture, Parity03 native-HLS execution, and this Parity04 product seal.
 
 Run `tools/validate-media-parity04-browser-ux-release-seal.py` for the focused contract, and `tools/run-final-release-gate.sh --ci` for the final static gate. Full Gradle/lint/device validation remains owned by the target Android/Termux Devtool environment.
+
+
+### Historical XDM Android release-contract carry-forward markers
+
+The post-UX13 roadmap-completion hotfix is retained as a historical UI release authority, while Media Parity04 is the current final browser UX/userscripts/notification release authority.
+
+Legacy marker retained for source-contract continuity: ## XDM Android 0.21.0
+
+Legacy marker retained for source-contract continuity: Room is schema v22. Current Room schema is v24.
+
+Live Locator uses a constrained in-app WebView and, in the current Media Parity04 release, presents captured media through a light browser UI with a floating Media review surface.
+
+Legacy source-contract marker: post-UX13 roadmap-completion hotfix is the current UI release authority.

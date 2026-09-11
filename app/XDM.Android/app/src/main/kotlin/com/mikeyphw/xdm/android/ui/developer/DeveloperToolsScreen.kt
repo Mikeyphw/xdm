@@ -352,7 +352,7 @@ internal fun SessionPrivacyAuditCard(dashboard: MediaSessionPrivacyAuditDashboar
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Session privacy audit")
             XdmSupportingText(
-                "Audits page context, resolver handoffs, queue specs, sidecars, logs, notifications, temporary files, and Termux previews for redaction or cleanup gaps.",
+                "Audits page context, direct-v3 app-private request-context envelope handoffs, queue specs, sidecars, logs, notifications, temporary files, and Termux previews for redaction or cleanup gaps.",
                 maxLines = 3,
             )
             XdmActionFlowRow {
@@ -825,8 +825,7 @@ fun DiagnosticsScreen(
                                 append(" • ").append(observation.source.ifBlank { "unknown source" })
                                 observation.mimeType?.takeIf(String::isNotBlank)?.let { append(" • ").append(it) }
                                 observation.initiator?.takeIf(String::isNotBlank)?.let { append(" • ").append(it) }
-                                append("
-").append(observation.url)
+                                append("\n").append(observation.url)
                             })
                         }
                     }

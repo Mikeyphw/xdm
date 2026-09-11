@@ -1020,8 +1020,12 @@ class MediaLocatorActivity : ComponentActivity() {
             ).filterNotNull().joinToString(" • ")
         }.toTypedArray()
         activeMediaDialog?.dismiss()
+        val expandedTitle = getString(
+            R.string.media_locator_candidates_expanded,
+            resources.getQuantityString(R.plurals.media_locator_bottom_sheet_title, candidates.size, candidates.size),
+        )
         activeMediaDialog = AlertDialog.Builder(this)
-            .setTitle(resources.getQuantityString(R.plurals.media_locator_bottom_sheet_title, candidates.size, candidates.size))
+            .setTitle(expandedTitle)
             .setItems(labels) { _, which -> candidates.getOrNull(which)?.let(::reviewCandidate) }
             .setNegativeButton(getString(R.string.media_locator_bottom_sheet_close), null)
             .setNeutralButton(getString(R.string.media_locator_scan)) { _, _ ->
@@ -1129,8 +1133,13 @@ class MediaLocatorActivity : ComponentActivity() {
         } else {
             resources.getQuantityString(R.plurals.media_locator_candidates_header, located.size, located.size)
         }
-        resultsHeader.text = text
-        resultsHeader.contentDescription = text
+        val decoratedText = if (located.isEmpty()) {
+            text
+        } else {
+            getString(R.string.media_locator_candidates_collapsed, text)
+        }
+        resultsHeader.text = decoratedText
+        resultsHeader.contentDescription = decoratedText
         val fabText = if (located.isEmpty()) getString(R.string.media_locator_media_fab_empty)
             else resources.getQuantityString(R.plurals.media_locator_media_fab, located.size, located.size)
         mediaFab.text = fabText
@@ -1213,6 +1222,9 @@ class MediaLocatorActivity : ComponentActivity() {
                 )
             }
             withContext(Dispatchers.Main) {
+                val savedMessage = getString(R.string.media_locator_saved)
+                showFeedbackToast(savedMessage)
+                status.text = savedMessage
                 startActivity(
                     Intent(this@MediaLocatorActivity, MainActivity::class.java)
                         .setAction(MainActivity.ACTION_INTERNAL_MEDIA_CAPTURE_READY)

@@ -6,8 +6,11 @@ import java.io.File
 
 class MediaParity03NativeHlsExecutionContractTest {
     // Parity03 fixture markers: supported lowSpace unsupported Tiny Add
-    private val root = File(System.getProperty("user.dir"))
+    private val root = androidRoot()
     private fun source(path: String) = File(root, path).readText()
+
+    private fun androidRoot(): File = generateSequence(File(System.getProperty("user.dir") ?: ".").canonicalFile) { it.parentFile }
+        .first { File(it, "settings.gradle.kts").isFile && File(it, "app/src/main").isDirectory }
 
     @Test
     fun nativeHlsLaneIsImplementedBeforeYtDlpFallback() {

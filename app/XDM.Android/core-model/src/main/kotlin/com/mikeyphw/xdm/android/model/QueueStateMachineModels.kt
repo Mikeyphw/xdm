@@ -17,6 +17,7 @@ enum class QueueControlCommand {
     RetryOne,
     StartOne,
     OpenOne,
+    ShareOne,
     ReviewRecovery,
     DismissNotification,
     DisableQueue,

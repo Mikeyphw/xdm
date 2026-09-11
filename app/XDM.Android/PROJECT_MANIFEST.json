@@ -1878,7 +1878,7 @@
     "automatic_upload": false,
     "baseline": "debug_workbench_phase_d2_shell_r4",
     "compile_hygiene": "MediaSniffingLabCard candidate row uses escaped newline; D3 app contract uses safe substring assertions that compile.",
-    "description": "Adds a Media Sniffing Lab inside Settings \u2192 Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
+    "description": "Adds a Media Sniffing Lab inside Settings → Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
     "drm_bypass": false,
     "network_page_probe": false,
     "next_phase": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
@@ -1886,7 +1886,7 @@
     "phase": "D3",
     "revision": "r4",
     "room_schema_unchanged": 14,
-    "settings_location": "Settings \u2192 Debug Workbench \u2192 Media Sniffing Lab",
+    "settings_location": "Settings → Debug Workbench → Media Sniffing Lab",
     "starts_downloads": false,
     "static_sniff_only": true,
     "status": "implemented",
@@ -4860,5 +4860,37 @@
     "native_selective_repair_planner": true,
     "repeat_verification_without_network": true,
     "trusted_block_manifest": true
+  },
+  "media_parity04_validation_hotfix": {
+    "status": "implemented",
+    "room_schema": 24,
+    "fixes": [
+      "DeveloperToolsScreen Kotlin newline syntax",
+      "schema-24 unit-test rebase",
+      "native-first HLS test alignment",
+      "Firefox source-contract assertion rebase",
+      "completed notification Share action",
+      "LogicalMediaGraph warning cleanup"
+    ],
+    "roadmap_gap_audit": "Parity01-Parity04 audited against XDM_FINAL_ROADMAP_V2_REDO; completed notifications now include Open, Share and Details as promised."
+  },
+  "current_hotfix": "xdm_media_parity04_validation_hotfix_v1.zip",
+  "validation_hotfix_v4_app_unit_test_carry_forward": {
+    "purpose": "Retain historical app unit-test carry-forward markers while keeping top-level Media Parity04 as current authority.",
+    "current_release_authority": "post_ux13_roadmap_completion_hotfix",
+    "current_runtime_quality_authority": "notification_webview_gap_hotfix_2026_09_10",
+    "room_schema_current": 23,
+    "version": 23,
+    "schema22_history": {
+      "room_schema_current": 22,
+      "version": 22
+    },
+    "schema21_history": {
+      "room_schema_current": 21,
+      "version": 21
+    },
+    "current_authority_after_hotfix": "media_parity04_browser_ux_userscripts_notifications_release_seal",
+    "current_room_schema_after_hotfix": 24,
+    "roadmap_remaining_gaps": []
   }
 }

@@ -69,7 +69,7 @@ class RemediationPhase10ContractTest {
         assertTrue(model.contains("data class MediaOutputRecord"))
         assertTrue(entity.contains("tableName = \"media_outputs\""))
         assertTrue(entity.contains("Index(value = [\"ownerKind\", \"ownerId\", \"attemptGeneration\"], unique = true)"))
-        assertTrue(database.contains("version = 23"))
+        assertTrue(database.contains("version = 24"))
         assertTrue(migrations.contains("Migration19To20 = object : Migration(19, 20)"))
         assertTrue(migrations.contains("Migration20To21 = object : Migration(20, 21)"))
         assertTrue(migrations.contains("Migration21To22 = object : Migration(21, 22)"))

@@ -238,6 +238,7 @@ class TransferNotifications(private val context: Context) {
                 TerminalNotificationActionPolicy.actionsFor(state, downloadId).forEach { action ->
                     when (action.command) {
                         QueueControlCommand.OpenOne -> addAction(android.R.drawable.ic_menu_view, action.label, openCompletedPendingIntent(downloadId))
+                        QueueControlCommand.ShareOne -> addAction(android.R.drawable.ic_menu_share, action.label, shareCompletedPendingIntent(downloadId))
                         QueueControlCommand.StartOne -> addAction(android.R.drawable.ic_menu_info_details, action.label, openAppPendingIntent(downloadId))
                         QueueControlCommand.ResumeOne -> addAction(android.R.drawable.ic_media_play, action.label, actionPendingIntent(ACTION_RESUME, downloadId, systemIds.idFor(downloadId)))
                         QueueControlCommand.RetryOne -> addAction(android.R.drawable.ic_popup_sync, action.label, actionPendingIntent(ACTION_RETRY, downloadId, systemIds.idFor(downloadId)))
@@ -344,6 +345,13 @@ class TransferNotifications(private val context: Context) {
         return PendingIntent.getActivity(context, systemIds.idFor(downloadId), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
+    private fun shareCompletedPendingIntent(downloadId: String): PendingIntent {
+        val intent = Intent(context, OpenDownloadedFileActivity::class.java)
+            .setAction(ACTION_SHARE_COMPLETED_DOWNLOAD)
+            .putExtra(EXTRA_DOWNLOAD_ID, downloadId)
+        return PendingIntent.getActivity(context, systemIds.idFor(downloadId) + 3, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+
     private fun actionPendingIntent(action: String, downloadId: String?, requestCode: Int): PendingIntent {
         val intent = Intent(context, TransferActionReceiver::class.java).setAction(action)
         if (downloadId != null) intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId)
@@ -370,6 +378,7 @@ class TransferNotifications(private val context: Context) {
         @Deprecated("Phase 4 renamed Mute to Dismiss; keep constant only for old broadcast compatibility.")
         const val ACTION_MUTE = "com.mikeyphw.xdm.android.action.MUTE"
         const val ACTION_OPEN_COMPLETED_DOWNLOAD = "com.mikeyphw.xdm.android.action.OPEN_COMPLETED_DOWNLOAD"
+        const val ACTION_SHARE_COMPLETED_DOWNLOAD = "com.mikeyphw.xdm.android.action.SHARE_COMPLETED_DOWNLOAD"
         const val ACTION_OPEN_DOWNLOAD_DETAILS = "com.mikeyphw.xdm.android.action.OPEN_DOWNLOAD_DETAILS"
         const val EXTRA_DOWNLOAD_ID = "download_id"
         const val EXTRA_OPEN_FALLBACK_REASON = "open_fallback_reason"

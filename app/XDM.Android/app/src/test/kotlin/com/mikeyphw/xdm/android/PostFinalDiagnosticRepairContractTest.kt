@@ -20,7 +20,7 @@ class PostFinalDiagnosticRepairContractTest {
         assertFalse(queue.contains("window.start!!"))
         assertFalse(queue.contains("window.end!!"))
         assertTrue(browserTest.contains("HARD_NON_MEDIA_MIME_RE"))
-        assertTrue(browserTest.contains("candidate.source !== \\\"webRequest\\\""))
+        assertTrue(browserTest.contains("candidate.source === \\\"webRequest\\\""))
     }
 
     @Test

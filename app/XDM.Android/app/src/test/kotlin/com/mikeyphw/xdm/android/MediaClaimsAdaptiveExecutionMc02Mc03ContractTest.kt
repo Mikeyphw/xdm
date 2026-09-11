@@ -49,14 +49,14 @@ class MediaClaimsAdaptiveExecutionMc02Mc03ContractTest {
     }
 
     @Test
-    fun adaptiveYtDlpUsesAuthoritativeCaptureOrPageRatherThanSelectedChildUrl() {
+    fun adaptiveExecutionUsesNativeHlsOrYtDlpWithAuthoritativeCaptureOrPage() {
         val planner = source("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaDownloadPlanner.kt")
         val models = source("app/src/main/kotlin/com/mikeyphw/xdm/android/termux/PostProcessingExecutionModels.kt")
         val manager = source("app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt")
         val transient = manager.substringAfter("private fun transientYtDlpSession")
             .substringBefore("private fun ytDlpConfigQuote")
 
-        assertTrue(planner.contains("strategy == MediaDownloadStrategy.YtDlp || strategy == MediaDownloadStrategy.FfmpegLive -> capture.sourceUrl"))
+        assertTrue(planner.contains("MediaDownloadStrategy.NativeHls") && planner.contains("MediaDownloadStrategy.YtDlp"))
         assertTrue(planner.contains("ytDlpExtraArguments"))
         assertTrue(planner.contains("--sub-langs"))
         assertTrue(planner.contains("[height=\$it]"))

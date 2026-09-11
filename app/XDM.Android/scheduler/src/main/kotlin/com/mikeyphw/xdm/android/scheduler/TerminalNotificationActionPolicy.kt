@@ -11,6 +11,7 @@ internal object TerminalNotificationActionPolicy {
         when (state) {
             DownloadState.Completed -> {
                 add(NotificationActionModel(QueueControlCommand.OpenOne, "Open file", NotificationActionVisibility.Show, downloadId))
+                add(NotificationActionModel(QueueControlCommand.ShareOne, "Share", NotificationActionVisibility.Show, downloadId))
                 add(NotificationActionModel(QueueControlCommand.StartOne, "Details", NotificationActionVisibility.Show, downloadId))
             }
             DownloadState.Paused -> add(NotificationActionModel(QueueControlCommand.ResumeOne, "Resume", NotificationActionVisibility.Show, downloadId))

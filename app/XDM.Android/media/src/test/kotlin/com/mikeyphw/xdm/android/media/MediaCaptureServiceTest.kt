@@ -3,6 +3,7 @@ package com.mikeyphw.xdm.android.media
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
+import com.mikeyphw.xdm.android.model.MediaNativeCapability
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -144,14 +145,14 @@ class MediaCaptureServiceTest {
     }
 
     @Test
-    fun plannerRoutesComplexMediaToTermuxAndDirectMediaToExistingEngines() {
+    fun plannerRoutesSupportedHlsNativeAndDirectMediaToExistingEngines() {
         val service = MediaCaptureService(clock = { 400L })
         val hls = service.detect("https://cdn.example.test/master.m3u8").single()
         val mp4 = service.detect("https://cdn.example.test/movie.mp4").single()
         val audio = service.detect("https://cdn.example.test/song.mp3").single()
         val planner = MediaDownloadPlanner()
 
-        assertEquals(MediaDownloadStrategy.YtDlp, planner.plan(hls, emptyList()).strategy)
+        assertEquals(MediaDownloadStrategy.NativeHls, planner.plan(hls, emptyList()).strategy)
         assertEquals(MediaDownloadStrategy.Native, planner.plan(mp4, emptyList()).strategy)
         assertEquals(MediaDownloadStrategy.Native, planner.plan(audio, emptyList(), MediaDownloadIntent.AudioOnly).strategy)
     }
@@ -345,7 +346,9 @@ class MediaCaptureServiceTest {
         val spec = MediaExecutionLibraryPlanner().queueSpec(record, variants, selection, "content://downloads")
         val safeText = listOf(spec.safeQueuedJobSummary, spec.safeExplanation, spec.sidecar.toRedactedJson()).joinToString("\n")
 
-        assertTrue(spec.requiresTermuxYtDlp)
+        assertFalse(spec.requiresTermuxYtDlp)
+        assertEquals(MediaDownloadStrategy.NativeHls, spec.strategy)
+        assertTrue(spec.canUseAppQueue)
         assertEquals(3, spec.selectedTrackIds.size)
         assertTrue(spec.requestHeaders.containsKey("Referer"))
         assertFalse(safeText.contains("super-secret-token"))
@@ -393,7 +396,7 @@ class MediaCaptureServiceTest {
             pageTitle = "Hardening episode",
             pageUrl = "https://watch.example.test/watch?session=secret-session",
             mimeTypeHint = "application/vnd.apple.mpegurl",
-        )))
+        ))).copy(nativeCapability = MediaNativeCapability.FallbackRequired)
         val variants = service.parseHlsPlaylist(
             captureId = record.id,
             playlistUrl = record.sourceUrl,
@@ -466,7 +469,7 @@ class MediaCaptureServiceTest {
             pageTitle = "Dispatch episode",
             pageUrl = "https://watch.example.test/watch?session=secret-session",
             mimeTypeHint = "application/vnd.apple.mpegurl",
-        )))
+        ))).copy(nativeCapability = MediaNativeCapability.FallbackRequired)
         val variants = service.parseHlsPlaylist(
             captureId = record.id,
             playlistUrl = record.sourceUrl,
@@ -713,7 +716,7 @@ class MediaCaptureServiceTest {
             pageTitle = "Bridge episode",
             pageUrl = "https://watch.example.test/watch?session=secret-session",
             mimeTypeHint = "application/vnd.apple.mpegurl",
-        )))
+        ))).copy(nativeCapability = MediaNativeCapability.FallbackRequired)
         val variants = service.parseHlsPlaylist(
             captureId = record.id,
             playlistUrl = record.sourceUrl,
@@ -759,7 +762,7 @@ class MediaCaptureServiceTest {
             pageTitle = "Runtime episode",
             pageUrl = "https://watch.example.test/watch?session=secret-session",
             mimeTypeHint = "application/vnd.apple.mpegurl",
-        )))
+        ))).copy(nativeCapability = MediaNativeCapability.FallbackRequired)
         val variants = service.parseHlsPlaylist(
             captureId = record.id,
             playlistUrl = record.sourceUrl,
@@ -804,7 +807,7 @@ class MediaCaptureServiceTest {
             url = "https://cdn.example.test/master.m3u8",
             pageTitle = "Missing runtime",
             mimeTypeHint = "application/vnd.apple.mpegurl",
-        )))
+        ))).copy(nativeCapability = MediaNativeCapability.FallbackRequired)
         val planner = MediaExecutionLibraryPlanner()
         val spec = planner.queueSpec(record, emptyList(), MediaTrackSelection(), "content://downloads")
         val engine = planner.enginePlan(spec, androidSdkInt = 35)
@@ -1214,7 +1217,7 @@ class MediaCaptureServiceTest {
     @Test
     fun selectedVariantHeadersOverrideCaptureHeadersAndDestinationIsPreserved() {
         val service = MediaCaptureService(clock = { 6_000L })
-        val record = service.detect("https://cdn.example.test/master.m3u8", pageTitle = "Header episode").single()
+        val record = service.detect("https://cdn.example.test/master.m3u8", pageTitle = "Header episode").single().copy(nativeCapability = MediaNativeCapability.FallbackRequired)
         val variants = service.parseHlsPlaylist(
             captureId = record.id,
             playlistUrl = record.sourceUrl,

@@ -19,12 +19,12 @@ class LiveLocatorTitleNamingContractTest {
         assertTrue(source.contains("showMainFrameError("))
         assertTrue(source.contains("updateNavigationState()"))
         assertTrue(source.contains("updatePageSummary()"))
-        assertTrue(source.contains("resultsExpanded = !resultsExpanded"))
+        assertTrue(source.contains("showMediaBottomSheet()"))
         assertTrue(source.contains("setAcceptThirdPartyCookies(webView, true)"))
         assertTrue(source.contains("builtInZoomControls = true"))
         assertTrue(strings.contains("media_locator_retry"))
         assertTrue(strings.contains("media_locator_error_ssl_title"))
-        assertTrue(strings.contains("media_locator_candidates_collapsed"))
+        assertTrue(strings.contains("media_locator_media_fab"))
     }
 
     @Test

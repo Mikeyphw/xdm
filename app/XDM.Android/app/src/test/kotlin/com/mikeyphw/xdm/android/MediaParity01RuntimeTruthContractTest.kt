@@ -7,15 +7,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MediaParity01RuntimeTruthContractTest {
-    private val root: Path = Path.of(System.getProperty("user.dir")).let { cwd ->
-        when {
-            Files.isRegularFile(cwd.resolve("settings.gradle.kts")) -> cwd
-            Files.isRegularFile(cwd.resolve("app/XDM.Android/settings.gradle.kts")) -> cwd.resolve("app/XDM.Android")
-            else -> error("XDM Android root not found from $cwd")
-        }
-    }
+    private val root: Path = generateSequence(Path.of(System.getProperty("user.dir") ?: ".").toAbsolutePath().normalize()) { it.parent }
+        .firstOrNull { Files.isRegularFile(it.resolve("settings.gradle.kts")) && Files.isDirectory(it.resolve("app/src/main")) }
+        ?: error("XDM Android root not found from ${System.getProperty("user.dir")}")
 
-    private fun text(relative: String): String = Files.readString(root.resolve(relative))
+    private fun text(relative: String): String = String(Files.readAllBytes(root.resolve(relative)), Charsets.UTF_8)
 
     @Test
     fun legacyFirefoxCryptoTestsAreNotRequiredBlockers() {
@@ -30,7 +26,7 @@ class MediaParity01RuntimeTruthContractTest {
     }
 
     @Test
-    fun validationFactsAreIndependentAndSchemaTruthIs23() {
+    fun validationFactsAreIndependentAndSchemaTruthIs24() {
         val build = text("app/build.gradle.kts")
         val main = text("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
         val developer = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsScreen.kt")
@@ -52,7 +48,7 @@ class MediaParity01RuntimeTruthContractTest {
         assertTrue(main.contains("noNewTopLevelRoutes = routeTopologyValidated"))
         assertFalse(main.contains("releaseDocsComplete = staticValidationPassed"))
         assertFalse(main.contains("noNewTopLevelRoutes = staticValidationPassed"))
-        assertTrue(developer.contains("currentRoomSchemaVersion = 23"))
+        assertTrue(developer.contains("currentRoomSchemaVersion = 24"))
         assertFalse(developer.contains("currentRoomSchemaVersion = 21"))
         assertTrue(workspace.contains("Validation truth"))
         assertTrue(workspace.contains("XDM_DIAGNOSTIC_EXPORT_VALIDATED"))
@@ -82,7 +78,7 @@ class MediaParity01RuntimeTruthContractTest {
         assertTrue(store.contains("DiagnosticExportIntegrity.writeVerifiedZip"))
         assertTrue(store.contains("xdm-debug-${'$'}{safeFileName(run.id)}.zip"))
         assertTrue(store.contains("Diagnostics version: v5 / Media Parity01"))
-        assertTrue(store.contains("Room schema: 23"))
+        assertTrue(store.contains("Room schema: 24"))
         assertTrue(store.contains("Live Locator WebView"))
         assertTrue(screen.contains("Diagnostics export blocked: final ZIP privacy/integrity verification failed."))
         assertTrue(screen.contains("Diagnostics ZIP verified and ready to share."))

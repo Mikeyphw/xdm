@@ -3,6 +3,7 @@ package com.mikeyphw.xdm.android.media
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
+import com.mikeyphw.xdm.android.model.MediaNativeCapability
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
@@ -14,7 +15,7 @@ import org.junit.Test
 class AdaptiveMediaExecutionMc03Test {
     @Test
     fun hlsTrackSelectionKeepsMasterAsExecutableInput() {
-        val capture = capture(MediaSourceKind.HlsPlaylist, "https://cdn.example.test/master.m3u8")
+        val capture = capture(MediaSourceKind.HlsPlaylist, "https://cdn.example.test/master.m3u8").copy(nativeCapability = MediaNativeCapability.FallbackRequired)
         val video = variant(capture.id, "video", "https://cdn.example.test/video/720.m3u8", MediaVariantKind.Video, height = 720)
         val audio = variant(capture.id, "audio", "https://cdn.example.test/audio/pt.m3u8", MediaVariantKind.Audio, language = "pt", bitrate = 128_000L)
         val subtitle = variant(capture.id, "sub", "https://cdn.example.test/sub/en.vtt", MediaVariantKind.Subtitle, language = "en")

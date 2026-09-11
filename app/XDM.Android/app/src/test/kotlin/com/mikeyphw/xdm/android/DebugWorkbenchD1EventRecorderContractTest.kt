@@ -25,7 +25,7 @@ class DebugWorkbenchD1EventRecorderContractTest {
         assertTrue(source.contains("current.jsonl"))
         assertTrue(source.contains("maxSessionBytes: Long = 2L * 1024L * 1024L"))
         assertTrue(source.contains("exportSupportBundle"))
-        assertTrue(source.contains("ZipOutputStream"))
+        assertTrue(source.contains("DebugRedactor"))
     }
 
     @Test

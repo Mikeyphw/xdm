@@ -14,9 +14,10 @@ def req(c,m):
 overlay='xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip'
 successor_overlay='xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip'
 parity04_overlay='xdm_media_parity04_browser_ux_userscripts_notifications_release_seal_v1.zip'
+hotfix_overlay='xdm_media_parity04_validation_hotfix_v1.zip'
 manifest=json.loads(read('PROJECT_MANIFEST.json') or '{}')
 phase=manifest.get('media_parity02_logical_media_capture_browser_convergence',{})
-req(manifest.get('current_overlay') in {overlay, successor_overlay, parity04_overlay},'current overlay must be Media Parity02 or an accepted successor')
+req(manifest.get('current_overlay') in {overlay, successor_overlay, parity04_overlay, hotfix_overlay},'current overlay must be Media Parity02 or an accepted successor/hotfix')
 req(manifest.get('database',{}).get('version') in {23,24},'authoritative Room schema must be 23 or accepted Parity03 successor schema 24')
 req('22_to_23' in manifest.get('database',{}).get('migrations',[]),'manifest migration chain must include 22_to_23')
 req(phase.get('status')=='implemented','Parity02 manifest status must be implemented')

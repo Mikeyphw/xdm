@@ -330,7 +330,7 @@ class LogicalMediaGraphEngine(
             .filter { it.record.kind == MediaSourceKind.HlsPlaylist }
             .filter { node ->
                 val candidate = runCatching { URI(identityUrl(node.canonicalUrl)) }.getOrNull()
-                candidate?.host == uri.host && (parentPrefix.isBlank() || candidate?.path.orEmpty().substringBeforeLast('/', "") == parentPrefix)
+                candidate != null && candidate.host == uri.host && (parentPrefix.isBlank() || candidate.path.orEmpty().substringBeforeLast('/', "") == parentPrefix)
             }
             .maxByOrNull { it.updatedAt }
             ?.id

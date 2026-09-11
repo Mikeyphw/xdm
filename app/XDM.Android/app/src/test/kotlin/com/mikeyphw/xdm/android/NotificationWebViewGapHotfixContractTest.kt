@@ -73,15 +73,15 @@ class NotificationWebViewGapHotfixContractTest {
         val ux01 = File(root, "app/src/test/kotlin/com/mikeyphw/xdm/android/Ux01DestinationStorageTruthContractTest.kt").readText()
         val manifest = File(root, "PROJECT_MANIFEST.json").readText()
 
-        assertTrue(architecture.contains("current Room schema v22"))
-        assertTrue(!architecture.contains("current Room schema v21"))
+        assertTrue(architecture.contains("current Room schema v24"))
+        assertTrue(!architecture.contains("current Room schema v23"))
         assertTrue(phase4.contains("terminalNotificationsLocked().firstOrNull { it.idempotencyKey == record.idempotencyKey }"))
         assertTrue(completed.contains("TerminalNotificationActionPolicy.kt"))
         assertTrue(completed.contains("QueueControlCommand.OpenOne -> addAction"))
         assertTrue(naming.contains("hasExplicitTitle = titleIsPageDerived"))
         assertTrue(ux01.contains("File(requireNotNull(System.getProperty(\"user.dir\")))"))
-        assertTrue(manifest.contains("\"room_schema_current\": 23"))
-        assertTrue(manifest.contains("\"current_runtime_quality_authority\": \"notification_webview_gap_hotfix_2026_09_10\""))
+        assertTrue(manifest.contains("\"room_schema_current\": 24"))
+        assertTrue(manifest.contains("\"current_runtime_quality_authority\": \"media_parity04_browser_ux_userscripts_notifications_release_seal\""))
     }
 
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }

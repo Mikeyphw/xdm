@@ -2,7 +2,7 @@ package com.mikeyphw.xdm.android.scheduler
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
-import android.content.ContentResolver
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -34,7 +34,9 @@ class OpenDownloadedFileActivity : Activity() {
                 download == null -> openXdmDetails(downloadId, "download-not-found")
                 download.state != DownloadState.Completed -> openXdmDetails(downloadId, "download-not-completed")
                 else -> withContext(Dispatchers.IO) { CompletedFileGrantPolicy.resolve(this@OpenDownloadedFileActivity, download) }
-                    ?.let { uri -> openCompletedDownload(download, uri) }
+                    ?.let { uri ->
+                        if (intent.action == TransferNotifications.ACTION_SHARE_COMPLETED_DOWNLOAD) shareCompletedDownload(download, uri) else openCompletedDownload(download, uri)
+                    }
                     ?: openXdmDetails(download.id, "completed-file-missing-or-unowned")
             }
         }
@@ -60,6 +62,30 @@ class OpenDownloadedFileActivity : Activity() {
             finish()
         } catch (_: ActivityNotFoundException) {
             openXdmDetails(download.id, "no-viewer")
+        } catch (_: SecurityException) {
+            openXdmDetails(download.id, "uri-permission-lost")
+        } catch (_: IllegalArgumentException) {
+            openXdmDetails(download.id, "invalid-completed-uri")
+        }
+    }
+
+    private fun shareCompletedDownload(download: Download, uri: Uri) {
+        val shareIntent = Intent(Intent.ACTION_SEND)
+            .setType(download.mimeType?.takeIf { it.isNotBlank() } ?: "application/octet-stream")
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            .apply { clipData = ClipData.newUri(contentResolver, download.fileName, uri) }
+        if (shareIntent.resolveActivity(packageManager) == null) {
+            openXdmDetails(download.id, "no-share-target")
+            return
+        }
+        try {
+            val chooser = Intent.createChooser(shareIntent, "Share ${download.fileName}")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(chooser)
+            finish()
+        } catch (_: ActivityNotFoundException) {
+            openXdmDetails(download.id, "no-share-target")
         } catch (_: SecurityException) {
             openXdmDetails(download.id, "uri-permission-lost")
         } catch (_: IllegalArgumentException) {

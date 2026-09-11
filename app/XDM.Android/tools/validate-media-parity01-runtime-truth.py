@@ -72,8 +72,9 @@ expected_overlay = "xdm_media_parity01_runtime_truth_diagnostics_backend_reliabi
 successor_overlay = "xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip"
 parity03_overlay = "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip"
 parity04_overlay = "xdm_media_parity04_browser_ux_userscripts_notifications_release_seal_v1.zip"
+hotfix_overlay = "xdm_media_parity04_validation_hotfix_v1.zip"
 phase = manifest.get("media_parity01_runtime_truth_diagnostics_backend_reliability", {})
-require(manifest.get("current_overlay") in {expected_overlay, successor_overlay, parity03_overlay, parity04_overlay}, "PROJECT_MANIFEST current_overlay must point to Media Parity01 or an accepted successor")
+require(manifest.get("current_overlay") in {expected_overlay, successor_overlay, parity03_overlay, parity04_overlay, hotfix_overlay}, "PROJECT_MANIFEST current_overlay must point to Media Parity01 or an accepted successor/hotfix")
 require(phase.get("status") == "implemented", "Media Parity01 manifest phase must be implemented")
 require(phase.get("room_schema") == 22, "Media Parity01 must report Room schema 22")
 require(phase.get("final_zip_privacy_scan_required") is True, "final ZIP privacy scan must be required")
@@ -198,7 +199,7 @@ require_all(core_test, [
 ], "core diagnostic regression tests")
 require_all(contract_test, [
     "legacyFirefoxCryptoTestsAreNotRequiredBlockers",
-    "validationFactsAreIndependentAndSchemaTruthIs23",
+    "validationFactsAreIndependentAndSchemaTruthIs24",
     "aria2DiagnosticUsesRealLifecycleSmokeAndOptionalUnavailableIsNonFatal",
 ], "Parity01 app contract tests")
 require_all(shell_model, [

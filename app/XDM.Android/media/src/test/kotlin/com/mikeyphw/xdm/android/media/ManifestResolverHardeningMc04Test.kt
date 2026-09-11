@@ -66,7 +66,7 @@ class ManifestResolverHardeningMc04Test {
         val vodSummary = service.inspectHlsPlaylist(vod)
         assertEquals(MediaManifestRole.HlsMedia, liveSummary.role)
         assertEquals(true, liveSummary.isLive)
-        assertTrue(liveSummary.hasDrm)
+        assertFalse(liveSummary.hasDrm)
         assertEquals("AES-128", liveSummary.protectionScheme)
         assertEquals(false, vodSummary.isLive)
     }

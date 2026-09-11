@@ -26,6 +26,6 @@ class BrowserExtensionSourceContractTest {
     }
     @Test fun `page hints require evidence and misleading non-media mime is rejected`() {
         val observer=extensionRoot.resolve("network-observer.js").readText(); val detector=extensionRoot.resolve("detector-core.js").readText(); val sniffer=extensionRoot.resolve("page-sniffer.js").readText()
-        assertTrue(observer.contains("findPrivilegedEvidence")); assertTrue(observer.contains("candidate.source !== \"webRequest\"")); assertTrue(detector.contains("HARD_NON_MEDIA_MIME_RE")); assertTrue(detector.contains("possible-media-extension")); assertTrue(sniffer.contains("HARD_NON_MEDIA_MIME_RE")); assertTrue(detector.contains("requestFingerprint"))
+        assertTrue(observer.contains("findPrivilegedEvidence")); assertTrue(observer.contains("candidate.source === \"webRequest\"") && observer.contains("return candidate && candidate.source === \"webRequest\"")); assertTrue(detector.contains("HARD_NON_MEDIA_MIME_RE")); assertTrue(detector.contains("possible-media-extension")); assertTrue(sniffer.contains("HARD_NON_MEDIA_MIME_RE")); assertTrue(detector.contains("requestFingerprint"))
     }
 }

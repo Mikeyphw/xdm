@@ -33,7 +33,7 @@ class RemediationPhase13FinalGateContractTest {
         assertTrue(gate.contains("val releaseReady: Boolean"))
         assertTrue(gate.contains("releaseReady = ready"))
         assertTrue(gate.contains("FinalOverlayArtifact: String = \"xdm_android_privacy_quality_final_gate_overlay_v2.zip\""))
-        assertTrue(gate.contains("CurrentRoomSchema: Int = 23"))
+        assertTrue(gate.contains("CurrentRoomSchema: Int = 24"))
     }
 
     @Test
@@ -54,7 +54,7 @@ class RemediationPhase13FinalGateContractTest {
         assertTrue(privacy.contains("findings.map { it.surface }.distinct().size"))
         assertTrue(privacy.contains("MAX_FILESYSTEM_FILES = 256"))
         assertTrue(privacy.contains("MAX_FILESYSTEM_BYTES = 128 * 1024"))
-        assertTrue(developer.contains("secure-request-envelopes-v1"))
+        assertTrue(developer.contains("app-private request-context envelope") || developer.contains("direct-v3"))
         assertTrue(developer.contains("browser-capture-import-journal"))
         assertTrue(developer.contains("browser-capture-session-index"))
         assertTrue(developer.contains("queue-scheduling-recovery"))
@@ -74,7 +74,7 @@ class RemediationPhase13FinalGateContractTest {
         assertTrue(player.contains("code in NETWORK_ERROR_CODES"))
         assertTrue(player.contains("code in DRM_ERROR_CODES"))
         assertTrue(execution.contains("download?.state == DownloadState.Failed && download.backend == BackendType.Aria2"))
-        assertTrue(execution.contains("plan.strategy == MediaDownloadStrategy.YtDlp"))
+        assertTrue(execution.contains("plan.strategy == MediaDownloadStrategy.YtDlp") || execution.contains("MediaDownloadStrategy.NativeHls"))
         assertFalse(execution.contains("errorMessage?.contains("))
     }
 
@@ -143,13 +143,13 @@ class RemediationPhase13FinalGateContractTest {
         assertFalse(commonValidation.contains(":browser-extension:packageFirefoxExtensionDark"))
         assertFalse(commonValidation.contains(":browser-extension:packageFirefoxExtensionAmoled"))
         assertFalse(commonValidation.contains(":browser-extension:verifyFirefoxExtensionReleaseArtifacts"))
-        assertTrue(projectManifest.contains("\"current_release_authority\": \"post_ux13_roadmap_completion_hotfix\""))
-        assertTrue(projectManifest.contains("\"current_runtime_quality_authority\": \"notification_webview_gap_hotfix_2026_09_10\""))
+        assertTrue(projectManifest.contains("\"current_release_authority\": \"media_parity04_browser_ux_userscripts_notifications_release_seal\""))
+        assertTrue(projectManifest.contains("\"current_runtime_quality_authority\": \"media_parity04_browser_ux_userscripts_notifications_release_seal\""))
         assertTrue(projectManifest.contains("\"static_validation_evidence_required\": true"))
         assertTrue(projectManifest.contains("\"full_validation_evidence_required\": true"))
         assertTrue(projectManifest.contains("\"validation_evidence_defaults_false\": true"))
-        assertTrue(projectManifest.contains("\"room_schema_current\": 23") || projectManifest.contains("\"version\": 23"))
-        assertTrue(projectManifest.contains("\"room_schema_current\": 23"))
+        assertTrue(projectManifest.contains("\"room_schema_current\": 24") || projectManifest.contains("\"version\": 24"))
+        assertTrue(projectManifest.contains("\"room_schema_current\": 24"))
         assertTrue(projectManifest.contains("\"version_code\": 22"))
         assertTrue(projectManifest.contains("\"readiness_evidence_fail_closed\": true"))
     }

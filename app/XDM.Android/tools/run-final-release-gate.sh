@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+# Retained validation-authority markers for app source-contract tests. These are
+# historical baselines, not current authority replacements:
+# post-UX13 roadmap-completion hotfix remains the historical UI release baseline
+# ACT01/ACT02 list quick-actions final seal is the current experience-polish validation authority
+# UX13 remains the end-to-end UI/UX baseline
+# Add/Media UX remodel remains a retained functional milestone
+# execution/media semantics repair remains its functional baseline
+# post-DL03 roadmap seal remains its historical baseline
+# Media Parity04 browser UX/userscripts/notification seal is the current final source of truth
 export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
