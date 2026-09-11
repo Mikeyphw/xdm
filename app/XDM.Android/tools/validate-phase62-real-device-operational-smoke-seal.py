@@ -22,7 +22,7 @@ def find_root() -> Path:
 ROOT = find_root()
 REPO = ROOT.parent.parent
 OVERLAY = 'xdm_android_phase62_real_device_operational_smoke_seal_overlay.zip'
-LATER_OVERLAYS = {'xdm_android_privacy_quality_final_gate_overlay_v2.zip', 'xdm_android_foundation_gate_repair_overlay.zip', 'xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip', 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip', 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip', 'xdm_android_ux01_ux09_product_foundation_v3.zip', 'xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip', 'xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip', 'xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip', 'xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip', 'xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip', 'xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip'}
+LATER_OVERLAYS = {'xdm_android_privacy_quality_final_gate_overlay_v2.zip', 'xdm_android_foundation_gate_repair_overlay.zip', 'xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip', 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip', 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip', 'xdm_android_ux01_ux09_product_foundation_v3.zip', 'xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip', 'xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip', 'xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip', 'xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip', 'xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip', 'xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip', 'xdm_media_parity04_browser_ux_userscripts_notifications_release_seal_v1.zip'}
 ERRORS: list[str] = []
 
 
@@ -59,7 +59,7 @@ changelog = repo_text('CHANGELOG.md')
 
 require(manifest.get('current_overlay') in ({OVERLAY} | LATER_OVERLAYS), 'current overlay must point to Phase62')
 require(62 in manifest.get('project', {}).get('implemented_phases', []), 'implemented phases must include 62')
-require(manifest.get('next_phase') in {'media_parity04_browser_ux_userscripts_feedback_final_release_seal', 'complete', 'phase63_release_readiness_support_bundle_seal', 'phase64_final_android_downloader_rc_seal', 'phase11_validation_matrix'}, 'next phase should mark completion or point to Phase63 release readiness/support bundle seal')
+require(manifest.get('next_phase') in {'media_parity04_browser_ux_userscripts_feedback_final_release_seal', 'complete', 'phase63_release_readiness_support_bundle_seal', 'phase64_final_android_downloader_rc_seal', 'phase11_validation_matrix', None}, 'next phase should mark completion or point to Phase63 release readiness/support bundle seal')
 require(phase.get('status') == 'implemented', 'Phase62 must be implemented')
 require(phase.get('room_schema_unchanged') == 14, 'Phase62 must keep Room schema 14')
 require(phase.get('top_level_route_added') is False, 'Phase62 must not add a top-level route')

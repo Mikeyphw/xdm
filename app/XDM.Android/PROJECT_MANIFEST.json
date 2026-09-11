@@ -1731,12 +1731,12 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_experience_polish_authority": "list_quick_actions_final_seal_act01_act02",
-  "current_overlay": "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip",
-  "current_release_authority": "media_parity03_native_hls_execution_admission_integrity",
-  "current_runtime_quality_authority": "media_parity03_native_hls_execution_admission_integrity",
+  "current_experience_polish_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
+  "current_overlay": "xdm_media_parity04_browser_ux_userscripts_notifications_release_seal_v1.zip",
+  "current_release_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
+  "current_runtime_quality_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
-  "current_validation_truth_authority": "media_parity03_native_hls_execution_admission_integrity",
+  "current_validation_truth_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "database": {
     "backup_restore_metadata": true,
     "clipboard_inbox": true,
@@ -3385,7 +3385,7 @@
     "fallback_detection": "live/LL-HLS/I-frame-only/invalid/missing-segment playlists route to fallback; SAMPLE-AES/DRM/unknown encrypted media is protected unsupported",
     "migration": "23_to_24",
     "native_hls_strategy": "supported VOD HLS plans before yt-dlp fallback as one native segmented job",
-    "next_overlay": "media_parity04_browser_ux_userscripts_feedback_final_release_seal",
+    "next_overlay": "media_parity04_browser_ux_userscripts_notifications_release_seal",
     "overlay": "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip",
     "progress_truth": "parts, bytes, finalization, publishing, and verification are staged; 100% is emitted only after completion verification succeeds",
     "report": "XDM_MEDIA_PARITY03_NATIVE_HLS_EXECUTION_ADMISSION_INTEGRITY_REPORT.md",
@@ -3394,6 +3394,61 @@
     "storage_recovery": "segment and finalization preflight accounts for mux/publish overhead; low space fails before corrupt output and preserves resumable evidence",
     "track_selection": "video/audio/subtitle selections are bound into the admission fingerprint and native plan",
     "validation_policy": "intermediate-overlay-no-validate"
+  },
+  "media_parity04_browser_ux_userscripts_notifications_release_seal": {
+    "add_download_ux": {
+      "duplicate_admission_copy": "Parity03 idempotency carried forward",
+      "filename_inference_copy": true,
+      "quality_tracks_card": true,
+      "single_primary_download_action": true
+    },
+    "browser_shell": "light-browser-with-floating-media-fab",
+    "debug_center": {
+      "room_schema_current": 24,
+      "single_developer_center_authority": true,
+      "validation_blocks_explained": true
+    },
+    "depends_on": "media_parity03_native_hls_execution_admission_integrity",
+    "feedback": {
+      "invalid_url_toast": true,
+      "main_frame_error_toast": true,
+      "save_feedback_toast": true,
+      "silent_recoverable_failures_forbidden": true,
+      "userscript_failure_toast": true
+    },
+    "final_gate": {
+      "gradle_lint_device_validation_required_in_devtool_environment": true,
+      "phase11_matrix_retained": true,
+      "run_final_release_gate_includes_parity04": true,
+      "validator": "tools/validate-media-parity04-browser-ux-release-seal.py"
+    },
+    "firefox_webview_parity": "Parity02 logical chooser/import preserved and sealed by final gate",
+    "fixed_media_overlay_removed": true,
+    "media_picker": "logical media bottom-sheet before admission",
+    "notifications": {
+      "completed_tap_opens_artifact": true,
+      "details_action": true,
+      "fallback_to_xdm_details": true,
+      "open_file_action": true
+    },
+    "overlay": "xdm_media_parity04_browser_ux_userscripts_notifications_release_seal_v1.zip",
+    "parity01_02_03_carry_forward": true,
+    "report": "XDM_MEDIA_PARITY04_BROWSER_UX_USERSCRIPTS_NOTIFICATIONS_RELEASE_SEAL_REPORT.md",
+    "room_schema_current": 24,
+    "status": "implemented_final_seal",
+    "text_wrapping": {
+      "download_link_multiline": true,
+      "file_name_multiline": true,
+      "locator_candidate_detail_multiline": true,
+      "locator_candidate_title_multiline": true
+    },
+    "userscripts": {
+      "injection": "document-start when supported, page-finish fallback",
+      "privileged_extension_apis_supported": false,
+      "storage": "app-private SharedPreferences",
+      "supported": "Tampermonkey-style @match/@include/@name/@grant none local scripts"
+    },
+    "validation_policy": "final-overlay-full-validation"
   },
   "media_player_diagnostics": {
     "clean_room_feature_map": "super-video-downloader-inspired-player-diagnostics-without-code-copy",
@@ -3595,7 +3650,7 @@
     "workmanager_foreground_fallback": true,
     "yt_dlp_launch_adapter_contract": true
   },
-  "next_phase": "media_parity04_browser_ux_userscripts_feedback_final_release_seal",
+  "next_phase": null,
   "notes": [
     "Phase 1 r4 updates scheduler FileProvider contract test to match CompletedFileGrantPolicy delegation.",
     "UX08/UX09 reorganizes Settings by user intent without deleting capabilities; apply as an intermediate overlay with --no-validate.",

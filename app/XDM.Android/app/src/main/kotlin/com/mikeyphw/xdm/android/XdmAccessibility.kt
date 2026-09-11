@@ -40,6 +40,7 @@ object XdmScreenTags {
     const val DownloadsDetail = "xdm_downloads_detail"
     const val AddDownload = "xdm_screen_add_download"
     const val AddReview = "xdm_add_review"
+    const val MediaOptionsChooser = "xdm_media_options_chooser"
     const val BrowserSessionHealth = "xdm_browser_session_health"
     const val EngineEscalation = "xdm_engine_escalation"
     const val Media = "xdm_screen_media"

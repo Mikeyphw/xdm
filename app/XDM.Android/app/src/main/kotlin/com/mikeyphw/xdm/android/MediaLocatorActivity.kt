@@ -31,6 +31,9 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextView
 import android.widget.ProgressBar
+import android.widget.FrameLayout
+import android.widget.Toast
+import android.text.TextUtils
 import androidx.activity.ComponentActivity
 import androidx.core.os.BundleCompat
 import androidx.lifecycle.lifecycleScope
@@ -174,6 +177,9 @@ class MediaLocatorActivity : ComponentActivity() {
     private lateinit var pageSummary: TextView
     private lateinit var resultsHeader: TextView
     private lateinit var progress: ProgressBar
+    private lateinit var mediaFab: Button
+    private lateinit var scriptButton: Button
+    private var activeMediaDialog: AlertDialog? = null
     private lateinit var list: ListView
     private lateinit var adapter: CandidateAdapter
     private lateinit var faviconView: ImageView
@@ -298,12 +304,14 @@ class MediaLocatorActivity : ComponentActivity() {
         val findButton = Button(this).apply { text = getString(R.string.media_locator_find) }
         val shareButton = Button(this).apply { text = getString(R.string.media_locator_share) }
         val externalButton = Button(this).apply { text = getString(R.string.media_locator_open_external) }
+        scriptButton = Button(this).apply { text = getString(R.string.media_locator_userscripts) }
         val browserTools = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(8), 0, dp(8), 0)
             addView(findButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(shareButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(externalButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(scriptButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
         findText = EditText(this).apply {
             hint = getString(R.string.media_locator_find_hint)
@@ -326,6 +334,13 @@ class MediaLocatorActivity : ComponentActivity() {
             addView(stopButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(rescan, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f))
         }
+        mediaFab = Button(this).apply {
+            text = getString(R.string.media_locator_media_fab_empty)
+            contentDescription = getString(R.string.media_locator_media_fab_empty)
+            isEnabled = false
+            visibility = View.VISIBLE
+            elevation = dp(8).toFloat()
+        }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(background)
@@ -339,17 +354,27 @@ class MediaLocatorActivity : ComponentActivity() {
             addView(pageSummary, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(status, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(errorPanel, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            addView(webView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 3f))
-            addView(resultsHeader, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            addView(list, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 2f))
+            addView(webView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            // Parity04: the detected-media list is no longer a fixed viewport overlay.
+            // It is opened from the floating Media button so the WebView behaves like a light browser.
         }
-        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+        val frameRoot = FrameLayout(this).apply {
+            addView(root, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            addView(
+                mediaFab,
+                FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    gravity = android.view.Gravity.BOTTOM or android.view.Gravity.END
+                    setMargins(dp(16), dp(16), dp(16), dp(16))
+                },
+            )
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(frameRoot) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             insets
         }
-        setContentView(root)
-        ViewCompat.requestApplyInsets(root)
+        setContentView(frameRoot)
+        ViewCompat.requestApplyInsets(frameRoot)
 
         webView.settings.apply {
             javaScriptEnabled = true
@@ -378,6 +403,7 @@ class MediaLocatorActivity : ComponentActivity() {
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             WebViewCompat.addDocumentStartJavaScript(webView, LOCATOR_RUNTIME, setOf("*"))
         }
+        installEnabledUserscriptsAtDocumentStart()
         webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView, newProgress: Int) {
                 progress.progress = newProgress
@@ -444,7 +470,7 @@ class MediaLocatorActivity : ComponentActivity() {
                     title = getString(R.string.media_locator_error_network_title),
                     detail = description.ifBlank { getString(R.string.media_locator_error_network_detail) },
                     severity = DebugSeverity.Warning,
-                    notifyUser = false,
+                    notifyUser = true,
                     diagnosticCode = error.errorCode.toString(),
                 )
             }
@@ -457,7 +483,7 @@ class MediaLocatorActivity : ComponentActivity() {
                     title = getString(R.string.media_locator_error_http_title, errorResponse.statusCode),
                     detail = getString(R.string.media_locator_error_http_detail),
                     severity = DebugSeverity.Warning,
-                    notifyUser = false,
+                    notifyUser = true,
                     diagnosticCode = errorResponse.statusCode.toString(),
                 )
             }
@@ -530,6 +556,7 @@ class MediaLocatorActivity : ComponentActivity() {
                 }
                 updateNavigationState()
                 updatePageSummary()
+                injectEnabledUserscriptsForCurrentPage()
             }
         }
 
@@ -589,12 +616,9 @@ class MediaLocatorActivity : ComponentActivity() {
         shareButton.setOnClickListener { shareCurrentPage() }
         externalButton.setOnClickListener { openCurrentPageExternally() }
 
-        resultsHeader.setOnClickListener {
-            if (located.isNotEmpty()) {
-                resultsExpanded = !resultsExpanded
-                updateCandidateHeader()
-            }
-        }
+        resultsHeader.setOnClickListener { showMediaBottomSheet() }
+        mediaFab.setOnClickListener { showMediaBottomSheet() }
+        scriptButton.setOnClickListener { showUserscriptManager() }
         list.setOnItemClickListener { _, _, position, _ ->
             located.values.sortedWith(compareByDescending<LocatedMedia> { it.rank }.thenBy { it.url })
                 .getOrNull(position)
@@ -652,7 +676,7 @@ class MediaLocatorActivity : ComponentActivity() {
     private fun loadAddress() {
         val normalized = normalizePageUrl(address.text.toString())
         if (normalized == null) {
-            status.text = getString(R.string.media_locator_invalid_url)
+            showFeedbackToast(getString(R.string.media_locator_invalid_url)); status.text = getString(R.string.media_locator_invalid_url)
             return
         }
         located.clear()
@@ -717,6 +741,7 @@ class MediaLocatorActivity : ComponentActivity() {
         errorText.text = lastMainFrameError
         errorPanel.visibility = View.VISIBLE
         status.text = getString(R.string.media_locator_error_status)
+        showFeedbackToast("$title. $detail")
         debugRecorder.record(
             area = DebugArea.WebView,
             severity = severity,
@@ -947,22 +972,18 @@ class MediaLocatorActivity : ComponentActivity() {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(12), 0, 0, 0)
                 val host = runCatching { URI(item.url).host }.getOrNull().orEmpty()
-                addView(TextView(this@MediaLocatorActivity).apply {
-                    text = item.record.title.take(120)
-                    textSize = 15f
-                })
-                addView(TextView(this@MediaLocatorActivity).apply {
-                    val kindLabel = item.kind.name.replace('_', ' ')
-                    val mimeLabel = item.mimeType ?: getString(R.string.media_locator_type_inferred)
-                    text = getString(
+                addView(wrappingTextView(item.record.title.take(160), 15f, 3))
+                addView(wrappingTextView(
+                    getString(
                         R.string.media_locator_candidate_details,
-                        kindLabel,
-                        mimeLabel,
+                        item.kind.name.replace('_', ' '),
+                        item.mimeType ?: getString(R.string.media_locator_type_inferred),
                         host,
                         item.reason,
-                    )
-                    textSize = 12f
-                })
+                    ),
+                    12f,
+                    5,
+                ))
             }
             row.addView(artwork, LinearLayout.LayoutParams(dp(96), dp(60)))
             row.addView(labels, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -979,6 +1000,98 @@ class MediaLocatorActivity : ComponentActivity() {
             }
             return row
         }
+    }
+
+
+    private fun showMediaBottomSheet() {
+        if (located.isEmpty()) {
+            showFeedbackToast(getString(R.string.media_locator_no_candidates))
+            return
+        }
+        val candidates = located.values.sortedWith(compareByDescending<LocatedMedia> { it.rank }.thenBy { it.url })
+        val labels = candidates.map { candidate ->
+            val host = runCatching { URI(candidate.url).host }.getOrNull().orEmpty()
+            listOf(
+                candidate.record.title.take(90),
+                candidate.kind.name.replace('_', ' '),
+                candidate.mimeType ?: getString(R.string.media_locator_type_inferred),
+                host,
+                if (candidate.variants.isNotEmpty()) "${candidate.variants.size} track(s)" else null,
+            ).filterNotNull().joinToString(" • ")
+        }.toTypedArray()
+        activeMediaDialog?.dismiss()
+        activeMediaDialog = AlertDialog.Builder(this)
+            .setTitle(resources.getQuantityString(R.plurals.media_locator_bottom_sheet_title, candidates.size, candidates.size))
+            .setItems(labels) { _, which -> candidates.getOrNull(which)?.let(::reviewCandidate) }
+            .setNegativeButton(getString(R.string.media_locator_bottom_sheet_close), null)
+            .setNeutralButton(getString(R.string.media_locator_scan)) { _, _ ->
+                injectLocatorRuntime(forceScan = true)
+                showFeedbackToast(getString(R.string.media_locator_rescanning))
+            }
+            .show()
+    }
+
+    private fun showUserscriptManager() {
+        val store = WebViewUserscriptStore(this)
+        val current = store.snapshot()
+        val input = EditText(this).apply {
+            hint = getString(R.string.media_locator_userscript_hint)
+            setSingleLine(false)
+            minLines = 8
+            maxLines = 16
+            setText(current.scriptSource)
+        }
+        val enabled = booleanArrayOf(current.enabled)
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.media_locator_userscripts_title))
+            .setMultiChoiceItems(arrayOf(getString(R.string.media_locator_userscripts_enable)), enabled, { _, _, checked -> enabled[0] = checked })
+            .setView(input)
+            .setNegativeButton(getString(R.string.media_locator_userscripts_disable)) { _, _ ->
+                store.save(WebViewUserscript(enabled = false, scriptSource = ""))
+                showFeedbackToast(getString(R.string.media_locator_userscripts_disabled))
+            }
+            .setPositiveButton(getString(R.string.media_locator_userscripts_save)) { _, _ ->
+                val candidate = WebViewUserscript(enabled = enabled[0], scriptSource = input.text?.toString().orEmpty())
+                val validation = WebViewUserscriptPolicy.validate(candidate)
+                if (validation.accepted) {
+                    store.save(candidate)
+                    installEnabledUserscriptsAtDocumentStart()
+                    injectEnabledUserscriptsForCurrentPage()
+                    showFeedbackToast(validation.message)
+                } else {
+                    showFeedbackToast(validation.message)
+                }
+            }
+            .show()
+    }
+
+    private fun installEnabledUserscriptsAtDocumentStart() {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return
+        val script = WebViewUserscriptStore(this).documentStartScriptFor(currentPageUrl)
+        if (script.isBlank()) return
+        runCatching { WebViewCompat.addDocumentStartJavaScript(webView, script, setOf("*")) }
+            .onFailure { showFeedbackToast(getString(R.string.media_locator_userscripts_injection_failed)) }
+    }
+
+    private fun injectEnabledUserscriptsForCurrentPage() {
+        val script = WebViewUserscriptStore(this).documentStartScriptFor(currentPageUrl)
+        if (script.isBlank()) return
+        runCatching { webView.evaluateJavascript(script, null) }
+            .onFailure { showFeedbackToast(getString(R.string.media_locator_userscripts_injection_failed)) }
+    }
+
+    private fun showFeedbackToast(message: String) {
+        if (message.isBlank()) return
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun wrappingTextView(textValue: String, sizeSp: Float, maxLineCount: Int): TextView = TextView(this).apply {
+        text = textValue
+        textSize = sizeSp
+        isSingleLine = false
+        maxLines = maxLineCount
+        ellipsize = TextUtils.TruncateAt.END
+        setHorizontallyScrolling(false)
     }
 
     private fun updateFavicon(icon: Bitmap?) {
@@ -1007,18 +1120,24 @@ class MediaLocatorActivity : ComponentActivity() {
     private fun openCurrentPageExternally() {
         val url = currentPageUrl ?: normalizePageUrl(address.text.toString()) ?: return
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-            .onFailure { status.text = getString(R.string.media_locator_no_external_browser) }
+            .onFailure { showFeedbackToast(getString(R.string.media_locator_no_external_browser)); status.text = getString(R.string.media_locator_no_external_browser) }
     }
 
     private fun updateCandidateHeader() {
-        resultsHeader.text = if (located.isEmpty()) {
+        val text = if (located.isEmpty()) {
             getString(R.string.media_locator_no_candidates)
         } else {
-            val label = resources.getQuantityString(R.plurals.media_locator_candidates_header, located.size, located.size)
-            getString(if (resultsExpanded) R.string.media_locator_candidates_expanded else R.string.media_locator_candidates_collapsed, label)
+            resources.getQuantityString(R.plurals.media_locator_candidates_header, located.size, located.size)
         }
-        resultsHeader.contentDescription = resultsHeader.text
-        list.visibility = if (located.isEmpty() || !resultsExpanded) View.GONE else View.VISIBLE
+        resultsHeader.text = text
+        resultsHeader.contentDescription = text
+        val fabText = if (located.isEmpty()) getString(R.string.media_locator_media_fab_empty)
+            else resources.getQuantityString(R.plurals.media_locator_media_fab, located.size, located.size)
+        mediaFab.text = fabText
+        mediaFab.contentDescription = fabText
+        mediaFab.isEnabled = located.isNotEmpty()
+        // Keep the list adapter for accessibility/testing but never pin it below the WebView.
+        list.visibility = View.GONE
     }
 
     private fun updateLocatorStatus() {
@@ -1053,7 +1172,7 @@ class MediaLocatorActivity : ComponentActivity() {
     }
 
     private fun persistLocatedCandidate(candidate: LocatedMedia) {
-        status.text = getString(R.string.media_locator_saving)
+        showFeedbackToast(getString(R.string.media_locator_saving)); status.text = getString(R.string.media_locator_saving)
         lifecycleScope.launch(Dispatchers.IO) {
             val repository = (application as XdmApplication).container.repository
             val now = System.currentTimeMillis()

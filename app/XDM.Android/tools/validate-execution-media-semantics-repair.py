@@ -135,7 +135,13 @@ authority_wording_ok = (
     "post-UX13 roadmap-completion hotfix is the current UI release authority" in final_gate
     or (
         "post-UX13 roadmap-completion hotfix remains the historical UI release baseline" in final_gate
-        and "ACT01/ACT02 list quick-actions final seal is the current experience-polish validation authority" in final_gate
+        and (
+            "ACT01/ACT02 list quick-actions final seal is the current experience-polish validation authority" in final_gate
+            or (
+                "Media Parity04 is the current browser UX, userscripts, notification, and validation-truth authority" in final_gate
+                and "ACT01/ACT02 list quick-actions final seal remains a retained experience-polish validation baseline" in final_gate
+            )
+        )
     )
 )
 need(authority_wording_ok and

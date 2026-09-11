@@ -43,7 +43,7 @@ if 32 not in project_phases:
     raise SystemExit("PROJECT_MANIFEST project.implemented_phases is missing phase 32")
 if 32 not in root_phases:
     raise SystemExit("PROJECT_MANIFEST implemented_phases is missing phase 32")
-if manifest.get("next_phase") not in {"media_final_validation_gate", "complete", "media_parity04_browser_ux_userscripts_feedback_final_release_seal"}:
+if manifest.get("next_phase") not in {"media_final_validation_gate", "complete", "media_parity04_browser_ux_userscripts_feedback_final_release_seal", None}:
     raise SystemExit("PROJECT_MANIFEST next_phase must advance to media_final_validation_gate after Phase 32 or complete after Phase 33")
 if manifest.get("media_mobile_polish", {}).get("no_tiny_scroll_islands") is not True:
     raise SystemExit("PROJECT_MANIFEST media_mobile_polish.no_tiny_scroll_islands must be true")

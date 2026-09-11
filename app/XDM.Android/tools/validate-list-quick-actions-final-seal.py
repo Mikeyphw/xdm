@@ -130,7 +130,7 @@ need(len(entry.get("required_final_validation_tasks", [])) >= 20,
      "final seal must retain the complete explicit Gradle validation task matrix")
 need(entry.get("room_schema_unchanged") == 21, "ACT final seal must not change Room schema")
 need(entry.get("next_overlay") is None, "ACT final seal must close this roadmap")
-need(manifest.get("current_experience_polish_authority") == "list_quick_actions_final_seal_act01_act02",
+need(manifest.get("current_experience_polish_authority") in {"list_quick_actions_final_seal_act01_act02", "media_parity04_browser_ux_userscripts_notifications_release_seal"},
      "manifest must identify ACT01/ACT02 as current experience-polish authority")
 
 if errors:

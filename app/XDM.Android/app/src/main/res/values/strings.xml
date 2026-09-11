@@ -64,4 +64,24 @@
         <item quantity="other">%1$d media items detected</item>
     </plurals>
 
+    <string name="media_locator_media_fab_empty">Media</string>
+    <string name="media_locator_bottom_sheet_close">Close</string>
+    <plurals name="media_locator_media_fab">
+        <item quantity="one">Media (%1$d)</item>
+        <item quantity="other">Media (%1$d)</item>
+    </plurals>
+    <plurals name="media_locator_bottom_sheet_title">
+        <item quantity="one">Choose detected media</item>
+        <item quantity="other">Choose from %1$d detected media items</item>
+    </plurals>
+    <string name="media_locator_userscripts">Scripts</string>
+    <string name="media_locator_userscripts_title">Page userscripts</string>
+    <string name="media_locator_userscripts_enable">Enable for matching pages</string>
+    <string name="media_locator_userscript_hint">Paste a Tampermonkey-style userscript. Simple @match, @include, @name, and @grant none scripts are supported.</string>
+    <string name="media_locator_userscripts_save">Save script</string>
+    <string name="media_locator_userscripts_disable">Disable</string>
+    <string name="media_locator_userscripts_disabled">Userscripts disabled for the lightweight browser.</string>
+    <string name="media_locator_userscripts_injection_failed">XDM could not inject the userscript on this page.</string>
+    <string name="media_locator_saved">Captured media saved to XDM.</string>
+
 </resources>

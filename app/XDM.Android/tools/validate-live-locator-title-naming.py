@@ -37,10 +37,15 @@ entry = manifest.get("live_locator_title_naming_web01_web03_name01", {})
 for token in (
     "override fun onReceivedError", "override fun onReceivedHttpError", "override fun onReceivedSslError",
     "handler.cancel()", "showMainFrameError(", "updateNavigationState()", "updatePageSummary()",
-    "resultsExpanded = !resultsExpanded", "setAcceptThirdPartyCookies(webView, true)",
+    "setAcceptThirdPartyCookies(webView, true)",
     "builtInZoomControls = true", "EditorInfo.IME_ACTION_GO",
 ):
     need(token in locator, f"Live Locator missing {token}")
+need(
+    "resultsExpanded = !resultsExpanded" in locator
+    or ("showMediaBottomSheet()" in locator and "mediaFab" in locator and "floating Media button" in locator),
+    "Live Locator must retain either the legacy collapsible panel or Parity04 floating Media bottom-sheet replacement",
+)
 need("notifyUser = true" in locator and 'dedupeKey = "media-locator-$kind"' in locator,
      "SSL/actionable page failures must use OBS01 problem reporting without losing dedupe")
 for token in ("media_locator_retry", "media_locator_error_network_title", "media_locator_error_http_title", "media_locator_error_ssl_title", "media_locator_candidates_collapsed"):

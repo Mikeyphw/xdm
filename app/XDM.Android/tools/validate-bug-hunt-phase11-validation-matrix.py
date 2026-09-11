@@ -107,7 +107,7 @@ require(phase.get('roadmap_requirement_count') == 80, 'PROJECT_MANIFEST must rec
 require(phase.get('matrix_file') == 'tools/bug-hunt-phase11-validation-matrix.json', 'PROJECT_MANIFEST must point at matrix file')
 require(phase.get('runner') == 'tools/run-bug-hunt-phase11-validation-matrix.sh', 'PROJECT_MANIFEST must point at Phase 11 runner')
 require(phase.get('coverage_levels') == ['unit','instrumentation','device','release'], 'PROJECT_MANIFEST must record coverage levels')
-require(project.get('next_phase') in {'complete', 'media_parity04_browser_ux_userscripts_feedback_final_release_seal'}, 'PROJECT_MANIFEST next_phase must be complete after bug-hunt Phase 11 or point to accepted Parity04 successor')
+require(project.get('next_phase') in {'complete', 'media_parity04_browser_ux_userscripts_feedback_final_release_seal', None}, 'PROJECT_MANIFEST next_phase must be complete after bug-hunt Phase 11 or point to accepted Parity04 successor')
 
 if errors:
     print('Bug-hunt Phase 11 validation matrix failed:')

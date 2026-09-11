@@ -237,7 +237,8 @@ class TransferNotifications(private val context: Context) {
             .apply {
                 TerminalNotificationActionPolicy.actionsFor(state, downloadId).forEach { action ->
                     when (action.command) {
-                        QueueControlCommand.OpenOne -> addAction(android.R.drawable.ic_menu_view, action.label, openAppPendingIntent(downloadId))
+                        QueueControlCommand.OpenOne -> addAction(android.R.drawable.ic_menu_view, action.label, openCompletedPendingIntent(downloadId))
+                        QueueControlCommand.StartOne -> addAction(android.R.drawable.ic_menu_info_details, action.label, openAppPendingIntent(downloadId))
                         QueueControlCommand.ResumeOne -> addAction(android.R.drawable.ic_media_play, action.label, actionPendingIntent(ACTION_RESUME, downloadId, systemIds.idFor(downloadId)))
                         QueueControlCommand.RetryOne -> addAction(android.R.drawable.ic_popup_sync, action.label, actionPendingIntent(ACTION_RETRY, downloadId, systemIds.idFor(downloadId)))
                         QueueControlCommand.ReviewRecovery -> addAction(android.R.drawable.ic_menu_manage, action.label, actionPendingIntent(ACTION_REVIEW_RECOVERY, downloadId, systemIds.idFor(downloadId)))

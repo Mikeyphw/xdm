@@ -12,11 +12,13 @@ class CompletedNotificationPhase45ContractTest {
     private val terminalPolicy = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TerminalNotificationActionPolicy.kt").readText()
     private val manifest = File(root, "scheduler/src/main/AndroidManifest.xml").readText()
 
-    @Test fun completedTapOpensFileWhileCompletedActionOpensXdm() {
+    @Test fun completedTapAndButtonsOpenFileWithDetailsFallback() {
         assertTrue(notifications.contains("if (state == DownloadState.Completed)"))
         assertTrue(notifications.contains("openCompletedPendingIntent(downloadId)"))
-        assertTrue(terminalPolicy.contains("DownloadState.Completed -> add(NotificationActionModel(QueueControlCommand.OpenOne, \"Open XDM\""))
-        assertTrue(notifications.contains("QueueControlCommand.OpenOne -> addAction(android.R.drawable.ic_menu_view, action.label, openAppPendingIntent(downloadId))"))
+        assertTrue(terminalPolicy.contains("NotificationActionModel(QueueControlCommand.OpenOne, \"Open file\""))
+        assertTrue(terminalPolicy.contains("NotificationActionModel(QueueControlCommand.StartOne, \"Details\""))
+        assertTrue(notifications.contains("QueueControlCommand.OpenOne -> addAction(android.R.drawable.ic_menu_view, action.label, openCompletedPendingIntent(downloadId))"))
+        assertTrue(notifications.contains("QueueControlCommand.StartOne -> addAction(android.R.drawable.ic_menu_info_details, action.label, openAppPendingIntent(downloadId))"))
         assertTrue(notifications.contains("ACTION_OPEN_DOWNLOAD_DETAILS"))
         assertFalse(notifications.contains("ACTION_VIEW") && notifications.contains("setDataAndType"))
     }

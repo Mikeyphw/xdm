@@ -9,7 +9,10 @@ import com.mikeyphw.xdm.android.model.QueueControlCommand
 internal object TerminalNotificationActionPolicy {
     fun actionsFor(state: DownloadState, downloadId: String): List<NotificationActionModel> = buildList {
         when (state) {
-            DownloadState.Completed -> add(NotificationActionModel(QueueControlCommand.OpenOne, "Open XDM", NotificationActionVisibility.Show, downloadId))
+            DownloadState.Completed -> {
+                add(NotificationActionModel(QueueControlCommand.OpenOne, "Open file", NotificationActionVisibility.Show, downloadId))
+                add(NotificationActionModel(QueueControlCommand.StartOne, "Details", NotificationActionVisibility.Show, downloadId))
+            }
             DownloadState.Paused -> add(NotificationActionModel(QueueControlCommand.ResumeOne, "Resume", NotificationActionVisibility.Show, downloadId))
             DownloadState.Failed -> add(NotificationActionModel(QueueControlCommand.RetryOne, "Retry", NotificationActionVisibility.Show, downloadId))
             DownloadState.RecoveryRequired -> add(NotificationActionModel(QueueControlCommand.ReviewRecovery, "Review recovery", NotificationActionVisibility.Show, downloadId))

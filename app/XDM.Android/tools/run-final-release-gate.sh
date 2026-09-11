@@ -63,6 +63,7 @@ validators=(
   tools/validate-media-parity01-runtime-truth.py
   tools/validate-media-parity02-logical-capture.py
   tools/validate-media-parity03-native-hls.py
+  tools/validate-media-parity04-browser-ux-release-seal.py
 )
 
 for validator in "${matrix_owned_validators[@]}" "${validators[@]}"; do
@@ -80,16 +81,16 @@ bash tools/run-bug-hunt-phase11-validation-matrix.sh --static-only --ci
 FULL_GRADLE_GATE='bash tools/run-final-common-validation.sh && bash tools/run-bug-hunt-phase11-validation-matrix.sh --device-only && bash tools/run-bug-hunt-phase11-validation-matrix.sh --release-only'
 
 if [[ "${1:-}" == "--ci" ]]; then
-  echo "CI final static gate passed"
+  echo "CI final static gate passed including Media Parity04 browser UX/userscripts/notification seal"
   exit 0
 fi
 
 cat <<EOF2
-Final static gate passed.
+Final static gate passed, including Media Parity04 browser UX/userscripts/notification release seal.
 
 Run the full matrix in the target Android build environment:
 
 $FULL_GRADLE_GATE
 
-The post-UX13 roadmap-completion hotfix remains the historical UI release baseline; the 2026-09-10 ACT01/ACT02 list quick-actions final seal is the current experience-polish validation authority for the observability, thumbnail/MIME, Live Locator/title-naming, and card-action roadmap. UX13 remains the end-to-end UI/UX baseline and UX12 remains its accessibility/terminology baseline, the Add/Media UX remodel remains a retained functional milestone, the execution/media semantics repair remains its functional baseline, and the post-DL03 roadmap seal remains its historical baseline. The 2026-09-08 promise-delivery audit seals carry-forward correctness for legacy shape/wire isolation, opaque URL refresh, Live Locator recreation privacy, direct-media Options gating, the scoped AndroidX WebKit COOKIE_INTERCEPT and Kotlin renderer-detector lint guards, resource-backed Live Locator status text, and recovery-resume unwind synchronization. The common validation runner, current MC/DL validators, all four 2026-09-10 roadmap validators plus the notification/WebView gap hotfix validator, and retained Phase-11 device/release matrix provide executable evidence; documentation-only coverage is rejected.
+Media Parity04 is the current browser UX, userscripts, notification, and validation-truth authority; the post-UX13 roadmap-completion hotfix remains the historical UI release baseline; the 2026-09-10 ACT01/ACT02 list quick-actions final seal remains a retained experience-polish validation baseline for the observability, thumbnail/MIME, Live Locator/title-naming, and card-action roadmap. UX13 remains the end-to-end UI/UX baseline and UX12 remains its accessibility/terminology baseline, the Add/Media UX remodel remains a retained functional milestone, the execution/media semantics repair remains its functional baseline, and the post-DL03 roadmap seal remains its historical baseline. The 2026-09-08 promise-delivery audit seals carry-forward correctness for legacy shape/wire isolation, opaque URL refresh, Live Locator recreation privacy, direct-media Options gating, the scoped AndroidX WebKit COOKIE_INTERCEPT and Kotlin renderer-detector lint guards, resource-backed Live Locator status text, and recovery-resume unwind synchronization. The common validation runner, current MC/DL validators, all four 2026-09-10 roadmap validators plus the notification/WebView gap hotfix validator, and retained Phase-11 device/release matrix provide executable evidence; documentation-only coverage is rejected.
 EOF2

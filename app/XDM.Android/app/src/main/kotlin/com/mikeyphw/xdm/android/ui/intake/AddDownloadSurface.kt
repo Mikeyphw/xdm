@@ -244,7 +244,8 @@ fun AddDownloadScreen(
                     },
                     supportingText = { clipboardMessage?.let { Text(it) } },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
+                    singleLine = false,
+                    maxLines = 3,
                 )
             }
 
@@ -258,8 +259,34 @@ fun AddDownloadScreen(
                     label = { Text("File name") },
                     supportingText = { Text(fileNameSupporting) },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
+                    singleLine = false,
+                    maxLines = 3,
                 )
+            }
+
+            if (canInspectMedia) {
+                item {
+                    XdmGroupedList(
+                        modifier = Modifier.xdmScreen(XdmScreenTags.MediaOptionsChooser, "Quality and tracks chooser"),
+                    ) {
+                        XdmListRow(
+                            headline = "Quality & tracks",
+                            supporting = when {
+                                externalKind == DownloadIntakeKind.AdaptiveMedia -> "Choose the HLS/DASH variant, audio, and subtitles before adding the download."
+                                externalKind == DownloadIntakeKind.DirectMedia -> "Review the captured media stream before adding it to the queue."
+                                else -> "Inspect the page as media when it may contain a stream instead of a single file."
+                            },
+                            leading = { Icon(Icons.Rounded.Movie, contentDescription = null) },
+                            trailing = { Text("Choose", color = MaterialTheme.colorScheme.primary) },
+                            onClick = { onInspectMedia(url, effectiveFileName) },
+                        )
+                        XdmListSeparator()
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            XdmMetadataText("XDM will keep browser/session values private and only show human-friendly qualities and tracks.")
+                            XdmMetadataText("Use Download below only after this screen points to the exact file or selected media plan.")
+                        }
+                    }
+                }
             }
 
             if (url.isNotBlank()) {
@@ -406,7 +433,7 @@ fun AddDownloadScreen(
                         admissionState.message?.isNotBlank() == true -> admissionState.message.orEmpty()
                         preferMediaInspection -> "Choose media options before downloading this page or playlist."
                         !canDownload -> review.guidance
-                        else -> "$methodLabel • ${destinationUiLabel(destinationUri)}"
+                        else -> "Ready. Press Download once to queue this exact reviewed item. $methodLabel • ${destinationUiLabel(destinationUri)}"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

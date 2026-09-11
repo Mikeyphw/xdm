@@ -1,13 +1,13 @@
 ## XDM Android 0.21.0
 
-Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed. Media Parity01 is the current runtime-truth/diagnostics/backend-reliability authority; Media Parity02 is the current logical-media capture and Firefox/WebView convergence authority. The post-UX13 roadmap-completion hotfix remains the UI release authority; UX13 is the end-to-end UI/UX baseline and ACT01/ACT02 remains the experience-polish authority. Media Parity01 remains the runtime-truth/diagnostics/backend-reliability baseline; Media Parity02 is the current logical-media capture and Firefox/WebView convergence authority. The post-UX13 roadmap-completion hotfix remains the UI release baseline.
+Current Android roadmap state: MC01–MC05, DL01–DL03, Media Parity01, Media Parity02, Media Parity03, and Media Parity04 are sealed. Media Parity04 is the current browser UX, userscripts, notification, and validation-truth authority. Media Parity01 remains the runtime-truth/diagnostics/backend-reliability baseline; Media Parity02 is the current logical-media capture and Firefox/WebView convergence authority for the capture layer; Parity03 remains the native adaptive execution/admission/progress/completion-integrity baseline. The post-UX13 roadmap-completion hotfix remains the UI release baseline, UX13 is the end-to-end UI/UX baseline, and UIX R6 plus ACT01/ACT02 are retained historical UI evidence under the Parity04 final product authority. Room remains schema v24.
 
 ### Media Parity03 native HLS execution authority
 
-Media Parity03 is the current native adaptive execution/admission/progress/completion-integrity authority. Supported VOD HLS is admitted as one native segmented job, not as separate visible parts and not as a default yt-dlp handoff. The native HLS lane keeps a durable `native_hls_jobs` + `native_hls_parts` ledger, reuses an existing logical-media admission unless the user explicitly chooses Add again, tracks downloading/finalizing/publishing/verifying separately, reserves space for segment and finalization overhead, and rejects playlist text, HTML errors, tiny partial files, unsupported plans, or hash mismatches before anything may become Completed. LL-HLS/live/I-frame-only/invalid playlists deliberately route to fallback, while SAMPLE-AES/DRM/unknown encrypted streams remain protected unsupported. Parity04 remains responsible for the browser-shell/userscript/notification/text final product seal.
-Room is schema v23. The canonical release gate replays these contracts before the full Gradle/device/release matrix.
+Media Parity03 remains the native adaptive execution/admission/progress/completion-integrity baseline. Supported VOD HLS is admitted as one native segmented job, not as separate visible parts and not as a default yt-dlp handoff. The native HLS lane keeps a durable `native_hls_jobs` + `native_hls_parts` ledger, reuses an existing logical-media admission unless the user explicitly chooses Add again, tracks downloading/finalizing/publishing/verifying separately, reserves space for segment and finalization overhead, and rejects playlist text, HTML errors, tiny partial files, unsupported plans, or hash mismatches before anything may become Completed. LL-HLS/live/I-frame-only/invalid playlists deliberately route to fallback, while SAMPLE-AES/DRM/unknown encrypted streams remain protected unsupported.
+Room is schema v24. The canonical release gate replays these contracts before the full Gradle/device/release matrix.
 
-Implementation evidence: `XDM_MEDIA_PARITY01_RUNTIME_TRUTH_DIAGNOSTICS_BACKEND_RELIABILITY_REPORT.md` and `XDM_MEDIA_PARITY02_LOGICAL_MEDIA_CAPTURE_BROWSER_CONVERGENCE_REPORT.md`.
+Implementation evidence: `XDM_MEDIA_PARITY01_RUNTIME_TRUTH_DIAGNOSTICS_BACKEND_RELIABILITY_REPORT.md`, `XDM_MEDIA_PARITY02_LOGICAL_MEDIA_CAPTURE_BROWSER_CONVERGENCE_REPORT.md`, `XDM_MEDIA_PARITY03_NATIVE_HLS_EXECUTION_ADMISSION_INTEGRITY_REPORT.md`, and `XDM_MEDIA_PARITY04_BROWSER_UX_USERSCRIPTS_NOTIFICATIONS_RELEASE_SEAL_REPORT.md`.
 
 # XDM Android
 
@@ -277,3 +277,18 @@ The browser bridge was later superseded by the direct v3 capture contract: popup
 ## 2026-09-10 notification/media promise-closure v2
 
 The notification + Live Locator hotfix has a second-pass closure audit. Runtime notification ownership now removes stale UIDT progress at job end unless a terminal replacement was actually installed, terminal delivery remains Pending until Android accepts it, replay is alert-idempotent, and restart diagnostics rehydrate the same terminal actions production displays. Media artwork now preserves higher-quality provenance, keeps captured/resolver video artwork ahead of generated local frames, and follows additional media output generations into Downloads. Add Download uses a server `Content-Disposition` filename when the field is left blank and tells the user whether the suggestion came from the server, a redirect, or the link. Room remains schema 22.
+
+## Media Parity04 browser UX, userscripts, notifications, and final release seal
+
+Media Parity04 is the final V2 media-parity overlay. It turns the prior runtime/capture/native-HLS foundations into the product behavior requested by the original 1DM+ comparison:
+
+- The Live Locator WebView is a lightweight browser surface: address bar, navigation, reload/stop, find, share, external browser handoff, favicon/page status, and visible recovery errors remain in the browser chrome.
+- Detected media is no longer a fixed list below the page. The WebView keeps the page viewport, and a floating **Media (N)** button opens a logical-media chooser so the user explicitly selects which item to add.
+- The Add Download screen keeps one primary **Download** action, explains where the filename came from, and shows a **Quality & tracks** review card for captured media/page intake.
+- The WebView can load simple local Tampermonkey-style userscripts (`@name`, `@match`, `@include`, `@grant none`). It deliberately does not expose Firefox/Chrome extension APIs inside Android WebView.
+- Recoverable browser, userscript, and intake failures must surface via toast/banner/status copy rather than silent failure.
+- Completed notifications let the user open the finished artifact directly, open XDM details as fallback/context, or dismiss the terminal card.
+- Long links, filenames, candidate titles, and validation explanations wrap on phone-sized screens before bounded truncation.
+- Developer Center is the single current debug/validation surface. It carries forward Parity01 diagnostic truth, Parity02 logical capture, Parity03 native-HLS execution, and this Parity04 product seal.
+
+Run `tools/validate-media-parity04-browser-ux-release-seal.py` for the focused contract, and `tools/run-final-release-gate.sh --ci` for the final static gate. Full Gradle/lint/device validation remains owned by the target Android/Termux Devtool environment.

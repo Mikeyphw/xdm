@@ -71,7 +71,13 @@ gate_authority_ok = (
     "post-UX13 roadmap-completion hotfix is the current UI release authority" in gate
     or (
         "post-UX13 roadmap-completion hotfix remains the historical UI release baseline" in gate
-        and "ACT01/ACT02 list quick-actions final seal is the current experience-polish validation authority" in gate
+        and (
+            "ACT01/ACT02 list quick-actions final seal is the current experience-polish validation authority" in gate
+            or (
+                "Media Parity04 is the current browser UX, userscripts, notification, and validation-truth authority" in gate
+                and "ACT01/ACT02 list quick-actions final seal remains a retained experience-polish validation baseline" in gate
+            )
+        )
     )
 )
 need(gate_authority_ok and "UX13 remains the end-to-end UI/UX baseline" in gate,
@@ -96,7 +102,7 @@ need("one explicit **Download** action" in readme and "Current Add and Media UX"
 need("The old `Review download -> Add to queue` second confirmation is removed." in report,
      "UX remodel report must record removal of the redundant confirmation")
 
-need(manifest.get("current_release_authority") in {"post_ux13_roadmap_completion_hotfix", "media_parity01_runtime_truth_diagnostics_backend_reliability", "media_parity02_logical_media_capture_browser_convergence", "media_parity03_native_hls_execution_admission_integrity"},
+need(manifest.get("current_release_authority") in {"post_ux13_roadmap_completion_hotfix", "media_parity01_runtime_truth_diagnostics_backend_reliability", "media_parity02_logical_media_capture_browser_convergence", "media_parity03_native_hls_execution_admission_integrity", "media_parity04_browser_ux_userscripts_notifications_release_seal"},
      "manifest must identify the post-UX13 hotfix as current release authority")
 need(entry.get("base_commit") == "c214240e", "UX remodel base commit must be c214240e")
 need(entry.get("functional_baseline") == "execution_media_semantics_repair", "UX remodel must retain execution/media functional baseline")

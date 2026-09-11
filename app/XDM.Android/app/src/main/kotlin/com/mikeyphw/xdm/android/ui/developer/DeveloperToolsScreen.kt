@@ -193,10 +193,10 @@ internal fun MediaFinalValidationGateCard(dashboard: MediaFinalValidationDashboa
     Card(Modifier.fillMaxWidth().semantics { contentDescription = "Media final validation gate ${dashboard.summary}" }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdmCardTitle("Media final validation gate")
-        XdmMetadataText("Release validation combines static contracts, build checks, lint, route safety, runtime compatibility, and privacy evidence.", maxLines = 3)
+        XdmMetadataText("Release validation combines static contracts, build checks, lint, route safety, runtime compatibility, privacy evidence, and the Media Parity04 browser UX seal.", maxLines = 4)
             XdmSupportingText(
-                "Release readiness stays blocked until static contracts, Gradle build/test/lint, warning policy, route safety, Termux compatibility, and privacy scans all provide evidence.",
-                maxLines = 4,
+                "Release readiness stays blocked until static contracts, Gradle build/test/lint, warning policy, route safety, Termux compatibility, privacy scans, Firefox/WebView media parity, userscript constraints, notification actions, and long-text wrapping all provide evidence.",
+                maxLines = 5,
             )
             XdmActionFlowRow {
                 StatusPill(if (dashboard.releaseReady) "Ready for release" else "Needs action", if (dashboard.releaseReady) XdmStatusTone.Success else XdmStatusTone.Warning)
